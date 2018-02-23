@@ -250,7 +250,8 @@ handle_s3_error({'aws_error',
     kz_att_error:new(Reason, NewRoutines);
 handle_s3_error({'aws_error', {'socket_error', RespBody}} = _E, Routines) ->
     lager:error("S3 request error: ~p", [_E]),
-    Reason = <<"Socket error: ", (io_lib:format("~p", [RespBody]))/binary>>,
+    RespBodyBin = list_to_binary(io_lib:format("~p", [RespBody])),
+    Reason = <<"Socket error: ", RespBodyBin/binary>>,
     kz_att_error:new(Reason, Routines).
 
 -spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().

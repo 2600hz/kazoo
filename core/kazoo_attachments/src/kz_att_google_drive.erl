@@ -63,8 +63,7 @@ do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
             handle_put_attachment_resp(Resp, Routines);
         Resp -> handle_put_attachment_resp(Resp, Routines)
     end;
-do_put_attachment({'error', Reason}, Settings, DbName, DocId, AName, Contents, Options) ->
-    lager:debug("oauth_failure reason: ~p", [Reason]),
+do_put_attachment({'error', _}, Settings, DbName, DocId, AName, Contents, Options) ->
     Routines = kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options),
     kz_att_error:new('oauth_failure', Routines).
 

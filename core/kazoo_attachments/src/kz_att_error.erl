@@ -53,9 +53,13 @@ new(Reason) ->
 
 -spec new(kz_datamgr:data_errors(), update_routines()) -> error().
 new(Reason, Routines) ->
+    %% Add default values for `required' unset keys. `props:insert_values/2' doesn't
+    %% override values, it only add a key/value tuple if that key is not already defined
+    %% within the destination proplist, in this case, within `Routines' proplist.
+    NewRoutines = props:insert_values(default_routines(Reason), Routines),
     Extended = lists:foldl(fun({F, Value}, M) ->
                                    F(M, Value)
-                           end, #{}, Routines),
+                           end, #{}, NewRoutines),
     {'error', Reason, Extended}.
 
 -spec fetch_routines(gen_attachment:handler_props()
@@ -165,3 +169,15 @@ options(#{'options' := Options}) ->
 -spec set_options(extended_error(), gen_attachment:options()) -> extended_error().
 set_options(ExtendedError, Options) ->
     ExtendedError#{'options' => Options}.
+
+%% =======================================================================================
+%% Internal functions
+%% =======================================================================================
+%% There are some errors for which the attachment handlers don't get an error_code nor a
+%% resp_body, so this function tries to return some meaningful default routines based on
+%% the error reason. Thus, no need to call `[{fun kz_att_error:set_resp_code/2, 401} | Routines]'
+%% in every place we return `oauth_failure' error.
+default_routines('oauth_failure') ->
+    [{fun set_resp_code/2, 401}, {fun set_resp_body/2, <<>>}];
+default_routines(_) ->
+    [{fun set_resp_code/2, 500}, {fun set_resp_body/2, <<>>}].

@@ -14,6 +14,8 @@ error_response_test_() ->
                           ,db_name => db_name()
                           ,document_id => document_id()
                           ,handler_props => []
+                          ,resp_code => 500
+                          ,resp_body => <<>>
                           },
     PutExtendedError = FetchExtendedError#{attachment_content => att_content()
                                           ,handler_props => #{}
@@ -23,7 +25,9 @@ error_response_test_() ->
     %% Attachment handlers must always return extended errors (3 elements tuple),
     %% e.g: `{error, Reason, ExtendedError}'.
     [{"error_verbosity key not set (without routines)"
-     ,?_assertEqual({'error', ErrorReason, #{}}, WithoutRoutines)
+     ,?_assertEqual({'error', ErrorReason, #{resp_code => 500, resp_body => <<>>}}
+                   ,WithoutRoutines
+                   )
      }
     ,{"error_verbosity key not set (using fetch routines)"
      ,?_assertEqual({'error', ErrorReason, FetchExtendedError}, WithFetchRoutines)
