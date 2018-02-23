@@ -107,6 +107,21 @@ When issuing a PUT or POST, a request body is needed. When submitting a JSON (th
 }
 ```
 
+##### Request Data
+
+When using `PATCH` to edit entities, if you want to remove a field from the entity, set it to `null`:
+
+```json
+{
+    "data": {
+        "update":"this",
+        "exists":null
+    }
+}
+```
+
+This request would set "update" to "this" and would remove "exists" from the entity.
+
 #### Response Envelope
 
 When receiving JSON responses, clients will receive the response in an envelope. The response includes some duplicated data from the HTTP Response headers, since some clients do not have access to those headers.
