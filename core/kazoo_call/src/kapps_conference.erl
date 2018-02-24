@@ -864,7 +864,6 @@ moderator_exit_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_EXIT_
 moderator_exit_tone(#kapps_conference{account_id=AccountId}) -> ?MOD_EXIT_TONE(AccountId).
 
 
-%% @private
 -spec get_tone(any()) -> tone().
 get_tone(Thing) ->
     case kz_term:is_boolean(Thing) of
