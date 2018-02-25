@@ -225,6 +225,12 @@ matching_rate(Rate, <<"routes">>, RateReq) ->
              ,kzd_rate:routes(Rate, [])
              );
 
+matching_rate(Rate, <<"caller_id_numbers">>, RateReq) ->
+    E164 = knm_converters:normalize(kz_json:get_value(<<"From-DID">>, RateReq)),
+    lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
+             ,kzd_rate:caller_id_numbers(Rate, [<<".">>])
+             );
+
 matching_rate(Rate, <<"ratedeck_id">>, RateReq) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),
     AccountRatedeck = kz_service_ratedeck_name:get_ratedeck_name(AccountId),
