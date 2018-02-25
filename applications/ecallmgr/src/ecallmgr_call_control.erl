@@ -626,36 +626,6 @@ handle_execute_complete(_, 'undefined', _JObj, State) ->
     State;
 handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_cmd_uuid='undefined'}=State) ->
     State;
-handle_execute_complete(<<"noop">>, EventUUID, JObj, #state{msg_id=CurrMsgId
-                                                           ,current_cmd_uuid=EventUUID
-                                                           }=State) ->
-    NoopId = kz_json:get_ne_binary_value(<<"Application-Response">>, JObj),
-    case NoopId =:= CurrMsgId of
-        'false' ->
-            lager:debug("received noop execute complete with incorrect id ~s (expecting ~s)"
-                       ,[_NoopId, CurrMsgId]
-                       ),
-            State
-    end;
-handle_execute_complete(<<"playback">> = AppName, EventUUID, JObj, #state{current_app=AppName
-                                                                         ,current_cmd_uuid=EventUUID
-                                                                         ,command_q=CmdQ
-                                                                         }=State) ->
-    lager:debug("playback finished, checking for group-id/DTMF termination"),
-    S = case kz_json:get_value(<<"DTMF-Digit">>, JObj) of
-            'undefined' ->
-                lager:debug("command finished playing, advancing control queue"),
-                State;
-            _DTMF ->
-                GroupId = kz_json:get_value(<<"Group-ID">>, JObj),
-                lager:debug("DTMF ~s terminated playback, flushing all with group id ~s"
-                           ,[_DTMF, GroupId]),
-                State#state{command_q=flush_group_id(CmdQ, GroupId, AppName)}
-        end,
-    forward_queue(S);
-handle_execute_complete(AppName, <<"null">>, _, State) ->
-    lager:debug("ignoring execute complete for ~s", [AppName]),
-    State;
 handle_execute_complete(AppName, EventUUID, _, #state{current_app=AppName
                                                      ,current_cmd_uuid=EventUUID
                                                      }=State) ->
@@ -678,16 +648,6 @@ handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_app=CurrApp
                                                            }=State) ->
     lager:debug_unsafe("execute complete not handled : ~s:~s ~s:~s : ~s", [_AppName, _EventUUID, CurrApp, EventUUID, kz_json:encode(_JObj, ['pretty'])]),
     State.
-
--spec flush_group_id(queue:queue(), kz_term:api_binary(), kz_term:ne_binary()) -> queue:queue().
-flush_group_id(CmdQ, 'undefined', _) -> CmdQ;
-flush_group_id(CmdQ, GroupId, AppName) ->
-    lager:debug("filtering commands ~s for group-id ~s", [AppName, GroupId]),
-    Filter = kz_json:from_list([{<<"Application-Name">>, AppName}
-                               ,{<<"Group-ID">>, GroupId}
-                               ,{<<"Fields">>, kz_json:from_list([{<<"Group-ID">>, GroupId}])}
-                               ]),
-    maybe_filter_queue([Filter], CmdQ).
 
 -spec forward_queue(state()) -> state().
 forward_queue(#state{call_id = CallId
