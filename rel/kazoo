@@ -31,7 +31,7 @@ esac
 SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
 RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 # Make the value available to variable substitution calls below
-export REL_NAME="{{ rel_name }}"
+export REL_NAME="{{ release_name }}"
 REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
 CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
