@@ -305,7 +305,7 @@ bump_copyright_file(File, Year) ->
     save_lines(File, bump_copyright(Module, Header, [], [], Year) ++ OtherLines).
 
 bump_copyright(Module, [], Copyright, [], Year) ->
-    bump_copyright(Module, [], Copyright, [<<"@doc">>], Year);
+    bump_copyright(Module, [], Copyright, [<<"%%% @doc">>], Year);
 
 bump_copyright(Module, [], [], Header, Year) ->
     bump_copyright(Module, [], generate_copyright_line(Year, <<>>), Header, Year);
@@ -337,8 +337,10 @@ bump_copyright(Module, [H|T], Copyright, Header, Year) ->
 do_bump_copyright(C, Year) ->
     Nums = re:replace(C, "([a-zA-Z().,!?~#@$%$'`\"_=&/\\^+* ]*|2600)", <<>>, [global, {return, binary}]),
     case lists:usort([B || B <- binary:split(Nums, <<"-">>, [global]), B =/= <<>>]) of
-        [Y, Year] -> generate_copyright_line(Y, Year);
-        [Y, _] -> generate_copyright_line(Y, Year);
+        [Year] -> generate_copyright_line(Year, <<>>);
+        [<<"20", _:2/binary>> = Y] -> generate_copyright_line(Y, Year);
+        [<<"20", _:2/binary>> = Y, Year] -> generate_copyright_line(Y, Year);
+        [<<"20", _:2/binary>> = Y, _] -> generate_copyright_line(Y, Year);
         _ -> generate_copyright_line(Year, <<>>)
     end.
 
