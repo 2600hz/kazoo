@@ -29,6 +29,8 @@ ifeq ($(PLATFORM),)
     export PLATFORM
 endif
 
+VERSION=$(shell $(ROOT)/scripts/next_version)
+
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
 
@@ -60,7 +62,8 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 ebin/$(PROJECT).app: $(SOURCES)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
-	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
+	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src \
+        | sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(VERSION)\"}/g" > $@
 
 
 json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json'))
@@ -143,3 +146,4 @@ perf: ERLC_OPTS += -pa $(ROOT)/deps/horse/ebin -DPERF +'{parse_transform, horse_
 perf: compile-test
 	$(gen_verbose) @ERL_LIBS=$(ELIBS) erl -noshell  -pa $(ROOT)/deps/horse/ebin -pa $(TEST_PA) \
 		-eval 'horse:app_perf($(PROJECT)), init:stop().'
+

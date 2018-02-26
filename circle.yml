@@ -65,3 +65,9 @@ test:
     - . ~/.kerl/$OTP_VERSION/activate && make elvis
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh
+  post:
+    - mkdir $CIRCLE_ARTIFACTS/logs
+    - mv ./_rel/kazoo/log/* $CIRCLE_ARTIFACTS/logs/
+    - cp ./rel/ci.relx.config $CIRCLE_ARTIFACTS/
+    - find ./_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
+

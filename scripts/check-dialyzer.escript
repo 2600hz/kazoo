@@ -209,3 +209,4 @@ usage() ->
     io:format("Usage: ~s  <path to .kazoo.plt> <path to ebin/>+\n", [filename:basename(Arg0)]).
 
 %% End of Module
+

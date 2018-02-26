@@ -7,7 +7,7 @@ KAZOODIRS = core/Makefile applications/Makefile
 
 .PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas
 
-all: compile rel/dev-vm.args
+all: compile
 
 compile: ACTION = all
 compile: deps $(KAZOODIRS)
@@ -79,46 +79,22 @@ $(RELX):
 
 clean-release:
 	$(if $(wildcard _rel/), rm -r _rel/)
-	$(if $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args), \
-	  rm $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args)  )
 
-build-release: $(RELX) clean-release rel/relx.config rel/vm.args
+build-release: $(RELX) clean-release rel/relx.config rel/relx.config.script rel/sys.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
-	patch _rel/'kazoo'/bin/'kazoo' -i rel/relx.patch
-build-all-release: build-release
-	for path in applications/*/; do \
-	  app=$$(echo $$path | cut -d/ -f2) ; \
-	  if [ $$app = 'skel' ]; then continue; fi ; \
-	  $(RELX) --config rel/relx.config -V 2 release --relname $$app ; \
-	  patch _rel/$$app/bin/$$app -i rel/relx.patch ; \
-	done
-build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
-	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
-	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
-build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
-	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
-	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
-tar-release: $(RELX) rel/relx.config rel/vm.args
+build-dev-release: $(RELX) clean-release rel/dev.relx.config rel/dev.relx.config.script rel/dev.vm.args rel/dev.sys.config
+	$(RELX) --dev-mode true --config rel/dev.relx.config -V 2 release --relname 'kazoo'
+build-ci-release: $(RELX) clean-release rel/ci.relx.config rel/ci.relx.config.script rel/ci.sys.config rel/ci.vm.args
+	$(RELX) --config rel/ci.relx.config -V 2 release --relname 'kazoo'
+tar-release: $(RELX) rel/relx.config rel/relx.config.script rel/sys.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
-rel/relx.config: rel/relx.config.src
-	$(ROOT)/scripts/src2any.escript $<
-rel/relx.config-dev: export KAZOO_DEV='true'
-rel/relx.config-dev: rel/relx.config.src
-	$(ROOT)/scripts/src2any.escript $<
-
-rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
-	cp $^ $@
-rel/vm.args: rel/args rel/dev-vm.args
-	( echo '-setcookie $${COOKIE}'; cat $<; echo '-name $${NODE_NAME}' ) > $@
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
 release: REL ?= kazoo_apps # kazoo_apps | ecallmgr | …
-ifneq ($(findstring kazoo_apps,$(REL)),kazoo_apps)
-release: export KAZOO_APPS = 'ecallmgr'
-endif
+release: COOKIE ?= change_me
 release:
-	@NODE_NAME='$(REL)' COOKIE='change_me' $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
+	@NODE_NAME="$(REL)" COOKIE="$(COOKIE)" $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
 
 install: compile build-release
 	cp -a _rel/kazoo /opt
@@ -147,7 +123,7 @@ dialyze-kazoo: dialyze
 dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin)
 dialyze-apps: dialyze
 dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin)
-dialyze-core: dialyze
+dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
@@ -204,6 +180,9 @@ apis:
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/*.json
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
+
+schemas:
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs: docs-validate docs-report docs-setup docs-build

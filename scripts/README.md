@@ -654,3 +654,12 @@ Part of the great rename, converts Whistle-related names to Kazoo-specific names
 ## `make-swag.sh`
 
 Generate API clients in multiple languages from the Swagger file.
+
+## `next_version`
+
+returns next release based on branch & tags.
+
+## `increment_version.bash`
+
+routine to increment a version
+

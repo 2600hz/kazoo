@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 
-# The file to copy/symlink under /usr/bin or similar
+# look for kazoo release root directory
 DEFAULT_ROOT=${KAZOO_ROOT:-_rel/kazoo}
 if [ -d "$DEFAULT_ROOT/_rel/kazoo" ]; then
-    DEFAULT_ROOT="$DEFAULT_ROOT"
+    DEFAULT_ROOT="$DEFAULT_ROOT/_rel/kazoo"
 elif [ -d "$DEFAULT_ROOT/bin" ]; then
     DEFAULT_ROOT="$DEFAULT_ROOT"
 elif [ -d /opt/kazoo/_rel/kazoo ]; then
@@ -15,5 +15,22 @@ else
     exit -1
 fi
 
-"${DEFAULT_ROOT}"/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
+while getopts "n:c:" optname
+do
+    case "$optname" in
+        "n")
+            SUP_NODE_ARG=$OPTARG
+            ;;
+        "c")
+            SUP_COOKIE_ARG=$OPTARG
+            ;;
+    esac
+done
+
+shift $(($OPTIND - 1))
+
+KAZOO_NODE=${SUP_NODE_ARG:-${KAZOO_NODE:-kazoo_apps}}
+KAZOO_COOKIE=${SUP_COOKIE_ARG:-${KAZOO_COOKIE:-change_me}}
+
+${DEFAULT_ROOT}/bin/kazoo escript lib/sup-*/priv/sup.escript -n ${KAZOO_NODE} -c ${KAZOO_COOKIE} $*
 exit $?
