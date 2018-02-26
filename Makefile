@@ -95,11 +95,11 @@ build-all-release: build-release
 	  $(RELX) --config rel/relx.config -V 2 release --relname $$app ; \
 #	  patch _rel/$$app/bin/$$app -i rel/relx.patch ; \
 	done
-build-dev-release: $(RELX) clean-release rel/dev.relx.config rel/dev.vm.args rel/dev.sys.config
+build-dev-release: $(RELX) clean-release rel/dev.relx.config rel/dev-vm.args rel/dev.sys.config
 	$(RELX) --dev-mode true --config rel/dev.relx.config -V 2 release --relname 'kazoo' --sys_config rel/dev.sys.config --vm_args rel/dev.vm.args
 #	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
-build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
-	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config --vm_args rel/vm.args
+build-ci-release: $(RELX) clean-release rel/ci.relx.config rel/ci-vm.args rel/ci.sys.config
+	$(RELX) --config $(ROOT)/rel/ci.relx.config -V 2 release --relname 'kazoo' --sys_config $(ROOT)/rel/ci.sys.config --vm_args $(ROOT)/rel/ci-vm.args
 #	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
@@ -108,11 +108,15 @@ rel/relx.config: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
 rel/dev.relx.config: rel/dev.relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
+rel/ci.relx.config: rel/ci.relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
 rel/relx.config-dev: export KAZOO_DEV='true'
 rel/relx.config-dev: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
 
 rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
+	cp $^ $@
+rel/ci-vm.args: rel/args  # Used by scripts/dev-start-*.sh
 	cp $^ $@
 rel/vm.args: rel/args
 	cp $^ $@
