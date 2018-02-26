@@ -5,12 +5,17 @@
 
 -define(ACCOUNT_ID_UNDER_TEST, <<"account0000000000000000000000001">>).
 -define(ACCOUNT_DB_UNDER_TEST, <<"account%2Fac%2Fco%2Funt0000000000000000000000001">>).
+-define(ACCOUNT_DB_CURRENT_MONTH,
+        kazoo_modb:get_modb(kz_util:format_account_id(?ACCOUNT_ID_UNDER_TEST))).
 
--define(LEGACY_VIEW, <<"vmboxes/legacy_msg_by_timestamp">>).
+%%%=============================================================================
+%%% Fixtures / Generators
+%%%=============================================================================
 
-%% =======================================================================================
-%% Fixtures / Generators
-%% =======================================================================================
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 maybe_check_storage_settings_test_() ->
     {setup
     ,fun setup/0
@@ -20,31 +25,37 @@ maybe_check_storage_settings_test_() ->
      end
     }.
 
-%% =======================================================================================
-%% Setup
-%% =======================================================================================
+%%%=============================================================================
+%%% Setup
+%%%=============================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 setup() ->
-    ?debugMsg(":: Setting up Kazoo FixtureDB"),
     %% Required for s3 attachment handler
     _ = application:ensure_all_started(erlcloud),
     Pid = kz_fixturedb_util:start_me(),
-    meck:new(kz_datamgr, [unstick, passthrough]),
-    meck:expect(kz_datamgr, get_results, check_kz_datamgr_history()),
-    %% Fix `kz_att_util:format_url/3' issue
-    meck:expect(kz_datamgr, open_cache_doc, fun open_cache_doc/2),
     meck:new(kz_fixturedb_db, [unstick, passthrough]),
+    meck:new(kz_fixturedb_doc, [unstick, passthrough]),
     meck:expect(kz_fixturedb_db, db_exists, this_month_db_exists()),
+    meck:expect(kz_fixturedb_doc, open_doc, fun open_doc/4),
     Pid.
 
 cleanup(Pid) ->
     _ = application:stop(erlcloud),
     kz_fixturedb_util:stop_me(Pid),
-    meck:unload(),
-    ?debugMsg(":: Stopped Kazoo FixtureDB").
+    meck:unload().
 
-%% =======================================================================================
-%% Tests
-%% =======================================================================================
+%%%=============================================================================
+%%% Tests
+%%%=============================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 maybe_check_storage_settings() ->
     UUID = kz_binary:rand_hex(16),
     Setters = [{fun cb_context:set_account_id/2, ?ACCOUNT_ID_UNDER_TEST}
@@ -82,9 +93,14 @@ maybe_check_storage_settings() ->
      }
     ].
 
-%% =======================================================================================
-%% Helper functions
-%% =======================================================================================
+%%%=============================================================================
+%%% Helper functions
+%%%=============================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 s3_storage_plan(UUID) ->
     #{<<"attachments">> =>
           #{UUID =>
@@ -114,49 +130,30 @@ s3_storage_plan(UUID) ->
 maybe_check(Context, HTTPVerb) ->
     cb_storage:maybe_check_storage_settings(Context, HTTPVerb).
 
-%% this is required for voice mail messages which their timestamp is missing from metadata and
-%% their private media is missing or both private media and mailbox doesn't have create/modified
+%%------------------------------------------------------------------------------
+%% @doc This is required for voice mail messages which their timestamp is missing
+%% from metadata and their private media is missing or both private media and
+%% mailbox doesn't have create/modified.
+%% @end
+%%------------------------------------------------------------------------------
 this_month_db_exists() ->
     fun(Server, Db) ->
             %% why meck can't call the original mfa properly?
             %% meck_code_gen:get_current_call/1 returns undefined and it cause bad_match
             %% in meck:passthrough/1
             (kz_datamgr:db_classification(Db) =:= 'modb'
-             andalso is_db_under_test(Db, kazoo_modb:get_modb(kz_util:format_account_id(Db))))
+             andalso is_db_under_test(Db, ?ACCOUNT_DB_CURRENT_MONTH))
                 orelse erlang:apply('kz_fixturedb_db_meck_original', db_exists, [Server, Db])
     end.
 
 is_db_under_test(ThisMonth, ThisMonth) ->                                             true;
-is_db_under_test(<<"account%2Fac%2Fco%2Funt0000000000000000000000001-201710">>, _) -> true;
 is_db_under_test(_, _) ->                                                             false.
 
--define(GET_LEGACY_CALL, {kz_datamgr, get_results, [?ACCOUNT_DB_UNDER_TEST, ?LEGACY_VIEW, [{limit, 2000}, descending]]}).
-
-%% Checking history calls  to kz_datamgr:get_results to see if any calls happens to
-%% get legacy messages, if yes return empty result to stop the process.
-check_kz_datamgr_history() ->
-    fun(Db, ?LEGACY_VIEW=View, Options) ->
-            History = meck:history(kz_datamgr),
-
-            %% meck:history returns:
-            %% * {CallerPid, MFA, Result}
-            %% * {CallerPid, MFA, ExceptionClass, ExceptionReason, StackTrace}
-            case lists:keyfind(?GET_LEGACY_CALL, 2, History) of
-                {_Pid, _MFA, {ok, ViewResult}} when length(ViewResult) == 10 ->
-                    %% ViewResult length is 10. This should be same as what is inside vmboxes+legacy_msg_by_timestamp.json
-                    %% in ?ACCOUNT_DB_UNDER_TEST FixtureDb directory.
-                    {ok, []};
-                _ ->
-                    meck:passthrough([Db, View, Options])
-            end;
-       (Db, View, Options) ->
-            meck:passthrough([Db, View, Options])
+open_doc(Server, DbName, DocId, Options) ->
+    case ?ACCOUNT_DB_CURRENT_MONTH of
+        DbName -> {ok, kz_json:new()};
+        _ -> meck:passthrough([Server, DbName, DocId, Options])
     end.
-
--spec open_cache_doc(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {ok, kz_json:object()}.
-open_cache_doc(_DbName, _DocId) ->
-    {ok, kz_json:new()}.
 
 -spec get_s3_key(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
                         pos_integer() | atom() | kz_term:ne_binary().
