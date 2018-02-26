@@ -11,8 +11,13 @@ ToFilterOut = [rabbitmq_codegen
               ,skel
               ,parse_trans
               ,meck
+              ,'kazoo_slack'
               ,'exml'
               ,'escalus'
+              ,'ananke'
+              ,'amqp_cron'
+              ,'amqp_leader'
+              ,'amqp_dist'
               ],
 Preparer = fun (List) -> [{E,load} || E <- List, not lists:member(E, ToFilterOut)] end,
 Base = [runtime_tools
@@ -21,31 +26,21 @@ Base = [runtime_tools
        ,debugger
        ,sasl
        ],
+VSN = os:cmd("echo -n $(scripts/next_version 2>/dev/null)"),
 
-[{lib_dirs, ["applications"
-            ,"core"
-            ,"deps"
-            ]}
+BASE = [{default_release, {kazoo, VSN}}
+       ,{release, {kazoo, VSN}
+       ,Base ++ Preparer(Apps ++ Core ++ Deps)
+       }],
+       
+APPS = [begin
+          {ok, [{application, App, Settings}]} = file:consult(list_to_binary(["applications/", atom_to_list(App), "/ebin/", atom_to_list(App), ".app"])),
+          AppDeps = proplists:get_value(applications, Settings, []),
+          {release, {App, VSN}, Base ++ Preparer(AppDeps)}
+        end
+        || App <- Apps,
+           not lists:member(App, ToFilterOut)
+       ],
 
-,{include_src, false}
-,{include_erts, false}
+CONFIG ++ BASE ++ APPS.
 
-,{generate_start_script, false}
-,{extended_start_script, false}
-
-,{overlay, [{copy, "../core/sup/sup", "{{output_dir}}/bin/"}
-           ,{copy, "nodetool", "{{output_dir}}/bin/"}
-           ,{template, "kazoo", "{{output_dir}}/bin/kazoo"}
-          ]}
-            
-,{default_release, kazoo, "4.2.0"}
-,{release, {kazoo,"4.2.0"}
- ,Base ++ Preparer(Apps ++ Core ++ Deps)
- }
-]
-++ [{release, {App, "4.2.0"}
-    ,Base ++ Preparer([App] ++ Core ++ Deps)
-    }
-    || App <- Apps,
-       App =/= skel
-   ].

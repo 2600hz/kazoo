@@ -3,8 +3,6 @@
 # -sasl sasl_error_logger '{file, "log/error_log.sasl"}'
 -boot start_sasl
 
--setcookie change_me
-
 -kernel inet_dist_listen_min 11500 inet_dist_listen_max 11999
 
 # Use kernel poll functionality if supported by emulator
@@ -33,4 +31,3 @@
 
 -s kazoo_apps_app
 -s reloader
-
