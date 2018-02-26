@@ -283,6 +283,7 @@ ensure_number_is_not_porting(Num, Options) ->
         'true' -> 'true';
         {'ok', _Doc} -> knm_errors:number_is_porting(Num);
         {'error', 'not_found'} -> 'true'
+        {'error', _} -> 'true'
     end.
 -endif.
 

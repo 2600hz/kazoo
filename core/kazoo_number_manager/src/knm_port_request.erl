@@ -97,7 +97,7 @@ public_fields(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get(ne_binary()) -> {'ok', kz_json:object()} |
-                          {'error', 'not_found'}.
+                          {'error', any()}.
 -ifdef(TEST).
 get(?TEST_NEW_PORT_NUM) -> {ok, ?TEST_NEW_PORT_REQ};
 get(?NE_BINARY) -> {error, not_found}.
@@ -107,9 +107,9 @@ get(DID=?NE_BINARY) ->
     ViewOptions = [{key, DID}, include_docs],
     case kz_datamgr:get_single_result(?KZ_PORT_REQUESTS_DB, View, ViewOptions) of
         {ok, Port} -> {ok, kz_json:get_value(<<"doc">>, Port)};
-        {error, _E} ->
+        {error, _E}=Error ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
-            {error, not_found}
+            Error
     end.
 -endif.
 
