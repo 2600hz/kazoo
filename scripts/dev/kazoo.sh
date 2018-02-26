@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # look for kazoo release root directory
 DEFAULT_ROOT=${KAZOO_ROOT:-_rel/kazoo}
@@ -31,15 +31,9 @@ else
 fi
 echo "Kazoo config file path: $KAZOO_CONFIG"
 
-HOSTNAME=$(hostname -f)
+HOSTNAME="$(hostname -f)"
 NODE_NAME=${NODE_NAME:-"kazoo_apps@$HOSTNAME"}
 echo "Node name: $NODE_NAME"
-
-VMARGS_FILE=$(find $DEFAULT_ROOT/releases -name vm.args)
-NAME_ARG=$(egrep '^-s?name' "$VMARGS_FILE" || true)
-if [ -z "$NAME_ARG" ]; then
-    echo "-name $NODE_NAME\n" >> $VMARGS_FILE
-fi
 
 COOKIE=${COOKIE:-"change_me"}
 echo "Cookie: $COOKIE"
@@ -51,4 +45,8 @@ else
     shift
 fi
 
-RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true NODE_NAME="$NODE_NAME" COOKIE="$COOKIE" "$DEFAULT_ROOT"/bin/kazoo $CMD "$*"
+export RELX_REPLACE_OS_VARS=true
+export RELX_MULTI_NODE=true
+export KAZOO_NODE="$NODE_NAME"
+export KAZOO_COOKIE="$COOKIE"
+exec "$DEFAULT_ROOT"/bin/kazoo $CMD "$*"
