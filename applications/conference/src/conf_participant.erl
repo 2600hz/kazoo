@@ -76,6 +76,7 @@
                      ,server = self() :: pid()
                      ,remote = 'false' :: boolean()
                      ,name_pronounced :: conf_pronounced_name:name_pronounced()
+                     ,config_queue = 'undefined' :: kz_term:api_binary()
                      }).
 -type participant() :: #participant{}.
 
@@ -238,13 +239,18 @@ handle_cast({'channel_replaced', NewCallId}
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     {'noreply', Participant#participant{call=NewCall}};
 
+handle_cast({'gen_listener', {'created_queue', <<"config-", _/binary>> = Q}}, P) ->
+    lager:debug("participant configuration queue created ~s", [Q]),
+    {'noreply', P#participant{config_queue=Q}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                 ,call=Call
                                                                 }=P) ->
+    lager:debug("participant queue created ~s", [Q]),
     {'noreply', P#participant{call=kapps_call:set_controller_queue(Q, Call)}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference=Conference
                                                                 ,call=Call
                                                                 }=P) ->
+    lager:debug("participant queue created with conference set : ~s", [Q]),
     {'noreply', P#participant{call=kapps_call:set_controller_queue(Q, Call)
                              ,conference=kapps_conference:set_controller_queue(Q, Conference)
                              }};
@@ -287,15 +293,28 @@ handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
                ,[_Message]
                ),
     {'noreply', Participant};
+handle_cast('join_local', #participant{config_queue='undefined'
+                                      }=Participant) ->
+    lager:debug("configuration queue not created, delaying join_local by 100 ms"),
+    gen_listener:delayed_cast(self(), 'join_local', 100),
+    {'noreply', Participant};
 handle_cast('join_local', #participant{call=Call
                                       ,conference=Conference
                                       }=Participant) ->
+    lager:debug("sending command for participant to join local conference ~s", [kapps_conference:id(Conference)]),
     send_conference_command(Conference, Call),
+    {'noreply', Participant};
+
+handle_cast({'join_remote', JObj}, #participant{config_queue='undefined'
+                                               }=Participant) ->
+    lager:debug("configuration queue not created, delaying join_remote by 100 ms"),
+    gen_listener:delayed_cast(self(), {'join_remote', JObj}, 100),
     {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                ,conference=Conference
                                                ,name_pronounced=Name
                                                }=Participant) ->
+    lager:debug("sending command for participant to join remote conference ~s", [kapps_conference:id(Conference)]),
     Route = binary:replace(kz_json:get_value(<<"Switch-URL">>, JObj)
                           ,<<"mod_sofia">>
                           ,<<"conference">>
