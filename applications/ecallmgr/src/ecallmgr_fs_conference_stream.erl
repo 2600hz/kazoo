@@ -47,6 +47,7 @@ init() ->
 -spec handle_event(map()) -> 'ok'.
 handle_event(#{node := Node, payload := JObj}) ->
     Event = kz_conference_event:event(JObj),
+    lager:debug("handle conference event ~s ~s", [Node, Event]),
     process_event(Event, JObj, Node).
 
 -spec process_event(kz_term:ne_binary(), kz_json:object(), atom()) -> any().
