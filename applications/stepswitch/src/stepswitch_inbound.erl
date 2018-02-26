@@ -258,24 +258,28 @@ relay_request(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_transition_port_in(knm_number_options:extra_options(), kz_json:object()) -> any().
+-spec maybe_transition_port_in(knm_number_options:extra_options(), kz_json:object()) -> 'ok'.
 maybe_transition_port_in(NumberProps, JObj) ->
     case knm_number_options:has_pending_port(NumberProps) of
         'false' -> 'ok';
-        'true' -> transition_port_in(knm_number_options:number(NumberProps), JObj)
+        'true' -> transition_port_in(NumberProps, JObj)
     end.
 
--spec transition_port_in(kz_term:ne_binary(), kz_term:api_object()) -> any().
-transition_port_in(Number, JObj) ->
+-spec transition_port_in(knm_number_options:extra_options(), kz_term:api_object()) -> 'ok'.
+transition_port_in(NumberProps, _JObj) ->
+    Number = knm_number_options:number(NumberProps),
     {ok, MasterAccountId} = kapps_util:get_master_account_id(),
     Comment = <<(?APP_NAME)/binary, "-", (?APP_VERSION)/binary, " automagic">>,
     Metadata = knm_port_request:transition_metadata(MasterAccountId, undefined, Comment),
     case knm_port_request:get(Number) of
-        {'ok', PortReq} -> knm_port_request:transition_to_complete(PortReq, Metadata);
-        _ ->
-            Num = stepswitch_util:get_inbound_destination(JObj),
-            {'ok', PortReq} = knm_port_request:get(Num),
-            knm_port_request:transition_to_complete(PortReq, Metadata)
+        {'ok', PortReq} ->
+            _ = knm_port_request:transition_to_complete(PortReq, Metadata),
+            'ok';
+        {'error', 'not_found'} ->
+            _ = knm_port_request:compatibility_transition(NumberProps, Metadata),
+            'ok';
+        {'error', _Reason} ->
+            lager:debug("failed to transition pending port number ~s: ~p", [Number, _Reason])
     end.
 
 %%------------------------------------------------------------------------------
