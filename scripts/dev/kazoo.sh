@@ -31,8 +31,15 @@ else
 fi
 echo "Kazoo config file path: $KAZOO_CONFIG"
 
-NODE_NAME=${NODE_NAME:-kazoo_apps@$(hostname -f)}
+HOSTNAME=$(hostname -f)
+NODE_NAME=${NODE_NAME:-"kazoo_apps@$HOSTNAME"}
 echo "Node name: $NODE_NAME"
+
+VMARGS_FILE=$(find $DEFAULT_ROOT/releases -name vm.args)
+NAME_ARG=$(egrep '^-s?name' "$VMARGS_FILE" || true)
+if [ -z "$NAME_ARG" ]; then
+    echo "-name $NODE_NAME\n" >> $VMARGS_FILE
+fi
 
 COOKIE=${COOKIE:-"change_me"}
 echo "Cookie: $COOKIE"
