@@ -659,7 +659,6 @@ control_queue(#kapps_call{control_q=ControlQ, control_p=ControlP, control_q_help
 
 -spec control_queue_direct(call()) -> kz_types:api_control_q().
 control_queue_direct(#kapps_call{control_q='undefined'}) -> 'undefined';
-control_queue_direct(#kapps_call{control_p='undefined'}) -> 'undefined';
 control_queue_direct(#kapps_call{control_q=ControlQ
                                 ,control_p=ControlP
                                 }) ->
