@@ -599,7 +599,7 @@ next_chunk(#{options := #{page_size := PageSize}
             }=ChunkMap)
   when is_integer(PageSize)
        andalso PageSize > 0
-       andalso TotalQueried + PrevLength == PageSize
+       andalso TotalQueried + PrevLength =:= PageSize
        andalso LastKey =/= 'undefined' ->
     lager:debug("(chunked) page size exhausted: ~b", [PageSize]),
     ChunkMap#{total_queried => TotalQueried + PrevLength
