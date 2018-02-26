@@ -448,7 +448,6 @@ prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
     filename:join([Lang, PromptId]).
 
-
 -spec get_prompt(kz_term:ne_binary()) ->
                         kz_term:api_ne_binary().
 get_prompt(Name) ->

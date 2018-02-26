@@ -25,8 +25,20 @@
             "type": "array",
             "uniqueItems": true
         },
+        "controls": {
+            "description": "controls",
+            "type": "object"
+        },
+        "domain": {
+            "description": "domain",
+            "type": "string"
+        },
         "focus": {
             "description": "This is a read-only property indicating the media server hosting the conference",
+            "type": "string"
+        },
+        "language": {
+            "description": "Prompt language to play in the conference",
             "type": "string"
         },
         "max_members_media": {
@@ -70,6 +82,10 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "play_entry_prompt": {
+                    "description": "Whether to play the entry prompt on member join",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -150,7 +166,11 @@
             "type": "boolean"
         },
         "profile": {
-            "description": "The XML profile name used to configure the conference",
+            "description": "Profile configuration",
+            "type": "object"
+        },
+        "profile_name": {
+            "description": "conference profile name",
             "type": "string"
         },
         "require_moderator": {

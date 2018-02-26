@@ -35,6 +35,11 @@ playback(<<"prompt://", PromptPath/binary>>, Options) ->
         [AccountId, PromptId, Language] ->
             Media = kz_media_map:prompt_path(AccountId, PromptId, Language),
             playback(Media, Options);
+        [AccountId, PromptId] ->
+            lager:info("got req for prompt ~s without language, checking account ~s", [PromptId, AccountId]),
+            Language = kz_media_util:prompt_language(AccountId),
+            Media = kz_media_map:prompt_path(AccountId, PromptId, Language),
+            playback(Media, Options);
         _Path ->
             lager:warning("invalid prompt path: ~p", [_Path]),
             {'error', 'invalid_media_name'}
