@@ -62,4 +62,4 @@ test:
     - mkdir $CIRCLE_ARTIFACTS/logs
     - mv ./_rel/kazoo/log/* $CIRCLE_ARTIFACTS/logs/
     - cp ./rel/ci.relx.config $CIRCLE_ARTIFACTS/
-    - find ./_rel/kazoo/releases -name kazoo.rel --exec cp {} $CIRCLE_ARTIFACTS/ \;
+    - find ./_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
