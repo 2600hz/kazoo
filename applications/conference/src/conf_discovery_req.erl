@@ -144,9 +144,10 @@ valid_conference_id(Srv, Conference, Digits) ->
         %%   or they joined by the discovery event having the conference id
         _Else ->
             lager:debug("the digits used were ambiguous whether the caller is member or moderator"),
-            Conference1 = maybe_set_conference_tones(Conference, JObj),
-            Call = kapps_conference:call(Conference1),
-            maybe_collect_conference_pin(Conference1, Call, Srv)
+            Conference1 = kapps_conference:set_moderator('undefined', Conference),
+            Conference2 = maybe_set_conference_tones(Conference1, JObj),
+            Call = kapps_conference:call(Conference2),
+            maybe_collect_conference_pin(Conference2, Call, Srv)
     end.
 
 -spec maybe_set_conference_tones(kapps_conference:conference(), kz_json:object()) ->
