@@ -54,6 +54,7 @@ send_response(JObj, ControllerQ, Reconcilable, <<"known_number">> = Type) ->
 send_response(JObj, ControllerQ, Reconcilable, Code, Message) ->
     lager:debug("sending response: ~s ~s", [Code, Message]),
     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
            ,{<<"Method">>, <<"error">>}
            ,{<<"Route-Error-Code">>, Code}
            ,{<<"Route-Error-Message">>, Message}
@@ -77,6 +78,7 @@ send_transfer(JObj, ControllerQ, Reconcilable, Number) ->
                               ,{<<"To-DID">>, Number}
                               ]),
     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
            ,{<<"Method">>, <<"bridge">>}
            ,{<<"Routes">>, [Route]}
            ,{<<"Defer-Response">>, (not Reconcilable)}
@@ -103,6 +105,7 @@ maybe_send_bridge(JObj, ControllerQ, Reconcilable, Type) ->
 send_bridge(JObj, ControllerQ, Reconcilable, _Type, {'ok', Routes}) ->
     lager:debug("sending bridge to endpoint", []),
     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
            ,{<<"Method">>, <<"bridge">>}
            ,{<<"Routes">>, Routes}
            ,{<<"Defer-Response">>, (not Reconcilable)}

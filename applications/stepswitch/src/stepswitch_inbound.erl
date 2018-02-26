@@ -351,6 +351,7 @@ maybe_set_block_anonymous(JObj, 'true') ->
 send_error_response(JObj, Code, Message) ->
     lager:debug("sending error response: ~s ~s", [Code, Message]),
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+           ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
            ,{<<"Method">>, <<"error">>}
            ,{<<"Route-Error-Code">>, Code}
            ,{<<"Route-Error-Message">>, Message}
