@@ -98,7 +98,7 @@ switch_hostname(JObj) ->
 
 -spec conference_node(data()) -> kz_term:api_binary().
 conference_node(JObj) ->
-    kz_json:get_ne_binary_value(<<"Conference-Node">>, JObj).
+    kz_json:get_ne_binary_value(<<"Conference-Node">>, JObj, ccv(JObj, <<"Ecallmgr-Node">>)).
 
 -spec account_id(data()) -> kz_term:api_ne_binary().
 account_id(JObj) ->
