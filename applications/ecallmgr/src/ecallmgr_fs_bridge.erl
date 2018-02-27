@@ -114,6 +114,7 @@ handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
                     lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
                     [{"application", <<"set hold_music=", Stream/binary>>}
                     ,{"application", <<"set transfer_ringback=", Stream/binary>>}
+                    ,{"application", <<"set temp_hold_music", Stream/binary>>}
                      |DP
                     ]
             end;
@@ -122,6 +123,7 @@ handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
             lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
             [{"application", <<"set hold_music=", Stream/binary>>}
             ,{"application", <<"set transfer_ringback=", Stream/binary>>}
+            ,{"application", <<"set temp_hold_music", Stream/binary>>}
              |DP
             ]
     end.

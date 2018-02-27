@@ -529,13 +529,19 @@ process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
     X1 = format_fs_kv(K, V, UUID, Action),
     lists:foldl(fun(Prop, Acc) ->
                         process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
-                end, X1, KVs);
+                end
+               ,X1
+               ,KVs
+               );
 process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
   when is_binary(K) ->
     X1 = get_fs_key(K),
     lists:foldl(fun(Prop, Acc) ->
                         process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
-                end, [<<X1/binary, "=">>], KVs).
+                end
+               ,[<<X1/binary, "=">>]
+               ,KVs
+               ).
 
 process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) ->
     [format_fs_kv(K, V, UUID, Action) | Acc];
@@ -575,7 +581,7 @@ get_fs_kv(?CCV(Key), Val, UUID) ->
 get_fs_kv(Key, Val, _) ->
     list_to_binary([get_fs_key(Key), "=", maybe_sanitize_fs_value(Key, Val)]).
 
--spec get_fs_key(kz_term:ne_binary()) -> binary().
+-spec get_fs_key(kz_term:ne_binary()) -> kz_term:binary() | kz_term:ne_binaries().
 get_fs_key(?CCV(Key)) -> get_fs_key(Key);
 get_fs_key(?CAV(_)=CAV) -> CAV;
 get_fs_key(<<"X-", _/binary>>=Key) -> <<"sip_h_", Key/binary>>;
@@ -593,7 +599,8 @@ get_fs_key(Key) ->
                                   [{kz_term:ne_binary(), binary()}] |
                                   'skip'.
 get_fs_key_and_value(<<"Hold-Media">>=Key, Media, UUID) ->
-    {get_fs_key(Key), media_path(Media, 'extant', UUID, kz_json:new())};
+    HoldMedia = media_path(Media, 'extant', UUID, kz_json:new()),
+    [{FSKey, HoldMedia} || FSKey <- get_fs_key(Key)];
 get_fs_key_and_value(<<"Diversions">>=Key, Diversions, _UUID) ->
     K = get_fs_key(Key),
     lager:debug("setting diversions ~p on the channel", [Diversions]),
