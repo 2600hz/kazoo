@@ -22,7 +22,7 @@
         <strong>Authors:</strong>
         <ul>
           {% for key, value in authors %}
-            <li>{% ifequal key "name" %}{{ value }}{% endifequal %}{% ifequal key "email" %} &lt;{{ value }}&gt;{% endifequal %}{% ifequal key "website" %} ({{ value }}){% endifequal %}</li>
+            <li>{{ key }}{% if value.email %} &lt;<a href="mailto:{{ value.email }}">{{ value.email }}</a>&gt;{% endif %}{% if value.website %} ({{ value.website }}){% endif %}</li>
           {% endfor %}
         </ul>
       </div>{% endif %}{% if deprecated %}
