@@ -52,12 +52,12 @@
 
 -type html_tag() :: atom().
 -type html_attrib() :: [{atom(), iolist() | atom() | integer()}].
--type xml_thing() :: {html_tag(), html_attrib(), xml_thing()} |
-                     {html_tag(), xml_thing()} |
-                     html_tag() |
-                     iolist() |
-                     #xmlText{} |
-                     #xmlElement{}.
+-type exporty_thing() :: {html_tag(), html_attrib(), exporty_thing()} |
+                         {html_tag(), exporty_thing()} |
+                         html_tag() |
+                         iolist() |
+                         #xmlText{} |
+                         #xmlElement{}.
 -type export_content() :: binary().
 
 -define(NL, $\n).
@@ -164,11 +164,11 @@ behaviours_prop(Es, BehaviourName, Opts) ->
             filter_empty([{behaviours, Behaviours}])
     end.
 
--spec behaviour(#xmlElement{}) -> [xml_thing()].
+-spec behaviour(#xmlElement{}) -> [exporty_thing()].
 behaviour(E=#xmlElement{content = Es}) ->
     see(E, Es).
 
--spec callback(#xmlElement{}, #opts{}) -> xml_thing().
+-spec callback(#xmlElement{}, #opts{}) -> exporty_thing().
 callback(E=#xmlElement{}, Opts) ->
     Name = get_attrval(name, E),
     Arity = get_attrval(arity, E),
@@ -404,12 +404,12 @@ returns(Es, Opts) ->
 -spec throws([#xmlElement{}], #opts{}) -> throws().
 throws(Es, Opts) ->
     case get_content(throws, Es) of
-    [] -> [];
-    Es1 ->
-        %% Don't use format_type; keep it short!
-        [{type, export_content(t_utype(get_elem(type, Es1), Opts), Opts)}
-        ,{localdefs, local_defs(get_elem(localdef, Es1), Opts)}
-        ]
+        [] -> [];
+        Es1 ->
+            %% Don't use format_type; keep it short!
+            [{type, export_content(t_utype(get_elem(type, Es1), Opts), Opts)}
+            ,{localdefs, local_defs(get_elem(localdef, Es1), Opts)}
+            ]
     end.
 
 -spec equiv([#xmlElement{}], #opts{}) -> export_content().
@@ -467,9 +467,9 @@ format_spec(Name, Type, #opts{pretty_printer = erl_pp}=Opts) ->
         {R, ".\n"} = etypef(L, O, Opts),
         export_content(R, Opts)
     catch _E:_T ->
-        %% Should not happen.
-        io:format("wtf spec ~p~n", [Name]),
-        format_spec(Name, Type, Opts#opts{pretty_printer=''})
+            %% Should not happen.
+            io:format("wtf spec ~p~n", [Name]),
+            format_spec(Name, Type, Opts#opts{pretty_printer=''})
     end;
 format_spec(Sep, Type, Opts) ->
     %% Very limited formatting.
@@ -485,7 +485,7 @@ pp_clause(Pre, Type, Opts) ->
     Attr = {attribute, 0, spec, {{list_to_atom(Atom), 0}, [Types]}},
     L1 = erl_pp:attribute(erl_parse:new_anno(Attr)
                          ,[{encoding, Opts#opts.encoding}
-                         ]),
+                          ]),
     "-spec " ++ L2 = lists:flatten(L1),
     L3 = Pre ++ lists:nthtail(length(Atom), L2),
     L4 = re:replace(L3, "\n      ", "\n", [{return,list},global,unicode]),
@@ -812,11 +812,11 @@ ot_name([E]) ->
 sees(Es, Opts) ->
     [export_content(see(E), Opts) || E <- get_elem(see, Es)].
 
--spec see(#xmlElement{}) -> [xml_thing()].
+-spec see(#xmlElement{}) -> [exporty_thing()].
 see(E=#xmlElement{content = Es}) ->
     see(E, Es).
 
--spec see(#xmlElement{}, [#xmlElement{}]) -> [xml_thing()].
+-spec see(#xmlElement{}, [#xmlElement{}]) -> [exporty_thing()].
 see(E, Es) ->
     case href(E) of
         [] -> Es;
@@ -1004,11 +1004,11 @@ strip_tickie(String) ->
 %% stupid whitespace only `#xmlText{}'.
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_paragraphs([#xmlElement{}]) -> [xml_thing()].
+-spec normalize_paragraphs([#xmlElement{}]) -> [exporty_thing()].
 normalize_paragraphs(Es) ->
     normalize_paragraphs(Es, [], []).
 
--spec normalize_paragraphs([#xmlElement{}], [xml_thing()], [xml_thing()]) -> [xml_thing()].
+-spec normalize_paragraphs([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
 normalize_paragraphs([E=#xmlElement{name = Name}|Es], As, Bs) ->
     case Name of
         'p'          -> par_flush(Es, [?NL, E | As], Bs);
@@ -1042,7 +1042,7 @@ normalize_paragraphs([], [], Bs) ->
 normalize_paragraphs([], As, Bs) ->
     lists:reverse([{p, lists:reverse(As)} | Bs]).
 
--spec par_flush([#xmlElement{}], [xml_thing()], [xml_thing()]) -> [xml_thing()].
+-spec par_flush([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
 par_flush(Es, As, Bs) ->
     normalize_paragraphs(Es, [], As ++ Bs).
 
@@ -1081,9 +1081,9 @@ get_content(Name, Es) ->
 -spec get_text(atom(), [#xmlElement{}]) -> string().
 get_text(Name, Es) ->
     case get_content(Name, Es) of
-    [#xmlText{value = Text}] ->
-        Text;
-    [] -> ""
+        [#xmlText{value = Text}] ->
+            Text;
+        [] -> ""
     end.
 
 %%%=============================================================================
@@ -1167,15 +1167,15 @@ is_only_whitespace([$\n | C]) ->
 is_only_whitespace(_) ->
     false.
 
--spec seq(fun((#xmlElement{}) -> xml_thing()), [#xmlElement{}]) -> [xml_thing()].
+-spec seq(fun((#xmlElement{}) -> exporty_thing()), [#xmlElement{}]) -> [exporty_thing()].
 seq(F, Es) ->
     seq(F, Es, []).
 
--spec seq(fun((#xmlElement{}) -> xml_thing()), [#xmlElement{}], [string()]) -> [xml_thing()].
+-spec seq(fun((#xmlElement{}) -> exporty_thing()), [#xmlElement{}], [string()]) -> [exporty_thing()].
 seq(F, Es, Tail) ->
     seq(F, Es, ", ", Tail).
 
--spec seq(fun((#xmlElement{}) -> xml_thing()), [#xmlElement{}], string(), [string()]) -> [xml_thing()].
+-spec seq(fun((#xmlElement{}) -> exporty_thing()), [#xmlElement{}], string(), [string()]) -> [exporty_thing()].
 seq(F, [E], _Sep, Tail) ->
     F(E) ++ Tail;
 seq(F, [E | Es], Sep, Tail) ->
