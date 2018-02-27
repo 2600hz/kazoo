@@ -31,6 +31,7 @@
         ,get_resrc_gateways/1
         ,get_resrc_is_emergency/1
         ,get_resrc_require_flags/1
+        ,get_resrc_ignore_flags/1
         ,get_resrc_global/1
         ,get_resrc_format_from_uri/1
         ,get_resrc_from_uri_realm/1
@@ -58,6 +59,7 @@
         ,set_resrc_gateways/2
         ,set_resrc_is_emergency/2
         ,set_resrc_require_flags/2
+        ,set_resrc_ignore_flags/2
         ,set_resrc_global/2
         ,set_resrc_format_from_uri/2
         ,set_resrc_from_uri_realm/2
@@ -125,6 +127,7 @@
                ,gateways = [] :: list()
                ,is_emergency = 'false' :: boolean()
                ,require_flags = 'false' :: boolean()
+               ,ignore_flags = 'false' :: boolean()
                ,global = 'true' :: boolean()
                ,format_from_uri = 'false' :: boolean()
                ,from_uri_realm :: api_binary()
@@ -187,6 +190,7 @@ resource_to_props(#resrc{}=Resource) ->
       ,{<<"From-URI-Realm">>, Resource#resrc.from_uri_realm}
       ,{<<"From-Account-Realm">>, Resource#resrc.from_account_realm}
       ,{<<"Require-Flags">>, Resource#resrc.require_flags}
+      ,{<<"Ignore-Flags">>, Resource#resrc.ignore_flags}
       ,{<<"Is-Emergency">>, Resource#resrc.is_emergency}
       ,{<<"T38">>, Resource#resrc.fax_option}
       ,{<<"Bypass-Media">>, Resource#resrc.bypass_media}
@@ -429,6 +433,9 @@ resource_has_flags(Flags, Resource) ->
     lists:all(HasFlag, Flags).
 
 -spec resource_has_flag(ne_binary(), resource()) -> boolean().
+resource_has_flag(_, #resrc{ignore_flags='true', id=_Id}) ->
+    lager:debug("resource ~s is used regardless of flags", [_Id]),
+    'true';
 resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
     case kz_term:is_empty(Flag)
         orelse lists:member(Flag, ResourceFlags)
@@ -991,6 +998,7 @@ resource_from_jobj(JObj) ->
                      ,name=kz_json:get_value(<<"name">>, JObj)
                      ,flags=kz_json:get_value(<<"flags">>, JObj, [])
                      ,require_flags=kz_json:is_true(<<"require_flags">>, JObj)
+                     ,ignore_flags=kz_json:is_true(<<"ignore_flags">>, JObj)
                      ,format_from_uri=kz_json:is_true(<<"format_from_uri">>, JObj)
                      ,from_uri_realm=kz_json:get_ne_value(<<"from_uri_realm">>, JObj)
                      ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, JObj)
@@ -1224,6 +1232,7 @@ gateway_dialstring(#gateway{route=Route}, _) ->
 -spec get_resrc_gateways(resource()) -> list().
 -spec get_resrc_is_emergency(resource()) -> boolean().
 -spec get_resrc_require_flags(resource()) -> boolean().
+-spec get_resrc_ignore_flags(resource()) -> boolean().
 -spec get_resrc_global(resource()) -> boolean().
 -spec get_resrc_format_from_uri(resource()) -> boolean().
 -spec get_resrc_from_uri_realm(resource()) -> api_binary().
@@ -1250,6 +1259,7 @@ get_resrc_cid_raw_rules(#resrc{cid_raw_rules=CIDRawRules}) -> CIDRawRules.
 get_resrc_gateways(#resrc{gateways=Gateways}) -> Gateways.
 get_resrc_is_emergency(#resrc{is_emergency=IsEmergency}) -> IsEmergency.
 get_resrc_require_flags(#resrc{require_flags=RequireFlags}) -> RequireFlags.
+get_resrc_ignore_flags(#resrc{ignore_flags=IgnoreFlags}) -> IgnoreFlags.
 get_resrc_global(#resrc{global=Global}) -> Global.
 get_resrc_format_from_uri(#resrc{format_from_uri=FormatFromUri}) -> FormatFromUri.
 get_resrc_from_uri_realm(#resrc{from_uri_realm=FromUriRealm}) -> FromUriRealm.
@@ -1276,6 +1286,7 @@ get_resrc_classifier_enable(#resrc{classifier_enable=Enabled}) -> Enabled.
 -spec set_resrc_gateways(resource(), list()) -> resource().
 -spec set_resrc_is_emergency(resource(), boolean()) -> resource().
 -spec set_resrc_require_flags(resource(), boolean()) -> resource().
+-spec set_resrc_ignore_flags(resource(), boolean()) -> resource().
 -spec set_resrc_global(resource(), boolean()) -> resource().
 -spec set_resrc_format_from_uri(resource(), boolean()) -> resource().
 -spec set_resrc_from_uri_realm(resource(), api_binary()) -> resource().
@@ -1300,6 +1311,7 @@ set_resrc_cid_raw_rules(Resource, CIDRawRules) -> Resource#resrc{cid_raw_rules=C
 set_resrc_gateways(Resource, Gateways) -> Resource#resrc{gateways=Gateways}.
 set_resrc_is_emergency(Resource, IsEmergency) -> Resource#resrc{is_emergency=IsEmergency}.
 set_resrc_require_flags(Resource, RequireFlags) -> Resource#resrc{require_flags=RequireFlags}.
+set_resrc_ignore_flags(Resource, IgnoreFlags) -> Resource#resrc{ignore_flags=IgnoreFlags}.
 set_resrc_global(Resource, Global) -> Resource#resrc{global=Global}.
 set_resrc_format_from_uri(Resource, FormatFromUri) -> Resource#resrc{format_from_uri=FormatFromUri}.
 set_resrc_from_uri_realm(Resource, FromUriRealm) -> Resource#resrc{from_uri_realm=FromUriRealm}.

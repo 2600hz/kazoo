@@ -66,6 +66,7 @@ Key | Description | Type | Default | Required
 `gateways.[].username` | SIP authentication username | `string(0..32)` |   | `false`
 `gateways` | A list of gateways avaliable for this resource | `array(object())` |   | `true`
 `grace_period` | The amount of time, in seconds, to wait before starting another resource | `integer()` | `5` | `false`
+`ignore_flags` | When set to true this resource is used if the rules/classifiers match regardless of flags | `boolean()` |   | `false`
 `media.audio.codecs.[]` |   | `string()` |   | `false`
 `media.audio.codecs` | A list of default codecs to use | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` | `["PCMU"]` | `false`
 `media.audio` | The default audio media parameters | `object()` | `{}` | `false`

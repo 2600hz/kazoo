@@ -236,6 +236,10 @@
                         },
                         "type": "object"
                     },
+                    "ignore_flags": {
+                        "description": "When set to true this resource is used if the rules/classifiers match regardless of flags",
+                        "type": "boolean"
+                    },
                     "media": {
                         "description": "The media parameters for the resource gateway",
                         "properties": {
