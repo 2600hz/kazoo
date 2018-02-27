@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
-%%% @doc
-%%% Send conference config commands to FS
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Send conference config commands to FS
+%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_fetch_configuration_conference).
 
 %% API
@@ -15,17 +14,15 @@
 -include("ecallmgr.hrl").
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the bindings
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     kazoo_bindings:bind(<<"fetch.configuration.*.*.conference.conf">>, ?MODULE, 'conference'),
@@ -93,17 +90,17 @@ fetch_conference_config(Node, Id, <<"REQUEST_PARAMS">>, JObj) ->
     Action = kz_json:get_value(<<"Action">>, JObj),
     ConfName = kz_json:get_value(<<"Conf-Name">>, JObj),
     lager:debug("request conference:~p params:~p", [ConfName, Action]),
-    fetch_conference_params(Node, Id, Action, ConfName, Data).
+    fetch_conference_params(Node, Id, Action, ConfName, JObj).
 
-fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
-    FSName = props:get_value(<<"Controls">>, Data),
+fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, JObj) ->
+    FSName = kz_json:get_value(<<"Controls">>, JObj),
     [KZName, Profile] = binary:split(FSName, <<"?profile=">>),
     lager:debug("request controls:~p for profile: ~p", [KZName, Profile]),
 
     Cmd = [{<<"Request">>, <<"Controls">>}
           ,{<<"Profile">>, Profile}
           ,{<<"Controls">>, KZName}
-          ,{<<"Call-ID">>, kzd_freeswitch:call_id(Data)}
+          ,{<<"Call-ID">>, kzd_fetch:call_id(JObj)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kz_amqp_worker:call(Cmd

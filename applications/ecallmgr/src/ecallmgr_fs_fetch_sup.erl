@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_fetch_sup).
 
 -behaviour(supervisor).
@@ -23,10 +21,10 @@
 %% API functions
 %% ===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc Starts the supervisor
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     supervisor:start_link({'local', sup_name(Node)}, ?MODULE, [Node, Options]).
@@ -42,15 +40,13 @@ sup_name(Node) ->
 %% Supervisor callbacks
 %% ===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%%------------------------------------------------------------------------------
+%% @doc Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init(list()) -> kz_types:sup_init_ret().
 init([Node, _Props]) ->
     RestartStrategy = 'one_for_one',

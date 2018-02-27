@@ -418,6 +418,10 @@ code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 %%% Internal functions
 %%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
 participants_to_json([], JObjs) -> JObjs;
 participants_to_json([Participant|Participants], JObjs) ->

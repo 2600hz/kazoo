@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
-%%% @doc
-%%% Send config commands to FS
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Send config commands to FS
+%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_fetch).
 -behaviour(gen_server).
 
@@ -28,27 +27,26 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the server
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Section) ->
     gen_server:start_link(?SERVER, [Node, Section], []).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([atom() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([Node, Section]) ->
     process_flag('trap_exit', 'true'),
@@ -57,34 +55,20 @@ init([Node, Section]) ->
     gen_server:cast(self(), 'bind'),
     {'ok', #state{node=Node, section=kz_term:to_atom(Section, 'true')}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages
 %%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages
 %%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind', #state{node=Node, section=Section}=State) ->
     case freeswitch:bind(Node, Section) of
@@ -96,16 +80,11 @@ handle_cast('bind', #state{node=Node, section=Section}=State) ->
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages
 %%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'fetch', JObj}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun handle_fetch_req/2, [Node, JObj]),
@@ -118,36 +97,35 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:info("config listener for ~s terminating: ~p", [Node, _Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed
 %%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_fetch_req(atom(), kz_json:object()) -> fs_sendmsg_ret().
 handle_fetch_req(Node, JObj) ->
     kz_util:put_callid(JObj),
