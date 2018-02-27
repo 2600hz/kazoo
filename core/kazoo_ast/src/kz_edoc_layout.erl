@@ -113,7 +113,7 @@ process_module(#xmlElement{name = module, content = Es}=E
       ,{version, export_content(get_content(version, Es))}
       ,{since, since(Es, Opts)}
       ,{behaviours, behaviours_prop(Es, Name, Opts)}
-      ,{authors, authors(Es)}
+      ,{authors, authors(Es, Opts)}
       ,{references, [export_content(C) || #xmlElement{content = C} <- get_elem(reference, Es)]}
       ,{sees, sees(Es, Opts)}
       ,{todos, todos(Es, Opts)}
@@ -178,34 +178,26 @@ callback(E=#xmlElement{}, Opts) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--type author() :: [{name, exported()} |
-                   {email, exported()} |
-                   {website, exported()}
+-type author() :: [{name, binary()} |
+                   {email, binary()} |
+                   {website, binary()}
                   ].
--spec authors([#xmlElement{}]) -> [author()].
-authors(Es) ->
-    lists:usort([Author
+-spec authors([#xmlElement{}], #opts{}) -> [{binary(), author()}].
+authors(Es, Opts) ->
+    lists:usort([{proplists:get_value(name, Author), Author}
                  || A <- get_elem(author, Es),
-                    Author <- [author(A)],
+                    Author <- [author(A, Opts)],
                     Author =/= []
                 ]).
 
--spec author(#xmlElement{}) -> author().
-author(E=#xmlElement{}) ->
-    Email = case get_attrval(email, E) of
-                [] -> [];
-                Mail ->
-                    export_content([{a, [{href, "mailto:" ++ Mail}], [Mail]}])
-            end,
-    URL = case get_attrval(website, E) of
-              [] -> [];
-              U ->
-                  export_content([{a, [{href, U}, {target, "_top"}], [U]}])
-          end,
+-spec author(#xmlElement{}, #opts{}) -> author().
+author(E=#xmlElement{}, _Opts) ->
+    Email = iolist_to_binary(get_attrval(email, E)),
+    URL = iolist_to_binary(get_attrval(website, E)),
     case get_attrval(name, E) of
         [] -> [];
         Name ->
-            filter_empty([{name, Name}
+            filter_empty([{name, iolist_to_binary(Name)}
                          ,{email, Email}
                          ,{website, URL}
                          ])
@@ -215,16 +207,20 @@ author(E=#xmlElement{}) ->
 %%% Type Tag functions
 %%%=============================================================================
 
-%% <!ELEMENT typedecl (typedef, description?)>
-%% <!ELEMENT typedef (erlangName, argtypes, type?, localdef*)>
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 
+-spec type_name(#xmlElement{}, #opts{}) -> string().
+type_name(#xmlElement{content = Es}, Opts) ->
+    t_name(get_elem(erlangName, get_content(typedef, Es)), Opts).
+
+%% <!ELEMENT typedecl (typedef, description?)>
+%% <!ELEMENT typedef (erlangName, argtypes, type?, localdef*)>
+
 -type typedef() :: [{typedef, exported()} |
-                    {localdefs, [localdef()]} |
+                    {localdefs, localdefs()} |
                     {abstract_datatype, boolean()}
                    ].
 
@@ -234,9 +230,9 @@ author(E=#xmlElement{}) ->
                       {full_desc, exported()}
                      ].
 
--spec types([#xmlElement{}], #opts{}) -> [type_prop()].
+-spec types([#xmlElement{}], #opts{}) -> [{string(), type_prop()}].
 types(Ts, Opts) ->
-    [typedecl(Name, E, Opts) || {Name, E} <- Ts].
+    [{Name, typedecl(Name, E, Opts)} || {Name, E} <- Ts].
 
 -spec typedecl(string(), #xmlElement{}, #opts{}) -> type_prop().
 typedecl(Name, E=#xmlElement{content = Es}, Opts) ->
@@ -248,10 +244,6 @@ typedecl(Name, E=#xmlElement{content = Es}, Opts) ->
       ,{full_desc, description(full, Es, Opts)}
       ]
      ).
-
--spec type_name(#xmlElement{}, #opts{}) -> string().
-type_name(#xmlElement{content = Es}, Opts) ->
-    t_name(get_elem(erlangName, get_content(typedef, Es)), Opts).
 
 -spec typedef(string(), [#xmlElement{}], #opts{}) -> typedef().
 typedef(Name, Es, Opts) ->
@@ -265,7 +257,7 @@ typedef(Name, Es, Opts) ->
              | Typedef
             ];
         Type ->
-            [format_type(NameArgTypes, NameArgTypes, Type, Opts) | Typedef]
+            [{typedef, format_type(NameArgTypes, NameArgTypes, Type, Opts)} | Typedef]
     end.
 
 -spec format_type(string(), string(), [#xmlElement{}], #opts{}) -> exported().
@@ -303,14 +295,13 @@ pp_type(Prefix, Type, Opts) ->
 -type localdef() :: [{id, binary()} |
                      {localdef, exported()}
                     ].
+-type localdefs() :: [{string(), localdef()}].
 
--spec local_defs([#xmlElement{}], #opts{}) -> [localdef()].
-local_defs([], _Opts) -> [];
-local_defs(Es0, Opts) ->
-    [E | Es] = lists:reverse(Es0),
-    lists:reverse([localdef(E1, Opts) || E1 <- Es], localdef(E, Opts)).
+-spec local_defs([#xmlElement{}], #opts{}) -> localdefs().
+local_defs(Es, Opts) ->
+    [localdef(E1, Opts) || E1 <- Es].
 
--spec localdef(#xmlElement{}, #opts{}) -> [localdef()].
+-spec localdef(#xmlElement{}, #opts{}) -> {string(), localdef()}.
 localdef(E = #xmlElement{content = Es}, Opts) ->
     {{Id, Name}, TypeName} =
         case get_elem(typevar, Es) of
@@ -318,12 +309,16 @@ localdef(E = #xmlElement{content = Es}, Opts) ->
                 N0 = lists:append(t_abstype(get_content(abstype, Es), Opts)),
                 {anchor_id_label(N0, E), N0};
             [V] ->
-                N0 = t_var(V),
+                N0 = lists:append(t_var(V)),
                 {{<<>>, N0}, N0}
         end,
-    [{id, Id}
-    ,{localdef, format_type(Name, TypeName, get_elem(type, Es), Opts)}
-    ].
+    {Name
+    ,filter_empty(
+       [{id, Id}
+       ,{localdef, format_type(Name, TypeName, get_elem(type, Es), Opts)}
+       ]
+      )
+    }.
 
 %%%=============================================================================
 %%% Function Tags functions
@@ -349,7 +344,7 @@ function_name_arity(E, Opts) ->
 %% <!ELEMENT equiv (expr, see?)>
 %% <!ELEMENT expr (#PCDATA)>
 
--type throws() :: [{type, exported()} | {localdefs, [localdef()]}].
+-type throws() :: [{type, exported()} | {localdefs, localdefs()}].
 -type params() :: [{string(), exported()}].
 -type function_props() :: [{id, binary()} |
                            {label, string()} |
@@ -357,7 +352,7 @@ function_name_arity(E, Opts) ->
                            {arity, string()} |
                            {is_exported, boolean()} |
                            {typespec, exported()} |
-                           {localdefs, [localdef()]} |
+                           {localdefs, localdefs()} |
                            {params, params()} |
                            {returns, exported()} |
                            {throws, throws()} |
@@ -370,9 +365,9 @@ function_name_arity(E, Opts) ->
                            {full_desc, exported()}
                           ].
 
--spec functions([#xmlElement{}], #opts{}) -> [function_props()].
+-spec functions([#xmlElement{}], #opts{}) -> [{string(), function_props()}].
 functions(Fs, Opts) ->
-    lists:flatmap(fun ({Name, E}) -> function(Name, E, Opts) end, Fs).
+    [{NameArity, function(NameArity, E, Opts)} || {NameArity, E} <- Fs].
 
 -spec function(string(), #xmlElement{}, #opts{}) -> function_props().
 function(NameArity, E=#xmlElement{content = Es}, Opts) ->
