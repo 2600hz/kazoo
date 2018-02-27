@@ -33,7 +33,9 @@
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(HISTORY_LIST, <<"clicktocall/history_listing">>).
 -define(PVT_TYPE, <<"click2call">>).
--define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}, {?KZ_ACCOUNTS_DB, [_]}]).
+-define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}
+                         ,{?KZ_ACCOUNTS_DB, [_]}
+                         ]).
 -define(SUCCESSFUL_HANGUP_CAUSES, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
 %%%=============================================================================

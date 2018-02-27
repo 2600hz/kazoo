@@ -743,7 +743,8 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
     ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
                            ,kz_term:to_lower_binary(Username)
                            ]
-                   }],
+                   }
+                  ],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
@@ -863,7 +864,8 @@ add_mobile_mdn(Context) ->
             cb_phone_numbers_v2:set_response(Error, Context);
         {ok, _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
-                       ,[Normalized, kz_json:encode(PublicFields)]),
+                       ,[Normalized, kz_json:encode(PublicFields)]
+                       ),
             maybe_remove_mobile_mdn(Context)
     end.
 

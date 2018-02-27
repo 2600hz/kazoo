@@ -361,10 +361,14 @@ process_fs_event(_EventName, _SubClass, _Node, _Props) ->
 
 get_event_uris(Props, EventProps) ->
     Uris = [{<<"From">>, <<"from_full">>}
-           ,{<<"To">>, <<"to">>}],
+           ,{<<"To">>, <<"to">>}
+           ],
     lists:foldl(fun(T, Acc) ->
                         Acc ++ get_event_uris_props(T, Props)
-                end, EventProps, Uris).
+                end
+               ,EventProps
+               ,Uris
+               ).
 
 -spec get_event_uris_props(tuple() | kz_term:ne_binary(), kz_term:proplist() | kz_term:ne_binary()) -> kz_term:proplist().
 get_event_uris_props({K, F}, Props) ->
@@ -373,8 +377,9 @@ get_event_uris_props('undefined', _) -> [];
 get_event_uris_props(Uri, Base) ->
     [#uri{user=User, domain=Realm}=_URI] = kzsip_uri:uris(Uri),
     [{Base, <<User/binary, "@", Realm/binary>>}
-    ,{<<Base/binary, "-User">>, User }
-    ,{<<Base/binary, "-Realm">>, Realm }].
+    ,{<<Base/binary, "-User">>, User}
+    ,{<<Base/binary, "-Realm">>, Realm}
+    ].
 
 -spec is_ccv(tuple()) -> boolean().
 is_ccv({?GET_CCV(_K), _V}) -> 'true';

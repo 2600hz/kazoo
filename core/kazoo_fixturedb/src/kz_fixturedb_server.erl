@@ -6,8 +6,7 @@
 -module(kz_fixturedb_server).
 
 %% Driver callbacks
--export([new_connection/1
-        ]).
+-export([new_connection/1]).
 
 %% Server callbacks
 -export([server_info/1
