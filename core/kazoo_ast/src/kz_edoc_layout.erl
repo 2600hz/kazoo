@@ -82,6 +82,7 @@ file() ->
 %%------------------------------------------------------------------------------
 %% @doc Create EDoc documentation for the given `File' and render it
 %% with ErlyDTL.
+%% @hidden
 %% @end
 %%------------------------------------------------------------------------------
 -spec file(any()) -> any().
@@ -95,29 +96,31 @@ file(File, Options) ->
     Opts = init_opts(Doc, Options),
     run_erlydtl(process_module(Doc, Opts), Opts).
 
-process_module(#xmlElement{name = module, content = Es}=E, Opts) ->
+process_module(#xmlElement{name = module, content = Es}=E
+              ,#opts{sort_functions = SortFunctions
+                    }=Opts) ->
     Name = get_attrval(name, E),
 
-    %% Functions = case [{function_name_arity(E, Opts), E} || E <- get_content(functions, Es)] of
-    %%                 Functions when SortFunctions =:= true -> lists:sort(Functions);
-    %%                 Functions -> Functions
-    %%             end,
+    Functions = case [{function_name_arity(F, Opts), F} || F <- get_content(functions, Es)] of
+                    Funs when SortFunctions =:= true -> lists:sort(Funs);
+                    Funs -> Funs
+                end,
     Types = [{type_name(T, Opts), T} || T <- get_content(typedecls, Es)],
 
     filter_empty(
       [{name, list_to_binary(Name)}
       ,{copyright, export_content(get_content(copyright, Es))}
-      ,{deprecated, export_content(deprecated(Es))}
+      ,{deprecated, deprecated(Es, Opts)}
       ,{version, export_content(get_content(version, Es))}
-      ,{since, export_content(get_content(since, Es))}
+      ,{since, since(Es, Opts)}
       ,{behaviours, behaviours_prop(Es, Name, Opts)}
       ,{authors, authors_prop(Es)}
       ,{references, [export_content(C) || #xmlElement{content = C} <- get_elem(reference, Es)]}
-      ,{sees, [export_content(See) || See <- sees(Es)]}
-      ,{todos, [export_content(C) || #xmlElement{content = C} <- get_elem(reference, Es)]}
+      ,{sees, sees(Es, Opts)}
+      ,{todos, todos(Es, Opts)}
       ,{types, types(lists:sort(Types), Opts)}
-       %% ,{functions, functions(Functions, Opts)}
-       | [{K, export_content(V)} || {K, V} <- description(both, Es)]
+      ,{functions, functions(Functions, Opts)}
+       | description(both, Es, Opts)
       ]).
 
 run_erlydtl(Props, #opts{template_module=Template}) ->
@@ -172,14 +175,7 @@ callback(E=#xmlElement{}, Opts) ->
     [atom(Name, Opts), "/", Arity].
 
 %%------------------------------------------------------------------------------
-%% @doc Author proplist
-%% Structure:
-%% ```
-%% [[{name, binary()}
-%% ,{email, binary()}
-%% ,{website, binary()}
-%% ]]
-%% '''
+%% @doc Author proplist.
 %% @end
 %%------------------------------------------------------------------------------
 -spec authors_prop(#xmlElement{}) ->
@@ -215,7 +211,7 @@ authors_prop(Es) ->
                 ]).
 
 %%%=============================================================================
-%%% Type functions
+%%% Type Tag functions
 %%%=============================================================================
 
 %% <!ELEMENT typedecl (typedef, description?)>
@@ -252,7 +248,7 @@ typedecl(Name, E=#xmlElement{content = Es}, Opts) ->
       [{id, Id}
       ,{label, Label}
       ,{typedef, typedef(Name, get_content(typedef, Es), Opts)}
-      ,{full_desc, export_content(description(full, Es))}
+      ,{full_desc, description(full, Es, Opts)}
       ]
      ).
 
@@ -267,12 +263,12 @@ typedef(Name, Es, Opts) ->
 
     case get_elem(type, Es) of
         [] ->
-            [{typedef, export_content(NameArgTypes)}
+            [{typedef, export_content(NameArgTypes, Opts)}
             ,{abstract_datatype, true}
              | Typedef
             ];
         Type ->
-            [export_content(format_type(NameArgTypes, NameArgTypes, Type, Opts)) | Typedef]
+            [format_type(NameArgTypes, NameArgTypes, Type, Opts) | Typedef]
     end.
 
 -spec format_type([string()], [string()], [#xmlElement{}], #opts{}) -> export_content().
@@ -281,14 +277,14 @@ format_type(Prefix, NameArgTypes, Type, #opts{pretty_printer = erl_pp}=Opts) ->
         L = t_utype(Type, Opts),
         O = pp_type(NameArgTypes, Type, Opts),
         {R, ".\n"} = etypef(L, O, Opts),
-        Prefix ++ [" = "] ++ R
+        export_content(Prefix ++ [" = "] ++ R, Opts)
     catch _:_ ->
             %% Example: "t() = record(a)."
             io:format("wtf type ~p~n", [Prefix]),
             format_type(Prefix, NameArgTypes, Type, Opts#opts{pretty_printer =''})
     end;
 format_type(Prefix, _Name, Type, Opts) ->
-    Prefix ++ [" = "] ++ t_utype(Type, Opts).
+    export_content(Prefix ++ [" = "] ++ t_utype(Type, Opts), Opts).
 
 pp_type(Prefix, Type, Opts) ->
     Atom = list_to_atom(lists:duplicate(string:len(Prefix), $a)),
@@ -307,33 +303,199 @@ pp_type(Prefix, Type, Opts) ->
     %% avoid escaped tickies like (#'\'queue.declare'\'{}).
     re:replace(S1, "\\\\'", "", [{return,list},global,unicode]).
 
--spec local_defs([#xmlElement{}], #opts{}) -> [localdef()].
-local_defs([], _Opts) -> [];
-local_defs(Es0, Opts) ->
-    [E | Es] = lists:reverse(Es0),
-    lists:reverse(lists:append([localdef(E1, Opts) || E1 <- Es]), localdef(E, Opts)).
-
--spec localdef(#xmlElement{}, #opts{}) -> [localdef()].
-localdef(E = #xmlElement{content = Es}, Opts) ->
-    {{Id, Name}, TypeName} =
-        case get_elem(typevar, Es) of
-            [] ->
-                N0 = t_abstype(get_content(abstype, Es), Opts),
-                {anchor_id_label(N0, E), N0};
-            [V] ->
-                N0 = t_var(V),
-                {{"", N0}, N0}
-        end,
-    [{id, Id}
-    ,{localdef, export_content(format_type(Name, TypeName, get_elem(type, Es), Opts))}
-    ].
-
 %%%=============================================================================
 %%% Function Tags functions
 %%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec function_name_arity(#xmlElement{}, #opts{}) -> string().
+function_name_arity(E, Opts) ->
+    atom(get_attrval(name, E), Opts) ++ "/" ++ get_attrval(arity, E).
+
+%% <!ELEMENT function (args, typespec?, returns?, throws?, equiv?,
+%%                     description?, since?, deprecated?, see*, todo?)>
+%% <!ATTLIST function
+%%   name CDATA #REQUIRED
+%%   arity CDATA #REQUIRED
+%%   exported NMTOKEN(yes | no) #REQUIRED
+%%   label CDATA #IMPLIED>
+%% <!ELEMENT args (arg*)>
+%% <!ELEMENT equiv (expr, see?)>
+%% <!ELEMENT expr (#PCDATA)>
+
+-type throws() :: [{type, export_content()} | {localdefs, [localdef()]}].
+-type params() :: [{string(), export_content()}].
+-type function_props() :: [{id, string()} |
+                           {label, string()} |
+                           {name, string()} |
+                           {arity, string()} |
+                           {is_exported, boolean()} |
+                           {typespec, export_content()} |
+                           {localdefs, [localdef()]} |
+                           {params, params()} |
+                           {returns, export_content()} |
+                           {throws, throws()} |
+                           {equiv, export_content()} |
+                           {deprecated, export_content()} |
+                           {since, export_content()} |
+                           {sees, [export_content()]} |
+                           {todos, [export_content()]} |
+                           {short_desc, export_content()} |
+                           {full_desc, export_content()}
+                          ].
+
+-spec functions([#xmlElement{}], #opts{}) -> [function_props()].
+functions(Fs, Opts) ->
+    io:format("~n funs ~p~n", [length(Fs)]),
+    lists:flatmap(fun ({Name, E}) -> function(Name, E, Opts) end, Fs).
+
+-spec function(string(), #xmlElement{}, #opts{}) -> function_props().
+function(NameArity, E=#xmlElement{content = Es}, Opts) ->
+    Name = get_attrval(name, E),
+    Arity = get_attrval(arity, E),
+    {Id, Label} = anchor_id_label(NameArity, E),
+    filter_empty(
+      [{id, Id}
+      ,{label, Label}
+      ,{name, Name}
+      ,{arity, Arity}
+      ,{is_exported, is_exported(E)}
+      ,{typespec, typespec_signature(E, Opts)}
+      ,{localdefs, local_defs(get_elem(localdef, get_content(typespec, Es)), Opts)}
+      ,{params, params(Es, Opts)}
+      ,{returns, returns(Es, Opts)}
+      ,{throws, throws(Es, Opts)}
+      ,{equiv, equiv(Es, Opts)}
+      ,{deprecated, deprecated(Es, Opts)}
+      ,{since, since(Es, Opts)}
+      ,{sees, sees(Es, Opts)}
+      ,{todos, todos(Es, Opts)}
+       | description(both, Es, Opts)
+      ]
+     ).
+
+-spec is_exported(#xmlElement{}) -> boolean().
+is_exported(E) ->
+    case get_attrval(exported, E) of
+        "yes" -> true;
+        _ -> false
+    end.
+
+%% parameter descriptions (if any)
+-spec params([#xmlElement{}], #opts{}) -> params().
+params(Es, Opts) ->
+    [{get_text(argName, Es1), Desc}
+     || #xmlElement{content = Es1} <- get_content(args, Es),
+        Desc <- [description(full, Es1, Opts)],
+        Desc =/= <<>>
+    ].
+
+%% return value descriptions (if any)
+-spec returns([#xmlElement{}], #opts{}) -> export_content().
+returns(Es, Opts) ->
+    description(full, get_content(returns, Es), Opts).
+
+%% <!ELEMENT throws (type, localdef*)>
+
+-spec throws([#xmlElement{}], #opts{}) -> throws().
+throws(Es, Opts) ->
+    case get_content(throws, Es) of
+    [] -> [];
+    Es1 ->
+        %% Don't use format_type; keep it short!
+        [{type, export_content(t_utype(get_elem(type, Es1), Opts), Opts)}
+        ,{localdefs, local_defs(get_elem(localdef, Es1), Opts)}
+        ]
+    end.
+
+-spec equiv([#xmlElement{}], #opts{}) -> export_content().
+equiv(Es, Opts) ->
+    Es1 = get_content(equiv, Es),
+    case {get_content(expr, Es1)
+         ,get_elem(see, Es1)
+         }
+    of
+        {[], _} -> [];
+        {[Expr], []} -> Expr;
+        {[Expr], [E=#xmlElement{}]} ->
+            export_content(see(E, Expr), Opts)
+    end.
+
+-spec typespec_signature(#xmlElement{}, #opts{}) -> export_content().
+typespec_signature(E=#xmlElement{content = Es}, Opts) ->
+    case typespec(get_content(typespec, Es), Opts) of
+        [] ->
+            signature(get_content(args, Es), atom(get_attrval(name, E), Opts));
+        Spec ->
+            Spec
+    end.
+
+%% <!ELEMENT typespec (erlangName, type, localdef*)>
+
+-spec typespec([#xmlElement{}], #opts{}) -> export_content().
+typespec([], _Opts) -> [];
+typespec(Es, Opts) ->
+    Name = t_name(get_elem(erlangName, Es), Opts),
+    [Type] = get_elem(type, Es),
+    format_spec(Name, Type, Opts).
+
+%% <!ELEMENT args (arg*)>
+%% <!ELEMENT arg (argName, description?)>
+%% <!ELEMENT argName (#PCDATA)>
+
+%% This is currently only done for functions without type spec.
+
+-spec signature([#xmlElement{}], string()) -> export_content().
+signature(Es, Name) ->
+    [[Name, "("] ++ seq(fun function_arg/1, Es) ++ [") -> any()"]].
+
+-spec function_arg([#xmlElement{}]) -> [string()].
+function_arg(#xmlElement{content = Es}) ->
+    [get_text(argName, Es)].
+
+%% Use the default formatting of EDoc, which creates references, and
+%% then insert newlines and indentation according to erl_pp (the
+%% (fast) Erlang pretty printer).
+format_spec(Name, Type, #opts{pretty_printer = erl_pp}=Opts) ->
+    try
+        L = t_clause(Name, Type, Opts),
+        O = pp_clause(Name, Type, Opts),
+        {R, ".\n"} = etypef(L, O, Opts),
+        export_content(R, Opts)
+    catch _E:_T ->
+        %% Should not happen.
+        io:format("wtf spec ~p~n", [Name]),
+        format_spec(Name, Type, Opts#opts{pretty_printer=''})
+    end;
+format_spec(Sep, Type, Opts) ->
+    %% Very limited formatting.
+    export_content(t_clause(Sep, Type, Opts), Opts).
+
+t_clause(Name, Type, Opts) ->
+    #xmlElement{content = [#xmlElement{name = 'fun', content = C}]} = Type,
+    [Name] ++ t_fun(C, Opts).
+
+pp_clause(Pre, Type, Opts) ->
+    Types = ot_utype([Type]),
+    Atom = lists:duplicate(string:len(Pre), $a),
+    Attr = {attribute, 0, spec, {{list_to_atom(Atom), 0}, [Types]}},
+    L1 = erl_pp:attribute(erl_parse:new_anno(Attr)
+                         ,[{encoding, Opts#opts.encoding}
+                         ]),
+    "-spec " ++ L2 = lists:flatten(L1),
+    L3 = Pre ++ lists:nthtail(length(Atom), L2),
+    L4 = re:replace(L3, "\n      ", "\n", [{return,list},global,unicode]),
+
+    %% remove the extra tickie if the atom must have tickies to
+    %% avoid escaped tickies like (#'\'queue.declare'\'{}).
+    re:replace(L4, "\\\\'", "", [{return,list},global,unicode]).
+
 %%%=============================================================================
-%%% Spec/Typedef Tags to Markup functions
+%%% Edoc typedef/spec_type Tags to HTML functions
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
@@ -473,7 +635,7 @@ t_union(Es, Opts) ->
     seq(t_utype_elem_fun(Opts), Es, " | ", []).
 
 %%%=============================================================================
-%%% Spec/Typedef Tags to Erlang AST functions
+%%% Edoc typedef/spec_type Tags to Erlang AST functions
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
@@ -646,9 +808,9 @@ ot_name([E]) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec sees([#xmlElement{}]) -> [[xml_thing()]].
-sees(Es) ->
-    [see(E) || E <- get_elem(see, Es)].
+-spec sees([#xmlElement{}], #opts{}) -> [export_content()].
+sees(Es, Opts) ->
+    [export_content(see(E), Opts) || E <- get_elem(see, Es)].
 
 -spec see(#xmlElement{}) -> [xml_thing()].
 see(E=#xmlElement{content = Es}) ->
@@ -690,25 +852,54 @@ anchor_id_label(Content, E) ->
 %% @doc Deprecated tag to proplist.
 %% @end
 %%------------------------------------------------------------------------------
--spec deprecated([#xmlElement{}]) -> xml_thing().
-deprecated(Es) ->
-    description(full, get_content(deprecated, Es)).
+-spec deprecated([#xmlElement{}], #opts{}) -> export_content().
+deprecated(Es, Opts) ->
+    description(full, get_content(deprecated, Es), Opts).
 
--spec description(full | short | both, [#xmlElement{}]) -> xml_thing() | [{short_desc | full_desc, xml_thing()}].
-description(full, Es) ->
-    normalize_paragraphs(get_content(fullDescription, get_content(description, Es)));
-description(short, Es) ->
-    normalize_paragraphs(get_content(briefDescription, get_content(description, Es)));
-description(both, Es) ->
+-spec description(full | short | both, [#xmlElement{}], #opts{}) -> export_content() | [{short_desc | full_desc, export_content()}].
+description(full, Es, Opts) ->
+    export_content(normalize_paragraphs(get_content(fullDescription, get_content(description, Es))), Opts);
+description(short, Es, Opts) ->
+    export_content(normalize_paragraphs(get_content(briefDescription, get_content(description, Es))), Opts);
+description(both, Es, Opts) ->
     Desc = get_content(description, Es),
     Short = normalize_paragraphs(get_content(briefDescription, Desc)),
     Full = normalize_paragraphs(get_content(fullDescription, Desc)),
 
     filter_empty(
-      [{short_desc, Short}
-      ,{full_desc, Full}
+      [{short_desc, export_content(Short, Opts)}
+      ,{full_desc, export_content(Full, Opts)}
       ]
      ).
+
+-spec local_defs([#xmlElement{}], #opts{}) -> [localdef()].
+local_defs([], _Opts) -> [];
+local_defs(Es0, Opts) ->
+    [E | Es] = lists:reverse(Es0),
+    lists:reverse(lists:append([localdef(E1, Opts) || E1 <- Es]), localdef(E, Opts)).
+
+-spec localdef(#xmlElement{}, #opts{}) -> [localdef()].
+localdef(E = #xmlElement{content = Es}, Opts) ->
+    {{Id, Name}, TypeName} =
+        case get_elem(typevar, Es) of
+            [] ->
+                N0 = t_abstype(get_content(abstype, Es), Opts),
+                {anchor_id_label(N0, E), N0};
+            [V] ->
+                N0 = t_var(V),
+                {{"", N0}, N0}
+        end,
+    [{id, Id}
+    ,{localdef, format_type(Name, TypeName, get_elem(type, Es), Opts)}
+    ].
+
+-spec since([#xmlElement{}], #opts{}) -> export_content().
+since(Es, Opts) ->
+    export_content(get_content(since, Es), Opts).
+
+-spec todos([#xmlElement{}], #opts{}) -> [export_content()].
+todos(Es, Opts) ->
+    [export_content(C, Opts) || #xmlElement{content = C} <- get_elem(todo, Es)].
 
 %%------------------------------------------------------------------------------
 %% @doc Replaces types with their link.
@@ -887,13 +1078,13 @@ get_content(Name, Es) ->
         [] -> []
     end.
 
-%% -spec get_text(atom(), [#xmlElement{}]) -> string().
-%% get_text(Name, Es) ->
-%%     case get_content(Name, Es) of
-%%     [#xmlText{value = Text}] ->
-%%         Text;
-%%     [] -> ""
-%%     end.
+-spec get_text(atom(), [#xmlElement{}]) -> string().
+get_text(Name, Es) ->
+    case get_content(Name, Es) of
+    [#xmlText{value = Text}] ->
+        Text;
+    [] -> ""
+    end.
 
 %%%=============================================================================
 %%% Utility functions
@@ -976,9 +1167,9 @@ is_only_whitespace([$\n | C]) ->
 is_only_whitespace(_) ->
     false.
 
-%% -spec seq(fun((#xmlElement{}) -> xml_thing()), [#xmlElement{}]) -> [xml_thing()].
-%% seq(F, Es) ->
-%%     seq(F, Es, []).
+-spec seq(fun((#xmlElement{}) -> xml_thing()), [#xmlElement{}]) -> [xml_thing()].
+seq(F, Es) ->
+    seq(F, Es, []).
 
 -spec seq(fun((#xmlElement{}) -> xml_thing()), [#xmlElement{}], [string()]) -> [xml_thing()].
 seq(F, Es, Tail) ->
