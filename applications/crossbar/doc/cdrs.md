@@ -85,6 +85,14 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 ```
 
+Get CDRs and update datetime field to local time zone (using seconds for timeoffset from UTC time):
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}&utc_offset={SECONDS_OFFSET}
+```
+
 Get CDRs as CSV:
 
 ```shell

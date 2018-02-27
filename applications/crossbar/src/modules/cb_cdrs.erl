@@ -23,6 +23,10 @@
         ]).
 
 -export([load_chunked_cdr_ids/3]).
+-ifdef(TEST).
+-export([handle_utc_time_offset/2]).
+-endif.
+
 
 -include("crossbar.hrl").
 
@@ -42,50 +46,51 @@
 -define(PATH_LEGS, <<"legs">>).
 -define(PATH_SUMMARY, <<"summary">>).
 
+-define(KEY_UO, <<"utc_offset">>).
 -define(KEY_CCV, <<"custom_channel_vars">>).
 
 -define(COLUMNS
-       ,[{<<"id">>, fun col_id/2}
-        ,{<<"call_id">>, fun col_call_id/2}
-        ,{<<"caller_id_number">>, fun col_caller_id_number/2}
-        ,{<<"caller_id_name">>, fun col_caller_id_name/2}
-        ,{<<"callee_id_number">>, fun col_callee_id_number/2}
-        ,{<<"callee_id_name">>, fun col_callee_id_name/2}
-        ,{<<"duration_seconds">>, fun col_duration_seconds/2}
-        ,{<<"billing_seconds">>, fun col_billing_seconds/2}
-        ,{<<"timestamp">>, fun col_timestamp/2}
-        ,{<<"hangup_cause">>, fun col_hangup_cause/2}
-        ,{<<"other_leg_call_id">>, fun col_other_leg_call_id/2}
-        ,{<<"owner_id">>, fun col_owner_id/2}
-        ,{<<"to">>, fun col_to/2}
-        ,{<<"from">>, fun col_from/2}
-        ,{<<"direction">>, fun col_call_direction/2}
-        ,{<<"request">>, fun col_request/2}
-        ,{<<"authorizing_id">>, fun col_authorizing_id/2}
-        ,{<<"cost">>, fun col_customer_cost/2}
+       ,[{<<"id">>, fun col_id/3}
+        ,{<<"call_id">>, fun col_call_id/3}
+        ,{<<"caller_id_number">>, fun col_caller_id_number/3}
+        ,{<<"caller_id_name">>, fun col_caller_id_name/3}
+        ,{<<"callee_id_number">>, fun col_callee_id_number/3}
+        ,{<<"callee_id_name">>, fun col_callee_id_name/3}
+        ,{<<"duration_seconds">>, fun col_duration_seconds/3}
+        ,{<<"billing_seconds">>, fun col_billing_seconds/3}
+        ,{<<"timestamp">>, fun col_timestamp/3}
+        ,{<<"hangup_cause">>, fun col_hangup_cause/3}
+        ,{<<"other_leg_call_id">>, fun col_other_leg_call_id/3}
+        ,{<<"owner_id">>, fun col_owner_id/3}
+        ,{<<"to">>, fun col_to/3}
+        ,{<<"from">>, fun col_from/3}
+        ,{<<"direction">>, fun col_call_direction/3}
+        ,{<<"request">>, fun col_request/3}
+        ,{<<"authorizing_id">>, fun col_authorizing_id/3}
+        ,{<<"cost">>, fun col_customer_cost/3}
          %% New fields
-        ,{<<"dialed_number">>, fun col_dialed_number/2}
-        ,{<<"calling_from">>, fun col_calling_from/2}
-        ,{<<"datetime">>, fun col_pretty_print/2}
-        ,{<<"unix_timestamp">>, fun col_unix_timestamp/2}
-        ,{<<"rfc_1036">>, fun col_rfc1036/2}
-        ,{<<"iso_8601">>, fun col_iso8601/2}
-        ,{<<"call_type">>, fun col_account_call_type/2}
-        ,{<<"rate">>, fun col_rate/2}
-        ,{<<"rate_name">>, fun col_rate_name/2}
-        ,{<<"bridge_id">>, fun col_bridge_id/2}
-        ,{<<"recording_url">>, fun col_recording_url/2}
-        ,{<<"media_recordings">>, fun col_media_recordings/2}
-        ,{<<"media_server">>, fun col_media_server/2}
-        ,{<<"call_priority">>, fun col_call_priority/2}
+        ,{<<"dialed_number">>, fun col_dialed_number/3}
+        ,{<<"calling_from">>, fun col_calling_from/3}
+        ,{<<"datetime">>, fun col_pretty_print/3}
+        ,{<<"unix_timestamp">>, fun col_unix_timestamp/3}
+        ,{<<"rfc_1036">>, fun col_rfc1036/3}
+        ,{<<"iso_8601">>, fun col_iso8601/3}
+        ,{<<"call_type">>, fun col_account_call_type/3}
+        ,{<<"rate">>, fun col_rate/3}
+        ,{<<"rate_name">>, fun col_rate_name/3}
+        ,{<<"bridge_id">>, fun col_bridge_id/3}
+        ,{<<"recording_url">>, fun col_recording_url/3}
+        ,{<<"media_recordings">>, fun col_media_recordings/3}
+        ,{<<"media_server">>, fun col_media_server/3}
+        ,{<<"call_priority">>, fun col_call_priority/3}
         ]).
 
 -define(COLUMNS_RESELLER
-       ,[{<<"reseller_cost">>, fun col_reseller_cost/2}
-        ,{<<"reseller_call_type">>, fun col_reseller_call_type/2}
+       ,[{<<"reseller_cost">>, fun col_reseller_cost/3}
+        ,{<<"reseller_call_type">>, fun col_reseller_call_type/3}
         ]).
 
--type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds()) -> kz_term:ne_binary()).
+-type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary()).
 
 %%%=============================================================================
 %%% API
@@ -199,7 +204,7 @@ provided_types(Context) ->
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_chunk_view(Context).
+    validate_utc_offset(Context).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_INTERACTION) ->
@@ -215,6 +220,25 @@ validate(Context, ?PATH_LEGS, InteractionId) ->
 validate(Context, _, _) ->
     lager:debug("invalid URL chain for cdr request"),
     cb_context:add_system_error('faulty_request', Context).
+
+-spec validate_utc_offset(cb_context:context()) -> cb_context:context().
+validate_utc_offset(Context) ->
+    UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UO),
+    validate_utc_offset(Context, UTCSecondsOffset).
+
+-spec validate_utc_offset(cb_context:context(), kz_time:gregorian_seconds()) -> cb_context:context().
+validate_utc_offset(Context, 'undefined') ->
+    validate_chunk_view(Context);
+validate_utc_offset(Context, 'true') ->
+    crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context);
+validate_utc_offset(Context, UTCSecondsOffset) ->
+    try kz_term:to_number(UTCSecondsOffset) of
+        _ ->
+            lager:debug("adjusting CDR datetime field with UTC Time Offset: ~p", [UTCSecondsOffset]),
+            validate_chunk_view(Context)
+    catch
+        error:badarg -> crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context)
+    end.
 
 -spec validate_chunk_view(cb_context:context()) -> cb_context:context().
 validate_chunk_view(Context) ->
@@ -397,7 +421,7 @@ normalize_cdrs(Context, <<"csv">>, JObjs) ->
 normalize_cdr_to_jobj(JObj, Context) ->
     Duration = kz_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
-    kz_json:from_list([{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]).
+    kz_json:from_list( [{K, F(JObj, Timestamp, Context)} || {K, F} <- csv_rows(Context)]).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalize CDR in CSV
@@ -406,7 +430,7 @@ normalize_cdr_to_jobj(JObj, Context) ->
 -spec normalize_cdr_to_csv(kz_json:object(), cb_context:context(), kz_term:binaries()) -> {cb_context:context(), kz_term:binaries()}.
 normalize_cdr_to_csv(JObj, Context, Acc) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
-    CSV = kz_binary:join([F(JObj, Timestamp) || {_, F} <- csv_rows(Context)], <<",">>),
+    CSV = kz_binary:join([F(JObj, Timestamp, Context) || {_, F} <- csv_rows(Context)], <<",">>),
     case cb_context:fetch(Context, 'chunking_started') of
         'true' ->
             {Context, [<<CSV/binary, "\r\n">> | Acc]};
@@ -427,23 +451,23 @@ csv_rows(Context) ->
     end.
 
 %% see csv_column_fun() for specs for each function here
-col_id(JObj, _Timestamp) -> kz_doc:id(JObj, <<>>).
-col_call_id(JObj, _Timestamp) -> kz_json:get_value(<<"call_id">>, JObj, <<>>).
-col_caller_id_number(JObj, _Timestamp) -> kz_json:get_value(<<"caller_id_number">>, JObj, <<>>).
-col_caller_id_name(JObj, _Timestamp) -> kz_json:get_value(<<"caller_id_name">>, JObj, <<>>).
-col_callee_id_number(JObj, _Timestamp) -> kz_json:get_value(<<"callee_id_number">>, JObj, <<>>).
-col_callee_id_name(JObj, _Timestamp) -> kz_json:get_value(<<"callee_id_name">>, JObj, <<>>).
-col_duration_seconds(JObj, _Timestamp) -> kz_json:get_value(<<"duration_seconds">>, JObj, <<>>).
-col_billing_seconds(JObj, _Timestamp) -> kz_json:get_value(<<"billing_seconds">>, JObj, <<>>).
-col_timestamp(_JObj, Timestamp) -> kz_term:to_binary(Timestamp).
-col_hangup_cause(JObj, _Timestamp) -> kz_json:get_value(<<"hangup_cause">>, JObj, <<>>).
-col_other_leg_call_id(JObj, _Timestamp) -> kz_json:get_value(<<"other_leg_call_id">>, JObj, <<>>).
-col_owner_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"owner_id">>], JObj, <<>>).
-col_to(JObj, _Timestamp) -> kz_json:get_value(<<"to">>, JObj, <<>>).
-col_from(JObj, _Timestamp) -> kz_json:get_value(<<"from">>, JObj, <<>>).
-col_call_direction(JObj, _Timestamp) -> kz_json:get_value(<<"call_direction">>, JObj, <<>>).
-col_request(JObj, _Timestamp) -> kz_json:get_value(<<"request">>, JObj, <<>>).
-col_authorizing_id(JObj, _Timestamp) ->
+col_id(JObj, _Timestamp, _Context) -> kz_doc:id(JObj, <<>>).
+col_call_id(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"call_id">>, JObj, <<>>).
+col_caller_id_number(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"caller_id_number">>, JObj, <<>>).
+col_caller_id_name(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"caller_id_name">>, JObj, <<>>).
+col_callee_id_number(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"callee_id_number">>, JObj, <<>>).
+col_callee_id_name(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"callee_id_name">>, JObj, <<>>).
+col_duration_seconds(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"duration_seconds">>, JObj, <<>>).
+col_billing_seconds(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"billing_seconds">>, JObj, <<>>).
+col_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(Timestamp).
+col_hangup_cause(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"hangup_cause">>, JObj, <<>>).
+col_other_leg_call_id(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"other_leg_call_id">>, JObj, <<>>).
+col_owner_id(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"owner_id">>], JObj, <<>>).
+col_to(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"to">>, JObj, <<>>).
+col_from(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"from">>, JObj, <<>>).
+col_call_direction(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"call_direction">>, JObj, <<>>).
+col_request(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"request">>, JObj, <<>>).
+col_authorizing_id(JObj, _Timestamp, _Context) ->
     case {kz_json:get_value([?KEY_CCV, <<"account_id">>], JObj, <<>>)
          ,kz_json:get_value([?KEY_CCV, <<"authorizing_id">>], JObj, <<>>)
          }
@@ -451,25 +475,32 @@ col_authorizing_id(JObj, _Timestamp) ->
         {A, A} -> <<>>;
         {_A, B} -> B
     end.
-col_customer_cost(JObj, _Timestamp) -> kz_term:to_binary(customer_cost(JObj)).
+col_customer_cost(JObj, _Timestamp, _Context) -> kz_term:to_binary(customer_cost(JObj)).
 
-col_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
-col_calling_from(JObj, _Timestamp) -> calling_from(JObj).
-col_pretty_print(_JObj, Timestamp) -> pretty_print_datetime(Timestamp).
-col_unix_timestamp(_JObj, Timestamp) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
-col_rfc1036(_JObj, Timestamp) -> list_to_binary([$", kz_time:rfc1036(Timestamp), $"]).
-col_iso8601(_JObj, Timestamp) -> list_to_binary([$", kz_date:to_iso8601_extended(Timestamp), $"]).
-col_account_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
-col_rate(JObj, _Timestamp) -> kz_term:to_binary(wht_util:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
-col_rate_name(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
-col_bridge_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
-col_recording_url(JObj, _Timestamp) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
-col_media_recordings(JObj, _Timestamp) -> format_recordings(JObj).
-col_media_server(JObj, _Timestamp) -> kz_json:get_value(<<"media_server">>, JObj, <<>>).
-col_call_priority(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"call_priority">>], JObj, <<>>).
+col_dialed_number(JObj, _Timestamp, _Context) -> dialed_number(JObj).
+col_calling_from(JObj, _Timestamp, _Context) -> calling_from(JObj).
+col_pretty_print(_JObj, Timestamp, Context) ->
+    UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UO),
+    pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
+col_unix_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
+col_rfc1036(_JObj, Timestamp, _Context) -> list_to_binary([$", kz_time:rfc1036(Timestamp), $"]).
+col_iso8601(_JObj, Timestamp, _Context) -> list_to_binary([$", kz_date:to_iso8601_extended(Timestamp), $"]).
+col_account_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
+col_rate(JObj, _Timestamp, _Context) -> kz_term:to_binary(wht_util:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
+col_rate_name(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
+col_bridge_id(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
+col_recording_url(JObj, _Timestamp, _Context) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
+col_media_recordings(JObj, _Timestamp, _Context) -> format_recordings(JObj).
+col_media_server(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"media_server">>, JObj, <<>>).
+col_call_priority(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"call_priority">>], JObj, <<>>).
 
-col_reseller_cost(JObj, _Timestamp) -> kz_term:to_binary(reseller_cost(JObj)).
-col_reseller_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
+col_reseller_cost(JObj, _Timestamp, _Context) -> kz_term:to_binary(reseller_cost(JObj)).
+col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
+
+-spec handle_utc_time_offset(kz_time:gregorian_seconds(), kz_term:api_integer()) -> kz_time:gregorian_seconds().
+handle_utc_time_offset(Timestamp, 'undefined') -> Timestamp;
+handle_utc_time_offset(Timestamp, UTCSecondsOffset) ->
+    Timestamp + kz_term:to_number(UTCSecondsOffset).
 
 -spec pretty_print_datetime(kz_time:datetime() | integer()) -> kz_term:ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
