@@ -239,11 +239,11 @@ get_fs_app(Node, UUID, JObj, <<"receive_fax">>) ->
 
 get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
     case kz_json:get_value(<<"Hold-Media">>, JObj) of
-        'undefined' -> {<<"endless_playback">>, <<"${hold_music}">>};
+        'undefined' -> {<<"kz_endless_playback">>, <<"${hold_music}">>};
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-            {<<"endless_playback">>, Stream}
+            {<<"kz_endless_playback">>, Stream}
     end;
 
 get_fs_app(_Node, UUID, JObj, <<"hold_control">>) ->
