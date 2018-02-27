@@ -139,7 +139,11 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
             Size = size(Contents),
             Att = attachment_from_handler(AName, attachment_handler_jobj(Handler, Props), Size, CT),
             handle_put_attachment(Map, Att, DbName, DocId, AName, Contents, Options, Props);
-        {'error', _Reason, _ExtendedError} = E ->
+        {'error', Reason, ExtenErr} = E ->
+            NewValues = [{'reason', Reason} ,{'pvt_type', <<"attachment_handler_error">>}],
+            ErrJSON = kz_json:set_values(NewValues, kz_att_error:to_json(ExtenErr)),
+            {ok, SavedJObj} = kazoo_modb:save_doc(DbName, ErrJSON),
+            lager:debug("Error saved into modb: ~p", [SavedJObj]),
             handle_attachment_handler_error(E, Options)
     end;
 put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
