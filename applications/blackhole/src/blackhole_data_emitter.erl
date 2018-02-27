@@ -24,7 +24,7 @@ event(Binding, RK, Name, Data) ->
           ,{<<"data">>, kz_json:delete_key(<<"amqp_broker">>, Data)}
           ],
     SessionPid ! {'send_data', kz_json:from_list(Msg)},
-   'ok'.
+    'ok'.
 
 -spec reply(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 reply(SessionPid, RequestId, Status, Data) ->
