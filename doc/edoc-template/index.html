@@ -30,30 +30,28 @@
         <div><strong>Since: </strong>{{ since }}</div>{% endif %}{% if full_desc %}
         <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if behaviours %}
         <div>
-            {% for behaviour in behaviours %}
-                {% if behaviour.behaviours %}
-                <strong>Behaviours: </strong>
-                {% for key in behaviour.behaviours %}<code>{{ key }}</code>{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
-                {% endif %}
+            {% if behaviours.behaviours %}
+            <strong>Behaviours: </strong>
+            {% for key in behaviours.behaviours %}<code>{{ key }}</code>{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
+            {% endif %}
 
-                {% if behaviour.name %}
-                <strong>This module defines the <code>behaviour.name</code>.</strong>
-                {% endif %}
+            {% if behaviours.name %}
+            <strong>This module defines the <code>behaviours.name</code>.</strong>
+            {% endif %}
 
-                {% if behaviour.callbacks %}
-                <strong>Required callback functions:</strong>
-                <ul>
-                    {% for key in behaviour.callbacks %}<li>{{ key }}</li>{% endfor %}
-                </ul>
-                {% endif %}
+            {% if behaviours.callbacks %}
+            <strong>Required callback functions:</strong>
+            <ul>
+                {% for key in behaviours.callbacks %}<li>{{ key }}</li>{% endfor %}
+            </ul>
+            {% endif %}
 
-                {% if behaviour.optional_callbacks %}
-                <strong>Optional callback functions:</strong>
-                <ul>
-                    {% for key in behaviour.optional_callbacks %}<li>{{ key }}</li>{% endfor %}
-                </ul>
-                {% endif %}
-            {% endfor %}
+            {% if behaviours.optional_callbacks %}
+            <strong>Optional callback functions:</strong>
+            <ul>
+                {% for key in behaviours.optional_callbacks %}<li>{{ key }}</li>{% endfor %}
+            </ul>
+            {% endif %}
         </div>{% endif %}{% if sees %}
         <div>
             <strong>See Also: </strong>

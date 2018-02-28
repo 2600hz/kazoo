@@ -124,7 +124,7 @@ process_module(#xmlElement{name = module, content = Es}=E
 
 render(Props, #opts{template_module=Template}) ->
     Name = proplists:get_value(name, Props),
-    io:format("~n Props ~p~n~n", [Props]),
+    %% io:format("~n Props ~p~n~n", [Props]),
     case kz_template:render(Template, Props) of
         {ok, Rendered} ->
             file:write_file(<<"doc/edoc/", Name/binary, ".html">>, Rendered);
