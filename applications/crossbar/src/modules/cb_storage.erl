@@ -430,8 +430,9 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
                                ,<<"pvt_type">> => <<"storage_settings_probe">>
                                }),
-    {ok, Doc} = kazoo_modb:save_doc(AccountId, TmpDoc),
     DbName = kazoo_modb:get_modb(AccountId),
+    UpdatedDoc = kz_doc:update_pvt_parameters(TmpDoc, DbName),
+    {ok, Doc} = kazoo_modb:save_doc(AccountId, UpdatedDoc),
     DocId = kz_json:get_value(<<"_id">>, Doc),
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
     Settings = kz_json:get_json_value(<<"settings">>, Att),

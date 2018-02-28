@@ -139,12 +139,9 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
             Size = size(Contents),
             Att = attachment_from_handler(AName, attachment_handler_jobj(Handler, Props), Size, CT),
             handle_put_attachment(Map, Att, DbName, DocId, AName, Contents, Options, Props);
-        {'error', Reason, ExtenErr} = E ->
-            NewValues = [{'reason', Reason} ,{'pvt_type', <<"attachment_handler_error">>}],
-            ErrJSON = kz_json:set_values(NewValues, kz_att_error:to_json(ExtenErr)),
-            {ok, SavedJObj} = kazoo_modb:save_doc(DbName, ErrJSON),
-            lager:debug("Error saved into modb: ~p", [SavedJObj]),
-            handle_attachment_handler_error(E, Options)
+        {'error', _Reason, _ExtendedError} = AttHandlerError ->
+            _ = kz_util:spawn(fun save_attachment_handler_error/2, [DbName, AttHandlerError]),
+            handle_attachment_handler_error(AttHandlerError, Options)
     end;
 put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),
@@ -207,6 +204,15 @@ attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined
     App:attachment_url(Conn, DbName, DocId, AttachmentId, Options);
 attachment_url(_, DbName, DocId, AttachmentId, Handler, Options) ->
     {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler} | Options]}}.
+
+-spec save_attachment_handler_error(kz_term:ne_binary(), kz_att_error:error()) -> 'ok'.
+save_attachment_handler_error(DbName, {'error', Reason, ExtendedError}) ->
+    NewValues = [{'reason', Reason} ,{'pvt_type', <<"attachment_handler_error">>}],
+    ErrorJSON = kz_json:set_values(NewValues, kz_att_error:to_json(ExtendedError)),
+    UpdatedErrorJSON = kz_doc:update_pvt_parameters(ErrorJSON, DbName),
+    {ok, SavedJObj} = kazoo_modb:save_doc(DbName, UpdatedErrorJSON),
+    lager:debug("Attachment handler error stored with id: ~p", [kz_doc:id(SavedJObj)]),
+    ok.
 
 -spec handle_attachment_handler_error(kz_att_error:error(), kz_data:options()) ->
                                              kz_att_error:error() | kz_datamgr:data_error().
