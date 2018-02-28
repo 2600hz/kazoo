@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.set_alert_info",
+    "description": "Validator for the set_alert_info callflow's data object",
+    "properties": {
+        "alert_info": {
+            "description": "Set `Alert-Info` header inside b-leg channel. Used for distinctive ring.",
+            "type": "string"
+        }
+    },
+    "required": [
+        "alert_info"
+    ],
+    "type": "object"
+}
