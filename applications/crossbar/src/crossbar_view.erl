@@ -188,6 +188,7 @@ build_load_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
         #{direction := Direction}=LoadMap ->
             HasQSFilter = crossbar_filter:is_defined(Context),
+
             UserMapper = props:get_value('mapper', Options),
 
             {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
@@ -223,7 +224,6 @@ build_load_range_params(Context, View, Options) ->
 
             HasQSFilter = crossbar_filter:is_defined(Context)
                 andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
-            lager:debug("has qs filter: ~s", [HasQSFilter]),
 
             case time_range(Context, Options, TimeFilterKey) of
                 {StartTime, EndTime} ->
@@ -487,12 +487,12 @@ time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
         N when N < 0 ->
             Msg = kz_term:to_binary(io_lib:format("~s_to ~b is prior to ~s ~b", [Key, RangeTo, Path, RangeFrom])),
             JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeFrom}]),
-            lager:debug("~s", [Msg]),
+            lager:debug("range error: ~s", [Msg]),
             cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
         N when N > MaxRange ->
             Msg = kz_term:to_binary(io_lib:format("~s_to ~b is more than ~b seconds from ~s ~b", [Key, RangeTo, MaxRange, Path, RangeFrom])),
             JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeTo}]),
-            lager:debug("~s", [Msg]),
+            lager:debug("range_error: ~s", [Msg]),
             cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
         _ ->
             {RangeFrom, RangeTo}
@@ -503,7 +503,7 @@ time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec map_doc_fun() -> mapper_fun().
-map_doc_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"doc">>, JObj)|Acc] end.
+map_doc_fun() -> fun(JObj, Acc) -> [kz_json:get_json_value(<<"doc">>, JObj)|Acc] end.
 
 %%------------------------------------------------------------------------------
 %% @doc Returns a function to get `value' object from each view result.
