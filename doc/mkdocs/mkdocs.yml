@@ -213,6 +213,7 @@ pages:
     - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
     - 'Intercom': 'applications/callflow/doc/intercom.md'
     - 'Set Call Variable': 'applications/callflow/doc/set_variable.md'
+    - 'Set Alert-Info': 'applications/callflow/doc/set_alert_info.md'
     - 'Intercept':
         - 'Action': 'applications/callflow/doc/intercept.md'
         - 'Feature Code': 'applications/callflow/doc/intercept_feature.md'
