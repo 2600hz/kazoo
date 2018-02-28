@@ -93,7 +93,7 @@ file(File) ->
 file(File, Options) ->
     {_, Doc} = edoc:get_doc(File, Options),
     Opts = init_opts(Doc, Options),
-    run_erlydtl(process_module(Doc, Opts), Opts).
+    render(process_module(Doc, Opts), Opts).
 
 process_module(#xmlElement{name = module, content = Es}=E
               ,#opts{sort_functions = SortFunctions
@@ -122,7 +122,7 @@ process_module(#xmlElement{name = module, content = Es}=E
        | description(both, Es, Opts)
       ]).
 
-run_erlydtl(Props, #opts{template_module=Template}) ->
+render(Props, #opts{template_module=Template}) ->
     Name = proplists:get_value(name, Props),
     io:format("~n Props ~p~n~n", [Props]),
     case kz_template:render(Template, Props) of
@@ -219,7 +219,7 @@ type_name(#xmlElement{content = Es}, Opts) ->
 %% <!ELEMENT typedecl (typedef, description?)>
 %% <!ELEMENT typedef (erlangName, argtypes, type?, localdef*)>
 
--type typedef() :: [{typedef, exported()} |
+-type typedef() :: [{def, exported()} |
                     {localdefs, localdefs()} |
                     {abstract_datatype, boolean()}
                    ].
@@ -230,34 +230,34 @@ type_name(#xmlElement{content = Es}, Opts) ->
                       {full_desc, exported()}
                      ].
 
--spec types([#xmlElement{}], #opts{}) -> [{string(), type_prop()}].
+-spec types([#xmlElement{}], #opts{}) -> [type_prop()].
 types(Ts, Opts) ->
-    [{Name, typedecl(Name, E, Opts)} || {Name, E} <- Ts].
+    [typedecl(Name, E, Opts) || {Name, E} <- Ts].
 
 -spec typedecl(string(), #xmlElement{}, #opts{}) -> type_prop().
 typedecl(Name, E=#xmlElement{content = Es}, Opts) ->
-    {Id, Label} = anchor_id_label(Name ++ "()", E),
+    NameArgTypes = lists:append([Name, "("] ++ seq(t_utype_elem_fun(Opts), get_content(argtypes, Es), [")"])),
+    {Id, _} = anchor_id_label(Name ++ "()", E),
     filter_empty(
       [{id, Id}
-      ,{label, Label}
-      ,{typedef, typedef(Name, get_content(typedef, Es), Opts)}
+      ,{label, NameArgTypes}
+      ,{typedef, typedef(NameArgTypes, get_content(typedef, Es), Opts)}
       ,{full_desc, description(full, Es, Opts)}
       ]
      ).
 
 -spec typedef(string(), [#xmlElement{}], #opts{}) -> typedef().
-typedef(Name, Es, Opts) ->
-    NameArgTypes = lists:append([Name, "("] ++ seq(t_utype_elem_fun(Opts), get_content(argtypes, Es), [")"])),
+typedef(NameArgTypes, Es, Opts) ->
     Typedef = filter_empty([{localdefs, local_defs(get_elem(localdef, Es), Opts)}]),
 
     case get_elem(type, Es) of
         [] ->
-            [{typedef, export_content(NameArgTypes, Opts)}
+            [{def, export_content(NameArgTypes, Opts)}
             ,{abstract_datatype, true}
              | Typedef
             ];
         Type ->
-            [{typedef, format_type(NameArgTypes, NameArgTypes, Type, Opts)} | Typedef]
+            [{def, format_type(NameArgTypes, NameArgTypes, Type, Opts)} | Typedef]
     end.
 
 -spec format_type(string(), string(), [#xmlElement{}], #opts{}) -> exported().
@@ -292,18 +292,16 @@ pp_type(Prefix, Type, Opts) ->
     %% avoid escaped tickies like (#'\'queue.declare'\'{}).
     re:replace(S1, "\\\\'", "", [{return,list},global,unicode]).
 
--type localdef() :: [{id, binary()} |
-                     {localdef, exported()}
-                    ].
--type localdefs() :: [{string(), localdef()}].
+-type localdef() :: exported().
+-type localdefs() :: [localdef()].
 
 -spec local_defs([#xmlElement{}], #opts{}) -> localdefs().
 local_defs(Es, Opts) ->
     [localdef(E1, Opts) || E1 <- Es].
 
--spec localdef(#xmlElement{}, #opts{}) -> {string(), localdef()}.
+-spec localdef(#xmlElement{}, #opts{}) -> localdef().
 localdef(E = #xmlElement{content = Es}, Opts) ->
-    {{Id, Name}, TypeName} =
+    {{_, Name}, TypeName} =
         case get_elem(typevar, Es) of
             [] ->
                 N0 = lists:append(t_abstype(get_content(abstype, Es), Opts)),
@@ -312,13 +310,7 @@ localdef(E = #xmlElement{content = Es}, Opts) ->
                 N0 = lists:append(t_var(V)),
                 {{<<>>, N0}, N0}
         end,
-    {Name
-    ,filter_empty(
-       [{id, Id}
-       ,{localdef, format_type(Name, TypeName, get_elem(type, Es), Opts)}
-       ]
-      )
-    }.
+    format_type(Name, TypeName, get_elem(type, Es), Opts).
 
 %%%=============================================================================
 %%% Function Tags functions
@@ -365,9 +357,9 @@ function_name_arity(E, Opts) ->
                            {full_desc, exported()}
                           ].
 
--spec functions([#xmlElement{}], #opts{}) -> [{string(), function_props()}].
+-spec functions([#xmlElement{}], #opts{}) -> [function_props()].
 functions(Fs, Opts) ->
-    [{NameArity, function(NameArity, E, Opts)} || {NameArity, E} <- Fs].
+    [function(NameArity, E, Opts) || {NameArity, E} <- Fs].
 
 -spec function(string(), #xmlElement{}, #opts{}) -> function_props().
 function(NameArity, E=#xmlElement{content = Es}, Opts) ->
@@ -1120,9 +1112,9 @@ maybe_compile_template(TemplateModule, Options) ->
 compile_template(TemplateModule, TemplateFile) ->
     case kz_template:compile(TemplateFile, TemplateModule, [{auto_escape, false}]) of
         {ok, _} -> TemplateModule;
-        {error, _Reason} ->
-            io:format("~nfailed to compile template ~p (~p): ~p~n", [TemplateModule, TemplateFile, _Reason]),
-            halt(1)
+        {error, Reason} ->
+            io:format("~nfailed to compile template ~p (~p): ~p~n", [TemplateModule, TemplateFile, Reason]),
+            error(Reason)
     end.
 
 %% @hidden Only for use during testing.

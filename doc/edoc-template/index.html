@@ -1,6 +1,6 @@
 <!doctype html>
 <html class="no-js" lang="en">
-  <head>
+<head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title>Module {{ name }} - Kazoo EDoc</title>
@@ -11,28 +11,137 @@
     <link rel="apple-touch-icon" href="icon.png">
 
     <link rel="stylesheet" href="css/main.css">
-  </head>
-  <body>
-
+</head>
+<body>
     <section class="module">
-      <h1 class="header">Module {{ name }}</h1>{% if short_desc %}
-      <div class="descriptions-short">{{ short_desc }}</div>{% endif %}{% if copyright %}
-      <div class="copyright">Copyright &copy; {{ copyright }}</div>{% endif %}{% if authors %}
-      <div class="authors">
-        <strong>Authors:</strong>
-        <ul>
-          {% for key, value in authors %}
-            <li>{{ key }}{% if value.email %} &lt;<a href="mailto:{{ value.email }}">{{ value.email }}</a>&gt;{% endif %}{% if value.website %} ({{ value.website }}){% endif %}</li>
-          {% endfor %}
-        </ul>
-      </div>{% endif %}{% if deprecated %}
-      <div><strong>Deprecated: </strong>{{ deprecated }}</div>{% endif %}{% if sees %}
-      <div><strong>See Also: </strong>{{ sees }}</div>{% endif %}{% if version %}
-      <div><strong>Version: </strong>{{ version }}</div>{% endif %}{% if since %}
-      <div><strong>Since: </strong>{{ since }}</div>{% endif %}{% if full_desc %}
-      <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if todos %}
-      <div><strong>To do: </strong>{{ todos }}</div>{% endif %}
-    </section>
+        <h1 class="header">Module {{ name }}</h1>{% if short_desc %}
+        <div class="descriptions short">{{ short_desc }}</div>{% endif %}{% if copyright %}
+        <div class="copyright">Copyright &copy; {{ copyright }}</div>{% endif %}{% if authors %}
+        <div class="authors">
+            <strong>Authors:</strong>
+            <ul>
+            {% for key, value in authors %}
+                <li>{{ key }}{% if value.email %} &lt;<a href="mailto:{{ value.email }}">{{ value.email }}</a>&gt;{% endif %}{% if value.website %} ({{ value.website }}){% endif %}</li>
+            {% endfor %}
+            </ul>
+        </div>{% endif %}{% if deprecated %}
+        <div><strong>Deprecated: </strong>{{ deprecated }}</div>{% endif %}{% if version %}
+        <div><strong>Version: </strong>{{ version }}</div>{% endif %}{% if since %}
+        <div><strong>Since: </strong>{{ since }}</div>{% endif %}{% if full_desc %}
+        <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if behaviours %}
+        <div>
+            {% for behaviour in behaviours %}
+                {% if behaviour.behaviours %}
+                <strong>Behaviours: </strong>
+                {% for key in behaviour.behaviours %}<code>{{ key }}</code>{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
+                {% endif %}
+
+                {% if behaviour.name %}
+                <strong>This module defines the <code>behaviour.name</code>.</strong>
+                {% endif %}
+
+                {% if behaviour.callbacks %}
+                <strong>Required callback functions:</strong>
+                <ul>
+                    {% for key in behaviour.callbacks %}<li>{{ key }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if behaviour.optional_callbacks %}
+                <strong>Optional callback functions:</strong>
+                <ul>
+                    {% for key in behaviour.optional_callbacks %}<li>{{ key }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+            {% endfor %}
+        </div>{% endif %}{% if sees %}
+        <div>
+            <strong>See Also: </strong>
+            <ul>
+            {% for see in sees %}
+                <li>{{ see }}</li>
+            {% endfor %}
+            </ul>
+        </div>{% endif %}{% if references %}<div>
+            <strong>References: </strong>
+            <ul>
+            {% for reference in references %}
+                <li>{{ reference }}</li>
+            {% endfor %}
+            </ul>
+        </div>{% endif %}{% if todos %}
+        <div>
+            <strong>To do: </strong>
+            <ul>
+            {% for todo in todos %}
+                <li>{{ todo }}</li>
+            {% endfor %}
+            </ul>
+        </div>{% endif %}
+    </section>{% if types %}
+    <section class="types">
+        <h2>Types</h2>
+    {% for type in types %}
+        <div class="type">
+            <h3><a id="{{ type.id }}" href="#{{ type.id }}">#</a> {{ type.label }}</h3>
+            <pre>{{ type.typedef.def }}</pre>{% if type.typedef.localdefs %}
+            <div class="localdefs">
+            {% for localdef in type.typedef.localdefs %}
+                {{ localdef }}{% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
+            </div>{% endif %}{% if type.full_desc %}
+            <div class="descriptions">{{ type.full_desc }}</div>{% endif %}
+        </div>
+    {% endfor %}
+    </section>{% endif %}{% if functions %}
+    <section class="functions">
+        <h2>Functions</h2>
+    {% for function in functions %}
+        <div class="function">
+            <h3><a id="{{ function.id }}" href="#{{ function.id }}">#</a> {{ function.label }}</h3>
+            <pre>{{ function.typespec }}</pre>
+            {% if function.equiv %}
+                <div>Equivalent to <code>{{ function.equiv }}.</code></div>
+            {% else %}
+                {% if function.localdefs %}
+                <div class="localdefs">
+                {% for localdef in function.localdefs %}
+                    {{ localdef }}{% if not forloop.last %}<br>{% endif %}
+                {% endfor %}
+                </div>{% endif %}{% if function.params %}
+                <h4>Paramters:</h4>
+                <ul class="params">
+                {% for name, desc in function.params %}
+                    <li><strong>{{ name }}: </strong>{{ desc }}
+                {% endfor %}
+                </ul>{% endif %}{% if function.returns %}
+                <h4>Returns:</h4>
+                <p>{{ function.returns }}</p>{% endif %}{% if function.throws %}
+                <h4>Throws:</h4>
+                <p><code>{{ function.throws.type }}</code></p>{% endif %}{% if function.full_desc %}
+                <div class="descriptions">{{ function.full_desc }}</div>{% endif %}{% if function.deprecated %}
+                <div><strong>Deprecated: </strong>{{ function.deprecated }}</div>{% endif %}{% if function.since %}
+                <div><strong>Since: </strong>{{ function.since }}</div>{% endif %}{% if function.sees %}
+                <div>
+                    <strong>See Also: </strong>
+                    <ul>
+                    {% for see in function.sees %}
+                        <li>{{ see }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>{% endif %}{% if function.todos %}
+                <div>
+                    <strong>To do: </strong>
+                    <ul>
+                    {% for todo in function.todos %}
+                        <li>{{ todo }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>{% endif %}
+            {% endif %}
+        </div>
+    {% endfor %}
+    </section>{% endif %}
 
     <script src="js/vendor/modernizr-3.5.0.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
@@ -40,11 +149,11 @@
     <script src="js/plugins.js"></script>
     <script src="js/main.js"></script>
 
-      <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
+  <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
 <!--         <script>
-          window.ga=function(){ga.q.push(arguments)};ga.q=[];ga.l=+new Date;
-          ga('create','UA-XXXXX-Y','auto');ga('send','pageview')
-      </script>
-      <script src="https://www.google-analytics.com/analytics.js" async defer></script> -->
-  </body>
+      window.ga=function(){ga.q.push(arguments)};ga.q=[];ga.l=+new Date;
+      ga('create','UA-XXXXX-Y','auto');ga('send','pageview')
+  </script>
+  <script src="https://www.google-analytics.com/analytics.js" async defer></script> -->
+</body>
 </html>
