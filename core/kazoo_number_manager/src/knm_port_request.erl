@@ -17,6 +17,7 @@
         ,normalize_numbers/1
         ,transition_to_complete/2
         ,maybe_transition/3
+        ,compatibility_transition/2
         ,charge_for_port/1, charge_for_port/2
         ,assign_to_app/3
         ,send_submitted_requests/0
@@ -90,7 +91,7 @@ public_fields(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                  {'error', 'not_found'}.
+                                  {'error', any()}.
 -ifdef(TEST).
 get(?TEST_NEW_PORT_NUM) -> {ok, ?TEST_NEW_PORT_REQ};
 get(?NE_BINARY) -> {error, not_found}.
@@ -100,9 +101,9 @@ get(DID=?NE_BINARY) ->
     ViewOptions = [{key, DID}, include_docs],
     case kz_datamgr:get_single_result(?KZ_PORT_REQUESTS_DB, View, ViewOptions) of
         {ok, Port} -> {ok, kz_json:get_value(<<"doc">>, Port)};
-        {error, _E} ->
+        {error, _E}=Error ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
-            {error, not_found}
+            Error
     end.
 -endif.
 
@@ -228,6 +229,17 @@ maybe_transition(PortReq, Metadata, ?PORT_REJECTED) ->
     transition_to_rejected(PortReq, Metadata);
 maybe_transition(PortReq, Metadata, ?PORT_CANCELED) ->
     transition_to_canceled(PortReq, Metadata).
+
+%%------------------------------------------------------------------------------
+%% @doc Transition `port_in' number to complete. Thus compatible with old way of
+%% `port_request' which the number doc is already created.
+%% @end
+%%------------------------------------------------------------------------------
+-spec compatibility_transition(knm_number_options:extra_options(), transition_metadata()) -> 'ok' | {'error', any()}.
+compatibility_transition(NumberProps, Metadata) ->
+    Num = knm_number_options:number(NumberProps),
+    AccountId = knm_number_options:account_id(NumberProps),
+    completed_portin(Num, AccountId, Metadata).
 
 -spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
                         transition_response().
@@ -412,6 +424,25 @@ completed_port(PortReq) ->
         'ok' ->
             lager:debug("successfully charged for port, transitioning numbers to active"),
             transition_numbers(PortReq)
+    end.
+
+-spec completed_portin(kz_term:ne_binary(), kz_term:ne_binary(), transition_metadata()) -> 'ok' | {'error', any()}.
+completed_portin(Num, AccountId, #{optional_reason := OptionalReason}) ->
+    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+              ,{assign_to, AccountId}
+              ],
+    Routins = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
+              ,{fun knm_phone_number:set_ported_in/2, 'true'}
+              ,{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"portin_reason">>, OptionalReason}])}
+              ],
+
+    lager:debug("transitioning legacy port_in number ~s to in_service", [Num]),
+    case knm_number:update(Num, Routins, Options) of
+        {ok, _} ->
+            lager:debug("number ~s ported successfully", [Num]);
+        {error, _Reason} ->
+            lager:debug("failed to transition number ~s: ~p", [Num, _Reason]),
+            {error, <<"transition_failed">>}
     end.
 
 %%------------------------------------------------------------------------------

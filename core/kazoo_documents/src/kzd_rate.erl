@@ -22,6 +22,7 @@
         ,rate_cost/1, rate_cost/2, set_rate_cost/2
         ,ratedeck/1, ratedeck/2, set_ratedeck/2
         ,routes/1, routes/2, set_routes/2
+        ,caller_id_numbers/1, caller_id_numbers/2
         ,surcharge/1, surcharge/2, set_surcharge/2
         ,type/0, type/1, set_type/1
         ,version/1, version/2
@@ -267,6 +268,14 @@ options(Rate, Default) ->
 -spec set_options(doc(), kz_term:ne_binaries()) -> doc().
 set_options(Rate, Options) when is_list(Options) ->
     kz_json:set_value(<<"options">>, Options, Rate).
+
+-spec caller_id_numbers(doc()) -> kz_term:ne_binaries().
+caller_id_numbers(Rate) ->
+    caller_id_numbers(Rate, []).
+
+-spec caller_id_numbers(doc(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+caller_id_numbers(Rate, Default) ->
+    kz_json:get_list_value(<<"caller_id_numbers">>, Rate, Default).
 
 -spec routes(doc()) -> kz_term:ne_binaries().
 routes(Rate) ->

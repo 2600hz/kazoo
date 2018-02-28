@@ -2211,6 +2211,7 @@ conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->
               ,{<<"Moderator">>, Moderator}
               ,{<<"Profile">>, ProfileName}
               ,{<<"Reinvite">>, Reinvite}
+              ,{<<"Account-ID">>, kapps_call:account_id(Call)}
               ],
     send_command(Command, Call).
 

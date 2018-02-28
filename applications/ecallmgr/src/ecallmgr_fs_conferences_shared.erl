@@ -206,10 +206,10 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     catch
         'throw':{'msg', E} ->
             lager:info("failed to exec: ~p", [E]),
-            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, E)} | Resps]};
+            {ConferenceNode, ConferenceId, JObj, [{'undefined', error_resp(EndpointId, E)} | Resps]};
         'throw':Msg when is_binary(Msg) ->
             lager:info("failed to exec: ~s", [Msg]),
-            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, Msg)} | Resps]}
+            {ConferenceNode, ConferenceId, JObj, [{'undefined', error_resp(EndpointId, Msg)} | Resps]}
     end.
 
 -spec exec_loopbacks(atom(), kz_term:ne_binary(), kapi_conference:doc(), kz_json:objects()) ->

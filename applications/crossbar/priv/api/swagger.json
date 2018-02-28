@@ -57,6 +57,16 @@
         "account_config.conferences": {
             "description": "Schema for conferences account_config",
             "properties": {
+                "controls": {
+                    "properties": {
+                        "default": {
+                            "description": "conferences controls default"
+                        },
+                        "page": {
+                            "description": "conferences controls page"
+                        }
+                    }
+                },
                 "entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
                     "description": "conferences entry tone",
@@ -3939,8 +3949,20 @@
                     "type": "array",
                     "uniqueItems": true
                 },
+                "controls": {
+                    "description": "controls",
+                    "type": "object"
+                },
+                "domain": {
+                    "description": "domain",
+                    "type": "string"
+                },
                 "focus": {
                     "description": "This is a read-only property indicating the media server hosting the conference",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Prompt language to play in the conference",
                     "type": "string"
                 },
                 "max_members_media": {
@@ -3984,6 +4006,10 @@
                                 "type": "string"
                             },
                             "type": "array"
+                        },
+                        "play_entry_prompt": {
+                            "description": "Whether to play the entry prompt on member join",
+                            "type": "boolean"
                         }
                     },
                     "type": "object"
@@ -4064,7 +4090,11 @@
                     "type": "boolean"
                 },
                 "profile": {
-                    "description": "The XML profile name used to configure the conference",
+                    "description": "Profile configuration",
+                    "type": "object"
+                },
+                "profile_name": {
+                    "description": "conference profile name",
                     "type": "string"
                 },
                 "require_moderator": {
@@ -9162,6 +9192,9 @@
         "kapi.conference.config_req": {
             "description": "AMQP API for conference.config_req",
             "properties": {
+                "Call-ID": {
+                    "type": "string"
+                },
                 "Conference-ID": {
                     "type": "string"
                 },
@@ -25783,6 +25816,10 @@
                     "minimum": 1,
                     "type": "integer"
                 },
+                "ignore_flags": {
+                    "description": "When set to true this resource is used if the rules/classifiers match regardless of flags",
+                    "type": "boolean"
+                },
                 "media": {
                     "$ref": "#/definitions/endpoint.media",
                     "description": "Media options for resources"
@@ -27304,6 +27341,16 @@
                 "bridge_username": {
                     "description": "conferences bridge username",
                     "type": "string"
+                },
+                "controls": {
+                    "properties": {
+                        "default": {
+                            "description": "conferences controls default"
+                        },
+                        "page": {
+                            "description": "conferences controls page"
+                        }
+                    }
                 },
                 "entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
