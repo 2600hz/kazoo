@@ -1,27 +1,23 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, Voxter Communications Inc
-%%% @doc
-%%%
-%%% Data: {
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, Voxter Communications Inc
+%%% @doc Data: {
 %%%   "id":"queue id"
 %%% }
 %%%
+%%%
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   Daniel Finke
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_acdc_wait_time).
 
 -export([handle/2]).
 
 -include_lib("callflow/src/callflow.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% Handle execution of this callflow module
-%% @doc
+%%------------------------------------------------------------------------------
+%% @doc Handle execution of this callflow module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     AccountId = kapps_call:account_id(Call),
@@ -46,13 +42,11 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Continue to the branch of the callflow with the highest exceeded
+%%------------------------------------------------------------------------------
+%% @doc Continue to the branch of the callflow with the highest exceeded
 %% threshold
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec evaluate_average_wait_time(non_neg_integer(), kz_json:path(), kapps_call:call()) -> 'ok'.
 evaluate_average_wait_time(AverageWaitTime, Keys, Call) ->
     Keys1 = lists:sort(fun(Key1, Key2) ->
