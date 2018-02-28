@@ -84,8 +84,8 @@ does_query_string_have_time_filters(QueryString, FilterKey) ->
              ({<<"created_to">>, _}) -> 'true';
              ({<<"modified_from">>, _}) -> 'true';
              ({<<"modified_to">>, _}) -> 'true';
-             ({Key, _}) ->
-                  case is_filter_key(Key) of
+             ({Key, _}=KV) ->
+                  case is_filter_key(KV) of
                       'false' -> 'true'; % handles non-filter query string params
                       'true' ->
                           lager:debug("checking qs key ~s against filter key ~s", [Key, FilterKey]),
