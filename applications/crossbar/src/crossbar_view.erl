@@ -224,6 +224,7 @@ build_load_range_params(Context, View, Options) ->
 
             HasQSFilter = crossbar_filter:is_defined(Context)
                 andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+            lager:debug("has qs filter: ~s", [HasQSFilter]),
 
             case time_range(Context, Options, TimeFilterKey) of
                 {StartTime, EndTime} ->
