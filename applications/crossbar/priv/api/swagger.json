@@ -1364,10 +1364,6 @@
                 "id": {
                     "description": "Queue ID",
                     "type": "string"
-                },
-                "var": {
-                    "description": "Custom KV whose value to use instead of \"id\"",
-                    "type": "string"
                 }
             },
             "type": "object"
