@@ -114,7 +114,7 @@ to_csv({Req, Context}) ->
     {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
 
 -spec to_response(cb_context:context(), kz_term:ne_binary(), req_nouns()) ->
-                         {cb_cowboy_payload(), cb_context:context()}.
+                         cb_context:context().
 to_response(Context, RespType, [{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     load_chunked_cdrs(Context, RespType);
 to_response(Context, RespType, [{<<"cdrs">>, []}, {<<"users">>, _}|_]) ->
