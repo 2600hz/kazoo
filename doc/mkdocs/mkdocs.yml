@@ -230,6 +230,7 @@ pages:
     - 'Set Call Variable(s)':
         - 'applications/callflow/doc/set_variable.md'
         - 'applications/callflow/doc/set_variables.md'
+    - 'Set Alert-Info': 'applications/callflow/doc/set_alert_info.md'
     - 'Intercept':
         - 'Action': 'applications/callflow/doc/intercept.md'
         - 'Feature Code': 'applications/callflow/doc/intercept_feature.md'
