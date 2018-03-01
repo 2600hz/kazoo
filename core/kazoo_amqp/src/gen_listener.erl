@@ -37,6 +37,9 @@
 %%%   <dd>Optional, for declaring dynamic exchanges used only in this connection.</dd>
 %%% </dl>
 %%%
+%%% @version 4.2
+%%% @since 1.0
+%%% @deprecated Do not use me please.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
