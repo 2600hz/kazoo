@@ -57,10 +57,12 @@
             <h2>Types <a href="#doc-types" class="anchor-link"></a></h2>{% for type in types %}
             <div class="type">
                 <h3>{{ type.label }}<a id="{{ type.id }}" href="#{{ type.id }}" class="anchor-link"></a></h3>
-                <pre class="type-spec">{{ type.typedef.def }}</pre>{% if type.typedef.localdefs %}
-                <div class="localdefs">
-                    {% for localdef in type.typedef.localdefs %}{{ localdef }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
-                </div>{% endif %}{% if type.full_desc %}
+                <div class="type-spec">
+                    <pre>{{ type.typedef.def }}</pre>{% if type.typedef.localdefs %}
+                    <div class="localdefs">
+                        {% for localdef in type.typedef.localdefs %}{{ localdef }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                    </div>{% endif %}
+                </div>{% if type.full_desc %}
                 <div class="descriptions">{{ type.full_desc }}</div>{% endif %}
             </div>
         {% endfor %}</section>{% endif %}{% if functions %}
@@ -68,11 +70,13 @@
             <h2>Functions <a href="#doc-functions" class="anchor-link"></a></h2>{% for function in functions %}
             <div class="function">
                 <h3>{{ function.label }}<a id="{{ function.id }}" href="#{{ function.id }}" class="anchor-link"></a></h3>
-                <pre class="type-spec">{{ function.typespec }}</pre>{% if function.equiv %}
-                <p>Equivalent to <code>{{ function.equiv }}.</code></p>{% else %}{% if function.localdefs %}
-                <div class="localdefs">
-                    {% for localdef in function.localdefs %}{{ localdef }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
-                </div>{% endif %}{% if function.params %}
+                <div class="type-spec">
+                    <pre>{{ function.typespec }}</pre>{% if function.localdefs %}
+                    <div class="localdefs">
+                        {% for localdef in function.localdefs %}{{ localdef }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                    </div>{% endif %}
+                </div>{% if function.equiv %}
+                <p>Equivalent to <code>{{ function.equiv }}.</code></p>{% else %}{% if function.params %}
                 <h4>Paramters:</h4>
                 <ul class="params">
                     {% for name, desc in function.params %}<li><strong>{{ name }}: </strong>{{ desc }}{% endfor %}
