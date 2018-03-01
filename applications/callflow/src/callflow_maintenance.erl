@@ -224,7 +224,8 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
             ,{<<"source_id">>, SourceId}
             ,{<<"content_type">>, <<"audio/mpeg">>}
             ,{<<"media_type">>, <<"mp3">>}
-            ,{<<"streamable">>, 'true'}],
+            ,{<<"streamable">>, 'true'}
+            ],
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), Db, [{'type', <<"media">>}]),
     {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
     kz_doc:id(JObj).

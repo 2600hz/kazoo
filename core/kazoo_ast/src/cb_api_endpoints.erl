@@ -377,8 +377,8 @@ swagger_params(PathMeta) ->
 auth_token_param(Path, _Method) ->
     case is_authtoken_required(Path) of
         'undefined' -> 'undefined';
-        true -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
-        false -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
+        'true' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
+        'false' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
     end.
 
 -spec is_authtoken_required(kz_term:ne_binary()) -> kz_term:api_boolean().
@@ -460,16 +460,16 @@ format_path_token(<<"_", Rest/binary>>) -> format_path_token(Rest);
 format_path_token(Token = <<Prefix:1/binary, _/binary>>)
   when byte_size(Token) >= 3 ->
     case is_all_upper(Token) of
-        true -> brace_token(Token);
-        false ->
+        'true' -> brace_token(Token);
+        'false' ->
             case is_all_upper(Prefix) of
-                true -> brace_token(camel_to_snake(Token));
-                false -> Token
+                'true' -> brace_token(camel_to_snake(Token));
+                'false' -> Token
             end
     end;
 format_path_token(BadToken) ->
     Fmt = "Please pick a good allowed_methods/N variable name: '~s' is too short.\n",
-    io:format(standard_error, Fmt, [BadToken]),
+    io:format('standard_error', Fmt, [BadToken]),
     halt(1).
 
 camel_to_snake(Bin) ->

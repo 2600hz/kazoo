@@ -11,8 +11,8 @@
 -define(JSON(L), kz_json:from_list(L)).
 
 -define(DEFAULT_SERVICES, ?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-                                ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-                                ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+                                ,{<<"video">>, ?JSON([{<<"enabled">>, 'true'}])}
+                                ,{<<"sms">>, ?JSON([{<<"enabled">>, 'true'}])}
                                 ])).
 
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
@@ -21,8 +21,7 @@
 -define(RESTRICTED_MSG, <<"endpoint is restricted from making this call">>).
 -define(SCHEDULED(Call), kapps_call:custom_channel_var(<<"Scheduled-Delivery">>, 0, Call)).
 
--export([execute_text_flow/2
-        ]).
+-export([execute_text_flow/2]).
 
 -spec execute_text_flow(kz_json:object(), kapps_call:call()) -> 'ok' | {'ok', pid()}.
 execute_text_flow(JObj, Call) ->

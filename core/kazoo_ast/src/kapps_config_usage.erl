@@ -402,7 +402,7 @@ guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES|_]=Keys, Type, Defau
     JustKeys = [K || K <- Keys, ?FIELD_PROPERTIES =/= K],
     guess_properties(Document, Source, kz_binary:join(JustKeys, $.), Type, Default).
 
-type([undefined]) ->
+type(['undefined']) ->
     [{?FIELD_TYPE, <<"array">>}];
 type({Type, [OrArrayType]}) ->
     [{?FIELD_TYPE, [Type, <<"array">>]}

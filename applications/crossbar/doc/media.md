@@ -125,7 +125,7 @@ curl -v -X GET \
 ```
 
 
-#### Create a nee media object (required before uploading the actual media data)
+#### Create a new media object (required before uploading the actual media data)
 
 > PUT /v2/accounts/{ACCOUNT_ID}/media
 

@@ -8,9 +8,9 @@
 
 -behaviour(gen_cf_action).
 
--include("callflow.hrl").
-
 -export([handle/2]).
+
+-include("callflow.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module, attempts to call an endpoint as defined
