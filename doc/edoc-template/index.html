@@ -10,108 +10,73 @@
     <link rel="manifest" href="site.webmanifest">
     <link rel="apple-touch-icon" href="icon.png">
 
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-    <section class="module">
-        <h1 class="header">Module {{ name }}</h1>{% if short_desc %}
-        <div class="descriptions short">{{ short_desc }}</div>{% endif %}{% if copyright %}
-        <div class="copyright">Copyright &copy; {{ copyright }}</div>{% endif %}{% if authors %}
-        <div class="authors">
-            <strong>Authors:</strong>
-            <ul>
-            {% for key, value in authors %}
-                <li>{{ key }}{% if value.email %} &lt;<a href="mailto:{{ value.email }}">{{ value.email }}</a>&gt;{% endif %}{% if value.website %} ({{ value.website }}){% endif %}</li>
-            {% endfor %}
-            </ul>
-        </div>{% endif %}{% if deprecated %}
-        <div><strong>Deprecated: </strong>{{ deprecated }}</div>{% endif %}{% if version %}
-        <div><strong>Version: </strong>{{ version }}</div>{% endif %}{% if since %}
-        <div><strong>Since: </strong>{{ since }}</div>{% endif %}{% if full_desc %}
-        <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if behaviours %}
-        <div>
-            {% if behaviours.behaviours %}
-            <strong>Behaviours: </strong>
-            {% for key in behaviours.behaviours %}<code>{{ key }}</code>{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
-            {% endif %}
-
-            {% if behaviours.name %}
-            <strong>This module defines the <code>behaviours.name</code>.</strong>
-            {% endif %}
-
-            {% if behaviours.callbacks %}
-            <strong>Required callback functions:</strong>
-            <ul>
-                {% for key in behaviours.callbacks %}<li>{{ key }}</li>{% endfor %}
-            </ul>
-            {% endif %}
-
-            {% if behaviours.optional_callbacks %}
-            <strong>Optional callback functions:</strong>
-            <ul>
-                {% for key in behaviours.optional_callbacks %}<li>{{ key }}</li>{% endfor %}
-            </ul>
-            {% endif %}
-        </div>{% endif %}{% if sees %}
-        <div>
-            <strong>See Also: </strong>
-            <ul>
-            {% for see in sees %}
-                <li>{{ see }}</li>
-            {% endfor %}
-            </ul>
-        </div>{% endif %}{% if references %}<div>
-            <strong>References: </strong>
-            <ul>
-            {% for reference in references %}
-                <li>{{ reference }}</li>
-            {% endfor %}
-            </ul>
-        </div>{% endif %}{% if todos %}
-        <div>
-            <strong>To do: </strong>
-            <ul>
-            {% for todo in todos %}
-                <li>{{ todo }}</li>
-            {% endfor %}
-            </ul>
-        </div>{% endif %}
-    </section>{% if types %}
-    <section class="types">
-        <h2>Types</h2>
-    {% for type in types %}
-        <div class="type">
-            <h3><a id="{{ type.id }}" href="#{{ type.id }}">#</a> {{ type.label }}</h3>
-            <pre>{{ type.typedef.def }}</pre>{% if type.typedef.localdefs %}
-            <div class="localdefs">
-            {% for localdef in type.typedef.localdefs %}
-                {{ localdef }}{% if not forloop.last %}<br>{% endif %}
-            {% endfor %}
-            </div>{% endif %}{% if type.full_desc %}
-            <div class="descriptions">{{ type.full_desc }}</div>{% endif %}
-        </div>
-    {% endfor %}
-    </section>{% endif %}{% if functions %}
-    <section class="functions">
-        <h2>Functions</h2>
-    {% for function in functions %}
-        <div class="function">
-            <h3><a id="{{ function.id }}" href="#{{ function.id }}">#</a> {{ function.label }}</h3>
-            <pre>{{ function.typespec }}</pre>
-            {% if function.equiv %}
-                <div>Equivalent to <code>{{ function.equiv }}.</code></div>
-            {% else %}
-                {% if function.localdefs %}
+    <main class="content">
+        <section class="module">
+            <h1>Module {{ name }}{% if deprecated %}
+                <small style="font-size: 60%"><strong> <span class="badge badge-secondary">Deprecated</span></strong></small>{% endif %}{% if version %}
+                <small><strong> version: </strong><span class="badge badge-dark">{{ version }}</span></small>{% endif %}{% if since %}
+                <small><strong> since: </strong><span class="badge badge-dark">{{ since }}</span></small>{% endif %}</h1>{% if full_desc %}
+            <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if deprecated %}
+            <div><div class="h3"><strong>Deprecated: </strong></div>{{ deprecated }}</div>{% endif %}{% if behaviours %}
+            <div>
+                <h3>Behaviors</h3>{% if behaviours.behaviours %}
+                <p><strong>Implementing behaviors: </strong>{% for key in behaviours.behaviours %}<code>{{ key }}</code>{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}{% endif %}{% if behaviours.name %}<p>
+                <strong>This module defines the <code>{{ behaviours.name }}</code>.</strong></p>{% endif %}{% if behaviours.callbacks %}
+                <p><strong>Required callback functions:</strong></p>
+                <ul>
+                    {% for key in behaviours.callbacks %}<li>{{ key }}</li>{% endfor %}
+                </ul>{% endif %}{% if behaviours.optional_callbacks %}
+                <p><strong>Optional callback functions:</strong></p>
+                <ul>
+                    {% for key in behaviours.optional_callbacks %}<li>{{ key }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+            </div>{% endif %}{% if sees %}
+            <div>
+                <strong>See Also: </strong>
+                <ul>
+                    {% for see in sees %}<li>{{ see }}</li>{% endfor %}
+                </ul>
+            </div>{% endif %}{% if references %}<div>
+                <strong>References: </strong>
+                <ul>
+                {% for reference in references %}<li>{{ reference }}</li>{% endfor %}
+                </ul>
+            </div>{% endif %}{% if todos %}
+            <div>
+                <strong>To do: </strong>
+                <ul>
+                    {% for todo in todos %}<li>{{ todo }}</li>{% endfor %}
+                </ul>
+            </div>{% endif %}
+        </section>{% if types %}
+        <section class="types">
+            <h2>Types</h2>{% for type in types %}
+            <div class="type">
+                <h3>{{ type.label }}<a id="{{ type.id }}" href="#{{ type.id }}" class="anchor-link"></a></h3>
+                <pre>{{ type.typedef.def }}</pre>{% if type.typedef.localdefs %}
                 <div class="localdefs">
-                {% for localdef in function.localdefs %}
-                    {{ localdef }}{% if not forloop.last %}<br>{% endif %}
-                {% endfor %}
+                    {% for localdef in type.typedef.localdefs %}{{ localdef }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                </div>{% endif %}{% if type.full_desc %}
+                <div class="descriptions">{{ type.full_desc }}</div>{% endif %}
+            </div>
+        {% endfor %}</section>{% endif %}{% if functions %}
+        <section class="functions">
+            <h2>Functions</h2>{% for function in functions %}
+            <div class="function">
+                <h3>{{ function.label }}<a id="{{ function.id }}" href="#{{ function.id }}" class="anchor-link"></a></h3>
+                <pre>{{ function.typespec }}</pre>{% if function.equiv %}
+                <p>Equivalent to <code>{{ function.equiv }}.</code></p>{% else %}{% if function.localdefs %}
+                <div class="localdefs">
+                    {% for localdef in function.localdefs %}{{ localdef }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
                 </div>{% endif %}{% if function.params %}
                 <h4>Paramters:</h4>
                 <ul class="params">
-                {% for name, desc in function.params %}
-                    <li><strong>{{ name }}: </strong>{{ desc }}
-                {% endfor %}
+                    {% for name, desc in function.params %}<li><strong>{{ name }}: </strong>{{ desc }}{% endfor %}
                 </ul>{% endif %}{% if function.returns %}
                 <h4>Returns:</h4>
                 <p>{{ function.returns }}</p>{% endif %}{% if function.throws %}
@@ -123,23 +88,29 @@
                 <div>
                     <strong>See Also: </strong>
                     <ul>
-                    {% for see in function.sees %}
-                        <li>{{ see }}</li>
-                    {% endfor %}
+                        {% for see in function.sees %}<li>{{ see }}</li>{% endfor %}
                     </ul>
                 </div>{% endif %}{% if function.todos %}
                 <div>
                     <strong>To do: </strong>
                     <ul>
-                    {% for todo in function.todos %}
-                        <li>{{ todo }}</li>
-                    {% endfor %}
+                        {% for todo in function.todos %}<li>{{ todo }}</li>{% endfor %}
                     </ul>
-                </div>{% endif %}
-            {% endif %}
-        </div>
-    {% endfor %}
-    </section>{% endif %}
+                </div>{% endif %}{% endif %}
+            </div>
+        {% endfor %}</section>{% endif %}
+
+        <section>{% if authors %}
+            <div class="authors">
+                <h2>Authors</h2>
+                <ul>{% for key, value in authors %}
+                    <li>{{ key }}{% if value.email %} &lt;<a href="mailto:{{ value.email }}">{{ value.email }}</a>&gt;{% endif %}{% if value.website %} ({{ value.website }}){% endif %}</li>
+                {% endfor %}</ul>
+            </div>{% endif %}
+        </section>
+    </main>
+
+
 
     <script src="js/vendor/modernizr-3.5.0.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
