@@ -8,7 +8,8 @@ body {
     font-size: 1rem;
     line-height: 1.5;
     color: #212529;
-    background-color: #fff;
+    /*background-color: #fff;*/
+    background-color: #fbfbfb;
 }
 
 .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6 {
@@ -176,6 +177,7 @@ dd {
 
 .content section {
     margin-bottom: 3rem;
+    /*padding: 15px;*/
 /*    padding: 15px;
     background: white;
     border: 1px solid #eee;
@@ -200,25 +202,54 @@ dd {
 }
 
 .type {
-    padding: 0 15px;
+    /*margin: 0 0 1.5rem;
+    padding: 0 15px;*/
+
+    padding: 1.25rem;
+    margin: 0 0 1.25rem;
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-left-width: .25rem;
+    border-radius: .25rem;
     border-left: 3px solid #28a745;
-    margin: 0 0 1.5rem;
+    box-shadow: 0px 1px 1px rgba(0,0,0,.1)
 }
 
 
 .function {
-    padding: 0 15px;
+    /*padding: 0 15px;
+    margin: 0 0 1.5rem;*/
+
+    padding: 1.25rem;
+    margin: 0 0 1.25rem;
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-left-width: .25rem;
+    border-radius: .25rem;
     border-left: 3px solid #007bff;
-    margin: 0 0 1.5rem;
+    box-shadow: 0px 1px 1px rgba(0,0,0,.1)
 }
 
 .type-spec {
-    margin-left: 40px;
-    /* max-width: 50%; */
-    padding: 5px 10px;
+    /*margin-left: 40px;
+    max-width: 50%;
+    padding: 5px 10px;*/
+    margin-top: 2rem;
+    /*margin-bottom: 2rem;*/
+    padding: 5px;
     background-color: #f7f7f9;
     border: 1px solid #f5f5f9;
     box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.25);
+}
+
+.type-spec pre {
+    margin: 0;
+}
+
+.localdefs {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    margin-left: 2rem;
 }
 
 .text-muted {
@@ -228,6 +259,7 @@ dd {
 .alert {
     padding: 1.25rem;
     margin: 1.25rem 5rem;
+    background-color: #fff;
     border: 1px solid #eee;
     border-left-width: .25rem;
     border-radius: .25rem;
