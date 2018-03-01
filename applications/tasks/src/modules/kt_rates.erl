@@ -445,7 +445,7 @@ generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
 maybe_generate_caller_id_numbers(RateJObj) ->
     maybe_generate_caller_id_numbers(RateJObj, kz_json:get_value(<<"caller_id_numbers">>, RateJObj)).
 
--spec maybe_generate_caller_id_numbers(kzd_rate:doc(), kz_term:ne_binary()) -> kz_term:ne_binaries()|'undefined'.
+-spec maybe_generate_caller_id_numbers(kzd_rate:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
 maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Numbers) ->
     lists:map(fun(X) -> <<"^\\+?", X/binary, ".+$">> end, binary:split(CID_Numbers, <<":">>, [global]));
 maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
