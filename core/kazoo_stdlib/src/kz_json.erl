@@ -557,8 +557,15 @@ from_map(Map) when is_map(Map) ->
 -spec recursive_from_map(map()) -> object().
 recursive_from_map(Map) when is_map(Map) ->
     from_list([{K, recursive_from_map(V)} || {K, V} <- maps:to_list(Map)]);
+recursive_from_map([]) -> [];
 recursive_from_map(List) when is_list(List) ->
-    [recursive_from_map(Item) || Item <- List];
+    Res = [recursive_from_map(Item) || Item <- List],
+    case lists:all(fun is_tuple/1, Res) of
+        'true' -> from_list(Res);
+        'false' -> Res
+    end;
+recursive_from_map({K, V}) ->
+    {K, recursive_from_map(V)};
 recursive_from_map(Else) -> Else.
 
 -spec get_json_value(path(), object()) -> kz_term:api_object().

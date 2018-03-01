@@ -45,14 +45,16 @@
 -define(DEFAULT_MOBILE_SMS_EXCHANGE, <<"sms">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS
-       ,kz_json:from_list([{<<"passive">>, 'true'}])).
+       ,kz_json:from_list([{<<"passive">>, 'true'}])
+       ).
 -define(DEFAULT_MOBILE_SMS_ROUTE, <<"sprint">>).
 -define(DEFAULT_MOBILE_SMS_OPTIONS
        ,kz_json:from_list([{<<"Route-ID">>, ?DEFAULT_MOBILE_SMS_ROUTE}
                           ,{<<"System-ID">>, kz_util:node_name()}
                           ,{<<"Exchange-ID">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
                           ,{<<"Exchange-Type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
-                          ])).
+                          ])
+       ).
 -define(DEFAULT_MOBILE_AMQP_CONNECTION
        ,kz_json:from_list(
           [{<<"broker">>, ?DEFAULT_MOBILE_SMS_BROKER}
@@ -61,8 +63,9 @@
           ,{<<"type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
           ,{<<"options">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS}
           ])).
--define(DEFAULT_MOBILE_AMQP_CONNECTIONS,
-        kz_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])).
+-define(DEFAULT_MOBILE_AMQP_CONNECTIONS
+       ,kz_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])
+       ).
 
 -define(CONFIRM_FILE(Call)
        ,kapps_call:get_prompt(Call, <<"ivr-group_confirm">>)
@@ -388,7 +391,7 @@ merge_call_recording(K, JObj, ToMerge) ->
 
 -spec merge_call_recording(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:ne_binaries()) -> kz_json:object().
 merge_call_recording(K, JObj, Acc, List) ->
-    Any = kz_json:get_json_value(<<"any">>, JObj, kz_json:from_list([{<<"enabled">>, false}])),
+    Any = kz_json:get_json_value(<<"any">>, JObj, kz_json:from_list([{<<"enabled">>, 'false'}])),
     Fun = fun(K1, V1) -> merge_call_recording(K1, V1, Any) end,
     kz_json:set_value(K, lists:foldl(Fun, kz_json:delete_key(<<"any">>, JObj), List), Acc).
 

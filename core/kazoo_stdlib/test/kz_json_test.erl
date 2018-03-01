@@ -819,6 +819,37 @@ set_value_test_() ->
     JObj1 = kz_json:set_value(Key, Value, JObj),
     [{"prop_set_value error", ?_assertEqual(Value, kz_json:get_value(Key, JObj1, Value))}].
 
+-define(FROM_MAP_JSON_1,
+        kz_json:from_list([{options, kz_json:from_list([{opt1,<<"my-opt1">>}
+                                                       ,{opt2,<<"my-opt2">>}
+                                                       ])}])).
+-define(FROM_MAP_JSON_2,
+        kz_json:from_list([{outer_key, kz_json:from_list([{inner_key,<<"inner_value">>}])}])).
+
+-define(FROM_MAP_JSON_3,
+        kz_json:from_list([{outer_key, kz_json:from_list([{inner_key,<<"inner_value">>}
+                                                         ,{inner_options, kz_json:from_list([{opt1,<<"my-opt1">>}
+                                                                                            ,{opt2,<<"my-opt2">>}
+                                                                                            ])}
+                                                         ])}])).
+
+-define(FROM_MAP_MAP_1, #{options => [{opt1,<<"my-opt1">>},{opt2,<<"my-opt2">>}]}).
+-define(FROM_MAP_MAP_2, #{outer_key => #{inner_key => <<"inner_value">>}}).
+-define(FROM_MAP_MAP_3, #{outer_key => #{inner_key => <<"inner_value">>
+                                        ,inner_options => [{opt1,<<"my-opt1">>}
+                                                          ,{opt2,<<"my-opt2">>}
+                                                          ]}}).
+
+from_map_test_() ->
+    [{"Map with a proplist as a key's value"
+     ,?_assertEqual(?FROM_MAP_JSON_1, kz_json:from_map(?FROM_MAP_MAP_1))
+     }
+    ,{"Normal map", ?_assertEqual(?FROM_MAP_JSON_2, kz_json:from_map(?FROM_MAP_MAP_2))}
+    ,{"Submap with a proplist as a key's value"
+     ,?_assertEqual(?FROM_MAP_JSON_3, kz_json:from_map(?FROM_MAP_MAP_3))
+     }
+    ].
+
 -ifdef(PERF).
 -define(REPEAT, 100000).
 

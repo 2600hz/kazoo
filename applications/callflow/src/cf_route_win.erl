@@ -15,8 +15,8 @@
 
 -define(DEFAULT_SERVICES
        ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"video">>, ?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"sms">>, ?JSON([{<<"enabled">>, 'true'}])}
               ]
              )
        ).
