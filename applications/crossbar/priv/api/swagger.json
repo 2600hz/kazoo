@@ -33513,6 +33513,12 @@
             "required": true,
             "type": "string"
         },
+        "ERROR_ID": {
+            "in": "path",
+            "name": "ERROR_ID",
+            "required": true,
+            "type": "string"
+        },
         "EXTENSION": {
             "in": "path",
             "name": "EXTENSION",
@@ -33556,6 +33562,12 @@
             "minLength": 32,
             "name": "GROUP_ID",
             "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "HANDLER_ID": {
+            "in": "path",
+            "name": "HANDLER_ID",
             "required": true,
             "type": "string"
         },
@@ -34681,6 +34693,63 @@
                     },
                     {
                         "$ref": "#/parameters/APP_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/att_handlers_errors": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/att_handlers_errors/handler/{HANDLER_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/HANDLER_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/att_handlers_errors/{ERROR_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ERROR_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

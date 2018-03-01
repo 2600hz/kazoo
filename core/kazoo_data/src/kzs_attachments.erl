@@ -221,9 +221,10 @@ save_attachment_handler_error(Map
                              ) ->
     %% Workaround for `kzc_recording` and `kz_endpoint_recording`.
     AttUUID = maps:get('att_handler_id', Map, <<"overridden">>),
-    NewValues = [{'reason', Reason}
-                ,{'handler_id', AttUUID}
-                ,{'pvt_type', <<"attachment_handler_error">>}
+    NewValues = [{<<"_id">>, kazoo_modb_util:modb_id()}
+                ,{<<"reason">>, Reason}
+                ,{<<"handler_id">>, AttUUID}
+                ,{<<"pvt_type">>, <<"attachment_handler_error">>}
                 ],
     ErrorJSON = kz_json:set_values(NewValues, kz_att_error:to_json(ExtendedError)),
     UpdatedErrorJSON = kz_doc:update_pvt_parameters(ErrorJSON, DbName),
