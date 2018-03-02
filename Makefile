@@ -57,9 +57,10 @@ check: compile-test eunit clean-kazoo kazoo
 clean-deps:
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
+	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
 
 .erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.07.06/erlang.mk' -O $(ROOT)/erlang.mk
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
 	@$(MAKE) -C deps/ all
