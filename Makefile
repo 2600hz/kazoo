@@ -300,7 +300,7 @@ circle-fmt:
 	@$(MAKE) elvis
 
 circle-build:
-	@$(MAKE) clean deps kazoo xref sup_completion
+	@$(MAKE) clean clean-deps deps kazoo xref sup_completion
 
 circle-schemas:
 	@$(MAKE) validate-schemas
