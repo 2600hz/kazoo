@@ -51,6 +51,7 @@
 -export([disambiguate_and_publish/3]).
 -export([error_resp/1, error_resp_v/1]).
 -export([publish_error/2, publish_error/3]).
+-export([public_fields/1]).
 
 %% Other AMQP API validators can use these helpers
 -export([build_message/3
@@ -316,6 +317,25 @@ publish_error(TargetQ, JObj) ->
 publish_error(TargetQ, Error, ContentType) ->
     {'ok', Payload} = prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun error_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Sanitizes generic AMQP payloads
+%% This function removes the default sensitive data that should not be
+%% exposed externally.
+%% @end
+%%------------------------------------------------------------------------------
+-spec public_fields(kz_json:object()) -> kz_json:object().
+public_fields(JObj) ->
+    Routines = [fun remove_optional_defaults/1],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
+-spec remove_optional_defaults(kz_json:object()) -> kz_json:object().
+remove_optional_defaults(JObj) ->
+    Keys = [Key || Key <- ?OPTIONAL_DEFAULT_HEADERS
+                       ,Key /= ?KEY_API_ACCOUNT_ID
+                       ,Key /= ?KEY_API_CALL_ID
+           ],
+    kz_json:delete_keys(Keys, JObj).
 
 %%%===================================================================
 %%% Internal functions
