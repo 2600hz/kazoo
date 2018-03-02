@@ -21,7 +21,7 @@ event(Binding, RK, Name, Data) ->
           ,{<<"subscription_key">>, SubscriptionKey}
           ,{<<"name">>, Name}
           ,{<<"routing_key">>, RK}
-          ,{<<"data">>, Data}
+          ,{<<"data">>, kz_json:delete_key(<<"amqp_broker">>, Data)}
           ],
     SessionPid ! {'send_data', kz_json:from_list(Msg)},
     'ok'.
