@@ -16,8 +16,8 @@
 <body>
     <div class="container">
             <aside class="sidebar">Just for fun</aside>
-            <main class="content-container">
-                <div class="content">
+            <div class="content-container">
+                <main class="content">
                     <section id="doc-summary" class="module">
                         <h1>Module {{ name }}{% if deprecated %}
                             <small style="font-size: 60%"><strong> <span class="badge badge-secondary">Deprecated</span></strong></small>{% endif %}{% if version %}
@@ -111,16 +111,21 @@
                             <li>{{ key }}{% if value.email %} &lt;<a href="mailto:{{ value.email }}">{{ value.email }}</a>&gt;{% endif %}{% if value.website %} ({{ value.website }}){% endif %}</li>
                         {% endfor %}</ul>
                     </section>{% endif %}
-                    <nav class="page-toc">
-                        <ul class="section-nav">
-                            <li class="toc-entry"><a href="#doc-summary">Description</a></li>{% if behaviours %}
-                            <li class="toc-entry"><a href="#doc-behaviors">Behaviors</a></li>{% endif %}{% if types %}
-                            <li class="toc-entry"><a href="#doc-types">Types</a></li>{% endif %}{% if functions %}
-                            <li class="toc-entry"><a href="#doc-functions">Functions</a></li>{% endif %}{% if authors %}
-                            <li class="toc-entry"><a href="#doc-authors">Authors</a></li>{% endif %}
-                        </ul>
-                    </nav>
                 </main>
+                <nav class="page-toc">
+                    <ul class="section-nav">
+                        <li class="toc-entry"><a href="#doc-summary">Description</a></li>{% if behaviours %}
+                        <li class="toc-entry"><a href="#doc-behaviors">Behaviors</a></li>{% endif %}{% if types %}
+                        <li class="toc-entry"><a href="#doc-types">Types</a></li>{% endif %}{% if functions %}
+                        <li class="toc-entry">
+                            <a href="#doc-functions">Functions</a>
+                            <ul>
+                                {% for function in functions %}<li><a class="text-truncate" href="{{ function.id }}"><code>{{ function.label }}</code></a></li>{% endfor %}
+                            </ul>
+                        </li>{% endif %}{% if authors %}
+                        <li class="toc-entry"><a href="#doc-authors">Authors</a></li>{% endif %}
+                    </ul>
+                </nav>
             </div>
     </div>
 

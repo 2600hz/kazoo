@@ -168,11 +168,85 @@ dd {
     max-width: 80%;
 }
 
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.container {
+    display: flex;
+    flex-direction: row;
+}
+
+.sidebar {
+    flex-basis: 240px;
+    min-width: 240px;
+    background-color: #bada55;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.content-container {
+    display: flex;
+    flex-direction: row;
+}
+
 .content {
-    /*width: 50%;*/
+    order: 1;
     margin: 0;
     padding: 15px;
-    /*background-color: #efefef;*/
+}
+
+.page-toc {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    font-size: .875rem;
+    order: 2;
+    flex-basis: 20rem;
+    min-width: 20rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.section-nav {
+    padding-left: 0;
+    border-left: 1px solid #ccc;
+    border-left-width: 1px;
+    border-left-style: solid;
+    border-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, #ccc 5%, #ccc 90%, rgba(0, 0, 0, 0) 100%) 1 100%;
+}
+
+.toc-entry {
+    display: block;
+}
+
+.toc-entry a {
+    display: block;
+    padding: .125rem 1.5rem;
+    color: #99979c;
+}
+
+.toc-entry a:hover {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.toc-entry ul {
+    padding-left: 3rem;
+    list-style-type: none;
+}
+
+.toc-entry li {
+    padding-left: 0;
+}
+
+.toc-entry li a {
+    padding: .125rem 0;
 }
 
 .content section {
@@ -188,7 +262,7 @@ dd {
 .content section h2 {
     margin-bottom: 2rem;
     padding-bottom: .5rem;
-    border-bottom: 1px solid #e6e6e6;
+    /*border-bottom: 1px solid #e6e6e6;*/
 }
 
 .module h1 small {
