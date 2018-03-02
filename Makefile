@@ -1,7 +1,7 @@
 ROOT = $(shell cd "$(dirname '.')" && pwd -P)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
-FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+FMT = $(ROOT)/make/erlang-formatter/fmt.sh
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -9,7 +9,7 @@ JOBS ?= 1
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt clean-fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks
 
 all: compile rel/dev-vm.args
 
@@ -208,11 +208,18 @@ bump-copyright:
 	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 
 $(FMT):
-	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/237604a566879bda46d55d9e74e3e66daf1b557a' | tar xz -C $(ROOT)/make/
+	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/237604a566879bda46d55d9e74e3e66daf1b557a' | tar -vxz -C $(ROOT)/make/
+	mv $(wildcard $(ROOT)/make/erlang-formatter-*) $(ROOT)/make/erlang-formatter
+
+fmt-all: $(FMT)
+	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
 
 fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
+
+clean-fmt:
+	@$(if $(FMT), rm -rf $(shell dirname $(FMT)))
 
 app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
