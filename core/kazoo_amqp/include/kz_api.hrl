@@ -80,6 +80,8 @@
         ,?KEY_SERVER_ID
         ,?KEY_REQUEST_FROM_PID
         ,?KEY_REPLY_TO_PID
+        ,?KEY_AMQP_BROKER
+        ,?KEY_AMQP_ZONE
         ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, kz_term:to_binary(node())}
                         ,{?KEY_MSG_ID, kz_binary:rand_hex(16)}
@@ -95,6 +97,8 @@
                        ,{?KEY_ACCESS_GROUP, fun is_binary/1}
                        ,{?KEY_TENANT_ID, fun is_binary/1}
                        ,{?KEY_MSG_ID, fun is_binary/1}
+                       ,{?KEY_AMQP_BROKER, fun is_binary/1}
+                       ,{?KEY_AMQP_ZONE, fun is_binary/1}
                        ]).
 
 %% Error Responses
