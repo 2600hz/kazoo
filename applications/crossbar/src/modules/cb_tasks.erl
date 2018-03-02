@@ -203,8 +203,8 @@ download_filename(Context, ?KZ_TASKS_ANAME_OUT) ->
     TaskId = kz_doc:id(TaskJObj),
 
     <<Category/binary, "_"
-      ,Action/binary, "_"
-      ,TaskId/binary, "_out.csv"
+     ,Action/binary, "_"
+     ,TaskId/binary, "_out.csv"
     >>;
 download_filename(Context, ?KZ_TASKS_ANAME_IN) ->
     TaskJObj = cb_context:doc(Context),
@@ -214,8 +214,8 @@ download_filename(Context, ?KZ_TASKS_ANAME_IN) ->
     TaskId = kz_doc:id(TaskJObj),
 
     <<Category/binary, "_"
-      ,Action/binary, "_"
-      ,TaskId/binary, "_in.csv"
+     ,Action/binary, "_"
+     ,TaskId/binary, "_in.csv"
     >>;
 download_filename(_Context, Name) ->
     Name.

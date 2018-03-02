@@ -342,7 +342,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
 error_doc() ->
     {Year, Month, _} = erlang:date(),
     <<(kz_term:to_binary(Year))/binary,(kz_date:pad_month(Month))/binary
-      ,"-",(kz_binary:rand_hex(16))/binary
+     ,"-",(kz_binary:rand_hex(16))/binary
     >>.
 
 -spec to_proplist(state()) -> kz_term:proplist().

@@ -91,7 +91,7 @@ delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
 
     kz_json:set_values(
       Props
-                      ,kz_json:delete_keys(Keys, OffnetJObj)
+     ,kz_json:delete_keys(Keys, OffnetJObj)
      ).
 
 -spec request_caller_id(kapi_offnet_resource:req()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.

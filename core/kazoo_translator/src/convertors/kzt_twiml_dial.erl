@@ -107,7 +107,7 @@ exec(Call, [#xmlElement{name='Queue'
 
     Call1 = setup_call_for_dial(
               kzt_util:set_queue_sid(QueueId, Call)
-                               ,DialProps
+             ,DialProps
              ),
 
     lager:info("dialing into queue ~s, unsupported", [QueueId]),
@@ -133,7 +133,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 
             {'ok', Call2} = kzt_receiver:wait_for_offnet(
                               kzt_util:update_call_status(?STATUS_RINGING, Call1)
-                                                        ,Props
+                             ,Props
                              ),
             maybe_end_dial(Call2, Props)
     end.
@@ -156,7 +156,7 @@ dial_me(Call, Attrs, DialMe) ->
 
     {'ok', Call2} = kzt_receiver:wait_for_offnet(
                       kzt_util:update_call_status(?STATUS_RINGING, Call1)
-                                                ,Props
+                     ,Props
                      ),
     maybe_end_dial(Call2, Props).
 

@@ -274,11 +274,11 @@ upload_template_image(Context) ->
 upload_template_image(Context, []) ->
     cb_context:add_validation_error(
       <<"file">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([
-                                                       {<<"message">>, <<"please provide an image file">>}
-                                                      ])
-                                   ,Context
+          ,<<"required">>
+          ,kz_json:from_list([
+                              {<<"message">>, <<"please provide an image file">>}
+                             ])
+     ,Context
      );
 upload_template_image(Context, [{_, _}]) ->
     crossbar_util:response(kz_json:new(), Context);

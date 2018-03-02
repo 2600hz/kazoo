@@ -161,8 +161,8 @@ start_link(Node) -> start_link(Node, []).
 -spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) when is_atom(Node) ->
     QueueName = <<(kz_term:to_binary(Node))/binary
-                  ,"-"
-                  ,(kz_term:to_binary(?MODULE))/binary
+                 ,"-"
+                 ,(kz_term:to_binary(?MODULE))/binary
                 >>,
     gen_listener:start_link(?SERVER
                            ,[{'responders', ?RESPONDERS}

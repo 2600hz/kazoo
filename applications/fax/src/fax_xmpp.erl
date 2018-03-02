@@ -160,10 +160,10 @@ code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 get_sub_msg(JID) ->
     BareJID = kapi_xmpp:jid_short(JID),
     Document = <<"<iq type='set' from='", JID/binary, "' to='",BareJID/binary,"'>"
-                 ,   "<subscribe xmlns='google:push'>"
-                 ,      "<item channel='cloudprint.google.com' from='cloudprint.google.com'/>"
-                 ,   "</subscribe>"
-                 ,"</iq>"
+                ,   "<subscribe xmlns='google:push'>"
+                ,      "<item channel='cloudprint.google.com' from='cloudprint.google.com'/>"
+                ,   "</subscribe>"
+                ,"</iq>"
                >>,
     Document.
 

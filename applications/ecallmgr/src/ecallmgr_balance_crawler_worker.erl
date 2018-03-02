@@ -59,8 +59,8 @@ balance_check_response(JObj) ->
                   'false' -> [ Key | Acc ]
               end
       end
-                 ,[]
-                 ,Balances
+     ,[]
+     ,Balances
      ).
 
 -spec disconnect_accounts(kz_term:ne_binaries()) -> 'ok'.

@@ -75,10 +75,10 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
                ,{<<"Cc">>, props:get_value(<<"cc">>, Emails)}
                ,{<<"Bcc">>, props:get_value(<<"bcc">>, Emails)}
                ]
-                             ,[{<<"From">>, From}
-                              ,{<<"Reply-To">>, props:get_value(<<"reply_to">>, Emails)}
-                              ,{<<"Subject">>, Subject}
-                              ]
+              ,[{<<"From">>, From}
+               ,{<<"Reply-To">>, props:get_value(<<"reply_to">>, Emails)}
+               ,{<<"Subject">>, Subject}
+               ]
               )
             ,[{<<"content-type-params">>, [{<<"charset">>, <<"utf-8">>}]}]
             ,[email_body(RenderedTemplates)

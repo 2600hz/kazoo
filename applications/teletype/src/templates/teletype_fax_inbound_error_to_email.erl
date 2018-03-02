@@ -85,7 +85,7 @@ process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                                          ,Macros
+               ,Macros
                ),
     lager:debug("rendered subject: ~s", [Subject]),
 

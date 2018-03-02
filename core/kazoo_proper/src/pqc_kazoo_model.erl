@@ -371,8 +371,8 @@ transition_number_state(#kazoo_model{'numbers'=Numbers}=Model, Number, APIResp) 
     NumberState = {'call', 'pqc_cb_response', 'number_state', [APIResp]},
     Model#kazoo_model{
       'numbers'=Numbers#{
-                  Number => NumberData#{'number_state' => NumberState}
-                 }
+                         Number => NumberData#{'number_state' => NumberState}
+                        }
      }.
 
 -spec number_data(map() | model(), kz_term:ne_binary()) -> map() | 'undefined'.

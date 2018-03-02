@@ -311,8 +311,8 @@ fax_settings(JObj) ->
 -spec name(doc()) -> kz_term:ne_binary().
 name(Doc) ->
     <<(first_name(Doc, <<>>))/binary
-      ," "
-      ,(last_name(Doc, <<>>))/binary
+     ," "
+     ,(last_name(Doc, <<>>))/binary
     >>.
 
 -spec first_name(doc()) -> kz_term:api_binary().

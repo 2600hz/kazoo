@@ -339,8 +339,8 @@ get_blacklist(AccountId, Blacklists) ->
                       kz_json:merge_jobjs(Acc, BlackList)
               end
       end
-               ,kz_json:new()
-               ,Blacklists
+     ,kz_json:new()
+     ,Blacklists
      ).
 
 -spec maybe_set_block_anonymous(kz_json:object(), boolean()) -> kz_json:object().

@@ -835,7 +835,7 @@ create_registration(JObj) ->
                       ,source_ip=kz_json:get_value(<<"Source-IP">>, JObj)
                       ,source_port=kz_json:get_value(<<"Source-Port">>, JObj)
                       }
-                        ,JObj
+     ,JObj
      ).
 
 -spec augment_registration(registration(), kz_json:object()) -> registration().

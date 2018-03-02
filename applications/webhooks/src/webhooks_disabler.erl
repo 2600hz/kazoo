@@ -88,7 +88,7 @@ flush_hooks(HookJObjs) ->
     lists:sum(
       [flush_failures(
          kz_doc:account_id(HookJObj)
-                     ,kz_doc:id(HookJObj)
+        ,kz_doc:id(HookJObj)
         )
        || HookJObj <- HookJObjs
       ]

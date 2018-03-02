@@ -51,5 +51,5 @@ tones_test() ->
        {<<"playback">>
        ,"tone_stream://%(30000,1000,1000,2000);v=25;l=3;%(30000,1000,1000,2000,3000,4000)"
        }
-                ,ecallmgr_call_command:tones_app(Tones)
+      ,ecallmgr_call_command:tones_app(Tones)
       ).

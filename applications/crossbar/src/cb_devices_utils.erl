@@ -26,7 +26,7 @@ is_ip_unique(IP, DeviceId) ->
 is_ip_acl_unique(IP, DeviceId) ->
     lists:all(
       fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
-             ,get_all_acl_ips()
+     ,get_all_acl_ips()
      ).
 
 -spec is_ip_unique(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
@@ -57,8 +57,8 @@ get_all_acl_ips() ->
           ],
     Resp = kapps_util:amqp_pool_request(
              props:filter_undefined(Req)
-                                       ,fun kapi_sysconf:publish_get_req/1
-                                       ,fun kapi_sysconf:get_resp_v/1
+            ,fun kapi_sysconf:publish_get_req/1
+            ,fun kapi_sysconf:get_resp_v/1
             ),
     case Resp of
         {'error', _} -> [];

@@ -242,8 +242,8 @@ webseq_doc(Name, Str, Args) ->
 write_to_db(Database, Name, Str, Args) ->
     Doc = kz_doc:update_pvt_parameters(
             webseq_doc(Name, Str, Args)
-                                      ,Database
-                                      ,[{'type', <<"webseq">>}]
+           ,Database
+           ,[{'type', <<"webseq">>}]
            ),
     case kz_datamgr:save_doc(Database, Doc) of
         {'ok', _} -> 'ok';

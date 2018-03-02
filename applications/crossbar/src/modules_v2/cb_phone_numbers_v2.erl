@@ -775,7 +775,7 @@ fetch_locality(Context) ->
         {'ok', Localities} ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-                                    ,Localities
+             ,Localities
              );
         {'error', 'lookup_failed'} ->
             Msg = <<"number locality lookup failed">>,

@@ -245,7 +245,7 @@ validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
                 ,{<<"last_name">>, kz_json:get_value(<<"lastname">>, JObj1)}
                 ,{<<"middle_name">>, kz_json:get_value(<<"middlename">>, JObj1)}
                 ,{<<"nicknames">>, [kz_json:get_value(<<"displayname">>, JObj1)]}])
-                              ,JObj1),
+             ,JObj1),
     JObj3 = set_org(JObj2, Context1),
     JObj4 = set_photo(JObj3, Context1),
     RespData = kzd_user:to_vcard(JObj4),

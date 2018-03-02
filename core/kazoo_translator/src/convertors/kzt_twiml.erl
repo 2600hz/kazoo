@@ -206,7 +206,7 @@ set_variable(Call, Attrs) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
     {'ok', kzt_translator:set_user_vars(
              [{props:get_binary_value('key', Props), props:get_binary_value('value', Props)}]
-                                       ,Call
+            ,Call
             )}.
 
 -spec set_variables(kapps_call:call(), kz_types:xml_els()) -> kapps_call:call().

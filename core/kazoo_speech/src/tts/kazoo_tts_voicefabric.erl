@@ -99,7 +99,7 @@ voicefabric_request_body(<<"multipart">>, Data) ->
     Body = iolist_to_binary([[<<"--", Boundary/binary,
                                 "\r\nContent-Disposition: form-data;"
                                 " name=\"", Key/binary
-                                , "\"\r\n\r\n", Val/binary, "\r\n"
+                               , "\"\r\n\r\n", Val/binary, "\r\n"
                               >>
                                   || {Key, Val} <- Data
                              ]

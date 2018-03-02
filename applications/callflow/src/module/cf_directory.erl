@@ -428,12 +428,12 @@ get_directory_user(U, CallflowId) ->
 
     #directory_user{
        first_name = First
-                   ,last_name = Last
-                   ,full_name = <<First/binary, " ", Last/binary>>
-                   ,first_last_keys = cf_util:alpha_to_dialpad(<<First/binary, Last/binary>>)
-                   ,last_first_keys = cf_util:alpha_to_dialpad(<<Last/binary, First/binary>>)
-                   ,callflow_id = CallflowId
-                   ,name_audio_id = kz_json:get_value(?RECORDED_NAME_KEY, U)
+      ,last_name = Last
+      ,full_name = <<First/binary, " ", Last/binary>>
+           ,first_last_keys = cf_util:alpha_to_dialpad(<<First/binary, Last/binary>>)
+      ,last_first_keys = cf_util:alpha_to_dialpad(<<Last/binary, First/binary>>)
+      ,callflow_id = CallflowId
+      ,name_audio_id = kz_json:get_value(?RECORDED_NAME_KEY, U)
       }.
 
 

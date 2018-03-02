@@ -175,11 +175,11 @@ is_allowed_to_update(Context) ->
 forbidden(Context) ->
     cb_context:add_validation_error(
       <<"Account">>
-                                   ,<<"forbidden">>
-                                   ,kz_json:from_list([
-                                                       {<<"message">>, <<"You are not authorized to modify the resource templates">>}
-                                                      ])
-                                   ,Context
+          ,<<"forbidden">>
+          ,kz_json:from_list([
+                              {<<"message">>, <<"You are not authorized to modify the resource templates">>}
+                             ])
+     ,Context
      ).
 
 %%------------------------------------------------------------------------------
@@ -208,11 +208,11 @@ check_template_name(Context) ->
         'undefined' ->
             cb_context:add_validation_error(
               <<"template_name">>
-                                           ,<<"required">>
-                                           ,kz_json:from_list([
-                                                               {<<"message">>, <<"Template name is required">>}
-                                                              ])
-                                           ,Context
+                  ,<<"required">>
+                  ,kz_json:from_list([
+                                      {<<"message">>, <<"Template name is required">>}
+                                     ])
+             ,Context
              );
         _Name -> cb_context:set_resp_status(Context, 'success')
     end.

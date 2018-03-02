@@ -512,7 +512,7 @@ bridge_to_conference(Route, Conference, Call, Name) ->
                                  ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
                                  ,{<<"Ignore-Early-Media">>, <<"true">>}
                                  ,{<<"To-URI">>, <<"sip:", (kapps_conference:id(Conference))/binary
-                                                   ,"@", (get_account_realm(Call))/binary
+                                                  ,"@", (get_account_realm(Call))/binary
                                                  >>
                                   }
                                  ]),

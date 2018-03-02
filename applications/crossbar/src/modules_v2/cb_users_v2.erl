@@ -199,8 +199,8 @@ validate_user_id(UserId, Context) ->
         {'error', 'not_found'} ->
             cb_context:add_system_error(
               'bad_identifier'
-                                       ,kz_json:from_list([{<<"cause">>, UserId}])
-                                       ,Context
+             ,kz_json:from_list([{<<"cause">>, UserId}])
+             ,Context
              );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.

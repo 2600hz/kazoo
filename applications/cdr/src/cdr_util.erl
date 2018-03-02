@@ -29,9 +29,9 @@ get_cdr_doc_id(Timestamp, CallId) ->
 -spec get_cdr_doc_id(pos_integer(), pos_integer(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_cdr_doc_id(Year, Month, CallId) ->
     <<(kz_term:to_binary(Year))/binary
-      ,(kz_date:pad_month(Month))/binary
-      ,"-"
-      ,CallId/binary
+     ,(kz_date:pad_month(Month))/binary
+     ,"-"
+     ,CallId/binary
     >>.
 
 -spec save_cdr(kz_term:api_binary(), kz_json:object()) -> 'ok' | {'error', max_save_retries}.

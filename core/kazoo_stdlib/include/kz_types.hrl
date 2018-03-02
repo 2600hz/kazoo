@@ -78,7 +78,7 @@
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT
        ,<<(kz_term:to_binary(kz_time:now_s()))/binary
-          ,"-", (kz_binary:rand_hex(4))/binary
+         ,"-", (kz_binary:rand_hex(4))/binary
         >>).
 
 -define(BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S, 20).
@@ -122,22 +122,22 @@
 
 -define(MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month),
         <<(A):2/binary, (B):2/binary, (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
 -define(MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month),
         <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
 -define(MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month),
         <<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
 -define(MATCH_MODB_SUFFIX_encoded(A, B, Rest, Year, Month),
         <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
 
@@ -175,22 +175,22 @@
 
 -define(MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest),
         <<(A):2/binary, (B):2/binary, (Rest):28/binary
-          ,"-selectors"
+         ,"-selectors"
         >>
        ).
 -define(MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest),
         <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary
-          ,"-selectors"
+         ,"-selectors"
         >>
        ).
 -define(MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest),
         <<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary
-          ,"-selectors"
+         ,"-selectors"
         >>
        ).
 -define(MATCH_RESOURCE_SELECTORS_encoded(A, B, Rest),
         <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary
-          ,"-selectors"
+         ,"-selectors"
         >>
        ).
 

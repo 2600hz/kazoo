@@ -974,15 +974,15 @@ create_call_stat(Id, JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
                      ,{'create_call', #call_stat{
                                          id = Id
-                                                ,call_id = kz_json:get_value(<<"Call-ID">>, JObj)
-                                                ,account_id = kz_json:get_value(<<"Account-ID">>, JObj)
-                                                ,queue_id = kz_json:get_value(<<"Queue-ID">>, JObj)
-                                                ,entered_timestamp = kz_json:get_value(<<"Entered-Timestamp">>, JObj)
-                                                ,misses = []
-                                                ,status = <<"waiting">>
-                                                ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, JObj)
-                                                ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, JObj)
-                                                ,caller_priority = kz_json:get_integer_value(<<"Caller-Priority">>, JObj)
+                                        ,call_id = kz_json:get_value(<<"Call-ID">>, JObj)
+                                        ,account_id = kz_json:get_value(<<"Account-ID">>, JObj)
+                                        ,queue_id = kz_json:get_value(<<"Queue-ID">>, JObj)
+                                        ,entered_timestamp = kz_json:get_value(<<"Entered-Timestamp">>, JObj)
+                                        ,misses = []
+                                        ,status = <<"waiting">>
+                                             ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, JObj)
+                                        ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, JObj)
+                                        ,caller_priority = kz_json:get_integer_value(<<"Caller-Priority">>, JObj)
                                         }
                       }).
 

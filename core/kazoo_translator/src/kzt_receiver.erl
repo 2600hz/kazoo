@@ -669,7 +669,7 @@ recording_meta(Call, MediaName) ->
                    ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
                    ,{<<"call_id">>, kapps_call:call_id(Call)}
                    ])
-                                           ,AcctDb
+                ,AcctDb
                 ),
     kz_datamgr:save_doc(AcctDb, MediaDoc).
 

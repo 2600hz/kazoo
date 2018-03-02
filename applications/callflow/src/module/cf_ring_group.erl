@@ -264,8 +264,8 @@ order_group_members(GroupWeight, Member, JObj) ->
           fun(Key, Endpoint, Acc) ->
                   order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member)
           end
-                     ,orddict:new()
-                     ,Endpoints
+         ,orddict:new()
+         ,Endpoints
          ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 

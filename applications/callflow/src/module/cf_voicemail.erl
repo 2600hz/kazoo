@@ -1205,7 +1205,7 @@ overwrite_temporary_unavailable_greeting(AttachmentName
                 [{'prompt', <<"vm-record_temp_greeting">>}
                 ,{'tones', [Tone]}
                 ]
-                                            ,Call
+               ,Call
                ),
     case kapps_call_command:b_record(AttachmentName, Call) of
         {'ok', Msg} ->

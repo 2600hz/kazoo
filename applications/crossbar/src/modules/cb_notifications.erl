@@ -1131,10 +1131,10 @@ template_module_name(Id, Context, CT) ->
     [_C, Type] = binary:split(CT, <<"/">>),
     kz_term:to_atom(
       <<AccountId/binary
-        ,"_"
-        ,Id/binary
-        ,"_"
-        ,Type/binary
+       ,"_"
+       ,Id/binary
+       ,"_"
+       ,Type/binary
       >>, 'true').
 
 %%------------------------------------------------------------------------------

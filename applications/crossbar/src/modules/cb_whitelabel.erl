@@ -297,29 +297,29 @@ validate_attachment(Context, AttachType, ?HTTP_POST) ->
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
     cb_context:add_validation_error(
       <<"file">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide an image file">>}]
-                                     )
-                                   ,Context
+          ,<<"required">>
+          ,kz_json:from_list(
+             [{<<"message">>, <<"Please provide an image file">>}]
+            )
+     ,Context
      );
 validate_attachment_post(Context, ?ICON_REQ, []) ->
     cb_context:add_validation_error(
       <<"file">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide an image file">>}]
-                                     )
-                                   ,Context
+          ,<<"required">>
+          ,kz_json:from_list(
+             [{<<"message">>, <<"Please provide an image file">>}]
+            )
+     ,Context
      );
 validate_attachment_post(Context, ?WELCOME_REQ, []) ->
     cb_context:add_validation_error(
       <<"file">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide an html file">>}]
-                                     )
-                                   ,Context
+          ,<<"required">>
+          ,kz_json:from_list(
+             [{<<"message">>, <<"Please provide an html file">>}]
+            )
+     ,Context
      );
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
@@ -330,29 +330,29 @@ validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
     cb_context:add_validation_error(
       <<"file">>
-                                   ,<<"maxItems">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide a single image file">>}]
-                                     )
-                                   ,Context
+          ,<<"maxItems">>
+          ,kz_json:from_list(
+             [{<<"message">>, <<"Please provide a single image file">>}]
+            )
+     ,Context
      );
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
     cb_context:add_validation_error(
       <<"file">>
-                                   ,<<"maxItems">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide a single image file">>}]
-                                     )
-                                   ,Context
+          ,<<"maxItems">>
+          ,kz_json:from_list(
+             [{<<"message">>, <<"Please provide a single image file">>}]
+            )
+     ,Context
      );
 validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
     cb_context:add_validation_error(
       <<"file">>
-                                   ,<<"maxItems">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"please provide a single html file">>}]
-                                     )
-                                   ,Context
+          ,<<"maxItems">>
+          ,kz_json:from_list(
+             [{<<"message">>, <<"please provide a single html file">>}]
+            )
+     ,Context
      ).
 
 -spec validate_upload(cb_context:context(), kz_json:object()) ->
@@ -383,7 +383,7 @@ content_type(FileJObj) ->
 file_size(FileJObj) ->
     case kz_json:get_integer_value(
            [<<"headers">>, <<"content_length">>]
-                                  ,FileJObj
+          ,FileJObj
           )
     of
         'undefined' ->
@@ -463,7 +463,7 @@ edit_domains(Context) ->
     Domains = cb_context:req_data(Context),
     PvtFields = crossbar_doc:update_pvt_parameters(
                   kz_json:new()
-                                                  ,Context
+                 ,Context
                  ),
 
     lager:debug("saving domains ~p", [Domains]),

@@ -479,9 +479,9 @@
 %% Conference Event
 -define(CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId),
         <<Event/binary, "."
-          ,AccountId/binary, "."
-          ,ConferenceId/binary, "."
-          ,(amqp_util:encode(CallId))/binary
+         ,AccountId/binary, "."
+         ,ConferenceId/binary, "."
+         ,(amqp_util:encode(CallId))/binary
         >>
        ).
 -define(CONFERENCE_EVENT_HEADERS, [<<"Event">>

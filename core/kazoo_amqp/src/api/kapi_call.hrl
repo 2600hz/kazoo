@@ -5,9 +5,9 @@
 
 %% Call Events
 -define(CALL_EVENT_ROUTING_KEY(Event, CallId), <<"call."
-                                                 ,(kz_term:to_binary(Event))/binary
-                                                 ,"."
-                                                 ,(amqp_util:encode(CallId))/binary
+                                                ,(kz_term:to_binary(Event))/binary
+                                                ,"."
+                                                ,(amqp_util:encode(CallId))/binary
                                                >>).
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS

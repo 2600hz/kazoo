@@ -288,13 +288,13 @@ get_blocks(Url, Prefix, Quantity, Options) ->
     Offset = props:get_binary_value('offset', Options, <<"0">>),
     Limit = props:get_binary_value('blocks', Options, <<"0">>),
     ReqBody = <<"?prefix=", (kz_util:uri_encode(Prefix))/binary
-                ,"&size=", (kz_term:to_binary(Quantity))/binary
-                ,"&offset=", Offset/binary
-                ,"&limit=", Limit/binary
+               ,"&size=", (kz_term:to_binary(Quantity))/binary
+               ,"&offset=", Offset/binary
+               ,"&limit=", Limit/binary
               >>,
     Uri = <<Url/binary
-            ,"/blocks/", (?COUNTRY)/binary
-            ,"/search", ReqBody/binary
+           ,"/blocks/", (?COUNTRY)/binary
+           ,"/search", ReqBody/binary
           >>,
     lager:debug("making request to ~s", [Uri]),
     case kz_http:get(binary:bin_to_list(Uri)) of

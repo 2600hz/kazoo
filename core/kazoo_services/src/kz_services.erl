@@ -1756,8 +1756,8 @@ did_topup_failed(JObjs) ->
                   _ -> Acc
               end
       end
-               ,'false'
-               ,JObjs
+     ,'false'
+     ,JObjs
      ).
 
 -spec maybe_sync_reseller(kz_term:ne_binary(), kzd_services:doc()) -> kz_term:std_return().

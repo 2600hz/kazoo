@@ -420,8 +420,8 @@ update_probe(JObj, P) when is_pid(P) ->
 
 send_probe(JObj, State) ->
     To = <<(kz_json:get_value(<<"Username">>, JObj))/binary
-           ,"@"
-           ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
+          ,"@"
+          ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
     PresenceUpdate =
         [{<<"State">>, State}
         ,{<<"Presence-ID">>, To}

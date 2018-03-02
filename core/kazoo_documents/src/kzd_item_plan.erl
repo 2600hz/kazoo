@@ -93,7 +93,7 @@ cumulative_merge_list(Key, [JObj|JObjs]) ->
                         (J, Value) ->
                              lists:merge(
                                kz_json:get_list_value(Key, J, [])
-                                        ,Value
+                              ,Value
                               )
                      end, kz_json:get_value(Key, JObj), JObjs)
     of

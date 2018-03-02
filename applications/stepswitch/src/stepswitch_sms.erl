@@ -216,7 +216,7 @@ send(<<"amqp">>, Endpoint, API) ->
     Options = kz_json:to_proplist(kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     CCVs = kz_json:merge_jobjs(
              kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new())
-                              ,kz_json:filter(fun filter_smpp/1, props:get_value(<<"Custom-Channel-Vars">>, API, kz_json:new()))
+            ,kz_json:filter(fun filter_smpp/1, props:get_value(<<"Custom-Channel-Vars">>, API, kz_json:new()))
             ),
     Props = kz_json:to_proplist(Endpoint) ++ Options,
     Payload = props:set_value(<<"Custom-Channel-Vars">>, CCVs, props:set_values(Props, API)),

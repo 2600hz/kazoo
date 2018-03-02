@@ -439,9 +439,9 @@ consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
     Pid = list_to_pid(
             kz_term:to_list(
               <<"<", NodeNumber/binary
-                ,".", ProcessUpper/binary
-                ,".", ProcessLower/binary
-                ,">"
+               ,".", ProcessUpper/binary
+               ,".", ProcessLower/binary
+               ,">"
               >>
              )),
     print_consumer_details(Pid).
