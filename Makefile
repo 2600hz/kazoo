@@ -208,7 +208,7 @@ bump-copyright:
 	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 
 $(FMT):
-	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
+	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/237604a566879bda46d55d9e74e3e66daf1b557a' | tar xz -C $(ROOT)/make/
 
 fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
