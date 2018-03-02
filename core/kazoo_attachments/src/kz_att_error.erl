@@ -20,6 +20,8 @@
 -export([attachment_content/1, set_attachment_content/2]).
 -export([options/1, set_options/2]).
 
+-export([to_json/1]).
+
 -type req_url() :: kz_term:ne_binary().
 -type resp_code() :: pos_integer() | atom().
 %% HTTP status codes line `400', `404', `409', etc.
@@ -167,6 +169,10 @@ options(#{'options' := Options}) ->
 -spec set_options(extended_error(), gen_attachment:options()) -> extended_error().
 set_options(ExtendedError, Options) ->
     ExtendedError#{'options' => Options}.
+
+-spec to_json(extended_error()) -> kz_json:object().
+to_json(ExtendedError) ->
+    kz_json:from_map(ExtendedError).
 
 %%%=============================================================================
 %%% Internal functions
