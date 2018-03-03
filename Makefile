@@ -1,11 +1,11 @@
 ROOT = $(shell readlink -f .)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
-FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+FMT = $(ROOT)/make/erlang-formatter/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt clean-fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks
 
 all: compile
 
@@ -53,9 +53,10 @@ check: compile-test eunit clean-kazoo kazoo
 clean-deps:
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
+	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
 
 .erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.07.06/erlang.mk' -O $(ROOT)/erlang.mk
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
 	$(MAKE) -C deps/ all
@@ -161,12 +162,20 @@ diff: dialyze-it
 bump-copyright:
 	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 
+FMT_SHA = 237604a566879bda46d55d9e74e3e66daf1b557a
 $(FMT):
-	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
+	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/$(FMT_SHA)' | tar -vxz -C $(ROOT)/make/
+	mv $(ROOT)/make/erlang-formatter-$(FMT_SHA) $(ROOT)/make/erlang-formatter
+
+fmt-all: $(FMT)
+	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
 
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
-	@$(FMT) $(TO_FMT)
+	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
+
+clean-fmt:
+	@$(if $(FMT), rm -rf $(shell dirname $(FMT)))
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
@@ -219,3 +228,62 @@ sdks:
 
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
+
+CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
+PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
+
+circle-pre:
+ifneq ($(PIP2),)
+## needs root access
+	@echo $(CHANGED)
+	@$(PIP2) install --upgrade pip
+	@$(PIP2) install PyYAML mkdocs pyembed-markdown jsonschema
+else
+	$(error "pip/pip2 is not available, please install python2-pip package")
+endif
+
+circle-docs:
+	@./scripts/state-of-docs.sh || true
+	@$(ROOT)/scripts/state-of-edoc.escript
+	@$(MAKE) apis
+	@$(MAKE) docs
+
+circle-codechecks:
+	@./scripts/code_checks.bash $(CHANGED)
+	@$(MAKE) code_checks
+	@$(MAKE) app_applications
+	@./scripts/validate-js.sh $(CHANGED)
+
+circle-fmt:
+	@$(MAKE) fmt
+	@$(MAKE) elvis
+
+circle-build:
+	@$(MAKE) clean clean-deps deps kazoo xref sup_completion
+
+circle-schemas:
+	@$(MAKE) validate-schemas
+	@$(if $(CHANGED_SWAGGER), $(MAKE) circle-swagger)
+
+circle-swagger:
+	@-$(MAKE) validate-swagger
+
+circle-unstaged:
+	echo Unstaged changes!
+	git status --porcelain
+	git --no-pager diff
+	echo 'Maybe try `make apis` and see if that fixes anything ;)'
+	exit 1
+
+circle-dialyze: build-plt
+# circle-dialyze: circle-dialyze: export TO_DIALYZE = $(CHANGED)
+circle-dialyze:
+	@export TO_DIALYZE="$(CHANGED)"
+	@$(MAKE) dialyze
+
+circle-release:
+	@$(MAKE) build-ci-release
+
+circle: circle-pre circle-fmt circle-build circle-codechecks circle-docs circle-schemas circle-dialyze circle-release
+	@$(if $(git status --porcelain | wc -l), $(MAKE) circle-unstaged)
