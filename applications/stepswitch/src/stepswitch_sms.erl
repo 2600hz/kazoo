@@ -214,10 +214,9 @@ send(<<"sip">>, Endpoint, API) ->
 send(<<"amqp">>, Endpoint, API) ->
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = kz_json:to_proplist(kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
-    CCVs = kz_json:merge_jobjs(
-             kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new())
+    CCVs = kz_json:merge_jobjs(kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new())
                               ,kz_json:filter(fun filter_smpp/1, props:get_value(<<"Custom-Channel-Vars">>, API, kz_json:new()))
-            ),
+                              ),
     Props = kz_json:to_proplist(Endpoint) ++ Options,
     Payload = props:set_value(<<"Custom-Channel-Vars">>, CCVs, props:set_values(Props, API)),
     Broker = kz_json:get_value([<<"Endpoint-Options">>, <<"AMQP-Broker">>], Endpoint),
@@ -361,7 +360,7 @@ maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
 -spec maybe_endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                         kz_json:object().
 maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"Format-From-URI">>, CCVs) of
         'true' -> endpoint_format_from(Endpoint, CIDNum, DefaultRealm);
         'false' ->

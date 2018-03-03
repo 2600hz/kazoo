@@ -204,10 +204,13 @@ pause(Call, Attrs) ->
 set_variable(Call, Attrs) ->
     kapps_call_command:answer(Call),
     Props = kz_xml:attributes_to_proplist(Attrs),
-    {'ok', kzt_translator:set_user_vars(
-             [{props:get_binary_value('key', Props), props:get_binary_value('value', Props)}]
+    {'ok', kzt_translator:set_user_vars([{props:get_binary_value('key', Props)
+                                         ,props:get_binary_value('value', Props)
+                                         }
+                                        ]
                                        ,Call
-            )}.
+                                       )
+    }.
 
 -spec set_variables(kapps_call:call(), kz_types:xml_els()) -> kapps_call:call().
 set_variables(Call, Els) when is_list(Els) ->
@@ -216,7 +219,10 @@ set_variables(Call, Els) when is_list(Els) ->
                                }, C) ->
                         set_variable(C, Attrs);
                    (_, C) -> C
-                end, Call, Els).
+                end
+               ,Call
+               ,Els
+               ).
 
 -spec play(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
                   {'ok', kapps_call:call()} |

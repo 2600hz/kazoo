@@ -30,12 +30,11 @@ reconcile(Services) ->
             lager:debug("unable to get current whitelabel docs: ~p for account: ~s", [_R, AccountId]),
             Services;
         {'ok', Count} ->
-            kz_services:update(
-              ?CATEGORY
+            kz_services:update(?CATEGORY
                               ,?ITEM
                               ,Count
                               ,kz_services:reset_category(?CATEGORY, Services)
-             )
+                              )
     end.
 
 -spec reconcile(kz_services:services(), kz_term:ne_binary()) -> kz_services:services().

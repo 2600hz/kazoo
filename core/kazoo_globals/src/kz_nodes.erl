@@ -540,10 +540,10 @@ init([]) ->
                                          ,{'node_type', 'all'}
                                          ]),
     lager:debug("monitoring nodes"),
-    Version = <<(kz_util:kazoo_version())/binary
-                ," - "
-                ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
-              >>,
+    Version = list_to_binary([kz_util:kazoo_version()
+                             ," - "
+                             ,kz_term:to_binary(erlang:system_info('otp_release'))
+                             ]),
     State = #state{tab = Tab
                   ,zone = get_zone()
                   ,md5 = node_encoded()

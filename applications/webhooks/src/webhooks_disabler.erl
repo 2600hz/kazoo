@@ -86,10 +86,9 @@ find_failures() ->
 -spec flush_hooks(kz_json:objects()) -> non_neg_integer().
 flush_hooks(HookJObjs) ->
     lists:sum(
-      [flush_failures(
-         kz_doc:account_id(HookJObj)
+      [flush_failures(kz_doc:account_id(HookJObj)
                      ,kz_doc:id(HookJObj)
-        )
+                     )
        || HookJObj <- HookJObjs
       ]
      ).
@@ -103,9 +102,7 @@ flush_failures(AccountId, HookId) ->
     FilterFun = fun(K, _V) ->
                         maybe_remove_failure(K, AccountId, HookId)
                 end,
-    kz_cache:filter_erase_local(?CACHE_NAME
-                               ,FilterFun
-                               ).
+    kz_cache:filter_erase_local(?CACHE_NAME, FilterFun).
 
 -spec maybe_remove_failure(tuple(), kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
 maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)

@@ -972,8 +972,7 @@ find_call_stat(Id) ->
 -spec create_call_stat(kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 create_call_stat(Id, JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
-                     ,{'create_call', #call_stat{
-                                         id = Id
+                     ,{'create_call', #call_stat{id = Id
                                                 ,call_id = kz_json:get_value(<<"Call-ID">>, JObj)
                                                 ,account_id = kz_json:get_value(<<"Account-ID">>, JObj)
                                                 ,queue_id = kz_json:get_value(<<"Queue-ID">>, JObj)
@@ -983,7 +982,7 @@ create_call_stat(Id, JObj, Props) ->
                                                 ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, JObj)
                                                 ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, JObj)
                                                 ,caller_priority = kz_json:get_integer_value(<<"Caller-Priority">>, JObj)
-                                        }
+                                                }
                       }).
 
 -type updates() :: [{pos_integer(), any()}].
@@ -994,5 +993,6 @@ update_call_stat(Id, Updates, Props) ->
 call_state_change(AccountId, Status, Prop) ->
     Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"call_status_change">>}
                                                ,{<<"Status">>, Status}
-                                                | Prop])),
+                                                | Prop
+                                               ])),
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

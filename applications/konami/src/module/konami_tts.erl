@@ -31,8 +31,7 @@ handle(Data, Call) ->
                                                ,kz_json:get_value(<<"engine">>, Data)
                                                ,Call
                                                ),
-    kapps_call_command:send_command(
-      kz_json:set_value(<<"Insert-At">>, <<"now">>, TTSCommand)
+    kapps_call_command:send_command(kz_json:set_value(<<"Insert-At">>, <<"now">>, TTSCommand)
                                    ,Call
-     ),
+                                   ),
     {'continue', Call}.

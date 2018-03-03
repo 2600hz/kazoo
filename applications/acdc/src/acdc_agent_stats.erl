@@ -215,8 +215,7 @@ handle_status_stat(JObj, Props) ->
 
     gen_listener:cast(props:get_value('server', Props)
                      ,{'create_status'
-                      ,#status_stat{
-                          id=status_stat_id(AgentId, Timestamp, EventName)
+                      ,#status_stat{id=status_stat_id(AgentId, Timestamp, EventName)
                                    ,agent_id=AgentId
                                    ,account_id=kz_json:get_value(<<"Account-ID">>, JObj)
                                    ,status=EventName
@@ -227,7 +226,7 @@ handle_status_stat(JObj, Props) ->
                                    ,caller_id_name=acdc_stats_util:caller_id_name(EventName, JObj)
                                    ,caller_id_number=acdc_stats_util:caller_id_number(EventName, JObj)
                                    ,queue_id=acdc_stats_util:queue_id(EventName, JObj)
-                         }
+                                   }
                       }
                      ).
 

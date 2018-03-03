@@ -1383,10 +1383,10 @@ build_mobile_route(MDN) ->
             Prefix = kapps_config:get_binary(?MOBILE_CONFIG_CAT, <<"prefix">>, ?DEFAULT_MOBILE_PREFIX),
             Suffix = kapps_config:get_binary(?MOBILE_CONFIG_CAT, <<"suffix">>, ?DEFAULT_MOBILE_SUFFIX),
             Realm = kapps_config:get_binary(?MOBILE_CONFIG_CAT, <<"realm">>, ?DEFAULT_MOBILE_REALM),
-            Route = <<"sip:"
-                      ,Prefix/binary, Root/binary, Suffix/binary
-                      ,"@", Realm/binary
-                    >>,
+            Route = list_to_binary(["sip:"
+                                   ,Prefix, Root, Suffix
+                                   ,"@", Realm
+                                   ]),
             maybe_add_mobile_path(Route)
     end.
 

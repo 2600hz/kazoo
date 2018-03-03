@@ -28,13 +28,13 @@ get_cdr_doc_id(Timestamp, CallId) ->
 
 -spec get_cdr_doc_id(pos_integer(), pos_integer(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_cdr_doc_id(Year, Month, CallId) ->
-    <<(kz_term:to_binary(Year))/binary
-      ,(kz_date:pad_month(Month))/binary
-      ,"-"
-      ,CallId/binary
-    >>.
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,CallId
+                   ]).
 
--spec save_cdr(kz_term:api_binary(), kz_json:object()) -> 'ok' | {'error', max_save_retries}.
+-spec save_cdr(kz_term:api_binary(), kz_json:object()) -> 'ok' | {'error', 'max_save_retries'}.
 save_cdr(?KZ_ANONYMOUS_CDR_DB=Db, Doc) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"store_anonymous">>, 'false') of
         'false' -> lager:debug("ignoring storage for anonymous cdr");
@@ -43,12 +43,12 @@ save_cdr(?KZ_ANONYMOUS_CDR_DB=Db, Doc) ->
 save_cdr(AccountMOD, Doc) ->
     do_save_cdr(AccountMOD, Doc).
 
--spec do_save_cdr(kz_term:api_binary(), kz_json:object()) -> 'ok' | {'error', max_save_retries}.
+-spec do_save_cdr(kz_term:api_binary(), kz_json:object()) -> 'ok' | {'error', 'max_save_retries'}.
 do_save_cdr(AccountMODb, Doc) ->
     case kazoo_modb:save_doc(AccountMODb, Doc, [{'max_retries', 3}]) of
         {'ok', _}-> 'ok';
         {'error', 'conflict'} -> 'ok';
         {'error', _E} ->
             lager:debug("failed to save cdr ~s : ~p", [kz_doc:id(Doc), _E]),
-            {'error', max_save_retries}
+            {'error', 'max_save_retries'}
     end.

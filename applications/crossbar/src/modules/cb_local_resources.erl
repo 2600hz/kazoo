@@ -67,14 +67,11 @@ check_if_peer(ResourceId, Context) ->
         {'true', 'true'} ->
             check_if_gateways_have_ip(ResourceId, Context);
         {'true', 'false'} ->
-            C = cb_context:add_validation_error(
-                  [<<"peer">>]
+            C = cb_context:add_validation_error([<<"peer">>]
                                                ,<<"forbidden">>
-                                               ,kz_json:from_list([
-                                                                   {<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}
-                                                                  ])
+                                               ,kz_json:from_list([{<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}])
                                                ,Context
-                 ),
+                                               ),
             check_resource_schema(ResourceId, C);
         {_, _} ->
             check_resource_schema(ResourceId, Context)
@@ -94,15 +91,13 @@ validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
 validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
     check_resource_schema(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
 validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
-    C = cb_context:add_validation_error(
-          [<<"gateways">>, Idx, <<"server">>]
+    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                        ,<<"required">>
-                                       ,kz_json:from_list([
-                                                           {<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
+                                       ,kz_json:from_list([{<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
                                                           ,{<<"cause">>, Idx}
                                                           ])
                                        ,Context
-         ),
+                                       ),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C));
 validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     case kz_network_utils:is_ipv4(ServerIP) of
@@ -111,15 +106,13 @@ validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, Resource
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error(
-                          [<<"gateways">>, Idx, <<"server">>]
+                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                                        ,<<"unique">>
-                                                       ,kz_json:from_list([
-                                                                           {<<"message">>, <<"Gateway server ip is already in use">>}
+                                                       ,kz_json:from_list([{<<"message">>, <<"Gateway server ip is already in use">>}
                                                                           ,{<<"cause">>, Idx}
                                                                           ])
                                                        ,Context
-                         ),
+                                                       ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
@@ -132,11 +125,9 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error([
-                                                         <<"gateways">>, Idx, <<"inbound_ip">>]
+                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"inbound_ip">>]
                                                        ,<<"unique">>
-                                                       ,kz_json:from_list([
-                                                                           {<<"message">>, <<"Gateway inbound ip is already in use">>}
+                                                       ,kz_json:from_list([{<<"message">>, <<"Gateway inbound ip is already in use">>}
                                                                           ,{<<"cause">>, Idx}
                                                                           ])
                                                        ,Context
@@ -181,7 +172,6 @@ maybe_aggregate_resource(Context, 'success') ->
             'true'
     end;
 maybe_aggregate_resource(_Context, _Status) -> 'false'.
-
 
 -spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggregate(ResourceId, Context) ->
@@ -228,11 +218,10 @@ get_all_acl_ips() ->
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp = kapps_util:amqp_pool_request(
-             props:filter_undefined(Req)
-                                       ,fun kapi_sysconf:publish_get_req/1
-                                       ,fun kapi_sysconf:get_resp_v/1
-            ),
+    Resp = kz_amqp_worker:call(props:filter_undefined(Req)
+                              ,fun kapi_sysconf:publish_get_req/1
+                              ,fun kapi_sysconf:get_resp_v/1
+                              ),
     case Resp of
         {'error', _} -> [];
         {'ok', JObj} ->

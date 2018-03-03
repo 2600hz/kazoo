@@ -511,9 +511,9 @@ bridge_to_conference(Route, Conference, Call, Name) ->
                                  ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
                                  ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
                                  ,{<<"Ignore-Early-Media">>, <<"true">>}
-                                 ,{<<"To-URI">>, <<"sip:", (kapps_conference:id(Conference))/binary
-                                                   ,"@", (get_account_realm(Call))/binary
-                                                 >>
+                                 ,{<<"To-URI">>, list_to_binary(["sip:", kapps_conference:id(Conference)
+                                                                ,"@", get_account_realm(Call)
+                                                                ])
                                   }
                                  ]),
     SIPHeaders = props:filter_undefined([{<<"X-Conf-Flags-Moderator">>, kapps_conference:moderator(Conference)}

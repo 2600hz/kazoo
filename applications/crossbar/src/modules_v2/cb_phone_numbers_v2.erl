@@ -773,10 +773,9 @@ fetch_locality(Context) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
     case knm_locality:fetch(Numbers) of
         {'ok', Localities} ->
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,Localities
-             );
+                                    );
         {'error', 'lookup_failed'} ->
             Msg = <<"number locality lookup failed">>,
             crossbar_util:response('error', Msg, 500, Context);

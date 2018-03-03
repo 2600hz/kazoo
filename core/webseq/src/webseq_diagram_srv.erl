@@ -240,11 +240,10 @@ webseq_doc(Name, Str, Args) ->
 
 -spec write_to_db(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> 'ok'.
 write_to_db(Database, Name, Str, Args) ->
-    Doc = kz_doc:update_pvt_parameters(
-            webseq_doc(Name, Str, Args)
+    Doc = kz_doc:update_pvt_parameters(webseq_doc(Name, Str, Args)
                                       ,Database
                                       ,[{'type', <<"webseq">>}]
-           ),
+                                      ),
     case kz_datamgr:save_doc(Database, Doc) of
         {'ok', _} -> 'ok';
         {'error', E} ->

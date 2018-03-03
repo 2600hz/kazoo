@@ -141,12 +141,13 @@ update_probe(JObj, _Sup, AcctId, QueueId) ->
 
 send_probe(JObj, State) ->
     To = <<(kz_json:get_value(<<"Username">>, JObj))/binary
-           ,"@"
-           ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
+          ,"@"
+          ,(kz_json:get_value(<<"Realm">>, JObj))/binary
+         >>,
     PresenceUpdate =
         [{<<"State">>, State}
         ,{<<"Presence-ID">>, To}
-        ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash(md5, To))}
+        ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash('md5', To))}
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapi_presence:publish_update(PresenceUpdate).
