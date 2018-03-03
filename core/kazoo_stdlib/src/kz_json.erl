@@ -982,7 +982,8 @@ insert_values(KVs, JObj) ->
 insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
--spec set_value(path(), json_term() | 'null', object() | objects()) -> object() | objects().
+-spec set_value(path(), api_json_term() | 'null', object() | objects()) -> object() | objects().
+set_value(_Keys, 'undefined', JObj) -> JObj;
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 

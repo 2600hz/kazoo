@@ -3,6 +3,11 @@
     "_id": "system_config.number_manager.other",
     "description": "Schema for number_manager.other system_config",
     "properties": {
+        "default_country": {
+            "default": "US",
+            "description": "Country to search and acquire blocks of numbers from",
+            "type": "string"
+        },
         "endpoints": {
             "description": "number_manager.other endpoints"
         },

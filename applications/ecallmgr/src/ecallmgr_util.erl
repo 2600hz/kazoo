@@ -242,16 +242,23 @@ get_sip_from(Props, <<"outbound">>) ->
                                     ], Props, ?DEFAULT_REALM),
     <<Number/binary, "@", Realm/binary>>;
 get_sip_from(Props, _) ->
-    Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
-                ,"@"
-                ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                          ,<<"variable_sip_from_host">>
-                                          ,<<"sip_from_host">>
-                                          ], Props, ?DEFAULT_REALM))/binary
-              >>,
+    Default = list_to_binary([props:get_value(<<"sip_from_user">>, Props, <<"nouser">>)
+                             ,"@"
+                             ,props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                                      ,<<"variable_sip_from_host">>
+                                                      ,<<"sip_from_host">>
+                                                      ]
+                                                     ,Props
+                                                     ,?DEFAULT_REALM
+                                                     )
+                             ]),
+
     props:get_first_defined([<<"Channel-Presence-ID">>
                             ,<<"variable_sip_from_uri">>
-                            ], Props, Default).
+                            ]
+                           ,Props
+                           ,Default
+                           ).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(kz_term:proplist()) -> kz_term:ne_binary().
@@ -1102,10 +1109,10 @@ create_masquerade_event(Application, EventName, Boolean) ->
                  'true' -> <<"event ">>;
                  'false' -> <<>>
              end,
-    <<Prefix/binary, "Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
-      ,",kazoo_event_name=", EventName/binary
-      ,",kazoo_application_name=", Application/binary
-    >>.
+    list_to_binary([Prefix, "Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
+                   ,",kazoo_event_name=", EventName
+                   ,",kazoo_application_name=", Application
+                   ]).
 
 %%------------------------------------------------------------------------------
 %% @doc

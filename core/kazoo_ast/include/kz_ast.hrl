@@ -188,15 +188,13 @@
 -define(MAP_FIELD_ASSOC(K, V), {'map_field_assoc',_,K,V}).
 -define(MAP_FIELD_EXACT(K, V), {'map_field_exact',_,K,V}).
 
--define(LAGER, ?CASE(
-                  ?TUPLE(
-                     [?FUN_ARGS('whereis', [?ATOM('lager_event')])
-                     ,?FUN_ARGS('whereis', [?ATOM('lager_event')])
-                     ,?MOD_FUN_ARGS('lager_config', 'get', _) % args
-                     ]
-                    )
+-define(LAGER, ?CASE(?TUPLE([?FUN_ARGS('whereis', [?ATOM('lager_event')])
+                            ,?FUN_ARGS('whereis', [?ATOM('lager_event')])
+                            ,?MOD_FUN_ARGS('lager_config', 'get', _) % args
+                            ]
+                           )
                     ,_ % clauses
-                 )
+                    )
        ).
 
 -define(LAGER_CALL, {'remote', _, {'atom', _, 'lager'}, _}).

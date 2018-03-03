@@ -369,11 +369,7 @@ remove_number_from_account(#kazoo_model{'numbers'=Numbers}=Model
 transition_number_state(#kazoo_model{'numbers'=Numbers}=Model, Number, APIResp) ->
     NumberData = number_data(Numbers, Number),
     NumberState = {'call', 'pqc_cb_response', 'number_state', [APIResp]},
-    Model#kazoo_model{
-      'numbers'=Numbers#{
-                  Number => NumberData#{'number_state' => NumberState}
-                 }
-     }.
+    Model#kazoo_model{'numbers'=Numbers#{Number => NumberData#{'number_state' => NumberState}}}.
 
 -spec number_data(map() | model(), kz_term:ne_binary()) -> map() | 'undefined'.
 number_data(#kazoo_model{'numbers'=Numbers}, Number) ->

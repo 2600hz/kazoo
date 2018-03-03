@@ -712,8 +712,7 @@ clear_member_call(#state{connection_timer_ref=ConnRef
                }.
 
 update_properties(QueueJObj, State) ->
-    State#state{
-      name = kz_json:get_value(<<"name">>, QueueJObj)
+    State#state{name = kz_json:get_value(<<"name">>, QueueJObj)
                ,connection_timeout = connection_timeout(kz_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
                ,agent_ring_timeout = agent_ring_timeout(kz_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
                ,max_queue_size = kz_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
@@ -727,9 +726,9 @@ update_properties(QueueJObj, State) ->
                ,cdr_url = kz_json:get_ne_value(<<"cdr_url">>, QueueJObj)
                ,notifications = kz_json:get_value(<<"notifications">>, QueueJObj)
 
-      %% Changing queue strategy currently isn't feasible; definitely a TODO
-      %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
-     }.
+                %% Changing queue strategy currently isn't feasible; definitely a TODO
+                %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
+               }.
 
 -spec current_call('undefined' | kapps_call:call(), kz_term:api_reference() | timeout(), timeout()) -> kz_term:api_object().
 current_call('undefined', _, _) -> 'undefined';

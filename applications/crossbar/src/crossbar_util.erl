@@ -961,10 +961,9 @@ format_emergency_caller_id_number(Context, Emergency) ->
             CallerId = cb_context:req_value(Context, <<"caller_id">>),
             NCallerId = kz_json:set_value(?KEY_EMERGENCY, NEmergency, CallerId),
 
-            cb_context:set_req_data(
-              Context
+            cb_context:set_req_data(Context
                                    ,kz_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
-             )
+                                   )
     end.
 
 -type refresh_type() :: 'user' | 'device' | 'sys_info' | 'account'.

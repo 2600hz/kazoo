@@ -327,21 +327,20 @@ get_blacklist(JObj) ->
 -spec get_blacklist(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 get_blacklist(AccountId, Blacklists) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    lists:foldl(
-      fun(BlacklistId, Acc) ->
-              case kz_datamgr:open_cache_doc(AccountDb, BlacklistId) of
-                  {'error', _R} ->
-                      lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
-                      Acc;
-                  {'ok', Doc} ->
-                      Numbers = kz_json:get_value(<<"numbers">>, Doc, kz_json:new()),
-                      BlackList = maybe_set_block_anonymous(Numbers, kz_json:is_true(<<"should_block_anonymous">>, Doc)),
-                      kz_json:merge_jobjs(Acc, BlackList)
-              end
-      end
+    lists:foldl(fun(BlacklistId, Acc) ->
+                        case kz_datamgr:open_cache_doc(AccountDb, BlacklistId) of
+                            {'error', _R} ->
+                                lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
+                                Acc;
+                            {'ok', Doc} ->
+                                Numbers = kz_json:get_value(<<"numbers">>, Doc, kz_json:new()),
+                                BlackList = maybe_set_block_anonymous(Numbers, kz_json:is_true(<<"should_block_anonymous">>, Doc)),
+                                kz_json:merge_jobjs(Acc, BlackList)
+                        end
+                end
                ,kz_json:new()
                ,Blacklists
-     ).
+               ).
 
 -spec maybe_set_block_anonymous(kz_json:object(), boolean()) -> kz_json:object().
 maybe_set_block_anonymous(JObj, 'false') -> JObj;

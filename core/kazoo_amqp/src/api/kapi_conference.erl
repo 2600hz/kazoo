@@ -477,12 +477,12 @@
 -define(PARTICIPANT_EVENT_TYPES, []).
 
 %% Conference Event
--define(CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId),
-        <<Event/binary, "."
-          ,AccountId/binary, "."
-          ,ConferenceId/binary, "."
-          ,(amqp_util:encode(CallId))/binary
-        >>
+-define(CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId)
+       ,list_to_binary([Event, "."
+                       ,AccountId, "."
+                       ,ConferenceId, "."
+                       ,amqp_util:encode(CallId)
+                       ])
        ).
 -define(CONFERENCE_EVENT_HEADERS, [<<"Event">>
                                   ,<<"Conference-ID">>

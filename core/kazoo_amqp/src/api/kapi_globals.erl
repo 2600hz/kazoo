@@ -130,17 +130,17 @@ node(JObj) ->
 -define(GLOBALS_EXCHANGE_TYPE, <<"topic">>).
 
 routing_key(Event, Name) when is_binary(Name) ->
-    <<"globals."
-      ,(kz_term:to_binary(Event))/binary
-      ,"."
-      ,(amqp_util:encode(Name))/binary
-    >>;
+    list_to_binary(["globals."
+                   ,kz_term:to_binary(Event)
+                   ,"."
+                   ,amqp_util:encode(Name)
+                   ]);
 routing_key(Event, Name) ->
-    <<"globals."
-      ,(kz_term:to_binary(Event))/binary
-      ,"."
-      ,(kz_term:to_hex_binary(maybe_encode(Name)))/binary
-    >>.
+    list_to_binary(["globals."
+                   ,kz_term:to_binary(Event)
+                   ,"."
+                   ,kz_term:to_hex_binary(maybe_encode(Name))
+                   ]).
 
 %% Globals Events
 -define(GLOBALS_EVENT_ROUTING_KEY(Event, Name)

@@ -197,11 +197,10 @@ validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, UserId}])
                                        ,Context
-             );
+                                       );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 

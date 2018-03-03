@@ -102,9 +102,7 @@ maybe_start_mod_versions(Versions, Mod) ->
 
 -spec start_mod_version(kz_term:ne_binary(), kz_term:ne_binary() | atom()) -> boolean().
 start_mod_version(Version, Mod) ->
-    Module = <<(kz_term:to_binary(Mod))/binary
-               , "_", (kz_term:to_binary(Version))/binary
-             >>,
+    Module = list_to_binary([kz_term:to_binary(Mod), "_", kz_term:to_binary(Version)]),
     CBMod = kz_term:to_atom(Module, 'true'),
     try CBMod:init() of
         _ ->
@@ -147,9 +145,7 @@ maybe_stop_mod_versions(Versions, Mod) ->
 
 -spec stop_mod_version(kz_term:ne_binary(), kz_term:ne_binary() | atom()) -> boolean().
 stop_mod_version(Version, Mod) ->
-    Module = <<(kz_term:to_binary(Mod))/binary
-               , "_", (kz_term:to_binary(Version))/binary
-             >>,
+    Module = list_to_binary([kz_term:to_binary(Mod), "_", kz_term:to_binary(Version)]),
     CBMod = kz_term:to_atom(Module, 'true'),
     crossbar_bindings:flush_mod(CBMod),
     try CBMod:stop() of

@@ -160,17 +160,18 @@ reload_smtp_configs() ->
 -spec template_files() -> kz_term:ne_binaries().
 template_files() ->
     {'ok', Files} = file:list_dir(?TEMPLATE_PATH),
-    lists:foldl(
-      fun(File, Acc) ->
-              case kz_term:to_binary(File) of
-                  <<"notify_", _/binary>>=Bin ->
-                      [Bin|Acc];
-                  _ -> Acc
-              end
-      end
+    lists:foldl(fun maybe_include_file/2
                ,[]
                ,Files
-     ).
+               ).
+
+-spec maybe_include_file(iodata(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+maybe_include_file(File, Acc) ->
+    case kz_term:to_binary(File) of
+        <<"notify_", _/binary>>=Bin ->
+            [Bin|Acc];
+        _ -> Acc
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -179,18 +180,19 @@ template_files() ->
 -spec template_ids() -> kz_term:ne_binaries().
 template_ids() ->
     {'ok', JObjs} =  kz_datamgr:all_docs(?SYSTEM_CONFIG_DB),
-    lists:foldl(
-      fun(JObj, Acc) ->
-              case kz_doc:id(JObj) of
-                  <<"notify.", _/binary>>=Id ->
-                      [Id|Acc];
-                  _ ->
-                      Acc
-              end
-      end
+    lists:foldl(fun maybe_include_template_id/2
                ,[]
                ,JObjs
-     ).
+               ).
+
+-spec maybe_include_template_id(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+maybe_include_template_id(JObj, Acc) ->
+    case kz_doc:id(JObj) of
+        <<"notify.", _/binary>>=Id ->
+            [Id|Acc];
+        _ ->
+            Acc
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -198,32 +200,32 @@ template_ids() ->
 %%------------------------------------------------------------------------------
 -spec match_file_to_db(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:proplist().
 match_file_to_db(Files, Ids) ->
-    lists:foldl(
-      fun(<<"notify_", FileKey/binary>>=File, Acc) ->
-              Key = binary:replace(FileKey, <<".config">>, <<>>),
-              Id = <<"notify.", Key/binary>>,
-              case
-                  {lists:member(Id, Ids)
-                  ,module_exists(<<"notify_", Key/binary>>)
-                  }
-              of
-                  {'true', 'true'} ->
-                      io:format("found doc & module for template file: '~s' ~n", [File]),
-                      [{File, Id}|Acc];
-                  {'false', 'false'} ->
-                      io:format("did not found doc & module for template file: '~s', ignoring... ~n", [File]),
-                      Acc;
-                  {'false', _} ->
-                      io:format("did not found doc but module exist for template file: '~s', adding... ~n", [File]),
-                      [{File, Id}|Acc];
-                  {_, 'false'} ->
-                      io:format("did not module for template file: '~s', ignoring... ~n", [File]),
-                      Acc
-              end
-      end
+    lists:foldl(fun(File, Acc) -> match_file_to_db(File, Acc, Ids) end
                ,[]
                ,Files
-     ).
+               ).
+
+match_file_to_db(<<"notify_", FileKey/binary>>=File, Acc, Ids) ->
+    Key = binary:replace(FileKey, <<".config">>, <<>>),
+    Id = <<"notify.", Key/binary>>,
+    case
+        {lists:member(Id, Ids)
+        ,module_exists(<<"notify_", Key/binary>>)
+        }
+    of
+        {'true', 'true'} ->
+            io:format("found doc & module for template file: '~s' ~n", [File]),
+            [{File, Id}|Acc];
+        {'false', 'false'} ->
+            io:format("did not found doc & module for template file: '~s', ignoring... ~n", [File]),
+            Acc;
+        {'false', _} ->
+            io:format("did not found doc but module exist for template file: '~s', adding... ~n", [File]),
+            [{File, Id}|Acc];
+        {_, 'false'} ->
+            io:format("did not module for template file: '~s', ignoring... ~n", [File]),
+            Acc
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -329,8 +331,8 @@ set_template(Key, Template, JObj) ->
     Default = kz_json:get_value(<<"default">>, JObj),
     kz_json:set_value(
       <<"default">>
-                     ,kz_json:set_value(Key, Template, Default)
-                     ,JObj
+          ,kz_json:set_value(Key, Template, Default)
+     ,JObj
      ).
 
 %%------------------------------------------------------------------------------

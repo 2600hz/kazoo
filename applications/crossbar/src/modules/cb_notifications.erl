@@ -1129,13 +1129,8 @@ attachment_name_by_media_type(CT) ->
 template_module_name(Id, Context, CT) ->
     AccountId = cb_context:account_db(Context),
     [_C, Type] = binary:split(CT, <<"/">>),
-    kz_term:to_atom(
-      <<AccountId/binary
-        ,"_"
-        ,Id/binary
-        ,"_"
-        ,Type/binary
-      >>, 'true').
+    ModuleName = list_to_binary([AccountId, "_", Id, "_", Type]),
+    kz_term:to_atom(ModuleName, 'true').
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this

@@ -40,14 +40,13 @@ create_api_token(_ProviderId, 'undefined') ->
 -spec make_api_token(kz_term:ne_binary(), integer(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_api_token(ProviderId, Timestamp, Salt, Secret) ->
     TimestampHex = encode_timestamp(Timestamp),
-    kz_binary:join(
-      [?VERSION % Version
-      ,Salt
-      ,TimestampHex
-      ,auth_hash(ProviderId, TimestampHex, Salt, Secret)
-      ]
+    kz_binary:join([?VERSION % Version
+                   ,Salt
+                   ,TimestampHex
+                   ,auth_hash(ProviderId, TimestampHex, Salt, Secret)
+                   ]
                   ,<<":">>
-     ).
+                  ).
 
 -spec encode_timestamp(integer()) -> kz_term:ne_binary().
 encode_timestamp(Timestamp) when is_integer(Timestamp) ->

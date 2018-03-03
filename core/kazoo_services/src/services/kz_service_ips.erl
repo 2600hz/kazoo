@@ -35,11 +35,10 @@ reconcile(Services0, IpType) when is_binary(IpType) ->
     Quantity = kz_services:updated_quantity(<<"ips">>, IpType, Services1),
     kz_services:update(<<"ips">>, IpType, Quantity+1, Services1);
 reconcile(Services, Props) ->
-    lists:foldl(
-      fun reconcile_foldl/2
+    lists:foldl(fun reconcile_foldl/2
                ,reconcile(Services)
                ,Props
-     ).
+               ).
 
 -spec reconcile_foldl({kz_term:ne_binary(), integer() | kz_term:ne_binary()}, kz_services:services()) ->
                              kz_services:services().

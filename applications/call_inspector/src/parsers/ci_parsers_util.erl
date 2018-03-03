@@ -33,8 +33,8 @@ timestamp() ->
 
 -spec timestamp(kz_term:ne_binary() | kz_time:now()) -> kz_term:api_float().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
-            ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
-            ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
+           ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
+           ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
           >>) ->
     kz_term:to_integer(Micro) / ?MICROSECONDS_IN_SECOND +
         calendar:datetime_to_gregorian_seconds(
