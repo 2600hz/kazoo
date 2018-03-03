@@ -91,10 +91,9 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-            lists:foreach(
-              fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
+            lists:foreach(fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
                          ,JObjs
-             ),
+                         ),
             'ok';
         {'error', _R} ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R])
@@ -116,7 +115,6 @@ maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) ->
         'false' -> 'ok'
     end.
 
-
 -spec unsolicited_endpoint_mwi_update(kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 unsolicited_endpoint_mwi_update('undefined', _) ->
     lager:warning("unsolicited endpoint mwi update for undefined Account");
@@ -136,7 +134,6 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
         {'error', _Error} -> lager:error("opening endpoint document ~s from db ~s", [EndpointId, AccountDb]);
         {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
     end.
-
 
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_endpoint_mwi_update(AccountDb, JObj) ->

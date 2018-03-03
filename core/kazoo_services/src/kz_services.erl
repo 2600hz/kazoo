@@ -1749,16 +1749,11 @@ handle_topup_transactions(Account, _, _) ->
 
 -spec did_topup_failed(kz_json:objects()) -> boolean().
 did_topup_failed(JObjs) ->
-    lists:foldl(
-      fun(JObj, Acc) ->
-              case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
-                  ?CODE_TOPUP -> 'true';
-                  _ -> Acc
-              end
-      end
-               ,'false'
-               ,JObjs
-     ).
+    lists:any(fun has_topup_code/1, JObjs).
+
+-spec has_topup_code(kz_json:object()) -> boolean().
+has_topup_code(JObj) ->
+    ?CODE_TOPUP =:= kz_json:get_integer_value(<<"pvt_code">>, JObj).
 
 -spec maybe_sync_reseller(kz_term:ne_binary(), kzd_services:doc()) -> kz_term:std_return().
 maybe_sync_reseller(AccountId, ServicesJObj) ->

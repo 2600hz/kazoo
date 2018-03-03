@@ -341,9 +341,11 @@ faxbox_log(#state{account_id=AccountId}=State) ->
 -spec error_doc() -> kz_term:ne_binary().
 error_doc() ->
     {Year, Month, _} = erlang:date(),
-    <<(kz_term:to_binary(Year))/binary,(kz_date:pad_month(Month))/binary
-      ,"-",(kz_binary:rand_hex(16))/binary
-    >>.
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,kz_binary:rand_hex(16)
+                   ]).
 
 -spec to_proplist(state()) -> kz_term:proplist().
 to_proplist(#state{}=State) ->

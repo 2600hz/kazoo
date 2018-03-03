@@ -508,11 +508,10 @@ update(Context, Id) ->
             Data = cb_context:req_data(Context),
             AppName = kz_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
             UpdatedApps =
-                kz_json:set_value(
-                  Id
+                kz_json:set_value(Id
                                  ,kz_json:set_value(<<"name">>, AppName, Data)
                                  ,Apps
-                 ),
+                                 ),
             UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc)
     end.

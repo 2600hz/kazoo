@@ -273,26 +273,19 @@ find_nameservers(Domain) ->
 find_nameservers(Domain, Options) ->
     case inet_res:lookup(kz_term:to_list(Domain), 'in', 'ns', Options) of
         [] ->
-            find_nameservers_parent(
-              binary:split(Domain, <<".">>, ['global'])
+            find_nameservers_parent(binary:split(Domain, <<".">>, ['global'])
                                    ,Options
-             );
+                                   );
         Nameservers -> Nameservers
     end.
 
 -spec find_nameservers_parent(kz_term:ne_binaries(), options()) -> [string()].
 find_nameservers_parent([], _) -> [];
 find_nameservers_parent([_, _]=Parts, Options) ->
-    Domain =
-        kz_term:to_list(
-          kz_binary:join(Parts, <<".">>)
-         ),
+    Domain = kz_term:to_list(kz_binary:join(Parts, <<".">>)),
     inet_res:lookup(kz_term:to_list(Domain), 'in', 'ns', Options);
 find_nameservers_parent([_|Parts], Options) ->
-    Domain =
-        kz_term:to_list(
-          kz_binary:join(Parts, <<".">>)
-         ),
+    Domain = kz_term:to_list(kz_binary:join(Parts, <<".">>)),
     case inet_res:lookup(kz_term:to_list(Domain), 'in', 'ns', Options) of
         [] -> find_nameservers_parent(Parts, Options);
         Nameservers -> Nameservers
@@ -332,7 +325,10 @@ maybe_resolve_srv_records(Address, Options) ->
 maybe_resolve_a_records(Domains, Options) ->
     lists:foldr(fun(Domain, IPs) ->
                         maybe_resolve_fold(Domain, IPs, Options)
-                end, [], Domains).
+                end
+               ,[]
+               ,Domains
+               ).
 
 -spec maybe_resolve_fold(kz_term:ne_binary(), kz_term:ne_binaries(), options()) -> kz_term:ne_binaries().
 maybe_resolve_fold(Domain, IPs, Options) ->
@@ -362,9 +358,9 @@ resolve_a_record_fold(IPTuple, I) ->
 -spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> kz_term:ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(kz_term:to_binary(A))/binary, "."
-      ,(kz_term:to_binary(B))/binary, "."
-      ,(kz_term:to_binary(C))/binary, "."
-      ,(kz_term:to_binary(D))/binary
+     ,(kz_term:to_binary(B))/binary, "."
+     ,(kz_term:to_binary(C))/binary, "."
+     ,(kz_term:to_binary(D))/binary
     >>;
 
 %% IPv4 mapped to IPv6
@@ -383,19 +379,19 @@ to_hex(I) ->
 -spec srvtuple_to_binary(srvtuple()) -> kz_term:ne_binary().
 srvtuple_to_binary({Priority, Weight, Port, Domain}) ->
     <<(kz_term:to_binary(Priority))/binary, " "
-      ,(kz_term:to_binary(Weight))/binary, " "
-      ,(kz_term:to_binary(Port))/binary, " "
-      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
+     ,(kz_term:to_binary(Weight))/binary, " "
+     ,(kz_term:to_binary(Port))/binary, " "
+     ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
 
 -spec naptrtuple_to_binary(naptrtuple()) -> kz_term:ne_binary().
 naptrtuple_to_binary({Order, Preference, Flags, Services, Regexp, Domain}) ->
     <<(kz_term:to_binary(Order))/binary, " "
-      ,(kz_term:to_binary(Preference))/binary, " "
-      ,"\"", (kz_term:to_upper_binary(Flags))/binary, "\" "
-      ,"\"", (kz_term:to_upper_binary(Services))/binary, "\" "
-      ,"\"", (kz_term:to_binary(Regexp))/binary, "\" "
-      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
+     ,(kz_term:to_binary(Preference))/binary, " "
+     ,"\"", (kz_term:to_upper_binary(Flags))/binary, "\" "
+     ,"\"", (kz_term:to_upper_binary(Services))/binary, "\" "
+     ,"\"", (kz_term:to_binary(Regexp))/binary, "\" "
+     ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
 
 -spec mxtuple_to_binary(mxtuple()) -> kz_term:ne_binary().
@@ -491,8 +487,7 @@ maybe_resolve_nameservers([Domain|Values], Nameservers) ->
     case inet_res:lookup(Domain, 'in', 'a', default_options()) of
         [] -> maybe_resolve_nameservers(Values, Nameservers);
         Addresses ->
-            maybe_resolve_nameservers(
-              Values
+            maybe_resolve_nameservers(Values
                                      ,[{Address, 53} || Address <- Addresses] ++ Nameservers
-             )
+                                     )
     end.

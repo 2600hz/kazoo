@@ -608,8 +608,8 @@ prepare_topup_transaction(Transaction) ->
 -spec modb_doc_id() -> kz_term:ne_binary().
 modb_doc_id() ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:now_s()),
-    <<(kz_term:to_binary(Year))/binary
-      ,(kz_date:pad_month(Month))/binary
-      ,"-"
-      ,(kz_binary:rand_hex(16))/binary
-    >>.
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,kz_binary:rand_hex(16)
+                   ]).

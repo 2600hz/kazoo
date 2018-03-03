@@ -426,10 +426,10 @@ maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
             FileJObj = kz_json:from_list([{<<"headers">>, Headers}
                                          ,{<<"contents">>, Content}
                                          ]),
-            FileName = <<"text_to_speech_"
-                         ,(kz_term:to_binary(kz_time:now_s()))/binary
-                         ,".wav"
-                       >>,
+            FileName = list_to_binary(["text_to_speech_"
+                                      ,kz_term:to_binary(kz_time:now_s())
+                                      ,".wav"
+                                      ]),
             C1 = update_media_binary(cb_context:set_req_files(Context, [{FileName, FileJObj}]), MediaId),
             case cb_context:resp_status(C1) =:= 'success'
                 andalso CreateOrUpdate

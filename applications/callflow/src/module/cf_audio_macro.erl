@@ -142,19 +142,19 @@ schema_test_() ->
                {\"macro\":\"play\"
                 ,\"id\":\"play_me\"
                }
-             ,{\"macro\":\"tts\"
+            ,{\"macro\":\"tts\"
                 ,\"text\":\"this can be said\"
                 ,\"language\":\"en-us\"
                }
-             ,{\"macro\":\"prompt\"
+            ,{\"macro\":\"prompt\"
                 ,\"id\":\"vm-enter_pin\"
                }
-             ,{\"macro\":\"say\"
+            ,{\"macro\":\"say\"
                 ,\"text\":\"123\"
                 ,\"method\":\"pronounced\"
                 ,\"type\":\"number\"
                }
-             ,{\"macro\":\"tone\"
+            ,{\"macro\":\"tone\"
                 ,\"frequencies\":[400,450]
                 ,\"duration_on\":400
                 ,\"duration_off\":200

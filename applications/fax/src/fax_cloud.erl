@@ -203,11 +203,12 @@ download_file(URL, Authorization) ->
         {'ok', 200, RespHeaders, RespBody} ->
             CT = kz_term:to_binary(props:get_value("content-type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
-            FileName = <<"/tmp/fax_printer_"
-                         ,(kz_term:to_binary(kz_time:now_s()))/binary
-                         ,"."
-                         ,Ext/binary
-                       >>,
+            FileName = list_to_binary(["/tmp/fax_printer_"
+                                      ,kz_term:to_binary(kz_time:now_s())
+                                      ,"."
+                                      ,Ext
+                                      ]),
+
             case file:write_file(FileName, RespBody) of
                 'ok' -> {'ok', CT, RespBody};
                 {'error', _}=Error ->

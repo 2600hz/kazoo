@@ -748,10 +748,9 @@ find_originate_timeout(JObj) ->
                    LT when LT > 0 -> LT;
                    _ -> 10
                end,
-    find_max_endpoint_timeout(
-      kz_json:get_value(<<"Endpoints">>, JObj, [])
+    find_max_endpoint_timeout(kz_json:get_list_value(<<"Endpoints">>, JObj, [])
                              ,OTimeout
-     ).
+                             ).
 
 -spec find_max_endpoint_timeout(kz_json:objects(), pos_integer()) -> pos_integer().
 find_max_endpoint_timeout([], T) -> T;

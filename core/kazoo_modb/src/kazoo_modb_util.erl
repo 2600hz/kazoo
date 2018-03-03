@@ -95,8 +95,8 @@ modb_id(Year, Month) ->
 %%------------------------------------------------------------------------------
 -spec modb_id(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month(), kz_term:ne_binary()) -> kz_term:ne_binary().
 modb_id(Year, Month, Id) ->
-    <<(kz_term:to_binary(Year))/binary
-      ,(kz_date:pad_month(Month))/binary
-      ,"-"
-      ,(kz_term:to_binary(Id))/binary
-    >>.
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,kz_term:to_binary(Id)
+                   ]).

@@ -77,14 +77,14 @@ get_fs_app(Node, UUID, JObj, <<"noop">>) ->
             Args = case kz_api:msg_id(JObj) of
                        'undefined' ->
                            <<"Event-Subclass=kazoo::noop,Event-Name=CUSTOM"
-                             ,",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
-                             ,",kazoo_application_name=noop"
+                             ",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
+                             ",kazoo_application_name=noop"
                            >>;
                        NoopId ->
                            <<"Event-Subclass=kazoo::noop,Event-Name=CUSTOM"
-                             ,",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
-                             ,",kazoo_application_name=noop"
-                             ,",kazoo_application_response=", (kz_term:to_binary(NoopId))/binary
+                             ",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
+                             ",kazoo_application_name=noop"
+                             ",kazoo_application_response=", (kz_term:to_binary(NoopId))/binary
                            >>
                    end,
             {<<"event">>, Args}
@@ -541,9 +541,7 @@ get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
         'false' -> {'error', <<"respond failed to execute as JObj did not validate">>};
         'true' ->
             Code = kz_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE),
-            Response = <<Code/binary ," "
-                         ,(kz_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary
-                       >>,
+            Response = <<Code/binary ," ", (kz_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
             {<<"respond">>, Response}
     end;
 
@@ -743,13 +741,12 @@ prepare_app(Target, Node, UUID, JObj) ->
                                   {'execute', atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()} |
                                   {'error', kz_term:ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
-    case kz_amqp_worker:call_collect(
-           [{<<"Call-ID">>, TargetCallId}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ]
+    case kz_amqp_worker:call_collect([{<<"Call-ID">>, TargetCallId}
+                                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ]
                                     ,fun(C) -> kapi_call:publish_channel_status_req(TargetCallId, C) end
                                     ,{'ecallmgr', 'true'}
-          )
+                                    )
     of
         {'ok', JObjs} ->
             lager:debug("got response to channel query, checking if ~s is active.", [TargetCallId]),

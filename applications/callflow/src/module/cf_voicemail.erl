@@ -1201,12 +1201,11 @@ overwrite_temporary_unavailable_greeting(AttachmentName
                              ,{<<"Duration-ON">>, <<"500">>}
                              ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _NoopId = kapps_call_command:audio_macro(
-                [{'prompt', <<"vm-record_temp_greeting">>}
-                ,{'tones', [Tone]}
-                ]
+    _NoopId = kapps_call_command:audio_macro([{'prompt', <<"vm-record_temp_greeting">>}
+                                             ,{'tones', [Tone]}
+                                             ]
                                             ,Call
-               ),
+                                            ),
     case kapps_call_command:b_record(AttachmentName, Call) of
         {'ok', Msg} ->
             case review_recording(AttachmentName, 'false', Box, Call) of

@@ -260,13 +260,12 @@ unordered_group_members(Weight, Member, JObj) ->
 order_group_members(GroupWeight, Member, JObj) ->
     Endpoints = kz_json:get_json_value(<<"endpoints">>, JObj, kz_json:new()),
     GroupMembers =
-        kz_json:foldl(
-          fun(Key, Endpoint, Acc) ->
-                  order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member)
-          end
+        kz_json:foldl(fun(Key, Endpoint, Acc) ->
+                              order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member)
+                      end
                      ,orddict:new()
                      ,Endpoints
-         ),
+                     ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 
 -spec order_group_member_fold(kz_json:path(), kz_json:object(), orddict:orddict(), group_weight(), kz_json:object()) ->
