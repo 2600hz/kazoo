@@ -207,9 +207,10 @@ diff: dialyze-it
 bump-copyright:
 	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 
+FMT_SHA = 237604a566879bda46d55d9e74e3e66daf1b557a
 $(FMT):
-	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/237604a566879bda46d55d9e74e3e66daf1b557a' | tar -vxz -C $(ROOT)/make/
-	mv $(wildcard $(ROOT)/make/erlang-formatter-*) $(ROOT)/make/erlang-formatter
+	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/$(FMT_SHA)' | tar -vxz -C $(ROOT)/make/
+	mv $(ROOT)/make/erlang-formatter-$(FMT_SHA) $(ROOT)/make/erlang-formatter
 
 fmt-all: $(FMT)
 	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
