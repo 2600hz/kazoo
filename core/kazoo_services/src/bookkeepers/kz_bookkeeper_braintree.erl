@@ -409,10 +409,10 @@ timestamp_to_braintree('undefined') ->
     timestamp_to_braintree(kz_time:now_s());
 timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([kz_date:pad_month(M)), "/"
-                  ,kz_date:pad_month(D), "/"
-                  ,kz_term:to_binary(Y)
-                  ]).
+    list_to_binary([kz_date:pad_month(M), "/"
+                   ,kz_date:pad_month(D), "/"
+                   ,kz_term:to_binary(Y)
+                   ]).
 
 %%------------------------------------------------------------------------------
 %% @doc

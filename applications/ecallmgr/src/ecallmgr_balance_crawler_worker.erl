@@ -56,7 +56,7 @@ balance_check_response(JObj) ->
 
 -spec maybe_add_key(kz_json:key(), boolean(), kz_json:keys()) -> kz_json:keys().
 maybe_add_key(Key, 'false', Acc) -> [Key | Acc];
-maybe_add_key(Key, 'true', Acc) -> Acc.
+maybe_add_key(_Key, 'true', Acc) -> Acc.
 
 -spec disconnect_accounts(kz_term:ne_binaries()) -> 'ok'.
 disconnect_accounts([]) -> 'ok';

@@ -505,7 +505,7 @@ extract_device_registrations(JObjs) ->
 -spec extract_device_registrations(kz_json:objects(), sets:set()) -> sets:set().
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
-    S = lists:foldl(fun extract_device_registraion/2
+    S = lists:foldl(fun extract_device_registration/2
                    ,Set
                    ,kz_json:get_value(<<"Fields">>, JObj, [])
                    ),

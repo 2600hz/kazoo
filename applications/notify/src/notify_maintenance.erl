@@ -160,7 +160,7 @@ reload_smtp_configs() ->
 -spec template_files() -> kz_term:ne_binaries().
 template_files() ->
     {'ok', Files} = file:list_dir(?TEMPLATE_PATH),
-    lists:foldl(fun maybe_include_file/2 end
+    lists:foldl(fun maybe_include_file/2
                ,[]
                ,Files
                ).

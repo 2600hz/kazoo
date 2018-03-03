@@ -455,15 +455,15 @@ filter_users(Users, DTMFs, 'first') ->
                  )
      ).
 
--spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer() 'last' | 'first') ->
+-spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer(), 'last' | 'first') ->
                               queue:queue().
 maybe_queue_user(User, Queue, DTMFs, Size, FirstCheck) ->
     case maybe_dtmf_matches(DTMFs, Size, first_check(FirstCheck, User)) of
-        'true' -> queue:in_r(U, Q);
+        'true' -> queue:in_r(User, Queue);
         'false' ->
             case maybe_dtmf_matches(DTMFs, Size, second_check(FirstCheck, User)) of
-                'true' -> queue:in(U, Q);
-                'false' -> Q
+                'true' -> queue:in(User, Queue);
+                'false' -> Queue
             end
     end.
 
