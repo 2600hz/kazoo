@@ -32,6 +32,8 @@
         ,node_to_json/1
         ]).
 
+-export([with_role/1, with_role/2]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -545,7 +547,7 @@ init([]) ->
                              ,kz_term:to_binary(erlang:system_info('otp_release'))
                              ]),
     State = #state{tab = Tab
-                  ,zone = get_zone()
+                  ,zone = local_zone()
                   ,md5 = node_encoded()
                   ,version = Version
                   },
@@ -913,13 +915,6 @@ whapp_info_to_json(#whapp_info{startup=Start, roles=Roles}) ->
       ,{<<"Roles">>, Roles}
       ]).
 
--spec get_zone() -> atom().
-get_zone() ->
-    case kz_config:get(kz_config:get_node_section_name(), 'zone') of
-        [Zone] -> kz_term:to_atom(Zone, 'true');
-        _Else -> 'local'
-    end.
-
 -spec get_zone(kz_json:object(), nodes_state()) -> atom().
 get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
     case kz_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj) of
@@ -1137,29 +1132,37 @@ determine_whapp_role_count_fold(Whapps, Role, Acc, Whapp) ->
 
 -spec node_role_count(kz_term:text()) -> integer().
 node_role_count(Role) ->
-    node_role_count(Role, 'false').
+    length(with_role(Role)).
 
 -spec node_role_count(kz_term:text(), kz_term:text() | boolean() | 'remote') -> integer().
-node_role_count(Role, Arg) when not is_atom(Arg) ->
-    node_role_count(Role, kz_term:to_atom(Arg, 'true'));
-node_role_count(Role, 'false') ->
+node_role_count(Role, Arg) ->
+    length(with_role(Role, Arg)).
+
+-spec with_role(kz_term:text()) -> kz_types:kz_nodes().
+with_role(Role) ->
+    with_role(Role, 'false').
+
+-spec with_role(kz_term:text(), kz_term:text() | boolean() | 'remote') -> kz_types:kz_nodes().
+with_role(Role, Arg) when not is_atom(Arg) ->
+    with_role(Role, kz_term:to_atom(Arg, 'true'));
+with_role(Role, 'false') ->
     MatchSpec = [{#kz_node{roles='$1'
                           ,zone = local_zone()
                           ,_ = '_'
                           }
                  ,[{'=/=', '$1', []}]
-                 ,['$1']
+                 ,['$_']
                  }],
-    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
-node_role_count(Role, 'true') ->
+    with_role_filter(kz_term:to_binary(Role), MatchSpec);
+with_role(Role, 'true') ->
     MatchSpec = [{#kz_node{roles='$1'
                           ,_ = '_'
                           }
                  ,[{'=/=', '$1', []}]
-                 ,['$1']
+                 ,['$_']
                  }],
-    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
-node_role_count(Role, 'remote') ->
+    with_role_filter(kz_term:to_binary(Role), MatchSpec);
+with_role(Role, 'remote') ->
     Zone = local_zone(),
     MatchSpec = [{#kz_node{roles='$1'
                           ,zone='$2'
@@ -1169,25 +1172,22 @@ node_role_count(Role, 'remote') ->
                    ,{'=/=', '$1', []}
                    ,{'=/=', '$2', {'const', Zone}}
                    }]
-                 ,['$1']
+                 ,['$_']
                  }],
-    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
-node_role_count(Role, Unhandled) ->
+    with_role_filter(kz_term:to_binary(Role), MatchSpec);
+with_role(Role, Unhandled) ->
     lager:debug("invalid parameters ~p , ~p , ~p", [Role, Unhandled]),
-    0.
+    [].
 
--spec determine_node_role_count(kz_term:ne_binary(), ets:match_spec()) -> non_neg_integer().
-determine_node_role_count(Role, MatchSpec) ->
-    lists:foldl(fun(Roles, Acc) when is_list(Roles) ->
-                        determine_node_role_count_fold(Roles, Acc, Role)
+-spec with_role_filter(kz_term:ne_binary(), ets:match_spec()) -> kz_types:kz_nodes().
+with_role_filter(Role, MatchSpec) ->
+    lists:foldl(fun(#kz_node{roles=Roles}=Node, Acc) when is_list(Roles) ->
+                        case props:is_defined(Role, Roles) of
+                            'true' -> [Node | Acc];
+                            'false' -> Acc
+                        end
                 end
-               ,0
+               ,[]
                ,ets:select(?MODULE, MatchSpec)
                ).
 
--spec determine_node_role_count_fold(kz_term:proplist(), non_neg_integer(), kz_term:ne_binary()) -> non_neg_integer().
-determine_node_role_count_fold(Roles, Acc, Role) ->
-    case props:is_defined(Role, Roles) of
-        'true' -> Acc + 1;
-        'false' -> Acc
-    end.
