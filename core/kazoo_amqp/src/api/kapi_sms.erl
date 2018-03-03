@@ -62,8 +62,8 @@
                        ,{<<"Body">>, fun is_binary/1}
                        ]).
 -define(SMS_ROUTING_KEY(RouteId,CallId), <<"message.route."
-                                           ,(amqp_util:encode(RouteId))/binary, "."
-                                           ,(amqp_util:encode(CallId))/binary
+                                          ,(amqp_util:encode(RouteId))/binary, "."
+                                          ,(amqp_util:encode(CallId))/binary
                                          >>).
 
 %% SMS Endpoints
@@ -153,8 +153,8 @@
                             ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                             ]).
 -define(INBOUND_ROUTING_KEY(RouteId, CallId), <<"message.inbound."
-                                                ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                ,(amqp_util:encode(CallId))/binary
+                                               ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                               ,(amqp_util:encode(CallId))/binary
                                               >>).
 
 %% Outbound
@@ -193,8 +193,8 @@
                              ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
 -define(OUTBOUND_ROUTING_KEY(RouteId, CallId), <<"message.outbound."
-                                                 ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                 ,(amqp_util:encode(CallId))/binary
+                                                ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                                ,(amqp_util:encode(CallId))/binary
                                                >>).
 
 -define(SMS_DEFAULT_OUTBOUND_OPTIONS, kz_json:from_list([{<<"delivery_mode">>, 2}

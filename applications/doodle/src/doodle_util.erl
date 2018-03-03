@@ -479,7 +479,7 @@ maybe_reschedule_sms(Code, Message, AccountId, Call) ->
                  [{<<"code">>, Code}
                  ,{<<"reason">>, Message}
                  ]
-                                 ,kapps_call:kvs_fetch(<<"flow_schedule">>, kz_json:new(), Call)
+                ,kapps_call:kvs_fetch(<<"flow_schedule">>, kz_json:new(), Call)
                 ),
     case apply_reschedule_logic(kz_json:get_values(Rules), Schedule) of
         'no_rule' ->
@@ -587,7 +587,7 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
 apply_reschedule_rule(<<"report">>, V, JObj) ->
     Call = get('call'),
     Error = <<(kz_json:get_value(<<"code">>, JObj, <<>>))/binary, " "
-              ,(kz_json:get_value(<<"reason">>, JObj, <<>>))/binary
+             ,(kz_json:get_value(<<"reason">>, JObj, <<>>))/binary
             >>,
     Props = props:filter_undefined(
               [{<<"To">>, kapps_call:to_user(Call)}

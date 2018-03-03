@@ -73,7 +73,7 @@ http_request(#sync{method = <<"post">>, url = Url} = Sync) ->
     lager:debug("attempting http billing sync with ~s: ~s", [Url, Payload]),
     handle_resp(
       kz_http:post(Url, Headers, Payload, ?HTTP_OPTS)
-               ,Sync
+     ,Sync
      ).
 
 -spec handle_resp(kz_http:ret(), sync()) -> bookkeeper_sync_result().

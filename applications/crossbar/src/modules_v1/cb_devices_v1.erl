@@ -309,12 +309,12 @@ error_used_mac_address(Context) ->
     MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     cb_context:add_validation_error(
       ?KEY_MAC_ADDRESS
-                                   ,<<"unique">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Mac address already in use">>}
-                                      ,{<<"cause">>, MacAddress}
-                                      ])
-                                   ,Context
+     ,<<"unique">>
+          ,kz_json:from_list(
+             [{<<"message">>, <<"Mac address already in use">>}
+             ,{<<"cause">>, MacAddress}
+             ])
+     ,Context
      ).
 
 -spec get_mac_addresses(kz_term:ne_binary()) -> kz_term:ne_binaries().
@@ -364,12 +364,12 @@ validate_device_creds(Realm, DeviceId, Context) ->
         Else ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"method">>]
-                                               ,<<"enum">>
-                                               ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
-                                                                  ,{<<"target">>, [<<"password">>, <<"ip">>]}
-                                                                  ,{<<"cause">>, Else}
-                                                                  ])
-                                               ,Context
+                 ,<<"enum">>
+                      ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
+                                         ,{<<"target">>, [<<"password">>, <<"ip">>]}
+                                         ,{<<"cause">>, Else}
+                                         ])
+                 ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -383,11 +383,11 @@ validate_device_password(Realm, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"username">>]
-                                               ,<<"unique">>
-                                               ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
-                                                                  ,{<<"cause">>, Username}
-                                                                  ])
-                                               ,Context
+                 ,<<"unique">>
+                      ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
+                                         ,{<<"cause">>, Username}
+                                         ])
+                 ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -400,11 +400,11 @@ validate_device_ip(IP, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                                               ,<<"type">>
-                                               ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
-                                                                  ,{<<"cause">>, IP}
-                                                                  ])
-                                               ,Context
+                 ,<<"type">>
+                      ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
+                                         ,{<<"cause">>, IP}
+                                         ])
+                 ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -418,12 +418,12 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                                               ,<<"unique">>
-                                               ,kz_json:from_list(
-                                                  [{<<"message">>, <<"SIP IP already in use">>}
-                                                  ,{<<"cause">>, IP}
-                                                  ])
-                                               ,Context
+                 ,<<"unique">>
+                      ,kz_json:from_list(
+                         [{<<"message">>, <<"SIP IP already in use">>}
+                         ,{<<"cause">>, IP}
+                         ])
+                 ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.

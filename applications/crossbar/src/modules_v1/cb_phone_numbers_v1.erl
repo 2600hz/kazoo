@@ -337,8 +337,8 @@ identify(Context, Number) ->
         {'error', 'not_reconcilable'} ->
             cb_context:add_system_error(
               'bad_identifier'
-                                       ,kz_json:from_list([{<<"cause">>, Number}])
-                                       ,Context
+             ,kz_json:from_list([{<<"cause">>, Number}])
+             ,Context
              );
         {'error', E} ->
             set_response({kz_term:to_binary(E), <<>>}, Number, Context);

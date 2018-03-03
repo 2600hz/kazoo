@@ -41,7 +41,7 @@ play(Data, Call, Media) ->
     PlayCommand = kapps_call_command:play_command(Media, ?ANY_DIGIT, leg(Data, Call), Call),
     kapps_call_command:send_command(
       kz_json:set_value(<<"Insert-At">>, <<"now">>, PlayCommand)
-                                   ,Call
+     ,Call
      ).
 
 -spec leg(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().

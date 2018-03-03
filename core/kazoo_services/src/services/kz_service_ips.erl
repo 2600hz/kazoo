@@ -37,8 +37,8 @@ reconcile(Services0, IpType) when is_binary(IpType) ->
 reconcile(Services, Props) ->
     lists:foldl(
       fun reconcile_foldl/2
-               ,reconcile(Services)
-               ,Props
+     ,reconcile(Services)
+     ,Props
      ).
 
 -spec reconcile_foldl({kz_term:ne_binary(), integer() | kz_term:ne_binary()}, kz_services:services()) ->

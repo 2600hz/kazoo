@@ -138,7 +138,7 @@ new_doc(AccountDb, Ref) ->
                                   || _ <- lists:seq(1, 12)
                                  ]
                               ])
-                                      ,AccountDb
+           ,AccountDb
            ),
     {'ok', Saved} = kz_datamgr:save_doc(AccountDb, Doc),
     {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, kz_doc:id(Saved)),

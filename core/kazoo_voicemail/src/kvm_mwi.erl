@@ -93,7 +93,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
             lists:foreach(
               fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
-                         ,JObjs
+             ,JObjs
              ),
             'ok';
         {'error', _R} ->

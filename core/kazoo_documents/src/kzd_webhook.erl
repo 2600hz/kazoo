@@ -67,7 +67,7 @@ disable(Hook, Reason) ->
         [{?IS_ENABLED, 'false'}
         ,{?DISABLED_MESSAGE, Reason}
         ])
-                      ,Hook
+     ,Hook
      ).
 
 -spec disabled_message(doc()) -> kz_term:api_binary().

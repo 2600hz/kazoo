@@ -621,11 +621,11 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
 
             {'next_state', 'ringing', State#state{
                                         wrapup_timeout=WrapupTimer
-                                                 ,member_call_id=CallId
-                                                 ,member_call_start=kz_time:now()
-                                                 ,member_call_queue_id=QueueId
-                                                 ,caller_exit_key=CallerExitKey
-                                                 ,agent_call_id='undefined'
+                                       ,member_call_id=CallId
+                                       ,member_call_start=kz_time:now()
+                                       ,member_call_queue_id=QueueId
+                                       ,caller_exit_key=CallerExitKey
+                                       ,agent_call_id='undefined'
                                        }}
     end;
 ready('cast', {'member_connect_req', _}, #state{max_connect_failures=Max

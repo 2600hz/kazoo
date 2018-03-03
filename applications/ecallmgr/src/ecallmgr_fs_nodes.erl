@@ -154,8 +154,8 @@ flush() -> do_flush(<<>>).
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(User, Realm) ->
     Args = <<"id "
-             ,User/binary, " "
-             ,Realm/binary
+            ,User/binary, " "
+            ,Realm/binary
            >>,
     do_flush(Args).
 

@@ -195,7 +195,7 @@
                      ,?MOD_FUN_ARGS('lager_config', 'get', _) % args
                      ]
                     )
-                    ,_ % clauses
+                 ,_ % clauses
                  )
        ).
 

@@ -213,13 +213,13 @@ register_overwrite(JObj, Props) ->
     Realm = kz_json:get_binary_value(<<"Realm">>, JObj, <<"unknown">>),
     PrevContact = ensure_contact_user(
                     kz_json:get_value(<<"Previous-Contact">>, JObj)
-                                     ,Username
-                                     ,Realm
+                   ,Username
+                   ,Realm
                    ),
     NewContact = ensure_contact_user(
                    kz_json:get_value(<<"Contact">>, JObj)
-                                    ,Username
-                                    ,Realm
+                  ,Username
+                  ,Realm
                   ),
     SipUri = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
     PrevBody = kz_term:to_list(<<"Replaced-By:", (kz_term:to_binary(NewContact))/binary>>),

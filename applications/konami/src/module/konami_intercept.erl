@@ -63,7 +63,7 @@ maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
       kapps_call:set_control_queue(ControlQueue
                                   ,kapps_call:set_call_id(CallId, Call)
                                   )
-                                  ,'a'
+     ,'a'
      ),
 
     {'stop', Call};
@@ -72,7 +72,7 @@ maybe_update_metaflow_control(_Data, Call, CallId, _ControlQueue, 'b') ->
 
     konami_code_statem:transfer_to(
       kapps_call:set_other_leg_call_id(CallId, Call)
-                                  ,'b'
+     ,'b'
      ),
 
     {'stop', Call}.
@@ -124,8 +124,8 @@ build_endpoints(<<"user">>, OwnerId, SourceDeviceId, Params, Call) ->
                   _Else -> Acc
               end
       end
-               ,[]
-               ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
+     ,[]
+     ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
      ).
 
 -spec build_originate(kz_json:objects(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> kz_term:proplist().

@@ -541,8 +541,8 @@ init([]) ->
                                          ]),
     lager:debug("monitoring nodes"),
     Version = <<(kz_util:kazoo_version())/binary
-                ," - "
-                ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
+               ," - "
+               ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
               >>,
     State = #state{tab = Tab
                   ,zone = get_zone()

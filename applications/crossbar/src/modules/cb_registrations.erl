@@ -124,7 +124,7 @@ validate(Context, Username) ->
 validate_count(Context) ->
     crossbar_util:response(
       kz_json:from_list([{<<"count">>, count_registrations(Context)}])
-                          ,Context
+     ,Context
      ).
 
 -spec validate_sip_username(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().

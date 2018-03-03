@@ -104,7 +104,7 @@ set_account_id(_Inception, NumberProps, JObj) ->
         ,{?CCV(<<"Account-Realm">>), AccountRealm}
         ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
         ])
-                      ,JObj
+     ,JObj
      ).
 
 -spec set_inception(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
@@ -127,11 +127,11 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
                 ,{?CCV(<<"Authorizing-ID">>), Id}
                 ,{?CCV(<<"Owner-ID">>), OwnerId}
                 ])
-                              ,kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
-                                                   ,?CCV(<<"Authorizing-ID">>)
-                                                   ]
-                                                  ,JObj
-                                                  )
+             ,kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
+                                  ,?CCV(<<"Authorizing-ID">>)
+                                  ]
+                                 ,JObj
+                                 )
              );
         {'error', _} -> JObj
     end;

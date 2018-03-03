@@ -243,11 +243,11 @@ get_sip_from(Props, <<"outbound">>) ->
     <<Number/binary, "@", Realm/binary>>;
 get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
-                ,"@"
-                ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                          ,<<"variable_sip_from_host">>
-                                          ,<<"sip_from_host">>
-                                          ], Props, ?DEFAULT_REALM))/binary
+               ,"@"
+               ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                         ,<<"variable_sip_from_host">>
+                                         ,<<"sip_from_host">>
+                                         ], Props, ?DEFAULT_REALM))/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
                             ,<<"variable_sip_from_uri">>
@@ -1103,8 +1103,8 @@ create_masquerade_event(Application, EventName, Boolean) ->
                  'false' -> <<>>
              end,
     <<Prefix/binary, "Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
-      ,",kazoo_event_name=", EventName/binary
-      ,",kazoo_application_name=", Application/binary
+     ,",kazoo_event_name=", EventName/binary
+     ,",kazoo_application_name=", Application/binary
     >>.
 
 %%------------------------------------------------------------------------------

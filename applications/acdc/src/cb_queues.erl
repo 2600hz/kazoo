@@ -259,12 +259,12 @@ is_valid_mode(Context, Data) ->
             {'false'
             ,cb_context:add_validation_error(
                <<"mode">>
-                                            ,<<"enum">>
-                                            ,kz_json:from_list(
-                                               [{<<"message">>, <<"Value not found in enumerated list of values">>}
-                                               ,{<<"cause">>, Mode}
-                                               ])
-                                            ,Context
+                   ,<<"enum">>
+                   ,kz_json:from_list(
+                      [{<<"message">>, <<"Value not found in enumerated list of values">>}
+                      ,{<<"cause">>, Mode}
+                      ])
+              ,Context
               )
             }
     end.
@@ -278,11 +278,11 @@ is_valid_call(Context, Data) ->
             {'false'
             ,cb_context:add_validation_error(
                <<"call_id">>
-                                            ,<<"required">>
-                                            ,kz_json:from_list(
-                                               [{<<"message">>, <<"Field is required but missing">>}]
-                                              )
-                                            ,Context
+                   ,<<"required">>
+                   ,kz_json:from_list(
+                      [{<<"message">>, <<"Field is required but missing">>}]
+                     )
+              ,Context
               )
             };
         CallId ->
@@ -299,12 +299,12 @@ is_active_call(Context, CallId) ->
             {'false'
             ,cb_context:add_validation_error(
                <<"call_id">>
-                                            ,<<"not_found">>
-                                            ,kz_json:from_list(
-                                               [{<<"message">>, <<"Call was not found">>}
-                                               ,{<<"cause">>, CallId}
-                                               ])
-                                            ,Context
+                   ,<<"not_found">>
+                   ,kz_json:from_list(
+                      [{<<"message">>, <<"Call was not found">>}
+                      ,{<<"cause">>, CallId}
+                      ])
+              ,Context
               )
             };
         {'ok', _} -> 'true'
@@ -318,12 +318,12 @@ is_valid_queue(Context, <<_/binary>> = QueueId) ->
             {'false'
             ,cb_context:add_validation_error(
                <<"queue_id">>
-                                            ,<<"not_found">>
-                                            ,kz_json:from_list(
-                                               [{<<"message">>, <<"Queue was not found">>}
-                                               ,{<<"cause">>, QueueId}
-                                               ])
-                                            ,Context
+                   ,<<"not_found">>
+                   ,kz_json:from_list(
+                      [{<<"message">>, <<"Queue was not found">>}
+                      ,{<<"cause">>, QueueId}
+                      ])
+              ,Context
               )
             }
     end;
@@ -334,9 +334,9 @@ is_valid_queue(Context, QueueJObj) ->
             {'false'
             ,cb_context:add_validation_error(
                <<"queue_id">>
-                                            ,<<"type">>
-                                            ,kz_json:from_list([{<<"message">>, <<"Id did not represent a queue">>}])
-                                            ,Context
+                   ,<<"type">>
+                   ,kz_json:from_list([{<<"message">>, <<"Id did not represent a queue">>}])
+              ,Context
               )
             }
     end.
@@ -350,12 +350,12 @@ is_valid_endpoint(Context, DataJObj) ->
             {'false'
             ,cb_context:add_validation_error(
                <<"id">>
-                                            ,<<"not_found">>
-                                            ,kz_json:from_list(
-                                               [{<<"message">>, <<"Id was not found">>}
-                                               ,{<<"cause">>, Id}
-                                               ])
-                                            ,Context
+                   ,<<"not_found">>
+                   ,kz_json:from_list(
+                      [{<<"message">>, <<"Id was not found">>}
+                      ,{<<"cause">>, Id}
+                      ])
+              ,Context
               )
             }
     end.
@@ -367,12 +367,12 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
             {'false'
             ,cb_context:add_validation_error(
                <<"id">>
-                                            ,<<"type">>
-                                            ,kz_json:from_list(
-                                               [{<<"message">>, <<"Id did not represent a valid endpoint">>}
-                                               ,{<<"cause">>, Type}
-                                               ])
-                                            ,Context
+                   ,<<"type">>
+                   ,kz_json:from_list(
+                      [{<<"message">>, <<"Id did not represent a valid endpoint">>}
+                      ,{<<"cause">>, Type}
+                      ])
+              ,Context
               )
             }
     end.
@@ -427,8 +427,8 @@ eavesdrop_req(Context, Prop) ->
         {'error', 'timeout'} ->
             cb_context:add_system_error(
               'timeout'
-                                       ,kz_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
-                                       ,Context
+             ,kz_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
+             ,Context
              );
         {'error', E} -> crossbar_util:response('error', <<"error">>, 500, E, Context)
     end.
@@ -679,7 +679,7 @@ format_stats(Context, Resp) ->
                               ]),
     cb_context:set_resp_status(
       cb_context:set_resp_data(Context, Stats)
-                              ,'success'
+     ,'success'
      ).
 
 fetch_ranged_queue_stats(Context, StartRange) ->

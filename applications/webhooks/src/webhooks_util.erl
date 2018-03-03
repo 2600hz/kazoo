@@ -193,7 +193,7 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
     lager:debug("sending hook ~s(~s) with interaction id ~s via 'get' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
 
     Url = kz_term:to_list(<<(kz_term:to_binary(URI))/binary
-                            ,(kz_term:to_binary([$? | kz_http_util:json_to_querystring(JObj)]))/binary
+                           ,(kz_term:to_binary([$? | kz_http_util:json_to_querystring(JObj)]))/binary
                           >>),
     Headers = ?HTTP_REQ_HEADERS(Hook),
     Debug = debug_req(Hook, EventId, URI, Headers, <<>>),
@@ -367,8 +367,8 @@ fix_value(O) -> kz_term:to_lower_binary(O).
 -spec fix_error_value(atom() | {atom(), atom()}) -> kz_term:ne_binary().
 fix_error_value({E, R}) ->
     <<(kz_term:to_binary(E))/binary
-      ,": "
-      ,(kz_term:to_binary(R))/binary
+     ,": "
+     ,(kz_term:to_binary(R))/binary
     >>;
 fix_error_value(E) ->
     kz_term:to_binary(E).

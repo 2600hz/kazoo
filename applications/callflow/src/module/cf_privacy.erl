@@ -35,7 +35,7 @@ update_call(CaptureGroup, {'ok', Call}, Mode, Overwrite) ->
     CCVs = ccvs_by_privacy_mode(Mode),
     Routines = [{fun kapps_call:set_request/2
                 ,<<Normalize/binary, "@"
-                   ,(kapps_call:request_realm(Call))/binary
+                  ,(kapps_call:request_realm(Call))/binary
                  >>
                 }
                ,{fun kapps_call:set_custom_channel_vars/2, CCVs}

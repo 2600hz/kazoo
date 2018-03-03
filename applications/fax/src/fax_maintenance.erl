@@ -180,9 +180,9 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
     FaxMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_date:pad_month(Month))/binary
-              ,"-"
-              ,DocId/binary
+             ,(kz_date:pad_month(Month))/binary
+             ,"-"
+             ,DocId/binary
             >>,
     io:format("moving doc ~s/~s to ~s/~s~n",[AccountDb, DocId, AccountMODb, FaxId]),
     case kazoo_modb:move_doc(AccountDb, DocId, FaxMODb, FaxId, Options) of

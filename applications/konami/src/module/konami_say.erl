@@ -31,6 +31,6 @@ handle(Data, Call) ->
                                                ),
     kapps_call_command:send_command(
       kz_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
-                                   ,Call
+     ,Call
      ),
     {'continue', Call}.

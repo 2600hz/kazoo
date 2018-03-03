@@ -384,7 +384,7 @@ accounts([[AccountId, ResellerId]|Ids], Accounts) ->
     accounts(Ids
             ,sets:add_element(
                AccountId
-                             ,sets:add_element(ResellerId, Accounts)
+              ,sets:add_element(ResellerId, Accounts)
               )
             ).
 
@@ -696,9 +696,9 @@ ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
     Channels = kz_json:get_value(<<"Channels">>, JObj),
     ecallmgr_channel_ids(
       JObjs
-                        ,lists:foldl(fun(ChannelId, Ids) ->
-                                             sets:add_element(ChannelId, Ids)
-                                     end, ChannelIds, kz_json:get_keys(Channels))
+     ,lists:foldl(fun(ChannelId, Ids) ->
+                          sets:add_element(ChannelId, Ids)
+                  end, ChannelIds, kz_json:get_keys(Channels))
      ).
 
 -spec fix_channel_disparity(sets:set(), sets:set()) -> 'ok'.

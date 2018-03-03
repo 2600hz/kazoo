@@ -147,7 +147,7 @@ item_minimum(Plan, CategoryId, ItemId, Default) ->
                             ,Plan
                             ,kz_json:new()
                             )
-                         ,Default
+     ,Default
      ).
 
 -spec item_name(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -155,8 +155,8 @@ item_name(Plan, CategoryId, ItemId) ->
     kzd_item_plan:name(
       kz_json:get_json_value(
         [?PLAN, CategoryId, ItemId]
-                            ,Plan
-                            ,kz_json:new()
+       ,Plan
+       ,kz_json:new()
        )
      ).
 

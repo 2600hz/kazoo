@@ -82,9 +82,9 @@ levels(Level, AllLevels) ->
 -spec binding_key(edr_severity(), edr_verbosity(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 binding_key(Severity, Verbosity, AccountId, AppName) ->
     <<"edr.", (kz_term:to_binary(Severity))/binary, "."
-      ,(kz_term:to_binary(Verbosity))/binary, "."
-      ,(kz_term:to_binary(AccountId))/binary, "."
-      ,(kz_term:to_binary(AppName))/binary>>.
+     ,(kz_term:to_binary(Verbosity))/binary, "."
+     ,(kz_term:to_binary(AccountId))/binary, "."
+     ,(kz_term:to_binary(AppName))/binary>>.
 
 -spec event_binding_key(edr_event()) -> kz_term:ne_binary().
 event_binding_key(#edr_event{account_id=AccountId

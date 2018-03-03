@@ -259,9 +259,9 @@ send_error(Node, JObj, Err) ->
 format_endpoint(Endpoint, Props, JObj) ->
     format_endpoint(
       Endpoint
-                   ,Props
-                   ,JObj
-                   ,kz_json:get_value(<<"Invite-Format">>, Endpoint)
+     ,Props
+     ,JObj
+     ,kz_json:get_value(<<"Invite-Format">>, Endpoint)
      ).
 
 -spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary()) ->

@@ -131,15 +131,15 @@ node(JObj) ->
 
 routing_key(Event, Name) when is_binary(Name) ->
     <<"globals."
-      ,(kz_term:to_binary(Event))/binary
-      ,"."
-      ,(amqp_util:encode(Name))/binary
+     ,(kz_term:to_binary(Event))/binary
+     ,"."
+     ,(amqp_util:encode(Name))/binary
     >>;
 routing_key(Event, Name) ->
     <<"globals."
-      ,(kz_term:to_binary(Event))/binary
-      ,"."
-      ,(kz_term:to_hex_binary(maybe_encode(Name)))/binary
+     ,(kz_term:to_binary(Event))/binary
+     ,"."
+     ,(kz_term:to_hex_binary(maybe_encode(Name)))/binary
     >>.
 
 %% Globals Events

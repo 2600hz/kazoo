@@ -963,7 +963,7 @@ format_emergency_caller_id_number(Context, Emergency) ->
 
             cb_context:set_req_data(
               Context
-                                   ,kz_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
+             ,kz_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
              )
     end.
 

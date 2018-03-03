@@ -35,13 +35,13 @@ start_link() ->
 -spec child_name(kapi_offnet_resource:req()) -> kz_term:ne_binary().
 child_name(OffnetReq) ->
     <<(kapi_offnet_resource:call_id(OffnetReq))/binary
-      ,"-", (kz_binary:rand_hex(3))/binary
+     ,"-", (kz_binary:rand_hex(3))/binary
     >>.
 
 -spec outbound_child_name(kapi_offnet_resource:req()) -> kz_term:ne_binary().
 outbound_child_name(OffnetReq) ->
     <<(kapi_offnet_resource:outbound_call_id(OffnetReq))/binary
-      ,"-", (kz_binary:rand_hex(3))/binary
+     ,"-", (kz_binary:rand_hex(3))/binary
     >>.
 
 -spec bridge(kz_json:objects(), kapi_offnet_resource:req()) -> kz_types:sup_startchild_ret().

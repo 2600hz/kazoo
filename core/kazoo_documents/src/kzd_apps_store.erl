@@ -47,8 +47,8 @@ new(Account) ->
                ],
     lists:foldl(
       fun(F, JObj) -> F(JObj) end
-               ,kz_json:new()
-               ,Routines
+     ,kz_json:new()
+     ,Routines
      ).
 
 %%------------------------------------------------------------------------------

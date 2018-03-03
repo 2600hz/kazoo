@@ -168,8 +168,8 @@ template_files() ->
                   _ -> Acc
               end
       end
-               ,[]
-               ,Files
+     ,[]
+     ,Files
      ).
 
 %%------------------------------------------------------------------------------
@@ -188,8 +188,8 @@ template_ids() ->
                       Acc
               end
       end
-               ,[]
-               ,JObjs
+     ,[]
+     ,JObjs
      ).
 
 %%------------------------------------------------------------------------------
@@ -221,8 +221,8 @@ match_file_to_db(Files, Ids) ->
                       Acc
               end
       end
-               ,[]
-               ,Files
+     ,[]
+     ,Files
      ).
 
 %%------------------------------------------------------------------------------
@@ -329,8 +329,8 @@ set_template(Key, Template, JObj) ->
     Default = kz_json:get_value(<<"default">>, JObj),
     kz_json:set_value(
       <<"default">>
-                     ,kz_json:set_value(Key, Template, Default)
-                     ,JObj
+          ,kz_json:set_value(Key, Template, Default)
+     ,JObj
      ).
 
 %%------------------------------------------------------------------------------

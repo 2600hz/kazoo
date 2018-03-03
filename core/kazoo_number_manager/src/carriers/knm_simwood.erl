@@ -179,6 +179,6 @@ process_response(JObjs, Options) ->
 
 response_jobj_to_number(JObj, QID) ->
     Num = <<(kz_json:get_binary_value(<<"country_code">>, JObj))/binary
-            ,(kz_json:get_binary_value(<<"number">>, JObj))/binary
+           ,(kz_json:get_binary_value(<<"number">>, JObj))/binary
           >>,
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.

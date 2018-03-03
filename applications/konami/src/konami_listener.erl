@@ -71,7 +71,7 @@ handle_metaflow(JObj, Props) ->
 
     _ = konami_code_statem:start(
           kapps_call:kvs_store('consumer_pid', props:get_value('server', Props), Call)
-                                ,JObj
+         ,JObj
          ),
     'ok'.
 

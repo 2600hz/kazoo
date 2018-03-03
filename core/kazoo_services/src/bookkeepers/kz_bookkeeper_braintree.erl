@@ -196,8 +196,8 @@ charge_transactions(BillingId, [], Dict) ->
                   'false' -> JObjs ++ Acc
               end
       end
-             ,[]
-             ,Dict
+     ,[]
+     ,Dict
      );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = kz_json:get_value(<<"pvt_code">>, Transaction),
@@ -411,8 +411,8 @@ timestamp_to_braintree('undefined') ->
 timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     <<(kz_date:pad_month(M))/binary, "/"
-      ,(kz_date:pad_month(D))/binary, "/"
-      ,(kz_term:to_binary(Y))/binary
+     ,(kz_date:pad_month(D))/binary, "/"
+     ,(kz_term:to_binary(Y))/binary
     >>.
 
 %%------------------------------------------------------------------------------
@@ -421,13 +421,13 @@ timestamp_to_braintree(Timestamp) ->
 %%------------------------------------------------------------------------------
 -spec utc_to_gregorian_seconds(kz_term:ne_binary()) -> kz_time:api_seconds().
 utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
-                           ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
+                          ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
                          >>
                         ) ->
     Date = {
-      {kz_term:to_integer(Y), kz_term:to_integer(M), kz_term:to_integer(D)}
+            {kz_term:to_integer(Y), kz_term:to_integer(M), kz_term:to_integer(D)}
            ,{kz_term:to_integer(H), kz_term:to_integer(Mi), kz_term:to_integer(S)}
-     },
+           },
     calendar:datetime_to_gregorian_seconds(Date);
 utc_to_gregorian_seconds(UTC) ->
     lager:warning("unknown UTC date format ~s", [UTC]),
@@ -464,9 +464,9 @@ already_charged(Code, [Transaction|Transactions]) ->
     case
         already_charged_transaction(
           Code
-                                   ,kz_json:get_value(<<"status">>, Transaction)
-                                   ,kz_json:get_value(<<"purchase_order">>, Transaction)
-                                   ,Transaction
+         ,kz_json:get_value(<<"status">>, Transaction)
+         ,kz_json:get_value(<<"purchase_order">>, Transaction)
+         ,Transaction
          )
     of
         'true' -> 'true';
@@ -485,9 +485,9 @@ already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
     'false';
 already_charged_transaction(Code , _, Code, Transaction) ->
     <<Year:4/binary, _:1/binary
-      ,Month:2/binary, _:1/binary
-      ,Day:2/binary
-      ,_/binary
+     ,Month:2/binary, _:1/binary
+     ,Day:2/binary
+     ,_/binary
     >> = kz_json:get_value(<<"created_at">>, Transaction),
     Id = kz_doc:id(Transaction),
     {YearNow, M, D} = erlang:date(),

@@ -114,8 +114,8 @@ handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
                 [kz_api:event_category(JObj), kz_api:msg_id(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
                ),
     RemoteServerId = <<"consumer://"
-                       ,(Self)/binary, "/"
-                       ,(kz_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary
+                      ,(Self)/binary, "/"
+                      ,(kz_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary
                      >>,
     gen_listener:federated_event(Parent
                                 ,kz_json:set_values([{<<"Server-ID">>, RemoteServerId}

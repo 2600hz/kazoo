@@ -223,7 +223,7 @@ attended_wait('cast', ?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                                                               [{fun kapps_call:set_call_id/2, Target}
                                                               ,{fun kapps_call:set_other_leg_call_id/2, Transferor}
                                                               ]
-                                                                           ,TargetCall
+                                                             ,TargetCall
                                                              )
                                                }};
         Transferee ->

@@ -251,16 +251,16 @@ maybe_create_debit_tansaction(Context) ->
             lager:error("failed to create debit transaction : ~p", [_R]),
             cb_context:add_system_error(
               'transaction_failed'
-                                       ,kz_json:from_list(
-                                          [{<<"message">>, <<"failed to create debit transaction">>}
-                                          ,{<<"cause">>, kz_term:error_to_binary(Error)}
-                                          ])
-                                       ,Context
+             ,kz_json:from_list(
+                [{<<"message">>, <<"failed to create debit transaction">>}
+                ,{<<"cause">>, kz_term:error_to_binary(Error)}
+                ])
+             ,Context
              );
         {'ok', Transaction} ->
             cb_context:set_resp_data(
               Context
-                                    ,kz_transaction:to_public_json(Transaction)
+             ,kz_transaction:to_public_json(Transaction)
              )
     end.
 
@@ -286,8 +286,8 @@ create_debit_tansaction(Context) ->
                ],
     lists:foldl(
       fun(F, Tr) -> F(Tr) end
-               ,kz_transaction:debit(AccountId, Units)
-               ,Routines
+     ,kz_transaction:debit(AccountId, Units)
+     ,Routines
      ).
 
 %%------------------------------------------------------------------------------
