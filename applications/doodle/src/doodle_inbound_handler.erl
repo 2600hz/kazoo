@@ -98,14 +98,12 @@ send_route_win(FetchId, CallId, JObj) ->
 set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = knm_number_options:account_id(NumberProps),
     AccountRealm = kzd_accounts:fetch_realm(AccountId),
-    kz_json:set_values(
-      props:filter_undefined(
-        [{?CCV(<<"Account-ID">>), AccountId}
-        ,{?CCV(<<"Account-Realm">>), AccountRealm}
-        ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
-        ])
+    kz_json:set_values(props:filter_undefined([{?CCV(<<"Account-ID">>), AccountId}
+                                              ,{?CCV(<<"Account-Realm">>), AccountRealm}
+                                              ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                                              ])
                       ,JObj
-     ).
+                      ).
 
 -spec set_inception(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                            kz_json:object().
@@ -121,18 +119,16 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
     Number = knm_number_options:number(NumberProps),
     case doodle_util:lookup_mdn(Number) of
         {'ok', Id, OwnerId} ->
-            kz_json:set_values(
-              props:filter_undefined(
-                [{?CCV(<<"Authorizing-Type">>), <<"device">>}
-                ,{?CCV(<<"Authorizing-ID">>), Id}
-                ,{?CCV(<<"Owner-ID">>), OwnerId}
-                ])
+            kz_json:set_values(props:filter_undefined([{?CCV(<<"Authorizing-Type">>), <<"device">>}
+                                                      ,{?CCV(<<"Authorizing-ID">>), Id}
+                                                      ,{?CCV(<<"Owner-ID">>), OwnerId}
+                                                      ])
                               ,kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
                                                    ,?CCV(<<"Authorizing-ID">>)
                                                    ]
                                                   ,JObj
                                                   )
-             );
+                              );
         {'error', _} -> JObj
     end;
 set_mdn(_Inception, _NumberProps, JObj) -> JObj.

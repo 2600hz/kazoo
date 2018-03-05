@@ -39,10 +39,9 @@ play(Data, Call, Media) ->
     lager:info("playing media ~s", [Media]),
 
     PlayCommand = kapps_call_command:play_command(Media, ?ANY_DIGIT, leg(Data, Call), Call),
-    kapps_call_command:send_command(
-      kz_json:set_value(<<"Insert-At">>, <<"now">>, PlayCommand)
+    kapps_call_command:send_command(kz_json:set_value(<<"Insert-At">>, <<"now">>, PlayCommand)
                                    ,Call
-     ).
+                                   ).
 
 -spec leg(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
 leg(Data, Call) ->
@@ -106,7 +105,9 @@ number_builder_leg(NumberJObj, Media) ->
 metaflow_jobj(NumberJObj, Media, Leg) ->
     kz_json:set_values([{<<"module">>, <<"play">>}
                        ,{<<"data">>, play_data(Media, Leg)}
-                       ], NumberJObj).
+                       ]
+                      ,NumberJObj
+                      ).
 
 -spec play_data(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 play_data(Media, Leg) ->

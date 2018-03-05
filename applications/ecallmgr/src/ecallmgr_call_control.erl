@@ -1052,20 +1052,18 @@ execute_control_request(Cmd, #state{node=Node
     catch
         _:{'error', 'nosession'} ->
             lager:debug("unable to execute command, no session"),
-            send_error_resp(CallId, Cmd, <<"Session "
-                                           ,CallId/binary
-                                           ," not found for "
-                                           ,Application/binary
-                                         >>),
+            Msg = list_to_binary(["Session ", CallId
+                                 ," not found for ", Application
+                                 ]),
+            send_error_resp(CallId, Cmd, Msg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'error':{'badmatch', {'error', 'nosession'}} ->
             lager:debug("unable to execute command, no session"),
-            send_error_resp(CallId, Cmd, <<"Session "
-                                           ,CallId/binary
-                                           ," not found for "
-                                           ,Application/binary
-                                         >>),
+            Msg = list_to_binary(["Session ", CallId
+                                 ," not found for ", Application
+                                 ]),
+            send_error_resp(CallId, Cmd, Msg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'error':{'badmatch', {'error', ErrMsg}} ->
@@ -1118,7 +1116,7 @@ maybe_send_error_resp(CallId, Cmd, AppName) ->
 -spec send_error_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_error_resp(CallId, Cmd) ->
     Msg = <<"Could not execute dialplan action: "
-            ,(kapi_dialplan:application_name(Cmd))/binary
+           ,(kapi_dialplan:application_name(Cmd))/binary
           >>,
     send_error_resp(CallId, Cmd, Msg).
 

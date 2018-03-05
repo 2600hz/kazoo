@@ -61,10 +61,12 @@
                        ,{<<"Message-ID">>, fun is_binary/1}
                        ,{<<"Body">>, fun is_binary/1}
                        ]).
--define(SMS_ROUTING_KEY(RouteId,CallId), <<"message.route."
-                                           ,(amqp_util:encode(RouteId))/binary, "."
-                                           ,(amqp_util:encode(CallId))/binary
-                                         >>).
+-define(SMS_ROUTING_KEY(RouteId, CallId)
+       ,list_to_binary(["message.route."
+                       ,amqp_util:encode(RouteId), "."
+                       ,amqp_util:encode(CallId)
+                       ])
+       ).
 
 %% SMS Endpoints
 -define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
@@ -153,8 +155,8 @@
                             ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                             ]).
 -define(INBOUND_ROUTING_KEY(RouteId, CallId), <<"message.inbound."
-                                                ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                ,(amqp_util:encode(CallId))/binary
+                                               ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                               ,(amqp_util:encode(CallId))/binary
                                               >>).
 
 %% Outbound
@@ -192,16 +194,22 @@
                              ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
                              ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
--define(OUTBOUND_ROUTING_KEY(RouteId, CallId), <<"message.outbound."
-                                                 ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                 ,(amqp_util:encode(CallId))/binary
-                                               >>).
+-define(OUTBOUND_ROUTING_KEY(RouteId, CallId)
+       ,list_to_binary(["message.outbound."
+                       ,amqp_util:encode(?LOWER(RouteId)), "."
+                       ,amqp_util:encode(CallId)
+                       ])
+       ).
 
--define(SMS_DEFAULT_OUTBOUND_OPTIONS, kz_json:from_list([{<<"delivery_mode">>, 2}
-                                                        ,{<<"mandatory">>, 'true'}
-                                                        ])).
+-define(SMS_DEFAULT_OUTBOUND_OPTIONS
+       ,kz_json:from_list([{<<"delivery_mode">>, 2}
+                          ,{<<"mandatory">>, 'true'}
+                          ])
+       ).
 -define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
--define(SMS_OUTBOUND_OPTIONS, kapps_config:get_json(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)).
+-define(SMS_OUTBOUND_OPTIONS
+       ,kapps_config:get_json(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)
+       ).
 
 -spec message(kz_term:api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->

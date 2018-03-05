@@ -218,14 +218,14 @@ attended_wait('cast', ?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
         Target ->
             lager:info("transferor and target ~s are connected, moving to attended_answer", [Target]),
             ?WSD_EVT(Transferor, Target, <<"Bridged to target">>),
-            {'next_state', 'attended_answer', State#state{
-                                                target_call=kapps_call:exec(
-                                                              [{fun kapps_call:set_call_id/2, Target}
-                                                              ,{fun kapps_call:set_other_leg_call_id/2, Transferor}
-                                                              ]
-                                                                           ,TargetCall
-                                                             )
-                                               }};
+
+            NewCall = kapps_call:exec([{fun kapps_call:set_call_id/2, Target}
+                                      ,{fun kapps_call:set_other_leg_call_id/2, Transferor}
+                                      ]
+                                     ,TargetCall
+                                     ),
+
+            {'next_state', 'attended_answer', State#state{target_call=NewCall}};
         Transferee ->
             lager:info("transferor and transferee have reconnected"),
             ?WSD_EVT(Transferor, Transferee, <<"Bridged to transferee">>),

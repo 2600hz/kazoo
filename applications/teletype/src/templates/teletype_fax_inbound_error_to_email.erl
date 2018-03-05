@@ -83,10 +83,9 @@ process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
     RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                           ,Macros
-               ),
+                                          ),
     lager:debug("rendered subject: ~s", [Subject]),
 
     EmailsJObj =

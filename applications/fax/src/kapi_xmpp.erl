@@ -22,11 +22,13 @@
 
 -define(XMPP_EXCHANGE, <<"xmpp">>).
 
--define(XMPP_EVENT_ROUTING_KEY(Event, JID),
-        <<"xmpp."
-          ,(kz_term:to_binary(Event))/binary
-          ,"."
-          ,(amqp_util:encode(JID))/binary>>).
+-define(XMPP_EVENT_ROUTING_KEY(Event, JID)
+       ,list_to_binary(["xmpp."
+                       ,kz_term:to_binary(Event)
+                       ,"."
+                       ,amqp_util:encode(JID)
+                       ])
+       ).
 -define(XMPP_EVENT_HEADERS, [<<"JID">>]).
 -define(OPTIONAL_XMPP_EVENT_HEADERS, [<<"Application-Name">>
                                      ,<<"Application-Event">>
@@ -34,9 +36,6 @@
                                      ]).
 -define(XMPP_EVENT_VALUES, [{<<"Event-Category">>, <<"xmpp_event">>}]).
 -define(XMPP_EVENT_TYPES, []).
-
-
-
 
 -spec event(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
@@ -50,8 +49,6 @@ event(JObj) -> event(kz_json:to_proplist(JObj)).
 event_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?XMPP_EVENT_HEADERS, ?XMPP_EVENT_VALUES, ?XMPP_EVENT_TYPES);
 event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
-
-
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
@@ -83,7 +80,6 @@ unbind_q(_Q, [], _JID) -> 'ok'.
 declare_exchanges() ->
     amqp_util:new_exchange(?XMPP_EXCHANGE, <<"fanout">>).
 
-
 -spec publish_event(kz_term:api_terms()) -> 'ok'.
 publish_event(Event) -> publish_event(Event, ?DEFAULT_CONTENT_TYPE).
 
@@ -95,7 +91,6 @@ publish_event(Event, ContentType) when is_list(Event) ->
     amqp_util:basic_publish(?XMPP_EXCHANGE, ?XMPP_EVENT_ROUTING_KEY(EventName, JID), Payload, ContentType);
 publish_event(Event, ContentType) ->
     publish_event(kz_json:to_proplist(Event), ContentType).
-
 
 regexp_get(Jid, Regex) ->
     {'match', [ShortJid]} =
