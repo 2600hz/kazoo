@@ -1,24 +1,7 @@
 %%%=============================================================================
-%%% @copyright 2003-2006 Richard Carlsson
 %%% @copyright (C) 2018-, 2600Hz
 %%% The origin of this file is the edoc module `edoc_doclet.erl'
 %%% written by Richard Carlsson.
-%%%
-%%% This library is free software; you can redistribute it and/or modify
-%%% it under the terms of the GNU Lesser General Public License as
-%%% published by the Free Software Foundation; either version 2 of the
-%%% License, or (at your option) any later version.
-%%%
-%%% This library is distributed in the hope that it will be useful, but
-%%% WITHOUT ANY WARRANTY; without even the implied warranty of
-%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-%%% Lesser General Public License for more details.
-%%%
-%%% You should have received a copy of the GNU Lesser General Public
-%%% License along with this library; if not, write to the Free Software
-%%% Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
-%%% USA
-%%%
 %%% @doc Kazoo standard doclet module for EDoc.
 %%%
 %%% TODO: copy "doc-files" subdirectories, recursively.
@@ -84,8 +67,7 @@
 
 -type no_app() :: list().
 %% A value used to mark absence of an Erlang application
-%% context. Use the macro `NO_APP' defined in {@link kz_edoc_doclet.erl}
-%% to produce this value.
+%% context. Use the macro `NO_APP' to produce this value.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -104,7 +86,7 @@ init_context(Env, Opts) ->
 %%------------------------------------------------------------------------------
 -spec doclet_apps_gen(atom(), string(), [string()]) -> #doclet_apps_gen{}.
 doclet_apps_gen(Atom, Dir, Erls) ->
-    Sources = [{list_to_atom(filename:basename(Erl, ".erl")), filename:basename(Erl), filename:dirname(Dir)}
+    Sources = [{list_to_atom(filename:basename(Erl, ".erl")), filename:basename(Erl), filename:dirname(Erl)}
                || Erl <- Erls
               ],
     #doclet_apps_gen{sources = Sources
@@ -195,6 +177,7 @@ source(#context{dir = OutDir, env = Env, opts = Options}
       ) ->
     AppsOutDir = proplists:get_value(apps_out_dir, Options, ?DEFAULT_APPS_OUT_DIR),
     File = filename:join(Path, Name),
+    report("processing source file '~ts'", [File]),
     try edoc:get_doc(File, Env, Options) of
         {Module, Doc} ->
             check_name(Module, M, File),
@@ -204,7 +187,7 @@ source(#context{dir = OutDir, env = Env, opts = Options}
                          orelse Hidden)
             of
                 true ->
-                    Props = edoc:layout(Doc, Options),
+                    Props = run_layout(module, File, Doc, Options),
                     JObj = kz_json:from_list_recursive(Props),
                     Name1 = atom_to_list(M) ++ ".json",
                     Encoding = [{encoding, encoding(Doc)}],
@@ -255,10 +238,7 @@ render_app({App, AppDir}, Modules, Sidebar, #context{opts = Options}=Context) ->
 render_app_overview(App, AppDir, Modules, Sidebar, #context{dir = OutDir, opts = Options}=Context) ->
     File = proplists:get_value(overview, Options, filename:join([AppDir, "doc", ?APP_OVERVIEW_FILE])),
     Data = get_overview_data(File, "Application: " ++ atom_to_list(App), Context),
-    F = fun (M) ->
-                M:overview(Data, Options)
-        end,
-    Props = edoc_lib:run_layout(F, Options),
+    Props = run_layout(overview, File, Data, Options),
     Rendered = render([{sidebar_apps, Sidebar}
                       ,{application, App}
                       ,{modules, lists:usort(Modules)}
@@ -285,10 +265,7 @@ render_modules(App, Module, Sidebar, Suffix, #context{dir = OutDir, opts = Optio
 render_apps_index(Modules, Sidebar, #context{dir = OutDir, opts = Options}=Context) ->
     Apps = [App || {App, _} <- maps:keys(Modules)],
     Data = get_overview_data(?APPS_OVERVIEW_FILE, "Kazoo Applications Index", Context),
-    F = fun (M) ->
-                M:overview(Data, Options)
-        end,
-    Props = edoc_lib:run_layout(F, Options),
+    Props = run_layout(overview, ?APPS_OVERVIEW_FILE, Data, Options),
     Rendered = render([{sidebar_apps, Sidebar}
                       ,{apps, lists:usort(Apps)}
                        | Props
@@ -300,16 +277,31 @@ render_apps_index(Modules, Sidebar, #context{dir = OutDir, opts = Options}=Conte
 %% Creating an index file.
 index_file(Sidebar, #context{dir = OutDir, opts = Options}=Context) ->
     Data = get_overview_data(?PROJ_OVERVIEW_FILE, "Kazoo Erlang Reference", Context),
-    F = fun (M) ->
-                M:overview(Data, Options)
-        end,
-    Props = edoc_lib:run_layout(F, Options),
+    Props = run_layout(overview, ?PROJ_OVERVIEW_FILE, Data, Options),
     Rendered = render([{sidebar_apps, Sidebar}
                        | Props
                       ], Options, proplists:get_value(app_template, Options)),
 
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, OutDir, ?INDEX_FILE, EncOpts).
+
+run_layout(module, File, Doc, Options) ->
+    try kz_edoc_layout:module(Doc, Options)
+    catch
+        _E:_T ->
+            report("failed to layout ~s: ~p:~p~n", [File, _E, _T]),
+            log_stacktrace(),
+            exit(error)
+    end;
+run_layout(overview, File, Doc, Options) ->
+    %% io:format("~n Doc ~p~n~n", [Doc]),
+    try kz_edoc_layout:overview(Doc, Options)
+    catch
+        _E:_T ->
+            report("failed to layout overview file ~s: ~p:~p~n", [File, _E, _T]),
+            log_stacktrace(),
+            exit(error)
+    end.
 
 render(Props0, Options, Template) ->
     Name = proplists:get_value(name, Props0),
@@ -329,10 +321,10 @@ compile_templates() ->
 
 -spec compile_templates(proplists:proplist()) -> proplists:proplist().
 compile_templates(Options) ->
-    Keys = [{"mod_template", "module.html"}
-           ,{"app_template", "app_overview.html"}
-           ,{"apps_template", "apps_index.html"}
-           ,{"index_template", "index.html"}
+    Keys = [{"mod_template", "doc/edoc-template/module.html"}
+           ,{"app_template", "doc/edoc-template/app_overview.html"}
+           ,{"apps_template", "doc/edoc-template/apps_index.html"}
+           ,{"index_template", "doc/edoc-template/index.html"}
            ],
     compile_templates(Keys, Options).
 
@@ -415,3 +407,25 @@ get_overview_data(File, Title, #context{env = Env, opts = Options}) ->
                                      },
     #xmlElement{attributes = As} = Data0,
     Data0#xmlElement{attributes = [EncodingAttribute | As]}.
+
+-spec log_stacktrace() -> 'ok'.
+log_stacktrace() ->
+    ST = erlang:get_stacktrace(),
+    log_stacktrace(ST).
+
+-spec log_stacktrace(list()) -> ok.
+log_stacktrace(ST) ->
+    log_stacktrace(ST, "", []).
+
+log_stacktrace(ST, Fmt, Args) ->
+    warning("stacktrace: " ++ Fmt, Args),
+    _ = [log_stacktrace_mfa(M, F, A, Info)
+         || {M, F, A, Info} <- ST
+        ],
+    'ok'.
+
+log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
+    warning("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
+log_stacktrace_mfa(M, F, Args, Info) ->
+    warning("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    lists:foreach(fun (Arg) -> warning("args: ~p", [Arg]) end, Args).
