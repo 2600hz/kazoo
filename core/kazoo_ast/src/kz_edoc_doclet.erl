@@ -1,4 +1,4 @@
-%%%-----------------------------------------------------------------------------
+%%%=============================================================================
 %%% @copyright 2003-2006 Richard Carlsson
 %%% @copyright (C) 2018-, 2600Hz
 %%% The origin of this file is the edoc module `edoc_doclet.erl'
@@ -31,12 +31,16 @@
 %%% @see kz_edoc_layout
 %%% @see edoc
 %%% @end
-%%% =====================================================================
--module(edoc_doclet).
+%%%=============================================================================
+-module(kz_edoc_doclet).
 
 %% Note that this is written so that it is *not* depending on edoc.hrl!
 
 -export([run/2]).
+-export([init_context/2
+        ,doclet_apps_gen/3
+        ,get_modules_app_path/3
+        ]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -60,6 +64,12 @@
                  }).
 %% Context for doclets
 
+-record(doclet_apps_gen, {sources = [] :: [string()]
+                         ,app = ?NO_APP :: no_app() | atom()
+                         ,modules = [] :: [atom()]
+                         ,dir :: string()
+                         }).
+
 -record(doclet_gen, {sources = [] :: [string()]
                     ,app = ?NO_APP :: no_app() | atom()
                     ,modules = [] :: [atom()]
@@ -74,14 +84,44 @@
 %% context. Use the macro `NO_APP' defined in {@link kz_edoc_doclet.erl}
 %% to produce this value.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec init_context(edoc_lib:edoc_env(), lists()) -> #context{}.
+init_context(Env, Opts) ->
+    #context{dir = proplists:get_value(dir, Opts)
+            ,opts = Opts
+            ,env = Env
+            }.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec doclet_apps_gen(atom(), string(), [string()]) -> #doclet_apps_gen{}.
+doclet_apps_gen(Atom, Dir, Erls) ->
+    #doclet_apps_gen{sources = Erls
+                    ,app = Atom
+                    ,dir = Dir
+                    ,modules = [list_to_atom(filename:basename(Erl, ".erl")) || Erl <- Erls]
+                    }.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_modules_app_path({atom(), string()}, #doclet_apps_gen{}, {atom(), string()}) -> [{atom(), string()}].
+get_modules_app_path({_, Dir}, #doclet_apps_gen{modules = Modules}, Acc) ->
+    [{Module, Dir} || Module <- Modules] ++ Acc.
 
 %% Sources is the list of inputs in the order they were found.
 %% Modules are sorted lists of atoms without duplicates. (They
 %% usually include the data from the edoc-info file in the target
 %% directory, if it exists.)
 
-%% @spec (Command::doclet_gen() | doclet_toc(), edoc_context()) -> ok
+%%------------------------------------------------------------------------------
+%% %% @spec (Command::doclet_gen() | doclet_toc(), edoc_context()) -> ok
 %% @doc Main doclet entry point. See the file <a
 %% href="../include/edoc_doclet.hrl">`edoc_doclet.hrl'</a> for the data
 %% structures used for passing parameters.
@@ -130,7 +170,8 @@
 %%  <dd>Specifies the title of the overview-page.
 %%  </dd>
 %% </dl>
-
+%%------------------------------------------------------------------------------
+-spec run(#doclet_gen{} | #doclet_toc{}, any()) -> any().
 run(#doclet_gen{}=Cmd, Ctxt) ->
     gen(Cmd#doclet_gen.sources,
     Cmd#doclet_gen.app,
