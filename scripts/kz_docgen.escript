@@ -80,7 +80,7 @@ include_paths() ->
 edoc_options(Opts) ->
     [{dir, maps:get(out_dir, Opts)}
     ,{includes, include_paths()}
-    ,{applications, "Kazoo"}
+    ,{application, "Kazoo"}
     ,{preprocess, true}
     ,{sort_functions, true}
     ,{pretty_printer, erl_pp}

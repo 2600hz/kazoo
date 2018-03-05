@@ -101,7 +101,8 @@ doclet_apps_gen(Atom, Dir, Erls) ->
 %%------------------------------------------------------------------------------
 -spec get_modules_app_path({atom(), string()}, #doclet_apps_gen{}, {atom(), string()}) -> [{atom(), string()}].
 get_modules_app_path({_, Dir}, #doclet_apps_gen{modules = Modules}, Acc) ->
-    [{Module, Dir} || Module <- Modules] ++ Acc.
+    App = "../" ++ filename:basename(Dir),
+    [{Module, App} || Module <- Modules] ++ Acc.
 
 %% Sources is the list of inputs in the order they were found.
 %% Modules are sorted lists of atoms without duplicates. (They
@@ -294,7 +295,7 @@ run_layout(module, File, Doc, Options) ->
             exit(error)
     end;
 run_layout(overview, File, Doc, Options) ->
-    %% io:format("~n Doc ~p~n~n", [Doc]),
+    io:format("~n Doc ~p~n~n", [Doc]),
     try kz_edoc_layout:overview(Doc, Options)
     catch
         _E:_T ->
