@@ -29,7 +29,6 @@
 %%% "overview.edoc". It parses and creates proplist of EDoc XML document
 %%% and convert it to HTML using ErlyDTL template.
 %%%
-%%% copyright (c) 2600Hz 2018- . All Rights Reserved.
 %%% @author Richard Carlsson <carlsson.richard@gmail.com>
 %%% @author Hesaam Farhang <hesaam@2600hz.com>
 %%% @end

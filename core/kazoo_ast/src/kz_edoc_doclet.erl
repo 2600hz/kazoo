@@ -127,66 +127,23 @@ get_modules_app_path({_, Dir}, #doclet_apps_gen{modules = Modules}, Acc) ->
 %% directory, if it exists.)
 
 %%------------------------------------------------------------------------------
-%% %% @spec (Command::doclet_gen() | doclet_toc(), edoc_context()) -> ok
-%% @doc Main doclet entry point. See the file <a
-%% href="../include/edoc_doclet.hrl">`edoc_doclet.hrl'</a> for the data
-%% structures used for passing parameters.
+%% @doc Main Kazoo doclet entry point.
 %%
 %% Also see {@link edoc:layout/2} for layout-related options, and
 %% {@link edoc:get_doc/2} for options related to reading source
-%% files.
+%% files. {@link edoc_doclet:run/2} for General doclet options.
 %%
-%% Options:
-%% <dl>
-%%  <dt>{@type {file_suffix, string()@}}
-%%  </dt>
-%%  <dd>Specifies the suffix used for output files. The default value is
-%%      `".html"'.
-%%  </dd>
-%%  <dt>{@type {hidden, boolean()@}}
-%%  </dt>
-%%  <dd>If the value is `true', documentation of hidden modules and
-%%      functions will also be included. The default value is `false'.
-%%  </dd>
-%%  <dt>{@type {overview, edoc:filename()@}}
-%%  </dt>
-%%  <dd>Specifies the name of the overview-file. By default, this doclet
-%%      looks for a file `"overview.edoc"' in the target directory.
-%%  </dd>
-%%  <dt>{@type {private, boolean()@}}
-%%  </dt>
-%%  <dd>If the value is `true', documentation of private modules and
-%%      functions will also be included. The default value is `false'.
-%%  </dd>
-%%  <dt>{@type {stylesheet, string()@}}
-%%  </dt>
-%%  <dd>Specifies the URI used for referencing the stylesheet. The
-%%      default value is `"stylesheet.css"'. If an empty string is
-%%      specified, no stylesheet reference will be generated.
-%%  </dd>
-%%  <dt>{@type {stylesheet_file, edoc:filename()@}}
-%%  </dt>
-%%  <dd>Specifies the name of the stylesheet file. By default, this
-%%      doclet uses the file `"stylesheet.css"' in the `priv'
-%%      subdirectory of the EDoc installation directory. The named file
-%%      will be copied to the target directory.
-%%  </dd>
-%%  <dt>{@type {title, string()@}}
-%%  </dt>
-%%  <dd>Specifies the title of the overview-page.
-%%  </dd>
-%% </dl>
+%% We only care about kazoo documentation, so not all options/features are
+%% implemented.
+%%
+%% Someone please document extra Kazoo options.
+%% @end
 %%------------------------------------------------------------------------------
--spec run(#doclet_gen{} | [#doclet_gen{}] | #doclet_toc{}, any()) -> any().
+-spec run(#doclet_gen{} | [#doclet_gen{}] | #doclet_toc{}, #context{}) -> ok.
 run(#doclet_gen{}=_Cmd, _Context) ->
-    %% gen(Cmd#doclet_gen.sources,
-    %% Cmd#doclet_gen.app,
-    %% Cmd#doclet_gen.modules,
-    %% Context);
     io:format("doclet_gen not implemented.~n"),
     exit(1);
 run(#doclet_toc{}=_Cmd, _Context) ->
-    %% toc(Cmd#doclet_toc.paths, Context);
     io:format("doclet_toc not implemented.~n"),
     exit(1);
 run([], #context{}) ->
