@@ -248,12 +248,12 @@ source(#context{dir = OutDir, env = Env, opts = Options}
             of
                 true ->
                     Props = edoc:layout(Doc, Options),
-                    JObj = kz_json:from_list_recursive(),
+                    JObj = kz_json:from_list_recursive(Props),
                     Name1 = atom_to_list(M) ++ ".json",
                     Encoding = [{encoding, encoding(Doc)}],
                     edoc_lib:write_file(kz_json:encode(JObj), filename:join([OutDir, "tmp", AppsOutDir, App]), Name1, Encoding),
                     ShortDesc = proplists:get_value(short_desc, Props, []),
-                    {maps:put({App, AppDir}, [{Module, ShortDesc} | maps:get(App, Map, [])]), HasError};
+                    {maps:put({App, AppDir}, [{Module, ShortDesc} | maps:get(App, Map, [])], Map), HasError};
                 false ->
                     {Map, HasError}
             end
