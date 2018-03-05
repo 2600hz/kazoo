@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, Voxter Comunications Inc
+%%% @copyright (C) 2010-2018, Voxter Communications Inc
 %%% @doc
 %%%
 %%% @end
@@ -9,11 +9,11 @@
 -module(cb_cdrs_test).
 -include_lib("eunit/include/eunit.hrl").
 
-%% Test handle_utc_time_offset function with diferent server
+%% Test handle_utc_time_offset function with different server
 %% time zones and offsets
 handle_utc_time_offset_test_() ->
     %% Simulate a time stamp from a CDR
-    %% (generated in freeswitch depoending on system TZ)
+    %% (generated in freeswitch depending on system TZ)
     LocalTimestamp = 63687252084,
 
     %% Depending on the systems timezone, Calculate the UTC time from the LocalTimestamp
