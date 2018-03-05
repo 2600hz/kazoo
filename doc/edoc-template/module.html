@@ -133,7 +133,7 @@
                         <li class="toc-entry">
                             <a href="#doc-functions">Functions</a>
                             <ul>
-                                {% for function in functions %}<li><a class="text-truncate" href="{{ function.id }}"><code>{{ function.label }}</code></a></li>{% endfor %}
+                                {% for function in functions %}<li><a class="text-truncate" href="#{{ function.id }}"><code>{{ function.label }}</code></a></li>{% endfor %}
                             </ul>
                         </li>{% endif %}{% if authors %}
                         <li class="toc-entry"><a href="#doc-authors">Authors</a></li>{% endif %}
