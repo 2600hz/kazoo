@@ -10,9 +10,16 @@
 
 -define(CONFIG, #{dirs => []
                  ,out_dir => "doc/edoc"
-                 ,template_module => kz_edoc_template
+                 ,apps_out_dir => "apps"
                  ,template_dir => "doc/edoc-template"
-                 ,template_mod_file => "doc/edoc-template/index.html"
+                 ,mod_template => kz_edoc_mod_template
+                 ,mod_template_file => "doc/edoc-template/module.html"
+                 ,app_template => kz_edoc_app_template
+                 ,app_template_file => "doc/edoc-template/app_overview.html"
+                 ,apps_template => kz_edoc_apps_template
+                 ,apps_template_file => "doc/edoc-template/apps_index.html"
+                 ,index_template => kz_edoc_index_template
+                 ,index_template_file => "doc/edoc-template/index.html"
                  ,base => ""
                  }).
 
@@ -58,8 +65,7 @@ run(Opts0) ->
     Cmd = maps:values(Sources),
     F = fun(M) -> M:run(Cmd, Ctxt1) end,
 
-    %% edoc_lib:run_doclet(F, EDocOpts).
-    io:format("~n Cmd ~p~n", [Cmd]).
+    edoc_lib:run_doclet(F, EDocOpts).
 
 %%% Internals
 
@@ -74,13 +80,20 @@ include_paths() ->
 edoc_options(Opts) ->
     [{dir, maps:get(out_dir, Opts)}
     ,{includes, include_paths()}
+    ,{applications, "Kazoo"}
     ,{preprocess, true}
     ,{sort_functions, true}
     ,{pretty_printer, erl_pp}
+    ,{todo, true}
     ,{layout, kz_edoc_layout}
     ,{doclet, kz_edoc_doclet}
+    ,{sidebar_links, sidebar_links()}
      | maps:to_list(maps:remove(apps, Opts))
     ].
+
+%% [{id, label, href}]
+sidebar_links() ->
+    [].
 
 sources(#{apps := AppDirs}) ->
     maps:from_list([expand_sources(App, Dir) || {App, Dir} <- AppDirs]).
@@ -117,18 +130,42 @@ parse_args([], #{dirs := []}=Config) ->
                          ]
                 },
     maps:remove(dirs, C1);
+
 parse_args(["--out-dir", DocSite | Rest], Config) ->
     parse_args(Rest, Config#{out_dir => DocSite});
-parse_args(["--template-module", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{template_module => list_to_atom(DocSite)});
+
+parse_args(["--doc-apps-dir", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{apps_out_dir => DocSite});
+
 parse_args(["--template-dir", DocSite | Rest], Config) ->
     parse_args(Rest, Config#{template_dir => DocSite});
-parse_args(["--template-mod-file", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{template_mod_file => DocSite});
+
+parse_args(["--mod-template", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{mod_template => list_to_atom(DocSite)});
+parse_args(["--mod-template-file", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{mod_template_file => DocSite});
+
+parse_args(["--app-template", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{app_template => list_to_atom(DocSite)});
+parse_args(["--app-template-file", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{app_template_file => DocSite});
+
+parse_args(["--apps-template", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{apps_template => list_to_atom(DocSite)});
+parse_args(["--apps-template-file", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{apps_template_file => DocSite});
+
+parse_args(["--index-template", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{index_template => list_to_atom(DocSite)});
+parse_args(["--index-template-file", DocSite | Rest], Config) ->
+    parse_args(Rest, Config#{index_template_file => DocSite});
+
 parse_args(["--base", Base | Rest], Config) ->
     parse_args(Rest, Config#{base => Base});
+
 parse_args(["--ga", GA | Rest], Config) ->
     parse_args(Rest, Config#{ga => GA});
+
 parse_args([_ | Rest], Config) ->
     parse_args(Rest, Config).
 %% parse_args([Dir | Rest], #{dirs := Dirs}=Config) ->

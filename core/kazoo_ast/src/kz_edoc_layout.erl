@@ -36,16 +36,13 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_edoc_layout).
 
--export([file/0
-        ,file/1
-        ,file/2
+-export([module/2
+        ,overview/2
 
         ,get_elem/2
         ,get_attr/2
         ,get_attrval/2
         ,get_content/2
-
-        ,compile_template/0
         ]).
 
 -include_lib("xmerl/include/xmerl.hrl").
@@ -62,42 +59,20 @@
 
 -define(NL, $\n).
 
--define(DEFAULT_TEMPLATE_MODULE, kz_edoc_template).
--define(DEFAULT_TEMPLATE_FILE, "doc/edoc-template/index.html").
-
--record(opts, {root = "" :: string()
-              ,sort_functions = true :: boolean()
+-record(opts, {sort_functions = true :: boolean()
               ,encoding = utf8 :: atom()
               ,export_type = xmerl_html :: atom()
               ,pretty_printer = '' :: atom()
-              ,template_module = ?DEFAULT_TEMPLATE_MODULE :: atom()
               }).
 
-%% @hidden
--spec file() -> any().
-file() ->
-    file("core/kazoo_voicemail/src/kvm_message.erl").
-
 %%------------------------------------------------------------------------------
-%% @doc Create EDoc documentation for the given `File' and render it
-%% with ErlyDTL.
-%% @hidden
+%% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec file(any()) -> any().
-file(File) ->
-    file(File, default_opts()).
-
-%% @hidden
--spec file(any(), any()) -> any().
-file(File, Options) ->
-    {_, Doc} = edoc:get_doc(File, Options),
-    Opts = init_opts(Doc, Options),
-    render(process_module(Doc, Opts), Opts).
-
-process_module(#xmlElement{name = module, content = Es}=E
-              ,#opts{sort_functions = SortFunctions
-                    }=Opts) ->
+-spec module(#xmlElement{}, #opts{} | proplists:proplist()) -> iolist().
+module(#xmlElement{name = module, content = Es}=E
+      ,#opts{sort_functions = SortFunctions}=Opts
+      ) ->
     Name = get_attrval(name, E),
 
     Functions = case [{function_name_arity(F, Opts), F} || F <- get_content(functions, Es)] of
@@ -108,29 +83,42 @@ process_module(#xmlElement{name = module, content = Es}=E
 
     filter_empty(
       [{name, list_to_binary(Name)}
-      ,{copyright, export_content(get_content(copyright, Es))}
+      ,{copyright, export_content(get_content(copyright, Es), Opts)}
       ,{deprecated, deprecated(Es, Opts)}
-      ,{version, export_content(get_content(version, Es))}
+      ,{version, export_content(get_content(version, Es), Opts)}
       ,{since, since(Es, Opts)}
       ,{behaviours, behaviours_prop(Es, Name, Opts)}
       ,{authors, authors(Es, Opts)}
-      ,{references, [export_content(C) || #xmlElement{content = C} <- get_elem(reference, Es)]}
+      ,{references, [export_content(C, Opts) || #xmlElement{content = C} <- get_elem(reference, Es)]}
       ,{sees, sees(Es, Opts)}
       ,{todos, todos(Es, Opts)}
       ,{types, types(lists:sort(Types), Opts)}
       ,{functions, functions(Functions, Opts)}
        | description(both, Es, Opts)
-      ]).
+      ]);
+module(E, Opts) ->
+    module(E, init_opts(E, Opts)).
 
-render(Props, #opts{template_module=Template}) ->
-    Name = proplists:get_value(name, Props),
-    %% io:format("~n Props ~p~n~n", [Props]),
-    case kz_template:render(Template, Props) of
-        {ok, Rendered} ->
-            file:write_file(<<"doc/edoc/", Name/binary, ".html">>, Rendered);
-        {error, _Reason} ->
-            io:format("~nfailed to render ~s: ~p~n", [Name, _Reason])
-    end.
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec overview(#xmlElement{}, #opts{} | proplists:proplist()) -> iolist().
+overview(#xmlElement{name = overview, content = Es}, #opts{}=Opts) ->
+    filter_empty(
+      [{title, export_content(get_text(title, Es), Opts)}
+      ,{copyright, export_content(get_content(copyright, Es), Opts)}
+      ,{version, export_content(get_content(version, Es), Opts)}
+      ,{since, since(Es, Opts)}
+      ,{authors, authors(Es, Opts)}
+      ,{references, [export_content(C, Opts) || #xmlElement{content = C} <- get_elem(reference, Es)]}
+      ,{sees, sees(Es, Opts)}
+      ,{todos, todos(Es, Opts)}
+      ,{full_desc, description(full, Es, Opts)}
+      ]
+     );
+overview(E, Opts) ->
+    overview(E, init_opts(E, Opts)).
 
 %%%=============================================================================
 %%% Module Tags functions
@@ -1083,65 +1071,19 @@ get_text(Name, Es) ->
 %% @doc Put layout options in a data structure for easier access.
 %% @end
 %%------------------------------------------------------------------------------
--spec init_opts(#xmlElement{}, proplists:proplist()) -> #opts{}.
-init_opts(Element, Options) ->
+-spec init_opts(#xmlElement{} | atom(), proplists:proplist()) -> #opts{}.
+init_opts(#xmlElement{}=Element, Options) ->
     Encoding = case get_attrval(encoding, Element) of
                    "latin1" -> latin1;
                    _ -> utf8
                end,
-    #opts{root = get_attrval(root, Element)
-         ,sort_functions = proplists:get_value(sort_functions, Options, true)
+    init_opts(Encoding, Options);
+init_opts(Encoding, Options) ->
+    #opts{sort_functions = proplists:get_value(sort_functions, Options, true)
          ,encoding = Encoding
          ,export_type = proplists:get_value(export_type, Options, xmerl_html)
          ,pretty_printer = proplists:get_value(pretty_printer, Options, '')
-         ,template_module = maybe_compile_template(
-                              proplists:get_value(template_module, Options, ?DEFAULT_TEMPLATE_MODULE), Options
-                             )
          }.
-
--spec maybe_compile_template(atom(), proplists:proplist()) -> atom().
-maybe_compile_template(TemplateModule, Options) ->
-    try TemplateModule:source() of
-        {_, _} -> TemplateModule
-    catch
-        error:undef ->
-            compile_template(TemplateModule, proplists:get_value(template_file, Options, ?DEFAULT_TEMPLATE_FILE))
-    end.
-
--spec compile_template(atom(), string()) -> atom().
-compile_template(TemplateModule, TemplateFile) ->
-    case kz_template:compile(TemplateFile, TemplateModule, [{auto_escape, false}]) of
-        {ok, _} -> TemplateModule;
-        {error, Reason} ->
-            io:format("~nfailed to compile template ~p (~p): ~p~n", [TemplateModule, TemplateFile, Reason]),
-            error(Reason)
-    end.
-
-%% @hidden Only for use during testing.
--spec compile_template() -> ok.
-compile_template() ->
-    compile_template(?DEFAULT_TEMPLATE_MODULE, ?DEFAULT_TEMPLATE_FILE).
-
-%% @doc Default option for testing proposes.
--spec default_opts() -> proplists:proplist().
-default_opts() ->
-    I = lists:usort(["core"]
-                    ++ ["applications/tasks"]
-                    ++ [filename:dirname(Path) || Path <- filelib:wildcard("core/*/{src,include}/**/*.hrl")]
-                    ++ ["applications"]
-                    ++ [filename:dirname(Path) || Path <- filelib:wildcard("applications/*/{src,include}/**/*.hrl")]
-                    ++ ["deps"]
-                   ),
-    [{dir, "doc/edoc"}
-    ,{includes, I}
-    ,{preprocess, true}
-    ,{sort_functions, true}
-    ,{pretty_printer, erl_pp}
-    ,{layout, kz_edoc_layout1}
-    ,{todo, true}
-     %% ,{stylesheet, "stylesheet.css"}
-    ].
-
 
 -spec is_only_whitespace(string()) -> boolean().
 is_only_whitespace([]) ->

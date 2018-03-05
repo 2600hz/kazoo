@@ -7,15 +7,28 @@
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="manifest" href="site.webmanifest">
-    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="../../site.webmanifest">
+    <link rel="apple-touch-icon" href="../../icon.png">
 
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
-    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="../../css/main.css">
 </head>
 <body>
     <div class="container">
-            <aside class="sidebar">Just for fun</aside>
+            <aside class="sidebar">
+                <h4>Applications</h4>
+                <ul class="side-apps">
+                    {% for app, modules in sidebar_apps %}
+                    <li id="entry-app-{{ app }}" class="side-entry-app"><a href="apps/{{ app }}">{{ app }}</a>
+                        <ul class="side-mods">
+                            {% for module, link in modules %}
+                            <li id="entry-module-{{ modules }}" class="side-entry-module{% ifequal module name %} side-selected{% endifequal %}"><a href="{{ link }}">{{ module }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </aside>
             <div class="content-container">
                 <main class="content">
                     <section id="doc-summary" class="module">
@@ -129,11 +142,11 @@
             </div>
     </div>
 
-    <script src="js/vendor/modernizr-3.5.0.min.js"></script>
+    <script src="../../js/vendor/modernizr-3.5.0.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-    <script>window.jQuery || document.write('<script src="js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
-    <script src="js/plugins.js"></script>
-    <script src="js/main.js"></script>
+    <script>window.jQuery || document.write('<script src="../../js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
+    <script src="../../js/plugins.js"></script>
+    <script src="../../js/main.js"></script>
 
   <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
 <!--         <script>
