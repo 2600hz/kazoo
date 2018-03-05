@@ -1,0 +1,71 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Applications List - Kazoo EDoc</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div class="container">
+            <aside class="sidebar">
+                <h4>Applications</h4>
+                <ul class="side-apps">
+                    {% for app, modules in sidebar_apps %}
+                    <li id="entry-app-{{ app }}" class="side-entry-app"><a href="apps/{{ app }}">{{ app }}</a>
+                        <ul class="side-mods">
+                            {% for module, link in modules %}
+                            <li id="entry-module-{{ modules }}" class="side-entry-module{% ifequal module name %} side-selected{% endifequal %}"><a href="{{ link }}">{{ module }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </aside>
+            <div class="content-container">
+                <main class="content">
+                    <section id="doc-summary" class="app">
+                        <h1>Kazoo Erlang Reference</h1>{% if full_desc %}
+                        <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if sees %}
+                        <div>
+                            <strong>See Also: </strong>
+                            <ul>
+                                {% for see in sees %}<li>{{ see }}</li>{% endfor %}
+                            </ul>
+                        </div>{% endif %}{% if references %}<div>
+                            <strong>References: </strong>
+                            <ul>
+                            {% for reference in references %}<li>{{ reference }}</li>{% endfor %}
+                            </ul>
+                        </div>{% endif %}{% if todos %}
+                        <div>
+                            <strong>To do: </strong>
+                            <ul>
+                                {% for todo in todos %}<li>{{ todo }}</li>{% endfor %}
+                            </ul>
+                        </div>{% endif %}
+                    </section>
+            </div>
+    </div>
+
+    <script src="js/vendor/modernizr-3.5.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
+    <script src="js/plugins.js"></script>
+    <script src="js/main.js"></script>
+
+  <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
+<!--         <script>
+      window.ga=function(){ga.q.push(arguments)};ga.q=[];ga.l=+new Date;
+      ga('create','UA-XXXXX-Y','auto');ga('send','pageview')
+  </script>
+  <script src="https://www.google-analytics.com/analytics.js" async defer></script> -->
+</body>
+</html>
