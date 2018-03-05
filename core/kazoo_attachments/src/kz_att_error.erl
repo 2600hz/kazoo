@@ -17,7 +17,6 @@
 -export([resp_body/1, set_resp_body/2]).
 -export([resp_code/1, set_resp_code/2]).
 -export([resp_headers/1, set_resp_headers/2]).
--export([attachment_content/1, set_attachment_content/2]).
 -export([options/1, set_options/2]).
 
 -export([to_json/1]).
@@ -32,7 +31,6 @@
 -type extended_error() :: #{'db_name' => gen_attachment:db_name()
                            ,'document_id' => gen_attachment:doc_id()
                            ,'attachment_name' => gen_attachment:att_name()
-                           ,'attachment_content' => gen_attachment:contents() | 'undefined'
                            ,'handler_props' => gen_attachment:handler_props()
                            ,'req_url' => req_url()
                            ,'resp_code' => resp_code()
@@ -81,12 +79,11 @@ fetch_routines(HandlerProps, DbName, DocumentId, AttachmentName) ->
                   ,gen_attachment:contents()
                   ,gen_attachment:options()
                   ) -> update_routines().
-put_routines(Settings, DbName, DocumentId, AttachmentName, Contents, Options) ->
+put_routines(Settings, DbName, DocumentId, AttachmentName, _Contents, Options) ->
     [{fun set_handler_props/2, Settings}
     ,{fun set_db_name/2, DbName}
     ,{fun set_document_id/2, DocumentId}
     ,{fun set_attachment_name/2, AttachmentName}
-    ,{fun set_attachment_content/2, Contents}
     ,{fun set_options/2, Options}
     ].
 
@@ -153,14 +150,6 @@ resp_headers(#{'resp_headers' := Headers}) ->
 -spec set_resp_headers(extended_error(), resp_headers()) -> extended_error().
 set_resp_headers(ExtendedError, Headers) ->
     ExtendedError#{'resp_headers' => Headers}.
-
--spec attachment_content(extended_error()) -> gen_attachment:contents().
-attachment_content(#{'attachment_content' := Contents}) ->
-    Contents.
-
--spec set_attachment_content(extended_error(), gen_attachment:contents()) -> extended_error().
-set_attachment_content(ExtendedError, Contents) ->
-    ExtendedError#{'attachment_content' => Contents}.
 
 -spec options(extended_error()) -> gen_attachment:options().
 options(#{'options' := Options}) ->
