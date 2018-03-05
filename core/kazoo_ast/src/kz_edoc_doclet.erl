@@ -336,7 +336,7 @@ compile_templates(Options) ->
            ],
     compile_templates(Keys, Options).
 
--spec compile_templates([atom()], proplists:proplist()) -> proplists:proplist().
+-spec compile_templates([{string(), string()}], proplists:proplist()) -> proplists:proplist().
 compile_templates([], Options) ->
     Options;
 compile_templates([{Key, DefaultFile}|Keys], Options) ->

@@ -56,8 +56,6 @@
                          #xmlElement{}.
 -type exported() :: binary().
 
--define(NL, $\n).
-
 -record(opts, {sort_functions = true :: boolean()
               ,encoding = utf8 :: atom()
               ,export_type = xmerl_html :: atom()
@@ -68,7 +66,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec module(#xmlElement{}, #opts{} | proplists:proplist()) -> iolist().
+-spec module(#xmlElement{}, #opts{} | proplists:proplist()) -> proplists:proplist().
 module(#xmlElement{name = module, content = Es}=E
       ,#opts{sort_functions = SortFunctions}=Opts
       ) ->
@@ -102,7 +100,7 @@ module(E, Opts) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec overview(#xmlElement{}, #opts{} | proplists:proplist()) -> iolist().
+-spec overview(#xmlElement{}, #opts{} | proplists:proplist()) -> proplists:proplist().
 overview(#xmlElement{name = overview, content = Es}, #opts{}=Opts) ->
     filter_empty(
       [{title, export_content(get_text(title, Es), Opts)}
