@@ -44,6 +44,8 @@
         ]).
 
 -export([does_schema_exist/1]).
+-export([check_system_configs/0]).
+-export([update_schemas/0]).
 
 -export([db_init/0]).
 
@@ -1142,21 +1144,29 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
              ],
     update_screenshots(AppId, MA, SShots).
 
--spec update_schemas() -> 'ok'.
-update_schemas() ->
-    kz_datamgr:suppress_change_notice(),
-    lager:notice("starting system schemas update"),
-    kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
-    lager:notice("finished system schemas update"),
+-spec check_system_configs() -> 'ok'.
+check_system_configs() ->
     _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
          || {Config, Error} <- kapps_maintenance:validate_system_configs()
         ],
     'ok'.
 
+-spec update_schemas() -> 'ok'.
+update_schemas() ->
+    kz_datamgr:suppress_change_notice(),
+    lager:notice("starting system schemas update"),
+    kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
+    lager:notice("finished system schemas update").
+
+-spec db_init_schemas() -> 'ok'.
+db_init_schemas() ->
+    update_schemas(),
+    check_system_configs().
+
 -spec db_init() -> 'ok'.
 db_init() ->
     kz_datamgr:suppress_change_notice(),
-    _ = kz_util:spawn(fun update_schemas/0),
+    _ = kz_util:spawn(fun db_init_schemas/0),
     _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, ?APP, <<"account/media.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),

@@ -232,11 +232,8 @@ get_with_strategy(Strategy, Account, Category, Key, Default) ->
     case get_from_strategy_cache(Strategy, account_id(Account), Category, Key, ShouldMerge) of
         {ok, JObj} ->
             case kz_json:get_value(Key, JObj) of
-                undefined ->
-                    _ = kapps_config:set(Category, Key, Default),
-                    Default;
-                Value ->
-                    Value
+                undefined -> Default;
+                Value -> Value
             end;
         {error, no_account_id} ->
             kapps_config:get(Category, Key, Default);

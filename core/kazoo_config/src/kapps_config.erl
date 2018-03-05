@@ -16,6 +16,7 @@
         ,get_all_kvs/1
         ,get_current/2, get_current/3, get_current/4
         ,get_category/1
+        ,fetch_category/1, fetch_category/2
         ]).
 
 -export([get_node_value/2, get_node_value/3, get_node_value/4]).
@@ -503,12 +504,14 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
 
 -spec get_default_value(config_category(), config_key(), Default, kz_json:object()) ->
                                Default | _.
-get_default_value(Category, Keys, Default, JObj) ->
+get_default_value(_Category, [?KEY_DEFAULT | Keys], Default, JObj) ->
     case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
-        'undefined' when Default /= 'undefined' ->
-            lager:debug("setting default for ~s ~p: ~p", [Category, Keys, Default]),
-            _ = set_default(Category, Keys, Default),
-            Default;
+        'undefined' -> Default;
+        Else -> Else
+    end;
+get_default_value(_Category, Keys, Default, JObj) ->
+    case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
+        'undefined' when Default =/= 'undefined' -> Default;
         Else -> Else
     end.
 
@@ -664,9 +667,13 @@ update_category(Category, JObj, PvtFields) ->
         {'error', 'conflict'} ->
             lager:debug("conflict saving ~s, merging and saving", [Category]),
             {'ok', Updated} = kz_datamgr:open_doc(?KZ_CONFIG_DB, Category),
-            Merged = kz_json:merge_jobjs(Updated, kz_doc:public_fields(JObj)),
+            Merged = kz_json:merge_jobjs(Updated, kz_doc:public_fields(JObj, 'false')),
             lager:debug("updating from ~s to ~s", [kz_doc:revision(JObj), kz_doc:revision(Merged)]),
-            update_category(Category, Merged, PvtFields)
+            NewPvtFields = case PvtFields of
+                               'undefined' -> PvtFields;
+                               PvtFields -> kz_json:delete_key(<<"_rev">>, PvtFields)
+                           end,
+            update_category(Category, Merged, NewPvtFields)
     end.
 -endif.
 
@@ -760,10 +767,12 @@ is_locked() ->
 %%------------------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
+    _ = kz_cache:flush_local(?KAPPS_CONFIG_CACHE),
     kz_datamgr:flush_cache_docs(?KZ_CONFIG_DB).
 
 -spec flush(kz_term:ne_binary()) -> 'ok'.
 flush(Category) ->
+    _ = kz_cache:flush_local(?KAPPS_CONFIG_CACHE),
     kz_datamgr:flush_cache_doc(?KZ_CONFIG_DB, Category).
 
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -821,8 +830,42 @@ get_category(_, _) ->
 
 -spec get_category(kz_term:ne_binary(), boolean()) -> fetch_ret().
 get_category(Category, 'true') ->
-    kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]);
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]) of
+        {'ok', JObj} -> {'ok', kapps_config_doc:config_with_default_node(JObj)};
+        _Other -> {'ok', kapps_config_doc:build_default(Category)}
+    end;
 get_category(Category, 'false') ->
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, Category) of
+        {'ok', JObj} -> {'ok', kapps_config_doc:config_with_default_node(JObj)};
+        _Other -> _Other
+    end.
+-endif.
+
+
+-spec fetch_category(kz_term:ne_binary()) -> fetch_ret().
+fetch_category(Category) ->
+    fetch_category(Category, 'true').
+
+-ifdef(TEST).
+
+-spec fetch_category(kz_term:ne_binary(), boolean()) -> fetch_ret().
+fetch_category(Category, _)
+  when Category =:= <<"test_account_config">>;
+       Category =:= <<"test_account_config_sub_empty">>;
+       Category =:= <<"test_account_config_reseller_only">>;
+       Category =:= <<"test_account_config_reseller_system">>;
+       Category =:= <<"test_account_config_system_empty">>;
+       Category =:= <<"test_account_config_system_only">>;
+       Category =:= <<"no_cat_please">> ->
+    kz_datamgr:open_doc(?KZ_CONFIG_DB, Category);
+fetch_category(_, _) ->
+    {'error', 'not_found'}.
+-else.
+
+-spec fetch_category(kz_term:ne_binary(), boolean()) -> fetch_ret().
+fetch_category(Category, 'true') ->
+    kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]);
+fetch_category(Category, 'false') ->
     kz_datamgr:open_doc(?KZ_CONFIG_DB, Category).
 -endif.
 
@@ -1097,7 +1140,8 @@ remove_config_setting(Id, Setting) when is_binary(Id) ->
 remove_config_setting(JObj, Setting) ->
     Id = kz_doc:id(JObj),
     Keys = [{Id, Node, Setting}
-            || Node <- kz_doc:get_public_keys(JObj)
+            || Node <- kz_doc:get_public_keys(JObj),
+               kz_json:is_json_object(Node, JObj)
            ],
     remove_config_setting(Keys, JObj, []).
 

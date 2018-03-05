@@ -223,6 +223,8 @@ config_to_schema(_, 'get_node_value', _Args, Schemas) ->
     Schemas;
 config_to_schema(_, 'get_category', _Args, Schemas) ->
     Schemas;
+config_to_schema(_, 'fetch_category', _Args, Schemas) ->
+    Schemas;
 config_to_schema(Source, F='get_global', [Account, Cat, K], Schemas) ->
     config_to_schema(Source, F, [Account, Cat, K, 'undefined'], Schemas);
 config_to_schema(Source, F='get_global', [_Account, Cat, K, Default], Schemas) ->

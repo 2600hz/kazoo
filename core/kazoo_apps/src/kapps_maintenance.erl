@@ -980,48 +980,56 @@ handle_module_rename_doc(JObj) ->
             end
     end.
 
-maybe_new({ok, Doc}) -> Doc;
-maybe_new(_) -> kz_json:new().
+-spec validate_system_configs() -> [{kz_term:ne_binary(), kz_json:object()}].
+validate_system_configs() ->
+    [{Config, merge_errors(Status)}
+     || Config <- kapps_config_doc:list_configs(),
+        Status <- [validate_system_config(Config)],
+        [] =/= Status
+    ].
 
-get_config_document(Id) ->
-    kz_doc:public_fields(maybe_new(kapps_config:get_category(Id))).
+-spec merge_errors(kz_json_schema:validation_errors()) -> kz_json:object().
+merge_errors([{_Code, _Message, ErrorJObj} | StatusErrors]) ->
+    lists:foldl(fun({_C, _M, ErrJObj}, AccJObj) ->
+                        kz_json:merge(ErrJObj, AccJObj)
+                end
+               ,ErrorJObj
+               ,StatusErrors
+               ).
 
--spec validate_system_config(kz_term:ne_binary()) -> [{_, _}].
+-spec validate_system_config(kz_term:ne_binary()) -> kz_json_schema:validation_errors().
 validate_system_config(Id) ->
     Doc = get_config_document(Id),
-    Keys = kz_json:get_keys(Doc),
-    Name = kapps_config_util:system_schema_name(Id),
-    case kz_json_schema:load(Name) of
-        {error,not_found} ->
-            [{no_schema_for, Id}];
-        {ok, Schema} ->
-            Validation = [ {Key, kz_json_schema:validate(Schema, kz_json:get_value(Key, Doc))} || Key <- Keys ],
-            lists:flatten([ {Key, get_error(Error)} || {Key, Error} <- Validation, not valid(Error) ])
+    Schema = kapps_config_util:system_config_document_schema(Id),
+    case kz_json_schema:validate(Schema, Doc) of
+        {'ok', _} -> [];
+        {'error', Errors} -> kz_json_schema:errors_to_jobj(Errors)
     end.
 
--spec valid(any()) -> boolean().
-valid({ok, _}) -> true;
-valid(_) -> false.
+-spec get_config_document(kz_term:ne_binary()) -> kz_json:object().
+get_config_document(Id) ->
+    kz_doc:public_fields(maybe_new(kapps_config:fetch_category(Id))).
 
-get_error({error, Errors}) -> [ get_error(Error) || Error <- Errors ];
-get_error({Code, _Schema, Error, Value, Path}) -> {Code, Error, Value, Path};
-get_error(X) -> X.
+-spec maybe_new({'ok', kz_json:object()} | {'error', any()}) -> kz_json:object().
+maybe_new({'ok', Doc}) -> Doc;
+maybe_new(_) -> kz_json:new().
 
 -spec cleanup_system_config(kz_term:ne_binary()) -> {'ok', kz_json:object()}.
 cleanup_system_config(Id) ->
-    Doc = maybe_new(kapps_config:get_category(Id)),
-    ErrorKeys = [ Key || {Key, _} <- validate_system_config(Id), Key =/= no_schema_for ],
-    NewDoc = lists:foldl(fun(K, A) -> kz_json:delete_key(K, A) end, Doc, ErrorKeys),
+    Doc = maybe_new(kapps_config:fetch_category(Id)),
+    ErrorKeys = error_keys(validate_system_config(Id)),
+    NewDoc = lists:foldl(fun kz_json:delete_key/2, Doc, ErrorKeys),
     kz_datamgr:save_doc(?KZ_CONFIG_DB, NewDoc).
 
--spec cleanup_system_configs() -> [{ok, kz_json:object() | kz_json:objects()} | _].
-cleanup_system_configs() ->
-    [ cleanup_system_config(Id) || {Id, _Err} <- validate_system_configs() ].
+-spec error_keys(kz_json_schema:validation_errors()) -> kz_json:paths().
+error_keys(Errors) ->
+    [binary:split(kz_json:get_keys(ErrorJObj), <<".">>)
+     || {_Code, _Message, ErrorJObj} <- Errors
+    ].
 
--spec validate_system_configs() -> [{kz_term:ne_binary(), _}].
-validate_system_configs() ->
-    Results = [ {Config, validate_system_config(Config)} || Config <- kapps_config_doc:list_configs() ],
-    [ Result || Result = {_, Status} <- Results, Status =/= [] ].
+-spec cleanup_system_configs() -> [{'ok', kz_json:object() | kz_json:objects()}].
+cleanup_system_configs() ->
+    [cleanup_system_config(Id) || {Id, _Err} <- validate_system_configs()].
 
 -spec flush_getby_cache() -> 'ok'.
 flush_getby_cache() ->
@@ -1031,7 +1039,6 @@ flush_getby_cache() ->
 -spec flush_account_views() -> 'ok'.
 flush_account_views() ->
     put('account_views', 'undefined').
-
 
 -spec get_all_account_views() -> kz_datamgr:views_listing().
 get_all_account_views() ->
