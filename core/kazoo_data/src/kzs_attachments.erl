@@ -140,7 +140,13 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
             Att = attachment_from_handler(AName, attachment_handler_jobj(Handler, Props), Size, CT),
             handle_put_attachment(Map, Att, DbName, DocId, AName, Contents, Options, Props);
         {'error', _Reason, _ExtendedError} = AttHandlerError ->
-            _ = kz_util:spawn(fun save_attachment_handler_error/2, [DbName, AttHandlerError]),
+            case props:get_value('save_error', Options, 'true') of
+                'true' ->
+                    _ = kz_util:spawn(fun save_attachment_handler_error/3,
+                                      [Map, DbName, AttHandlerError]);
+                'false' ->
+                    lager:debug("Skipping error save because save_error is set to false")
+            end,
             handle_attachment_handler_error(AttHandlerError, Options)
     end;
 put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
@@ -205,14 +211,24 @@ attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined
 attachment_url(_, DbName, DocId, AttachmentId, Handler, Options) ->
     {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler} | Options]}}.
 
--spec save_attachment_handler_error(kz_term:ne_binary(), kz_att_error:error()) -> 'ok'.
-save_attachment_handler_error(DbName, {'error', Reason, ExtendedError}) ->
-    NewValues = [{'reason', Reason} ,{'pvt_type', <<"attachment_handler_error">>}],
+-spec save_attachment_handler_error(att_map()
+                                   ,kz_term:ne_binary()
+                                   ,kz_att_error:error()
+                                   ) -> 'ok'.
+save_attachment_handler_error(Map
+                             ,DbName
+                             ,{'error', Reason, ExtendedError}
+                             ) ->
+    %% Workaround for `kzc_recording` and `kz_endpoint_recording`.
+    AttUUID = maps:get('att_handler_id', Map, <<"overridden">>),
+    NewValues = [{'reason', Reason}
+                ,{'handler_id', AttUUID}
+                ,{'pvt_type', <<"attachment_handler_error">>}
+                ],
     ErrorJSON = kz_json:set_values(NewValues, kz_att_error:to_json(ExtendedError)),
     UpdatedErrorJSON = kz_doc:update_pvt_parameters(ErrorJSON, DbName),
     {ok, SavedJObj} = kazoo_modb:save_doc(DbName, UpdatedErrorJSON),
-    lager:debug("Attachment handler error stored with id: ~p", [kz_doc:id(SavedJObj)]),
-    ok.
+    lager:debug("Attachment handler error stored with id: ~p", [kz_doc:id(SavedJObj)]).
 
 -spec handle_attachment_handler_error(kz_att_error:error(), kz_data:options()) ->
                                              kz_att_error:error() | kz_datamgr:data_error().

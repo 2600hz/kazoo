@@ -22,10 +22,7 @@ error_response_test_() ->
                           ,resp_code => 500
                           ,resp_body => <<>>
                           },
-    PutExtendedError = FetchExtendedError#{attachment_content => att_content()
-                                          ,handler_props => #{}
-                                          ,options => options()
-                                          },
+    PutExtendedError = FetchExtendedError#{handler_props => #{}, options => options()},
 
     %% Attachment handlers must always return extended errors (3 elements tuple),
     %% e.g: `{error, Reason, ExtendedError}'.

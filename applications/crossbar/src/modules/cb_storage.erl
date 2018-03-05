@@ -440,8 +440,10 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     AttSettings = kz_maps:keys_to_atoms(kz_json:to_map(Settings)),
     Opts = [{'plan_override', #{'att_handler' => {AttHandler, AttSettings}
                                ,'att_post_handler' => 'external'
+                               ,'att_handler_id' => AttId
                                }}
            ,{'error_verbosity', 'verbose'}
+           ,{'save_error', 'false'}
            ],
     %% Check the storage settings have permissions to create files
     case kz_datamgr:put_attachment(DbName, DocId, AName, Content, Opts) of
