@@ -24,7 +24,7 @@
 
 -export([load_chunked_cdr_ids/3]).
 -ifdef(TEST).
-    -export([handle_utc_time_offset/2]).
+-export([handle_utc_time_offset/2]).
 -endif.
 
 
