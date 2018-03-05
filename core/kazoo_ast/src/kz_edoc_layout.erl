@@ -42,6 +42,8 @@
         ,get_attr/2
         ,get_attrval/2
         ,get_content/2
+
+        ,export_content/1
         ]).
 
 -include_lib("xmerl/include/xmerl.hrl").
@@ -237,7 +239,7 @@ typedef(NameArgTypes, Es, Opts) ->
 
     case get_elem(type, Es) of
         [] ->
-            [{def, export_content(NameArgTypes, Opts)}
+            [{def, export_content([NameArgTypes], Opts)}
             ,{abstract_datatype, true}
              | Typedef
             ];
