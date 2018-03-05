@@ -1,7 +1,7 @@
 {application,webhooks,
              [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_config,kazoo_data,kazoo_documents,
-                             kazoo_modb,kazoo_stdlib,kazoo_web,kernel,lager,
+                             kazoo_events, kazoo_modb,kazoo_stdlib,kazoo_web,kernel,lager,
                              stdlib]},
               {description,"Webhooks - HTTP events from Kazoo to you"},
               {env,[{is_kazoo_app,true}]},

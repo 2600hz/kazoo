@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz
+%%% @copyright (C) 2017-2018, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -21,7 +21,7 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
--include_lib("kazoo_apps/include/kz_hooks.hrl").
+-include("kz_hooks.hrl").
 
 -define(HOOK_REG
        ,{'p', 'l', 'kz_hook'}).

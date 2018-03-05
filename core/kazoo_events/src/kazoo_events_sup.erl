@@ -3,13 +3,13 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_hooks_listener_sup).
+-module(kazoo_events_sup).
 -behaviour(supervisor).
 
 -export([start_link/0]).
 -export([init/1]).
 
--include("kazoo_apps.hrl").
+-include("kazoo_events.hrl").
 -include("kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).

@@ -95,7 +95,9 @@ handle_event(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
 
     AccountId = find_account_id(JObj),
-    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
+    case AccountId =/= 'undefined'
+        andalso webhooks_util:find_webhooks(?NAME, AccountId) of
+        'false' -> 'ok';
         [] ->
             lager:debug("no hooks to handle ~s for ~s"
                        ,[kz_api:event_name(JObj), AccountId]

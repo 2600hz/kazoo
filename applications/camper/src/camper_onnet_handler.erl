@@ -20,7 +20,7 @@
         ]).
 
 -include("camper.hrl").
--include_lib("kazoo_apps/include/kz_hooks.hrl").
+-include_lib("kazoo_events/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 
