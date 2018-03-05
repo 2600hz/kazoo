@@ -31,7 +31,7 @@
              ,app_default
              ,macros = []
              ,includes = []
-         }).
+             }).
 %% EDoc internal environment. Should not be here, but we need it to to make links relative.
 
 -spec main(_) -> boolean().
@@ -71,11 +71,11 @@ run(Opts0) ->
 
 include_paths() ->
     lists:usort(["core"]
-        ++ ["applications/tasks"]
-        ++ [filename:dirname(Path) || Path <- filelib:wildcard("core/*/{src,include}/**/*.hrl")]
-        ++ ["applications"]
-        ++ [filename:dirname(Path) || Path <- filelib:wildcard("applications/*/{src,include}/**/*.hrl")]
-        ++ ["deps"]).
+                ++ ["applications/tasks"]
+                ++ [filename:dirname(Path) || Path <- filelib:wildcard("core/*/{src,include}/**/*.hrl")]
+                ++ ["applications"]
+                ++ [filename:dirname(Path) || Path <- filelib:wildcard("applications/*/{src,include}/**/*.hrl")]
+                ++ ["deps"]).
 
 edoc_options(Opts) ->
     [{dir, maps:get(out_dir, Opts)}
@@ -100,8 +100,7 @@ sources(#{apps := AppDirs}) ->
 
 expand_sources(App, Dir) ->
     Erls = lists:usort(filelib:fold_files(filename:join(Dir, "src"), "\\.erl$", true, fun(H, T) -> [H|T] end, [])),
-    Atom = list_to_atom(App),
-    {{App, Dir}, kz_edoc_doclet:doclet_apps_gen(Atom, Dir, Erls)}.
+    {{App, Dir}, kz_edoc_doclet:doclet_apps_gen(list_to_atom(App), Dir, Erls)}.
 
 %% something like `edoc_lib:get_doc_env/3'
 get_doc_env(Sources, EDocOpts) ->
@@ -113,7 +112,7 @@ get_doc_env(Sources, EDocOpts) ->
         ,modules = M
         ,app_default = "http://www.erlang.org/edoc/doc"
         ,includes = Includes
-    }.
+        }.
 
 %% something like `edoc_lib:get_doc_links/3'
 get_doc_links(Sources) ->
@@ -126,7 +125,7 @@ get_doc_links(Sources) ->
 parse_args([], #{dirs := []}=Config) ->
     C1 = Config#{apps => [{filename:basename(D), D}
                           || D <- filelib:wildcard("{core,applications}/*"),
-                                  filelib:is_dir(D)
+                             filelib:is_dir(D)
                          ]
                 },
     maps:remove(dirs, C1);

@@ -861,7 +861,7 @@ description(both, Es, Opts) ->
     Desc = get_content(description, Es),
     Short = normalize_paragraphs(get_content(briefDescription, Desc)),
     Full = normalize_paragraphs(get_content(fullDescription, Desc)),
-    % io:format("~n Full ~p~n", [Full]),
+    %% io:format("~n Full ~p~n", [Full]),
     filter_empty(
       [{short_desc, export_content(Short, Opts)}
       ,{full_desc, export_content(Full, Opts)}

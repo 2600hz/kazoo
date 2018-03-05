@@ -175,7 +175,7 @@ process_cmds([#doclet_apps_gen{sources = Sources}=Cmd|Cmds]
     Hidden = proplists:get_bool(hidden, Options),
 
     {NewMap, E} = lists:foldl(fun(Src, Acc) ->
-                                     source(Context, Cmd, Src, Acc, Private, Hidden)
+                                      source(Context, Cmd, Src, Acc, Private, Hidden)
                               end
                              ,{Map, HasError}
                              ,Sources
@@ -235,9 +235,9 @@ sidebar(Modules, #context{dir = OutDir, opts = Options}) ->
     Suffix = proplists:get_value(file_suffix, Options, ?DEFAULT_FILE_SUFFIX),
 
     Side = maps:fold(fun({App, _}, Mods, Acc) ->
-                            [{App, [{Module, filename:join([OutDir, AppsOutDir, App, Module]) ++ Suffix} || {Module, _} <- Mods]}
-                             | Acc
-                            ]
+                             [{App, [{Module, filename:join([OutDir, AppsOutDir, App, Module]) ++ Suffix} || {Module, _} <- Mods]}
+                              | Acc
+                             ]
                      end
                     ,[]
                     ,Modules),
