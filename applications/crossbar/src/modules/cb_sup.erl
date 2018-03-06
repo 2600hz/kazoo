@@ -205,9 +205,9 @@ does_resource_exist(ModuleBin, FunctionBin, Args) ->
     try {module_name(ModuleBin), kz_term:to_atom(FunctionBin)} of
         {Module, Function} ->
             lager:debug("checking existence of ~s:~s/~p", [Module, Function, Arity]),
-            erlang:function_exported(Module, Function, Arity)
+            kz_module:is_exported(Module, Function, Arity)
     catch
-        'error':'badarg' ->
+        'error':_ ->
             lager:debug("failed to find ~s_maintenance:~s/~p", [ModuleBin, FunctionBin, Arity]),
             'false'
     end.
@@ -217,11 +217,7 @@ module_name(ModuleBin) ->
     %%   in this module, despite coming from a user, because
     %%   only the system admin has access...
     Module = kz_term:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true'),
-    try Module:module_info() of
-        _ -> Module
-    catch
-        _E:R -> exit(R)
-    end.
+    Module = kz_module:ensure_loaded(Module).
 
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)

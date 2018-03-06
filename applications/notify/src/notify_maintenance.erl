@@ -233,11 +233,7 @@ match_file_to_db(<<"notify_", FileKey/binary>>=File, Acc, Ids) ->
 %%------------------------------------------------------------------------------
 -spec module_exists(binary() | atom()) -> boolean().
 module_exists(Module) when is_atom(Module) ->
-    try Module:module_info() of
-        _ -> 'true'
-    catch
-        _:_ -> 'false'
-    end;
+    Module =:= kz_module:ensure_loaded(Module);
 module_exists(Module) ->
     module_exists(kz_term:to_atom(Module, 'true')).
 
