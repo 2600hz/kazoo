@@ -11,6 +11,7 @@ Defines a rate for a given prefix
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `account_id` | Reseller's account ID | `string()` |   | `false` |  
+`caller_id_numbers` | String of caller id prefixes separated by ':' | `string()` |   | `false` |  
 `carrier` | Friendly name for the carrier providing this rate | `string()` |   | `false` |  
 `description` | Friendly description of the rate | `string()` |   | `false` |  
 `direction.[]` |   | `string('inbound' | 'outbound')` |   | `false` |  
