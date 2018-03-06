@@ -157,10 +157,10 @@ filter({'warn_undefined_callbacks', _, _}) -> 'false';
 filter({'warn_contract_types', _, {'overlapping_contract',_}}) -> 'false';
 filter(_W) -> 'true'.
 
-print({Tag, {File, Line}, _Warning} = W) ->
-    io:format("~s:~p: ~-30.. s~s~n", [File, Line, Tag, dialyzer:format_warning(W)]);
+print({Tag, {File, Line}, Warning}) ->
+    io:format("~s:~p: ~s~n  ~p~n", [File, Line, Tag, Warning]);
 print(_Err) ->
-    _Err.
+    io:format("error: ~p~n", [_Err]).
 
 scan(PLT, Things) ->
     try do_scan(PLT, Things) of
@@ -174,6 +174,7 @@ do_scan(PLT, Paths) ->
     dialyzer:run([{'init_plt', PLT}
                  ,{'analysis_type', 'succ_typings'}
                   %% ,{'files_rec', [Path]}
+                 ,{'from', 'byte_code'}
                  ,{'files', Paths}
                  ,{'warnings', ['error_handling' %% functions that only return via exception
                                 %% ,no_behaviours  %% suppress warnings about behaviour callbacks

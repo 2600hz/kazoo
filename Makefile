@@ -140,10 +140,7 @@ dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
 dialyze-it: $(PLT)
-	@if [ -n "$(TO_DIALYZE)" ]; then \
-	export TO_DIALYZE="$(TO_DIALYZE)"; \
-	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt; \
-	fi;
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -299,8 +296,7 @@ circle-unstaged:
 circle-dialyze: build-plt
 # circle-dialyze: circle-dialyze: export TO_DIALYZE = $(CHANGED)
 circle-dialyze:
-	@export TO_DIALYZE="$(CHANGED)"
-	@$(MAKE) dialyze
+	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze-it
 
 circle-release:
 	@$(MAKE) build-ci-release
