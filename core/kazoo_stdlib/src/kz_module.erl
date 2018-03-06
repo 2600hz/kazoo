@@ -18,7 +18,7 @@ is_exported(Module, Function, Arity)
        is_integer(Arity),
        Arity >= 0 ->
     case erlang:module_loaded(Module) of
-        'false' -> code:ensure_loaded(Module);
+        'false' -> _ = code:ensure_loaded(Module), 'ok';
         'true' -> 'ok'
     end,
     erlang:function_exported(Module, Function, Arity).
