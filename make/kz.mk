@@ -73,7 +73,7 @@ include $(DEPS_RULES)
 endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend edoc_info $(BEAMS)
 
 ebin/$(PROJECT).app:
 	@mkdir -p ebin/
@@ -88,6 +88,9 @@ ebin/%.beam: src/*/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
 
 depend: $(DEPS_RULES)
+
+edoc_info:
+	@erl -noshell -eval "try edoc_lib:write_info_file($(PROJECT), [$(MODULES)], \"doc\") of ok -> init:stop() catch _:_ -> io:format(\"~nfailed to create edoc-info file~n\"), init:stop(1) end."
 
 $(DEPS_RULES):
 	@rm -f $(DEPS_RULES)
@@ -118,6 +121,7 @@ clean: clean-test
 	@$(if $(wildcard ebin/*), rm ebin/*)
 	@$(if $(wildcard *crash.dump), rm *crash.dump)
 	@$(if $(wildcard $(DEPS_RULES)), rm $(DEPS_RULES))
+	@$(if $(wildcard doc/edoc-info), rm doc/edoc-info)
 
 clean-test: $(CLEAN_MOAR)
 	$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)

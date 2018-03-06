@@ -2,8 +2,9 @@
 %%! +A0
 %% -*- coding: utf-8 -*-
 
--mode('compile').
+-mode(compile).
 -compile(nowarn_unused_function).
+-compile(nowarn_unused_record).
 -compile(nowarn_unused_vars).
 
 -export([main/1]).
