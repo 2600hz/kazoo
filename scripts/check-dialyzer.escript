@@ -119,7 +119,7 @@ do_warn(PLT, Paths) ->
 ensure_kz_types(Beams) ->
     case lists:any(fun(F) -> filename:basename(F, ".beam") =:= "kz_types" end, Beams) of
         'true' -> Beams;
-        'false' -> [code:which(kz_types) | Beams]
+        'false' -> [code:which('kz_types') | Beams]
     end.
 
 do_warn_path({_, []}, Acc) -> Acc;
@@ -157,8 +157,8 @@ filter({'warn_undefined_callbacks', _, _}) -> 'false';
 filter({'warn_contract_types', _, {'overlapping_contract',_}}) -> 'false';
 filter(_W) -> 'true'.
 
-print({Tag, {File, Line}, Warning}) ->
-    io:format("~s:~p: ~s~n  ~p~n", [File, Line, Tag, Warning]);
+print({Tag, {File, Line}, _W}=Warning) ->
+    io:format("~s:~p: ~s~n  ~s~n", [File, Line, Tag, dialyzer:format_warning(Warning)]);
 print(_Err) ->
     io:format("error: ~p~n", [_Err]).
 
