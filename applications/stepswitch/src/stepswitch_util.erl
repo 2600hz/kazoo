@@ -298,7 +298,7 @@ get_endpoint_format_from(OffnetReq, CCVs) ->
 -spec route_by() -> atom().
 route_by() ->
     RouteBy = kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"route_by">>, ?DEFAULT_ROUTE_BY),
-    case kz_util:try_load_module(RouteBy) of
+    case kz_module:ensure_loaded(RouteBy) of
         'false' -> kz_term:to_atom(?DEFAULT_ROUTE_BY);
         Module -> Module
     end.

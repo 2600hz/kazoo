@@ -611,27 +611,19 @@ parse_path_tokens(Context, [Mod|T], Events) ->
 
 -spec is_cb_module(cb_context:context(), kz_term:ne_binary()) -> boolean().
 is_cb_module(Context, Elem) ->
-    try (kz_term:to_atom(<<"cb_", Elem/binary>>)):module_info('exports') of
-        _ -> 'true'
-    catch
-        'error':'badarg' -> 'false'; %% atom didn't exist already
-        _E:_R -> is_cb_module_version(Context, Elem)
-    end.
+    ApiVersion = cb_context:api_version(Context),
 
--spec is_cb_module_version(cb_context:context(), kz_term:ne_binary()) -> boolean().
-is_cb_module_version(Context, Elem) ->
-    case cb_context:is_context(Context) of
-        'false' -> 'false';
-        'true'  ->
-            ApiVersion = cb_context:api_version(Context),
-            ModuleName = <<"cb_", Elem/binary, "_", ApiVersion/binary>>,
-            try (kz_term:to_atom(ModuleName)):module_info('exports') of
-                _ -> 'true'
-            catch
-                'error':'badarg' -> 'false'; %% atom didn't exist already
-                _E:_R -> 'false'
-            end
-    end.
+    Modules = [<<"cb_", Elem/binary>>
+              ,<<"cb_", Elem/binary, "_", ApiVersion/binary>>
+              ],
+
+    is_cb_module(Modules).
+
+-spec is_cb_module(kz_term:ne_binaries()) -> boolean().
+is_cb_module([]) -> 'false';
+is_cb_module([Module|Modules]) ->
+    'true' =:= (catch erlang:function_exported(kz_term:to_atom(Module), 'init', 0))
+        orelse is_cb_module(Modules).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will find the intersection of the allowed methods

@@ -27,8 +27,6 @@
         ,set_allow_number_additions/2
         ]).
 
--export([try_load_module/1]).
-
 -export([uri_encode/1
         ,uri_decode/1
         ,resolve_uri/2
@@ -581,27 +579,6 @@ account_update(Account, UpdateFun) ->
         {'error', _R}=E -> E;
         {'ok', AccountJObj} ->
             account_update(UpdateFun(AccountJObj))
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc Given a module name try to verify its existence, loading it into the
-%% the Erlang VM if possible.
-%% @end
-%%------------------------------------------------------------------------------
--spec try_load_module(atom() | string() | binary()) -> atom() | 'false'.
-try_load_module('undefined') -> 'false';
-try_load_module("undefined") -> 'false';
-try_load_module(<<"undefined">>) -> 'false';
-try_load_module(Name) ->
-    Module = kz_term:to_atom(Name, 'true'),
-    try
-        Module:module_info('exports'),
-        {'module', Module} = code:ensure_loaded(Module),
-        Module
-    catch
-        'error':'undef' ->
-            lager:debug("module ~s not found", [Name]),
-            'false'
     end.
 
 %%------------------------------------------------------------------------------
