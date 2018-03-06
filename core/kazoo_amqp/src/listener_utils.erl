@@ -26,7 +26,6 @@ add_responder(Responders, Responder, Keys) when is_atom(Responder) ->
 add_responder(Responders, Responder, Keys) ->
     _ = maybe_init_responder(Responder
                             ,is_responder_known(Responders, Responder)
-                            ,kz_module:is_exported(Responder, 'init', 0)
                             ),
     case responder(Responder) of
         'undefined' -> Responders;
@@ -115,10 +114,14 @@ responder(CallbackFun)
     {CallbackFun, Arity};
 responder(_) -> 'undefined'.
 
--spec maybe_init_responder(responder_callback(), boolean(), boolean()) -> 'ok'.
-maybe_init_responder(_Responder, 'false', _InitExported) -> 'ok';
-maybe_init_responder(_Responder, 'true', 'false') -> 'ok';
-maybe_init_responder({Responder, _Fun}, 'true', 'true') when is_atom(Responder) ->
+-spec maybe_init_responder(responder_callback(), boolean()) -> 'ok' | 'false'.
+maybe_init_responder(_Responder, 'false') -> 'ok';
+maybe_init_responder({Responder, _Fun}, 'true') when is_atom(Responder) ->
+    kz_module:is_exported(Responder, 'init', 0)
+        andalso init_responder(Responder).
+
+-spec init_responder(module()) -> 'ok'.
+init_responder(Responder) ->
     try Responder:init() of
         _Init ->
             lager:debug("responder ~s init: ~p", [Responder, _Init])
