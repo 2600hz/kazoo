@@ -312,7 +312,8 @@ generate_row(Args) ->
                [{fun kzd_rate:set_name/2, maybe_generate_name(RateJObj)}
                ,{fun kzd_rate:set_weight/2, maybe_generate_weight(RateJObj)}
                ,{fun kzd_rate:set_routes/2, [<<"^\\+?", Prefix/binary, ".+$">>]}
-               ]),
+               ,{fun kzd_rate:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
+                                               ]),
     kz_json:set_values(Update, RateJObj).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rate:docs()) -> 'ok'.
@@ -439,3 +440,13 @@ generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
 
     Weight = (byte_size(Prefix) * 10) - trunc(CostToUse * 100),
     kzd_rate:constrain_weight(Weight).
+
+-spec maybe_generate_caller_id_numbers(kzd_rate:doc()) -> kz_term:ne_binaries()|'undefined'.
+maybe_generate_caller_id_numbers(RateJObj) ->
+    maybe_generate_caller_id_numbers(RateJObj, kz_json:get_value(<<"caller_id_numbers">>, RateJObj)).
+
+-spec maybe_generate_caller_id_numbers(kzd_rate:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
+maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Numbers) ->
+    lists:map(fun(X) -> <<"^\\+?", X/binary, ".+$">> end, binary:split(CID_Numbers, <<":">>, [global]));
+maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
+    'undefined'.
