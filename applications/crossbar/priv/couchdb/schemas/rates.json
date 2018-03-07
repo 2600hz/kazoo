@@ -7,6 +7,10 @@
             "description": "Reseller's account ID",
             "type": "string"
         },
+        "caller_id_numbers": {
+            "description": "String of caller id prefixes separated by ':'",
+            "type": "string"
+        },
         "carrier": {
             "description": "Friendly name for the carrier providing this rate",
             "type": "string"
@@ -69,6 +73,10 @@
             "description": "If the call duration is shorter than this threshold (seconds), the call is not billed",
             "minimum": 0,
             "type": "integer"
+        },
+        "rate_suffix": {
+            "description": "Suffix applied to rate name",
+            "type": "string"
         },
         "rate_surcharge": {
             "description": "The upfront cost of connecting the call",

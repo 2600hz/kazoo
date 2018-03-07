@@ -7,6 +7,7 @@
 
 -export([new/0]).
 -export([account_id/1, account_id/2, set_account_id/2]).
+-export([caller_id_numbers/1, caller_id_numbers/2, set_caller_id_numbers/2]).
 -export([carrier/1, carrier/2, set_carrier/2]).
 -export([description/1, description/2, set_description/2]).
 -export([direction/1, direction/2, set_direction/2]).
@@ -19,6 +20,7 @@
 -export([rate_minimum/1, rate_minimum/2, set_rate_minimum/2]).
 -export([rate_name/1, rate_name/2, set_rate_name/2]).
 -export([rate_nocharge_time/1, rate_nocharge_time/2, set_rate_nocharge_time/2]).
+-export([rate_suffix/1, rate_suffix/2, set_rate_suffix/2]).
 -export([rate_surcharge/1, rate_surcharge/2, set_rate_surcharge/2]).
 -export([rate_version/1, rate_version/2, set_rate_version/2]).
 -export([ratedeck_id/1, ratedeck_id/2, set_ratedeck_id/2]).
@@ -48,6 +50,18 @@ account_id(Doc, Default) ->
 -spec set_account_id(doc(), binary()) -> doc().
 set_account_id(Doc, AccountId) ->
     kz_json:set_value([<<"account_id">>], AccountId, Doc).
+
+-spec caller_id_numbers(doc()) -> kz_term:api_binary().
+caller_id_numbers(Doc) ->
+    caller_id_numbers(Doc, 'undefined').
+
+-spec caller_id_numbers(doc(), Default) -> binary() | Default.
+caller_id_numbers(Doc, Default) ->
+    kz_json:get_binary_value([<<"caller_id_numbers">>], Doc, Default).
+
+-spec set_caller_id_numbers(doc(), binary()) -> doc().
+set_caller_id_numbers(Doc, CallerIdNumbers) ->
+    kz_json:set_value([<<"caller_id_numbers">>], CallerIdNumbers, Doc).
 
 -spec carrier(doc()) -> kz_term:api_binary().
 carrier(Doc) ->
@@ -192,6 +206,18 @@ rate_nocharge_time(Doc, Default) ->
 -spec set_rate_nocharge_time(doc(), integer()) -> doc().
 set_rate_nocharge_time(Doc, RateNochargeTime) ->
     kz_json:set_value([<<"rate_nocharge_time">>], RateNochargeTime, Doc).
+
+-spec rate_suffix(doc()) -> kz_term:api_binary().
+rate_suffix(Doc) ->
+    rate_suffix(Doc, 'undefined').
+
+-spec rate_suffix(doc(), Default) -> binary() | Default.
+rate_suffix(Doc, Default) ->
+    kz_json:get_binary_value([<<"rate_suffix">>], Doc, Default).
+
+-spec set_rate_suffix(doc(), binary()) -> doc().
+set_rate_suffix(Doc, RateSuffix) ->
+    kz_json:set_value([<<"rate_suffix">>], RateSuffix, Doc).
 
 -spec rate_surcharge(doc()) -> kz_term:api_number().
 rate_surcharge(Doc) ->

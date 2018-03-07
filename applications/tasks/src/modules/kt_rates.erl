@@ -159,13 +159,13 @@ import(ExtraArgs, 'init', Args) ->
     end;
 import(_ExtraArgs, Dict, Args) ->
     Rate = generate_row(Args),
-    Db = kzd_ratedeck:format_ratedeck_db(kzd_rate:ratedeck(Rate, ?KZ_RATES_DB)),
+    Db = kzd_ratedeck:format_ratedeck_db(kzd_rates:ratedeck_id(Rate, ?KZ_RATES_DB)),
 
     BulkLimit = kz_datamgr:max_bulk_insert(),
 
     case dict:find(Db, Dict) of
         'error' ->
-            lager:debug("adding prefix ~s to ratedeck '~s'", [kzd_rate:prefix(Rate), Db]),
+            lager:debug("adding prefix ~s to ratedeck '~s'", [kzd_rates:prefix(Rate), Db]),
             {'ok', dict:store(Db, {1, [Rate]}, Dict)};
         {'ok', {BulkLimit, Rates}} ->
             lager:info("saving ~b rates to '~s'", [BulkLimit, Db]),
@@ -198,11 +198,11 @@ delete(ExtraArgs, 'init', Args) ->
             {<<"task execution is forbidden">>, 'stop'}
     end;
 delete(_ExtraArgs, State, Args) ->
-    Rate = kzd_rate:from_map(Args),
+    Rate = kzd_rates:from_map(Args),
 
     Limit = props:get_value('limit', State),
     Count = props:get_value('count', State) + 1,
-    P = kz_term:to_integer(kzd_rate:prefix(Rate)),
+    P = kz_term:to_integer(kzd_rates:prefix(Rate)),
 
     %% override account-ID from task props
     Dict = dict:append(P, Rate, props:get_value('dict', State)),
@@ -302,20 +302,21 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [kz_json:get_binary_value(Key, Doc) || Key <- ?DOC_FIELDS].
 
--spec generate_row(kz_tasks:args()) -> kzd_rate:doc().
+-spec generate_row(kz_tasks:args()) -> kzd_rates:doc().
 generate_row(Args) ->
-    RateJObj = kzd_rate:from_map(Args),
-    Prefix = kzd_rate:prefix(RateJObj),
+    RateJObj = kzd_rates:from_map(Args),
+    Prefix = kzd_rates:prefix(RateJObj),
     lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
 
     Update = props:filter_undefined(
-               [{fun kzd_rate:set_name/2, maybe_generate_name(RateJObj)}
-               ,{fun kzd_rate:set_weight/2, maybe_generate_weight(RateJObj)}
-               ,{fun kzd_rate:set_routes/2, [<<"^\\+?", Prefix/binary, ".+$">>]}
-               ]),
+               [{fun kzd_rates:set_rate_name/2, maybe_generate_name(RateJObj)}
+               ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
+               ,{fun kzd_rates:set_routes/2, [<<"^\\+?", Prefix/binary, ".+$">>]}
+               ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
+                                                ]),
     kz_json:set_values(Update, RateJObj).
 
--spec save_rates(kz_term:ne_binary(), kzd_rate:docs()) -> 'ok'.
+-spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 save_rates(Db, Rates) ->
     case kz_datamgr:save_docs(Db, Rates) of
         {'ok', _Result} ->
@@ -395,15 +396,15 @@ maybe_delete_rate(JObj, Dict) ->
 maybe_default(0, Default) -> Default;
 maybe_default(Value, _Default) -> Value.
 
--spec maybe_generate_name(kzd_rate:doc()) -> kz_term:ne_binary().
+-spec maybe_generate_name(kzd_rates:doc()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj) ->
-    maybe_generate_name(RateJObj, kzd_rate:name(RateJObj)).
+    maybe_generate_name(RateJObj, kzd_rates:rate_name(RateJObj)).
 
--spec maybe_generate_name(kzd_rate:doc(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
+-spec maybe_generate_name(kzd_rates:doc(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj, 'undefined') ->
-    generate_name(kzd_rate:prefix(RateJObj)
-                 ,kzd_rate:iso_country_code(RateJObj)
-                 ,kzd_rate:direction(RateJObj, [])
+    generate_name(kzd_rates:prefix(RateJObj)
+                 ,kzd_rates:iso_country_code(RateJObj)
+                 ,kzd_rates:direction(RateJObj, [])
                  );
 maybe_generate_name(_RateJObj, Name) -> Name.
 
@@ -419,23 +420,33 @@ generate_name(Prefix, ISO, Directions) ->
     Direction = kz_binary:join(Directions, <<"_">>),
     <<Direction/binary, "_", ISO/binary, "_", Prefix/binary>>.
 
--spec maybe_generate_weight(kzd_rate:doc()) -> integer().
+-spec maybe_generate_weight(kzd_rates:doc()) -> integer().
 maybe_generate_weight(RateJObj) ->
-    maybe_generate_weight(RateJObj, kzd_rate:weight(RateJObj, 'undefined')).
+    maybe_generate_weight(RateJObj, kzd_rates:weight(RateJObj, 'undefined')).
 
--spec maybe_generate_weight(kzd_rate:doc(), kz_term:api_integer()) -> integer().
+-spec maybe_generate_weight(kzd_rates:doc(), kz_term:api_integer()) -> integer().
 maybe_generate_weight(RateJObj, 'undefined') ->
-    generate_weight(kzd_rate:prefix(RateJObj)
-                   ,kzd_rate:rate_cost(RateJObj)
-                   ,kzd_rate:private_cost(RateJObj)
+    generate_weight(kzd_rates:prefix(RateJObj)
+                   ,kzd_rates:rate_cost(RateJObj)
+                   ,kzd_rates:private_cost(RateJObj)
                    );
-maybe_generate_weight(_RateJObj, Weight) -> kzd_rate:constrain_weight(Weight).
+maybe_generate_weight(_RateJObj, Weight) -> kzd_rates:constrain_weight(Weight).
 
 -spec generate_weight(kz_term:ne_binary(), kz_transaction:units(), kz_transaction:units()) ->
-                             kzd_rate:weight_range().
+                             kzd_rates:weight_range().
 generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
     UnitCostToUse = maybe_default(UnitIntCost, UnitCost),
     CostToUse = wht_util:units_to_dollars(UnitCostToUse),
 
     Weight = (byte_size(Prefix) * 10) - trunc(CostToUse * 100),
-    kzd_rate:constrain_weight(Weight).
+    kzd_rates:constrain_weight(Weight).
+
+-spec maybe_generate_caller_id_numbers(kzd_rates:doc()) -> kz_term:ne_binaries()|'undefined'.
+maybe_generate_caller_id_numbers(RateJObj) ->
+    maybe_generate_caller_id_numbers(RateJObj, kz_json:get_value(<<"caller_id_numbers">>, RateJObj)).
+
+-spec maybe_generate_caller_id_numbers(kzd_rates:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
+maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Numbers) ->
+    lists:map(fun(X) -> <<"^\\+?", X/binary, ".+$">> end, binary:split(CID_Numbers, <<":">>, [global]));
+maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
+    'undefined'.
