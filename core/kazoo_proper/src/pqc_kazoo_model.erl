@@ -240,14 +240,14 @@ is_number_in_account(#kazoo_model{}=Model, AccountId, Number) ->
 is_number_missing_in_account(#kazoo_model{}=Model, AccountId, Number) ->
     not is_number_in_account(Model, AccountId, Number).
 
--spec is_rate_missing(model(), kz_term:ne_binary(), kzd_rate:doc()) -> boolean().
+-spec is_rate_missing(model(), kz_term:ne_binary(), kzd_rates:doc()) -> boolean().
 is_rate_missing(#kazoo_model{}=Model, RatedeckId, RateDoc) ->
     Ratedeck = ratedeck(Model, RatedeckId),
-    Prefix = kzd_rate:prefix(RateDoc),
+    Prefix = kzd_rates:prefix(RateDoc),
 
     'undefined' =:= maps:get(Prefix, Ratedeck, 'undefined').
 
--spec does_rate_exist(model(), kz_term:ne_binary(), kzd_rate:doc()) -> boolean().
+-spec does_rate_exist(model(), kz_term:ne_binary(), kzd_rates:doc()) -> boolean().
 does_rate_exist(Model, RatedeckId, RateDoc) ->
     not is_rate_missing(Model, RatedeckId, RateDoc).
 
@@ -284,17 +284,17 @@ add_account(#kazoo_model{'accounts'=Accounts}=State, Name, APIResp) ->
                                             ,ID => new_account(Name)
                                             }}.
 
--spec add_rate_to_ratedeck(model(), kz_term:ne_binary(), kzd_rate:doc()) -> model().
+-spec add_rate_to_ratedeck(model(), kz_term:ne_binary(), kzd_rates:doc()) -> model().
 add_rate_to_ratedeck(#kazoo_model{'ratedecks'=Ratedecks}=Model, RatedeckId, RateDoc) ->
     Ratedeck = ratedeck(Model, RatedeckId),
-    UpdatedDeck = Ratedeck#{kzd_rate:prefix(RateDoc) => kzd_rate:rate_cost(RateDoc)},
+    UpdatedDeck = Ratedeck#{kzd_rates:prefix(RateDoc) => kzd_rates:rate_cost(RateDoc)},
     UpdatedDecks = Ratedecks#{RatedeckId => UpdatedDeck},
     Model#kazoo_model{'ratedecks'=UpdatedDecks}.
 
--spec remove_rate_from_ratedeck(model(), kz_term:ne_binary(), kzd_rate:doc()) -> model().
+-spec remove_rate_from_ratedeck(model(), kz_term:ne_binary(), kzd_rates:doc()) -> model().
 remove_rate_from_ratedeck(#kazoo_model{'ratedecks'=Ratedecks}=Model, RatedeckId, RateDoc) ->
     Ratedeck = ratedeck(Model, RatedeckId),
-    UpdatedDeck = maps:remove(kzd_rate:prefix(RateDoc), Ratedeck),
+    UpdatedDeck = maps:remove(kzd_rates:prefix(RateDoc), Ratedeck),
 
     Model#kazoo_model{'ratedecks'=Ratedecks#{RatedeckId => UpdatedDeck}}.
 

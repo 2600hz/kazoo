@@ -19,6 +19,7 @@
 -export([rate_minimum/1, rate_minimum/2, set_rate_minimum/2]).
 -export([rate_name/1, rate_name/2, set_rate_name/2]).
 -export([rate_nocharge_time/1, rate_nocharge_time/2, set_rate_nocharge_time/2]).
+-export([rate_suffix/1, rate_suffix/2, set_rate_suffix/2]).
 -export([rate_surcharge/1, rate_surcharge/2, set_rate_surcharge/2]).
 -export([rate_version/1, rate_version/2, set_rate_version/2]).
 -export([ratedeck_id/1, ratedeck_id/2, set_ratedeck_id/2]).
@@ -192,6 +193,18 @@ rate_nocharge_time(Doc, Default) ->
 -spec set_rate_nocharge_time(doc(), integer()) -> doc().
 set_rate_nocharge_time(Doc, RateNochargeTime) ->
     kz_json:set_value([<<"rate_nocharge_time">>], RateNochargeTime, Doc).
+
+-spec rate_suffix(doc()) -> kz_term:api_binary().
+rate_suffix(Doc) ->
+    rate_suffix(Doc, 'undefined').
+
+-spec rate_suffix(doc(), Default) -> binary() | Default.
+rate_suffix(Doc, Default) ->
+    kz_json:get_binary_value([<<"rate_suffix">>], Doc, Default).
+
+-spec set_rate_suffix(doc(), binary()) -> doc().
+set_rate_suffix(Doc, RateSuffix) ->
+    kz_json:set_value([<<"rate_suffix">>], RateSuffix, Doc).
 
 -spec rate_surcharge(doc()) -> kz_term:api_number().
 rate_surcharge(Doc) ->
