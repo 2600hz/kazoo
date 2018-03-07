@@ -36,9 +36,14 @@ start_link() ->
 
 -spec ready() -> boolean().
 ready() ->
-    Configured = start_which_kapps(),
-    Running = [kz_term:to_binary(App) || App <- running_apps()],
-    lists:subtract(Configured, Running) =:= [].
+    Configured = [kz_term:to_binary(App) || App <- start_which_kapps()],
+    Running = [kz_term:to_binary(App) || App <- running_apps(), is_atom(App)],
+
+    0 =:= sets:size(
+            sets:subtract(sets:from_list(Configured)
+                         ,sets:from_list(Running)
+                         )
+           ).
 
 -spec start_default_apps() -> [{atom(), 'ok' | {'error', any()}}].
 start_default_apps() ->
@@ -151,7 +156,8 @@ maybe_start_from_env() ->
         "noenv" -> 'false';
         KazooApps ->
             lager:info("starting applications specified in environment variable KAZOO_APPS: ~s"
-                      ,[KazooApps]),
+                      ,[KazooApps]
+                      ),
             string:tokens(KazooApps, ", ")
     end.
 

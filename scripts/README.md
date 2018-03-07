@@ -65,11 +65,6 @@ Typically \`TO\_DIALYZE\` would be a generated list of files.
 Do note: this will only check the file itself for issues. To really leverage Dialyzer, you'll want to include remote project modules for Dialyzer to use as well.
 
 
-## check-release-startup.sh
-
-Creates a release, starts it, and issues some commands to test that the release starts up and appears to be running
-
-
 ## check-scripts-readme.bash
 
 A quick script to check that all scripts in `$(ROOT)/scripts` are documented in this file!
@@ -813,4 +808,3 @@ returns next release based on branch & tags.
 ## `increment_version.bash`
 
 routine to increment a version
-

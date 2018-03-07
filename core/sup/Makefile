@@ -6,7 +6,7 @@ CLEAN_MOAR = clean-escript
 
 all: compile $(ESCRIPT)
 
-$(ESCRIPT):
+$(ESCRIPT): src/sup.erl
 	@$(REBAR) escriptize
 
 clean-escript:
