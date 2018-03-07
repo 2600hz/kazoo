@@ -418,8 +418,8 @@ process_row(Row, {Count, JObjs}=Acc) ->
             %% and decrement it from the weight so it has a lower weight #
             %% meaning it should be more likely used
             Weight = kzd_rates:constrain_weight(byte_size(kz_term:to_binary(Prefix)) * 10
-                                               - trunc(InternalRate * 100)
-                                              ),
+                                                - trunc(InternalRate * 100)
+                                               ),
             Id = <<ISO/binary, "-", (kz_term:to_binary(Prefix))/binary>>,
             Setters = props:filter_undefined(
                         [{fun kz_doc:set_id/2, Id}

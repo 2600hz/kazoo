@@ -48,11 +48,11 @@
                       kzd_rates:doc().
 rate_doc(RatedeckId, Cost) ->
     kzd_rates:from_map(#{<<"prefix">> => <<"1222">>
-                       ,<<"rate_cost">> => Cost
-                       ,<<"ratedeck_id">> => RatedeckId
-                       ,<<"direction">> => <<"inbound">>
-                       }
-                     ).
+                        ,<<"rate_cost">> => Cost
+                        ,<<"ratedeck_id">> => RatedeckId
+                        ,<<"direction">> => <<"inbound">>
+                        }
+                      ).
 
 -spec upload_rate(pqc_cb_api:state(), kzd_rates:doc()) -> {'ok', kz_term:api_ne_binary()}.
 upload_rate(API, RateDoc) ->

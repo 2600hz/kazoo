@@ -92,8 +92,8 @@ fetch_candidate_rates(E164, AccountId, RatedeckId, Keys) ->
         {'ok', ViewRows} ->
             {'ok'
             ,[kzd_rates:set_ratedeck_id(kz_json:get_json_value(<<"doc">>, ViewRow)
-                                   ,kzd_ratedeck:format_ratedeck_id(RatedeckDb)
-                                   )
+                                       ,kzd_ratedeck:format_ratedeck_id(RatedeckDb)
+                                       )
               || ViewRow <- ViewRows
              ]
             }

@@ -313,7 +313,7 @@ generate_row(Args) ->
                ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
                ,{fun kzd_rates:set_routes/2, [<<"^\\+?", Prefix/binary, ".+$">>]}
                ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
-               ]),
+                                                ]),
     kz_json:set_values(Update, RateJObj).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
