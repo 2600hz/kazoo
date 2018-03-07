@@ -190,7 +190,7 @@ resource_exists() -> 'false'.
 
 -spec resource_exists(path_token()) -> boolean().
 resource_exists(ModuleBin) ->
-    does_resource_exist(ModuleBin, 'status', []).
+    does_resource_exist(ModuleBin, <<"status">>, []).
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists(ModuleBin, FunctionBin) ->
