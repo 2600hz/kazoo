@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, Voyager Internet Ltd.
-%%% @doc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc API that registers mobile devices for push notifications
 %%%
-%%% API that registers mobile devices for push notifications
 %%%
+%%% @author Ben Partridge
 %%% @end
-%%% @contributors:
-%%%   Ben Partridge
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_push_notification_subscriptions).
 
 -export([init/0
@@ -25,16 +23,14 @@
 -define(BY_DEVICE, <<"push_notification_subscriptions/by_device">>).
 -define(BY_APP_BY_DEVICE, <<"push_notification_subscriptions/by_app_by_device">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.push_notification_subscriptions">>, ?MODULE, 'allowed_methods'),
@@ -45,39 +41,38 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.push_notification_subscriptions">>, ?MODULE, 'delete').
 
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_App, _MobileDeviceId) ->
     [?HTTP_PUT, ?HTTP_DELETE, ?HTTP_POST, ?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /push_notification_subscriptions => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource
+%%
+%% For example:
+%%
+%% ```
+%%    /push_notification_subscriptions => [].
 %%    /push_notification_subscriptions/foo => [<<"foo">>]
 %%    /push_notification_subscriptions/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, _) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /push_notification_subscriptions mights load a list of push_notificatio_subscriptionn objects
 %% /push_notification_subscriptions/123 might load the push_notificatio_subscriptionn object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, App, MobileDeviceId) ->
     validate_push_notification_subscription(Context, App, MobileDeviceId, cb_context:req_verb(Context)).
@@ -96,34 +91,28 @@ validate_push_notification_subscription(Context, App, MobileDeviceId, ?HTTP_GET)
     lager:debug("validating push notification subscription for GET"),
     read_docs_for_app_and_mobile_device_id(Context, App, MobileDeviceId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, _App, _MobileDeviceId) ->
     %% Set the app on the doc
     crossbar_doc:save(Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _, _) ->
     crossbar_doc:save(Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _, _) ->
     Id = kz_json:get_value(<<"id">>, cb_context:doc(Context)),
@@ -133,12 +122,10 @@ delete(Context, _, _) ->
         {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, Id, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%%------------------------------------------------------------------------------
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 create(Context, App, MobileDeviceId) ->
     lager:debug("Reading push notification subscription: ~p - ~p", [App, MobileDeviceId]),
@@ -152,13 +139,11 @@ create(Context, App, MobileDeviceId) ->
             crossbar_util:response_400(<<"subscription already exists for this device on this app">>, <<"bad request">>, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%%------------------------------------------------------------------------------
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(App, MobileDeviceId, Context) ->
     lager:debug("Reading push notification subscription: ~p - ~p", [App, MobileDeviceId]),
@@ -170,12 +155,10 @@ update(App, MobileDeviceId, Context) ->
         {_Status, BadContext} -> BadContext
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Read all matching mobile device registration keys for the given mobile device
+%%------------------------------------------------------------------------------
+%% @doc Read all matching mobile device registration keys for the given mobile device
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read_docs_for_app_and_mobile_device_id(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 read_docs_for_app_and_mobile_device_id(Context, App, MobileDeviceId) ->
     lager:debug("Reading push notification subscription: ~p - ~p", [App, MobileDeviceId]),
@@ -189,12 +172,10 @@ read_docs_for_app_and_mobile_device_id(Context, App, MobileDeviceId) ->
             BadContext
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Called when request has validated successfully, prepares document for saving in db
+%%------------------------------------------------------------------------------
+%% @doc Called when request has validated successfully, prepares document for saving in db
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', App, MobileDeviceId, Context) ->
     %% Set values that came from path
@@ -211,12 +192,10 @@ on_successful_validation('undefined', App, MobileDeviceId, Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"push_notification_subscription">>)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_json_value(<<"value">>, JObj)|Acc].

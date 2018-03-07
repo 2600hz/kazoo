@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, Voyager Internet Ltd.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
 %%% @doc
-%%%
+%%% @author Ben Partridge
 %%% @end
-%%% @contributors
-%%%   Ben Partridge
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(navi_notification_server_sup).
 
 -behaviour(supervisor).
@@ -25,10 +23,10 @@
 %% API functions
 %% ===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc Starts the supervisor
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link(kz_json:object(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(ServerConfig, MyName) ->
     lager:debug("Initialising ~s supervisor", [kz_json:get_value(<<"notification_type">>, ServerConfig)]),
@@ -45,10 +43,11 @@ push(Super, RegistrationId, NotificationType, Msg, ExtraParameters) ->
     ChildMod:push(ChildPid, RegistrationId, Msg, ExtraParameters),
     'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc gets the supervisor's child. Can be used to determine
 %% if the notification server is alive
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_living_children(supervisor:sup_ref()) -> [{supervisor:child_id(), supervisor:child(), supervisor:modules()}].
 get_living_children(Super) ->
     [{Id, Pid, Modules} || {Id, Pid, _Type, Modules} <- supervisor:which_children(Super), Pid =/= 'undefined'].
@@ -57,15 +56,13 @@ get_living_children(Super) ->
 %% Supervisor callbacks
 %% ===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%%------------------------------------------------------------------------------
+%% @doc Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([Type, AppName, ServerConfig]) ->
     kz_util:set_startup(),

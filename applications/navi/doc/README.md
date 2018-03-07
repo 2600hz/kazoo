@@ -9,6 +9,7 @@ Navi functionality is implemented across several modules:
 * navi\_notification\_server\_sup
 * nv\_apns
 * nv\_fcm
+* kapi\_navi
 
 ### cb\_push\_notification\_subscriptions.erl
 This is the crossbar module where users can register for push notifications. See the schema for a push notification subscription for the necessary data. A couple fields of note:
@@ -55,6 +56,10 @@ custom data to your notifications.
 This module contains the logic for sending push notifications to Android apps. You will not need to interact with this module if everything is set up properly unless you want to add
 custom data to your notifications.
 
+### kapi\_navi
+This module allows for applications other than navi to push notifications. It exposes a service which can make requests through amqp to Navi. It allows for pushing to a specific device and to pushing to all devices owned by a specific user.
+navi\_listener subscribes to both of these events and will deliver the message upon a kapi\_navi event being published.
+
 ## Adding Apps
 The navi\_maintenance module exports two functions that allow you to easily add apps to system\_config.navi through a sup command.
 *To add an iOS app:*
@@ -77,7 +82,7 @@ where:
 All apps that you add in this way should automatically have push notification servers started for them by navi
 
 ## Acknowledgments
-* The fcm push notification logic comes from a slightly adapted version of fcm-erlang which can be found at: https://github.com/softwarejoint/fcm-erlang
+* The fcm push notification logic comes from fcm-erlang which can be found at: https://github.com/softwarejoint/fcm-erlang
 * The apns push notification logic comes from apns4erl which can be found at: https://github.com/inaka/apns4erl
 
 Hey, listen!

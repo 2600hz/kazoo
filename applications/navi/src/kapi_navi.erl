@@ -1,11 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, Voyager Internet Ltd.
-%%% @doc
-%%% Used to send push notification requests from other apps to navi.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc Used to send push notification requests from other apps to navi.
+%%%
+%%% @author Ben Partridge
 %%% @end
-%%% @contributors
-%%%     Ben Partridge
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_navi).
 
 -export([push_device/1, push_device_v/1
@@ -58,11 +57,11 @@
 -define(NAVI_PUSH_USER_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY} ,{<<"Event-Name">>, <<"push_user">>} ]).
 -define(NAVI_PUSH_USER_TYPES, [{<<"User-ID">>, fun is_binary/1}|?SHARED_TYPES]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authorization Request - see wiki (push device)
 %% Takes proplist, creates JSON iolist or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec push_device(kz_term:api_terms()) ->
                          {'ok', iolist()} |
                          {'error', string()}.
@@ -81,10 +80,10 @@ push_device_v(Prop) when is_list(Prop) ->
 push_device_v(JObj) ->
     push_device_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Setup and tear down bindings for navi gen_listeners
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
@@ -121,39 +120,39 @@ unbind_q_from(Q, [_|T]) ->
 unbind_q_from(_Q, []) ->
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     kz_amqp_util:kapps_exchange().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish_push_device(kz_term:api_terms()) -> 'ok'.
--spec publish_push_device(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_push_device(Props) when is_list(Props) ->
     publish_push_device(kz_json:from_list(Props));
 publish_push_device(JObj) ->
     publish_push_device(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_push_device(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_push_device(Req, ContentType) ->
     lager:debug("Received request to push_device notification with navi: ~s", [kz_json:encode(Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NAVI_PUSH_DEVICE_VALUES, fun push_device/1),
     kz_amqp_util:kapps_publish(?KEY_NAVI_PUSH_DEVICE, Payload, ContentType).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authorization Request - see wiki (push user)
 %% Takes proplist, creates JSON iolist or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec push_user(kz_term:api_terms()) ->
-                         {'ok', iolist()} |
-                         {'error', string()}.
+                       {'ok', iolist()} |
+                       {'error', string()}.
 push_user(Prop) when is_list(Prop) ->
     case push_user_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NAVI_PUSH_USER_HEADERS, ?OPTIONAL_NAVI_PUSH_USER_HEADERS);
@@ -169,16 +168,17 @@ push_user_v(Prop) when is_list(Prop) ->
 push_user_v(JObj) ->
     push_user_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange (push user)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish_push_user(kz_term:api_terms()) -> 'ok'.
--spec publish_push_user(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_push_user(Props) when is_list(Props) ->
     publish_push_user(kz_json:from_list(Props));
 publish_push_user(JObj) ->
     publish_push_user(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_push_user(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_push_user(Req, ContentType) ->
     lager:debug("Received request to push_user notification with navi: ~s", [kz_json:encode(Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NAVI_PUSH_USER_VALUES, fun push_user/1),

@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, Voyager Internet Ltd.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
 %%% @doc
-%%%
+%%% @author Ben Partridge
 %%% @end
-%%% @contributors
-%%%   Ben Partridge
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(navi_module_sup).
 
 -behaviour(supervisor).
@@ -23,29 +21,32 @@
 
 -define(SERVER, ?MODULE).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the supervisor
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc gets the supervisor's children. Can be used to determine
 %% if a specific notification server is active
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_living_children() -> [{atom(),atom(),atom()}].
 get_living_children() ->
     [{Id, Pid, Module} || {Id, Pid, _Type, Module} <- supervisor:which_children(?SERVER), Pid =/= 'undefined'].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Determines if there is a notification server for the supplied
 %% notification type and app. If there is, send the notification.
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec push(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok' | 'error'.
 push(RegistrationId, AppName, NotificationType, Msg, ExtraParameters) ->
     Name =  get_notification_server_name(AppName, NotificationType),
@@ -64,19 +65,17 @@ push(RegistrationId, AppName, NotificationType, Msg, ExtraParameters) ->
             'error'
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Supervisor callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%%------------------------------------------------------------------------------
+%% @doc Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
@@ -86,10 +85,14 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     {'ok', {SupFlags, get_children_specs()}}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_children_specs() -> [supervisor:child_spec()].
 get_children_specs() ->
     %% Get all notification service configs from db

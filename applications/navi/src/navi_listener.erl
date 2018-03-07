@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, Voyager Internet Ltd.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
 %%% @doc
-%%%
+%%% @author Ben Partridge
 %%% @end
-%%% @contributors
-%%%   Ben Partridge
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(navi_listener).
 -behaviour(gen_listener).
 
@@ -43,13 +41,14 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the server
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
@@ -60,44 +59,30 @@ start_link() ->
                                       %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Initializes the server
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Handling call messages
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Handling cast messages
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
@@ -106,54 +91,45 @@ handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Handling all non call/cast messages
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Allows listener to pass options to handlers
-%% @spec handle_event(JObj, State) -> {reply, Options}
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %% @end
-%% @spec terminate(Reason, State) -> void()
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Determines who received the voicemail and which user that corresponds to, then sends notifications.
-%% @spec handle_new_voicemail(Jobj, Props) -> ok
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_new_voicemail(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_new_voicemail(JObj, _Props) ->
     %% Ensure object is actually of event we want
@@ -168,11 +144,10 @@ handle_new_voicemail(JObj, _Props) ->
     ExtraParameters = [{<<"metadata">>, kz_json:normalize(JObj)}],
     push_notifications(Account, User, <<"new_voicemail">>, Msg, ExtraParameters).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Handles external requests to send push notifications to a specific device
-%% @spec handle_push_request_device(Jobj, Props) -> ok
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_push_request_device(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push_request_device(JObj, _Props) ->
     lager:debug("Navi received external push request (device)"),
@@ -184,12 +159,11 @@ handle_push_request_device(JObj, _Props) ->
     ExtraParameters = [{<<"metadata">>, kz_json:normalize(Metadata)}],
     push_notifications_device(AccountId, DeviceId, Event, Msg, ExtraParameters).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Handles external requests to send push notifications to a specific user.
 %% Pushes to all the user's devices
-%% @spec handle_push_request_device(Jobj, Props) -> ok
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_push_request_user(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push_request_user(JObj, _Props) ->
     lager:debug("Navi received external push request (user)"),
@@ -200,9 +174,9 @@ handle_push_request_user(JObj, _Props) ->
     Event = kz_json:get_value(<<"Push-Topic">>, JObj),
     ExtraParameters = [{<<"metadata">>, kz_json:normalize(Metadata)}],
     push_notifications(AccountId, UserId, Event, Msg, ExtraParameters).
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
 %%% Gets the registrations for the user of the given type and pushes the notifications
 -spec push_notifications(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> any().

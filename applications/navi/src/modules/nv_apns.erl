@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, Voyager Internet Ltd.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
 %%% @doc
-%%%
+%%% @author Ben Partridge
 %%% @end
-%%% @contributors
-%%%     Ben Partridge
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(nv_apns).
 
 -behaviour(gen_server).
@@ -124,6 +122,11 @@ push(Srv, RegistrationId, Message, ExtraParams) ->
 %%=========================================================
 %%                 Private Methods
 %%========================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init_apns_connection(kz_term:ne_binary(), partial_connection(), atom(), kz_term:ne_binary()) -> init_retval().
 init_apns_connection(<<"dev">>, Connection, Name, Topic) ->
     lager:debug("Creating dev apns connection: ~p", [Name]),
