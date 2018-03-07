@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_media_url).
 
 -export([playback/1, playback/2]).
@@ -35,6 +33,11 @@ playback(<<"prompt://", PromptPath/binary>>, Options) ->
     lager:debug("looking up prompt path ~s", [PromptPath]),
     case binary:split(PromptPath, <<"/">>, ['global']) of
         [AccountId, PromptId, Language] ->
+            Media = kz_media_map:prompt_path(AccountId, PromptId, Language),
+            playback(Media, Options);
+        [AccountId, PromptId] ->
+            lager:info("got req for prompt ~s without language, checking account ~s", [PromptId, AccountId]),
+            Language = kz_media_util:prompt_language(AccountId),
             Media = kz_media_map:prompt_path(AccountId, PromptId, Language),
             playback(Media, Options);
         _Path ->

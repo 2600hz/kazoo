@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Webhook document accessors
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Webhook document accessors
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kzd_webhook).
 
 -export([is_enabled/1, is_enabled/2
@@ -66,13 +62,11 @@ disable(Hook) ->
 
 -spec disable(doc(), kz_term:api_binary()) -> doc().
 disable(Hook, Reason) ->
-    kz_json:set_values(
-      props:filter_undefined(
-        [{?IS_ENABLED, 'false'}
-        ,{?DISABLED_MESSAGE, Reason}
-        ])
+    kz_json:set_values([{?IS_ENABLED, 'false'}
+                       ,{?DISABLED_MESSAGE, Reason}
+                       ]
                       ,Hook
-     ).
+                      ).
 
 -spec disabled_message(doc()) -> kz_term:api_binary().
 disabled_message(Hook) ->
@@ -219,7 +213,6 @@ disable_subaccounts(Hook) ->
                      ,'false'
                      ,Hook
                      ).
-
 
 -spec include_internal_legs(doc()) -> boolean().
 include_internal_legs(Hook) ->

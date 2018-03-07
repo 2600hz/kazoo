@@ -1,9 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%% FS passthrough API
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_leader).
 
 -export([whoami/0, whoami/1]).
@@ -14,7 +13,7 @@
 -export([declare_exchanges/0]).
 -export([publish_req/2, publish_req/3]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(LEADER_REQ_HEADERS, []).
 -define(LEADER_REQ_VALUES, []).
@@ -82,14 +81,13 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:leader_exchange().
+    kz_amqp_util:leader_exchange().
 
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_req(Routing, JObj) ->
@@ -98,16 +96,16 @@ publish_req(Routing, JObj) ->
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Routing, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?LEADER_REQ_VALUES, fun req/1),
-    amqp_util:leader_publish(Routing, Payload, ContentType).
+    kz_amqp_util:leader_publish(Routing, Payload, ContentType).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, [{'name', Name}]) ->
     Node = node(),
     ProcessQ = iolist_to_binary(io_lib:format("~s.~s", [Name, Node])),
     BroadcastQ = iolist_to_binary(io_lib:format("~s.broadcast", [Name])),
-    _ = ['ok' = amqp_util:bind_q_to_leader(Queue, Bind) || Bind <- [ProcessQ, BroadcastQ]],
+    _ = ['ok' = kz_amqp_util:bind_q_to_leader(Queue, Bind) || Bind <- [ProcessQ, BroadcastQ]],
     'ok'.
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _) ->
-    'ok' = amqp_util:unbind_q_from_leader(Queue, <<"process">>).
+    'ok' = kz_amqp_util:unbind_q_from_leader(Queue, <<"process">>).

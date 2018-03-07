@@ -1,15 +1,19 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
-%%%   "id":"menu_id"
-%%%   // optional after here
-%%%   "interdigit_timeout":2000
-%%% }
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Provide a menu to caller.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`id'</dt>
+%%%   <dd>ID of menu document.</dd>
+%%%
+%%%   <dt>`interdigit_timeout'</dt>
+%%%   <dd><strong>Optional: </strong>How long to wait for the next DTMF, in milliseconds</dd>
+%%% </dl>
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_menu).
 -behaviour(gen_cf_action).
 
@@ -45,26 +49,22 @@
                       }).
 -type menu() :: #cf_menu_data{}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Menu = get_menu_profile(Data, Call),
     kapps_call_command:answer(Call),
     menu_loop(Menu, Call).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% The main auto-attendant loop, will execute for the number
+%%------------------------------------------------------------------------------
+%% @doc The main auto-attendant loop, will execute for the number
 %% of retries playing the greeting and collecting digits till the
 %% digits are routable
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec menu_loop(menu(), kapps_call:call()) -> 'ok'.
 menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
     lager:info("maxium number of retries reached"),
@@ -141,12 +141,10 @@ menu_handle_no_digits(#cf_menu_data{retries=Retries}=Menu, Call) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% The primary sequence logic to route the collected digits
+%%------------------------------------------------------------------------------
+%% @doc The primary sequence logic to route the collected digits
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec try_match_digits(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 try_match_digits(Digits, Menu, Call) ->
     lager:info("trying to match digits ~s", [Digits]),
@@ -157,12 +155,10 @@ try_match_digits(Digits, Menu, Call) ->
                 andalso hunt_for_callflow(Digits, Menu, Call)
                ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check if the digits are a exact match for the auto-attendant children
+%%------------------------------------------------------------------------------
+%% @doc Check if the digits are a exact match for the auto-attendant children
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_callflow_child(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_callflow_child(Digits, _, Call) ->
     case cf_exe:attempt(Digits, Call) of
@@ -172,22 +168,18 @@ is_callflow_child(Digits, _, Call) ->
         {'attempt_resp', {'error', _}} -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check if hunting is enabled
+%%------------------------------------------------------------------------------
+%% @doc Check if hunting is enabled
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_hunt_enabled(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
     Hunt.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check whitelist hunt digit patterns
+%%------------------------------------------------------------------------------
+%% @doc Check whitelist hunt digit patterns
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_hunt_allowed(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_hunt_allowed(_, #cf_menu_data{hunt_allow = <<>>}, _) ->
     lager:info("hunt_allow implicitly accepted digits"),
@@ -206,12 +198,10 @@ is_hunt_allowed(Digits, #cf_menu_data{hunt_allow=RegEx}, _) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check blacklisted hunt digit patterns
+%%------------------------------------------------------------------------------
+%% @doc Check blacklisted hunt digit patterns
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_hunt_denied(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_hunt_denied(_, #cf_menu_data{hunt_deny = <<>>}, _) ->
     lager:info("hunt_deny implicitly accepted digits"),
@@ -230,12 +220,10 @@ is_hunt_denied(Digits, #cf_menu_data{hunt_deny=RegEx}, _) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Hunt for a callflow with these numbers
+%%------------------------------------------------------------------------------
+%% @doc Hunt for a callflow with these numbers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec hunt_for_callflow(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 hunt_for_callflow(Digits, Menu, Call) ->
     AccountId = kapps_call:account_id(Call),
@@ -257,12 +245,10 @@ hunt_for_callflow(Digits, Menu, Call) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec record_greeting(binary(), menu(), kapps_call:call()) ->
                              {'ok', menu()} |
                              {'error', kz_json:object()}.
@@ -301,12 +287,10 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) -
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec play_invalid_prompt(menu(), kapps_call:call()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', atom()}.
@@ -317,12 +301,10 @@ play_invalid_prompt(#cf_menu_data{invalid_media='true'}, Call) ->
 play_invalid_prompt(#cf_menu_data{invalid_media=Id}, Call) ->
     kapps_call_command:b_play(<<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec play_transferring_prompt(menu(), kapps_call:call()) ->
                                       {'ok', kz_json:object()} |
                                       {'error', atom()}.
@@ -333,12 +315,10 @@ play_transferring_prompt(#cf_menu_data{transfer_media='true'}, Call) ->
 play_transferring_prompt(#cf_menu_data{transfer_media=Id}, Call) ->
     kapps_call_command:b_play(<<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec play_exit_prompt(menu(), kapps_call:call()) ->
                               {'ok', kz_json:object()} |
                               {'error', atom()}.
@@ -349,12 +329,10 @@ play_exit_prompt(#cf_menu_data{exit_media='true'}, Call) ->
 play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
     kapps_call_command:b_play(<<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_prompt(menu(), kapps_call:call()) -> kz_term:ne_binary().
 get_prompt(#cf_menu_data{greeting_id='undefined'}, Call) ->
     kapps_call:get_prompt(Call, <<"menu-no_prompt">>);
@@ -363,11 +341,10 @@ get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _)
 get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
     <<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec store_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
                              {'ok', kz_json:object()} |
                              {'error', kz_json:object()}.
@@ -382,11 +359,10 @@ store_recording(AttachmentName, MediaId, Call) ->
     'ok' = update_doc(Updates, MediaId, Call),
     kapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_new_attachment_url(binary(), binary(), kapps_call:call()) -> kz_term:ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = kapps_call:account_db(Call),
@@ -406,21 +382,18 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
             lager:debug("removing attachments from ~s", [_MediaId])
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tmp_file() -> kz_term:ne_binary().
 tmp_file() ->
     <<(kz_term:to_hex_binary(crypto:strong_rand_bytes(16)))/binary, ".mp3">>.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec review_recording(kz_term:ne_binary(), menu(), kapps_call:call()) ->
                               {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
@@ -445,11 +418,10 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
         {'error', _} -> {'ok', 'no_selection'}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec recording_media_doc(kz_term:ne_binary(), menu(), kapps_call:call()) -> kz_term:ne_binary().
 recording_media_doc(Type, #cf_menu_data{name=MenuName
                                        ,menu_id=Id
@@ -461,17 +433,16 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
             ,{<<"source_type">>, <<"menu">>}
             ,{<<"source_id">>, Id}
             ,{<<"media_source">>, <<"recording">>}
-            ,{<<"streamable">>, 'true'}],
+            ,{<<"streamable">>, 'true'}
+            ],
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Doc),
     kz_doc:id(JObj).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec update_doc(kz_term:text(), kz_json:json_term(), menu() | kz_term:ne_binary(),  kapps_call:call() | kz_term:ne_binary()) ->
                         'ok' | {'error', atom()}.
@@ -505,12 +476,10 @@ update_doc(Updates, Id, <<_/binary>> = Db) ->
 update_doc(Updates, Id, Call) ->
     update_doc(Updates, Id, kapps_call:account_db(Call)).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_menu_profile(kz_json:object(), kapps_call:call()) -> menu().
 get_menu_profile(Data, Call) ->
     Id = kz_json:get_ne_binary_value(<<"id">>, Data),

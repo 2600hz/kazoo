@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stepswitch_sms).
 
 -behaviour(gen_listener).
@@ -47,14 +45,15 @@
 -define(ATOM(X), kz_term:to_atom(X, 'true')).
 -define(SMS_POOL(A,B,C), ?ATOM(<<A/binary,"_", B/binary, "_", C/binary>>) ).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link(kz_json:objects(), kapi_offnet_resource:req()) -> kz_types:startlink_ret().
 start_link(Endpoints, OffnetReq) ->
     Bindings = [{'self', []}],
@@ -65,21 +64,14 @@ start_link(Endpoints, OffnetReq) ->
                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Endpoints, OffnetReq]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([kz_json:objects() | kapi_offnet_resource:req()]) -> {'ok', state()}.
 init([Endpoints, OffnetReq]) ->
     _ = kapi_offnet_resource:put_callid(OffnetReq),
@@ -97,35 +89,19 @@ init([Endpoints, OffnetReq]) ->
                          }}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
@@ -164,16 +140,10 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p~n", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('sms_timeout', State) ->
     gen_listener:cast(self(), 'next_message'),
@@ -182,49 +152,42 @@ handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
+%%------------------------------------------------------------------------------
+%% @doc Allows listener to pass options to handlers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_message_delivery(kz_json:object(), kz_term:proplist()) -> no_return().
 handle_message_delivery(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
@@ -251,10 +214,9 @@ send(<<"sip">>, Endpoint, API) ->
 send(<<"amqp">>, Endpoint, API) ->
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = kz_json:to_proplist(kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
-    CCVs = kz_json:merge_jobjs(
-             kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new())
+    CCVs = kz_json:merge_jobjs(kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new())
                               ,kz_json:filter(fun filter_smpp/1, props:get_value(<<"Custom-Channel-Vars">>, API, kz_json:new()))
-            ),
+                              ),
     Props = kz_json:to_proplist(Endpoint) ++ Options,
     Payload = props:set_value(<<"Custom-Channel-Vars">>, CCVs, props:set_values(Props, API)),
     Broker = kz_json:get_value([<<"Endpoint-Options">>, <<"AMQP-Broker">>], Endpoint),
@@ -398,7 +360,7 @@ maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
 -spec maybe_endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                         kz_json:object().
 maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"Format-From-URI">>, CCVs) of
         'true' -> endpoint_format_from(Endpoint, CIDNum, DefaultRealm);
         'false' ->

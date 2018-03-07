@@ -1,15 +1,13 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Users module
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Users module
 %%% Handle client requests for user documents
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_users_v1).
 
 -export([create_user/1]).
@@ -36,9 +34,9 @@
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
 %% SUPPORT FOR THE DEPRECIATED CB_SIGNUPS...
 -spec create_user(cb_context:context()) -> cb_context:context().
@@ -66,15 +64,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -106,18 +102,18 @@ content_types_provided(Context, _) ->
                                     cb_context:context().
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
-                                                                  ,{<<"text">>, <<"directory">>}]}]);
+                                                                  ,{<<"text">>, <<"directory">>}
+                                                                  ]
+                                                    }
+                                                   ]);
 content_types_provided(Context, _, _) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -129,15 +125,13 @@ resource_exists(_) -> 'true'.
 resource_exists(_, ?CHANNELS) -> 'true';
 resource_exists(_, ?VCARD) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with userId
 %%
-%% Failure here returns 404
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
 validate_resource(Context) -> Context.
@@ -153,11 +147,10 @@ validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, UserId}])
                                        ,Context
-             );
+                                       );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
@@ -165,11 +158,10 @@ validate_user_id(UserId, Context) ->
 validate_user_id(UserId, Context, Doc) ->
     case kz_doc:is_soft_deleted(Doc) of
         'true' ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, UserId}])
                                        ,Context
-             );
+                                       );
         'false'->
             cb_context:setters(Context
                               ,[{fun cb_context:set_user_id/2, UserId}
@@ -177,12 +169,10 @@ validate_user_id(UserId, Context, Doc) ->
                                ])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure we will be able to bill for users
+%%------------------------------------------------------------------------------
+%% @doc Ensure we will be able to bill for users
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec billing(cb_context:context()) -> cb_context:context().
 billing(Context) ->
     process_billing(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
@@ -198,12 +188,10 @@ process_billing(Context, [{<<"users">>, _}|_], _Verb) ->
     end;
 process_billing(Context, _Nouns, _Verb) -> Context.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
     authenticate_users(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
@@ -222,15 +210,13 @@ authorize_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
     'true';
 authorize_users(_Nouns, _Verb) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -301,11 +287,10 @@ delete(Context, _Id) ->
 patch(Context, Id) ->
     post(Context, Id).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_channels(cb_context:context()) -> cb_context:context().
 get_channels(Context) ->
     Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
@@ -374,21 +359,21 @@ set_photo(JObj, Context) ->
         'error' -> JObj;
         'success' ->
             Data = cb_context:resp_data(Attach),
-            CT = kz_json:get_value(<<"content_type">>
-                                  ,kz_json:get_value(?PHOTO
-                                                    ,kz_json:get_value(<<"_attachments">>
-                                                                      ,cb_context:doc(Context)
-                                                                      ))),
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
             kz_json:set_value(?PHOTO, kz_json:from_list([{CT, Data}]), JObj)
     end.
 
 -spec set_org(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_org(JObj, Context) ->
-    case kz_json:get_value(<<"org">>
-                          ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
-                                                           ,Context
-                                                           ,?TYPE_CHECK_OPTION(kzd_user:type()))))
+    LoadedContent = crossbar_doc:load(cb_context:account_id(Context)
+                                     ,Context
+                                     ,?TYPE_CHECK_OPTION(kzd_user:type())
+                                     ),
+
+    case 'success' =:= cb_context:resp_status(LoadedContent)
+        andalso kz_json:get_value(<<"org">>, cb_context:doc(LoadedContent))
     of
+        'false' -> JObj;
         'undefined' -> JObj;
         Val -> kz_json:set_value(<<"org">>, Val, JObj)
     end.
@@ -524,32 +509,26 @@ merge_user_channels_fold(Channel, D) ->
     UUID = kz_json:get_value(<<"uuid">>, Channel),
     dict:store(UUID, Channel, D).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_user_summary(cb_context:context()) -> cb_context:context().
 load_user_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a user document from the database
+%%------------------------------------------------------------------------------
+%% @doc Load a user document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_user(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(UserId, Context) ->
     prepare_username(UserId, Context).
@@ -703,13 +682,11 @@ rehash_creds(_UserId, Username, Password, Context) ->
       cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1))
      ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will determine if the username in the request is
+%%------------------------------------------------------------------------------
+%% @doc This function will determine if the username in the request is
 %% unique or belongs to the request being made
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec username_doc_id(kz_term:api_binary(), cb_context:context()) -> kz_term:api_binary().
 username_doc_id(Username, Context) ->
     username_doc_id(Username, Context, cb_context:account_db(Context)).
@@ -725,11 +702,9 @@ username_doc_id(Username, Context, _AccountDb) ->
         _ -> 'undefined'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec(normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 normalize_view_results(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc].

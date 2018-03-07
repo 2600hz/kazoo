@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @Copyright (C) 2017, 2600Hz
-%%% @doc
-%%% Kazoo API Definition Helpers
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Kazoo API Definition Helpers.
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_definition).
 
 %% #kapi_definition record accessors
@@ -22,7 +21,7 @@
         ,types/1
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -type api() :: #kapi_definition{}.
 -type apis() :: [api()].

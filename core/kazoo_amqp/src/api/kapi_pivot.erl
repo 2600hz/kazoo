@@ -1,14 +1,12 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Pivot API
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Pivot API.
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_pivot).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -export([req/1, req_v/1
         ,bind_q/2
@@ -80,24 +78,23 @@ failed_v(JObj) ->
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:bind_q_to_callmgr(Queue, get_pivot_req_routing(Realm)).
+    kz_amqp_util:bind_q_to_callmgr(Queue, get_pivot_req_routing(Realm)).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:unbind_q_from_callmgr(Queue, get_pivot_req_routing(Realm)).
+    kz_amqp_util:unbind_q_from_callmgr(Queue, get_pivot_req_routing(Realm)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:callmgr_exchange().
 
 get_pivot_req_routing(Realm) when is_binary(Realm) ->
-    list_to_binary([?KEY_PIVOT_REQ, ".", amqp_util:encode(Realm)]);
+    list_to_binary([?KEY_PIVOT_REQ, ".", kz_amqp_util:encode(Realm)]);
 get_pivot_req_routing(Api) ->
     get_pivot_req_routing(get_from_realm(Api)).
 
@@ -108,13 +105,13 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PIVOT_REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_pivot_req_routing(Req)).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, get_pivot_req_routing(Req)).
 
 
 -spec publish_failed(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_failed(Target, JObj) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?PIVOT_FAILED_VALUES, fun failed/1),
-    amqp_util:targeted_publish(Target, Payload).
+    kz_amqp_util:targeted_publish(Target, Payload).
 
 -spec get_from_realm(kz_term:api_terms()) -> kz_term:ne_binary().
 get_from_realm(Prop) when is_list(Prop) ->

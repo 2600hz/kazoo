@@ -1,9 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_privacy).
 
 -behaviour(gen_cf_action).
@@ -35,9 +34,7 @@ update_call(CaptureGroup, {'ok', Call}, Mode, Overwrite) ->
     Normalize = knm_converters:normalize(CaptureGroup),
     CCVs = ccvs_by_privacy_mode(Mode),
     Routines = [{fun kapps_call:set_request/2
-                ,<<Normalize/binary, "@"
-                   ,(kapps_call:request_realm(Call))/binary
-                 >>
+                ,list_to_binary([Normalize, "@", kapps_call:request_realm(Call)])
                 }
                ,{fun kapps_call:set_custom_channel_vars/2, CCVs}
                ,{fun kapps_call:kvs_store/3, <<"use_endpoint_privacy">>, Overwrite}

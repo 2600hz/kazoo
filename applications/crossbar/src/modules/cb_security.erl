@@ -1,12 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Kazoo authentication configuration API endpoint
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Kazoo authentication configuration API endpoint
 %%% @end
-%%% @contributors:
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_security).
 
 -export([init/0
@@ -41,16 +37,14 @@
 -define(ATTEMPTS, <<"attempts">>).
 -define(AUTH_ATTEMPT_TYPE, <<"login_attempt">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authorize.security">>, ?MODULE, 'authorize'),
@@ -63,13 +57,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.patch.security">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.security">>, ?MODULE, 'delete').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
                        boolean() |
                        {'stop', cb_context:context()}.
@@ -92,13 +84,11 @@ authorize_list_available_module(Context, [{<<"security">>, []}], _) ->
 authorize_list_available_module(_Context, _Nouns, _Verb) ->
     'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
@@ -111,15 +101,17 @@ allowed_methods(?ATTEMPTS) ->
 allowed_methods(?ATTEMPTS, _AttemptId) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /security => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /security => []
 %%    /security/foo => [<<"foo">>]
 %%    /security/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
@@ -130,16 +122,14 @@ resource_exists(_ConfigId) -> 'false'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?ATTEMPTS, _AttemptId) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /security mights load a list of auth objects
 %% /security/123 might load the auth object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_auth_configs(Context, cb_context:req_verb(Context)).
@@ -176,13 +166,11 @@ validate_auth_configs(Context, ?HTTP_DELETE) ->
             cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Msg}]),  Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
     C1 = crossbar_doc:save(Context),
@@ -195,13 +183,11 @@ post(Context) ->
     end.
 
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec patch(cb_context:context()) -> cb_context:context().
 patch(Context) ->
     C1 = crossbar_doc:save(Context),
@@ -213,12 +199,10 @@ patch(Context) ->
         _ -> C1
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
@@ -230,13 +214,11 @@ maybe_flush_config(Context) ->
         'false' -> Context
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary_available(cb_context:context()) -> cb_context:context().
 summary_available(Context) ->
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
@@ -244,12 +226,10 @@ summary_available(Context) ->
               ],
     cb_context:setters(Context, Setters).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
@@ -317,37 +297,31 @@ set_as_system(AuthConfig, Path) ->
                 ]),
     kz_json:set_value(Path, Default, AuthConfig).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%%------------------------------------------------------------------------------
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     SchemaName = kapps_config_util:account_schema_name(?AUTH_CONFIG_CAT),
     cb_context:validate_request_data(SchemaName, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update-merge an existing menu document with the data provided, if it is
+%%------------------------------------------------------------------------------
+%% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
     C1 = cb_context:store(Context, <<"orig_req_data">>, cb_context:req_data(Context)),
     crossbar_doc:patch_and_validate(Id, C1, fun update/2).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 on_successful_validation(Id, Context) ->
     C1 = crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
     case {cb_context:resp_status(C1), cb_context:resp_error_code(C1)} of
@@ -386,17 +360,15 @@ has_account_id_or_db(JObj) ->
         _AccountId -> 'true'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Only allow to set the configuration id if the account who has the configuration is
+%%------------------------------------------------------------------------------
+%% @doc Only allow to set the configuration id if the account who has the configuration is
 %% in the tree
 %% * if master is setting the config, allow
 %% * if the account is the same authenticated account, allow
 %% * if authenticated account is parent and wants to set its descendant's, allow
 %% * if a include_subaccounts, allow a child account set its parent's config
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_account_hierarchy(kz_term:ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
 check_account_hierarchy(AuthModule, JObj, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
@@ -426,12 +398,10 @@ failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
               ],
     cb_context:setters(Context, Setters).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a login attempt log from MODB
+%%------------------------------------------------------------------------------
+%% @doc Load a login attempt log from MODB
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read_attempt_log(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read_attempt_log(?MATCH_MODB_PREFIX(Year, Month, _)=AttemptId, Context) ->
     crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?AUTH_ATTEMPT_TYPE)).

@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%%
-%%% Common functions for the provisioner modules
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Common functions for the provisioner modules
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(provisioner_contact_list).
 
 -export([build/1]).

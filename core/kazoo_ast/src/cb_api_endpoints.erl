@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Modules to create a reference documents from Crossbar API modules.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(cb_api_endpoints).
 
 -compile({'no_auto_import', [get/0]}).
@@ -94,11 +100,17 @@ api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
     lists:foldl(F, Acc, Paths);
 api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 
+%%------------------------------------------------------------------------------
+%% @doc Creates a Markdown section for each API methods.
+%% ```
 %% #### Fetch/Create/Change
 %% > Verb Path
 %% ```shell
 %% curl -v http://{SERVER}:8000/Path
 %% ```
+%% '''
+%% @end
+%%------------------------------------------------------------------------------
 methods_to_section('undefined', _Path, Acc) ->
     io:format("skipping path ~p\n", [_Path]),
     Acc;
@@ -162,9 +174,15 @@ maybe_add_schema(BaseName) ->
         SchemaJObj -> kz_ast_util:schema_to_table(SchemaJObj)
     end.
 
-%% This looks for "#### Schema" in the doc file and adds the JSON schema formatted as the markdown table
+%%------------------------------------------------------------------------------
+%% @doc This looks for `#### Schema' in the doc file and adds the JSON schema
+%% formatted as the markdown table.
+%% ```
 %% Schema = "vmboxes" or "devices"
 %% Doc = "voicemail.md" or "devices.md"
+%% '''
+%% @end
+%%------------------------------------------------------------------------------
 -spec schema_to_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 schema_to_doc(Schema, Doc) ->
     {'ok', SchemaJObj} = kz_json_schema:load(Schema),
@@ -359,8 +377,8 @@ swagger_params(PathMeta) ->
 auth_token_param(Path, _Method) ->
     case is_authtoken_required(Path) of
         'undefined' -> 'undefined';
-        true -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
-        false -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
+        'true' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
+        'false' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
     end.
 
 -spec is_authtoken_required(kz_term:ne_binary()) -> kz_term:api_boolean().
@@ -442,16 +460,16 @@ format_path_token(<<"_", Rest/binary>>) -> format_path_token(Rest);
 format_path_token(Token = <<Prefix:1/binary, _/binary>>)
   when byte_size(Token) >= 3 ->
     case is_all_upper(Token) of
-        true -> brace_token(Token);
-        false ->
+        'true' -> brace_token(Token);
+        'false' ->
             case is_all_upper(Prefix) of
-                true -> brace_token(camel_to_snake(Token));
-                false -> Token
+                'true' -> brace_token(camel_to_snake(Token));
+                'false' -> Token
             end
     end;
 format_path_token(BadToken) ->
     Fmt = "Please pick a good allowed_methods/N variable name: '~s' is too short.\n",
-    io:format(standard_error, Fmt, [BadToken]),
+    io:format('standard_error', Fmt, [BadToken]),
     halt(1).
 
 camel_to_snake(Bin) ->

@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Listing of all expected v1 callbacks
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors:
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_search).
 
 -export([init/0
@@ -26,16 +22,14 @@
 -define(ACCOUNT_QUERY_OPTIONS, [<<"name">>, <<"number">>, <<"name_and_number">>]).
 -define(ACCOUNTS_QUERY_OPTIONS, [<<"name">>, <<"realm">>, <<"id">>]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.search">>, ?MODULE, 'allowed_methods'),
@@ -43,13 +37,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize.search">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -59,15 +51,17 @@ allowed_methods() ->
 allowed_methods(?MULTI) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /skels => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /skels => []
 %%    /skels/foo => [<<"foo">>]
 %%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -75,11 +69,10 @@ resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(?MULTI) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
@@ -89,16 +82,14 @@ authorize(Context) ->
 authorize(Context, ?MULTI) ->
     cb_context:auth_account_id(Context) =/= 'undefined'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /skels mights load a list of skel objects
 %% /skels/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -110,15 +101,14 @@ validate(Context, ?MULTI) ->
     Type = cb_context:req_value(Context, <<"t">>),
     validate_multi(Context, Type).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate_search(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_search(Context, 'undefined') ->
@@ -160,11 +150,10 @@ validate_search(Context, Type, Query, Value) ->
         'false' -> validate_search(Context, Type, Query, 'undefined')
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_multi(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_multi(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}
@@ -184,11 +173,10 @@ validate_multi(Context, Type, Query) ->
         _Status -> Context1
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate_query(cb_context:context(), kz_term:proplist() | kz_term:ne_binary()) -> cb_context:context().
 validate_query(Context, Query) ->
@@ -224,11 +212,10 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
             cb_context:add_validation_error(<<"q">>, <<"enum">>, Message, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec available_query_options(kz_term:api_ne_binary()) -> kz_term:ne_binaries().
 available_query_options(AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, <<"_design/search">>) of
@@ -240,11 +227,10 @@ available_query_options(AccountDb) ->
             ?ACCOUNT_QUERY_OPTIONS
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec format_query_options(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 format_query_options(Views) ->
@@ -254,13 +240,11 @@ format_query_options(Views) ->
 format_query_option(<<"search_by_", Name/binary>>) -> Name;
 format_query_option(Name) -> Name.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec search(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist()) -> cb_context:context().
 search(Context, Type, Query, Val, Opts) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
@@ -273,13 +257,11 @@ search(Context, Type, Query, Val, Opts) ->
         ],
     crossbar_view:load(Context, ViewName, Options).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec multi_search(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
 multi_search(Context, Type, Props) ->
@@ -301,39 +283,32 @@ multi_search(Context, Type, [{<<"by_", Query/binary>>, Val}|Props], Acc) ->
 multi_search(Context, Type, [_|Props], Acc) ->
     multi_search(Context, Type, Props, Acc).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% resource.
+%%------------------------------------------------------------------------------
+%% @doc resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_start_key(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_start_key(Context, <<"account">>=Type, Value) ->
     [cb_context:auth_account_id(Context), Type, cb_context:req_value(Context, <<"start_key">>, Value)];
 get_start_key(Context, Type, Value) ->
     [Type, cb_context:req_value(Context, <<"start_key">>, Value)].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% resource.
+%%------------------------------------------------------------------------------
+%% @doc resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_end_key(cb_context:context(), kz_term:ne_binary(), binary()) -> kz_term:ne_binaries().
 get_end_key(Context, <<"account">>=Type, Value) ->
     [cb_context:auth_account_id(Context), Type, next_binary_key(Value)];
 get_end_key(_, Type, Value) ->
     [Type, next_binary_key(Value)].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% replaces last character in binary with next character
+%%------------------------------------------------------------------------------
+%% @doc replaces last character in binary with next character
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec next_binary_key(binary()) -> kz_term:ne_binary().
 next_binary_key(<<>>) ->
     <<"\ufff0">>;
 next_binary_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
-

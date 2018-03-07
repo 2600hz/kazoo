@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% General schema manipulation
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc General schema manipulation
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kzd_schema).
 
 -export([find_schema/1
@@ -29,6 +27,11 @@ find_schema(<<_/binary>> = Schema) ->
 
 %%% Meta keywords
 %%% ===================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec properties(kz_json:path(), kz_term:ne_binary()) -> kz_json:object().
 properties(Key, Schema) ->
     case find_schema(Schema) of

@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_frontier).
 
 -export([bind_q/2, unbind_q/2]).
@@ -80,7 +78,7 @@ publish_ratelimits_resp(Srv, JObj) -> publish_ratelimits_resp(Srv, JObj, ?DEFAUL
 -spec publish_ratelimits_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_ratelimits_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATELIMITS_RESP_VALUES, fun ratelimits_resp/1),
-    amqp_util:targeted_publish(Srv, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Srv, Payload, ContentType).
 
 -spec ratelimits_req_v(kz_term:api_terms()) -> boolean().
 ratelimits_req_v(Prop) when is_list(Prop) ->
@@ -106,7 +104,7 @@ publish_acls_resp(Srv, JObj) -> publish_acls_resp(Srv, JObj, ?DEFAULT_CONTENT_TY
 -spec publish_acls_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_acls_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ACL_RESP_VALUES, fun acls_resp/1),
-    amqp_util:targeted_publish(Srv, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Srv, Payload, ContentType).
 
 -spec acls_req_v(kz_term:api_terms()) -> boolean().
 acls_req_v(Prop) when is_list(Prop) ->
@@ -120,11 +118,11 @@ acls_resp_v(JObj) -> acls_resp_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, _Props) ->
-    amqp_util:bind_q_to_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
+    kz_amqp_util:bind_q_to_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, _Props) ->
-    amqp_util:unbind_q_from_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
+    kz_amqp_util:unbind_q_from_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
 -spec flush(kz_term:api_terms()) ->
                    {'ok', iolist()} |
@@ -148,14 +146,13 @@ publish_flush(JObj) ->
 -spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ACL_FLUSH_VALUES, fun flush/1),
-    amqp_util:basic_publish(?ACL_FRONTIER_EXCHANGE, ?ACL_ROUTE_KEY, Payload, ContentType).
+    kz_amqp_util:basic_publish(?ACL_FRONTIER_EXCHANGE, ?ACL_ROUTE_KEY, Payload, ContentType).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?FRONTIER_EXCHANGE, ?EXCHANGE_TYPE),
-    amqp_util:new_exchange(?ACL_FRONTIER_EXCHANGE, ?ACL_EXCHANGE_TYPE).
+    kz_amqp_util:new_exchange(?FRONTIER_EXCHANGE, ?EXCHANGE_TYPE),
+    kz_amqp_util:new_exchange(?ACL_FRONTIER_EXCHANGE, ?ACL_EXCHANGE_TYPE).

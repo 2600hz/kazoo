@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(braintree_subscription).
 
 -export([url/0, url/1, url/2]).
@@ -32,7 +30,7 @@
 -export([increment_addon_quantity/2]).
 -export([update_discount_quantity/3]).
 -export([increment_discount_quantity/2]).
--export([is_cancelled/1]).
+-export([is_canceled/1]).
 -export([is_expired/1]).
 
 -include("bt.hrl").
@@ -45,12 +43,10 @@
              ,subscriptions/0
              ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create the partial url for this module
+%%------------------------------------------------------------------------------
+%% @doc Create the partial URL for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec url() -> string().
 url() ->
@@ -68,12 +64,10 @@ url(SubscriptionId, Options) ->
                  ,kz_term:to_list(Options)
                  ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Creates a new subscription record
+%%------------------------------------------------------------------------------
+%% @doc Creates a new subscription record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 new(PlanId, PaymentToken) ->
@@ -87,27 +81,24 @@ new(SubscriptionId, PlanId, PaymentToken) ->
                     ,create='true'
                     }.
 
-%% @private
 -spec new_subscription_id() -> kz_term:ne_binary().
 new_subscription_id() ->
     kz_binary:rand_hex(16).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get the subscription id
+%%------------------------------------------------------------------------------
+%% @doc Get the subscription ID.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec get_id(subscription()) -> kz_term:api_binary().
 get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get the subscription id
+%%------------------------------------------------------------------------------
+%% @doc Get the add-on by ID from subscription record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec get_addon(subscription(), kz_term:ne_binary()) -> #bt_addon{}.
 get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
@@ -119,12 +110,11 @@ get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
         #bt_addon{}=AddOn -> AddOn
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get the quantity of addons
+%%------------------------------------------------------------------------------
+%% @doc Get the quantity of add-ons.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec get_addon_quantity(subscription(), kz_term:ne_binary()) -> integer().
 get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
@@ -136,12 +126,11 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
         #bt_addon{}=AddOn -> braintree_addon:get_quantity(AddOn)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get the subscription id
+%%------------------------------------------------------------------------------
+%% @doc Update amount of given add-on ID in subscription record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec update_addon_amount(subscription(), kz_term:ne_binary(), kz_term:api_binary() | number()) -> subscription().
 update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amount) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
@@ -159,12 +148,11 @@ update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amou
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Find a specific discount
+%%------------------------------------------------------------------------------
+%% @doc Find a specific discount.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec get_discount(subscription(), kz_term:ne_binary()) -> #bt_discount{}.
 get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
@@ -176,12 +164,11 @@ get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
         #bt_discount{}=Discount -> Discount
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Update the amount of a specific discount
+%%------------------------------------------------------------------------------
+%% @doc Update the amount of a specific discount.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec update_discount_amount(subscription(), kz_term:ne_binary(), kz_term:ne_binary() | number()) -> subscription().
 update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Amount) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
@@ -199,27 +186,24 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
 
-%% @public
 -spec get_payment_token(subscription()) -> kz_term:api_binary().
 get_payment_token(#bt_subscription{payment_token = PT}) -> PT.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Find a subscription by id
+%%------------------------------------------------------------------------------
+%% @doc Find a subscription by ID.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec find(kz_term:ne_binary()) -> subscription().
 find(SubscriptionId) ->
     XML = braintree_request:get(url(SubscriptionId)),
     xml_to_record(XML).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Creates a new subscription using the given record
+%%------------------------------------------------------------------------------
+%% @doc Creates a new subscription using the given record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec create(subscription()) -> subscription().
 
 create(#bt_subscription{id='undefined'}=Subscription) ->
@@ -230,13 +214,13 @@ create(#bt_subscription{}=Subscription) ->
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Updates a subscription with the given record.
-%% Note: a cancelled subscription cannot be updated.
+%%------------------------------------------------------------------------------
+%% @doc Updates a subscription with the given record.
+%%
+%% <div class="notice">A canceled subscription cannot be updated.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec update(subscription()) -> subscription().
 update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
@@ -248,12 +232,11 @@ update(#bt_subscription{id=SubscriptionId}=Subscription) ->
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Deletes a subscription id from braintree's system
+%%------------------------------------------------------------------------------
+%% @doc Deletes a subscription ID from Braintree's system.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec cancel(subscription() | kz_term:ne_binary()) -> subscription().
 cancel(#bt_subscription{id=SubscriptionId}) ->
     cancel(SubscriptionId);
@@ -262,45 +245,41 @@ cancel(SubscriptionId) ->
     _ = braintree_request:put(Url, <<>>),
     #bt_subscription{}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
+%%------------------------------------------------------------------------------
+%% @doc Resets quantity of add-ons and discounts in the subscription record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec reset(subscription()) -> subscription().
 reset(Subscription) ->
     lists:foldl(fun(F, S) -> F(S) end, Subscription, [fun reset_addons/1
                                                      ,fun reset_discounts/1
                                                      ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
+%%------------------------------------------------------------------------------
+%% @doc Resets quantity of add-ons in the subscription record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec reset_addons(subscription()) -> subscription().
 reset_addons(#bt_subscription{add_ons=AddOns}=Subscription) ->
     Subscription#bt_subscription{add_ons=[AddOn#bt_addon{quantity=0} || AddOn <- AddOns]}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
+%%------------------------------------------------------------------------------
+%% @doc Resets quantity of discounts in the subscription record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec reset_discounts(subscription()) -> subscription().
 reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
     Subscription#bt_subscription{discounts=[Discount#bt_discount{quantity=0} || Discount <- Discounts]}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Really ugly function to update an addon for a given subscription
-%% or subscription id
+%%------------------------------------------------------------------------------
+%% @doc Really ugly function to update an add-on quantity for a given subscription
+%% or subscription ID.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec update_addon_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary(), integer() | kz_term:api_binary()) ->
                                    subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
@@ -328,13 +307,12 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Really ugly function to increment an addon for a given subscription
-%% or subscription id
+%%------------------------------------------------------------------------------
+%% @doc Really ugly function to increment an add-on quantity by one for a given
+%% subscription or subscription ID.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec increment_addon_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 increment_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
@@ -355,12 +333,11 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
     Subscription = find(SubscriptionId),
     increment_addon_quantity(Subscription, AddOnId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Really ugly function to update a discount for a given subscription
+%%------------------------------------------------------------------------------
+%% @doc Really ugly function to update a discount for a given subscription.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec update_discount_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> subscription().
 update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
     update_discount_quantity(Subscription, DiscountId, kz_term:to_integer(Quantity));
@@ -383,12 +360,11 @@ update_discount_quantity(SubscriptionId, DiscountId, Quantity) ->
     Subscription = find(SubscriptionId),
     update_discount_quantity(Subscription, DiscountId, Quantity).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Really ugly function to increment a discount for a given subscription
+%%------------------------------------------------------------------------------
+%% @doc Really ugly function to increment a discount for a given subscription.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec increment_discount_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 increment_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
@@ -409,12 +385,11 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
     Subscription = find(SubscriptionId),
     increment_discount_quantity(Subscription, DiscountId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Update payment token and reset fields to be able to push update back
+%%------------------------------------------------------------------------------
+%% @doc Update payment token and reset fields to be able to push update back.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec update_payment_token(subscription(), kz_term:ne_binary()) -> subscription().
 update_payment_token(#bt_subscription{id=Id}, PaymentToken) ->
     %% Fixes: 91920: Cannot edit price changing fields on past due subscription.
@@ -432,36 +407,34 @@ update_payment_token(#bt_subscription{id=Id}, PaymentToken) ->
                     ,trial_period = <<"false">>
                     }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns whether subscription is cancelled (impossible to update)
+%%------------------------------------------------------------------------------
+%% @doc Returns whether subscription is canceled (impossible to update).
 %% @end
-%%--------------------------------------------------------------------
--spec is_cancelled(subscription()) -> boolean().
-is_cancelled(#bt_subscription{status = ?BT_CANCELED}) -> 'true';
-is_cancelled(#bt_subscription{}) -> 'false'.
+%%------------------------------------------------------------------------------
+-spec is_canceled(subscription()) -> boolean().
+is_canceled(#bt_subscription{status = ?BT_CANCELED}) -> 'true';
+is_canceled(#bt_subscription{}) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns whether subscription is cancelled (impossible to update)
+%%------------------------------------------------------------------------------
+%% @doc Returns whether subscription is canceled (impossible to update).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec is_expired(subscription()) -> boolean().
 is_expired(#bt_subscription{status = ?BT_EXPIRED}) -> 'true';
 is_expired(#bt_subscription{}) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Contert the given XML to a subscription record
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/subscription")
 
 -spec xml_to_record(bt_xml()) -> subscription().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a subscription record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> subscription().
 xml_to_record(Xml, Base) ->
@@ -498,18 +471,17 @@ xml_to_record(Xml, Base) ->
                                  ]
                     ,descriptor = braintree_descriptor:xml_to_record(Xml)
                     }.
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Contert the given XML to a subscription record
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv record_to_xml(Subscription, 'false')
 
 -spec record_to_xml(subscription()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Subscription) ->
     record_to_xml(Subscription, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a subscription record. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(subscription(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(#bt_subscription{}=Subscription, ToString) ->
@@ -558,12 +530,11 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
         'false' -> Props1
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert a given record into a json object
+%%------------------------------------------------------------------------------
+%% @doc Convert a given record into a JSON object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec record_to_json(subscription()) -> kz_json:object().
 record_to_json(Subscription) ->
     kz_json:from_list(
@@ -599,12 +570,11 @@ record_to_json(Subscription) ->
       ,{<<"create">>, Subscription#bt_subscription.create}
       ]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec should_prorate(subscription(), kz_term:proplist()) -> kz_term:proplist().
 should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"should_prorate">>, 'true') of
@@ -612,12 +582,11 @@ should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
         'false' -> Props
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine the necessary steps to change the add ons
+%%------------------------------------------------------------------------------
+%% @doc Determine the necessary steps to change the add ons.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec update_options(any(), any(), kz_term:proplist()) -> kz_term:proplist().
 update_options(_, 'undefined', Props) -> Props;
 update_options(Key, Value, Props) ->
@@ -630,12 +599,11 @@ update_options(Key, Value, Props) ->
             ]
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine the necessary steps to change the add ons
+%%------------------------------------------------------------------------------
+%% @doc Determine the necessary steps to change the add ons.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec create_addon_changes(bt_addons()) -> changes().
 create_addon_changes(AddOns) ->
     lists:foldr(fun create_addon_fold/2, [], AddOns).
@@ -673,12 +641,11 @@ create_addon_fold(#bt_addon{existing_id=Id
            ],
     append_items('update', props:filter_undefined(Item), Changes).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine the necessary steps to change the discounts
+%%------------------------------------------------------------------------------
+%% @doc Determine the necessary steps to change the discounts.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec create_discount_changes(bt_discounts()) -> changes().
 create_discount_changes(Discounts) ->
     lists:foldr(fun create_discount_fold/2, [], Discounts).
@@ -716,12 +683,11 @@ create_discount_fold(#bt_discount{existing_id=Id
            ],
     append_items('update', props:filter_undefined(Item), Changes).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine the necessary steps to change the add ons
+%%------------------------------------------------------------------------------
+%% @doc Determine the necessary steps to change the add ons.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec append_items(atom(), kz_term:ne_binary() | kz_term:proplist(), changes()) -> changes().
 append_items(Change, Item, Changes) ->
     case lists:keyfind(Change, 1, Changes) of

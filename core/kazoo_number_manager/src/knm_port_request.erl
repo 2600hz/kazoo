@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_port_request).
 
 -export([init/0
@@ -19,6 +17,7 @@
         ,normalize_numbers/1
         ,transition_to_complete/2
         ,maybe_transition/3
+        ,compatibility_transition/2
         ,charge_for_port/1, charge_for_port/2
         ,assign_to_app/3
         ,send_submitted_requests/0
@@ -53,30 +52,27 @@
 
 %%% API
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> any().
 init() ->
     _ = kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
     kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec current_state(kz_json:object()) -> kz_term:api_binary().
 current_state(JObj) ->
     kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec public_fields(kz_json:object()) -> kz_json:object().
 public_fields(JObj) ->
     As = kz_doc:attachments(JObj, kz_json:new()),
@@ -90,13 +86,12 @@ public_fields(JObj) ->
                       ,kz_doc:public_fields(JObj)
                       ).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                  {'error', 'not_found'}.
+                                  {'error', any()}.
 -ifdef(TEST).
 get(?TEST_NEW_PORT_NUM) -> {ok, ?TEST_NEW_PORT_REQ};
 get(?NE_BINARY) -> {error, not_found}.
@@ -106,17 +101,16 @@ get(DID=?NE_BINARY) ->
     ViewOptions = [{key, DID}, include_docs],
     case kz_datamgr:get_single_result(?KZ_PORT_REQUESTS_DB, View, ViewOptions) of
         {ok, Port} -> {ok, kz_json:get_value(<<"doc">>, Port)};
-        {error, _E} ->
+        {error, _E}=Error ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
-            {error, not_found}
+            Error
     end.
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_active_ports(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
                                                    {'error', 'not_found'}.
 account_active_ports(AccountId) ->
@@ -131,11 +125,10 @@ account_active_ports(AccountId) ->
             {'error', 'not_found'}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_has_active_port(kz_term:ne_binary()) -> boolean().
 account_has_active_port(AccountId) ->
     case account_active_ports(AccountId) of
@@ -143,39 +136,34 @@ account_has_active_port(AccountId) ->
         {'error', 'not_found'} -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_attachments(kz_json:object()) -> kz_json:object().
 normalize_attachments(Attachments) ->
     kz_json:map(fun normalize_attachments_map/2, Attachments).
 
-%% @private
 -spec normalize_attachments_map(kz_json:path(), kz_json:json_term()) ->
                                        {kz_json:path(), kz_json:json_term()}.
 normalize_attachments_map(K, V) ->
     {K, kz_json:delete_keys([<<"digest">>, <<"revpos">>, <<"stub">>], V)}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_numbers(kz_json:object()) -> kz_json:object().
 normalize_numbers(PortReq) ->
     Numbers = kz_json:get_value(?NUMBERS_KEY, PortReq, kz_json:new()),
     Normalized = kz_json:map(fun normalize_number_map/2, Numbers),
     kz_json:set_value(?NUMBERS_KEY, Normalized, PortReq).
 
-%% @private
 -spec normalize_number_map(kz_json:path(), kz_json:json_term()) ->
                                   {kz_json:path(), kz_json:json_term()}.
 normalize_number_map(N, Meta) ->
     {knm_converters:normalize(N), Meta}.
 
-%% @public
 -spec new(kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
 new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
     Normalized = normalize_numbers(PortReq),
@@ -186,11 +174,10 @@ new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
              ],
     kz_json:set_values(Unconf, Normalized).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec transition_to_submitted(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_submitted(JObj, Metadata) ->
@@ -225,11 +212,10 @@ transition_to_rejected(JObj, Metadata) ->
 transition_to_canceled(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_transition(kz_json:object(), transition_metadata(), kz_term:ne_binary()) -> transition_response().
 maybe_transition(PortReq, Metadata, ?PORT_SUBMITTED) ->
     transition_to_submitted(PortReq, Metadata);
@@ -243,6 +229,17 @@ maybe_transition(PortReq, Metadata, ?PORT_REJECTED) ->
     transition_to_rejected(PortReq, Metadata);
 maybe_transition(PortReq, Metadata, ?PORT_CANCELED) ->
     transition_to_canceled(PortReq, Metadata).
+
+%%------------------------------------------------------------------------------
+%% @doc Transition `port_in' number to complete. Thus compatible with old way of
+%% `port_request' which the number doc is already created.
+%% @end
+%%------------------------------------------------------------------------------
+-spec compatibility_transition(knm_number_options:extra_options(), transition_metadata()) -> 'ok' | {'error', any()}.
+compatibility_transition(NumberProps, Metadata) ->
+    Num = knm_number_options:number(NumberProps),
+    AccountId = knm_number_options:account_id(NumberProps),
+    completed_portin(Num, AccountId, Metadata).
 
 -spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
                         transition_response().
@@ -303,7 +300,6 @@ maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
                   ]}
     ].
 
-%% @public
 -type transition_metadata() :: #{auth_account_id => kz_term:ne_binary()
                                 ,auth_account_name => kz_term:api_ne_binary()
                                 ,auth_user_id => kz_term:api_ne_binary()
@@ -312,12 +308,10 @@ maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
                                 ,optional_reason => kz_term:api_ne_binary()
                                 }.
 
-%% @public
 -spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
 transition_metadata(AuthAccountId, AuthUserId) ->
     transition_metadata(AuthAccountId, AuthUserId, undefined).
 
-%% @public
 -spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
 transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
     OptionalUserId = case UserId of
@@ -345,11 +339,10 @@ get_user_name(AuthAccountId, UserId) ->
             {undefined, undefined}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec charge_for_port(kz_json:object()) -> 'ok' | 'error'.
 charge_for_port(JObj) ->
@@ -362,11 +355,10 @@ charge_for_port(_JObj, AccountId) ->
     Transaction = kz_transaction:debit(AccountId, wht_util:dollars_to_units(Cost)),
     kz_services:commit_transactions(Services, [Transaction]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
                            {'ok', kz_json:object()} |
                            {'error', any()}.
@@ -387,11 +379,10 @@ assign_to_app(Number, NewApp, JObj) ->
             save_doc(kz_json:set_value([?NUMBERS_KEY, Number], NumberJObj, JObj))
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_submitted_requests() -> 'ok'.
 send_submitted_requests() ->
     View = ?VIEW_LISTING_SUBMITTED,
@@ -407,11 +398,10 @@ send_submitted_requests() ->
 send_submitted_request(JObj) ->
     maybe_send_request(kz_json:get_value(<<"doc">>, JObj)).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec migrate() -> 'ok'.
 migrate() ->
     kz_util:put_callid(<<"port_request_migration">>),
@@ -419,15 +409,14 @@ migrate() ->
     migrate(<<>>, 10),
     lager:debug("finished migrating port request documents").
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec completed_port(kz_json:object()) -> transition_response().
 completed_port(PortReq) ->
     case charge_for_port(PortReq) of
@@ -437,11 +426,29 @@ completed_port(PortReq) ->
             transition_numbers(PortReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+-spec completed_portin(kz_term:ne_binary(), kz_term:ne_binary(), transition_metadata()) -> 'ok' | {'error', any()}.
+completed_portin(Num, AccountId, #{optional_reason := OptionalReason}) ->
+    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+              ,{assign_to, AccountId}
+              ],
+    Routins = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
+              ,{fun knm_phone_number:set_ported_in/2, 'true'}
+              ,{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"portin_reason">>, OptionalReason}])}
+              ],
+
+    lager:debug("transitioning legacy port_in number ~s to in_service", [Num]),
+    case knm_number:update(Num, Routins, Options) of
+        {ok, _} ->
+            lager:debug("number ~s ported successfully", [Num]);
+        {error, _Reason} ->
+            lager:debug("failed to transition number ~s: ~p", [Num, _Reason]),
+            {error, <<"transition_failed">>}
+    end.
+
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec transition_numbers(kz_json:object()) -> transition_response().
 transition_numbers(PortReq) ->
     PortReqId = kz_doc:id(PortReq),
@@ -484,11 +491,10 @@ is_in_account_and_in_service(AccountId, PN) ->
     AccountId =:= knm_phone_number:assigned_to(PN)
         andalso ?NUMBER_STATE_IN_SERVICE =:= knm_phone_number:state(PN).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec clear_numbers_from_port(kz_json:object()) -> {ok, kz_json:object()}.
 clear_numbers_from_port(PortReq) ->
     Cleared = kz_json:set_value(?NUMBERS_KEY, kz_json:new(), PortReq),
@@ -504,11 +510,10 @@ clear_numbers_from_port(PortReq) ->
             {ok, PortReq}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_send_request(kz_json:object()) -> 'ok'.
 maybe_send_request(JObj) ->
@@ -535,11 +540,10 @@ maybe_send_request(JObj, Url)->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_request(kz_json:object(), kz_term:ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}
@@ -569,11 +573,10 @@ send_request(JObj, Url) ->
             'error'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_attachements(kz_term:ne_binary(), kz_json:object()) -> 'error' | 'ok'.
 send_attachements(Url, JObj) ->
     try fetch_and_send(Url, JObj) of
@@ -582,11 +585,10 @@ send_attachements(Url, JObj) ->
         'throw':'error' -> 'error'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_and_send(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 fetch_and_send(Url, JObj) ->
     Id = kz_doc:id(JObj),
@@ -602,11 +604,10 @@ fetch_and_send(Url, JObj) ->
         end,
     kz_json:foldl(F, 'ok', Attachments).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), binary()) ->
                              'error' | 'ok'.
 send_attachment(Url, Id, Name, Options, Attachment) ->
@@ -623,11 +624,10 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
             'error'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_flag(kz_json:object()) -> 'ok'.
 set_flag(JObj) ->
     Doc = kz_json:set_value(?PORT_PVT_SENT, 'true', JObj),

@@ -1,12 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% storage
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc storage
 %%% @end
-%%% @contributors:
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_storage).
 
 -export([init/0
@@ -46,16 +42,14 @@
                | {'reseller_plan', kz_term:ne_binary(), kz_term:ne_binary()}
                | 'invalid'.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -69,13 +63,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.storage">>, ?MODULE, 'delete').
 
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     do_authorize(set_scope(Context)).
@@ -117,13 +109,11 @@ do_authorize(Context, {'user', UserId, AccountId}) ->
                    )
                ).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
@@ -136,15 +126,17 @@ allowed_methods(?PLANS_TOKEN) ->
 allowed_methods(?PLANS_TOKEN, _StoragePlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /storage => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /storage => []
 %%    /storage/foo => [<<"foo">>]
 %%    /storage/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
@@ -154,16 +146,14 @@ resource_exists(?PLANS_TOKEN) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?PLANS_TOKEN, _PlanId) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /storage mights load a list of storage objects
 %% /storage/123 might load the storage object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     ReqVerb = cb_context:req_verb(Context),
@@ -207,12 +197,10 @@ validate_storage_plan(Context, PlanId, ?HTTP_PATCH) ->
 validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
     read(Context, PlanId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
@@ -221,13 +209,11 @@ put(Context) ->
 put(Context, ?PLANS_TOKEN) ->
     crossbar_doc:save(Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
     crossbar_doc:save(Context).
@@ -244,12 +230,10 @@ patch(Context) ->
 patch(Context, ?PLANS_TOKEN, PlanId) ->
     post(Context, ?PLANS_TOKEN, PlanId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     crossbar_doc:delete(Context).
@@ -258,23 +242,19 @@ delete(Context) ->
 delete(Context, ?PLANS_TOKEN, _PlanId) ->
     crossbar_doc:delete(Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%%------------------------------------------------------------------------------
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(doc_id(Context), C) end,
     cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
     crossbar_doc:load(doc_id(Context), Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
@@ -283,13 +263,11 @@ read(Context) ->
 read(Context, PlanId) ->
     crossbar_doc:load(PlanId, Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%%------------------------------------------------------------------------------
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(cb_context:context()) -> cb_context:context().
 update(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(doc_id(Context), C) end,
@@ -310,13 +288,11 @@ patch_update(Context, PlanId) ->
     VFun = fun(Id, LoadedContext) -> update(LoadedContext, Id) end,
     crossbar_doc:patch_and_validate(PlanId, Context, VFun).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     summary(Context, scope(Context)).
@@ -332,12 +308,10 @@ summary(Context, {'reseller_plans', AccountId}) ->
               ],
     crossbar_doc:load_view(?CB_ACCOUNT_LIST, Options, Context, fun normalize_view_results/2).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation(Id, Context) ->
     on_successful_validation(Id, cb_context:req_verb(Context), Context).
@@ -361,12 +335,10 @@ on_successful_validation(Id, ?HTTP_POST, Context) ->
 on_successful_validation(Id, ?HTTP_PATCH, Context) ->
     crossbar_doc:load_merge(Id, Context, ?STORAGE_CHECK_OPTIONS).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"doc">>, JObj)|Acc].
@@ -452,15 +424,27 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     Random = kz_binary:rand_hex(16),
     Content = <<"some random content: ", Random/binary>>,
     AName = <<Random/binary, "_test_credentials_file.txt">>,
-    DbName = cb_context:account_db(ContextAcc),
-    DocId = doc_id(ContextAcc),
+    AccountId = cb_context:account_id(ContextAcc),
+    %% Create dummy document where the attachment(s) will be attached to.
+    %% TODO: move this tmpdoc creation to maybe_check_storage_settings function.
+    TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
+                               ,<<"pvt_type">> => <<"storage_settings_probe">>
+                               }),
+    DbName = kazoo_modb:get_modb(AccountId),
+    UpdatedDoc = kz_doc:update_pvt_parameters(TmpDoc, DbName),
+    {ok, Doc} = kazoo_modb:save_doc(AccountId, UpdatedDoc),
+    DocId = kz_json:get_value(<<"_id">>, Doc),
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
     Settings = kz_json:get_json_value(<<"settings">>, Att),
     AttHandler = kz_term:to_atom(<<"kz_att_", Handler/binary>>, 'true'),
     AttSettings = kz_maps:keys_to_atoms(kz_json:to_map(Settings)),
     Opts = [{'plan_override', #{'att_handler' => {AttHandler, AttSettings}
                                ,'att_post_handler' => 'external'
-                               }}],
+                               ,'att_handler_id' => AttId
+                               }}
+           ,{'error_verbosity', 'verbose'}
+           ,{'save_error', 'false'}
+           ],
     %% Check the storage settings have permissions to create files
     case kz_datamgr:put_attachment(DbName, DocId, AName, Content, Opts) of
         {'ok', _CreatedDoc, _CreatedProps} ->
@@ -485,12 +469,12 @@ add_datamgr_error(AttId, Error, Context) ->
     crossbar_doc:handle_datamgr_errors(Error, AttId, Context).
 
 -spec add_att_settings_validation_error(kz_term:ne_binary()
-                                       ,gen_attachment:error_response()
+                                       ,kz_att_error:error()
                                        ,cb_context:context()
                                        ) -> cb_context:context().
-add_att_settings_validation_error(AttId, ErrorResponse, Context) ->
-    ErrorCode = gen_attachment:error_code(ErrorResponse),
-    ErrorBody = gen_attachment:error_body(ErrorResponse),
+add_att_settings_validation_error(AttId, {'error', Reason, ExtendedError}, Context) ->
+    ErrorCode = kz_att_error:resp_code(ExtendedError),
+    ErrorBody = kz_att_error:resp_body(ExtendedError),
     EmptyJObj = kz_json:new(),
     %% Some attachment handlers return a bitstring as the value for `ErrorBody` variable,
     %% some other return an encoded JSON object which is also a binary value but
@@ -499,10 +483,13 @@ add_att_settings_validation_error(AttId, ErrorResponse, Context) ->
                        EmptyJObj -> ErrorBody;
                        DecodedErrorBody -> DecodedErrorBody
                    end,
-    Error = [{<<"error_code">>, ErrorCode}, {<<"error_body">>, NewErrorBody}],
-    Reason = kz_json:insert_values(Error, kz_json:new()),
+    Error = [{<<"error_code">>, ErrorCode}
+            ,{<<"error_body">>, NewErrorBody}
+            ,{<<"message">>, Reason}
+            ],
+    ErrorObj = kz_json:insert_values(Error, kz_json:new()),
     cb_context:add_validation_error([<<"attachments">>, AttId]
                                    ,<<"invalid">>
-                                   ,Reason
+                                   ,ErrorObj
                                    ,Context
                                    ).

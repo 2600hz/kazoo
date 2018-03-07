@@ -1,8 +1,6 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Provides a similar interface to the SUP command-line utility. Maps to SUP
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Provides a similar interface to the SUP command-line utility. Maps to SUP
 %%% commands most are familiar with already.
 %%%
 %%% /sup/module/function/arg1/arg2/...
@@ -15,10 +13,10 @@
 %%% Eventaully support the idea of RPC-like AMQP requests to drill down per-node
 %%% or per-application for these stats
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_sup).
 
 -export([init/0
@@ -45,9 +43,14 @@
 
 -define(CHILDREN, []). %%FIXME: why is this not a supervisor?
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     proc_lib:start_link(?SERVER, 'init_io', [self()]).
@@ -117,10 +120,10 @@ format_path_tokens([_Module]=L) -> L;
 format_path_tokens([_Module, _Function]=L) -> L;
 format_path_tokens([Module, Function | Args]) -> [Module, Function, Args].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Initializes the bindings this module will respond to.
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to..
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> supervisor:startchild_ret().
 init() ->
     Ret = crossbar_module_sup:start_child(?SERVER),
@@ -130,13 +133,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     Ret.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authorize(cb_context:context()) -> 'false'.
 authorize(_Context) ->
@@ -154,13 +155,11 @@ authorize(Context, _Module, _Function) ->
 authorize(Context, _Module, _Function, _Args) ->
     cb_context:is_superduper_admin(Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_Module) ->
@@ -174,15 +173,17 @@ allowed_methods(_Module, _Function) ->
 allowed_methods(_Module, _Function, _Args) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /sup => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /sup => []
 %%    /sup/foo => [<<"foo">>]
 %%    /sup/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'false'.
 resource_exists() -> 'false'.
@@ -222,16 +223,14 @@ module_name(ModuleBin) ->
         _E:R -> exit(R)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /sup mights load a list of system_stat objects
 %% /sup/123 might load the system_stat object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) -> Context.

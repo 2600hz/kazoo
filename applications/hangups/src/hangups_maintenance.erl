@@ -1,12 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%%
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(hangups_maintenance).
 
 -export([hangups_summary/0
@@ -94,13 +91,11 @@ print_stat({Name, Stats}) ->
               ,io_lib:format("~e", [Threshold])
               ]).
 
-%% @public
 -spec activate_monitor(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 activate_monitor(AccountId, HangupCause) ->
     hangups_channel_destroy:start_meters(HangupCause),
     hangups_channel_destroy:start_meters(AccountId, HangupCause).
 
-%% @public
 -spec activate_monitors(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 activate_monitors(AccountId, ThresholdOneMinute) ->
     F = fun(HangupCause) ->
@@ -203,7 +198,6 @@ is_valid_hangup_cause(HangupCause) ->
             'true'
     end.
 
-%% @public
 -spec set_monitor_threshold(kz_term:text(), kz_term:text()) -> boolean().
 set_monitor_threshold(HangupCause, TOM) ->
     ThresholdOnMinute = kz_term:to_float(TOM),
@@ -226,7 +220,6 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
                ,Scales
                ).
 
-%% @public
 
 -spec set_monitor_threshold(kz_term:ne_binary(), kz_term:ne_binary(), float()) -> boolean().
 set_monitor_threshold(HangupCause, ThresholdName, T) ->

@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_fax_util).
 
 -export([get_attachment/2, get_attachment/3]).
@@ -14,12 +13,10 @@
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
 
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create a friendly file name
+%%------------------------------------------------------------------------------
+%% @doc create a friendly file name
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_file_name(kz_term:proplist(), string()) -> kz_term:ne_binary().
 get_file_name(Props, Ext) ->
     Fax = props:get_value(<<"fax">>, Props),
@@ -32,12 +29,10 @@ get_file_name(Props, Ext) ->
     FName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_attachment(kz_term:ne_binary(), kz_term:proplist()) ->
                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
                             {'error', any()}.
@@ -59,12 +54,10 @@ get_attachment(UseDb, Category, Props) ->
         _Else -> convert_to_tiff(AttachmentBin, Props, ContentType)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
@@ -92,23 +85,19 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec convert_to_tiff(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
                              {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 convert_to_tiff(AttachmentBin, Props, _ContentType) ->
     {<<"image/tiff">>, get_file_name(Props, "tiff"), AttachmentBin}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec convert_to_pdf(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
                             {'error', any()}.
@@ -132,12 +121,10 @@ convert_to_pdf(AttachmentBin, Props, _ContentType) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tmp_file_name(kz_term:ne_binary()) -> string().
 tmp_file_name(Ext) ->
     kz_term:to_list(<<"/tmp/", (kz_binary:rand_hex(10))/binary, "_notify_fax.", Ext/binary>>).

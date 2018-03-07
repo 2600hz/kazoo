@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_media_util).
 
 -export([recording_url/2]).
@@ -50,15 +48,14 @@
 
 -define(USE_ACCOUNT_OVERRIDES, kapps_config:get_is_true(?CONFIG_CAT, <<"support_account_overrides">>, 'true')).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Normalize audio file to the system default or specified sample rate.
-%% Acceptes media file content binary as input.
+%%------------------------------------------------------------------------------
+%% @doc Normalize audio file to the system default or specified sample rate.
+%% Accepts media file content binary as input.
 %%
 %% By default it returns result as binary, if you want file path to the
-%%  normalized file only, pass the {'output', 'file'} as option.
+%%  normalized file only, pass the `{output, file}' as option.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type normalized_media() :: {'ok', binary()} |
                             {'ok', file:filename_all()} |
                             {'error', file:posix()}.
@@ -89,15 +86,14 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
         {'error', _}=Error -> Error
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Normalize audio file to the system default or specified sample rate.
+%%------------------------------------------------------------------------------
+%% @doc Normalize audio file to the system default or specified sample rate.
 %% Accept a path to the media file as input.
 %%
 %% By default it returns result as binary, if you want file path to the
 %%  normalized file only, pass the {'output', 'file'} as option.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_media_file(kz_term:ne_binary(), kz_term:ne_binary(), file:filename_all()) ->
                                   normalized_media().
 normalize_media_file(FromFormat, FromFormat, FromFile) ->
@@ -143,12 +139,10 @@ return_command_result({'ok', _}, FileName, 'binary') ->
 return_command_result({'ok', _}, FileName, 'file') -> {'ok', FileName};
 return_command_result({'error', _}=Error, _FileName, _) -> Error.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Run normalizer command
+%%------------------------------------------------------------------------------
+%% @doc Run normalizer command
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec run_command(kz_term:ne_binary()) -> normalized_media().
 run_command(Command) ->
     try os:cmd(binary_to_list(Command)) of
@@ -161,11 +155,10 @@ run_command(Command) ->
             {'error', Reason}
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Synthesize a tone, returns as binary or a path to the generated file
+%%------------------------------------------------------------------------------
+%% @doc Synthesize a tone, returns as binary or a path to the generated file
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec synthesize_tone(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> normalized_media().
 synthesize_tone(SampleRate, Frequency, Length) ->
     FileName = tmp_file(<<"wav">>),
@@ -177,11 +170,10 @@ synthesize_tone(SampleRate, Frequency, Length) ->
         {'error', _}=Error -> Error
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Synthesize a tone, returns as binary or a path to the generated file
+%%------------------------------------------------------------------------------
+%% @doc Synthesize a tone, returns as binary or a path to the generated file
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec synthesize_tone(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> normalized_media().
 synthesize_tone(SampleRate, Frequency, Length, FileName) ->
     Command = iolist_to_binary([?NORMALIZE_EXE
@@ -193,11 +185,10 @@ synthesize_tone(SampleRate, Frequency, Length, FileName) ->
     lager:info("synthesize tone command ~p", [Command]),
     run_command(Command).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Detect sample rate of a media file
+%%------------------------------------------------------------------------------
+%% @doc Detect sample rate of a media file
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec detect_file_sample_rate(kz_term:ne_binary()) -> normalized_media().
 detect_file_sample_rate(FileName) ->
     Command = iolist_to_binary([?NORMALIZE_EXE
@@ -219,11 +210,10 @@ detect_file_sample_rate(FileName) ->
             {'error', 'detection_failed'}
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Detect media format of a media file
+%%------------------------------------------------------------------------------
+%% @doc Detect media format of a media file
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec detect_file_format(kz_term:ne_binary()) -> normalized_media().
 detect_file_format(FileName) ->
     Command = iolist_to_binary([?NORMALIZE_EXE
@@ -245,13 +235,12 @@ detect_file_format(FileName) ->
             {'error', 'detection_failed'}
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Join multiple Audio file together. It detects file format, sample rate
+%%------------------------------------------------------------------------------
+%% @doc Join multiple Audio file together. It detects file format, sample rate
 %% of each file and will try to convert sample rate if it different from the
 %% requested sample rate or the default value of 16kHz.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type join_file() :: {kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 -type join_files() :: [join_file()].
 
@@ -298,13 +287,12 @@ do_join_media_files(Files, Options) ->
     _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
     Result.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Based on detected format options, normalize the files if
 %% sample rate are different of desire sample rate, otherwise
 %% copy the files to a temporary place to join them together.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_normalize_copy_files(join_files(), kz_term:ne_binary(), join_files()) ->
                                         {'ok', join_files()} |
                                         {'error', 'normalization_failed'}.
@@ -334,12 +322,11 @@ maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
             {'error', 'normalization_failed'}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Detect file format options(sample_rate, file format) and return
 %% a tuple of detect options
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec detect_format_options(kz_term:ne_binary()) -> join_file().
 detect_format_options(File) ->
     FileSampleRate = detect_file_sample_rate(File),
@@ -355,11 +342,10 @@ detect_format_options(File) ->
             {File, 'undefined', 'undefined'}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tmp_file(kz_term:ne_binary()) -> file:filename_all().
 tmp_file(Ext) ->
     filename:join(["/tmp", list_to_binary([kz_binary:rand_hex(16), ".", Ext])]).
@@ -434,12 +420,10 @@ media_path(Path, AccountId) when is_binary(AccountId) ->
         _Else -> Path
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec prompt_path(kz_term:ne_binary()) -> kz_term:ne_binary().
 prompt_path(PromptId) ->
@@ -463,7 +447,6 @@ prompt_id(PromptId, 'undefined') -> PromptId;
 prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
     filename:join([Lang, PromptId]).
-
 
 -spec get_prompt(kz_term:ne_binary()) ->
                         kz_term:api_ne_binary().

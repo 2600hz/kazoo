@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Handle client requests for resource documents
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle client requests for resource documents
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_resources).
 
 -export([init/0
@@ -32,10 +28,14 @@
 
 -define(KEY_SUCCESS, <<"success">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _Pid = maybe_start_jobs_listener(),
@@ -109,15 +109,13 @@ maybe_authorize_admin(Context) ->
         'false' -> {'stop', Context}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -135,14 +133,11 @@ allowed_methods(_ResourceId) ->
 allowed_methods(?JOBS, _JobId) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -153,15 +148,13 @@ resource_exists(_) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?JOBS, _ID) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -358,10 +351,14 @@ delete(Context, ResourceId) ->
     Context1 = crossbar_doc:delete(Context),
     maybe_remove_aggregate(Context1, ResourceId, cb_context:account_db(Context)).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec maybe_aggregate_resource(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_aggregate_resource(Context, ?KZ_OFFNET_DB) -> Context;
 maybe_aggregate_resource(Context, _AccountDb) ->
@@ -374,12 +371,10 @@ maybe_remove_aggregate(Context, ResourceId, _AccountDb) ->
     _ = cb_local_resources:maybe_remove_aggregate(ResourceId, Context),
     Context.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"resource">>)).
@@ -407,44 +402,36 @@ leak_job_fields(Context) ->
         _Status -> Context
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec jobs_summary(cb_context:context()) -> cb_context:context().
 jobs_summary(Context) ->
     crossbar_view:load_modb(Context, ?JOBS_LIST, [{'mapper', crossbar_view:map_doc_fun()}]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%%------------------------------------------------------------------------------
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
@@ -460,13 +447,11 @@ create_local(Context) ->
     OnSuccess = fun(C) -> on_successful_local_validation('undefined', C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
+%%------------------------------------------------------------------------------
+%% @doc Update an existing instance with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
@@ -477,12 +462,10 @@ update_local(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_local_validation(Id, C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"resource">>));

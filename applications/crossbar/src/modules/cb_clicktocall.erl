@@ -1,20 +1,16 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Click to call
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Click to call
 %%% Allow embeddable HTML forms (or other ways to POST to the URL)
 %%% and create a call.
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Edouard Swiac
+%%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Edouard Swiac
-%%%   KAZOO-4175: Sponsored by Conversant Ltd,
-%%%       implemented by SIPLABS, LLC (Ilya Ashchepkov)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_clicktocall).
 
 -export([init/0
@@ -37,13 +33,19 @@
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(HISTORY_LIST, <<"clicktocall/history_listing">>).
 -define(PVT_TYPE, <<"click2call">>).
--define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}, {?KZ_ACCOUNTS_DB, [_]}]).
+-define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}
+                         ,{?KZ_ACCOUNTS_DB, [_]}
+                         ]).
 -define(SUCCESSFUL_HANGUP_CAUSES, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.clicktocall">>, ?MODULE, 'allowed_methods'),
@@ -57,15 +59,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.clicktocall">>, ?MODULE, 'delete'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -81,14 +81,11 @@ allowed_methods(_C2CId, ?CONNECT_CALL) ->
 allowed_methods(_C2CId, ?HISTORY) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -142,15 +139,13 @@ is_c2c_url(Context, ?CONNECT_C2C_URL) ->
         orelse (Verb =:= ?HTTP_POST);
 is_c2c_url(_Context, _Nouns) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -200,15 +195,14 @@ put(Context) ->
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
@@ -313,12 +307,10 @@ clear_history_set_type(Context) ->
                                                    )
                       ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec originate_call(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 originate_call(C2CId, Context) ->

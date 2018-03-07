@@ -1,10 +1,8 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Util functions used by kazoo_couch
+%%% @doc Util functions used by kazoo_couch
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(kz_couch_doc).
 
@@ -28,9 +26,7 @@
 -define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
 
 %%------------------------------------------------------------------------------
-%% @private
-%% @doc
-%% returns the #db{} record
+%% @doc returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_db(server(), kz_term:ne_binary()) -> db().

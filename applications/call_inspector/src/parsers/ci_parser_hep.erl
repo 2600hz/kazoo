@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (c) 2015-2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ci_parser_hep).
 
 -behaviour(gen_server).
@@ -31,33 +28,27 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link([ci_parsers_util:parser_args()]) -> kz_types:startlink_ret().
 start_link([Arg]=Args) ->
     ServerName = ci_parsers_util:make_name(Arg),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init({'parser_args', kz_term:ne_binary(), pos_integer()}) -> {'ok', state()}.
 init({'parser_args', IP, Port} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
@@ -72,51 +63,29 @@ init({'parser_args', IP, Port} = Args) ->
                   },
     {'ok', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(atom(), any(), state()) -> kz_types:handle_call_ret().
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',
     {'reply', Reply, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'udp', _Socket, _IPTuple, _InPortNo, Packet}, State) ->
     {'ok', Hep} = hep:decode(Packet),
@@ -126,38 +95,35 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
 %% necessary cleaning up. When it returns, the gen_server terminate
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{socket = Socket}) ->
     'ok' = gen_udp:close(Socket),
     lager:debug("call inspector hep parser terminated: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec make_and_store_chunk(atom(), hep:t()) -> 'ok'.
 make_and_store_chunk(ParserId, Hep) ->
     Data = binary:split(hep:payload(Hep), <<"\r\n">>, ['global', 'trim']),

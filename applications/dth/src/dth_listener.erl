@@ -1,11 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @doc
-%%% Listener for authn_req, reg_success, and reg_query AMQP requests
+%%% @doc Listener for authn_req, reg_success, and reg_query AMQP requests
 %%% @end
 %%% Created : 13 Jan 2011 by James Aimonetti <james@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(dth_listener).
 -behaviour(gen_listener).
 
@@ -43,34 +42,28 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                      ,{'bindings', ?BINDINGS}
                                      ], []).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_listener callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     gen_listener:cast(self(), 'blacklist_refresh'),
@@ -97,34 +90,18 @@ maybe_init_model() ->
             detergent:initModel(WSDLFile)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('blacklist_refresh', #state{wsdl_model='undefined'}=State) ->
     gen_listener:delayed_cast(self(), 'blacklist_refresh', ?BLACKLIST_REFRESH),
@@ -136,64 +113,52 @@ handle_cast('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling AMQP event objects
-%%
-%% @spec handle_event(JObj, State) -> {reply, Props}
+%%------------------------------------------------------------------------------
+%% @doc Handling AMQP event objects
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{dth_cdr_url=Url
                           ,wsdl_model=WSDL
                           }) ->
     {'reply', [{'cdr_url', Url}, {'wsdl', WSDL}]}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_listener when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_listener terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_listener' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_listener' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("dth: ~p termination", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec refresh_blacklist(#wsdl{}) -> 'ok'.
 refresh_blacklist(WSDL) ->
     case detergent:call(WSDL, "GetBlockList", []) of

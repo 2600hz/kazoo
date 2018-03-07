@@ -1,7 +1,6 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Text To Speech
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Text To Speech
 %%% Data = {
 %%%   "text":"text to say"
 %%%   ,"voice":"female"
@@ -9,10 +8,10 @@
 %%%   ,"terminators":["1", "3", "5"]
 %%%   ,"engine":"flite"
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(konami_tts).
 
 -export([handle/2]).
@@ -32,8 +31,7 @@ handle(Data, Call) ->
                                                ,kz_json:get_value(<<"engine">>, Data)
                                                ,Call
                                                ),
-    kapps_call_command:send_command(
-      kz_json:set_value(<<"Insert-At">>, <<"now">>, TTSCommand)
+    kapps_call_command:send_command(kz_json:set_value(<<"Insert-At">>, <<"now">>, TTSCommand)
                                    ,Call
-     ),
+                                   ),
     {'continue', Call}.

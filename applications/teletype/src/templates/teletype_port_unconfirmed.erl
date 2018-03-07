@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz Inc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(teletype_port_unconfirmed).
 
 -export([init/0
@@ -98,10 +96,9 @@ handle_port_request(DataJObj) ->
                                              ),
 
     Subject =
-        teletype_util:render_subject(
-          kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+        teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                     ,Macros
-         ),
+                                    ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 

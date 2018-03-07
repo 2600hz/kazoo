@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Utils shared by the various proxy servers
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Utils shared by the various proxy servers
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_media_proxy_util).
 
 -export([stream_body/5

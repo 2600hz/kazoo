@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Handle e911 provisioning
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2014-2018, 2600Hz
+%%% @doc Handle e911 provisioning
+%%% @author James Aimonetti
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_vitelity_e911).
 -behaviour(knm_gen_provider).
 
@@ -21,13 +17,11 @@
 
 -define(CUSTOMER_NAME, <<"customer_name">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is saved, and will
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(Number) ->
@@ -44,13 +38,11 @@ save(Number, ?NUMBER_STATE_PORT_IN) ->
 save(Number, _State) ->
     delete(Number).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is deleted, and will
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     case feature(Number) of
@@ -61,12 +53,10 @@ delete(Number) ->
             knm_services:deactivate_feature(Number, ?FEATURE_E911)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_valid_location(kz_json:object()) -> {'ok', kz_json:object()} |
                                              {'error', kz_term:ne_binary()}.
 is_valid_location(Location) ->
@@ -76,12 +66,10 @@ is_valid_location(Location) ->
         {'ok', XML} -> process_xml_resp(XML)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_location(kz_term:ne_binary() | knm_number:knm_number()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
@@ -95,21 +83,22 @@ get_location(Number) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
     get_location(DID).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%% @private
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
     knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
 maybe_update_e911(Number) ->
@@ -154,12 +143,10 @@ maybe_update_e911(Number, 'false') ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_number(knm_number:knm_number()) ->
                            {'ok', kz_json:object() | kz_term:ne_binary()} |
                            {'error', kz_term:ne_binary()}.
@@ -171,12 +158,10 @@ remove_number(Number) ->
         {'ok', RespXML} -> process_xml_resp(RespXML)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_e911_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 remove_e911_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
@@ -187,12 +172,10 @@ remove_e911_options(DID) ->
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_location_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 get_location_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
@@ -203,12 +186,10 @@ get_location_options(DID) ->
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
                          {'ok', kz_json:object() | kz_term:ne_binary()} |
                          {'error', kz_term:ne_binary()}.
@@ -219,12 +200,10 @@ update_e911(Number, Address) ->
         {'error', _E}=E -> E
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec e911_options(knm_number:knm_number(), kz_json:object()) ->
                           knm_vitelity_util:query_options().
 e911_options(Number, AddressJObj) ->
@@ -248,12 +227,10 @@ e911_options(Number, AddressJObj) ->
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_unit(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 get_unit(ExtendedAddress) ->
     case binary:split(ExtendedAddress, <<" ">>) of
@@ -271,12 +248,10 @@ get_caller_name(Number, AddressJObj) ->
             knm_providers:e911_caller_name(Number, E911Name)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec location_options(kz_json:object()) -> knm_vitelity_util:query_options().
 location_options(AddressJObj) ->
     State = knm_vitelity_util:get_short_state(kz_json:get_value(?E911_STATE, AddressJObj)),
@@ -297,12 +272,10 @@ location_options(AddressJObj) ->
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_xml_resp(kz_term:text()) -> {'ok', kz_json:object() | kz_term:ne_binary()} |
                                           {'error', kz_term:ne_binary()}.
 process_xml_resp(RespXML_binary) ->
@@ -315,12 +288,10 @@ process_xml_resp(RespXML_binary) ->
             {'error', 'invalid_resp_from_server'}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_xml_content_tag(kz_types:xml_el()) -> {'ok', kz_json:object() | kz_term:ne_binary()} |
                                                     {'error', kz_term:ne_binary()}.
 process_xml_content_tag(#xmlElement{name='content'
@@ -332,12 +303,10 @@ process_xml_content_tag(#xmlElement{name='content'
         <<"fail">> -> {'error', knm_vitelity_util:xml_resp_error_msg(Els)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec xml_resp(kz_types:xml_els()) -> kz_json:object() | kz_term:ne_binary().
 xml_resp([#xmlElement{name='info'
                      ,content=Content

@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributions
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_amqp_history).
 -behaviour(gen_server).
 
@@ -28,7 +25,7 @@
         ,code_change/3
         ]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -46,13 +43,14 @@
                          }).
 -type kz_amqp_history() :: #kz_amqp_history{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
@@ -151,21 +149,14 @@ is_bound(Consumer, Exchange, Queue, RoutingKey) when is_pid(Consumer) ->
                  }],
     ets:select_count(?TAB, MatchSpec) =/= 0.
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {'stop', Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
@@ -176,20 +167,10 @@ init([]) ->
                       ]),
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {'reply', Reply, State} |
-%%                                   {'reply', Reply, State, Timeout} |
-%%                                   {'noreply', State} |
-%%                                   {'noreply', State, Timeout} |
-%%                                   {'stop', Reason, Reply, State} |
-%%                                   {'stop', Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'command', Consumer, #'queue.unbind'{}=Unbind}, _From, State) ->
     unbind_queue(Consumer, Unbind),
@@ -215,16 +196,10 @@ handle_call({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
 handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {'noreply', State} |
-%%                                  {'noreply', State, Timeout} |
-%%                                  {'stop', Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'update_consumer_tag', Consumer, OldTag, NewTag}, State) ->
     Pattern = #kz_amqp_history{consumer=Consumer
@@ -275,16 +250,10 @@ handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {'noreply', State} |
-%%                                   {'noreply', State, Timeout} |
-%%                                   {'stop', Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'remove_history', Pid}, State) ->
     _ = remove(Pid),
@@ -307,36 +276,34 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("AMQP history terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec update_consumer_tag({kz_amqp_history(), ets:continuation()} | '$end_of_table', kz_term:ne_binary()) -> 'ok'.
 update_consumer_tag('$end_of_table', _) -> 'ok';
 update_consumer_tag({[#kz_amqp_history{timestamp=Timestamp

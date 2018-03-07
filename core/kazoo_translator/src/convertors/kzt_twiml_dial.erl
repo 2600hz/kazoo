@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Handle the emulation of the Dial verb
+%%% @doc Handle the emulation of the Dial verb
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kzt_twiml_dial).
 
 -export([exec/3]).
@@ -107,10 +105,9 @@ exec(Call, [#xmlElement{name='Queue'
     _Url = props:get_value('url', QueueProps),
     _Method = kzt_util:http_method(QueueProps),
 
-    Call1 = setup_call_for_dial(
-              kzt_util:set_queue_sid(QueueId, Call)
+    Call1 = setup_call_for_dial(kzt_util:set_queue_sid(QueueId, Call)
                                ,DialProps
-             ),
+                               ),
 
     lager:info("dialing into queue ~s, unsupported", [QueueId]),
     {'stop', Call1};
@@ -133,10 +130,9 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 
             send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call1),
 
-            {'ok', Call2} = kzt_receiver:wait_for_offnet(
-                              kzt_util:update_call_status(?STATUS_RINGING, Call1)
+            {'ok', Call2} = kzt_receiver:wait_for_offnet(kzt_util:update_call_status(?STATUS_RINGING, Call1)
                                                         ,Props
-                             ),
+                                                        ),
             maybe_end_dial(Call2, Props)
     end.
 
@@ -156,10 +152,9 @@ dial_me(Call, Attrs, DialMe) ->
                   ],
     'ok' = kzt_util:offnet_req(OffnetProps, Call1),
 
-    {'ok', Call2} = kzt_receiver:wait_for_offnet(
-                      kzt_util:update_call_status(?STATUS_RINGING, Call1)
+    {'ok', Call2} = kzt_receiver:wait_for_offnet(kzt_util:update_call_status(?STATUS_RINGING, Call1)
                                                 ,Props
-                     ),
+                                                ),
     maybe_end_dial(Call2, Props).
 
 send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
@@ -224,11 +219,14 @@ xml_elements_to_endpoints(Call, EPs) ->
 -spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els(), kz_json:objects()) ->
                                        kz_json:objects().
 xml_elements_to_endpoints(_, [], Acc) -> Acc;
-xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
-                                            ,content=DeviceIdTxt
-                                            ,attributes=_DeviceAttrs
-                                            }
-                                 | EPs], Acc
+xml_elements_to_endpoints(Call
+                         ,[#xmlElement{name='Device'
+                                      ,content=DeviceIdTxt
+                                      ,attributes=_DeviceAttrs
+                                      }
+                           | EPs
+                          ]
+                         ,Acc
                          ) ->
     DeviceId = kz_xml:texts_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
@@ -238,11 +236,15 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
             lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
             xml_elements_to_endpoints(Call, EPs, Acc)
     end;
-xml_elements_to_endpoints(Call, [#xmlElement{name='User'
-                                            ,content=UserIdTxt
-                                            ,attributes=_UserAttrs
-                                            }
-                                 | EPs], Acc) ->
+xml_elements_to_endpoints(Call
+                         ,[#xmlElement{name='User'
+                                      ,content=UserIdTxt
+                                      ,attributes=_UserAttrs
+                                      }
+                           | EPs
+                          ]
+                         ,Acc
+                         ) ->
     UserId = kz_xml:texts_to_binary(UserIdTxt),
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
@@ -252,11 +254,15 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
             xml_elements_to_endpoints(Call, EPs, Acc);
         UserEPs -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc)
     end;
-xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
-                                            ,content=Number
-                                            ,attributes=Attrs
-                                            }
-                                 | EPs], Acc) ->
+xml_elements_to_endpoints(Call
+                         ,[#xmlElement{name='Number'
+                                      ,content=Number
+                                      ,attributes=Attrs
+                                      }
+                           | EPs
+                          ]
+                         ,Acc
+                         ) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
 
     SendDigits = props:get_value('sendDigis', Props),
@@ -276,11 +282,15 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
 
     xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
 
-xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
-                                            ,content=Number
-                                            ,attributes=Attrs
-                                            }
-                                 | EPs], Acc) ->
+xml_elements_to_endpoints(Call
+                         ,[#xmlElement{name='Sip'
+                                      ,content=Number
+                                      ,attributes=Attrs
+                                      }
+                           | EPs
+                          ]
+                         ,Acc
+                         ) ->
     _Props = kz_xml:attributes_to_proplist(Attrs),
 
     try kzsip_uri:parse(kz_xml:texts_to_binary(Number)) of

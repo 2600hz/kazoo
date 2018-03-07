@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Listing of all expected v1 callbacks
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_pivot).
 
 -export([init/0
@@ -24,29 +20,25 @@
 
 -define(DEBUG_PATH_TOKEN, <<"debug">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.pivot">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.pivot">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.pivot">>, ?MODULE, 'validate').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?DEBUG_PATH_TOKEN) ->
@@ -56,15 +48,17 @@ allowed_methods(?DEBUG_PATH_TOKEN) ->
 allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /pivot => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /pivot => []
 %%    /pivot/foo => [<<"foo">>]
 %%    /pivot/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN) -> 'true'.
@@ -72,16 +66,14 @@ resource_exists(?DEBUG_PATH_TOKEN) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /pivot mights load a list of pivot objects
 %% /pivot/123 might load the pivot object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?DEBUG_PATH_TOKEN) ->
     debug_summary(Context).
@@ -90,16 +82,13 @@ validate(Context, ?DEBUG_PATH_TOKEN) ->
 validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
     debug_read(Context, CallId).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
-%%
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% Proper pagination is merely impossible for this API since we debugs
 %% are in two documents, setting limit to 2 * PagSize is a bad choice.
 %% What if the response or even the request debug document is not exists?
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec debug_summary(cb_context:context()) -> cb_context:context().
 debug_summary(Context) ->
     ViewOptions = [{'mapper', crossbar_view:map_value_fun()}
@@ -108,14 +97,12 @@ debug_summary(Context) ->
                   ],
     maybe_normalize_debug_results(crossbar_view:load_modb(Context, ?CB_FIRST_ITERATION, ViewOptions)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Pivot debugs are store in two documents, request debug and response
+%%------------------------------------------------------------------------------
+%% @doc Pivot debugs are store in two documents, request debug and response
 %% debug. If page_size is requested set limit accordingly to return
 %% both documents.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec limit_by_page_size(cb_context:context()) -> kz_term:api_pos_integer().
 limit_by_page_size(Context) ->
     case cb_context:pagination_page_size(Context) of
@@ -124,12 +111,10 @@ limit_by_page_size(Context) ->
         _ -> 'undefined'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec debug_read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 debug_read(Context, ?MATCH_MODB_PREFIX(Year, Month, CallId)) ->
     AccountModb = kazoo_modb:get_modb(cb_context:account_id(Context), Year, Month),
@@ -156,11 +141,10 @@ debug_read(Context, CallId) ->
                   ],
     crossbar_view:load_modb(Context, ?CB_DEBUG_LIST, ViewOptions).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_normalize_debug_results(cb_context:context()) -> cb_context:context().
 maybe_normalize_debug_results(Context) ->
     case cb_context:resp_status(Context) of
@@ -168,11 +152,10 @@ maybe_normalize_debug_results(Context) ->
         _ -> Context
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_debug_results(cb_context:context()) -> cb_context:context().
 normalize_debug_results(Context) ->
     Dir = crossbar_view:direction(Context),
@@ -183,14 +166,12 @@ normalize_debug_results(Context) ->
                        ]
                       ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Since view key is Call-ID, we're sure debug docs for the same Call-ID
+%%------------------------------------------------------------------------------
+%% @doc Since view key is Call-ID, we're sure debug docs for the same Call-ID
 %% are adjacent to each other. If we previously visited the Call-ID
 %% the next doc with the same Call-ID are merged with list's head.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_debug_results_fold(kz_json:object(), {sets:set(), kz_json:objects()}) -> {sets:set(), kz_json:objects()}.
 normalize_debug_results_fold(JObj, {Set, []}) ->
     CallId = kz_json:get_value(<<"call_id">>, JObj),
@@ -212,11 +193,10 @@ sort_by_created(A, B, 'ascending') ->
 sort_by_created(A, B, 'descending') ->
     kz_json:get_integer_value(<<"created">>, A, 0) > kz_json:get_integer_value(<<"created">>, B, 1).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fix_page_size(cb_context:context()) -> cb_context:context().
 fix_page_size(Context) ->
     RespEnv = cb_context:resp_envelope(Context),
@@ -226,20 +206,18 @@ fix_page_size(Context) ->
                                 ,kz_json:set_value(<<"page_size">>, Size, RespEnv)
                                 ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_debug_read(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_debug_read(JObj, Acc) ->
     [leak_pvt_field(kz_json:get_value(<<"doc">>, JObj)) | Acc].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec leak_pvt_field(kz_json:object()) -> kz_json:object().
 leak_pvt_field(JObj) ->
     Routines = [fun leak_pvt_created/2

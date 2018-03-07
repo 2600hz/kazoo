@@ -1,35 +1,47 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Look up caller id number for spam score
-%%% "data":{
-%%%   "username":"nomorobo_username"
-%%%   ,"password":"nomorobo_password"
-%%% }
-%%% ,"children":{
-%%%   "0":{...} // is not robocall
-%%%   "10":{...} // is robocall
-%%% }
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Look up caller ID number for spam score using Nomorobo.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`username'</dt>
+%%%   <dd>Nomorobo user name.</dd>
+%%%
+%%%   <dt>`password'</dt>
+%%%   <dd>Nomorobo password.</dd>
+%%% </dl>
+%%%
+%%% <h4>Callflow `children' Section Example</h4>
+%%% ```
+%%%     "children":{
+%%%         "0":{...} // is not robocall
+%%%         "10":{...} // is robocall
+%%%     }
+%%% '''
+%%%
 %%% Children keys are numbers between 0 and 10, 0 meaning not a robocall
-%%% and 10 being definitely a robocall
+%%% and 10 being definitely a robocall.
 %%% For instance, say the children keys are "0", "3", "6", and "10"
-%%% Spam Score | Branch
-%%%     0      |   "0"
-%%%     1      |   "0"
-%%%     2      |   "0"
-%%%     3      |   "3"
-%%%     4      |   "3"
-%%%     5      |   "3"
-%%%     6      |   "6"
-%%%     7      |   "6"
-%%%     8      |   "6"
-%%%     9      |   "6"
-%%%    10      |   "10"
-%%% The "_" child key is equivalent to "0" in this case.
+%%%
+%%% ```
+%%%    Spam Score | Branch
+%%%        0      |   "0"
+%%%        1      |   "0"
+%%%        2      |   "0"
+%%%        3      |   "3"
+%%%        4      |   "3"
+%%%        5      |   "3"
+%%%        6      |   "6"
+%%%        7      |   "6"
+%%%        8      |   "6"
+%%%        9      |   "6"
+%%%       10      |   "10"
+%%% '''
+%%%
+%%% The `_' child key is equivalent to "0" in this case.
 %%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_nomorobo).
 
 -behaviour(gen_cf_action).
@@ -48,12 +60,10 @@
 
 -define(URL, <<"https://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     case nomorobo_score(Data, Call) of

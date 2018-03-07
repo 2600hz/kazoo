@@ -1,9 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% data plan
+%%% @doc data plan
 %%% @end
-%%% @contributors
 %%%-----------------------------------------------------------------------------
 -module(kzs_plan).
 
@@ -194,6 +192,7 @@ dataplan_match(Classification, Plan, AccountId) ->
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(CAtt)
              ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
+             ,att_handler_id => AttConnection
              ,classification => Classification
              ,account_id => AccountId
              }
@@ -240,6 +239,7 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(TypeAttMap)
              ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
+             ,att_handler_id => AttConnection
              ,classification => Classification
              ,doc_type => DocType
              ,account_id => AccountId

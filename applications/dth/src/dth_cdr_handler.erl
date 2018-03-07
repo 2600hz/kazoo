@@ -1,11 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @doc
-%%% Send a CDR payload to DTH
+%%% @doc Send a CDR payload to DTH
 %%% @end
 %%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(dth_cdr_handler).
 
 -export([init/0, handle_req/2]).
@@ -145,12 +144,10 @@ get_from_user(JObj) ->
 
 -spec get_account_code(kz_json:object()) -> kz_term:ne_binary().
 get_account_code(JObj) ->
-    AccountID = kz_binary:truncate_left(
-                  kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
+    AccountID = kz_binary:truncate_left(kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
                                        ,17
-                 ),
+                                       ),
     case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
         'undefined' -> AccountID;
         _Else -> << AccountID/binary, "-IN">>
     end.
-

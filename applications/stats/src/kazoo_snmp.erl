@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%% @end
-%%% @contributors
-%%%    Stephen Gibberd <stephen.gibberd@2600hz.com>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kazoo_snmp).
 
 %% API
@@ -18,7 +16,7 @@
 -include("stats.hrl").
 
 %%% get_oid - implementation function to read from a table.
--spec get_oid('get_next' | 'get', integer(), integer(), any()) -> any().
+-spec get_oid('get_next', kz_term:integers(), kz_term:integers(), any()) -> any().
 get_oid('get_next', RowIndex, Cols, Table) ->
     lager:debug("Table: ~p Row: ~p Cols: ~p~n",[Table,RowIndex, Cols]),
     Value = stats_handler:get_next(Table,RowIndex,Cols),
@@ -29,7 +27,6 @@ get_oid('get_next', RowIndex, Cols, Table) ->
 kazoo_ver('get') ->
     {'value', kz_term:to_list(kz_util:kazoo_version())}.
 
-%% @public
 %% @doc Create the directories and agent configuration files
 -spec start() -> 'ok'.
 start() ->

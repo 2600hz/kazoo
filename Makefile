@@ -1,7 +1,7 @@
 ROOT = $(shell cd "$(dirname '.')" && pwd -P)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
-FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+FMT = $(ROOT)/make/erlang-formatter/fmt.sh
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -9,9 +9,9 @@ JOBS ?= 1
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt clean-fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks
 
-all: compile rel/dev-vm.args
+all: compile
 
 compile: ACTION = all
 compile: deps kazoo
@@ -57,9 +57,10 @@ check: compile-test eunit clean-kazoo kazoo
 clean-deps:
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
+	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
 
 .erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.07.06/erlang.mk' -O $(ROOT)/erlang.mk
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
 	@$(MAKE) -C deps/ all
@@ -82,46 +83,22 @@ $(RELX):
 
 clean-release:
 	$(if $(wildcard _rel/), rm -r _rel/)
-	$(if $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args), \
-	  rm $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args)  )
 
-build-release: $(RELX) clean-release rel/relx.config rel/vm.args
+build-release: $(RELX) clean-release rel/relx.config rel/relx.config.script rel/sys.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
-	patch _rel/'kazoo'/bin/'kazoo' -i rel/relx.patch
-build-all-release: build-release
-	for path in applications/*/; do \
-	  app=$$(echo $$path | cut -d/ -f2) ; \
-	  if [ $$app = 'skel' ]; then continue; fi ; \
-	  $(RELX) --config rel/relx.config -V 2 release --relname $$app ; \
-	  patch _rel/$$app/bin/$$app -i rel/relx.patch ; \
-	done
-build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
-	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
-	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
-build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
-	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
-	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
-tar-release: $(RELX) rel/relx.config rel/vm.args
+build-dev-release: $(RELX) clean-release rel/dev.relx.config rel/dev.relx.config.script rel/dev.vm.args rel/dev.sys.config
+	$(RELX) --dev-mode true --config rel/dev.relx.config -V 2 release --relname 'kazoo'
+build-ci-release: $(RELX) clean-release rel/ci.relx.config rel/ci.relx.config.script rel/ci.sys.config rel/ci.vm.args
+	$(RELX) --config rel/ci.relx.config -V 2 release --relname 'kazoo'
+tar-release: $(RELX) rel/relx.config rel/relx.config.script rel/sys.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
-rel/relx.config: rel/relx.config.src
-	$(ROOT)/scripts/src2any.escript $<
-rel/relx.config-dev: export KAZOO_DEV='true'
-rel/relx.config-dev: rel/relx.config.src
-	$(ROOT)/scripts/src2any.escript $<
-
-rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
-	cp $^ $@
-rel/vm.args: rel/args rel/dev-vm.args
-	( echo '-setcookie $${COOKIE}'; cat $<; echo '-name $${NODE_NAME}' ) > $@
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
 release: REL ?= kazoo_apps # kazoo_apps | ecallmgr | …
-ifneq ($(findstring kazoo_apps,$(REL)),kazoo_apps)
-release: export KAZOO_APPS = 'ecallmgr'
-endif
+release: COOKIE ?= change_me
 release:
-	@NODE_NAME='$(REL)' COOKIE='change_me' $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
+	@NODE_NAME="$(REL)" COOKIE="$(COOKIE)" $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
 
 install: compile build-release
 	cp -a _rel/kazoo /opt
@@ -158,13 +135,14 @@ dialyze-kazoo: dialyze
 dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin)
 dialyze-apps: dialyze
 dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin)
-dialyze-core: dialyze
+dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
 dialyze-it: $(PLT)
 	@if [ -n "$(TO_DIALYZE)" ]; then \
-	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); \
+	export TO_DIALYZE="$(TO_DIALYZE)"; \
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt; \
 	fi;
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
@@ -198,12 +176,20 @@ diff: dialyze-it
 bump-copyright:
 	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 
+FMT_SHA = 237604a566879bda46d55d9e74e3e66daf1b557a
 $(FMT):
-	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
+	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/$(FMT_SHA)' | tar -vxz -C $(ROOT)/make/
+	mv $(ROOT)/make/erlang-formatter-$(FMT_SHA) $(ROOT)/make/erlang-formatter
+
+fmt-all: $(FMT)
+	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
 
 fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
+
+clean-fmt:
+	@$(if $(FMT), rm -rf $(shell dirname $(FMT)))
 
 app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
@@ -212,6 +198,7 @@ code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(ROOT)/scripts/check-spelling.bash
 	@$(ROOT)/scripts/kz_diaspora.bash
+	@$(ROOT)/scripts/edocify.escript
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
@@ -222,6 +209,9 @@ apis:
 	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/api/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-kzd-builders.escript
+
+schemas:
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs: docs-validate docs-report docs-setup docs-build
@@ -275,6 +265,7 @@ endif
 
 circle-docs:
 	@./scripts/state-of-docs.sh || true
+	@$(ROOT)/scripts/state-of-edoc.escript
 	@$(MAKE) apis
 	@$(MAKE) docs
 
@@ -289,7 +280,7 @@ circle-fmt:
 	@$(MAKE) elvis
 
 circle-build:
-	@$(MAKE) clean deps kazoo xref sup_completion
+	@$(MAKE) clean clean-deps deps kazoo xref sup_completion
 
 circle-schemas:
 	@$(MAKE) validate-schemas
@@ -306,7 +297,10 @@ circle-unstaged:
 	exit 1
 
 circle-dialyze: build-plt
-	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze
+# circle-dialyze: circle-dialyze: export TO_DIALYZE = $(CHANGED)
+circle-dialyze:
+	@export TO_DIALYZE="$(CHANGED)"
+	@$(MAKE) dialyze
 
 circle-release:
 	@$(MAKE) build-ci-release

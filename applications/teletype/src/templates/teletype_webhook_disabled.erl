@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz Inc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(teletype_webhook_disabled).
 
 -export([init/0
@@ -100,10 +98,9 @@ process_req(DataJObj) ->
                                              ,kapi_notifications:account_id(DataJObj)
                                              ),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                           ,Macros
-               ),
+                                          ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 

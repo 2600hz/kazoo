@@ -1,15 +1,13 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% utility functions for Trunkstore
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc utility functions for Trunkstore
 %%% Some functions make use of the inet_parse module. This is an undocumented
 %%% module, and as such the functions may change or be removed.
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ts_util).
 
 -export([find_ip/1
@@ -187,7 +185,8 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
             Options = [{'key', [kz_term:to_lower_binary(Realm)
                                ,kz_term:to_lower_binary(Name)
                                ]
-                       }],
+                       }
+                      ],
             case kz_datamgr:get_results(AccountDb, <<"trunkstore/lookup_user_flags">>, Options) of
                 {'error', _}=E ->
                     lager:info("cache miss for ~s@~s, err: ~p", [Name, Realm, E]),

@@ -1,15 +1,13 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Devices module
-%%%
+%%% @doc Devices module
 %%% Handle client requests for device documents
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_devices_v2).
 
 -export([init/0
@@ -42,10 +40,14 @@
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
 -define(KEY_MOBILE_MDN, [<<"mobile">>, <<"mdn">>]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
@@ -67,15 +69,13 @@ init() ->
                               ),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() ->
                              http_methods().
@@ -94,14 +94,11 @@ allowed_methods(_DeviceId) ->
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -112,12 +109,10 @@ resource_exists(_DeviceId) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure we will be able to bill for devices
+%%------------------------------------------------------------------------------
+%% @doc Ensure we will be able to bill for devices.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec billing(cb_context:context()) -> cb_context:context().
 billing(Context) ->
     billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
@@ -138,12 +133,10 @@ billing(Context, _ReqVerb, [{<<"devices">>, _}|_Nouns]) ->
 billing(Context, _ReqVerb, _Nouns) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
@@ -164,15 +157,13 @@ authorize(?HTTP_GET, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
 authorize(_Verb, _Nouns) ->
     'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with deviceId
 %%
-%% Failure here returns 404
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_resource(cb_context:context()) -> cb_context:context().
 validate_resource(Context) -> Context.
 
@@ -197,15 +188,13 @@ error_no_entity(Context, DeviceId) ->
                                ,Context
                                ).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -323,17 +312,15 @@ delete(Context, DeviceId) ->
             Context1
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec load_device_summary(cb_context:context()) ->
                                  cb_context:context().
@@ -356,12 +343,10 @@ load_users_device_summary(Context, UserId) ->
     ViewOptions = [{'key', UserId}],
     crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request('undefined', Context) ->
     maybe_check_mdn('undefined', Context);
@@ -372,12 +357,10 @@ validate_request(DeviceId, Context) ->
         _Else -> Context1
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Validate payloads for actions on a device
+%%------------------------------------------------------------------------------
+%% @doc Validate payloads for actions on a device.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
                              cb_context:context().
 validate_action(Context, DeviceId, <<"notify">>) ->
@@ -662,23 +645,19 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(DeviceId, Context) ->
     crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a device document from the database
+%%------------------------------------------------------------------------------
+%% @doc Load a device document from the database.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_device(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_device(DeviceId, Context) ->
     crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Retrieve the status of the devices linked to the account
-%% Reads registered devices in registrations, then map to devices of the account
+%%------------------------------------------------------------------------------
+%% @doc Retrieve the status of the devices linked to the account/
+%% Reads registered devices in registrations, then map to devices of the account/
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
     AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
@@ -686,25 +665,21 @@ load_device_status(Context) ->
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns the complete list of registrations in a the first registrar
+%%------------------------------------------------------------------------------
+%% @doc Returns the complete list of registrations in a the first registrar
 %% to respond for a given account realm.  This is not 100% accurate
 %% as an endpoint might be stored in another registrar, but it is
 %% accurate enough for the status icons.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec lookup_regs(kz_term:ne_binary()) -> kz_json:objects().
 lookup_regs(AccountRealm) ->
     Req = [{<<"Realm">>, AccountRealm}
@@ -743,12 +718,10 @@ extract_device_registrations([JObj|JObjs], Set) ->
                     end, Set, Fields),
     extract_device_registrations(JObjs, S).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check if the device sip creds are unique
+%%------------------------------------------------------------------------------
+%% @doc Check if the device sip credentials are unique.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_sip_creds_unique(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                  boolean().
 %% no account id and no doc id (ie initial create with no account)
@@ -770,7 +743,8 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
     ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
                            ,kz_term:to_lower_binary(Username)
                            ]
-                   }],
+                   }
+                  ],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
@@ -778,12 +752,10 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
         _ -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_aggregate_device(kz_term:api_binary(), cb_context:context()) -> boolean().
 maybe_aggregate_device(DeviceId, Context) ->
@@ -803,12 +775,10 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggregate(DeviceId, Context) ->
@@ -826,12 +796,10 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Perform actions on a device
+%%------------------------------------------------------------------------------
+%% @doc Perform actions on a device.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
                         cb_context:context().
 put_action(Context, DeviceId, <<"notify">>) ->
@@ -850,12 +818,11 @@ put_action(Context, DeviceId, <<"notify">>) ->
     kapi_switch:publish_notify(Req),
     crossbar_util:response_202(<<"NOTIFY sent">>, Context).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Looks for device_type from DB but if it is undefined there,
-%%   gets the one from request data.
+%% gets the one from request data.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_device_type(cb_context:context()) -> kz_term:api_binary().
 get_device_type(Context) ->
     case kzd_devices:device_type(cb_context:fetch(Context, 'db_doc')) of
@@ -864,11 +831,10 @@ get_device_type(Context) ->
         DeviceType -> DeviceType
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_add_mobile_mdn(cb_context:context()) -> cb_context:context().
 maybe_add_mobile_mdn(Context) ->
     case kz_term:is_true(cb_context:fetch(Context, 'add_mobile_mdn')) of
@@ -898,7 +864,8 @@ add_mobile_mdn(Context) ->
             cb_phone_numbers_v2:set_response(Error, Context);
         {ok, _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
-                       ,[Normalized, kz_json:encode(PublicFields)]),
+                       ,[Normalized, kz_json:encode(PublicFields)]
+                       ),
             maybe_remove_mobile_mdn(Context)
     end.
 
@@ -938,11 +905,10 @@ remove_if_mobile(MDN, Context) ->
             Context
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_mdn(cb_context:context()) -> kz_term:api_binary().
 get_mdn(Context) ->
     ReqMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),

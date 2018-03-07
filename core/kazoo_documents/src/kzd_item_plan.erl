@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kzd_item_plan).
 
 -export([cumulative_merge_scheme/0
@@ -93,11 +91,11 @@ cumulative_merge_list(Key, [JObj|JObjs]) ->
     case lists:foldl(fun(J, 'undefined') ->
                              kz_json:get_value(Key, J);
                         (J, Value) ->
-                             lists:merge(
-                               kz_json:get_list_value(Key, J, [])
-                                        ,Value
-                              )
-                     end, kz_json:get_value(Key, JObj), JObjs)
+                             lists:merge(kz_json:get_list_value(Key, J, []), Value)
+                     end
+                    ,kz_json:get_value(Key, JObj)
+                    ,JObjs
+                    )
     of
         'undefined' -> 'undefined';
         List -> sets:to_list(sets:from_list(List))
@@ -114,7 +112,10 @@ cumulative_merge_or(Key, [JObj|JObjs]) ->
                                 kz_term:is_true(Boolean)
                                     orelse Value
                         end
-                end, kz_json:get_value(Key, JObj), JObjs).
+                end
+               ,kz_json:get_value(Key, JObj)
+               ,JObjs
+               ).
 
 -spec cumulative_merge_and(kz_json:path(), kz_json:objects()) -> boolean().
 cumulative_merge_and(Key, [JObj|JObjs]) ->
@@ -127,7 +128,10 @@ cumulative_merge_and(Key, [JObj|JObjs]) ->
                                 kz_term:is_true(Boolean)
                                     andalso Value
                         end
-                end, kz_json:get_value(Key, JObj), JObjs).
+                end
+               ,kz_json:get_value(Key, JObj)
+               ,JObjs
+               ).
 
 -spec keys(doc()) -> kz_json:path().
 keys(ItemPlan) ->

@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%% Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_transaction).
 
 -export([id/1]).
@@ -82,11 +80,10 @@
              ,dollars/0
              ]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec id(transaction()) -> kz_term:ne_binary().
 id(#kz_transaction{id = Id}) -> Id.
 -spec rev(transaction()) -> kz_term:ne_binary().
@@ -134,11 +131,6 @@ version(#kz_transaction{pvt_vsn = Version}) -> Version.
 -spec order_id(transaction()) -> kz_term:api_ne_binary().
 order_id(#kz_transaction{order_id = OrderId}) -> OrderId.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -type new() :: #{account_id => kz_term:ne_binary()
                 ,account_db => kz_term:ne_binary()
                 ,amount => units()
@@ -151,6 +143,10 @@ order_id(#kz_transaction{order_id = OrderId}) -> OrderId.
                 ,modified => kz_time:gregorian_seconds()
                 }.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec new(new()) -> transaction().
 new(#{account_id := AccountId
      ,account_db := AccountDb
@@ -175,7 +171,6 @@ new(#{account_id := AccountId
                    ,pvt_modified = Modfified
                    }.
 
-%% @private
 -spec new(kz_term:ne_binary(), units(), kz_term:ne_binary()) -> transaction().
 new(Ledger, Amount, Type) ->
     #kz_transaction{pvt_type = Type
@@ -186,31 +181,26 @@ new(Ledger, Amount, Type) ->
                    ,pvt_modified = kz_time:now_s()
                    }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create transaction record of type credit (with Amount & Reason)
+%%------------------------------------------------------------------------------
+%% @doc Create transaction record of type credit (with Amount and Reason).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec credit(kz_term:ne_binary(), units()) -> transaction().
 credit(Ledger, Amount) ->
     new(Ledger, Amount, <<"credit">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create transaction record of type debit (with Amount & Reason)
+%%------------------------------------------------------------------------------
+%% @doc Create transaction record of type debit (with Amount and Reason).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec debit(kz_term:ne_binary(), units()) -> transaction().
 debit(Ledger, Amount) ->
     new(Ledger, Amount, <<"debit">>).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_description(kz_term:ne_binary(), transaction()) -> transaction().
 set_description(Desc=?NE_BINARY, T) ->
     T#kz_transaction{description = Desc}.
@@ -280,12 +270,10 @@ set_type(Type, T) ->
 set_order_id(OrderId, T) ->
     T#kz_transaction{order_id = OrderId}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_per_minute(transaction()) -> boolean().
 is_per_minute(Transaction) ->
     case code(Transaction) of
@@ -294,12 +282,10 @@ is_per_minute(Transaction) ->
         _Code -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_reason(kz_term:ne_binary() | kz_term:ne_binaries(), transaction()) -> boolean().
 is_reason(Reason, #kz_transaction{pvt_reason = Reason}) -> 'true';
 is_reason([Reason | _], #kz_transaction{pvt_reason = Reason}) -> 'true';
@@ -307,12 +293,10 @@ is_reason([_ | Reasons], Transaction) ->
     is_reason(Reasons, Transaction);
 is_reason(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Transform transaction record to Json object
+%%------------------------------------------------------------------------------
+%% @doc Transform transaction record to Json object
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec to_json(transaction()) -> kz_json:object().
 to_json(#kz_transaction{}=T) ->
     maybe_correct_transaction(
@@ -342,24 +326,20 @@ to_json(#kz_transaction{}=T) ->
         ,{<<"order_id">>, T#kz_transaction.order_id}
         ])).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Transform Json Object to transaction record
+%%------------------------------------------------------------------------------
+%% @doc Transform Json Object to transaction record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec to_public_json(transaction()) -> kz_json:object().
 to_public_json(Transaction) ->
     maybe_correct_transaction(
       clean_jobj(
         to_json(Transaction))).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_correct_transaction(kz_json:object()) -> kz_json:object().
 maybe_correct_transaction(JObj) ->
     Routines = [fun maybe_add_sub_account_name/1
@@ -385,12 +365,10 @@ add_sub_account_name(AccountId, JObj) ->
             kz_json:set_value(<<"sub_account_name">>, AccountName, JObj)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec clean_jobj(kz_json:object()) -> kz_json:object().
 clean_jobj(JObj) ->
     CleanKeys = [{<<"_id">>, <<"id">>}
@@ -409,12 +387,10 @@ clean_jobj(JObj) ->
                  ],
     kz_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Transform Json Object to transaction record
+%%------------------------------------------------------------------------------
+%% @doc Transform Json Object to transaction record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> transaction().
 from_json(JObj) ->
     #kz_transaction{id = kz_doc:id(JObj)
@@ -442,12 +418,10 @@ from_json(JObj) ->
                    ,order_id = kz_json:get_ne_value(<<"order_id">>, JObj)
                    }.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove(transaction()) -> 'ok' | {'error', any()}.
 remove(#kz_transaction{}=Transaction) ->
     case prepare_transaction(Transaction) of
@@ -459,12 +433,10 @@ remove(#kz_transaction{}=Transaction) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec save(transaction()) -> {'ok', transaction()} |
                              {'error', any()}.
 save(#kz_transaction{}=Transaction) ->
@@ -482,12 +454,10 @@ save(#kz_transaction{}=Transaction) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec service_save(transaction()) -> {'ok', transaction()} |
                                      {'error', any()}.
 service_save(#kz_transaction{}=Transaction) ->
@@ -521,7 +491,6 @@ service_save_transaction(#kz_transaction{pvt_account_id = AccountId}=Transaction
             end
     end.
 
-%% @private
 -spec prepare_transaction(transaction()) -> transaction() | {'error', any()}.
 prepare_transaction(#kz_transaction{id = 'undefined'}=Transaction) ->
     prepare_transaction(Transaction#kz_transaction{id = modb_doc_id()});
@@ -639,8 +608,8 @@ prepare_topup_transaction(Transaction) ->
 -spec modb_doc_id() -> kz_term:ne_binary().
 modb_doc_id() ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:now_s()),
-    <<(kz_term:to_binary(Year))/binary
-      ,(kz_date:pad_month(Month))/binary
-      ,"-"
-      ,(kz_binary:rand_hex(16))/binary
-    >>.
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,kz_binary:rand_hex(16)
+                   ]).

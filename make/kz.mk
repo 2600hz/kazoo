@@ -56,6 +56,8 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 
+VERSION=$(shell $(ROOT)/scripts/next_version)
+
 ## SOURCES provides a way to specify compilation order (left to right)
 SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
 MODULE_NAMES := $(sort $(foreach module,$(SOURCES),$(shell basename $(module) .erl)))
@@ -76,7 +78,8 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 ebin/$(PROJECT).app:
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
-	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src > $@
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src \
+	| sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(VERSION)\"}/g" > $@
 
 ebin/%.beam: src/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
@@ -174,7 +177,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 $(FMT):
 	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C $(ROOT)/make/
 
-fmt: TO_FMT ?= $(shell find src include -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript")
+fmt: TO_FMT ?= $(shell find src include -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript')
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)
 

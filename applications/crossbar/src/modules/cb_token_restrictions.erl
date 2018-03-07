@@ -1,16 +1,14 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Token auth module
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Token auth module
 %%% This is a simple auth mechanism, once the user has aquired an
 %%% auth token this module will allow access.  This module should be
 %%% updated to be FAR more robust.
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_token_restrictions).
 
 -export([init/0
@@ -54,10 +52,14 @@ default_method_restrictions() ->
 method_restrictions(AuthModule) ->
     kapps_config:get_json(?MOD_CONFIG_CAT, AuthModule).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -123,11 +125,10 @@ post(Context) ->
 delete(Context) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
                        'false' |
                        {'true' | 'stop', cb_context:context()}.

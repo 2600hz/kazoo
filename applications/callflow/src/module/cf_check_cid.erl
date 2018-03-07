@@ -1,38 +1,60 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handles inspection of incoming caller id and branching to a child
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handles inspection of incoming caller id and branching to a child
 %%% callflow node accordingly.
 %%%
-%%% "data":{
-%%%   "use_absolute_mode":[true/false] // if true, direct call down a branch that
-%%%        //     matches the incoming caller id.
-%%%        // if false, use regex to determine whether incoming call should directed
-%%%        // down the "match" or "nomatch" branch.  Default is false.
-%%%   ,"regex": "^\\+15558881111" // regular expression used to determine match/nomatch
-%%%        // when use_absolute_mode is false.  Default matches all incoming caller ids.
-%%%   ,"caller_id": {      // optional caller id applied to incoming call when it goes down a
-%%%       "external": {   // match branch, if specified.
-%%%           "name": "Joseph",
-%%%           "number": "+15558881122"
-%%%       },
-%%%       "internal": {
-%%%           "name": "Joe",
-%%%           "number": "+15558881122"
-%%%       }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`use_absolute_mode'</dt>
+%%%   <dd>A boolean, if `true', direct call down a branch that matches the
+%%%   incoming caller ID. If `false', use regex to determine whether incoming call
+%%%   should directed down the "match" or "nomatch" branch.  Default is `false'.
+%%%   </dd>
+%%%
+%%%   <dt>`regex'</dt>
+%%%   <dd>A regular expression (like `^\\+15558881111') used to determine match/nomatch
+%%%   when `use_absolute_mode' is `false'. Default matches all incoming caller IDs.
+%%%   </dd>
+%%%
+%%%   <dt>`caller_id'</dt>
+%%%   <dd><strong>Optional: </strong>Caller ID to applied to incoming call.
+%%%     <dl>
+%%%       <dt>`external'</dt>
+%%%       <dd>Applied to external caller ID. Matches branch, if specified.
+%%%         <dl>
+%%%           <dt>`name'</dt><dd>A string for caller ID name, e.g. "Joseph"</dd>
+%%%           <dt>`number'</dt><dd>A string for caller ID number, e.g. "+15558881122"</dd>
+%%%         </dl>
+%%%       </dd>
+%%%
+%%%       <dt>`internal'</dt>
+%%%       <dd>Applied to internal caller ID.
+%%%         <dl>
+%%%           <dt>`name'</dt><dd>A string for caller ID name, e.g. "Joseph"</dd>
+%%%           <dt>`number'</dt><dd>A string for caller ID number, e.g. "+15558881122"</dd>
+%%%         </dl>
+%%%       </dd>
+%%%     </dl>
+%%%   </dd>
+%%%
+%%%   <dt>`user_id'</dt>
+%%%   <dd><strong>Optional: </strong>User Id applied as owner of incoming call when
+%%%   a call goes down the match branch, if specified.
+%%%   </dd>
+%%% </dl>
+%%%
+%%% Sample for children section of Callflow to branch into based on the variable:
+%%% ```
+%%%    "children": {
+%%%        "match": { // callflow node to branch to when absolute mode is false and regex matches },
+%%%        "nomatch": { // callflow node to branch to when regex does not match or no child node defined for incoming caller id },
+%%%        "+15558881111": { // callflow node to branch to absolute mode is true and caller id matches +15558881111) }
 %%%    }
-%%%   ,"user_id":[uuid of kazoo User] // optional user id applied as owner of incoming call when
-%%%                                   // when a call goes down the match branch, if specified.
-%%% },
-%%% "children": {
-%%%   "match": { [callflow node to branch to when absolute mode is false and regex matches] },
-%%%   "nomatch": { [callflow node to branch to when regex does not match or no child node defined for incoming caller id] },
-%%%   "+15558881111": { [callflow node to branch to absolute mode is true and caller id matches +15558881111)] }
-%%% }
+%%% '''
+%%%
+%%% @author Brian Davis
 %%% @end
-%%% @contributors
-%%%   Brian Davis
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_check_cid).
 
 -behaviour(gen_cf_action).
@@ -41,12 +63,10 @@
 
 -include("callflow.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerIdNumber = kapps_call:caller_id_number(Call),
@@ -59,12 +79,10 @@ handle(Data, Call) ->
         'nomatch' -> handle_no_match(Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handle a caller id "match" condition
+%%------------------------------------------------------------------------------
+%% @doc Handle a caller id "match" condition
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_match(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 handle_match(Data, Call, CallerIdNumber) ->
     case kz_json:is_true(<<"use_absolute_mode">>, Data, 'false') of
@@ -86,12 +104,10 @@ maybe_branch_on_regex(Data, Call) ->
         'false' -> cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handle a caller id "no match" condition
+%%------------------------------------------------------------------------------
+%% @doc Handle a caller id "no match" condition
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_no_match(kapps_call:call()) -> 'ok'.
 handle_no_match(Call) ->
     case is_callflow_child(<<"nomatch">>, Call) of
@@ -99,12 +115,10 @@ handle_no_match(Call) ->
         'false' -> cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check if the given node name is a callflow child
+%%------------------------------------------------------------------------------
+%% @doc Check if the given node name is a callflow child
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_callflow_child(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 is_callflow_child(Name, Call) ->
     lager:debug("Looking for callflow child ~s", [Name]),
@@ -117,11 +131,10 @@ is_callflow_child(Name, Call) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc update the caller id and owner information for this call
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_caller_identity(kz_json:object(), kapps_call:call()) -> 'ok'.
 update_caller_identity(Data, Call) ->
     Name = kz_json:get_ne_binary_value([<<"caller_id">>, <<"external">>, <<"name">>], Data),
@@ -140,11 +153,10 @@ update_caller_identity(Data, Call) ->
         'false' -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc validate that all required parameters are defined
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_valid_caller_identity(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
 is_valid_caller_identity('undefined', _Number, _UserId) -> 'false';
 is_valid_caller_identity(_Name, 'undefined', _UserId) -> 'false';

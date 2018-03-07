@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Routing requests, responses, and wins!
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Routing requests, responses, and wins!
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_route).
 
 -export([req/1, req_v/1
@@ -27,7 +25,7 @@
         ,fetch_id/1
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 -include("kapi_dialplan.hrl").
 -include("kapi_route.hrl").
 
@@ -36,11 +34,11 @@
 
 -export_type([req/0, resp/0]).
 
-%%--------------------------------------------------------------------
-%% @doc Dialplan Route Request - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Dialplan Route Request.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
@@ -59,11 +57,11 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 -spec req_event_type() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 
-%%--------------------------------------------------------------------
-%% @doc Dialplan Route Response - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Dialplan Route Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
@@ -111,11 +109,11 @@ is_actionable_resp(Prop) when is_list(Prop) ->
 is_actionable_resp(JObj) ->
     is_actionable_resp(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Route within a Dialplan Route Response - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Route within a Dialplan Route Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp_route(kz_term:api_terms()) ->
                         {'ok', iolist()} |
                         {'error', string()}.
@@ -131,11 +129,11 @@ resp_route_v(Prop) when is_list(Prop) ->
     kz_api:validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES);
 resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Winning Responder Message - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Winning Responder Message.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec win(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
@@ -151,10 +149,10 @@ win_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES);
 win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Bind AMQP Queue for routing requests
+%%------------------------------------------------------------------------------
+%% @doc Bind AMQP Queue for routing requests.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_q(Queue, props:get_value('restrict_to', Props), Props).
@@ -162,14 +160,14 @@ bind_q(Queue, Props) ->
 -spec bind_q(kz_term:ne_binary(), list() | 'undefined', kz_term:proplist()) -> 'ok'.
 bind_q(Queue, 'undefined', Props) ->
     Keys = get_all_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys);
+    lists:foreach(fun(Key) -> kz_amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys);
 bind_q(Queue, ['no_account' | T], Props) ->
     Keys = get_realm_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
     bind_q(Queue, T, Props);
 bind_q(Queue, ['account' | T], Props) ->
     Keys = get_account_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
     bind_q(Queue, T, Props);
 bind_q(Queue, [_ | T], Props) ->
     bind_q(Queue, T, Props);
@@ -182,14 +180,14 @@ unbind_q(Queue, Props) ->
 -spec unbind_q(kz_term:ne_binary(), list() | 'undefined', kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', Props) ->
     Keys = get_all_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys);
+    lists:foreach(fun(Key) -> kz_amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys);
 unbind_q(Queue, ['no_account' | T], Props) ->
     Keys = get_realm_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
     unbind_q(Queue, T, Props);
 unbind_q(Queue, ['account' | T], Props) ->
     Keys = get_account_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
     unbind_q(Queue, T, Props);
 unbind_q(Queue, [_ | T], Props) ->
     unbind_q(Queue, T, Props);
@@ -209,22 +207,21 @@ get_account_routing_keys(Props) ->
     Types = props:get_value('types', Props, [<<"*">>]),
     lists:foldl(fun(T, L) -> [get_route_req_account_routing(T, AccountId) | L] end, [], Types).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:callmgr_exchange().
 
 -spec get_route_req_account_routing(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_route_req_account_routing(Type, AccountId) ->
-    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(AccountId)]).
+    list_to_binary([?KEY_ROUTE_REQ, ".", kz_amqp_util:encode(Type), ".", kz_amqp_util:encode(AccountId)]).
 
 -spec get_route_req_realm_routing(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_route_req_realm_routing(Type, Realm, User) ->
-    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+    list_to_binary([?KEY_ROUTE_REQ, ".", kz_amqp_util:encode(Type), ".", kz_amqp_util:encode(Realm), ".", kz_amqp_util:encode(User)]).
 
 -spec get_route_req_routing(kz_term:api_terms()) -> kz_term:ne_binary().
 get_route_req_routing(Api) ->
@@ -242,7 +239,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
@@ -251,7 +248,7 @@ publish_resp(RespQ, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ROUTE_RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_win(RespQ, JObj) ->
@@ -260,15 +257,13 @@ publish_win(RespQ, JObj) ->
 -spec publish_win(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_win(RespQ, Win, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% extract the auth realm from the API request, using the requests to domain
-%% when provided with an IP
+%%------------------------------------------------------------------------------
+%% @doc Extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_auth_realm(kz_term:api_terms()) -> kz_term:ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),

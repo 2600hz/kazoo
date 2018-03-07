@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% Ubiquiti SSO Utilities
+%%% @doc Ubiquiti SSO Utilities
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_ubiquiti_util).
 
 -export([create_api_token/1, create_api_token/2
@@ -42,14 +40,13 @@ create_api_token(_ProviderId, 'undefined') ->
 -spec make_api_token(kz_term:ne_binary(), integer(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_api_token(ProviderId, Timestamp, Salt, Secret) ->
     TimestampHex = encode_timestamp(Timestamp),
-    kz_binary:join(
-      [?VERSION % Version
-      ,Salt
-      ,TimestampHex
-      ,auth_hash(ProviderId, TimestampHex, Salt, Secret)
-      ]
+    kz_binary:join([?VERSION % Version
+                   ,Salt
+                   ,TimestampHex
+                   ,auth_hash(ProviderId, TimestampHex, Salt, Secret)
+                   ]
                   ,<<":">>
-     ).
+                  ).
 
 -spec encode_timestamp(integer()) -> kz_term:ne_binary().
 encode_timestamp(Timestamp) when is_integer(Timestamp) ->

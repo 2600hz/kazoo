@@ -4,7 +4,7 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
--include_lib("kazoo_apps/include/kz_hooks.hrl").
+-include_lib("kazoo_events/include/kz_hooks.hrl").
 
 -define(APP, 'blackhole').
 -define(APP_NAME, <<"blackhole">>).

@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_create_new_number_test).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -364,7 +363,8 @@ existing_in_state(PN, 'true') ->
     State = kz_term:to_list(knm_phone_number:state(PN)),
     [{lists:flatten(["Ensure number in ", State, " can be 'created'"])
      ,?_assert(knm_number:ensure_can_load_to_create(PN))
-     }].
+     }
+    ].
 
 create_available_checks() ->
     [create_with_no_auth_by()

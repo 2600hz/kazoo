@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kazoo_config_init).
 
 -include("kazoo_config.hrl").
@@ -15,10 +13,10 @@
 
 -export([read_cookie/1]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Starts the app for inclusion in a supervisor tree
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the application for inclusion in a supervisor tree.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     set_env(),
@@ -114,12 +112,10 @@ cleanup_zone_prop({'amqp_uri', URI}) ->
     {'amqp_uri', kz_term:to_list(URI)};
 cleanup_zone_prop(Prop) -> Prop.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Reads config.ini without starting the kazoo_config application.
+%%------------------------------------------------------------------------------
+%% @doc Reads `config.ini' without starting the `kazoo_config' application.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read_cookie(atom()) -> [atom()].
 read_cookie(NodeName) ->
     AppEnv = load_file(),

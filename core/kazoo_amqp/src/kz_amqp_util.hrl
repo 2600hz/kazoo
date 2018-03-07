@@ -1,4 +1,4 @@
--ifndef(AMQP_UTIL_HRL).
+-ifndef(KZ_AMQP_UTIL_HRL).
 
 -include_lib("kazoo_amqp/include/kz_amqp.hrl").
 -include_lib("kazoo_amqp/include/kz_api.hrl").
@@ -9,5 +9,5 @@
 -define(APP_NAME, <<"kazoo_amqp">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(AMQP_UTIL_HRL, 'true').
+-define(KZ_AMQP_UTIL_HRL, 'true').
 -endif.

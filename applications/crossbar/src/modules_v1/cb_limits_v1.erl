@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_limits_v1).
 
 -export([init/0
@@ -22,10 +20,14 @@
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"limits">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.limits">>, ?MODULE, 'allowed_methods'),
@@ -36,36 +38,29 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.limits">>, 'crossbar_services', 'reconcile'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure we will be able to bill for devices
+%%------------------------------------------------------------------------------
+%% @doc Ensure we will be able to bill for devices
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec billing(cb_context:context()) ->
                      cb_context:context().
 billing(Context) ->
@@ -114,15 +109,13 @@ is_allowed(Context) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_limits(Context, cb_context:req_verb(Context)).
@@ -136,46 +129,39 @@ validate_limits(Context, ?HTTP_POST) ->
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) -> crossbar_doc:save(Context).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a Limit document from the database
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Load a Limit document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_limit(cb_context:context()) -> cb_context:context().
 load_limit(Context) ->
     maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing device document with the data provided, if it is
+%%------------------------------------------------------------------------------
+%% @doc Update an existing device document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_limits(cb_context:context()) -> cb_context:context().
 update_limits(Context) ->
     cb_context:validate_request_data(<<"limits">>, Context, fun on_successful_validation/1).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
     maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_handle_load_failure(cb_context:context()) ->
                                        cb_context:context().

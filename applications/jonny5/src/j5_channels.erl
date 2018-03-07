@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(j5_channels).
 
 -behaviour(gen_listener).
@@ -37,7 +35,7 @@
         ]).
 
 -include("jonny5.hrl").
--include_lib("kazoo_apps/include/kz_hooks.hrl").
+-include_lib("kazoo_events/include/kz_hooks.hrl").
 
 -record(state, {sync_ref :: kz_term:api_reference()
                ,sync_timer:: kz_term:api_reference()
@@ -106,13 +104,14 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
@@ -383,10 +382,9 @@ accounts([['undefined', ResellerId]|Ids], Accounts) ->
     accounts(Ids, sets:add_element(ResellerId, Accounts));
 accounts([[AccountId, ResellerId]|Ids], Accounts) ->
     accounts(Ids
-            ,sets:add_element(
-               AccountId
+            ,sets:add_element(AccountId
                              ,sets:add_element(ResellerId, Accounts)
-              )
+                             )
             ).
 
 -spec account(kz_term:ne_binary()) -> channels().
@@ -476,21 +474,14 @@ handle_channel_destroy(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'remove', CallId}).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_hooks:register(),
@@ -502,34 +493,18 @@ init([]) ->
                       ]),
     {'ok', start_channel_sync_timer(#state{})}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'rate_resp', JObj}, State) ->
     Props = props:filter_undefined(
@@ -573,16 +548,10 @@ handle_cast({'remove', CallId}, State) ->
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
     Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
@@ -617,48 +586,42 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
 handle_info(_Info, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
+%%------------------------------------------------------------------------------
+%% @doc Allows listener to pass options to handlers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec from_jobj(kz_json:object()) -> channel().
 from_jobj(JObj) ->
     AccountId = kz_json:get_first_defined(
@@ -729,13 +692,13 @@ ecallmgr_channel_ids(JObjs) ->
 -spec ecallmgr_channel_ids(kz_json:objects(), sets:set()) -> sets:set().
 ecallmgr_channel_ids([], ChannelIds) -> ChannelIds;
 ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
-    Channels = kz_json:get_value(<<"Channels">>, JObj),
-    ecallmgr_channel_ids(
-      JObjs
-                        ,lists:foldl(fun(ChannelId, Ids) ->
-                                             sets:add_element(ChannelId, Ids)
-                                     end, ChannelIds, kz_json:get_keys(Channels))
-     ).
+    UpdatedChannelIds = lists:foldl(fun(ChannelId, Ids) ->
+                                            sets:add_element(ChannelId, Ids)
+                                    end
+                                   ,ChannelIds
+                                   ,kz_json:get_keys(<<"Channels">>, JObj)
+                                   ),
+    ecallmgr_channel_ids(JObjs, UpdatedChannelIds).
 
 -spec fix_channel_disparity(sets:set(), sets:set()) -> 'ok'.
 fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds) ->
@@ -755,7 +718,8 @@ start_channel_sync_timer(State) ->
     SyncRef = make_ref(),
     TRef = erlang:send_after(?SYNC_PERIOD, self(), {'synchronize_channels', SyncRef}),
     State#state{sync_ref=SyncRef
-               ,sync_timer=TRef}.
+               ,sync_timer=TRef
+               }.
 
 -type non_neg_integers() :: [non_neg_integer()].
 

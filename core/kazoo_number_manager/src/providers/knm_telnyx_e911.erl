@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Handle e911 provisioning
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Handle e911 provisioning
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_telnyx_e911).
 -behaviour(knm_gen_provider).
 
@@ -24,13 +20,11 @@
        ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')
        ).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is saved, and will
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(Number) ->
@@ -47,13 +41,11 @@ save(Number, ?NUMBER_STATE_PORT_IN) ->
 save(Number, _State) ->
     delete(Number).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is deleted, and will
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     case feature(Number) of
@@ -64,21 +56,22 @@ delete(Number) ->
             knm_services:deactivate_feature(NewNumber, ?FEATURE_E911)
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%% @private
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
     knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
 maybe_update_e911(Number) ->
@@ -125,7 +118,6 @@ maybe_update_e911(Number, 'false') ->
             end
     end.
 
-%% @private
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
                          {'ok', knm_number:knm_number()} |
                          {'error', kz_term:ne_binary()}.

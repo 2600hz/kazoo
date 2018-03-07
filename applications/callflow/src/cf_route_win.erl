@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% handler for route wins, bootstraps callflow execution
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handler for route wins, bootstraps callflow execution.
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_route_win).
 
 -export([execute_callflow/2
@@ -17,8 +15,8 @@
 
 -define(DEFAULT_SERVICES
        ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"video">>, ?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"sms">>, ?JSON([{<<"enabled">>, 'true'}])}
               ]
              )
        ).
@@ -206,12 +204,10 @@ get_callee_extension_info(Call) ->
         'false' -> 'undefined'
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> kapps_call:call().
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
@@ -223,23 +219,19 @@ bootstrap_callflow_executer(_JObj, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec store_owner_id(kapps_call:call()) -> kapps_call:call().
 store_owner_id(Call) ->
     OwnerId = kz_attributes:owner_id(Call),
     kapps_call:kvs_store('owner_id', OwnerId, Call).
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_language(kapps_call:call()) -> kapps_call:call().
 set_language(Call) ->
     Default = kz_media_util:prompt_language(kapps_call:account_id(Call)),
@@ -253,12 +245,10 @@ set_language(Call) ->
             kapps_call:set_language(Default, Call)
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_ccvs(kapps_call:call()) -> kapps_call:call().
 update_ccvs(Call) ->
     CallerIdType = case kapps_call:inception(Call) of
@@ -385,13 +375,11 @@ get_incoming_security(Call) ->
              )
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% executes the found call flow by starting a new cf_exe process under the
+%%------------------------------------------------------------------------------
+%% @doc executes the found call flow by starting a new cf_exe process under the
 %% cf_exe_sup tree.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec execute_callflow(kapps_call:call()) -> kapps_call:call().
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),

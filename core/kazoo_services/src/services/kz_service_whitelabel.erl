@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%% Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_service_whitelabel).
 -behaviour(kz_gen_service).
 
@@ -18,12 +16,10 @@
 
 -include("services.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec reconcile(kz_services:services()) -> kz_services:services().
 reconcile(Services) ->
@@ -34,12 +30,11 @@ reconcile(Services) ->
             lager:debug("unable to get current whitelabel docs: ~p for account: ~s", [_R, AccountId]),
             Services;
         {'ok', Count} ->
-            kz_services:update(
-              ?CATEGORY
+            kz_services:update(?CATEGORY
                               ,?ITEM
                               ,Count
                               ,kz_services:reset_category(?CATEGORY, Services)
-             )
+                              )
     end.
 
 -spec reconcile(kz_services:services(), kz_term:ne_binary()) -> kz_services:services().

@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(conf_participant_req).
 
 -export([handle_req/2]).
@@ -19,7 +17,6 @@ handle_req(JObj, _Options) ->
     _ = kapps_call:put_callid(Call),
     case conf_participant_sup:start_participant(Call) of
         {'ok', Srv} ->
-            conf_participant:consume_call_events(Srv),
             lager:info("added participant at ~p", [Srv]);
         _Else ->
             lager:info("failed to add participant: ~p", [_Else])

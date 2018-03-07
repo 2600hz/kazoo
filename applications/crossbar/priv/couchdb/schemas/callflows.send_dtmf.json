@@ -8,6 +8,7 @@
             "type": "string"
         },
         "duration_ms": {
+            "default": "2000",
             "description": "How long, in milliseconds, to send each DTMF",
             "type": [
                 "string",

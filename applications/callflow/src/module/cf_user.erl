@@ -1,27 +1,23 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_user).
 
 -behaviour(gen_cf_action).
 
--include("callflow.hrl").
-
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+-include("callflow.hrl").
+
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     UserId = kz_json:get_ne_binary_value(<<"id">>, Data),
@@ -56,12 +52,11 @@ maybe_handle_bridge_failure(Reason, Call) ->
         'ok' -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Loop over the provided endpoints for the callflow and build the
+%%------------------------------------------------------------------------------
+%% @doc Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_endpoints(kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
                            kz_json:objects().
 get_endpoints('undefined', _, _) -> [];

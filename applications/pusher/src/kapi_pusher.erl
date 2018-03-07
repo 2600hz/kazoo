@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_pusher).
 
 -export([push_req/1, push_req_v/1]).
@@ -84,7 +82,7 @@ publish_push_req(JObj) ->
 -spec publish_push_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_push_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PUSH_REQ_VALUES, fun push_req/1),
-    amqp_util:basic_publish(?PUSH_EXCHANGE, push_routing_key(Req), Payload, ContentType).
+    kz_amqp_util:basic_publish(?PUSH_EXCHANGE, push_routing_key(Req), Payload, ContentType).
 
 -spec publish_push_resp(kz_term:api_terms()) -> 'ok'.
 publish_push_resp(JObj) ->
@@ -93,7 +91,7 @@ publish_push_resp(JObj) ->
 -spec publish_push_resp(kz_term:api_terms(), binary()) -> 'ok'.
 publish_push_resp(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PUSH_RESP_VALUES, fun push_resp/1),
-    amqp_util:basic_publish(?PUSH_EXCHANGE, push_routing_key(Req), Payload, ContentType).
+    kz_amqp_util:basic_publish(?PUSH_EXCHANGE, push_routing_key(Req), Payload, ContentType).
 
 -spec publish_targeted_push_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_targeted_push_resp(RespQ, JObj) ->
@@ -102,7 +100,7 @@ publish_targeted_push_resp(RespQ, JObj) ->
 -spec publish_targeted_push_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_targeted_push_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?PUSH_RESP_VALUES, fun push_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec push_routing_key(kz_term:ne_binary() | kz_term:api_terms()) -> kz_term:ne_binary().
 push_routing_key(Req) when is_list(Req) ->
@@ -110,7 +108,7 @@ push_routing_key(Req) when is_list(Req) ->
 push_routing_key(Req) ->
     push_routing_key(kz_json:get_value(<<"Token-Type">>, Req, <<"*">>), kz_json:get_value(<<"Token">>, Req, <<"*">>)).
 push_routing_key(Type, Token) ->
-    list_to_binary([?KEY_PUSH, ".", amqp_util:encode(Type), ".", amqp_util:encode(Token)]).
+    list_to_binary([?KEY_PUSH, ".", kz_amqp_util:encode(Type), ".", kz_amqp_util:encode(Token)]).
 
 %% API Helpers
 
@@ -122,9 +120,9 @@ bind_q(Queue, Props) ->
 
 -spec bind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binaries()) -> 'ok'.
 bind_q(Queue, Type, Token, 'undefined') ->
-    amqp_util:bind_q_to_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE);
+    kz_amqp_util:bind_q_to_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE);
 bind_q(Queue, Type, Token, ['push'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE),
+    kz_amqp_util:bind_q_to_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE),
     bind_q(Queue, Type, Token, Restrict);
 bind_q(Queue, Type, Token, [_|Restrict]) ->
     bind_q(Queue, Type, Token, Restrict);
@@ -138,9 +136,9 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binaries()) -> 'ok'.
 unbind_q(Queue, Type, Token, 'undefined') ->
-    amqp_util:unbind_q_from_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE);
+    kz_amqp_util:unbind_q_from_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE);
 unbind_q(Queue, Type, Token, ['push'|Restrict]) ->
-    amqp_util:unbind_q_from_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE),
+    kz_amqp_util:unbind_q_from_exchange(Queue, push_routing_key(Type, Token), ?PUSH_EXCHANGE),
     unbind_q(Queue, Type, Token, Restrict);
 unbind_q(Queue, Type, Token, [_|Restrict]) ->
     unbind_q(Queue, Type, Token, Restrict);
@@ -148,5 +146,5 @@ unbind_q(_Queue, _Type, _Token, []) -> 'ok'.
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?PUSH_EXCHANGE, <<"topic">>),
-    amqp_util:kapps_exchange().
+    kz_amqp_util:new_exchange(?PUSH_EXCHANGE, <<"topic">>),
+    kz_amqp_util:kapps_exchange().

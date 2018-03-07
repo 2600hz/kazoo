@@ -51,7 +51,6 @@
 %%% *_HEADERS or OPTIONAL_*_HEADERS, and Type defines a function that validates a passed in value
 %%% is an appropriate type for the given Key, returning a boolean. If Key is not in the passed-in
 %%% message, true is returned without running the Type fun.
-%%% @spec Type :: function(Value :: any()) -> boolean()
 %%%
 %%% eg: -define(FOO_TYPES, [{<<"baz">>, fun(V) -> lists:member(V, props:get_value(<<"baz">>, ?FOO_VALUES)) end}]).
 %%%   would define a function to validate the value of key <<"baz">> in the same way ?FOO_VALUES does.
@@ -81,6 +80,8 @@
         ,?KEY_SERVER_ID
         ,?KEY_REQUEST_FROM_PID
         ,?KEY_REPLY_TO_PID
+        ,?KEY_AMQP_BROKER
+        ,?KEY_AMQP_ZONE
         ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, kz_term:to_binary(node())}
                         ,{?KEY_MSG_ID, kz_binary:rand_hex(16)}
@@ -96,6 +97,8 @@
                        ,{?KEY_ACCESS_GROUP, fun is_binary/1}
                        ,{?KEY_TENANT_ID, fun is_binary/1}
                        ,{?KEY_MSG_ID, fun is_binary/1}
+                       ,{?KEY_AMQP_BROKER, fun is_binary/1}
+                       ,{?KEY_AMQP_ZONE, fun is_binary/1}
                        ]).
 
 %% Error Responses

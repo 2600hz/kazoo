@@ -1,17 +1,16 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Say something
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Say something
 %%% Data = {
 %%%   "text":"text to say"
 %%%   ,"type":"name_spelled"
 %%%   ,"method":"pronounced"
 %%%   ,"language":"en"
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(konami_say).
 
 -export([handle/2]).
@@ -30,8 +29,7 @@ handle(Data, Call) ->
                                                ,kz_json:get_value(<<"language">>, Data)
                                                ,Call
                                                ),
-    kapps_call_command:send_command(
-      kz_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
+    kapps_call_command:send_command(kz_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
                                    ,Call
-     ),
+                                   ),
     {'continue', Call}.

@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Helpers for bridging in FreeSWITCH
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Helpers for bridging in FreeSWITCH
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_bridge).
 
 -export([call_command/3
@@ -75,12 +73,10 @@ unbridge(UUID, JObj) ->
             {<<"transfer">>, iolist_to_binary([UUID, " ", Leg, " park: inline"])}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Bridge command helpers
+%%------------------------------------------------------------------------------
+%% @doc Bridge command helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_ringback(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 handle_ringback(Node, UUID, JObj) ->
     case kz_json:get_first_defined([<<"Ringback">>

@@ -57,6 +57,7 @@ Key | Description | Type | Default | Required | Support Level
 `gateways.[].username` | SIP authentication username | `string(0..32)` |   | `false` |  
 `gateways` | A list of gateways avaliable for this resource | `array(object())` |   | `true` |  
 `grace_period` | The amount of time, in seconds, to wait before starting another resource | `integer()` | `5` | `false` |  
+`ignore_flags` | When set to true this resource is used if the rules/classifiers match regardless of flags | `boolean()` |   | `false` |  
 `media` | Media options for resources | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |  
 `name` | A friendly name for the resource | `string(1..128)` |   | `true` |  
 `require_flags` | When set to true this resource is ignored if the request does not specify outbound flags | `boolean()` |   | `false` |  

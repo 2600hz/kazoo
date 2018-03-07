@@ -262,6 +262,35 @@ done (warnings were emitted)
 Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 
 
+## `edocify.escript`
+
+A script to fixes most issues which prevent EDoc to run properly.
+
+> **Note:** This script needs [`ag`](https://github.com/ggreer/the_silver_searcher) command line to run!
+
+```shell
+edocify.escript
+```
+
+Sample Output:
+
+```shell
+$ scripts/edocify.escript
+Edocify Kazoo...
+
+* removing evil sepc+specs:  done
+* rename and fix `@contributors' tags to '@author':  done
+* remove @public tag:  done
+* removing @spec from comments: .............................. done
+* adding missing comments block after separator:  done
+* escape code block for 'resource_exists' function crossbar modules:  done
+* fix comment blocks with no @end:  done
+* move first comment line to the same line as @doc:  done
+* remove empty comment line after @doc: .......... done
+
+Already EDocified! 🎉
+```
+
 ## `empty_schema_descriptions.bash`
 
 Checks JSON schemas for empty "description" properties and exit(1) if any are found
@@ -271,33 +300,6 @@ Checks JSON schemas for empty "description" properties and exit(1) if any are fo
 
 Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
 
-
-## `evil_specs_remover.escript`
-
-A script to find repeated `spec` one after another (evil specs) and move them above their corresponding functions (the way which EDoc prefers). It search evil specs using `ag` (A code-searching tool similar to ack [and grep to some degrees], but faster) which has multi-line feature continued by combination of parsing AST of each file, remove the evil specs and add to above their functions.
-
-> **Note:** This script needs [`ag`](https://github.com/ggreer/the_silver_searcher) command line to run!
-
-You can pass path to directories or files. By using `--create-backup` or `-b` option, it first create a backup of the file (`{FILE_NAME}.bak`) before replacing. For searching Kazoo default directories (`applications/*`, `core/*`) use the option `--use-kazoo-dirs` or `-k`.
-
-
-
-```shell
-evil_specs_remover.escript [--create-backup|-b] [--use-kazoo-dirs|-k] <paths_to_files_or_dir>+
-```
-
-### Example
-
-In this example, the `cb_context.erl` has 115 evil specs, 119 lines were removed (some spec was multi-lines) and 200 lines were added (the script will add an empty line above the `spec` line if there isn't one to make it separate from the line above since it is more easy to read).
-
-```shell
-$ scripts/evil_specs_remover.escript -k
-Searching for evil specspecs...
-processing 1 file(s) with evil specspec:
-  file /home/hesaam/work/2600hz/kazoo/scripts/../applications/crossbar/src/cb_context.erl (115 specs): -119 +200
-
-🍺 finished
-```
 
 ## format-json.sh
 
@@ -645,6 +647,54 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > POST /v2/resource_selectors/rules
     > POST /v2/whitelabel/domains
 
+## state-of-edoc.escript
+
+Searches for undocumented source files:
+
+```shell
+./scripts/state-of-edoc.escript
+```
+
+    State of EDoc
+    ...........................................[more_dots]
+
+    These files don't have documentations in module header:
+    -- applications/acdc/src/acdc_agent_listener.erl
+    -- applications/acdc/src/acdc_agent_maintenance.erl
+    -- applications/acdc/src/acdc_agent_sup.erl
+    -- applications/acdc/src/acdc_agent_util.erl
+    -- applications/acdc/src/acdc_agents_sup.erl
+    -- applications/acdc/src/acdc_announcements.erl
+    -- applications/acdc/src/acdc_announcements_sup.erl
+    -- applications/acdc/src/acdc_app.erl
+    -- applications/acdc/src/acdc_eavesdrop.erl
+    -- core/kazoo_xml/src/kz_xml.erl
+    [more_files]
+
+    These functions in files don't have any documentations:
+    -- applications/acdc/src/acdc_agent_handler.erl [undocumented functions: 11/11 (%100)]
+    -- applications/acdc/src/acdc_agent_maintenance.erl [undocumented functions: 5/5 (%100)]
+    -- applications/acdc/src/acdc_queue_thief.erl [undocumented functions: 1/1 (%100)]
+    -- applications/acdc/src/acdc_stats.erl [undocumented functions: 33/33 (%100)]
+    -- applications/acdc/src/acdc_stats_util.erl [undocumented functions: 7/7 (%100)]
+    -- applications/acdc/src/acdc_sup.erl [undocumented functions: 2/2 (%100)]
+    -- applications/acdc/src/acdc_util.erl [undocumented functions: 15/15 (%100)]
+    -- applications/cccp/src/cccp_shared_listener.erl [undocumented functions: 1/9 (%11)]
+    -- applications/ecallmgr/src/ecallmgr_fs_conferences_shared.erl [undocumented functions: 1/9 (%11)]
+    -- applications/webhooks/src/webhooks_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/amqp_cron/src/amqp_cron_task.erl [undocumented functions: 1/9 (%11)]
+    -- core/amqp_leader/src/amqp_leader_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_apps/src/kazoo_apps_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_maintenance/src/kapps_config_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_maintenance/src/kazoo_oauth_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_maintenance/src/skel_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/braintree/src/braintree_customer.erl [undocumented functions: 2/21 (%9)]
+    [more_files]
+
+
+    Processed 1277 files
+    Files without documentations in module header: 769/1277 (%60)
+    Files with undocumented functions: 1021/1277 (%79)
 
 ## `sync_to_remote.bash`
 
@@ -755,3 +805,12 @@ Part of the great rename, converts Whistle-related names to Kazoo-specific names
 ## `make-swag.sh`
 
 Generate API clients in multiple languages from the Swagger file.
+
+## `next_version`
+
+returns next release based on branch & tags.
+
+## `increment_version.bash`
+
+routine to increment a version
+

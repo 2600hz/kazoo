@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Controls how a queue process progresses a member_call
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Controls how a queue process progresses a member_call
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(acdc_queue_fsm).
 
 -behaviour(gen_statem).
@@ -95,17 +93,16 @@
 
 -define(WSD_ID, {'file', <<(get('callid'))/binary, "_queue_statem">>}).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Creates a gen_statem process which calls Module:init/1 to
+%%------------------------------------------------------------------------------
+%% @doc Creates a gen_statem process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link(pid(), pid(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_statem:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
@@ -114,45 +111,44 @@ start_link(MgrPid, ListenerPid, QueueJObj) ->
 refresh(ServerRef, QueueJObj) ->
     gen_statem:cast(ServerRef, {'refresh', QueueJObj}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec member_call(pid(), kz_json:object(), gen_listener:basic_deliver()) -> 'ok'.
 member_call(ServerRef, CallJObj, Delivery) ->
     gen_statem:cast(ServerRef, {'member_call', CallJObj, Delivery}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec member_connect_resp(pid(), kz_json:object()) -> 'ok'.
 member_connect_resp(ServerRef, Resp) ->
     gen_statem:cast(ServerRef, {'agent_resp', Resp}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec member_accepted(pid(), kz_json:object()) -> 'ok'.
 member_accepted(ServerRef, AcceptJObj) ->
     gen_statem:cast(ServerRef, {'accepted', AcceptJObj}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec member_connect_retry(pid(), kz_json:object()) -> 'ok'.
 member_connect_retry(ServerRef, RetryJObj) ->
     gen_statem:cast(ServerRef, {'retry', RetryJObj}).
 
-%%--------------------------------------------------------------------
-%% @doc
-%%   When a queue is processing a call, it will receive call events.
+%%------------------------------------------------------------------------------
+%% @doc When a queue is processing a call, it will receive call events.
 %%   Pass the call event to the statem to see if action is needed (usually
 %%   for hangup events).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_event(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_statem:cast(ServerRef, {'member_hungup', EvtJObj});
@@ -181,22 +177,17 @@ status(ServerRef) ->
 cdr_url(ServerRef) ->
     gen_statem:call(ServerRef, 'cdr_url').
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_statem callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Whenever a gen_statem is started using
+%%------------------------------------------------------------------------------
+%% @doc Whenever a gen_statem is started using
 %% gen_statem:start_link/[3,4], this function is called by the new
 %% process to initialize.
 %%
-%% @spec init(Args) -> {ok, StateName, State} |
-%%                     {ok, StateName, State, Timeout} |
-%%                     ignore |
-%%                     {stop, StopReason}
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', atom(), state()}.
 init([MgrPid, ListenerPid, QueueJObj]) ->
     QueueId = kz_doc:id(QueueJObj),
@@ -231,18 +222,18 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
            }
     }.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec callback_mode() -> 'state_functions'.
 callback_mode() ->
     'state_functions'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec ready(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 ready('cast', {'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                          ,manager_proc=MgrSrv
@@ -292,10 +283,10 @@ ready({'call', From}, 'current_call', State) ->
 ready({'call', From}, Event, State) ->
     handle_sync_event(Event, From, ready, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec connect_req(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 connect_req('cast', {'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member"),
@@ -440,10 +431,10 @@ connect_req('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{qu
     acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
     {'next_state', 'ready', clear_member_call(State), 'hibernate'}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec connecting(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 connecting('cast', {'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting"),
@@ -612,11 +603,10 @@ connecting('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{que
 
     {'next_state', 'ready', clear_member_call(State), 'hibernate'}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_event({'refresh', QueueJObj}, StateName, State) ->
     lager:debug("refreshing queue configs"),
@@ -625,11 +615,10 @@ handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_sync_event(any(), From :: pid(), StateName :: atom(), state()) ->
                                {'next_state', StateName :: atom(), state()
                                ,{'reply', From :: pid(), any()}}.
@@ -644,35 +633,34 @@ handle_sync_event(_Event, From, StateName, State) ->
     ,{'reply', From, Reply}
     }.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% This function is called by a gen_statem when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_statem terminates with
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_statem' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_statem' terminates with
 %% Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, StateName, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     lager:debug("acdc queue statem terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, StateName, State, Extra) ->
-%%                   {ok, StateName, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 start_collect_timer() ->
     erlang:start_timer(?COLLECT_RESP_TIMEOUT, self(), ?COLLECT_RESP_MESSAGE).
 
@@ -724,8 +712,7 @@ clear_member_call(#state{connection_timer_ref=ConnRef
                }.
 
 update_properties(QueueJObj, State) ->
-    State#state{
-      name = kz_json:get_value(<<"name">>, QueueJObj)
+    State#state{name = kz_json:get_value(<<"name">>, QueueJObj)
                ,connection_timeout = connection_timeout(kz_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
                ,agent_ring_timeout = agent_ring_timeout(kz_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
                ,max_queue_size = kz_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
@@ -739,9 +726,9 @@ update_properties(QueueJObj, State) ->
                ,cdr_url = kz_json:get_ne_value(<<"cdr_url">>, QueueJObj)
                ,notifications = kz_json:get_value(<<"notifications">>, QueueJObj)
 
-      %% Changing queue strategy currently isn't feasible; definitely a TODO
-      %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
-     }.
+                %% Changing queue strategy currently isn't feasible; definitely a TODO
+                %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
+               }.
 
 -spec current_call('undefined' | kapps_call:call(), kz_term:api_reference() | timeout(), timeout()) -> kz_term:api_object().
 current_call('undefined', _, _) -> 'undefined';
@@ -764,14 +751,12 @@ elapsed(Ref) when is_reference(Ref) ->
     end;
 elapsed(Time) -> kz_time:elapsed_s(Time).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If some agents are busy, the manager will tell us to delay our
+%%------------------------------------------------------------------------------
+%% @doc If some agents are busy, the manager will tell us to delay our
 %% connect reqs
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_delay_connect_req(kapps_call:call(), kz_json:object(), gen_listener:basic_deliver(), state()) ->
                                      {'next_state', 'ready' | 'connect_req', state()}.
 maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
@@ -803,16 +788,12 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
             {'next_state', 'ready', State}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Abort a queue call between connect_reqs if agents have left the
+%%------------------------------------------------------------------------------
+%% @doc Abort a queue call between connect_reqs if agents have left the
 %% building
 %%
-%% @spec maybe_connect_re_req(pid(), pid(), state()) ->
-%%                   state()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_connect_re_req(pid(), pid(), state()) -> kz_types:handle_fsm_ret(state()).
 maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
                                                 ,queue_id=QueueId

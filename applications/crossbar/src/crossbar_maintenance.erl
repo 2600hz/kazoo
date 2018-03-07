@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(crossbar_maintenance).
 
 -export([migrate/0
@@ -46,6 +44,8 @@
         ]).
 
 -export([does_schema_exist/1]).
+-export([check_system_configs/0]).
+-export([update_schemas/0]).
 
 -export([db_init/0]).
 
@@ -54,12 +54,10 @@
 
 -type input_term() :: atom() | string() | kz_term:ne_binary().
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec migrate() -> 'no_return'.
 migrate() ->
     migrate(kapps_util:get_all_accounts()).
@@ -117,13 +115,10 @@ add_missing_modules(Modules, MissingModules) ->
     {'ok', _} = crossbar_config:set_autoload_modules(lists:sort(Modules ++ MissingModules)),
     'no_return'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
     io:format("please use kapps_maintenance:refresh().").
@@ -137,12 +132,10 @@ flush() ->
     crossbar_config:flush(),
     kz_cache:flush_local(?CACHE_NAME).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_module(kz_term:text()) -> 'ok'.
 start_module(Module) ->
     case crossbar_init:start_mod(Module) of
@@ -169,12 +162,10 @@ persist_module(Module, Mods) ->
                   ]),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec stop_module(kz_term:text()) -> 'ok'.
 stop_module(Module) ->
     'ok' = crossbar_init:stop_mod(Module),
@@ -182,21 +173,17 @@ stop_module(Module) ->
     {'ok', _} = crossbar_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
     io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec running_modules() -> kz_term:atoms().
 running_modules() -> crossbar_bindings:modules_loaded().
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_account_by_number(input_term()) -> {'ok', kz_term:ne_binary()} |
                                               {'error', any()}.
 find_account_by_number(Number) when not is_binary(Number) ->
@@ -217,12 +204,10 @@ find_account_by_number(Number) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_account_by_name(input_term()) ->
                                   {'ok', kz_term:ne_binary()} |
                                   {'multiples', [kz_term:ne_binary(),...]} |
@@ -245,12 +230,10 @@ find_account_by_name(Name) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_account_by_realm(input_term()) ->
                                    {'ok', kz_term:ne_binary()} |
                                    {'multiples', [kz_term:ne_binary(),...]} |
@@ -273,12 +256,10 @@ find_account_by_realm(Realm) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_account_by_id(input_term()) ->
                                 {'ok', kz_term:ne_binary()} |
                                 {'error', any()}.
@@ -287,12 +268,10 @@ find_account_by_id(Id) when is_binary(Id) ->
 find_account_by_id(Id) ->
     find_account_by_id(kz_term:to_binary(Id)).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
     case kz_util:set_allow_number_additions(AccountId, 'true') of
@@ -300,12 +279,10 @@ allow_account_number_additions(AccountId) ->
         {'error', _} -> 'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disallow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 disallow_account_number_additions(AccountId) ->
     case kz_util:set_allow_number_additions(AccountId, 'false') of
@@ -313,12 +290,10 @@ disallow_account_number_additions(AccountId) ->
         {'error', _} -> 'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec enable_account(input_term()) -> 'ok' | 'failed'.
 enable_account(AccountId) ->
     case kz_util:enable_account(AccountId) of
@@ -326,12 +301,10 @@ enable_account(AccountId) ->
         {'error', _} -> 'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disable_account(input_term()) -> 'ok' | 'failed'.
 disable_account(AccountId) ->
     case kz_util:disable_account(AccountId) of
@@ -339,12 +312,10 @@ disable_account(AccountId) ->
         {'error', _} -> 'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
     case kz_util:set_superduper_admin(AccountId, 'true') of
@@ -352,12 +323,10 @@ promote_account(AccountId) ->
         {'error', _} -> 'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec demote_account(input_term()) -> 'ok' | 'failed'.
 demote_account(AccountId) ->
     case kz_util:set_superduper_admin(AccountId, 'false') of
@@ -365,12 +334,10 @@ demote_account(AccountId) ->
         {'error', _} -> 'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_account(input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
 create_account(AccountName, Realm, Username, Password)
   when is_binary(AccountName), is_binary(Realm), is_binary(Username), is_binary(Password) ->
@@ -551,12 +518,10 @@ maybe_load_ref({_Property, Schema}) ->
         Ref -> does_schema_exist(Ref)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_account(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_account(JObj, Context) ->
     Payload = [cb_context:setters(Context
@@ -577,12 +542,10 @@ validate_account(JObj, Context) ->
             throw(Errors)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_user(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_user(JObj, Context) ->
     Payload = [cb_context:setters(Context
@@ -606,12 +569,10 @@ validate_user(JObj, Context) ->
             throw(Errors)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_account(cb_context:context()) -> {'ok', cb_context:context()}.
 create_account(Context) ->
     Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.accounts">>, [Context]),
@@ -632,12 +593,10 @@ create_account(Context) ->
             throw(Errors)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_user(cb_context:context()) -> {'ok', cb_context:context()}.
 create_user(Context) ->
     Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.users">>, [Context]),
@@ -672,12 +631,10 @@ print_account_info(AccountDb, AccountId) ->
     end,
     {'ok', AccountId}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec move_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 move_account(Account, ToAccount) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -694,13 +651,10 @@ maybe_move_account(AccountId, ToAccountId) ->
             io:format("unable to complete move: ~p~n", [Reason])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec descendants_count() -> 'ok'.
 descendants_count() ->
     crossbar_util:descendants_count().
@@ -1190,21 +1144,29 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
              ],
     update_screenshots(AppId, MA, SShots).
 
--spec update_schemas() -> 'ok'.
-update_schemas() ->
-    kz_datamgr:suppress_change_notice(),
-    lager:notice("starting system schemas update"),
-    kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
-    lager:notice("finished system schemas update"),
+-spec check_system_configs() -> 'ok'.
+check_system_configs() ->
     _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
          || {Config, Error} <- kapps_maintenance:validate_system_configs()
         ],
     'ok'.
 
+-spec update_schemas() -> 'ok'.
+update_schemas() ->
+    kz_datamgr:suppress_change_notice(),
+    lager:notice("starting system schemas update"),
+    kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
+    lager:notice("finished system schemas update").
+
+-spec db_init_schemas() -> 'ok'.
+db_init_schemas() ->
+    update_schemas(),
+    check_system_configs().
+
 -spec db_init() -> 'ok'.
 db_init() ->
     kz_datamgr:suppress_change_notice(),
-    _ = kz_util:spawn(fun update_schemas/0),
+    _ = kz_util:spawn(fun db_init_schemas/0),
     _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, ?APP, <<"account/media.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),

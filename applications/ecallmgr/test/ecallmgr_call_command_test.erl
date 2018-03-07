@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Execute call commands
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Execute call commands
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_call_command_test).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -34,24 +32,21 @@ no_conference_flags_test() ->
 
 tones_test() ->
     Tones =
-        [kz_json:from_list(
-           [{<<"Frequencies">>, [1000, <<"2000">>]}
-           ,{<<"Duration-ON">>, 30000}
-           ,{<<"Duration-OFF">>, <<"1000">>}
-           ]
-          )
-        ,kz_json:from_list(
-           [{<<"Frequencies">>, [1000, <<"2000">>, 3000, <<"4000">>]}
-           ,{<<"Duration-ON">>, <<"30000">>}
-           ,{<<"Duration-OFF">>, 1000}
-           ,{<<"Volume">>, 25}
-           ,{<<"Repeat">>, 3}
-           ]
-          )
+        [kz_json:from_list([{<<"Frequencies">>, [1000, <<"2000">>]}
+                           ,{<<"Duration-ON">>, 30000}
+                           ,{<<"Duration-OFF">>, <<"1000">>}
+                           ]
+                          )
+        ,kz_json:from_list([{<<"Frequencies">>, [1000, <<"2000">>, 3000, <<"4000">>]}
+                           ,{<<"Duration-ON">>, <<"30000">>}
+                           ,{<<"Duration-OFF">>, 1000}
+                           ,{<<"Volume">>, 25}
+                           ,{<<"Repeat">>, 3}
+                           ]
+                          )
         ],
-    ?assertEqual(
-       {<<"playback">>
-       ,"tone_stream://%(30000,1000,1000,2000);v=25;l=3;%(30000,1000,1000,2000,3000,4000)"
-       }
+    ?assertEqual({<<"playback">>
+                 ,"tone_stream://%(30000,1000,1000,2000);v=25;l=3;%(30000,1000,1000,2000,3000,4000)"
+                 }
                 ,ecallmgr_call_command:tones_app(Tones)
-      ).
+                ).

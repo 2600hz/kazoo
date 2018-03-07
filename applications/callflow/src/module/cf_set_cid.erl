@@ -1,16 +1,22 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc
+%%% @doc Set Caller ID.
 %%%
-%%% params:
-%%% caller_id_name & caller_id_number
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`caller_id_name'</dt>
+%%%   <dd>Caller ID Name.</dd>
 %%%
-%%% if one of them is empty then module will restore original values
+%%%   <dt>`caller_id_number'</dt>
+%%%   <dd>Caller ID Number.</dd>
+%%% </dl>
 %%%
+%%% If one of them is empty then module will restore original values.
+%%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_set_cid).
 
 -behaviour(gen_cf_action).

@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(fax_cloud).
 
 -export([handle_job_notify/2
@@ -21,10 +19,14 @@
 -define(JSON(L), kz_json:from_list(L)).
 -define(DEFAULT_CLOUD_REG_SLEEP, 5000).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_job_notify(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_job_notify(JObj, _Props) ->
     case kz_json:get_value(<<"Event-Name">>, JObj) of
@@ -201,11 +203,12 @@ download_file(URL, Authorization) ->
         {'ok', 200, RespHeaders, RespBody} ->
             CT = kz_term:to_binary(props:get_value("content-type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
-            FileName = <<"/tmp/fax_printer_"
-                         ,(kz_term:to_binary(kz_time:now_s()))/binary
-                         ,"."
-                         ,Ext/binary
-                       >>,
+            FileName = list_to_binary(["/tmp/fax_printer_"
+                                      ,kz_term:to_binary(kz_time:now_s())
+                                      ,"."
+                                      ,Ext
+                                      ]),
+
             case file:write_file(FileName, RespBody) of
                 'ok' -> {'ok', CT, RespBody};
                 {'error', _}=Error ->

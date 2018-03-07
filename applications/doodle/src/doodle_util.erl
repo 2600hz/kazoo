@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(doodle_util).
 
 -include("doodle.hrl").
@@ -38,10 +36,14 @@
 -export([lookup_mdn/1]).
 -export([maybe_reschedule_sms/1, maybe_reschedule_sms/2, maybe_reschedule_sms/3]).
 
-%% ====================================================================
+%%==============================================================================
 %% API functions
-%% ====================================================================
+%%==============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec set_sms_body(kz_term:ne_binary(), kapps_call:call()) -> kapps_call:call().
 set_sms_body(Body, Call) ->
     kapps_call:kvs_store(<<"Body">>, Body, Call).
@@ -303,13 +305,11 @@ sms_status(<<"202">>, _) -> <<"accepted">>;
 sms_status(_, <<"Success">>) -> <<"completed">>;
 sms_status(_, _) -> <<"pending">>.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Look for children branches to handle the failure replies of
+%%------------------------------------------------------------------------------
+%% @doc Look for children branches to handle the failure replies of
 %% certain actions, like cf_sms_offnet and cf_sms_resources
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_bridge_failure({'fail' | 'error', kz_json:object() | atom()} | kz_term:api_binary(), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
@@ -475,12 +475,11 @@ maybe_reschedule_sms(Code, Message, Call) ->
 maybe_reschedule_sms(Code, Message, AccountId, Call) ->
     put('call', Call),
     Rules = kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"reschedule">>, kz_json:new()),
-    Schedule = kz_json:set_values(
-                 [{<<"code">>, Code}
-                 ,{<<"reason">>, Message}
-                 ]
+    Schedule = kz_json:set_values([{<<"code">>, Code}
+                                  ,{<<"reason">>, Message}
+                                  ]
                                  ,kapps_call:kvs_fetch(<<"flow_schedule">>, kz_json:new(), Call)
-                ),
+                                 ),
     case apply_reschedule_logic(kz_json:get_values(Rules), Schedule) of
         'no_rule' ->
             lager:debug("no rules configured for accountid ~s", [AccountId]),
@@ -586,9 +585,11 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
     kz_json:set_value(<<"start_time">>, Next, JObj);
 apply_reschedule_rule(<<"report">>, V, JObj) ->
     Call = get('call'),
-    Error = <<(kz_json:get_value(<<"code">>, JObj, <<>>))/binary, " "
-              ,(kz_json:get_value(<<"reason">>, JObj, <<>>))/binary
-            >>,
+    Error = list_to_binary([kz_json:get_value(<<"code">>, JObj, <<>>)
+                           ," "
+                           ,kz_json:get_value(<<"reason">>, JObj, <<>>)
+                           ]),
+
     Props = props:filter_undefined(
               [{<<"To">>, kapps_call:to_user(Call)}
               ,{<<"From">>, kapps_call:from_user(Call)}

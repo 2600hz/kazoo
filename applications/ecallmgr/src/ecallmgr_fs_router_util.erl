@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Receive route(dialplan) requests from FS, request routes and respond
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Receive route(dialplan) requests from FS, request routes and respond
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_router_util).
 
 -export([register_binding/3, register_bindings/3]).
@@ -16,9 +14,10 @@
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
+
 -type search_ret() :: 'ok' | {'ok', kz_json:object()}.
 
 -spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) ->

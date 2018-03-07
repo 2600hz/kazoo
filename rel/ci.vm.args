@@ -9,16 +9,19 @@
 +K true
 
 # Start a pool of asynchronous IO threads
-+A 25
++A 100
 
 # Treat error_logger:warning_msg/2 as warnings instead of errors (default)
 +W w
+
+# utf8
+-pc unicode
 
 # Hearbeat disbled by default
 ##-heart
 
 # GC more often
-##-env ERL_FULLSWEEP_AFTER 10
+-env ERL_FULLSWEEP_AFTER 10
 
 # Increase number of concurrent ports / sockets
 ##-env ERL_MAX_PORTS 4096

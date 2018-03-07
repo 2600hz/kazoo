@@ -1,14 +1,12 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Listens for a list of events and gproc-sends them out to folks who
+%%% @doc Listens for a list of events and gproc-sends them out to folks who
 %%% want them
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
--module(kz_hooks_shared_listener).
-
+%%%-----------------------------------------------------------------------------
+-module(kz_hooks_listener).
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -21,8 +19,8 @@
         ,code_change/3
         ]).
 
--include("kazoo_apps.hrl").
--include_lib("kazoo_apps/include/kz_hooks.hrl").
+-include("kazoo_events.hrl").
+-include("kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -37,25 +35,24 @@
                                        ]}).
 -define(BINDINGS, []).
 -define(RESPONDERS, [{{'kz_hooks_util', 'handle_call_event'}
-                     ,[{<<"call_event">>, <<"*">>}
-                      ,{<<"dialplan">>, <<"route_req">>}
-                      ]
+                     ,[{<<"call_event">>, <<"*">>}]
                      }
                     ]).
--define(QUEUE_NAME, <<"hooks_shared_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 -record(state, {call_events = [] :: kz_term:ne_binaries()}).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
@@ -69,55 +66,33 @@ start_link() ->
                            ,[]
                            ).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
+    kapi_call:declare_exchanges(),
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'maybe_add_binding', 'all'}, #state{call_events=Events}=State) ->
     case [E || E <- ?ALL_EVENTS, not lists:member(E, Events)] of
@@ -141,7 +116,7 @@ handle_cast({'maybe_remove_binding', 'all'}, #state{call_events=Events}=State) -
         Es ->
             lager:debug("removing bindings for ~p", [Es]),
             gen_listener:rm_binding(self(), ?CALL_BINDING(Es)),
-            {'noreply', State#state{call_events=[]}}
+            {'noreply', State#state{call_events=Events -- Es}}
     end;
 handle_cast({'maybe_remove_binding', Event}, #state{call_events=Events}=State) ->
     case lists:member(Event, Events) of
@@ -159,60 +134,43 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
+%%------------------------------------------------------------------------------
+%% @doc Allows listener to pass options to handlers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
-    {'reply', [{'rr', 'true'}]}.
+    {'reply', [{'rr', 'false'}]}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================

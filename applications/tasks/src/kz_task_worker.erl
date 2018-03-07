@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz INC
-%%% @doc
-%%%  Run tasks scheduled by kz_tasks.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2016-2018, 2600Hz
+%%% @doc Run tasks scheduled by kz_tasks.
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_task_worker).
 
 %% API
@@ -28,15 +26,14 @@
 -define(IN, 'csv_in').
 -define(OUT(TaskId), kz_tasks_scheduler:output_path(TaskId)).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> ok.
 start(TaskId, API, ExtraArgs) ->
     _ = kz_util:put_callid(TaskId),
@@ -49,11 +46,14 @@ start(TaskId, API, ExtraArgs) ->
             lager:debug("worker exiting now: ~p", [_R])
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%% @private
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {ok, state()} |
                                                                       {error, any()}.
 init(TaskId, API, ExtraArgs) ->
@@ -89,7 +89,6 @@ init_from_csv(TaskId, API, ExtraArgs, CSV) ->
             {'ok', State}
     end.
 
-%% @private
 -spec build_verifier(kz_json:object()) -> kz_csv:mapped_row_verifier().
 build_verifier(API) ->
     Mandatory = kz_tasks:mandatory(API),
@@ -109,7 +108,6 @@ build_verifier(API) ->
             end
     end.
 
-%% @private
 -spec loop(kz_tasks:iterator(), state()) -> any().
 loop(IterValue, State=#state{api = API
                             ,input_header = InputHeader
@@ -151,14 +149,12 @@ teardown(API, IterValue, #state{task_id = TaskId
     _ = kz_tasks_scheduler:cleanup_task(API, IterValue),
     'stop'.
 
-%% @private
 -spec state_after_writing(boolean(), kz_tasks:columns(), non_neg_integer(), state()) -> state().
 state_after_writing('true', Columns, Written, State) ->
     new_state_after_writing(Columns, Written, 0, State);
 state_after_writing('false', Columns, Written, State) ->
     new_state_after_writing(Columns, 0, Written, State).
 
-%% @private
 -spec new_state_after_writing(kz_tasks:columns(), non_neg_integer(), non_neg_integer(), state()) -> state().
 new_state_after_writing(NewColumns, WrittenSucceeded, WrittenFailed
                        ,State=#state{task_id = Taskid
@@ -174,7 +170,6 @@ new_state_after_writing(NewColumns, WrittenSucceeded, WrittenFailed
     _ = kz_tasks_scheduler:worker_pause(),
     S.
 
-%% @private
 -spec is_task_successful(kz_csv:mapped_row(), kz_tasks:iterator(), state()) ->
                                 {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
                                 stop.
@@ -238,7 +233,6 @@ is_task_successful(MappedRow
             {'false', Columns, Written, 'stop'}
     end.
 
-%% @private
 -spec store_return(state(), kz_csv:mapped_row(), kz_tasks:return()) -> {kz_tasks:columns(), pos_integer()}.
 store_return(State, MappedRow, Rows=[_List|_]) when is_list(_List) ->
     {ListOfColumns, ListOfWritten} =
@@ -286,7 +280,6 @@ columns(MappedRow) ->
             ],
     sets:from_list(Found).
 
-%% @private
 -spec reason(kz_tasks:return()) -> iodata().
 reason([_|_]=Row) ->
     kz_csv:row_to_iolist(Row);
@@ -294,7 +287,6 @@ reason(?NE_BINARY=Reason) ->
     kz_csv:row_to_iolist([Reason]);
 reason(_) -> <<>>.
 
-%% @private
 -spec write_output_csv_header(kz_tasks:id(), kz_tasks:output_header()) -> ok | {error, any()}.
 write_output_csv_header(TaskId, {replace,Header}) ->
     write_output_csv_header(TaskId, Header);

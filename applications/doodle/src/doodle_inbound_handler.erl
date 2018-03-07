@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handler for sms inbound AMQP payload
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Handler for sms inbound AMQP payload
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(doodle_inbound_handler).
 
 -export([handle_req/3]).
@@ -91,25 +89,21 @@ send_route_win(FetchId, CallId, JObj) ->
     kz_amqp_worker:cast(Win, fun(Payload) -> kapi_route:publish_win(ServerQ, Payload) end),
     'ack'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% determine the e164 format of the inbound number
+%%------------------------------------------------------------------------------
+%% @doc determine the e164 format of the inbound number
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_account_id(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                             kz_json:object().
 set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = knm_number_options:account_id(NumberProps),
     AccountRealm = kzd_accounts:fetch_realm(AccountId),
-    kz_json:set_values(
-      props:filter_undefined(
-        [{?CCV(<<"Account-ID">>), AccountId}
-        ,{?CCV(<<"Account-Realm">>), AccountRealm}
-        ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
-        ])
+    kz_json:set_values(props:filter_undefined([{?CCV(<<"Account-ID">>), AccountId}
+                                              ,{?CCV(<<"Account-Realm">>), AccountRealm}
+                                              ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                                              ])
                       ,JObj
-     ).
+                      ).
 
 -spec set_inception(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                            kz_json:object().
@@ -125,18 +119,16 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
     Number = knm_number_options:number(NumberProps),
     case doodle_util:lookup_mdn(Number) of
         {'ok', Id, OwnerId} ->
-            kz_json:set_values(
-              props:filter_undefined(
-                [{?CCV(<<"Authorizing-Type">>), <<"device">>}
-                ,{?CCV(<<"Authorizing-ID">>), Id}
-                ,{?CCV(<<"Owner-ID">>), OwnerId}
-                ])
+            kz_json:set_values(props:filter_undefined([{?CCV(<<"Authorizing-Type">>), <<"device">>}
+                                                      ,{?CCV(<<"Authorizing-ID">>), Id}
+                                                      ,{?CCV(<<"Owner-ID">>), OwnerId}
+                                                      ])
                               ,kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
                                                    ,?CCV(<<"Authorizing-ID">>)
                                                    ]
                                                   ,JObj
                                                   )
-             );
+                              );
         {'error', _} -> JObj
     end;
 set_mdn(_Inception, _NumberProps, JObj) -> JObj.

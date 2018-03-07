@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(listener_federator).
 
 -behaviour(gen_listener).
@@ -35,13 +33,14 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link(pid(), kz_term:ne_binary(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Parent, Broker, Params) ->
     gen_listener:start_link(?SERVER, Params, [Parent, Broker]).
@@ -54,21 +53,14 @@ broker(Pid) ->
 stop(Pid) ->
     gen_listener:call(Pid, {'stop', self()}).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([pid() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([Parent, Broker]=L) ->
     lager:debug("federating listener ~p on broker ~s", L),
@@ -79,20 +71,10 @@ init([Parent, Broker]=L) ->
                  ,zone=Zone
                  }}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), any(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'stop', Parent}, _From, #state{parent=Parent}=State) ->
     {'stop', 'normal', 'ok', State};
@@ -101,16 +83,10 @@ handle_call('get_broker', _From, #state{broker=Broker}=State) ->
 handle_call(_Request, _From, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _}}, State) ->
     {'noreply', State};
@@ -120,16 +96,10 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{parent=Parent, br
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -143,47 +113,42 @@ handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
     lager:debug("relaying federated ~s event (~p) ~s from ~s to ~p with consumer pid ~p",
                 [kz_api:event_category(JObj), kz_api:msg_id(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
                ),
-    RemoteServerId = <<"consumer://"
-                       ,(Self)/binary, "/"
-                       ,(kz_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary
-                     >>,
+    RemoteServerId = list_to_binary(["consumer://"
+                                    ,Self, "/"
+                                    ,kz_json:get_ne_binary_value(<<"Server-ID">>, JObj, <<>>)
+                                    ]),
     gen_listener:federated_event(Parent
                                 ,kz_json:set_values([{<<"Server-ID">>, RemoteServerId}
                                                     ,{<<"AMQP-Broker">>, Broker}
                                                     ,{<<"AMQP-Broker-Zone">>, Zone}
-                                                    ], JObj)
+                                                    ]
+                                                   ,JObj
+                                                   )
                                 ,BasicDeliver
                                 ,BasicData
                                 ),
     'ignore'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener federator terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================

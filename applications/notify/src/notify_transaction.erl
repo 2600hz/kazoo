@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Renders a custom account email template, or the system default,
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Renders a custom account email template, or the system default,
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%%
-%%% @contributors
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_transaction).
 
 -export([init/0, handle_req/2]).
@@ -20,12 +16,10 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".transaction">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% initialize the module
+%%------------------------------------------------------------------------------
+%% @doc initialize the module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
@@ -34,12 +28,10 @@ init() ->
     {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% process the AMQP requests
+%%------------------------------------------------------------------------------
+%% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = kapi_notifications:transaction_v(JObj),
@@ -69,12 +61,10 @@ handle_req(JObj, _Props) ->
                                  ,MsgId
                                  ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create the props used by the template render function
+%%------------------------------------------------------------------------------
+%% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 create_template_props(Event, Account) ->
     props:filter_empty([{<<"account">>, notify_util:json_to_template_props(Account)}
@@ -83,12 +73,10 @@ create_template_props(Event, Account) ->
                        ,{<<"service">>, notify_util:get_service_props(kz_json:new(), ?MOD_CONFIG_CAT)}
                        ]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% process the AMQP requests
+%%------------------------------------------------------------------------------
+%% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | [kz_term:ne_binary(),...], kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];

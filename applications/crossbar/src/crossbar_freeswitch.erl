@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Create freeswitch offline configuration
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Create freeswitch offline configuration
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(crossbar_freeswitch).
 -behaviour(gen_server).
 
@@ -61,30 +57,34 @@
 %% ecallmgr.hrl into the database or into kazoo/include
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec reset() -> 'ok'.
 reset() ->
     gen_server:cast(crossbar_sup:find_proc(?SERVER), 'reset').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the server
-%%--------------------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link(?SERVER, [], []).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {ok, state()}.
 init([]) ->
     process_flag(trap_exit, 'true'),
@@ -92,12 +92,10 @@ init([]) ->
     _  = gen_server:cast(self(), 'periodic_build'),
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('current', _From, #state{config='undefined'}=State) ->
     {'reply', {'error', 'no_file'}, State};
@@ -107,12 +105,10 @@ handle_call('current', _From, #state{config=Config}=State) ->
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('periodic_build', #state{is_running='true'}=State) ->
     {'noreply', State};
@@ -142,12 +138,10 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', MonitorRef, 'process', _, 'normal'}, #state{monitor=MonitorRef}=State) ->
     {'noreply', State#state{is_running='false'}};
@@ -163,34 +157,34 @@ handle_info({timeout, Ref, _Msg}, #state{hourly_timer = Ref}=State) ->
 handle_info(_Info, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of {@link init/1} and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("crossbar freeswitch terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec hourly_timer() -> reference().
 hourly_timer() ->
     erlang:start_timer(?MILLISECONDS_IN_HOUR, self(), ok).
@@ -262,7 +256,6 @@ process_realm(Realm, Dir, Module) ->
                        ,[Module, Realm, E])
     end.
 
-%% @private
 -spec build_freeswitch(pid()) -> any().
 build_freeswitch(Pid) ->
     WorkDir = setup_directory(),

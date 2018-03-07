@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(fax_request).
 -behaviour(gen_listener).
 
@@ -70,13 +68,14 @@
                      }
                     ]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link(kapps_call:call(), kz_json:object(), fax_storage()) -> kz_types:startlink_ret().
 start_link(Call, JObj, Storage) ->
     gen_listener:start_link({'local', kz_term:to_atom(Storage#fax_storage.id, 'true')}
@@ -99,21 +98,14 @@ handle_channel_event(JObj, Props) ->
     Event = kz_api:event_name(JObj),
     gen_server:cast(Srv, {'channel_event', Event , JObj}).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_listener callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([kapps_call:call() | kz_json:object() | fax_storage()]) -> {'ok', state()}.
 init([Call, JObj, Storage]) ->
     kapps_call:put_callid(Call),
@@ -128,34 +120,18 @@ init([Call, JObj, Storage]) ->
                  ,storage=Storage
                  }}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_return().
 handle_cast('start_action', #state{call=_Call
                                   ,action='receive'
@@ -231,16 +207,10 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast : ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{monitor={Pid, Ref}}=State) ->
     {'noreply', State, ?POLL_INTERVAL};
@@ -259,36 +229,34 @@ handle_info(_Info, State) ->
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_listener when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_listener terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_listener' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_listener' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{call=Call}) ->
     kapps_call_command:hangup(Call).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_action(kz_json:object()) -> 'receive' | 'transmit'.
 get_action(JObj) ->
     case kz_json:get_value(<<"Action">>, JObj) of
@@ -316,11 +284,11 @@ get_fax_storage(Call) ->
     {Year, Month, _} = erlang:date(),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     FaxDb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    FaxId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_date:pad_month(Month))/binary
-              ,"-"
-              ,(kz_binary:rand_hex(16))/binary
-            >>,
+    FaxId = list_to_binary([kz_term:to_binary(Year)
+                           ,kz_date:pad_month(Month)
+                           ,"-"
+                           ,kz_binary:rand_hex(16)
+                           ]),
     AttachmentId = kz_binary:rand_hex(16),
     Ext = kapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
     FaxAttachmentId = <<AttachmentId/binary, Ext/binary>>,
@@ -524,11 +492,11 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                           ]),
 
     ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
-    CdrId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_date:pad_month(Month))/binary
-              ,"-"
-              ,(kapps_call:call_id(Call))/binary
-            >>,
+    CdrId = list_to_binary([kz_term:to_binary(Year)
+                           ,kz_date:pad_month(Month)
+                           ,"-"
+                           ,kapps_call:call_id(Call)
+                           ]),
 
     Props = props:filter_undefined(
               [{<<"name">>, Name}
@@ -589,7 +557,7 @@ notify_fields(Call, JObj) ->
 
 -spec notify_failure(kz_json:object(), state()) -> 'ok'.
 notify_failure(JObj, State) ->
-    Reason = kz_json:get_value([<<"Application-Data">>,<<"Fax-Result">>], JObj),
+    Reason = kz_json:get_value([<<"Application-Data">>, <<"Fax-Result">>], JObj),
     notify_failure(JObj, Reason, State).
 
 -spec notify_failure(kz_json:object(), binary() | atom(), state()) -> 'ok'.

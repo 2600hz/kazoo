@@ -15,7 +15,10 @@ Key | Description | Type | Default | Required | Support Level
 `caller_controls` | caller controls (config settings) | `string()` |   | `false` |  
 `conference_numbers.[]` |   | `string()` |   | `false` |  
 `conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |  
+`controls` | controls | `object()` |   | `false` |  
+`domain` | domain | `string()` |   | `false` |  
 `focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |  
+`language` | Prompt language to play in the conference | `string()` |   | `false` |  
 `max_members_media` | Media to play when the conference is full | `string()` |   | `false` |  
 `max_participants` | The maximum number of participants that can join | `integer()` |   | `false` |  
 `member.join_deaf` | Determines if a member will join deaf | `boolean()` | `false` | `false` |  
@@ -24,6 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 `member.numbers` | Defines the conference (call in) number(s) for members | `array(string())` | `[]` | `false` |  
 `member.pins.[]` |   | `string()` |   | `false` |  
 `member.pins` | Defines the pin number(s) for members | `array(string())` | `[]` | `false` |  
+`member.play_entry_prompt` | Whether to play the entry prompt on member join | `boolean()` |   | `false` |  
 `member` | Defines the discovery (call in) properties for a member | `object()` | `{}` | `false` |  
 `moderator.join_deaf` | Determines if a moderator will join deaf | `boolean()` | `false` | `false` |  
 `moderator.join_muted` | Determines if a moderator will join muted | `boolean()` | `false` | `false` |  
@@ -39,7 +43,8 @@ Key | Description | Type | Default | Required | Support Level
 `play_exit_tone` | Whether to play an exit tone, or the exit tone to play | `boolean() | string()` |   | `false` |  
 `play_name` | Do we need to announce new conference members? | `boolean()` | `false` | `false` |  
 `play_welcome` | Whether to play the welcome prompt | `boolean()` |   | `false` |  
-`profile` | The XML profile name used to configure the conference | `string()` |   | `false` |  
+`profile` | Profile configuration | `object()` |   | `false` |  
+`profile_name` | conference profile name | `string()` |   | `false` |  
 `require_moderator` | does the conference require a moderator | `boolean()` |   | `false` |  
 `wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false` |  
 

@@ -1,8 +1,6 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Registration viewer / creator
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Registration viewer / creator
 %%% GET /v1/accounts/{account_id}/registrations :
 %%%   Get a list of account registrations
 %%% GET /v1/accounts/{account_id}/registrations/count :
@@ -10,10 +8,10 @@
 %%% GET /v1/registrations :
 %%%   Get a count of system-wide registrations - for superduper admins only
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_registrations).
 
 -export([init/0
@@ -39,16 +37,14 @@
 
 -define(COUNT_PATH_TOKEN, <<"count">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.registrations">>, ?MODULE, 'allowed_methods'),
@@ -57,13 +53,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.registrations">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.registrations">>, ?MODULE, 'delete').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -75,12 +69,11 @@ allowed_methods(?COUNT_PATH_TOKEN) ->
 allowed_methods(_Username) ->
     [?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -89,11 +82,10 @@ resource_exists() -> 'true'.
 resource_exists(?COUNT_PATH_TOKEN) -> 'true';
 resource_exists(_Username) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context(), path_token()) -> boolean().
 
 authorize(Context, ?COUNT_PATH_TOKEN) ->
@@ -104,15 +96,13 @@ authorize(_, _) -> 'false'.
 authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
     cb_context:is_superduper_admin(Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -132,10 +122,9 @@ validate(Context, Username) ->
 
 -spec validate_count(cb_context:context()) -> cb_context:context().
 validate_count(Context) ->
-    crossbar_util:response(
-      kz_json:from_list([{<<"count">>, count_registrations(Context)}])
+    crossbar_util:response(kz_json:from_list([{<<"count">>, count_registrations(Context)}])
                           ,Context
-     ).
+                          ).
 
 -spec validate_sip_username(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_sip_username(Context, Username) ->

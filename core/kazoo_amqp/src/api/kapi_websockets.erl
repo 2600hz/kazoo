@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kapi_websockets).
 
 -export([get_req/1, get_req_v/1
@@ -36,22 +41,20 @@ get_req(Prop) when is_list(Prop) ->
 get_req(JObj) ->
     get_req(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_req_v(kz_term:api_terms()) -> boolean().
 get_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBSOCKETS_GET_REQ_HEADERS, ?WEBSOCKETS_GET_REQ_VALUES, ?WEBSOCKETS_TYPES);
 get_req_v(JObj) ->
     get_req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
@@ -61,11 +64,10 @@ get_resp(Prop) when is_list(Prop) ->
 get_resp(JObj) ->
     get_resp(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_resp_v(kz_term:api_terms()) -> boolean().
 get_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBSOCKETS_GET_RESP_HEADERS, ?WEBSOCKETS_GET_RESP_VALUES, ?WEBSOCKETS_TYPES);
@@ -113,9 +115,9 @@ bind_q(Queue, Props) ->
 
 -spec add_restriction(kz_term:ne_binary(), restriction()) -> 'ok'.
 add_restriction(Queue, 'get') ->
-    amqp_util:bind_q_to_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
+    kz_amqp_util:bind_q_to_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
 add_restriction(Queue, 'module_req') ->
-    amqp_util:bind_q_to_kapps(Queue, ?MODULE_REQ_ROUTING_KEY).
+    kz_amqp_util:bind_q_to_kapps(Queue, ?MODULE_REQ_ROUTING_KEY).
 
 
 -spec unbind_q(kz_term:ne_binary(), bind_props()) -> 'ok'.
@@ -126,15 +128,15 @@ unbind_q(Queue, Props) ->
 
 -spec remove_restriction(kz_term:ne_binary(), restriction()) -> 'ok'.
 remove_restriction(Queue, 'get') ->
-    amqp_util:unbind_q_from_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
+    kz_amqp_util:unbind_q_from_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
 remove_restriction(Queue, 'module_req') ->
-    amqp_util:unbind_q_from_kapps(Queue, ?MODULE_REQ_ROUTING_KEY).
+    kz_amqp_util:unbind_q_from_kapps(Queue, ?MODULE_REQ_ROUTING_KEY).
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:kapps_exchange(),
-    amqp_util:targeted_exchange(),
-    amqp_util:sysconf_exchange().
+    kz_amqp_util:kapps_exchange(),
+    kz_amqp_util:targeted_exchange(),
+    kz_amqp_util:sysconf_exchange().
 
 -spec publish_module_req(kz_term:api_terms()) -> 'ok'.
 publish_module_req(API) ->
@@ -143,7 +145,7 @@ publish_module_req(API) ->
 -spec publish_module_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MODULE_REQ_VALUES, fun module_req/1),
-    amqp_util:kapps_publish(?MODULE_REQ_ROUTING_KEY, Payload, ContentType).
+    kz_amqp_util:kapps_publish(?MODULE_REQ_ROUTING_KEY, Payload, ContentType).
 
 -spec publish_module_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_module_resp(ServerId, API) ->
@@ -152,13 +154,12 @@ publish_module_resp(ServerId, API) ->
 -spec publish_module_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_resp(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MODULE_RESP_VALUES, fun module_resp/1),
-    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_get_req(kz_term:api_terms()) -> 'ok'.
 publish_get_req(JObj) ->
@@ -167,13 +168,12 @@ publish_get_req(JObj) ->
 -spec publish_get_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?WEBSOCKETS_GET_REQ_VALUES, fun get_req/1),
-    amqp_util:sysconf_publish(?KEY_WEBSOCKETS_GET_REQ, Payload, ContentType).
+    kz_amqp_util:sysconf_publish(?KEY_WEBSOCKETS_GET_REQ, Payload, ContentType).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->
@@ -185,4 +185,4 @@ publish_get_resp(RespQ, Api, ContentType) ->
                      ,{'remove_recursive', 'false'}
                      ],
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?WEBSOCKETS_GET_RESP_VALUES, PrepareOptions),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).

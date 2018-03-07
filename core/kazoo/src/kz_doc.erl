@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Utilities for manipulating Kazoo/Kazoo documents
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Utilities for manipulating Kazoo documents.
+%%% @author Edouard Swiac
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_doc).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -89,13 +87,11 @@
 -define(KEYS_ATTACHMENTS, [?KEY_ATTACHMENTS, ?KEY_EXTERNAL_ATTACHMENTS]).
 -define(KEYS_ATTACHMENTS(A), [ [Key, A] || Key <- ?KEYS_ATTACHMENTS]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is used to update the private timestamps, and db
-%% parameters on all crossbar documents
+%%------------------------------------------------------------------------------
+%% @doc This function is used to update the private timestamps, and db
+%% parameters on all crossbar documents.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec update_pvt_parameters(kz_json:object(), kz_term:api_binary()) ->
                                    kz_json:object().
@@ -196,13 +192,11 @@ add_pvt_document_hash(JObj, _, _) ->
     Hash = calculate_document_hash(JObj),
     set_document_hash(JObj, Hash).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will filter any private fields out of the provided
-%% json proplist
+%%------------------------------------------------------------------------------
+%% @doc This function will filter any private fields out of the provided
+%% JSON proplist.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec public_fields(kz_json:object() | kz_json:objects()) ->
                            kz_json:object() | kz_json:objects().
 public_fields(Thing) ->
@@ -227,25 +221,21 @@ get_public_keys(JObj) ->
             not is_private_key(Key)
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will return a boolean, true if the provided key is
-%% considered private; otherwise false
+%%------------------------------------------------------------------------------
+%% @doc This function will return a boolean, `true' if the provided key is
+%% considered private; otherwise `false'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_private_key(binary()) -> boolean().
 is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will filter any public fields out of the provided
-%% json proplist
+%%------------------------------------------------------------------------------
+%% @doc This function will filter any public fields out of the provided
+%% JSON proplist.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec private_fields(kz_json:object() | kz_json:objects()) ->
                             kz_json:object() | kz_json:objects().
 private_fields(JObjs) when is_list(JObjs) ->
@@ -331,8 +321,10 @@ latest_attachment_id(Doc) ->
             Name
     end.
 
-%% @public
-%% @doc Gets a random attachment from JObj (no order is imposed!)
+%%------------------------------------------------------------------------------
+%% @doc Gets a random attachment from JObj (no order is imposed!).
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec attachment(kz_json:object()) -> kz_term:api_object().
 attachment(JObj) ->

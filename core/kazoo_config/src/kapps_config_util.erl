@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Roman Galeev
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapps_config_util).
 
 -include("kazoo_config.hrl").
@@ -89,22 +88,59 @@ system_schema_name(Config) when is_binary(Config) ->
 -spec system_schema(kz_term:ne_binary()) -> kz_json:object().
 system_schema(Config) when is_binary(Config) ->
     Name = system_schema_name(Config),
-    {'ok', Schema} = kz_json_schema:load(Name),
-    Schema.
+    case kz_json_schema:load(Name) of
+        {'ok', Schema} -> Schema;
+        _ -> system_config_no_schema()
+    end.
 
 -spec account_schema(kz_term:ne_binary()) -> kz_json:object().
 account_schema(Config) when is_binary(Config) ->
     Name = account_schema_name(Config),
-    {'ok', Schema} = kz_json_schema:load(Name),
-    Schema.
+    case kz_json_schema:load(Name) of
+        {'ok', Schema} -> Schema;
+        _ -> system_config_no_schema()
+    end.
 
--spec system_config_document_schema(kz_term:ne_binary()) -> kz_json:object().
-system_config_document_schema(Id) ->
+-spec system_config_no_schema() -> kz_json:object().
+system_config_no_schema() ->
     Flat = [
             {[<<"$schema">>],<<"http://json-schema.org/draft-04/schema#">>}
            ,{[<<"id">>], <<"system_config">>}
-           ,{[<<"patternProperties">>, <<".+">>, <<"$ref">>], system_schema_name(Id)}
-           ,{[<<"patternProperties">>, <<".+">>, <<"type">>], <<"object">>}
+           ,{[<<"properties">>, <<"id">>, <<"type">>], <<"string">>}
            ,{[<<"type">>], <<"object">>}
+           ],
+    kz_json:expand(kz_json:from_list(Flat)).
+
+-spec system_config_no_document_schema() -> kz_json:object().
+system_config_no_document_schema() ->
+    Flat = [
+            {[<<"$schema">>],<<"http://json-schema.org/draft-04/schema#">>}
+           ,{[<<"id">>], <<"system_config">>}
+           ,{[<<"properties">>, <<"id">>, <<"type">>], <<"string">>}
+           ,{[<<"patternProperties">>, <<"(?!id\b)\b\w+">>, <<"type">>], <<"object">>}
+           ,{[<<"type">>], <<"object">>}
+           ],
+    kz_json:expand(kz_json:from_list(Flat)).
+
+-spec system_config_document_schema(kz_term:ne_binary()) -> kz_json:object().
+system_config_document_schema(Id) ->
+    Name = system_schema_name(Id),
+    case kz_json_schema:load(Name) of
+        {'ok', _Schema} -> get_system_config_document_schema(Id);
+        _ -> system_config_no_document_schema()
+    end.
+
+-spec get_system_config_document_schema(kz_term:ne_binary()) -> kz_json:object().
+get_system_config_document_schema(Id) ->
+    Flat = [
+            {[<<"$schema">>],<<"http://json-schema.org/draft-04/schema#">>}
+           ,{[<<"id">>], <<"system_config">>}
+           ,{[<<"type">>], <<"object">>}
+           ,{[<<"properties">>, <<"id">>, <<"type">>], <<"string">>}
+           ,{[<<"properties">>, <<"default">>, <<"default">>], kz_json:new()}
+           ,{[<<"properties">>, <<"default">>, <<"type">>], <<"object">>}
+           ,{[<<"properties">>, <<"default">>, <<"$ref">>], system_schema_name(Id)}
+           ,{[<<"patternProperties">>, <<"(?!id\b)\b\w+">>, <<"$ref">>], system_schema_name(Id)}
+           ,{[<<"patternProperties">>, <<"(?!id\b)\b\w+">>, <<"type">>], <<"object">>}
            ],
     kz_json:expand(kz_json:from_list(Flat)).

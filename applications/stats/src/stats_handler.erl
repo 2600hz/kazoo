@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%% @end
-%%% @contributors
-%%%    Stephen Gibberd <stephen.gibberd@2600hz.com>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stats_handler).
 
 -include("stats.hrl").
@@ -103,7 +101,7 @@ collect_items([{Domain, Items} | Rest], Db) ->
 
 -spec send(kz_json:objects() | kz_term:ne_binary()) -> 'ok'.
 send(Payload) when is_list(Payload) -> send(kz_json:encode(Payload));
-send(Payload) -> amqp_util:targeted_publish(<<"statistics">>, Payload).
+send(Payload) -> kz_amqp_util:targeted_publish(<<"statistics">>, Payload).
 
 -spec get_next(kz_term:ne_binary(), list(), list()) -> ['endOfTable' | {list(), list()}].
 get_next(Table, Row, Col)

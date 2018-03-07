@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Account document
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Account document
 %%% @end
-%%% @contributors
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stepswitch_resources_test).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -62,4 +59,3 @@ validate(Schema, Object) ->
                            ,Object
                            ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
                            ).
-

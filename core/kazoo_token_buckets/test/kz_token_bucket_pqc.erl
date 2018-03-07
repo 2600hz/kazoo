@@ -1,8 +1,6 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%%
-%%% The goal is to model how a token bucket works and, using PropEr,
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc The goal is to model how a token bucket works and, using PropEr,
 %%% generate test scenarios that prove the properties.
 %%%
 %%% Our model is a bucket of tokens, starting (and capped) at MAX,
@@ -13,10 +11,10 @@
 %%% amount is < TOKENS, that the bucket refills at FR/FRT, and that the
 %%% bucket cannot exceed MAX tokens.
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_token_bucket_pqc).
 
 -define(DO_NOT_RUN_QC_TOKEN_BUCKETS, true).

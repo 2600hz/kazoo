@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_nodes).
 -behaviour(gen_listener).
 
@@ -33,6 +31,8 @@
 -export([node_encoded/0
         ,node_to_json/1
         ]).
+
+-export([with_role/1, with_role/2]).
 
 -export([init/1
         ,handle_call/3
@@ -99,13 +99,14 @@
                }).
 -type nodes_state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
@@ -475,10 +476,9 @@ status_list([{Whapp, #whapp_info{startup=Started,roles=Roles}}|Whapps], _Column)
     status_list(Whapps, 4).
 
 -spec simple_list(kz_term:ne_binaries()) -> 'ok'.
--spec simple_list(kz_term:ne_binaries(), 0..5) -> 'ok'.
-
 simple_list(List) -> simple_list(List, 0).
 
+-spec simple_list(kz_term:ne_binaries(), 0..5) -> 'ok'.
 simple_list([], _) -> io:format("~n", []);
 simple_list(List, Column) when Column > 4 ->
     io:format("~n" ++ ?HEADER_COL ++ "  ", [""]),
@@ -518,21 +518,14 @@ handle_advertise(JObj, Props) ->
         'true' -> 'ok'
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', nodes_state()}.
 init([]) ->
     lager:debug("starting nodes watcher"),
@@ -549,12 +542,12 @@ init([]) ->
                                          ,{'node_type', 'all'}
                                          ]),
     lager:debug("monitoring nodes"),
-    Version = <<(kz_util:kazoo_version())/binary
-                ," - "
-                ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
-              >>,
+    Version = list_to_binary([kz_util:kazoo_version()
+                             ," - "
+                             ,kz_term:to_binary(erlang:system_info('otp_release'))
+                             ]),
     State = #state{tab = Tab
-                  ,zone = get_zone()
+                  ,zone = local_zone()
                   ,md5 = node_encoded()
                   ,version = Version
                   },
@@ -562,20 +555,10 @@ init([]) ->
     self() ! {'heartbeat', State#state.heartbeat_ref},
     {'ok', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), nodes_state()) -> kz_types:handle_call_ret_state(nodes_state()).
 handle_call({'print_status', Nodes}, _From, State) ->
     print_status(Nodes, State),
@@ -585,16 +568,10 @@ handle_call('zone', _From, #state{zone=Zone}=State) ->
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), nodes_state()) -> kz_types:handle_cast_ret_state(nodes_state()).
 handle_cast({'notify_new', Pid}, #state{notify_new=Set}=State) ->
     _ = erlang:monitor('process', Pid),
@@ -621,16 +598,10 @@ handle_cast('flush', State) ->
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {'noreply', State} |
-%%                                   {'noreply', State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), nodes_state()) -> kz_types:handle_info_ret_state(nodes_state()).
 handle_info('expire_nodes', #state{node=ThisNode, tab=Tab}=State) ->
     Now = kz_time:now_ms(),
@@ -713,47 +684,41 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
+%%------------------------------------------------------------------------------
+%% @doc Allows listener to pass options to handlers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), nodes_state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{node=Node}) ->
     {'reply', [{'node', kz_term:to_binary(Node)}]}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), nodes_state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), nodes_state(), any()) -> {'ok', nodes_state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_node('undefined' | 5000..15000, nodes_state()) -> kz_types:kz_node().
 create_node(Heartbeat, #state{zone=Zone
                              ,version=Version
@@ -949,13 +914,6 @@ whapp_info_to_json(#whapp_info{startup=Start, roles=Roles}) ->
       [{<<"Startup">>, Start}
       ,{<<"Roles">>, Roles}
       ]).
-
--spec get_zone() -> atom().
-get_zone() ->
-    case kz_config:get(kz_config:get_node_section_name(), 'zone') of
-        [Zone] -> kz_term:to_atom(Zone, 'true');
-        _Else -> 'local'
-    end.
 
 -spec get_zone(kz_json:object(), nodes_state()) -> atom().
 get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
@@ -1174,29 +1132,37 @@ determine_whapp_role_count_fold(Whapps, Role, Acc, Whapp) ->
 
 -spec node_role_count(kz_term:text()) -> integer().
 node_role_count(Role) ->
-    node_role_count(Role, 'false').
+    length(with_role(Role)).
 
 -spec node_role_count(kz_term:text(), kz_term:text() | boolean() | 'remote') -> integer().
-node_role_count(Role, Arg) when not is_atom(Arg) ->
-    node_role_count(Role, kz_term:to_atom(Arg, 'true'));
-node_role_count(Role, 'false') ->
+node_role_count(Role, Arg) ->
+    length(with_role(Role, Arg)).
+
+-spec with_role(kz_term:text()) -> kz_types:kz_nodes().
+with_role(Role) ->
+    with_role(Role, 'false').
+
+-spec with_role(kz_term:text(), kz_term:text() | boolean() | 'remote') -> kz_types:kz_nodes().
+with_role(Role, Arg) when not is_atom(Arg) ->
+    with_role(Role, kz_term:to_atom(Arg, 'true'));
+with_role(Role, 'false') ->
     MatchSpec = [{#kz_node{roles='$1'
                           ,zone = local_zone()
                           ,_ = '_'
                           }
                  ,[{'=/=', '$1', []}]
-                 ,['$1']
+                 ,['$_']
                  }],
-    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
-node_role_count(Role, 'true') ->
+    with_role_filter(kz_term:to_binary(Role), MatchSpec);
+with_role(Role, 'true') ->
     MatchSpec = [{#kz_node{roles='$1'
                           ,_ = '_'
                           }
                  ,[{'=/=', '$1', []}]
-                 ,['$1']
+                 ,['$_']
                  }],
-    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
-node_role_count(Role, 'remote') ->
+    with_role_filter(kz_term:to_binary(Role), MatchSpec);
+with_role(Role, 'remote') ->
     Zone = local_zone(),
     MatchSpec = [{#kz_node{roles='$1'
                           ,zone='$2'
@@ -1206,25 +1172,22 @@ node_role_count(Role, 'remote') ->
                    ,{'=/=', '$1', []}
                    ,{'=/=', '$2', {'const', Zone}}
                    }]
-                 ,['$1']
+                 ,['$_']
                  }],
-    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
-node_role_count(Role, Unhandled) ->
+    with_role_filter(kz_term:to_binary(Role), MatchSpec);
+with_role(Role, Unhandled) ->
     lager:debug("invalid parameters ~p , ~p , ~p", [Role, Unhandled]),
-    0.
+    [].
 
--spec determine_node_role_count(kz_term:ne_binary(), ets:match_spec()) -> non_neg_integer().
-determine_node_role_count(Role, MatchSpec) ->
-    lists:foldl(fun(Roles, Acc) when is_list(Roles) ->
-                        determine_node_role_count_fold(Roles, Acc, Role)
+-spec with_role_filter(kz_term:ne_binary(), ets:match_spec()) -> kz_types:kz_nodes().
+with_role_filter(Role, MatchSpec) ->
+    lists:foldl(fun(#kz_node{roles=Roles}=Node, Acc) when is_list(Roles) ->
+                        case props:is_defined(Role, Roles) of
+                            'true' -> [Node | Acc];
+                            'false' -> Acc
+                        end
                 end
-               ,0
+               ,[]
                ,ets:select(?MODULE, MatchSpec)
                ).
 
--spec determine_node_role_count_fold(kz_term:proplist(), non_neg_integer(), kz_term:ne_binary()) -> non_neg_integer().
-determine_node_role_count_fold(Roles, Acc, Role) ->
-    case props:is_defined(Role, Roles) of
-        'true' -> Acc + 1;
-        'false' -> Acc
-    end.

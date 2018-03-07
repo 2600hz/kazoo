@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Conversion of types
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Conversion of types
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_binary).
 
 -export([rand_hex/1
@@ -36,13 +34,11 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure a binary is a minimum size, padding it if not with a given
+%%------------------------------------------------------------------------------
+%% @doc Ensure a binary is a minimum size, padding it if not with a given
 %% value.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pad(binary(), non_neg_integer(), binary()) -> binary().
 pad(Bin, Size, Value) when byte_size(Bin) < Size ->
     pad(<<Bin/binary, Value/binary>>, Size, Value);
@@ -53,13 +49,10 @@ pad_left(Bin, Size, Value) when byte_size(Bin) < Size ->
     pad_left(<<Value/binary, Bin/binary>>, Size, Value);
 pad_left(Bin, _Size, _Value) -> Bin.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Join a binary together with a separator.
-%%
+%%------------------------------------------------------------------------------
+%% @doc Join a binary together with a separator.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec join([kz_term:text()]) -> binary().
 join(Bins) -> join(Bins, <<", ">>).
@@ -124,12 +117,10 @@ strip_right(<<A, B/binary>>, C) ->
     <<A, (strip_right(B, C))/binary>>;
 strip_right(<<>>, _) -> <<>>.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure a binary is a maximum given size, truncating it if not.
+%%------------------------------------------------------------------------------
+%% @doc Ensure a binary is a maximum given size, truncating it if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec truncate(binary(), non_neg_integer()) -> binary().
 truncate(Bin, Size) ->
@@ -169,10 +160,12 @@ hexencode(S) ->
 
 hexencode(<<>>, Acc) -> Acc;
 hexencode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
-    hexencode(Rest, <<Acc/binary
-                      ,(kz_term:to_hex_char(Hi))
-                      ,(kz_term:to_hex_char(Lo))
-                    >>).
+    hexencode(Rest
+             ,list_to_binary([Acc
+                             ,kz_term:to_hex_char(Hi)
+                             ,kz_term:to_hex_char(Lo)
+                             ])
+             ).
 
 -spec from_hex(binary()) -> binary().
 from_hex(Bin) ->

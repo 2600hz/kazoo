@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_flow).
 
 -export([lookup/1, lookup/2]).
@@ -23,12 +21,11 @@
 -type pattern() :: #pattern{}.
 -type patterns() :: [pattern()].
 
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% lookup the callflow based on the requested number in the account
+%%------------------------------------------------------------------------------
+%% @doc Lookup the callflow based on the requested number in the account.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -type lookup_ret() :: {'ok', kzd_callflow:doc(), boolean()} | {'error', any()}.
 
 -spec lookup(kapps_call:call()) -> lookup_ret().
@@ -167,11 +164,10 @@ lookup_patterns(Number, AccountId) ->
         _Error -> maybe_use_nomatch(Number, AccountId)
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec lookup_callflow_patterns(patterns(), kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 lookup_callflow_patterns(Patterns, Number, AccountId) ->
     case test_callflow_patterns(Patterns, Number) of

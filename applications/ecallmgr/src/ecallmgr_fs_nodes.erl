@@ -1,15 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% When connecting to a FreeSWITCH node, we create three processes: one to
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc When connecting to a FreeSWITCH node, we create three processes: one to
 %%% handle authentication (directory) requests; one to handle route (dialplan)
 %%% requests, and one to monitor the node and various stats about the node.
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_nodes).
 -behaviour(gen_listener).
@@ -90,10 +88,14 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE
@@ -151,10 +153,7 @@ flush() -> do_flush(<<>>).
 
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(User, Realm) ->
-    Args = <<"id "
-             ,User/binary, " "
-             ,Realm/binary
-           >>,
+    Args = list_to_binary(["id ", User, " ", Realm]),
     do_flush(Args).
 
 -spec do_flush(binary()) -> 'ok'.
@@ -174,8 +173,8 @@ sip_url(Node) when not is_atom(Node) ->
     sip_url(kz_term:to_atom(Node, 'true'));
 sip_url(Node) when is_atom(Node) ->
     case [ecallmgr_fs_node:sip_url(Srv)
-          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-                 ,ecallmgr_fs_node:fs_node(Srv) =:= Node
+          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'}),
+             ecallmgr_fs_node:fs_node(Srv) =:= Node
          ]
     of
         [URL|_] -> URL;
@@ -335,16 +334,14 @@ handle_fs_xml_flush(JObj, _Props) ->
     Realm = kz_json:get_value(<<"Realm">>, JObj, <<>>),
     flush(Username, Realm).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
@@ -356,21 +353,11 @@ init([]) ->
     InitPidRef = kz_util:spawn_monitor(fun start_preconfigured_servers/0, []),
     {'ok', #state{init_pidref=InitPidRef}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
 %% #state{nodes=[{FSNode, HandlerPid}]}
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
     Resp = case dict:find(Node, Nodes) of
@@ -436,16 +423,10 @@ handle_call({'set_capability', Node, Name, Toggle}, _, State) ->
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'fs_nodeup', NodeName}, State) ->
     _ = kz_util:spawn(fun maybe_handle_nodeup/2, [NodeName, State]),
@@ -469,16 +450,10 @@ handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', State, 'hibernate'}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('expire_sip_subscriptions', Cache) ->
     Now = kz_time:now_s(),
@@ -500,49 +475,43 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
+%%------------------------------------------------------------------------------
+%% @doc Allows listener to pass options to handlers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     ets:delete('sip_subscriptions'),
     lager:debug("fs nodes termination: ~p", [ _Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec call_control_fs_nodeup(atom()) -> 'ok'.
 call_control_fs_nodeup(NodeName) ->
     Pids = gproc:lookup_pids({'p', 'l', 'call_control'}),

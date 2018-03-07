@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(fax_xmpp).
 -behaviour(gen_server).
 
@@ -161,13 +159,12 @@ code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 -spec get_sub_msg(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_sub_msg(JID) ->
     BareJID = kapi_xmpp:jid_short(JID),
-    Document = <<"<iq type='set' from='", JID/binary, "' to='",BareJID/binary,"'>"
-                 ,   "<subscribe xmlns='google:push'>"
-                 ,      "<item channel='cloudprint.google.com' from='cloudprint.google.com'/>"
-                 ,   "</subscribe>"
-                 ,"</iq>"
-               >>,
-    Document.
+    list_to_binary(["<iq type='set' from='", JID, "' to='", BareJID, "'>"
+                   ,   "<subscribe xmlns='google:push'>"
+                   ,      "<item channel='cloudprint.google.com' from='cloudprint.google.com'/>"
+                   ,   "</subscribe>"
+                   ,"</iq>"
+                   ]).
 
 -define(NS_PUSH, 'google:push').
 -define(XML_CTX_OPTIONS,[{'namespace', [{"g", "google:push"}]}]).

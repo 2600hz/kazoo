@@ -1,15 +1,14 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz INC
-%%% @doc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Handle client requests for phone number at
+%%% <a href="https://www.simwood.com/services/api">Simwood</a> (UK based provider).
 %%%
-%%% Handle client requests for phone_number at Simwood (UK based provider)
-%%% https://www.simwood.com/services/api
 %%%
+%%%
+%%% @author OnNet (Kirill Sysoev github.com/onnet)
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   OnNet (Kirill Sysoev github.com/onnet)
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_simwood).
 -behaviour(knm_gen_carrier).
 
@@ -38,42 +37,36 @@
 -define(SW_AUTH_PASSWORD, kapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
 
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec info() -> map().
 info() ->
     #{?CARRIER_INFO_MAX_PREFIX => 3
      }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Is this carrier handling numbers local to the system?
-%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%%------------------------------------------------------------------------------
+%% @doc Is this carrier handling numbers local to the system?
+%%
+%% <div class="notice">A non-local (foreign) carrier module makes HTTP requests.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%%------------------------------------------------------------------------------
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
                                               {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query Simwood.com for available numbers
+%%------------------------------------------------------------------------------
+%% @doc Query Simwood for available numbers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Prefix, Quantity, Options) ->
@@ -81,12 +74,10 @@ find_numbers(Prefix, Quantity, Options) ->
     {'ok', Body} = query_simwood(URL, 'get'),
     process_response(kz_json:decode(Body), Options).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Acquire a given number from Simwood.com
+%%------------------------------------------------------------------------------
+%% @doc Acquire a given number from Simwood.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
                             knm_number:knm_number().
 acquire_number(Number) ->
@@ -98,12 +89,10 @@ acquire_number(Number) ->
             knm_errors:by_carrier(?MODULE, Error, Num)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Return number back to Simwood.com
+%%------------------------------------------------------------------------------
+%% @doc Return number back to Simwood.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->
                                knm_number:knm_number().
 disconnect_number(Number) ->
@@ -115,31 +104,28 @@ disconnect_number(Number) ->
             knm_errors:by_carrier(?MODULE, Error, Num)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec should_lookup_cnam() -> boolean().
 should_lookup_cnam() -> 'true'.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec to_simwood(knm_number:knm_number()) -> kz_term:ne_binary().
 to_simwood(Number) ->
     case knm_phone_number:number(knm_number:phone_number(Number)) of
@@ -147,11 +133,10 @@ to_simwood(Number) ->
         N -> N
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec query_simwood(kz_term:ne_binary(), 'get' | 'put' | 'delete') ->
                            {'ok', iolist()} |
                            {'error', 'not_available'}.
@@ -171,22 +156,19 @@ query_simwood(URL, Verb) ->
             {'error', 'not_available'}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%  Simwood number query supports only 1|10|100 search amount
+%%------------------------------------------------------------------------------
+%% @doc Simwood number query supports only 1|10|100 search amount
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sw_quantity(pos_integer()) -> kz_term:ne_binary().
 sw_quantity(Quantity) when Quantity == 1 -> <<"1">>;
 sw_quantity(Quantity) when Quantity > 1, Quantity =< 10 -> <<"10">>;
 sw_quantity(_Quantity) -> <<"100">>.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_response(kz_json:objects(), knm_carriers:options()) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
@@ -196,7 +178,7 @@ process_response(JObjs, Options) ->
            ]}.
 
 response_jobj_to_number(JObj, QID) ->
-    Num = <<(kz_json:get_binary_value(<<"country_code">>, JObj))/binary
-            ,(kz_json:get_binary_value(<<"number">>, JObj))/binary
-          >>,
+    Num = list_to_binary([kz_json:get_binary_value(<<"country_code">>, JObj)
+                         ,kz_json:get_binary_value(<<"number">>, JObj)
+                         ]),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.

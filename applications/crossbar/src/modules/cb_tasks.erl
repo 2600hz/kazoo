@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for phone_number documents
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle client requests for phone_number documents
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_tasks).
 
 -export([init/0
@@ -37,16 +35,14 @@
 -define(PATH_OUTPUT, <<"output">>).
 -define(PATH_INPUT, <<"input">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -62,13 +58,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.to_csv.get.tasks">>, ?MODULE, 'to_csv'),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%%------------------------------------------------------------------------------
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     case {cb_context:req_verb(Context), cb_context:req_nouns(Context)} of
@@ -78,13 +72,11 @@ authenticate(Context) ->
         _ -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     case {cb_context:req_verb(Context)
@@ -96,13 +88,11 @@ authorize(Context) ->
         _ -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -120,14 +110,16 @@ allowed_methods(_TaskId, ?PATH_INPUT) ->
 allowed_methods(_TaskId, ?PATH_OUTPUT) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /tasks => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /tasks => []
 %%    /tasks/task_id => [<<"task_id">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -140,14 +132,12 @@ resource_exists(_TaskId, ?PATH_STOP) -> 'true';
 resource_exists(_TaskId, ?PATH_INPUT) -> 'true';
 resource_exists(_TaskId, ?PATH_OUTPUT) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% What content-types will the module be requiring (matched to the client's
-%% Content-Type header
-%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%%------------------------------------------------------------------------------
+%% @doc What content-types will the module be requiring (matched to the client's
+%% Content-Type header.
+%% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
@@ -164,14 +154,12 @@ cta(Context, ?HTTP_PUT) ->
 cta(Context, _) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% What content-types will the module be using to respond (matched against
-%% client's Accept header)
-%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%%------------------------------------------------------------------------------
+%% @doc What content-types will the module be using to respond (matched against
+%% client's Accept header).
+%% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
@@ -214,10 +202,10 @@ download_filename(Context, ?KZ_TASKS_ANAME_OUT) ->
     Action = kzd_task:action(TaskJObj),
     TaskId = kz_doc:id(TaskJObj),
 
-    <<Category/binary, "_"
-      ,Action/binary, "_"
-      ,TaskId/binary, "_out.csv"
-    >>;
+    list_to_binary([Category, "_"
+                   ,Action, "_"
+                   ,TaskId, "_out.csv"
+                   ]);
 download_filename(Context, ?KZ_TASKS_ANAME_IN) ->
     TaskJObj = cb_context:doc(Context),
 
@@ -225,23 +213,21 @@ download_filename(Context, ?KZ_TASKS_ANAME_IN) ->
     Action = kzd_task:action(TaskJObj),
     TaskId = kz_doc:id(TaskJObj),
 
-    <<Category/binary, "_"
-      ,Action/binary, "_"
-      ,TaskId/binary, "_in.csv"
-    >>;
+    list_to_binary([Category, "_"
+                   ,Action, "_"
+                   ,TaskId, "_in.csv"
+                   ]);
 download_filename(_Context, Name) ->
     Name.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /tasks mights load a list of task objects
 %% /tasks/123 might load the task object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -321,12 +307,10 @@ validate_new_attachment(Context, 'false') ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     QS = cb_context:query_string(Context),
@@ -361,13 +345,11 @@ task_account_id(Context) ->
         AccountId -> AccountId
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, TaskId) ->
@@ -408,12 +390,10 @@ patch(Context, TaskId, ?PATH_STOP) ->
             cb_context:add_system_error(bad_identifier, Msg, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, TaskId) ->
     Req = [{<<"Task-ID">>, TaskId}
@@ -435,21 +415,22 @@ delete(Context, TaskId) ->
     end.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%% @private
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec set_db(cb_context:context()) -> cb_context:context().
 set_db(Context) ->
     cb_context:set_account_db(Context, ?KZ_TASKS_DB).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(TaskId, Context) ->
@@ -559,13 +540,11 @@ read_attachment_file(TaskId, Context, AttachmentName) ->
     Type = ?TYPE_CHECK_OPTION(kzd_task:type()),
     crossbar_doc:load_attachment(TaskId, AttachmentName, Type, Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     AccountId = cb_context:account_id(Context),
@@ -583,18 +562,15 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
 
-%% @private
 -spec req_content_type(cb_context:context()) -> kz_term:ne_binary().
 req_content_type(Context) ->
     cb_context:req_header(Context, <<"content-type">>).
 
-%% @private
 -spec is_content_type_csv(cb_context:context()) -> boolean().
 is_content_type_csv(Context) ->
     [Lhs, Rhs] = binary:split(req_content_type(Context), <<$/>>),
     lists:member({Lhs, Rhs}, ?CSV_CONTENT_TYPES).
 
-%% @private
 -spec attached_data(cb_context:context(), boolean()) -> kz_tasks:input().
 attached_data(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -602,7 +578,6 @@ attached_data(Context, 'true') ->
 attached_data(Context, 'false') ->
     kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)).
 
-%% @private
 -spec save_attached_data(cb_context:context(), kz_term:ne_binary(), kz_tasks:input(), boolean()) ->
                                 cb_context:context().
 save_attached_data(Context, TaskId, CSV, 'true') ->
@@ -621,7 +596,6 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     Options = [{'content_type', <<"text/csv">>}],
     crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, CSV, Context, Options).
 
-%% @private
 -spec help(cb_context:context()) -> cb_context:context().
 help(Context) ->
     Category = cb_context:req_param(Context, ?QS_CATEGORY),

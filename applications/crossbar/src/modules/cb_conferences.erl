@@ -1,8 +1,6 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Conferences module
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Conferences module
 %%% Handle client requests for conference documents
 %%%
 %%% URI schema:
@@ -11,12 +9,12 @@
 %%% /v2/accounts/{AccountId}/conferences/{ConferenceID}/participants
 %%% /v2/accounts/{AccountId}/conferences/{ConferenceID}/participants/{ParticipantId}
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Roman Galeev
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Roman Galeev
-
+%%%-----------------------------------------------------------------------------
 -module(cb_conferences).
 
 -export([init/0
@@ -52,10 +50,14 @@
 
 -define(MIN_DIGITS_FOR_DID, 5).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, 'allowed_methods'),
@@ -67,10 +69,14 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.conferences">>, ?MODULE, 'delete'),
     ok.
 
-%%%===================================================================
+%%%=============================================================================
 %%% REST API Callbacks
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_GET, ?HTTP_PUT].
 
@@ -111,9 +117,14 @@ validate(Context, ConferenceId, ?PARTICIPANTS) ->
 validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
     validate_participant(cb_context:req_verb(Context), Context, ConferenceId, ParticipantId).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Request object validators
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
     Context1 = search_conferences(Context),
@@ -200,10 +211,14 @@ patch(Context, _) ->
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Conference validation helpers
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec maybe_load_conference(path_token(), cb_context:context()) -> cb_context:context().
 maybe_load_conference(ConferenceId, Context) ->
     maybe_build_conference(ConferenceId, load_conference(ConferenceId, Context)).
@@ -293,12 +308,10 @@ add_realtime_fold(Conference, RunningConferences) ->
     Amended = kz_json:merge(Conference, Realtime),
     kz_json:set_value(kz_doc:id(Conference), Amended, RunningConferences).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new conference document with the data provided, if it is valid
+%%------------------------------------------------------------------------------
+%% @doc Create a new conference document with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_numbers(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_numbers(Id, Context) ->
     Doc = cb_context:doc(Context),
@@ -325,9 +338,14 @@ invalid_numbers(Context, JObjs) ->
                               ]),
     cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Conterence Actions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_conference_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 handle_conference_action(Context, ConferenceId, <<"lock">>) ->
     kapps_conference_command:lock(conference(ConferenceId)),
@@ -678,9 +696,14 @@ add_not_found_error(Context, Id, Index) ->
                                    ,Context
                                    ).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Participant Actions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_participants_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 handle_participants_action(Context, ConferenceId, Action=?MUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
@@ -865,9 +888,14 @@ find_conference_details(JObjs) ->
         _Else -> kz_json:new()
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Utility functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec conference(kz_term:ne_binary()) -> kapps_conference:conference().
 conference(ConferenceId) ->
     kapps_conference:set_id(ConferenceId, kapps_conference:new()).

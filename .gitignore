@@ -22,9 +22,6 @@
 sup.bash
 
 _rel/
-rel/relx.config
-rel/dev-vm.args
-rel/vm.args
 
 erlang.mk
 .erlang.mk
@@ -43,7 +40,7 @@ core/sup/sup
 core/kazoo_number_manager/dialcodes.json
 core/kazoo_number_manager/src/knm_iso3166a2_itu.erl
 
-make/erlang-formatter-master/
+make/erlang-formatter/
 /TAGS
 
 core/kazoo_auth/c_src/env.mk

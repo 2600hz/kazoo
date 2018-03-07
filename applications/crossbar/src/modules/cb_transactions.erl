@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors:
-%%%     Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_transactions).
 
 -export([init/0
@@ -28,16 +26,14 @@
 
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
@@ -66,13 +62,11 @@ flatten([JObj|JObjs], Results) ->
     end;
 flatten(Else, _) -> Else.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -90,15 +84,17 @@ allowed_methods(?MONTHLY) ->
 allowed_methods(?SUBSCRIPTIONS) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /transactions => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /transactions => []
 %%    /transactions/foo => [<<"foo">>]
 %%    /transactions/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -106,15 +102,13 @@ resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /transactions might load a list of transactions objects
 %% /transactions/123 might load the transactions object 123
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_transactions(Context, cb_context:req_verb(Context)).
@@ -124,12 +118,10 @@ validate(Context, PathToken) ->
     validate_transaction(Context, PathToken, cb_context:req_verb(Context)).
 
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?CREDIT) ->
     case cb_context:resp_status(Context) of
@@ -219,12 +211,10 @@ create_credit_tansaction(CreditType, Context) ->
                ,Routines
                ).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?DEBIT) ->
     case cb_context:resp_status(Context) of
@@ -259,19 +249,16 @@ maybe_create_debit_tansaction(Context) ->
     case create_debit_tansaction(Context) of
         {'error', _R}=Error ->
             lager:error("failed to create debit transaction : ~p", [_R]),
-            cb_context:add_system_error(
-              'transaction_failed'
-                                       ,kz_json:from_list(
-                                          [{<<"message">>, <<"failed to create debit transaction">>}
-                                          ,{<<"cause">>, kz_term:error_to_binary(Error)}
-                                          ])
+            cb_context:add_system_error('transaction_failed'
+                                       ,kz_json:from_list([{<<"message">>, <<"failed to create debit transaction">>}
+                                                          ,{<<"cause">>, kz_term:error_to_binary(Error)}
+                                                          ])
                                        ,Context
-             );
+                                       );
         {'ok', Transaction} ->
-            cb_context:set_resp_data(
-              Context
+            cb_context:set_resp_data(Context
                                     ,kz_transaction:to_public_json(Transaction)
-             )
+                                    )
     end.
 
 -spec create_debit_tansaction(cb_context:context()) ->
@@ -283,9 +270,7 @@ create_debit_tansaction(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, JObj),
     Units = wht_util:dollars_to_units(Amount),
     Meta =
-        kz_json:from_list(
-          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
-         ),
+        kz_json:from_list([{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]),
     Reason = kz_json:get_value(<<"reason">>, JObj, wht_util:admin_discretion()),
     Description = kz_json:get_value(<<"description">>, JObj),
 
@@ -294,18 +279,15 @@ create_debit_tansaction(Context) ->
                ,fun(Tr) -> kz_transaction:set_metadata(Meta, Tr) end
                ,fun kz_transaction:save/1
                ],
-    lists:foldl(
-      fun(F, Tr) -> F(Tr) end
+    lists:foldl(fun(F, Tr) -> F(Tr) end
                ,kz_transaction:debit(AccountId, Units)
                ,Routines
-     ).
+               ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate_transactions(cb_context:context(), http_method()) -> cb_context:context().
 validate_transactions(Context, ?HTTP_GET) ->
@@ -344,12 +326,10 @@ validate_transaction(Context, ?DEBIT, ?HTTP_DELETE) ->
 validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate_credit(cb_context:context()) -> cb_context:context().
 validate_credit(Context) ->
@@ -360,8 +340,7 @@ validate_credit(Context) ->
         'true' -> validate_credit(Context, Amount);
         'false' ->
             case kz_services:is_reseller(cb_context:auth_account_id(Context))
-                orelse
-                MasterAccountId =:= kz_services:find_reseller_id(cb_context:account_id(Context))
+                orelse MasterAccountId =:= kz_services:find_reseller_id(cb_context:account_id(Context))
             of
                 'true' -> validate_credit(Context, Amount);
                 'false' -> cb_context:add_system_error('forbidden', Context)
@@ -422,12 +401,10 @@ validate_debit(Context, Amount) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_transactions(cb_context:context(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:api_binary()) ->
                                 cb_context:context().
 
@@ -465,12 +442,10 @@ fetch_transactions(Context, From, To, Reason) ->
             send_resp({'ok', JObjs}, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_monthly_recurring(cb_context:context(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:api_binary()) ->
                                      cb_context:context().
 fetch_monthly_recurring(Context, From, To, Reason) ->
@@ -484,12 +459,10 @@ fetch_monthly_recurring(Context, From, To, Reason) ->
             send_resp({'ok', JObjs}, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_subscriptions(cb_context:context()) -> cb_context:context().
 filter_subscriptions(Context) ->
     AccountId = cb_context:account_id(Context),
@@ -503,12 +476,10 @@ filter_subscriptions(Context) ->
             send_resp({'ok', JObjs}, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_subscription(kz_json:object()) -> kz_json:object().
 filter_subscription(BSubscription) ->
     Routines = [fun clean_braintree_subscription/1
@@ -516,12 +487,10 @@ filter_subscription(BSubscription) ->
                ],
     lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec clean_braintree_subscription(kz_json:object()) -> kz_json:object().
 clean_braintree_subscription(BSubscription) ->
     RemoveKeys = [<<"billing_dom">>
@@ -540,12 +509,10 @@ clean_braintree_subscription(BSubscription) ->
                  ],
     kz_json:delete_keys(RemoveKeys, BSubscription).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec correct_date_braintree_subscription(kz_json:object()) -> kz_json:object().
 correct_date_braintree_subscription(BSubscription) ->
     Keys = [<<"billing_first_date">>
@@ -566,12 +533,10 @@ correct_date_braintree_subscription_fold(Key, BSub) ->
             kz_json:set_value(Key, Timestamp, BSub)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_resp({'ok', any()} | {'error', any()}, cb_context:context()) -> cb_context:context().
 send_resp({'ok', JObj}, Context) ->
     cb_context:setters(Context

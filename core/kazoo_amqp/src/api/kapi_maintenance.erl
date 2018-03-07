@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kapi_maintenance).
 
 -export([req/1, req_v/1
@@ -33,7 +38,7 @@
 -type req() :: kz_term:api_terms().
 -type resp() :: kz_term:api_terms().
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(EVENT_CAT, <<"maintenance">>).
 -define(KEY_ACTION, <<"Action">>).
@@ -151,8 +156,8 @@ refresh_routing_clean_services(AccountId) ->
 refresh_routing(RefreshWhat, Classification, Database) ->
     kz_binary:join([?EVENT_CAT
                    ,RefreshWhat
-                   ,amqp_util:encode(kz_term:to_binary(Classification))
-                   ,amqp_util:encode(Database)
+                   ,kz_amqp_util:encode(kz_term:to_binary(Classification))
+                   ,kz_amqp_util:encode(Database)
                    ]
                   ,$.
                   ).
@@ -165,19 +170,19 @@ bind_q(Queue, Props) ->
 bind_to_q(Queue, 'undefined', Props) ->
     bind_to_q(Queue, [?REFRESH_DB_TYPE(<<"*">>)], Props);
 bind_to_q(Queue, [?REFRESH_DB_DB(Db)|Rest], Props) ->
-    amqp_util:bind_q_to_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
+    kz_amqp_util:bind_q_to_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
     bind_to_q(Queue, Rest, Props);
 bind_to_q(Queue, [?REFRESH_DB_TYPE(Classification)|Rest], Props) ->
-    amqp_util:bind_q_to_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
+    kz_amqp_util:bind_q_to_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
     bind_to_q(Queue, Rest, Props);
 bind_to_q(Queue, [?REFRESH_VIEWS_DB(Db)|Rest], Props) ->
-    amqp_util:bind_q_to_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
+    kz_amqp_util:bind_q_to_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
     bind_to_q(Queue, Rest, Props);
 bind_to_q(Queue, [?REFRESH_VIEWS_TYPE(Classification)|Rest], Props) ->
-    amqp_util:bind_q_to_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
+    kz_amqp_util:bind_q_to_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
     bind_to_q(Queue, Rest, Props);
 bind_to_q(Queue, [?CLEAN_SERVICES_ID(AccountId)|Rest], Props) ->
-    amqp_util:bind_q_to_sysconf(Queue, refresh_routing_clean_services(AccountId)),
+    kz_amqp_util:bind_q_to_sysconf(Queue, refresh_routing_clean_services(AccountId)),
     bind_to_q(Queue, Rest, Props);
 bind_to_q(_Queue, [], _Props) -> 'ok'.
 
@@ -189,25 +194,25 @@ unbind_q(Queue, Props) ->
 unbind_from_q(Queue, 'undefined', Props) ->
     unbind_from_q(Queue, [?REFRESH_DB_TYPE(<<"*">>)], Props);
 unbind_from_q(Queue, [?REFRESH_DB_DB(Db)|Rest], Props) ->
-    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
+    'ok' = kz_amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?REFRESH_DB_TYPE(Classification)|Rest], Props) ->
-    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
+    'ok' = kz_amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?REFRESH_VIEWS_DB(Db)|Rest], Props) ->
-    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
+    'ok' = kz_amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?REFRESH_VIEWS_TYPE(Classification)|Rest], Props) ->
-    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
+    'ok' = kz_amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?CLEAN_SERVICES_ID(AccountId)|Rest], Props) ->
-    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_clean_services(AccountId)),
+    'ok' = kz_amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_clean_services(AccountId)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(_Queue, [], _Props) -> 'ok'.
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:sysconf_exchange().
+    kz_amqp_util:sysconf_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
@@ -216,7 +221,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REQ_VALUES, fun req/1),
-    amqp_util:sysconf_publish(routing_key(Req), Payload, ContentType).
+    kz_amqp_util:sysconf_publish(routing_key(Req), Payload, ContentType).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
@@ -225,7 +230,7 @@ publish_resp(TargetQ, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 routing_key(Req) when is_list(Req) ->
     routing_key(Req, fun props:get_value/2);

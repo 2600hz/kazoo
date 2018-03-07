@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, Conversant Ltd
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2017-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%   Max Lay
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_edr_amqp).
 
 -include_lib("../edr.hrl").
@@ -25,11 +23,11 @@
                       ]).
 -define(EVENT_TYPES, [{<<"Body">>, fun kz_json:is_json_object/1}]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Event a callflow's flow
 %% Takes proplist, creates JSON iolist or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec event(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
     case event_v(Prop) of
@@ -49,7 +47,7 @@ bind_q(Q, Props) ->
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 bind_q(Q, _Props, [Key | RemainingKeys]) ->
-    'ok' = amqp_util:bind_q_to_kapps(Q, Key),
+    'ok' = kz_amqp_util:bind_q_to_kapps(Q, Key),
     bind_q(Q, _Props, RemainingKeys);
 bind_q(_Q, _Props, []) ->
     'ok'.
@@ -60,7 +58,7 @@ unbind_q(Q, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 unbind_q(Q, _Props, [Key | RemainingKeys]) ->
-    'ok' = amqp_util:unbind_q_from_kapps(Q, Key),
+    'ok' = kz_amqp_util:unbind_q_from_kapps(Q, Key),
     unbind_q(Q, _Props, RemainingKeys);
 unbind_q(_Q, _Props, []) ->
     'ok'.
@@ -73,24 +71,23 @@ binding_keys_from_props(Props) ->
     Bindings = edr_bindings:bindings_from_json(JProps),
     edr_bindings:binding_keys(Bindings).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:kapps_exchange().
+    kz_amqp_util:kapps_exchange().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish_event(edr_event()) -> 'ok'.
 publish_event(#edr_event{}=Event) ->
     {'ok', Payload} = kz_api:prepare_api_payload(event_to_payload(Event), ?EVENT_VALUES, fun event/1),
     RoutingKey = edr_bindings:event_binding_key(Event),
-    amqp_util:kapps_publish(RoutingKey, Payload).
+    kz_amqp_util:kapps_publish(RoutingKey, Payload).
 
 -spec event_to_payload(edr_event()) -> kz_json:object().
 event_to_payload(#edr_event{}=Event) ->

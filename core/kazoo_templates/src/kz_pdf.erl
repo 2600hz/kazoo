@@ -1,12 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018 2600Hz, INC
-%%% @doc
-%%% Builds PDF from an HTML template using HTMLDoc (http://www.msweet.org/projects.php?Z1)
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Builds PDF from an HTML template using
+%%% <a href="http://www.msweet.org/projects.php?Z1">HTMLDoc</a>.
+%%% @author Peter Defebvre
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   Peter Defebvre
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_pdf).
 
 -export([find_template/2
@@ -32,11 +31,10 @@
 
 -type ret() :: {'ok', kz_term:ne_binary()} | {'error', any()}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_template(kz_term:ne_binary(), kz_term:proplist() | kz_term:ne_binary()) -> ret().
 find_template(AccountId, DocType) when is_binary(DocType)  ->
     find_template(AccountId, DocType, <<DocType/binary, ".tmpl">>);
@@ -58,11 +56,10 @@ find_template(AccountId, Props, AttachmentId) ->
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
     find_template(AccountId, DocType, AttachmentId).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec generate(kz_term:ne_binary(), kz_term:proplist()) -> ret().
 generate(AccountId, Props) ->
     case find_template(AccountId, Props) of
@@ -113,24 +110,22 @@ error_empty() ->
         {'ok', File} -> File
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cmd_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary()) -> kz_term:ne_binary().
 cmd_fold({Search, Replace}, Subject) ->
     binary:replace(Subject, Search, Replace).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec default_template(kz_term:ne_binary(), kz_term:ne_binary()) -> ret().
 default_template(DocType, AttachmentId) ->
     lager:debug("searching for default template ~s", [AttachmentId]),

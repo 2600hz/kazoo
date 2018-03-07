@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(teletype_util).
 
 -export([send_email/3, send_email/4
@@ -55,8 +53,8 @@
                                   ,{?TEXT_HTML, 2}
                                   ]).
 
--define(NOTICE_ENABLED_BY_DEFAULT,
-        kapps_config:get_is_true(?APP_NAME, <<"notice_enabled_by_default">>, 'true')
+-define(NOTICE_ENABLED_BY_DEFAULT
+       ,kapps_config:get_is_true(?APP_NAME, <<"notice_enabled_by_default">>, 'true')
        ).
 
 -spec send_email(email_map(), kz_term:ne_binary(), rendered_templates()) ->
@@ -72,16 +70,15 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     From = props:get_value(<<"from">>, Emails),
     Email = {<<"multipart">>
             ,<<"mixed">>
-            ,email_parameters(
-               [{<<"To">>, To}
-               ,{<<"Cc">>, props:get_value(<<"cc">>, Emails)}
-               ,{<<"Bcc">>, props:get_value(<<"bcc">>, Emails)}
-               ]
+            ,email_parameters([{<<"To">>, To}
+                              ,{<<"Cc">>, props:get_value(<<"cc">>, Emails)}
+                              ,{<<"Bcc">>, props:get_value(<<"bcc">>, Emails)}
+                              ]
                              ,[{<<"From">>, From}
                               ,{<<"Reply-To">>, props:get_value(<<"reply_to">>, Emails)}
                               ,{<<"Subject">>, Subject}
                               ]
-              )
+                             )
             ,[{<<"content-type-params">>, [{<<"charset">>, <<"utf-8">>}]}]
             ,[email_body(RenderedTemplates)
               | add_attachments(Attachments)
@@ -170,7 +167,8 @@ relay_email(To, From, {_Type
                       ,Addresses
                       ,_ContentTypeParams
                       ,_Body
-                      }=Email) ->
+                      }=Email
+           ) ->
     try mimemail:encode(Email) of
         Encoded ->
             RelayResult = relay_encoded_email(To, From, Encoded),
@@ -317,8 +315,8 @@ add_rendered_templates_to_email(RenderedTemplates) ->
 add_rendered_templates_to_email([], Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
-    CTEncoding = kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT,
-                                            [<<"mime-encoding">>
+    CTEncoding = kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT
+                                           ,[<<"mime-encoding">>
                                             ,ContentType
                                             ,<<"content_transfer_encoding">>
                                             ]
@@ -905,9 +903,7 @@ build_to_data(DataJObj) ->
 -spec public_proplist(kz_json:path(), kz_json:object()) -> kz_term:proplist().
 public_proplist(Key, JObj) ->
     kz_json:recursive_to_proplist(
-      kz_doc:public_fields(
-        kz_json:get_value(Key, JObj, kz_json:new())
-       )
+      kz_doc:public_fields(kz_json:get_value(Key, JObj, kz_json:new()))
      ).
 
 -spec notification_completed(kz_term:ne_binary()) -> template_response().
@@ -954,7 +950,9 @@ fetch_attachment_from_url(URL) ->
 attachment_from_url_result(Headers, Body) ->
     CT = kz_term:to_binary(props:get_value("content-type", Headers, <<"text/plain">>)),
     Disposition = kz_term:to_binary(props:get_value("content-disposition", Headers, <<>>)),
-    CDs = [ list_to_tuple(binary:split(kz_binary:strip(CD), <<"=">>)) || CD <- binary:split(Disposition, <<";">>)],
+    CDs = [list_to_tuple(binary:split(kz_binary:strip(CD), <<"=">>))
+           || CD <- binary:split(Disposition, <<";">>)
+          ],
     Filename = case props:get_value(<<"filename">>, CDs) of
                    'undefined' -> kz_mime:to_filename(CT);
                    FileDisposition -> FileDisposition

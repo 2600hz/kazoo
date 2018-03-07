@@ -1,0 +1,20 @@
+{application, kazoo_events,
+ [
+  {description, "Kazoo shared events for Applications"}
+ ,{id, "9fd3b140-8727-11e0-9d78-0800200c9a66"}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [kazoo_events_sup, kz_hooks_cache, kz_hooks_listener, kz_hooks_shared_listener]}
+ ,{applications, [ kernel
+                 , stdlib
+
+                 , kazoo_amqp
+
+                 , syslog
+                 , lager
+                 , lager_syslog
+                 , gproc
+                 , eflame
+                 ]}
+ ,{mod, {kazoo_events_app, []}}
+ ]}.

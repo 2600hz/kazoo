@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle authn_req messages
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle authn_req messages
+%%% @author James Aimonetti
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(reg_authn_req).
 
 -export([init/0
@@ -190,12 +188,10 @@ create_custom_sip_headers(Props) -> kz_json:from_list(Props).
 get_tel_uri('undefined') -> 'undefined';
 get_tel_uri(Number) -> <<"<tel:", Number/binary,">">>.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% look up the user and realm in the database and return the result
+%%------------------------------------------------------------------------------
+%% @doc look up the user and realm in the database and return the result
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec lookup_auth_user(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                               {'ok', auth_user()} |
                               {'error', any()}.
@@ -266,12 +262,10 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
             {'ok', User}
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_auth_user(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                              {'ok', auth_user()} |
                              {'error', 'disabled'}.
@@ -438,12 +432,10 @@ gsm_auth(#auth_user{method=?GSM_A3A8_METHOD
                              }};
 gsm_auth(AuthUser) -> {'ok', AuthUser}.
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_account_id(kz_json:object()) -> kz_term:api_binary().
 get_account_id(JObj) ->
     case get_account_db(JObj) of
@@ -451,12 +443,10 @@ get_account_id(JObj) ->
         AccountDb -> kz_util:format_account_id(AccountDb, 'raw')
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_account_db(kz_json:object()) -> kz_term:api_binary().
 get_account_db(JObj) ->
     case kz_json:get_first_defined([[<<"doc">>, <<"pvt_account_db">>]

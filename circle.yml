@@ -31,15 +31,15 @@ test:
     - ./scripts/state-of-docs.sh || true
     - ./scripts/code_checks.bash $($CHANGED)
     - make fmt
-    - if [[ "$CIRCLE_BRANCH" = 'master' ]]; then make bump-copyright; fi
+    # - if [[ "$CIRCLE_BRANCH" = 'master' ]]; then make bump-copyright; fi
     - . ~/.kerl/$OTP_VERSION/activate && JOBS="1" make
     - . ~/.kerl/$OTP_VERSION/activate && make code_checks
     - . ~/.kerl/$OTP_VERSION/activate && make app_applications
     - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
     - make docs
-    - . ~/.kerl/$OTP_VERSION/activate && scripts/evil_specs_remover.escript -k
     - make validate-schemas
+    - . ~/.kerl/$OTP_VERSION/activate && ./scripts/state-of-edoc.escript
     # - |
     #   if [[ ! -z "$($CHANGED_SWAGGER)" ]]; then
     #     make validate-swagger
@@ -61,5 +61,5 @@ test:
   post:
     - mkdir $CIRCLE_ARTIFACTS/logs
     - mv ./_rel/kazoo/log/* $CIRCLE_ARTIFACTS/logs/
-    - cp ./rel/relx.config $CIRCLE_ARTIFACTS/
-    - cp ./_rel/kazoo/releases/4.0.0/kazoo.rel $CIRCLE_ARTIFACTS/
+    - cp ./rel/ci.relx.config $CIRCLE_ARTIFACTS/
+    - find ./_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;

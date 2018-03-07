@@ -1,27 +1,24 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Handles changing an agent's status
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Handles changing an agent's status
 %%% "data":{
 %%%   "action":["login","logout"] // one of these
 %%%   ,"id":"queue_id" // which queue to login/logout the caller
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_acdc_queue).
 
 -export([handle/2]).
 
 -include_lib("callflow/src/callflow.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     kapps_call_command:answer(Call),

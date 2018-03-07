@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Various utilities - a veritable cornicopia
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Various utilities - a veritable cornucopia.
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_util).
 
 -export([log_stacktrace/0, log_stacktrace/1, log_stacktrace/2
@@ -94,12 +92,10 @@
 
 -export_type([account_format/0]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Standardized way of logging the stacktrace...
+%%------------------------------------------------------------------------------
+%% @doc Standardized way of logging the stack-trace.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec log_stacktrace() -> 'ok'.
 log_stacktrace() ->
     ST = erlang:get_stacktrace(),
@@ -167,24 +163,27 @@ change_syslog_log_level(L) when is_atom(L) ->
 change_syslog_log_level(L) ->
     change_syslog_log_level(kz_term:to_atom(L)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account return it in a 'encoded',
-%% unencoded or 'raw' format.
-%% Note: accepts MODbs as well as account IDs/DBs
-%% Note: if given (Account, GregorianSeconds), it will return
-%%   an MODb in the 'encoded' format.
-%% @end
-%%--------------------------------------------------------------------
--type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(kz_term:api_binary()) -> kz_term:api_binary().
--spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
-                       (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% MODb!
 
+-type account_format() :: 'unencoded' | 'encoded' | 'raw'.
+
+%% @equiv format_account_id(Account, raw)
+
+-spec format_account_id(kz_term:api_binary()) -> kz_term:api_binary().
 format_account_id(Account) ->
     format_account_id(Account, 'raw').
 
+%%------------------------------------------------------------------------------
+%% @doc Given a representation of an account return it in a `encoded',
+%% `unencoded' or `raw' format.
+%%
+%% <div class="notice">Accepts MODbs as well as account IDs/DBs</div>
+%% <div class="notice">If given `(Account, GregorianSeconds)', it will return
+%% an MODB in the `encoded' format.</div>
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
+                       (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% for MODb!
 format_account_id('undefined', _Encoding) -> 'undefined';
 format_account_id(DbName, Timestamp)
   when is_integer(Timestamp)
@@ -209,9 +208,13 @@ format_account_id(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
-%% @private
-%% Returns account_id() | any()
-%% Passes input along if not account_id() | account_db() | account_db_unencoded().
+%%------------------------------------------------------------------------------
+%% @doc Returns `raw' account ID if it's account ID/DB/MODB/ResourceSelector,
+%% otherwise returns same passing binary.
+%% Passes input along if not `account_id() | account_db() | account_db_unencoded()'.
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec raw_account_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 raw_account_id(?MATCH_ACCOUNT_RAW(AccountId)) ->
     AccountId;
@@ -241,9 +244,10 @@ raw_account_id(Other) ->
             Other
     end.
 
-%% @private
-%% (modb()) -> modb_id() when modb() :: modb_id() | modb_db() | modb_db_unencoded()
+%%------------------------------------------------------------------------------
+%% `(modb()) -> modb_id() when modb() :: modb_id() | modb_db() | modb_db_unencoded()'
 %% Crashes if given anything else.
+%%------------------------------------------------------------------------------
 -spec raw_account_modb(kz_term:ne_binary()) -> kz_term:ne_binary().
 raw_account_modb(?MATCH_MODB_SUFFIX_RAW(_, _, _) = AccountId) ->
     AccountId;
@@ -252,20 +256,20 @@ raw_account_modb(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
 raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account resource_selectors return it in a 'encoded',
-%% unencoded or 'raw' format.
-%% @end
-%%--------------------------------------------------------------------
--spec format_resource_selectors_id(kz_term:api_binary()) -> kz_term:api_binary().
--spec format_resource_selectors_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
-                                  (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% MODb!
+%% @equiv format_resource_selectors_id(Account, raw)
 
+-spec format_resource_selectors_id(kz_term:api_binary()) -> kz_term:api_binary().
 format_resource_selectors_id(Account) ->
     format_resource_selectors_id(Account, 'raw').
 
+%%------------------------------------------------------------------------------
+%% @doc Given a representation of an account `resource_selectors'.
+%% Returns it in a `encoded', `unencoded' or `raw' format.
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec format_resource_selectors_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
+                                  (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% MODb!
 format_resource_selectors_id('undefined', _Encoding) -> 'undefined';
 
 format_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_RAW(_)=AccountId, 'raw') ->
@@ -290,9 +294,10 @@ format_resource_selectors_id(AccountId, 'encoded') ->
     ?MATCH_RESOURCE_SELECTORS_RAW(A,B,Rest) = raw_resource_selectors_id(AccountId),
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
-%% @private
-%% Returns account_id() | any()
-%% Passes input along if not account_id() | account_db() | account_db_unencoded().
+%%------------------------------------------------------------------------------
+%% Returns `account_id() | any()'.
+%% Passes input along if not `account_id() | account_db() | account_db_unencoded().'
+%%------------------------------------------------------------------------------
 -spec raw_resource_selectors_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_RAW(AccountId)) ->
     AccountId;
@@ -308,23 +313,18 @@ raw_resource_selectors_id(Other) ->
             Other
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account resource_selectors return it in a 'encoded',
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv format_resource_selectors_id(Account, encoded)
+
 -spec format_resource_selectors_db(kz_term:api_binary()) -> kz_term:api_binary().
 format_resource_selectors_db(AccountId) ->
     format_resource_selectors_id(AccountId, 'encoded').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account, build an MODb in an 'encoded' format.
-%% Note: accepts MODbs as well as account IDs/DBs
+%%------------------------------------------------------------------------------
+%% @doc Given a representation of an account, build an MODb in an `encoded' format.
+%%
+%% <div class="notice">Accepts MODbs as well as account IDs/DBs</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec format_account_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
                                kz_term:api_binary().
 format_account_id('undefined', _Year, _Month) -> 'undefined';
@@ -337,17 +337,13 @@ format_account_id(Account, Year, Month) when is_integer(Year),
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(Account),
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), kz_date:pad_month(Month)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account, build an MODb in an 'encoded' format.
-%% Note: accepts MODbs as well as account IDs/DBs
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv format_account_mod_id(Account, os:timestamp())
 
 -spec format_account_mod_id(kz_term:api_binary()) -> kz_term:api_binary().
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
+
+%% @equiv format_account_id(AccountId, Year, Month)
 
 -spec format_account_mod_id(kz_term:api_binary(), kz_time:gregorian_seconds() | kz_time:now()) -> kz_term:api_binary().
 format_account_mod_id(AccountId, {_,_,_}=Timestamp) ->
@@ -357,33 +353,36 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(AccountId, Year, Month).
 
+%%------------------------------------------------------------------------------
+%% @doc Given a representation of an account, build an MODb in an `encoded' format.
+%%
+%% <div class="notice">Accepts MODbs as well as account IDs/DBs</div>
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec format_account_mod_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
                                    kz_term:api_binary().
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account return it in a 'encoded' format.
-%% Note: accepts MODbs as well as account IDs/DBs
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv format_account_id(AccountId, encoded)
+
 -spec format_account_db(kz_term:api_binary()) -> kz_term:api_binary().
 format_account_db(AccountId) ->
     format_account_id(AccountId, 'encoded').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an MODb return the MODb in the specified format.
-%% Note: crashes if given anything but an MODb (in any format).
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv format_account_modb(AccountId, raw)
 
 -spec format_account_modb(kz_term:ne_binary()) -> kz_term:ne_binary().
 format_account_modb(AccountId) ->
     format_account_modb(AccountId, 'raw').
+
+%%------------------------------------------------------------------------------
+%% @doc Given a representation of an MODb, returns the MODb in the specified format.
+%%
+%% <div class="notice">crashes if given anything but an MODb (in any format).</div>
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec format_account_modb(kz_term:ne_binary(), account_format()) -> kz_term:ne_binary().
 format_account_modb(AccountId, 'raw') ->
@@ -395,15 +394,13 @@ format_account_modb(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Normalize the account name by converting the name to lower case
+%%------------------------------------------------------------------------------
+%% @doc Normalize the account name by converting the name to lower case
 %% and then removing all non-alphanumeric characters.
 %%
 %% This can possibly return an empty binary.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_account_name(kz_term:api_binary()) -> kz_term:api_binary().
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
@@ -423,18 +420,18 @@ is_alphanumeric(Char)
 is_alphanumeric(_) ->
     false.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Determine if the given account id/db exists in the hierarchy of
-%% the provided account id/db. Optionally consider the account in
-%% its own hierarchy.
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv is_in_account_hierarchy(CheckFor, InAccount, false)
 
 -spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
 is_in_account_hierarchy(CheckFor, InAccount) ->
     is_in_account_hierarchy(CheckFor, InAccount, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Determine if the given account ID/DB exists in the hierarchy of
+%% the provided account ID/DB. Optionally consider the account in
+%% its own hierarchy if third argument is `true'.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
 is_in_account_hierarchy('undefined', _, _) -> 'false';
@@ -465,12 +462,10 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
+%%------------------------------------------------------------------------------
+%% @doc Determines if the given account ID is super duper admin.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_system_admin(kz_term:api_binary()) -> boolean().
 is_system_admin('undefined') -> 'false';
 is_system_admin(Account) ->
@@ -481,15 +476,13 @@ is_system_admin(Account) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% checks the pvt_enabled flag and returns 'false' only if the flag is
-%% specificly set to 'false'.  If it is missing or set to anything else
-%% return 'true'.  However, if we cant find the account doc then return
-%% 'false'.
+%%------------------------------------------------------------------------------
+%% @doc Checks the `pvt_enabled' flag and returns `false' only if the flag is
+%% specifically set to `false'.  If it is missing or set to anything else
+%% return `true'.  However, if we cant find the account doc then return
+%% `false'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_account_enabled(kz_term:api_binary()) -> boolean().
 is_account_enabled('undefined') -> 'false';
 is_account_enabled(Account) ->
@@ -512,11 +505,10 @@ is_account_expired(Account) ->
             kzd_accounts:is_expired(JObj)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_disable_account(kz_term:ne_binary()) ->
                                    {'ok', kz_json:object()} |
                                    {'error', any()}.
@@ -527,55 +519,50 @@ maybe_disable_account(Account) ->
             disable_account(Account)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disable_account(kz_term:ne_binary()) ->
                              {'ok', kz_json:object()} |
                              {'error', any()}.
 disable_account(Account) ->
     account_update(Account, fun kzd_accounts:disable/1).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec enable_account(kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 enable_account(Account) ->
     account_update(Account, fun kzd_accounts:enable/1).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_superduper_admin(kz_term:ne_binary(), boolean()) ->
                                   {'ok', kz_json:object()} |
                                   {'error', any()}.
 set_superduper_admin(Account, IsAdmin) ->
     account_update(Account, fun(J) -> kzd_accounts:set_superduper_admin(J, IsAdmin) end).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_allow_number_additions(kz_term:ne_binary(), boolean()) ->
                                         {'ok', kz_json:object()} |
                                         {'error', any()}.
 set_allow_number_additions(Account, IsAllowed) ->
     account_update(Account, fun(J) -> kzd_accounts:set_allow_number_additions(J, IsAllowed) end).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec account_update(kzd_accounts:doc()) ->
                             {'ok', kz_json:object()} |
@@ -596,13 +583,11 @@ account_update(Account, UpdateFun) ->
             account_update(UpdateFun(AccountJObj))
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a module name try to verify its existence, loading it into the
-%% the vm if possible.
+%%------------------------------------------------------------------------------
+%% @doc Given a module name try to verify its existence, loading it into the
+%% the Erlang VM if possible.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec try_load_module(atom() | string() | binary()) -> atom() | 'false'.
 try_load_module('undefined') -> 'false';
 try_load_module("undefined") -> 'false';
@@ -619,13 +604,11 @@ try_load_module(Name) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given an JSON Object extracts the Call-ID into the processes
-%% dictionary, failing that the Msg-ID and finally a generic
+%%------------------------------------------------------------------------------
+%% @doc Given an JSON Object extracts the `Call-ID' into the processes
+%% dictionary, failing that the `Msg-ID' and finally a generic.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put_callid(kz_json:object() | kz_term:proplist() | kz_term:ne_binary() | atom()) -> 'ok'.
 put_callid(?NE_BINARY = CallId) ->
     _ = kz_log_md_put('callid', CallId),
@@ -665,11 +648,11 @@ is_kz_log_md_equal(K1, K2) -> K1 =< K2.
 kz_log_md_clear() ->
     lager:md([]).
 
-%% @public
-%% @doc
-%% Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
-%% If time is elapsed, the sub-process is killed & function returns `timeout'.
+%%------------------------------------------------------------------------------
+%% @doc Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
+%% If time is elapsed, the sub-process is killed and returns `timeout'.
 %% @end
+%%------------------------------------------------------------------------------
 -spec runs_in(number(), fun(), list()) -> {ok, any()} | timeout.
 runs_in(MaxTime, Fun, Arguments)
   when is_integer(MaxTime), MaxTime > 0 ->
@@ -733,12 +716,10 @@ set_startup() ->
 startup() ->
     get('$startup').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given an object, extract the category and name into a tuple
+%%------------------------------------------------------------------------------
+%% @doc Given an object, extract the category and name into a tuple.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_event_type(kz_term:api_terms()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 get_event_type(Props) when is_list(Props) ->
     {props:get_value(<<"Event-Category">>, Props)
@@ -804,7 +785,10 @@ uri(BaseUrl, Tokens) ->
     Uri = filename:join([Url | Tokens]),
     <<Pro/binary, "://", Uri/binary>>.
 
-%% fetch and cache the kazoo version from the VERSION file in kazoo's root folder
+%%------------------------------------------------------------------------------
+%% @doc Fetch and cache the kazoo version from the VERSION file in kazoo's root folder/
+%% @end
+%%------------------------------------------------------------------------------
 -spec kazoo_version() -> kz_term:ne_binary().
 kazoo_version() ->
     {_, _, Version} = get_app('kazoo'),
@@ -867,12 +851,10 @@ node_hostname() ->
     [_Name, Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
     Host.
 
-%% @public
 -spec write_file(file:filename_all(), iodata()) -> 'ok'.
 write_file(Filename, Bytes) ->
     write_file(Filename, Bytes, []).
 
-%% @public
 -spec write_file(file:filename_all(), iodata(), [file:mode()]) -> 'ok'.
 write_file(Filename, Bytes, Modes) ->
     case file:write_file(Filename, Bytes, Modes) of
@@ -889,7 +871,6 @@ rename_file(FromFilename, ToFilename) ->
             lager:error("moving file ~s into ~s failed : ~p", [FromFilename, ToFilename, _E])
     end.
 
-%% @public
 -spec delete_file(file:filename_all()) -> 'ok'.
 delete_file(Filename) ->
     case file:delete(Filename) of
@@ -898,7 +879,6 @@ delete_file(Filename) ->
             lager:error("deleting file ~s failed : ~p", [Filename, _E])
     end.
 
-%% @public
 -spec delete_dir(string()) -> 'ok'.
 delete_dir(Dir) ->
     F = fun(D) -> 'ok' = file:del_dir(D) end,
@@ -920,7 +900,6 @@ del_all_files([Dir | T], EmptyDirs) ->
     lists:foreach(fun delete_file/1, Files),
     del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
 
-%% @public
 -spec make_dir(file:filename_all()) -> 'ok'.
 make_dir(Filename) ->
     case file:make_dir(Filename) of
@@ -943,9 +922,10 @@ process_fold(App, App, _, Others) ->
     process_fold(Others, App);
 process_fold(App, _, M, _) -> {App, M}.
 
-%% @doc
-%% For core apps that want to know which app is calling.
+%%------------------------------------------------------------------------------
+%% @doc For core applications that want to know which app is calling.
 %% @end
+%%------------------------------------------------------------------------------
 -spec calling_app() -> kz_term:ne_binary().
 calling_app() ->
     Modules = erlang:process_info(self(),current_stacktrace),
@@ -1003,10 +983,12 @@ application_version(Application) ->
     {'ok', Vsn} = application:get_key(Application, 'vsn'),
     kz_term:to_binary(Vsn).
 
-%% @doc
-%% Like lists:usort/1 but preserves original ordering.
-%% Time: O(nlog(n)).
+%%------------------------------------------------------------------------------
+%% @doc Like `lists:usort/1' but preserves original ordering.
+%%
+%% Time: `O(nlog(n))'
 %% @end
+%%------------------------------------------------------------------------------
 -spec uniq([kz_term:proplist()]) -> kz_term:proplist().
 uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
 uniq([], _, L) -> lists:reverse(L);
@@ -1018,7 +1000,6 @@ uniq([{K,_}=KV|Rest], S, L) ->
             uniq(Rest, NewS, [KV|L])
     end.
 
-%% @public
 -spec iolist_join(Sep, List1) -> List2 when
       Sep :: T,
       List1 :: [T],
@@ -1028,7 +1009,6 @@ iolist_join(_, []) -> [];
 iolist_join(Sep, [H|T]) ->
     [H | iolist_join_prepend(Sep, T)].
 
-%% @private
 -spec iolist_join_prepend(Sep, List1) -> List2 when
       Sep :: T,
       List1 :: [T],

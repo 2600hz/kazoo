@@ -1,25 +1,28 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz, INC
-%%% @doc
-%%% Eacesdrop
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Eavesdrop feature.
 %%%
-%%% data: {
-%%%   "user_id":"_user_id_"
-%%%   ,"device_id":"_device_id_"
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`user_id'</dt>
+%%%   <dd>User ID.</dd>
 %%%
-%%% One of the two - user_id, or device_id - must be defined on
-%%% the data payload. Preference is given by most restrictive option set,
-%%% so device_id is checked for first, then user_id.
+%%%   <dt>`device_id'</dt>
+%%%   <dd>Device ID.</dd>
+%%% </dl>
 %%%
-%%% device_id will only connect to a channel of a specific device,
-%%% user_id will only connect to channel on any of the user's devices*
+%%% One of the two, `user_id' or `device_id', must be defined on the data payload.
+%%% Preference is given by most restrictive option set, so `device_id' is checked
+%%% for first, then `user_id'.
 %%%
+%%% `device_id' will only connect to a channel of a specific device,
+%%% `user_id' will only connect to channel on any of the user's devices.
+%%%
+%%%
+%%% @author SIPLABS LLC (Mikhail Rodionov)
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Mikhail Rodionov)
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_eavesdrop).
 
 -behaviour(gen_cf_action).
@@ -30,13 +33,11 @@
         ,no_permission_to_eavesdrop/1
         ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     _ = case maybe_allowed_to_eavesdrop(Data, Call) of

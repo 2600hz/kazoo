@@ -1,12 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2017 Conversant Ltd
-%%% @doc
-%%% Relays EDR messages to amqp via kapi_edr_amqp
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Relays EDR messages to AMQP via {@link kapi_edr_amqp}.
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%    Max Lay
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(edr_be_amqp).
 
 -behaviour(gen_edr_backend).

@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz Inc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(teletype_fax_inbound_error_to_email).
 
 -export([init/0
@@ -85,10 +83,9 @@ process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
     RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                           ,Macros
-               ),
+                                          ),
     lager:debug("rendered subject: ~s", [Subject]),
 
     EmailsJObj =

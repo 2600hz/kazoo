@@ -1,15 +1,13 @@
-%%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Match list module
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Match list module
 %%% Handle client requests for match list documents
 %%%
+%%%
+%%% @author Kozlov Yakov
+%%% @author SIPLABS, LLC (Maksim Krzhemenevskiy, Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   Kozlov Yakov
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy, Ilya Ashchepkov)
-%%%----------------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_lists_v1).
 
 -export([init/0
@@ -25,9 +23,14 @@
 
 -define(CB_LIST, <<"lists/crossbar_listing">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> any().
 init() ->
     [crossbar_bindings:bind(Binding, ?MODULE, F)
@@ -40,15 +43,13 @@ init() ->
                         ]
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -62,14 +63,11 @@ allowed_methods(_ListId) ->
 allowed_methods(_ListId, _EntryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -80,15 +78,13 @@ resource_exists(_ListId) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_ListId, _EntryId) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -229,12 +225,10 @@ delete(Context, ListId) ->
 delete(Context, _ListId, _EntryId) ->
     crossbar_doc:delete(Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(JObj, Acc) ->

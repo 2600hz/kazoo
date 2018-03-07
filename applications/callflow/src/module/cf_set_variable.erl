@@ -1,17 +1,24 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Set a Custom Channel variable.
 %%%
-%%% "data":{
-%%%   "variable":{{var_name}},
-%%%   "value:{{value}},
-%%%   "channel": "a", "both"
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`variable'</dt>
+%%%   <dd>Name of the variable to set.</dd>
 %%%
+%%%   <dt>`value'</dt>
+%%%   <dd>Value to set.</dd>
+%%%
+%%%   <dt>`channel'</dt>
+%%%   <dd>On which call channel variable should be set, channel (leg) `a',
+%%%   `both', ... . Default is `a'.</dd>
+%%% </dl>
+%%%
+%%%
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%% @contributors
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_set_variable).
 
 -behaviour(gen_cf_action).
@@ -24,12 +31,10 @@
 name_mapping() ->
     [{<<"call_priority">>, <<"Call-Priority">>}].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Value = kz_json:get_ne_binary_value(<<"value">>, Data),

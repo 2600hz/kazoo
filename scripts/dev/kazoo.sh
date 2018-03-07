@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # look for kazoo release root directory
 DEFAULT_ROOT=${KAZOO_ROOT:-_rel/kazoo}
@@ -31,7 +31,8 @@ else
 fi
 echo "Kazoo config file path: $KAZOO_CONFIG"
 
-NODE_NAME=${NODE_NAME:-kazoo_apps@$(hostname -f)}
+HOSTNAME="$(hostname -f)"
+NODE_NAME=${NODE_NAME:-"kazoo_apps@$HOSTNAME"}
 echo "Node name: $NODE_NAME"
 
 COOKIE=${COOKIE:-"change_me"}
@@ -44,4 +45,8 @@ else
     shift
 fi
 
-RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true NODE_NAME="$NODE_NAME" COOKIE="$COOKIE" "$DEFAULT_ROOT"/bin/kazoo $CMD "$*"
+export RELX_REPLACE_OS_VARS=true
+export RELX_MULTI_NODE=true
+export KAZOO_NODE="$NODE_NAME"
+export KAZOO_COOKIE="$COOKIE"
+exec "$DEFAULT_ROOT"/bin/kazoo $CMD "$*"

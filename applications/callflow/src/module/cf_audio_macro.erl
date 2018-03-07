@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Base module for callflow action
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Plays an audio prompt and then continue.
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_audio_macro).
 
 -behaviour(gen_cf_action).
@@ -17,12 +15,10 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     handle_macros(Call, get_macro(Data, Call)).
@@ -146,19 +142,19 @@ schema_test_() ->
                {\"macro\":\"play\"
                 ,\"id\":\"play_me\"
                }
-             ,{\"macro\":\"tts\"
+            ,{\"macro\":\"tts\"
                 ,\"text\":\"this can be said\"
                 ,\"language\":\"en-us\"
                }
-             ,{\"macro\":\"prompt\"
+            ,{\"macro\":\"prompt\"
                 ,\"id\":\"vm-enter_pin\"
                }
-             ,{\"macro\":\"say\"
+            ,{\"macro\":\"say\"
                 ,\"text\":\"123\"
                 ,\"method\":\"pronounced\"
                 ,\"type\":\"number\"
                }
-             ,{\"macro\":\"tone\"
+            ,{\"macro\":\"tone\"
                 ,\"frequencies\":[400,450]
                 ,\"duration_on\":400
                 ,\"duration_off\":200

@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_bookkeeper_http).
 -behaviour(kz_gen_bookkeeper).
 
@@ -41,22 +39,18 @@
 
 -define(HTTP_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_good_standing(_AccountId, Status) ->
     Status =:= kzd_services:status_good().
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     Sync = #sync{id = get_sync_id(AccountId)
@@ -77,10 +71,7 @@ http_request(#sync{method = <<"post">>, url = Url} = Sync) ->
               ],
     Payload = http_payload(Sync),
     lager:debug("attempting http billing sync with ~s: ~s", [Url, Payload]),
-    handle_resp(
-      kz_http:post(Url, Headers, Payload, ?HTTP_OPTS)
-               ,Sync
-     ).
+    handle_resp(kz_http:post(Url, Headers, Payload, ?HTTP_OPTS), Sync).
 
 -spec handle_resp(kz_http:ret(), sync()) -> bookkeeper_sync_result().
 handle_resp({'ok', 200, _, _}, _Sync) ->
@@ -127,32 +118,26 @@ to_list(Value) ->
         'false' -> kz_term:to_list(Value)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
 commit_transactions(_BillingId, Transactions) ->
     kz_transactions:save(Transactions),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> [].
 charge_transactions(_BillingId, _Transactions) -> [].
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
                           {'error', atom()}.
@@ -164,12 +149,10 @@ transactions(AccountId, From, To) ->
             Res
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_topup(kz_term:ne_binary(), kz_transactions:transactions()) -> 'ok'.
 handle_topup(_, []) -> 'ok';
 handle_topup(BillingId, [Transaction|Transactions]) ->

@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(j5_per_minute).
 
 -export([authorize/2]).
@@ -13,12 +11,10 @@
 
 -include("jonny5.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     lager:debug("checking if account ~s has available per-minute credit"
@@ -30,12 +26,10 @@ authorize(Request, Limits) ->
         'true' -> j5_request:authorize(<<"per_minute">>, Request, Limits)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(Request, Limits) ->
     case j5_request:billing(Request, Limits) of
@@ -51,12 +45,10 @@ reconcile_call_cost(Request, Limits) ->
             create_ledger_usage(Seconds, Amount, Request, Limits)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_credit_available(integer(), j5_limits:limits()) -> boolean().
 maybe_credit_available(Amount, Limits) -> maybe_credit_available(Amount, Limits, 'false').
 
@@ -121,12 +113,10 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_ledger_usage(integer(), integer(), j5_request:request(), j5_limits:limits()) -> any().
 create_ledger_usage(Seconds, Amount, Request, Limits) ->
     SrcService = <<"per-minute-voip">>,

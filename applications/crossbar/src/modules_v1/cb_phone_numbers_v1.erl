@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Handle client requests for phone_number documents
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle client requests for phone_number documents
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_phone_numbers_v1).
 
 -export([init/0
@@ -55,10 +51,14 @@
 -define(OFFSET, <<"offset">>).
 -define(QUANTITY, <<"quantity">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
@@ -73,15 +73,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -107,14 +105,11 @@ allowed_methods(_, ?IDENTIFY) ->
 allowed_methods(?COLLECTION, ?ACTIVATE) ->
     [?HTTP_PUT].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -129,12 +124,10 @@ resource_exists(_, ?PORT) -> 'true';
 resource_exists(_, ?IDENTIFY) -> 'true';
 resource_exists(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure we will be able to bill for phone_numbers
+%%------------------------------------------------------------------------------
+%% @doc Ensure we will be able to bill for phone_numbers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec billing(cb_context:context()) -> cb_context:context().
 billing(Context) ->
@@ -152,13 +145,11 @@ billing(Context, _, [{<<"phone_numbers">>, _}|_]) ->
 billing(Context, _Verb, _Nouns) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%%------------------------------------------------------------------------------
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
@@ -167,13 +158,11 @@ authenticate(Context) ->
 -spec authenticate(http_method(), req_nouns()) -> 'true'.
 authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
@@ -182,15 +171,13 @@ authorize(Context) ->
 -spec authorize(http_method(), req_nouns()) -> 'true'.
 authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -317,7 +304,6 @@ summary(Context) ->
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
 
-%% @private
 -spec rename_qs_filters(cb_context:context()) -> cb_context:context().
 rename_qs_filters(Context) ->
     Renamer = fun (<<"filter_state">>, Value)       -> {<<"filter_pvt_state">>, Value};
@@ -328,7 +314,6 @@ rename_qs_filters(Context) ->
     NewQS = kz_json:map(Renamer, cb_context:query_string(Context)),
     cb_context:set_query_string(Context, NewQS).
 
-%% @private
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     Number = kz_json:get_value(<<"key">>, JObj),
@@ -337,26 +322,23 @@ normalize_view_results(JObj, Acc) ->
      | Acc
     ].
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec identify(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 identify(Context, Number) ->
     case knm_number:lookup_account(Number) of
         {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, Number}])
                                        ,Context
-             );
+                                       );
         {'error', E} ->
             set_response({kz_term:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
@@ -368,26 +350,23 @@ identify(Context, Number) ->
             set_response({'ok', JObj}, Number, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Load an instance from the database
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database.
+%% @end
+%%------------------------------------------------------------------------------
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Number) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ],
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
     Result = case knm_number:get(Number, Options) of
                  {'ok', KNum} -> {'ok', knm_number:to_public_json(KNum)};
                  {'error', _R}=Error -> Error
              end,
     set_response(Result, Number, Context).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
@@ -424,34 +403,28 @@ find_numbers(Context) ->
     Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
     cb_context:validate_request_data(<<"phone_numbers">>, Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(Context) ->
     cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
                       ,'undefined'
                       ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_response({'ok', kz_json:object()} |
                    kz_json:object() |
                    knm_number_return() |
@@ -487,8 +460,8 @@ set_response({Error, Reason}, _, Context) ->
     crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context);
 set_response(CollectionJObjOrUnkown, _, Context) ->
     case kz_json:is_json_object(CollectionJObjOrUnkown) of
-        true -> crossbar_util:response(CollectionJObjOrUnkown, Context);
-        false ->
+        'true' -> crossbar_util:response(CollectionJObjOrUnkown, Context);
+        'false' ->
             lager:debug("unexpected response: ~p", [CollectionJObjOrUnkown]),
             cb_context:add_system_error('unspecified_fault', Context)
     end.

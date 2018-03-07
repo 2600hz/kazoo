@@ -1,13 +1,12 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% A really simple escript to accept RPC request and push them
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc A really simple escript to accept RPC request and push them
 %%% into a running kazoo virtual machine.
+%%%
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Pierre Fenoll
-%%%------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(sup).
 
 -export([main/1]).
@@ -227,12 +226,19 @@ stderr(Format, Things) ->
 -spec option_spec_list() -> list().
 option_spec_list() ->
     [{'help', $?, "help", 'undefined', "Show the program options"}
-    ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name"}
-    ,{'cookie', $c, "cookie", {'string', "change_me"}, "Erlang cookie"}
+    ,{'node', $n, "node", {'string', from_env("KAZOO_NODE", "kazoo_apps")}, "Node name"}
+    ,{'cookie', $c, "cookie", {'string', from_env("KAZOO_COOKIE", "change_me")}, "Erlang cookie"}
     ,{'timeout', $t, "timeout", {'integer', 0}, "Command timeout"}
     ,{'verbose', $v, "verbose", 'undefined', "Be verbose"}
     ,{'module', 'undefined', 'undefined', 'string', "The name of the remote module"}
     ,{'function', 'undefined', 'undefined', 'string', "The name of the remote module's function"}
     ].
+
+-spec from_env(list(), list()) -> list().
+from_env(Name, Default) ->
+    case os:getenv(Name) of
+        false -> Default;
+        Value -> Value
+    end.
 
 %%% End of Module

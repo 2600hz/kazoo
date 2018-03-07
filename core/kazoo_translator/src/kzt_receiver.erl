@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Receive call events for various scenarios
+%%% @doc Receive call events for various scenarios
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kzt_receiver).
 
 -include("kzt.hrl").
@@ -656,24 +654,21 @@ maybe_start_recording(#dial_req{record_call='true'
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 recording_meta(Call, MediaName) ->
-    AcctDb = kapps_call:account_db(Call),
-    MediaDoc = kz_doc:update_pvt_parameters(
-                 kz_json:from_list(
-                   [{<<"name">>, MediaName}
-                   ,{<<"description">>, <<"recording ", MediaName/binary>>}
-                   ,{<<"content_type">>, <<"audio/mp3">>}
-                   ,{<<"media_source">>, <<"recorded">>}
-                   ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
-                   ,{<<"pvt_type">>, <<"private_media">>}
-                   ,{<<"from">>, kapps_call:from(Call)}
-                   ,{<<"to">>, kapps_call:to(Call)}
-                   ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
-                   ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
-                   ,{<<"call_id">>, kapps_call:call_id(Call)}
-                   ])
-                                           ,AcctDb
-                ),
-    kz_datamgr:save_doc(AcctDb, MediaDoc).
+    AccountDb = kapps_call:account_db(Call),
+    BaseDoc = kz_json:from_list([{<<"name">>, MediaName}
+                                ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                                ,{<<"content_type">>, <<"audio/mp3">>}
+                                ,{<<"media_source">>, <<"recorded">>}
+                                ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
+                                ,{<<"pvt_type">>, <<"private_media">>}
+                                ,{<<"from">>, kapps_call:from(Call)}
+                                ,{<<"to">>, kapps_call:to(Call)}
+                                ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
+                                ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
+                                ,{<<"call_id">>, kapps_call:call_id(Call)}
+                                ]),
+    MediaDoc = kz_doc:update_pvt_parameters(BaseDoc, AccountDb),
+    kz_datamgr:save_doc(AccountDb, MediaDoc).
 
 recording_name(ALeg, BLeg) ->
     DateTime = kz_time:pretty_print_datetime(calendar:universal_time()),

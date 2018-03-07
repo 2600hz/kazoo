@@ -1,31 +1,47 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% A singular call is as an entire conversation as dialed by the caller,
+%%% @doc A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
-%%% This module is called by cf_exe at the init and destroy points of a call, in order to
-%%% identify the conversation in a singular manner and send out hooks to external URLs.
 %%%
-%%% Hook behavior is disabled by default, and will only be enabled if "singular_call_hook_url"
-%%% in the system_config / callflow configuration is populated.
+%%% This module is called by {@link cf_exe} at the initialization and destroy
+%%% points of a call, in order to identify the conversation in a singular manner
+%%% and send out hooks to external URLs.
 %%%
-%%% Example of JSON hook sent via post on call init:
-%%% {"Event":"init","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
-%%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet"}
+%%% Hook behavior is disabled by default, and will only be enabled if `singular_call_hook_url'
+%%% in the `system_config' or callflow configuration is populated.
 %%%
-%%% Example of JSON hook sent via post on call destroy:
-%%% {"Event":"destroy","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
-%%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet","Duration-Seconds":"33",
-%%%  "Hangup-Cause":"NORMAL_CLEARING","Disposition":"SUCCESS"}
+%%% Example of JSON hook sent via `POST' on call init:
+%%% ```
+%%%    {
+%%%      "Event": "init",
+%%%      "CallID": "OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%%      "To": "+14088317607",
+%%%      "From": "+16505811111",
+%%%      "Inception": "onnet"
+%%%    }
+%%% '''
 %%%
-%%% Note: Be sure to set the internal and external caller IDs for the devices.
-%%% These are used to resolve to/from numbers correctly.
+%%% Example of JSON hook sent via `POST' on call destroy:
+%%% ```
+%%%    {
+%%%      "Event": "destroy",
+%%%      "CallID": "OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%%      "To": "+14088317607",
+%%%      "From": "+16505811111",
+%%%      "Inception": "onnet",
+%%%      "Duration-Seconds": "33",
+%%%      "Hangup-Cause": "NORMAL_CLEARING",
+%%%      "Disposition":"SUCCESS"
+%%%    }
+%%% '''
 %%%
+%%% <div class="notice">Be sure to set the internal and external caller IDs
+%%% for the devices. These are used to resolve to/from numbers correctly.</div>
+%%%
+%%%
+%%% @author Benedict Chan <benchan@sendhub.com>
 %%% @end
-%%% @contributors
-%%%   Benedict Chan (benchan@sendhub.com)
-%%%-------------------------------------------------------------------
-
+%%%-----------------------------------------------------------------------------
 -module(cf_singular_call_hooks).
 -include("callflow.hrl").
 
@@ -40,17 +56,14 @@
         ,get_hook_url/0
         ]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% First we check if this feature is enabled - if not, we return false.
+%%------------------------------------------------------------------------------
+%% @doc First we check if this feature is enabled - if not, we return false.
 %% Next we check if the call is an indicator for the start of a singular call (A-leg),
 %% and if so, then we know the call should be hooked.
 %% We then can start the event listener, which will send init and end hooks.
 %%
-%% @spec maybe_hook_call(kapps_call:call()) -> ok.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_hook_call(kapps_call:call()) -> boolean().
 maybe_hook_call(Call) ->
     %% Never invoke anything if we are disabled
@@ -62,15 +75,12 @@ maybe_hook_call(Call) ->
         'false' -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Sends an initial request signifying the start of this entire conversation
-%% in a hook to a preconfigured URL.
+%%------------------------------------------------------------------------------
+%% @doc Sends an initial request signifying the start of this entire conversation
+%% in a hook to a pre-configured URL.
 %%
-%% @spec send_init_hook(kapps_call:call()) -> boolean().
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_init_hook(kapps_call:call()) -> boolean().
 send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
@@ -104,15 +114,12 @@ send_init_hook(Call) ->
             'true'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Sends a request signifying the end of this entire conversation in a
-%% hook to a preconfigured URL.
+%%------------------------------------------------------------------------------
+%% @doc Sends a request signifying the end of this entire conversation in a
+%% hook to a pre-configured URL.
 %%
-%% @spec send_end_hook(kapps_call:call(), kz_json:object()) -> boolean().
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_end_hook(kapps_call:call(), kz_json:object()) -> boolean().
 send_end_hook(Call, Event) ->
     lager:debug("===CALL ENDED===", []),
@@ -160,41 +167,33 @@ send_end_hook(Call, Event) ->
             'true'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Checks if there is a non-empty hook url and that the call is singular (or a transfer)
+%%------------------------------------------------------------------------------
+%% @doc Checks if there is a non-empty hook URL and that the call is singular (or a transfer)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec should_hook(kapps_call:call()) -> boolean().
 should_hook(Call) ->
     is_enabled()
         andalso call_is_singular(Call).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Checks if the singular call hook is enabled in the callflow system config.
-%% The call hook is enabled if the URL in the system_config / callflows / singular_call_hook_url
+%%------------------------------------------------------------------------------
+%% @doc Checks if the singular call hook is enabled in the callflow system config.
+%% The call hook is enabled if the URL in the `system_config' / callflows / `singular_call_hook_url'
 %% field is not set to disabled.
 %%
-%% @spec is_enabled() -> boolean().
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_enabled() -> boolean().
 is_enabled() ->
     (not kz_term:is_empty(get_hook_url())).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function identifies if a call is the first of the conversation by checking if it
-%% has an existing bridge. We also check the presence of referredby and
-%% want to send the hook if it is a call transfer
+%%------------------------------------------------------------------------------
+%% @doc This function identifies if a call is the first of the conversation by
+%% checking if it has an existing bridge. We also check the presence of referred
+%% by and want to send the hook if it is a call transfer
 %%
-%% @spec call_is_singular(kapps_call:call()) -> boolean().
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_is_singular(kapps_call:call()) -> boolean().
 call_is_singular(Call) ->
     BridgeID = kapps_call:custom_channel_var(<<"Bridge-ID">>, Call),
@@ -204,14 +203,10 @@ call_is_singular(Call) ->
         orelse (BridgeID =:= CallID)
         orelse (ReferredBy =/= 'undefined').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Gets where the call was started. If kapps_call returns undefined, it was on net.
-%%
-%% @spec get_inception(kapps_call:call()) -> kz_term:ne_binary().
+%%------------------------------------------------------------------------------
+%% @doc Gets where the call was started. If kapps_call returns undefined, it was on net.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_inception(kapps_call:call()) -> kz_term:ne_binary().
 get_inception(Call) ->
     case kapps_call:inception(Call) of
@@ -219,14 +214,10 @@ get_inception(Call) ->
         _Else -> <<"offnet">>
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Gets the singular call hook URL from the configuration (may be cached).
-%%
-%% @spec get_hook_url() -> kz_term:ne_binary().
+%%------------------------------------------------------------------------------
+%% @doc Gets the singular call hook URL from the configuration (may be cached).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_hook_url() -> kz_term:ne_binary().
 get_hook_url() ->
     kapps_config:get_binary(?CF_CONFIG_CAT, <<"singular_call_hook_url">>, <<"">>).

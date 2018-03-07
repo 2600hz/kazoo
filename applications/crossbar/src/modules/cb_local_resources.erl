@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Handle client requests for local resource documents
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle client requests for local resource documents
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_local_resources).
 
 -export([init/0]).
@@ -24,21 +20,23 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".local_resources">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_maintenance:start_module('cb_resources'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
     check_for_registering_gateways(ResourceId, Context).
@@ -69,14 +67,11 @@ check_if_peer(ResourceId, Context) ->
         {'true', 'true'} ->
             check_if_gateways_have_ip(ResourceId, Context);
         {'true', 'false'} ->
-            C = cb_context:add_validation_error(
-                  [<<"peer">>]
+            C = cb_context:add_validation_error([<<"peer">>]
                                                ,<<"forbidden">>
-                                               ,kz_json:from_list([
-                                                                   {<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}
-                                                                  ])
+                                               ,kz_json:from_list([{<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}])
                                                ,Context
-                 ),
+                                               ),
             check_resource_schema(ResourceId, C);
         {_, _} ->
             check_resource_schema(ResourceId, Context)
@@ -96,15 +91,13 @@ validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
 validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
     check_resource_schema(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
 validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
-    C = cb_context:add_validation_error(
-          [<<"gateways">>, Idx, <<"server">>]
+    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                        ,<<"required">>
-                                       ,kz_json:from_list([
-                                                           {<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
+                                       ,kz_json:from_list([{<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
                                                           ,{<<"cause">>, Idx}
                                                           ])
                                        ,Context
-         ),
+                                       ),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C));
 validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     case kz_network_utils:is_ipv4(ServerIP) of
@@ -113,15 +106,13 @@ validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, Resource
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error(
-                          [<<"gateways">>, Idx, <<"server">>]
+                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                                        ,<<"unique">>
-                                                       ,kz_json:from_list([
-                                                                           {<<"message">>, <<"Gateway server ip is already in use">>}
+                                                       ,kz_json:from_list([{<<"message">>, <<"Gateway server ip is already in use">>}
                                                                           ,{<<"cause">>, Idx}
                                                                           ])
                                                        ,Context
-                         ),
+                                                       ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
@@ -134,11 +125,9 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error([
-                                                         <<"gateways">>, Idx, <<"inbound_ip">>]
+                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"inbound_ip">>]
                                                        ,<<"unique">>
-                                                       ,kz_json:from_list([
-                                                                           {<<"message">>, <<"Gateway inbound ip is already in use">>}
+                                                       ,kz_json:from_list([{<<"message">>, <<"Gateway inbound ip is already in use">>}
                                                                           ,{<<"cause">>, Idx}
                                                                           ])
                                                        ,Context
@@ -160,12 +149,10 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"resource">>)).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_aggregate_resource(cb_context:context()) -> boolean().
 maybe_aggregate_resource(Context) ->
@@ -186,7 +173,6 @@ maybe_aggregate_resource(Context, 'success') ->
     end;
 maybe_aggregate_resource(_Context, _Status) -> 'false'.
 
-
 -spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggregate(ResourceId, Context) ->
     maybe_remove_aggregate(ResourceId, Context, cb_context:resp_status(Context)).
@@ -203,12 +189,10 @@ maybe_remove_aggregate(ResourceId, _Context, 'success') ->
     end;
 maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type sip_auth_ip() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
 -type sip_auth_ips() :: [sip_auth_ip()].
 
@@ -234,11 +218,10 @@ get_all_acl_ips() ->
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp = kapps_util:amqp_pool_request(
-             props:filter_undefined(Req)
-                                       ,fun kapi_sysconf:publish_get_req/1
-                                       ,fun kapi_sysconf:get_resp_v/1
-            ),
+    Resp = kz_amqp_worker:call(props:filter_undefined(Req)
+                              ,fun kapi_sysconf:publish_get_req/1
+                              ,fun kapi_sysconf:get_resp_v/1
+                              ),
     case Resp of
         {'error', _} -> [];
         {'ok', JObj} ->
@@ -280,11 +263,10 @@ validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
                                       orelse ResourceId =:= Id
                           end, SIPAuth).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_aggregate_resources(kz_json:objects()) -> 'ok'.
 maybe_aggregate_resources([]) -> 'ok';
 maybe_aggregate_resources([Resource|Resources]) ->
@@ -304,11 +286,10 @@ maybe_aggregate_resources([Resource|Resources]) ->
             _ = maybe_remove_aggregates([Resource]),
             maybe_aggregate_resources(Resources)
     end.
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_remove_aggregates(kz_json:objects()) -> 'ok'.
 maybe_remove_aggregates([]) -> 'ok';
 maybe_remove_aggregates([Resource|Resources]) ->

@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listener for reg_success, and reg_query AMQP requests
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Listener for reg_success, and reg_query AMQP requests
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_registrar).
 -behaviour(gen_listener).
 
@@ -117,13 +115,14 @@
 -type registration() :: #registration{}.
 -type registrations() :: [registration()].
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
@@ -367,16 +366,14 @@ flush(Username, Realm) ->
 -spec count() -> non_neg_integer().
 count() -> ets:info(?MODULE, 'size').
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_listener callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
@@ -387,34 +384,18 @@ init([]) ->
     gproc:reg({'p', 'l', ?REGISTER_SUCCESS_REG}),
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('registrar_sync', #state{queue=Q}=State) ->
     Payload = kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION),
@@ -473,16 +454,10 @@ handle_cast(_Msg, State) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('expire', State) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
@@ -498,50 +473,44 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling AMQP event objects
-%%
-%% @spec handle_event(JObj, State) -> {reply, Props}
+%%------------------------------------------------------------------------------
+%% @doc Handling AMQP event objects
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{started=Started}) ->
     {'reply', [{'registrar_age', kz_time:now_s() - Started}]}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_listener when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_listener terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_listener' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_listener' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), any()) -> 'ok'.
 terminate(_Reason, _) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("ecallmgr registrar ~p termination", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec insert_registration(registration()) -> 'ok'.
 insert_registration(#registration{expires=0}=Registration) ->
     lager:info("deleting registration ~s@~s with contact ~s"
@@ -838,36 +807,35 @@ create_registration(JObj) ->
                                  ,JObj
                                  ,Reg#registration.registrar_hostname
                                  ),
-    augment_registration(
-      Reg#registration{username=Username
-                      ,realm=Realm
-                      ,proxy=Proxy
-                      ,proxy_ip=ProxyIP
-                      ,proxy_port=ProxyPort
-                      ,proxy_proto=ProxyProto
-                      ,expires=Expires
-                      ,registrar_node=RegistrarNode
-                      ,registrar_hostname=RegistrarHostname
-                      ,contact=fix_contact(OriginalContact)
-                      ,original_contact=OriginalContact
-                      ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
-                      ,previous_contact=kz_json:get_value(<<"Previous-Contact">>, JObj, Reg#registration.previous_contact)
-                      ,last_registration=kz_json:get_integer_value(<<"Last-Registration">>, JObj, Reg#registration.last_registration)
-                      ,initial_registration=kz_json:get_integer_value(<<"Initial-Registration">>, JObj, Reg#registration.initial_registration)
-                      ,network_port=kz_json:get_value(<<"Network-Port">>, JObj, Reg#registration.network_port)
-                      ,network_ip=kz_json:get_value(<<"Network-IP">>, JObj, Reg#registration.network_ip)
-                      ,to_host=kz_json:get_value(<<"To-Host">>, JObj, Reg#registration.to_host)
-                      ,to_user=kz_json:get_value(<<"To-User">>, JObj, Reg#registration.to_user)
-                      ,from_host=kz_json:get_value(<<"From-Host">>, JObj, Reg#registration.from_host)
-                      ,from_user=kz_json:get_value(<<"From-User">>, JObj, Reg#registration.from_user)
-                      ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, Reg#registration.call_id)
-                      ,user_agent=kz_json:get_value(<<"User-Agent">>, JObj, Reg#registration.user_agent)
-                      ,initial=kz_json:is_true(<<"First-Registration">>, JObj, Reg#registration.initial)
-                      ,source_ip=kz_json:get_value(<<"Source-IP">>, JObj)
-                      ,source_port=kz_json:get_value(<<"Source-Port">>, JObj)
-                      }
+    augment_registration(Reg#registration{username=Username
+                                         ,realm=Realm
+                                         ,proxy=Proxy
+                                         ,proxy_ip=ProxyIP
+                                         ,proxy_port=ProxyPort
+                                         ,proxy_proto=ProxyProto
+                                         ,expires=Expires
+                                         ,registrar_node=RegistrarNode
+                                         ,registrar_hostname=RegistrarHostname
+                                         ,contact=fix_contact(OriginalContact)
+                                         ,original_contact=OriginalContact
+                                         ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
+                                         ,previous_contact=kz_json:get_value(<<"Previous-Contact">>, JObj, Reg#registration.previous_contact)
+                                         ,last_registration=kz_json:get_integer_value(<<"Last-Registration">>, JObj, Reg#registration.last_registration)
+                                         ,initial_registration=kz_json:get_integer_value(<<"Initial-Registration">>, JObj, Reg#registration.initial_registration)
+                                         ,network_port=kz_json:get_value(<<"Network-Port">>, JObj, Reg#registration.network_port)
+                                         ,network_ip=kz_json:get_value(<<"Network-IP">>, JObj, Reg#registration.network_ip)
+                                         ,to_host=kz_json:get_value(<<"To-Host">>, JObj, Reg#registration.to_host)
+                                         ,to_user=kz_json:get_value(<<"To-User">>, JObj, Reg#registration.to_user)
+                                         ,from_host=kz_json:get_value(<<"From-Host">>, JObj, Reg#registration.from_host)
+                                         ,from_user=kz_json:get_value(<<"From-User">>, JObj, Reg#registration.from_user)
+                                         ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, Reg#registration.call_id)
+                                         ,user_agent=kz_json:get_value(<<"User-Agent">>, JObj, Reg#registration.user_agent)
+                                         ,initial=kz_json:is_true(<<"First-Registration">>, JObj, Reg#registration.initial)
+                                         ,source_ip=kz_json:get_value(<<"Source-IP">>, JObj)
+                                         ,source_port=kz_json:get_value(<<"Source-Port">>, JObj)
+                                         }
                         ,JObj
-     ).
+                        ).
 
 -spec augment_registration(registration(), kz_json:object()) -> registration().
 augment_registration(Reg, JObj) ->
@@ -928,11 +896,7 @@ augment_registration(Reg, JObj) ->
 -spec fix_contact(kz_term:api_binary()) -> kz_term:api_binary().
 fix_contact('undefined') -> 'undefined';
 fix_contact(Contact) ->
-    binary:replace(Contact
-                  ,[<<"<">>, <<">">>]
-                  ,<<>>
-                  ,['global']
-                  ).
+    binary:replace(Contact, [<<"<">>, <<">">>], <<>>, ['global']).
 
 -spec bridge_uri(kz_term:api_binary(), kz_term:api_binary(), binary(), binary()) -> kz_term:api_binary().
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';

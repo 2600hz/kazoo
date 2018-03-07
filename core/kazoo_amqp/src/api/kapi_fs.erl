@@ -1,16 +1,15 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018 2600Hz
-%%% @doc
-%%% FS passthrough API
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc FreeSwitch `passthrough' API.
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_fs).
 
 -export([req/1, req_v/1]).
 -export([declare_exchanges/0]).
 -export([publish_req/2, publish_req/3]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
 -define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).
@@ -24,12 +23,11 @@
                                                    (App) -> lists:member(App, ?FS_COMMAND_WHITELIST)
                                                 end}]).
 
-%%--------------------------------------------------------------------
-%% @doc FS Request
-%%     Pass-through of FS dialplan commands
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc FreeSwitch Request, Pass-through of FreeSwitch dialplan commands.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
@@ -45,14 +43,13 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callctl_exchange().
+    kz_amqp_util:callctl_exchange().
 
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_req(Queue, JObj) ->
@@ -61,4 +58,4 @@ publish_req(Queue, JObj) ->
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Queue, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?FS_REQ_VALUES, fun req/1),
-    amqp_util:callctl_publish(Queue, Payload, ContentType).
+    kz_amqp_util:callctl_publish(Queue, Payload, ContentType).

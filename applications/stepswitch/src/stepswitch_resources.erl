@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stepswitch_resources).
 
 -export([get_props/0, get_props/1, get_props/2]).
@@ -31,6 +29,7 @@
         ,get_resrc_gateways/1
         ,get_resrc_is_emergency/1
         ,get_resrc_require_flags/1
+        ,get_resrc_ignore_flags/1
         ,get_resrc_global/1
         ,get_resrc_format_from_uri/1
         ,get_resrc_from_uri_realm/1
@@ -58,6 +57,7 @@
         ,set_resrc_gateways/2
         ,set_resrc_is_emergency/2
         ,set_resrc_require_flags/2
+        ,set_resrc_ignore_flags/2
         ,set_resrc_global/2
         ,set_resrc_format_from_uri/2
         ,set_resrc_from_uri_realm/2
@@ -135,6 +135,7 @@
                ,gateways = [] :: list()
                ,is_emergency = 'false' :: boolean()
                ,require_flags = 'false' :: boolean()
+               ,ignore_flags = 'false' :: boolean()
                ,global = 'true' :: boolean()
                ,format_from_uri = 'false' :: boolean()
                ,from_uri_realm :: kz_term:api_binary()
@@ -197,6 +198,7 @@ resource_to_props(#resrc{}=Resource) ->
       ,{<<"From-URI-Realm">>, Resource#resrc.from_uri_realm}
       ,{<<"From-Account-Realm">>, Resource#resrc.from_account_realm}
       ,{<<"Require-Flags">>, Resource#resrc.require_flags}
+      ,{<<"Ignore-Flags">>, Resource#resrc.ignore_flags}
       ,{<<"Is-Emergency">>, Resource#resrc.is_emergency}
       ,{<<"T38">>, Resource#resrc.fax_option}
       ,{<<"Bypass-Media">>, Resource#resrc.bypass_media}
@@ -215,12 +217,10 @@ sort_resources(Resources) ->
                        W1 =< W2
                end, Resources).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 endpoints(Number, OffnetJObj) ->
     case maybe_get_endpoints(Number, OffnetJObj) of
@@ -272,12 +272,10 @@ endpoint_ordering(P1, P2) ->
     kz_json:get_value(<<"Weight">>, P1, 1)
         =< kz_json:get_value(<<"Weight">>, P2, 1).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reverse_lookup(kz_json:object()) ->
                             {'ok', kz_term:proplist()} |
                             {'error', 'not_found'}.
@@ -408,12 +406,10 @@ search_gateway(_, _, Realm, #gateway{server=Realm
 search_gateway(_, _, _, _) ->
     {'error', 'not_found'}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_resources(kz_term:ne_binaries(), resources()) -> resources().
 filter_resources([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
@@ -439,6 +435,9 @@ resource_has_flags(Flags, Resource) ->
     lists:all(HasFlag, Flags).
 
 -spec resource_has_flag(kz_term:ne_binary(), resource()) -> boolean().
+resource_has_flag(_, #resrc{ignore_flags='true', id=_Id}) ->
+    lager:debug("resource ~s is used regardless of flags", [_Id]),
+    'true';
 resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
     case kz_term:is_empty(Flag)
         orelse lists:member(Flag, ResourceFlags)
@@ -449,12 +448,10 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resources_to_endpoints(resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->
                                     kz_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
@@ -641,12 +638,10 @@ evaluate_rules([Rule|Rules], Number) ->
 evaluate_cid_rules([], _) -> {'ok','empty_rules'};
 evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateways_to_endpoints(kz_term:ne_binary(), gateways(), kapi_offnet_resource:req(), kz_json:objects()) ->
                                    kz_json:objects().
 gateways_to_endpoints(_Number, [], _OffnetJObj, Endpoints) -> Endpoints;
@@ -837,12 +832,10 @@ gateway_emergency_resource(#gateway{is_emergency='true'}) ->
     <<"true">>;
 gateway_emergency_resource(_) -> 'undefined'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get() -> resources().
 get() -> get('undefined').
 
@@ -879,12 +872,10 @@ get_local_resource(ResourceId, AccountId) ->
         Resources -> get_resource(ResourceId, Resources)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_global_resources() -> resources().
 -ifdef(TEST).
 fetch_global_resources() ->
@@ -907,12 +898,10 @@ fetch_global_resources() ->
     end.
 -endif.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_local_resources(kz_term:ne_binary()) -> resources().
 -ifdef(TEST).
 fetch_local_resources(AccountId) ->
@@ -963,12 +952,10 @@ build_account_dedicated_proxy(Proxy) ->
     ProxyIP = kz_json:get_value(<<"ip">>, Proxy),
     {Zone, ProxyIP}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resources_from_jobjs(kz_json:objects()) -> resources().
 resources_from_jobjs(JObjs) ->
@@ -1054,12 +1041,10 @@ classifier_is_emergency(ClassifierJObj, <<"emergency">>, _DefaultEmergency) ->
 classifier_is_emergency(ClassifierJObj, _Classifier, DefaultEmergency) ->
     kz_json:is_true(<<"emergency">>, ClassifierJObj, DefaultEmergency).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type rule() :: re:mp().
 -type rules() :: [rule()].
 
@@ -1070,6 +1055,7 @@ resource_from_jobj(JObj) ->
                      ,name=kz_json:get_value(<<"name">>, JObj)
                      ,flags=kz_json:get_value(<<"flags">>, JObj, [])
                      ,require_flags=kz_json:is_true(<<"require_flags">>, JObj)
+                     ,ignore_flags=kz_json:is_true(<<"ignore_flags">>, JObj)
                      ,format_from_uri=kz_json:is_true(<<"format_from_uri">>, JObj)
                      ,from_uri_realm=kz_json:get_ne_value(<<"from_uri_realm">>, JObj)
                      ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, JObj)
@@ -1160,12 +1146,10 @@ resource_is_emergency(JObj) ->
     kz_json:is_true(<<"emergency">>, JObj)
         orelse (kz_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateways_from_jobjs(kz_json:objects(), resource()) -> gateways().
 gateways_from_jobjs(JObjs, Resource) ->
     gateways_from_jobjs(JObjs, Resource, []).
@@ -1180,12 +1164,10 @@ gateways_from_jobjs([JObj|JObjs], Resource, Gateways) ->
             gateways_from_jobjs(JObjs, Resource, G)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateway_from_jobj(kz_json:object(), resource()) -> gateway().
 gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                               ,format_from_uri=FormatFrom
@@ -1263,12 +1245,10 @@ endpoint_options(JObj, <<"sip">>) ->
 endpoint_options(_, _) ->
     kz_json:new().
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Build the sip url of a resource gateway
+%%------------------------------------------------------------------------------
+%% @doc Build the sip url of a resource gateway
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateway_dialstring(gateway(), kz_term:ne_binary()) -> kz_term:ne_binary().
 gateway_dialstring(#gateway{route='undefined'
                            ,prefix=Prefix
@@ -1290,7 +1270,6 @@ gateway_dialstring(#gateway{route='undefined'
 gateway_dialstring(#gateway{route=Route}, _) ->
     lager:debug("using pre-configured gateway route ~s", [Route]),
     Route.
-
 
 -spec get_resrc_id(resource()) -> kz_term:api_binary().
 get_resrc_id(#resrc{id=Id}) -> Id.
@@ -1331,6 +1310,9 @@ get_resrc_is_emergency(#resrc{is_emergency=IsEmergency}) -> IsEmergency.
 -spec get_resrc_require_flags(resource()) -> boolean().
 get_resrc_require_flags(#resrc{require_flags=RequireFlags}) -> RequireFlags.
 
+-spec get_resrc_ignore_flags(resource()) -> boolean().
+get_resrc_ignore_flags(#resrc{ignore_flags=IgnoreFlags}) -> IgnoreFlags.
+
 -spec get_resrc_global(resource()) -> boolean().
 get_resrc_global(#resrc{global=Global}) -> Global.
 
@@ -1366,7 +1348,6 @@ get_resrc_classifier(#resrc{classifier=Classifier}) -> Classifier.
 
 -spec get_resrc_classifier_enable(resource()) -> boolean().
 get_resrc_classifier_enable(#resrc{classifier_enable=Enabled}) -> Enabled.
-
 
 -spec set_resrc_id(resource(), kz_term:api_binary()) -> resource().
 set_resrc_id(Resource, Id) -> Resource#resrc{id=Id}.
@@ -1406,6 +1387,9 @@ set_resrc_is_emergency(Resource, IsEmergency) -> Resource#resrc{is_emergency=IsE
 
 -spec set_resrc_require_flags(resource(), boolean()) -> resource().
 set_resrc_require_flags(Resource, RequireFlags) -> Resource#resrc{require_flags=RequireFlags}.
+
+-spec set_resrc_ignore_flags(resource(), boolean()) -> resource().
+set_resrc_ignore_flags(Resource, IgnoreFlags) -> Resource#resrc{ignore_flags=IgnoreFlags}.
 
 -spec set_resrc_global(resource(), boolean()) -> resource().
 set_resrc_global(Resource, Global) -> Resource#resrc{global=Global}.

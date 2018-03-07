@@ -1,7 +1,7 @@
 #!/usr/bin/env escript
 %%! -noinput
 
-%%% ===========================================================================
+%%%=============================================================================
 %%% Analyze every .beam file in the given paths, find out which external calls
 %%% each make, and list those calls that are to the standard Erlang apps (such
 %%% as stdlib).
@@ -11,7 +11,7 @@
 %%%
 %%% The beam files must be compiled with debug_info otherwise those files will
 %%% be skipped with an error message.
-%%% ===========================================================================
+%%%=============================================================================
 -mode(compile).
 
 main([_|_]=DirList) ->

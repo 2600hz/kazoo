@@ -313,6 +313,10 @@
             "minimum": 1,
             "type": "integer"
         },
+        "ignore_flags": {
+            "description": "When set to true this resource is used if the rules/classifiers match regardless of flags",
+            "type": "boolean"
+        },
         "media": {
             "$ref": "endpoint.media",
             "description": "Media options for resources"

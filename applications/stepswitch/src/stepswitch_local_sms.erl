@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stepswitch_local_sms).
 
 -export([local_message_handling/2]).
@@ -91,10 +89,9 @@ delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
                | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
               ]),
 
-    kz_json:set_values(
-      Props
+    kz_json:set_values(Props
                       ,kz_json:delete_keys(Keys, OffnetJObj)
-     ).
+                      ).
 
 -spec request_caller_id(kapi_offnet_resource:req()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 request_caller_id(OffnetReq) ->

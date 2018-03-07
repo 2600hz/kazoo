@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Handle failover provisioning
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Handle failover provisioning
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_force_outbound).
 -behaviour(knm_gen_provider).
 
@@ -17,7 +15,6 @@
 -define(KEY, ?FEATURE_FORCE_OUTBOUND).
 
 
-%% @public
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(N) ->
     case knm_phone_number:state(knm_number:phone_number(N)) of
@@ -25,7 +22,6 @@ save(N) ->
         _ -> delete(N)
     end.
 
-%% @public
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(N) ->
     case feature(N) =:= undefined of

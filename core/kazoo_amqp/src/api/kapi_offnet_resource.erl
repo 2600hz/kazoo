@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_offnet_resource).
 
 -export([req/1, req_v/1]).
@@ -70,7 +68,7 @@
         ,put_callid/1
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 -include_lib("kazoo_amqp/include/kz_amqp.hrl").
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
@@ -183,11 +181,11 @@
 -define(OFFNET_RESOURCE_RESP_TYPES, []).
 
 
-%%--------------------------------------------------------------------
-%% @doc Offnet resource request - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Offnet resource request.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
@@ -203,11 +201,11 @@ req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Offnet resource request - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Offnet resource request.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
@@ -225,20 +223,19 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
+    kz_amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
+    kz_amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:resource_exchange().
+    kz_amqp_util:resource_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
@@ -247,7 +244,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun req/1),
-    amqp_util:offnet_resource_publish(Payload, ContentType).
+    kz_amqp_util:offnet_resource_publish(Payload, ContentType).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
@@ -256,7 +253,7 @@ publish_resp(TargetQ, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec force_outbound(req()) -> boolean().
 force_outbound(Req) ->

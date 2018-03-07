@@ -1,16 +1,14 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% VMBoxes module
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc VMBoxes module
 %%% Handle client requests for vmbox documents
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_vmboxes).
 
 -export([init/0
@@ -51,10 +49,14 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".voicemail">>).
 -define(NORMALIZATION_FORMAT, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.vmboxes">>, ?MODULE, 'content_types_accepted'),
@@ -68,15 +70,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -102,14 +102,11 @@ allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId) ->
 allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -126,13 +123,10 @@ resource_exists(_, ?MESSAGES_RESOURCE, _) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Add content types accepted by this module
-%%
+%%------------------------------------------------------------------------------
+%% @doc Add content types accepted by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec acceptable_content_types() -> kz_term:proplist().
 acceptable_content_types() -> ?ALL_MIME_TYPES.
 
@@ -161,13 +155,10 @@ maybe_add_types_accepted(Context, ?BIN_DATA, ?HTTP_GET) ->
     cb_context:set_content_types_accepted(Context, CTA);
 maybe_add_types_accepted(Context, _, _) -> Context.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Add content types provided by this module
-%%
+%%------------------------------------------------------------------------------
+%% @doc Add content types provided by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(Context, _VMBox, ?MESSAGES_RESOURCE) ->
     maybe_add_types_provided(Context, ?MESSAGES_RESOURCE, cb_context:req_verb(Context)).
@@ -191,15 +182,13 @@ maybe_add_types_provided(Context, ?BIN_DATA, ?HTTP_GET) ->
     cb_context:set_content_types_provided(Context, CTP);
 maybe_add_types_provided(Context, _, _) -> Context.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -309,12 +298,10 @@ load_or_upload(DocId, MediaId, Context, ?HTTP_PUT) ->
 load_or_upload(DocId, MediaId, Context, ?HTTP_GET) ->
     load_message_binary(DocId, MediaId, Context).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
@@ -374,11 +361,10 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
             update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
@@ -391,11 +377,10 @@ put(Context, _DocId, ?MESSAGES_RESOURCE) ->
 put(Context, _DocId, ?MESSAGES_RESOURCE, MsgID, ?BIN_DATA) ->
     maybe_save_attachment(cb_context:set_account_db(Context, kvm_util:get_db(cb_context:account_id(Context), MsgID))).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DocId) ->
@@ -425,11 +410,10 @@ delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
@@ -439,21 +423,24 @@ patch(Context, _Id) ->
     %% remove messages array to not let it exposed
     crossbar_util:response(kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1)), C1).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec add_pvt_auth_funs(cb_context:context()) -> [fun((kz_json:object()) -> kz_json:object())].
 add_pvt_auth_funs(Context) ->
     [fun(JObj) -> crossbar_doc:add_pvt_auth(JObj, Context) end].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc disallow vmbox messages array changing
-%% also check if vmbox has still message array
+%%------------------------------------------------------------------------------
+%% @doc disallow vmbox messages array changing.
+%% Also check if vmbox has still message array
 %% and inform client to do migrate their vmbox
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_mailbox_for_messages_array(cb_context:context(), kz_term:api_objects()) -> cb_context:context().
 check_mailbox_for_messages_array(Context, 'undefined') -> Context;
 check_mailbox_for_messages_array(Context, []) -> Context;
@@ -497,11 +484,10 @@ save_attachment(Context, Filename, FileJObj) ->
         _ -> C1
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_folder_filter(cb_context:context(), kz_term:ne_binary()) -> kvm_message:vm_folder().
 get_folder_filter(Context, Default) ->
     ReqData = cb_context:req_data(Context),
@@ -515,14 +501,13 @@ get_folder_filter(Context, Default) ->
         _ -> Default
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Filter messages(JObjs) based on Folder or Ids and
-%% apply query strings filters on them as well
+%% apply query strings filters on them as well.
 %%
-%% Note: Filter can be <<"all">> which return all messages.
+%% Note: Filter can be `<<"all">>' which return all messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type filter_options() :: kvm_message:vm_folder() | kz_term:ne_binaries().
 
 -spec filter_messages(kz_json:objects(), filter_options(), cb_context:context()) -> kz_term:ne_binaries().
@@ -618,22 +603,18 @@ normalization_format(Context) ->
         {'error', _} -> ?NORMALIZATION_FORMAT
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context) ->
@@ -651,24 +632,20 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
             check_vmbox_schema(VMBoxId, C)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_vmbox_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_vmbox_schema(VMBoxId, Context) ->
     Context1 = maybe_migrate_notification_emails(Context),
     OnSuccess = fun(C) -> on_successful_validation(VMBoxId, C) end,
     cb_context:validate_request_data(<<"vmboxes">>, Context1, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_migrate_notification_emails(cb_context:context()) -> cb_context:context().
 maybe_migrate_notification_emails(Context) ->
     ReqData = cb_context:req_data(Context),
@@ -685,12 +662,10 @@ maybe_migrate_notification_emails(Context) ->
         'false' -> Context
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
@@ -699,22 +674,18 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(VMBoxId, Context) ->
     crossbar_doc:load_merge(VMBoxId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%  Support PATCH - merge vmbox document with request data
+%%------------------------------------------------------------------------------
+%% @doc Support PATCH - merge vmbox document with request data
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_patch(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_patch(Context, DocId)->
     crossbar_doc:patch_and_validate(DocId, Context, fun validate_request/2).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of vmboxes, each summarized.
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load list of vmboxes, each summarized.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
@@ -746,12 +717,10 @@ merge_summary_fold(BoxSummary, CountMap) ->
             kz_json:set_value(?VM_KEY_MESSAGES, MsgsArrayCount + New + Saved, BoxSummary)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a vmbox document from the database
+%%------------------------------------------------------------------------------
+%% @doc Load a vmbox document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type source_id() :: kz_term:api_binary() | kz_term:api_binaries().
 
 -spec maybe_load_vmboxes(source_id(), cb_context:context()) -> cb_context:context().
@@ -788,12 +757,10 @@ empty_source_id(Context) ->
     Message = kz_json:from_list([{<<"message">>, <<"empty source_id is specified. please set a single or a list of source_ids.">>}]),
     cb_context:add_validation_error(<<"source_id">>, <<"required">>, Message, Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get messages summary for a given mailbox
+%%------------------------------------------------------------------------------
+%% @doc Get messages summary for a given mailbox
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_message_summary(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
     {MaxRange, RetentionSeconds} = get_max_range(Context),
@@ -843,17 +810,15 @@ message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
      | Acc
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% For Backward compatibility with voicemail box `messages` array, set
-%% `max_range` to retention seconds to get all messages which are in
+%%------------------------------------------------------------------------------
+%% @doc For Backward compatibility with voicemail box `messages' array, set
+%% `max_range' to retention seconds to get all messages which are in
 %% retention duration range *only* if request doesn't have
-%% `created_from` in the query string.
+%% `created_from' in the query string.
 %%
-%% If `created_from` is set, use default Crossbar max range.
+%% If `created_from' is set, use default Crossbar max range.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_max_range(cb_context:context()) -> {kz_time:api_seconds(), kz_time:gregorian_seconds()}.
 get_max_range(Context) ->
     RetentionSeconds = kvm_util:retention_seconds(cb_context:account_id(Context)),
@@ -862,12 +827,10 @@ get_max_range(Context) ->
         _ -> {'undefined', RetentionSeconds}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get message by its media ID and its context
+%%------------------------------------------------------------------------------
+%% @doc Get message by its media ID and its context
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_message(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_message(MessageId, BoxId, Context) ->
     load_message(MessageId, BoxId, Context, 'false').
@@ -932,14 +895,12 @@ create_new_message_document(Context, BoxJObj) ->
     Message = kzd_box_message:update_media_id(MsgId, kzd_box_message:set_metadata(Metadata, JObj)),
     cb_context:set_doc(cb_context:set_account_db(Context, kz_doc:account_db(Message)), Message).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get message binary content so it can be downloaded
+%%------------------------------------------------------------------------------
+%% @doc Get message binary content so it can be downloaded
 %% VMBoxId is the doc id for the voicemail box document
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_message_binary(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_binary(BoxId, MediaId, Context) ->
     case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
@@ -959,11 +920,10 @@ load_message_binary(BoxId, MediaId, Context) ->
         {'error', Err} -> crossbar_doc:handle_datamgr_errors(Err, MediaId, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_attachment_from_message(kz_json:object(), cb_context:context(), kz_term:ne_binary()) ->
                                           cb_context:context().
 load_attachment_from_message(Doc, Context, Timezone) ->
@@ -1095,13 +1055,11 @@ del_all_files(Dir) ->
                   end, Files
                  ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% generate a media name based on CallerID and creation date
+%%------------------------------------------------------------------------------
+%% @doc generate a media name based on CallerID and creation date
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec generate_media_name(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
@@ -1114,12 +1072,10 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec check_uniqueness(kz_term:api_binary(), cb_context:context()) -> boolean().
 check_uniqueness(VMBoxId, Context) ->
@@ -1151,12 +1107,10 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec update_mwi(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries()) -> cb_context:context().
 update_mwi(Context, BoxId) when is_binary(BoxId) ->
@@ -1174,12 +1128,10 @@ update_mwi(Context, BoxId, 'success') ->
 update_mwi(Context, _BoxId, _Status) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_migrate_vm_box(kzd_voicemail_box:doc()) ->
                                   {'true', kzd_voicemail_box:doc()} |
                                   'false'.
@@ -1190,12 +1142,10 @@ maybe_migrate_vm_box(Box) ->
             {'true', kzd_voicemail_box:set_notification_emails(Box, Emails)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
 migrate(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
@@ -1206,12 +1156,10 @@ migrate(Account) ->
             maybe_migrate_boxes(AccountDb, Boxes)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_migrate_boxes(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 maybe_migrate_boxes(AccountDb, Boxes) ->
     ToUpdate =
@@ -1228,12 +1176,10 @@ maybe_migrate_boxes(AccountDb, Boxes) ->
     io:format("migrating ~p out of ~p boxes~n", [length(ToUpdate), length(Boxes)]),
     maybe_update_boxes(AccountDb, ToUpdate).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update_boxes(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 maybe_update_boxes(_AccountDb, []) -> 'ok';
 maybe_update_boxes(AccountDb, Boxes) ->

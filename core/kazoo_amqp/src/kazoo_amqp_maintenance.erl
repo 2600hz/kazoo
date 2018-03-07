@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributions
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kazoo_amqp_maintenance).
 
 -export([add_broker/1
@@ -27,17 +24,15 @@
 
 -export([gc_pools/0, gc_pool/1]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(ASSIGNMENTS, 'kz_amqp_assignments').
 -define(CONNECTIONS, 'kz_amqp_connections').
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_broker(kz_term:ne_binary()) -> 'ok' | 'no_return'.
 add_broker(Broker) ->
     add_broker(Broker, 'local').
@@ -65,24 +60,20 @@ add_broker(Broker, Zone) ->
         #kz_amqp_connection{} -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_broker(kz_term:ne_binary()) -> 'ok'.
 remove_broker(Broker) when not is_binary(Broker) ->
     remove_broker(kz_term:to_binary(Broker));
 remove_broker(Broker) ->
     kz_amqp_connections:remove(Broker).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_connection(kz_term:ne_binary()) -> 'ok' | 'no_return'.
 add_connection(Broker) ->
     add_connection(Broker, 'local').
@@ -101,23 +92,19 @@ add_connection(Broker, Zone) ->
         #kz_amqp_connection{} -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec primary_broker() -> 'no_return'.
 primary_broker() ->
     io:format("~s~n", [kz_amqp_connections:primary_broker()]),
     'no_return'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_assignments() -> 'ok'.
 validate_assignments() ->
     Pattern = #kz_amqp_assignment{_='_'},
@@ -210,12 +197,10 @@ validate_assignments({[#kz_amqp_assignment{}=Assignment], Continuation}) ->
 log_invalid_assignment(#kz_amqp_assignment{}=Assignment) ->
     io:format("invalid assignment:~n ~p~n", [lager:pr(Assignment, ?MODULE)]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec connection_summary() -> 'ok'.
 connection_summary() ->
     io:format("+--------------------------------------------------+------------------+----------+-----------+------------+---------+~n"),
@@ -251,12 +236,10 @@ connection_summary({[#kz_amqp_connections{connection=Connection
     io:format("+--------------------------------------------------+------------------+----------+-----------+------------+---------+~n"),
     connection_summary(ets:match_object(Continuation), PrimaryBroker).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec broker_summary() -> 'ok'.
 broker_summary() ->
     Pattern = #kz_amqp_assignment{broker='$1', _='_'},
@@ -392,12 +375,10 @@ broker_summary_prechannels(Broker) ->
                 ],
     io:format(" ~-11B |~n", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec channel_summary() -> 'ok'.
 channel_summary() ->
     io:format("+--------------------------------------------------+----------+----------+-----------------+-----------------+-----------------+----------+----------+~n"),
@@ -424,12 +405,10 @@ channel_summary({[#kz_amqp_assignment{}=Assignment], Continuation}) ->
 channel_summary_age('undefined') -> 0;
 channel_summary_age(Timestamp) -> kz_time:elapsed_s(Timestamp).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec consumer_details() -> 'ok'.
 consumer_details() ->
     MatchSpec = [{#kz_amqp_assignment{channel='$1'
@@ -457,14 +436,12 @@ consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(Proc
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessLower) ->
     consumer_details(NodeNumber, ProcessUpper, kz_term:to_binary(ProcessLower));
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
-    Pid = list_to_pid(
-            kz_term:to_list(
-              <<"<", NodeNumber/binary
-                ,".", ProcessUpper/binary
-                ,".", ProcessLower/binary
-                ,">"
-              >>
-             )),
+    ProtoPid = list_to_binary(["<", NodeNumber
+                              ,".", ProcessUpper
+                              ,".", ProcessLower
+                              ,">"
+                              ]),
+    Pid = list_to_pid(kz_term:to_list(ProtoPid)),
     print_consumer_details(Pid).
 
 print_consumer_details('$end_of_table') -> 'ok';

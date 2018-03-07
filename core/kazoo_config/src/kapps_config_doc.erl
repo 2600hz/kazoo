@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2016-2018, 2600Hz
+%%% @doc
+%%% @author Roman Galeev
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kapps_config_doc).
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -11,9 +17,11 @@
         ,schema_defaults/1
         ,config_with_defaults/1, config_with_default_node/1
         ,diff_from_default/2
-        ,default_config/2, stored_config/2, build_default/2
+        ,default_config/2, stored_config/2
+        ,build_default/1, build_default/2
         ,default_node/2, stored_node/2, diff_node_from_default/3
         ,list_configs/0
+        ,node_config/2
         ]).
 
 -define(DEFAULT, <<"default">>).
@@ -28,7 +36,7 @@ get_keys(Config) ->
 
 -spec get_config(kz_term:ne_binary()) -> kz_json:object().
 get_config(Id) ->
-    JObj = kz_doc:public_fields(maybe_new(kapps_config:get_category(Id))),
+    JObj = kz_doc:public_fields(maybe_new(kapps_config:fetch_category(Id))),
     kz_json:filter(fun({_, V}) -> kz_json:is_json_object(V) end, JObj).
 
 -spec get_node(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
@@ -38,7 +46,7 @@ get_node(Config, Node) ->
 -spec apply_default_values(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_default_values(Config, Node, Default) ->
     NodeValue = get_node(Config, Node),
-    kz_json:set_value(Node, kz_json:merge(Default, NodeValue), Config).
+    kz_json:set_value(Node, kz_json:merge_recursive(Default, NodeValue), Config).
 
 -spec apply_default_node(kz_json:object()) -> kz_json:object().
 apply_default_node(Config) ->
@@ -74,16 +82,27 @@ default_config(Id, Keys) ->
     DefaultNode = schema_defaults(Id),
     lists:foldl(fun(Key,A) -> kz_json:set_value(Key, DefaultNode, A) end, kz_json:new(), [?DEFAULT|Keys]).
 
+-spec node_config(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+node_config(Id, Node) ->
+    Config = config_with_default_node(Id),
+    NodeConfig = get_node(Config, Node),
+    kz_json:merge(kz_json:get_value(?DEFAULT, Config), NodeConfig).
+
 -spec stored_config(kz_term:ne_binary(), kz_json:keys()) -> kz_json:object().
+stored_config(Id, Key)
+  when is_binary(Key) ->
+    stored_config(Id, [Key]);
 stored_config(Id, Keys) ->
     Config = config_with_default_node(Id),
     Default = kz_json:get_value(?DEFAULT, Config, kz_json:new()),
     lists:foldl(fun(K,A) -> apply_default_values(A, K, Default) end, Config, Keys).
 
--spec config_with_default_node(kz_term:ne_binary()) -> kz_json:object().
-config_with_default_node(Id) ->
+-spec config_with_default_node(kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+config_with_default_node(?NE_BINARY = Id) ->
     Config = get_config(Id),
-    apply_default_values(Config, ?DEFAULT, schema_defaults(Id)).
+    apply_default_values(Config, ?DEFAULT, schema_defaults(Id));
+config_with_default_node(JObj) ->
+    apply_default_values(JObj, ?DEFAULT, schema_defaults(kz_doc:id(JObj))).
 
 -spec diff_from_default(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 diff_from_default(Id, JObj) ->
@@ -95,10 +114,18 @@ build_default(Id, JObj) ->
     Config = lists:foldl(fun(K,A) -> apply_default_values(A, K, Default) end, kz_json:new(), get_keys(JObj)),
     apply_schema_defaults(Id, Config).
 
-%% ----------------------------------------------------------
-%% Node API
-%% ----------------------------------------------------------
+-spec build_default(kz_term:ne_binary()) -> kz_json:object().
+build_default(Id) ->
+    schema_defaults(Id).
 
+%%%=============================================================================
+%%% Node API
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec default_node(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 default_node(Id, ?DEFAULT) ->
     schema_defaults(Id);

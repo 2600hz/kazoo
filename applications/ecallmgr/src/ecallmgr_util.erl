@@ -1,14 +1,13 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc
-%%% Various utilities specific to ecallmgr. More general utilities go
+%%% @doc Various utilities specific to ecallmgr. More general utilities go
 %%% in kazoo_util.erl
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
-%%%   Karl Anderson <karl@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_util).
 
 -export([send_cmd/4]).
@@ -88,12 +87,10 @@
                          }).
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% send the SendMsg proplist to the freeswitch node
+%%------------------------------------------------------------------------------
+%% @doc send the SendMsg proplist to the freeswitch node
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
 send_cmd(_Node, _UUID, <<"kz_multiset">>, <<"^^">>) -> 'ok';
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
@@ -245,16 +242,23 @@ get_sip_from(Props, <<"outbound">>) ->
                                     ], Props, ?DEFAULT_REALM),
     <<Number/binary, "@", Realm/binary>>;
 get_sip_from(Props, _) ->
-    Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
-                ,"@"
-                ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                          ,<<"variable_sip_from_host">>
-                                          ,<<"sip_from_host">>
-                                          ], Props, ?DEFAULT_REALM))/binary
-              >>,
+    Default = list_to_binary([props:get_value(<<"sip_from_user">>, Props, <<"nouser">>)
+                             ,"@"
+                             ,props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                                      ,<<"variable_sip_from_host">>
+                                                      ,<<"sip_from_host">>
+                                                      ]
+                                                     ,Props
+                                                     ,?DEFAULT_REALM
+                                                     )
+                             ]),
+
     props:get_first_defined([<<"Channel-Presence-ID">>
                             ,<<"variable_sip_from_uri">>
-                            ], Props, Default).
+                            ]
+                           ,Props
+                           ,Default
+                           ).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(kz_term:proplist()) -> kz_term:ne_binary().
@@ -483,12 +487,10 @@ is_node_up(Node, UUID) ->
     ecallmgr_fs_nodes:is_node_up(Node)
         andalso ecallmgr_fs_channel:exists(UUID).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% set channel and call variables in FreeSWITCH
+%%------------------------------------------------------------------------------
+%% @doc set channel and call variables in FreeSWITCH
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
 multi_set_args(Node, UUID, KVs) ->
     multi_set_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
@@ -627,11 +629,10 @@ get_fs_key_and_value(Key, Val, _UUID)
     {get_fs_key(Key), maybe_sanitize_fs_value(Key, Val)};
 get_fs_key_and_value(_, _, _) -> 'skip'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_sanitize_fs_value(kz_term:text(), kz_term:text()) -> binary().
 maybe_sanitize_fs_value(<<"Outbound-Caller-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
@@ -647,16 +648,14 @@ maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
     maybe_sanitize_fs_value(Key, kz_term:to_binary(Val));
 maybe_sanitize_fs_value(_, Val) -> Val.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
+%%------------------------------------------------------------------------------
+%% @doc takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
 %% and create the dial string ([origination_caller_id_name=Name
 %%                              ,origination_caller_id_number=Num]Endpoint)
 %% joined by the optional seperator.  Saves time by not spawning
 %% endpoints with the invite format of "route" (about 100ms per endpoint)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type bridge_channel() :: kz_term:ne_binary().
 -type bridge_channels() :: kz_term:ne_binaries().
 -type build_return() :: bridge_channel() | {'worker', pid()}.
@@ -1095,11 +1094,10 @@ maybe_append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars
     'false' = kz_term:is_empty(Contact),
     list_to_binary([ecallmgr_fs_xml:get_leg_vars(ChannelVars++HeaderVars), Contact]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 create_masquerade_event(Application, EventName) ->
@@ -1111,16 +1109,15 @@ create_masquerade_event(Application, EventName, Boolean) ->
                  'true' -> <<"event ">>;
                  'false' -> <<>>
              end,
-    <<Prefix/binary, "Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
-      ,",kazoo_event_name=", EventName/binary
-      ,",kazoo_application_name=", Application/binary
-    >>.
+    list_to_binary([Prefix, "Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
+                   ,",kazoo_event_name=", EventName
+                   ,",kazoo_application_name=", Application
+                   ]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec media_path(kz_term:ne_binary()) -> kz_term:ne_binary().
 media_path(MediaName) -> media_path(MediaName, 'new', kz_binary:rand_hex(16), kz_json:new()).
 
@@ -1160,7 +1157,7 @@ media_path(MediaName, Type, UUID, JObj) ->
 fax_filename(UUID) ->
     Ext = ecallmgr_config:get_ne_binary(<<"default_fax_extension">>, <<".tiff">>),
     filename:join([ecallmgr_config:get_ne_binary(<<"fax_file_path">>, <<"/tmp/">>)
-                  ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
+                  ,<<(kz_amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
 -spec recording_filename(kz_term:ne_binary()) -> file:filename_all().
@@ -1170,7 +1167,7 @@ recording_filename(MediaName) ->
     RootName = filename:basename(MediaName, Ext),
     Directory = recording_directory(MediaName),
     RecordingName = filename:join([Directory
-                                  ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
+                                  ,<<(kz_amqp_util:encode(RootName))/binary, Ext/binary>>
                                   ]),
     _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                             ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
@@ -1195,11 +1192,10 @@ recording_extension(MediaName) ->
             ecallmgr_config:get_ne_binary(<<"default_recording_extension">>, <<".mp3">>)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_fs_playback(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) -> URI;
 get_fs_playback(URI) -> maybe_playback_via_vlc(URI).

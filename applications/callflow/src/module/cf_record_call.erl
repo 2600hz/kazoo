@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Handles starting/stopping a call recording
-%%%
+%%% @doc Handles starting/stopping a call recording.
+%%% @author James Aimonetti
+%%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%
-%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_record_call).
 
 -behaviour(gen_cf_action).
@@ -17,11 +13,10 @@
 
 -include("callflow.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data0, Call) ->

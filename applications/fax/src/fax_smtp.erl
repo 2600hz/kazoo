@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(fax_smtp).
 -behaviour(gen_smtp_server_session).
 
@@ -343,9 +341,11 @@ faxbox_log(#state{account_id=AccountId}=State) ->
 -spec error_doc() -> kz_term:ne_binary().
 error_doc() ->
     {Year, Month, _} = erlang:date(),
-    <<(kz_term:to_binary(Year))/binary,(kz_date:pad_month(Month))/binary
-      ,"-",(kz_binary:rand_hex(16))/binary
-    >>.
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,kz_binary:rand_hex(16)
+                   ]).
 
 -spec to_proplist(state()) -> kz_term:proplist().
 to_proplist(#state{}=State) ->
@@ -699,9 +699,14 @@ add_fax_document(#state{from=From
     lager:debug("added fax document from smtp : ~p", [Doc]),
     {'ok', State#state{doc=Doc}}.
 
-%% ====================================================================
+%%==============================================================================
 %% Internal functions
-%% ====================================================================
+%%==============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec process_message(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist(), binary() | mimemail:mimetuple(), state()) ->
                              {'ok', state()}.
 process_message(<<"multipart">>, Multipart, _Headers, _Parameters, Body, #state{errors=Errors}=State) ->

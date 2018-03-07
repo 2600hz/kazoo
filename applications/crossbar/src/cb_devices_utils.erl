@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_devices_utils).
 
 -export([is_ip_unique/2]).
@@ -14,29 +12,21 @@
 
 -define(AUTHZ_ID, <<"authorizing_id">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check if the device sip ip is unique
+%%------------------------------------------------------------------------------
+%% @doc Check if the device SIP IP is unique.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_ip_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_unique(IP, DeviceId) ->
     is_ip_acl_unique(IP, DeviceId)
         andalso is_ip_sip_auth_unique(IP, DeviceId).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec is_ip_acl_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_acl_unique(IP, DeviceId) ->
-    lists:all(
-      fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
+    lists:all(fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
              ,get_all_acl_ips()
-     ).
+             ).
 
 -spec is_ip_unique(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_unique(JObj, IP, DeviceId) ->
@@ -46,12 +36,7 @@ is_ip_unique(JObj, IP, DeviceId) ->
             not (kz_network_utils:verify_cidr(IP, kz_json:get_value(<<"ip">>, JObj)))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec is_ip_sip_auth_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_sip_auth_unique(IP, DeviceId) ->
     case kapps_util:get_ccvs_by_ip(IP) of
@@ -59,12 +44,7 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
         {'error', 'not_found'} -> 'true'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec get_all_acl_ips() -> kz_json:objects().
 get_all_acl_ips() ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
@@ -74,23 +54,17 @@ get_all_acl_ips() ->
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp = kapps_util:amqp_pool_request(
-             props:filter_undefined(Req)
-                                       ,fun kapi_sysconf:publish_get_req/1
-                                       ,fun kapi_sysconf:get_resp_v/1
-            ),
+    Resp = kz_amqp_worker:call(props:filter_undefined(Req)
+                              ,fun kapi_sysconf:publish_get_req/1
+                              ,fun kapi_sysconf:get_resp_v/1
+                              ),
     case Resp of
         {'error', _} -> [];
         {'ok', JObj} ->
             extract_all_ips(kapi_sysconf:get_value(JObj, kz_json:new()))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec extract_all_ips(kz_json:object()) -> kz_json:objects().
 extract_all_ips(JObj) ->
     kz_json:foldl(fun extract_ip/3, [], JObj).

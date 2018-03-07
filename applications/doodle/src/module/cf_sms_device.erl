@@ -1,25 +1,21 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_sms_device).
 
 -include("doodle.hrl").
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
     EndpointId = kz_doc:id(Data),
@@ -58,12 +54,10 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
         'ok' -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempts to build the endpoints to reach this device
+%%------------------------------------------------------------------------------
+%% @doc Attempts to build the endpoints to reach this device
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_endpoint(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
                             {'error', atom() | kz_json:object()} |
                             {'fail', kz_term:ne_binary() | kz_json:object()} |

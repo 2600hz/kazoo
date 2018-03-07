@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_bookkeeper_braintree).
 -behaviour(kz_gen_bookkeeper).
 
@@ -34,12 +32,10 @@
 -type update() :: #kz_service_update{}.
 -type updates() :: #kz_service_updates{}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_good_standing(AccountId, _Status) ->
     try braintree_customer:find(AccountId) of
@@ -68,12 +64,10 @@ customer_has_card(Customer, AccountId) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
@@ -105,12 +99,10 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
             sync(ServiceItems, AccountId, NewUpdates)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
                           {'error', 'not_found'} |
@@ -127,12 +119,10 @@ transactions(AccountId, From0, To0) ->
         _:_ -> {'error', 'unknown_error'}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec subscriptions(kz_term:ne_binary()) -> atom() | kz_json:objects().
 subscriptions(AccountId) ->
     try braintree_customer:find(AccountId) of
@@ -145,12 +135,10 @@ subscriptions(AccountId) ->
         _:_ -> 'unknow_error'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec commit_transactions(kz_term:ne_binary(),kz_transactions:kz_transactions()) -> 'ok' | 'error'.
 commit_transactions(BillingId, Transactions) ->
@@ -181,12 +169,10 @@ commit_transactions(BillingId, _Transactions, _Try) ->
     lager:error("too many attempts writing transaction to services in ~p", [BillingId]),
     'error'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 charge_transactions(BillingId, Transactions) ->
@@ -194,25 +180,24 @@ charge_transactions(BillingId, Transactions) ->
 
 -spec charge_transactions(kz_term:ne_binary(), kz_json:objects(), dict:dict()) -> kz_json:objects().
 charge_transactions(BillingId, [], Dict) ->
-    dict:fold(
-      fun(Code, JObjs, Acc) when Code =:= ?CODE_TOPUP ->
-              case handle_topup(BillingId, JObjs) of
-                  'true' -> Acc;
-                  {'true', _} -> Acc;
-                  {'false', ResponseText} ->
-                      [kz_json:set_value(<<"failed_reason">>, ResponseText, J)
-                       || J <- JObjs
-                      ] ++ Acc
-              end;
-         (Code, JObjs, Acc) ->
-              case handle_charged_transactions(BillingId, Code, JObjs) of
-                  'true' -> Acc;
-                  'false' -> JObjs ++ Acc
+    dict:fold(fun(Code, JObjs, Acc) when Code =:= ?CODE_TOPUP ->
+                      case handle_topup(BillingId, JObjs) of
+                          'true' -> Acc;
+                          {'true', _} -> Acc;
+                          {'false', ResponseText} ->
+                              [kz_json:set_value(<<"failed_reason">>, ResponseText, J)
+                               || J <- JObjs
+                              ] ++ Acc
+                      end;
+                 (Code, JObjs, Acc) ->
+                      case handle_charged_transactions(BillingId, Code, JObjs) of
+                          'true' -> Acc;
+                          'false' -> JObjs ++ Acc
+                      end
               end
-      end
              ,[]
              ,Dict
-     );
+             );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = kz_json:get_value(<<"pvt_code">>, Transaction),
     NewDict = dict:append(Code, Transaction, Dict),
@@ -297,12 +282,10 @@ notification_data(_Success, BillingId, _Amount, BraintreeTransaction) ->
        ++ braintree_transaction:record_to_notification_props(BraintreeTransaction)
       ]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec convert_transactions(kz_json:objects()) -> kz_transaction:transactions().
 convert_transactions(BTTransactions) ->
     [convert_transaction(Tr) || Tr <- BTTransactions].
@@ -416,49 +399,42 @@ calculate([Addon|Addons], Acc) ->
     Quantity = kz_json:get_number_value(<<"quantity">>, Addon, 0),
     calculate(Addons, (Amount*Quantity+Acc)).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec timestamp_to_braintree(kz_time:api_seconds()) -> kz_term:ne_binary().
 timestamp_to_braintree('undefined') ->
     lager:debug("timestamp undefined using now_s"),
     timestamp_to_braintree(kz_time:now_s());
 timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    <<(kz_date:pad_month(M))/binary, "/"
-      ,(kz_date:pad_month(D))/binary, "/"
-      ,(kz_term:to_binary(Y))/binary
-    >>.
+    list_to_binary([kz_date:pad_month(M), "/"
+                   ,kz_date:pad_month(D), "/"
+                   ,kz_term:to_binary(Y)
+                   ]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec utc_to_gregorian_seconds(kz_term:ne_binary()) -> kz_time:api_seconds().
 utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
-                           ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
+                          ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
                          >>
                         ) ->
-    Date = {
-      {kz_term:to_integer(Y), kz_term:to_integer(M), kz_term:to_integer(D)}
+    Date = {{kz_term:to_integer(Y), kz_term:to_integer(M), kz_term:to_integer(D)}
            ,{kz_term:to_integer(H), kz_term:to_integer(Mi), kz_term:to_integer(S)}
-     },
+           },
     calendar:datetime_to_gregorian_seconds(Date);
 utc_to_gregorian_seconds(UTC) ->
     lager:warning("unknown UTC date format ~s", [UTC]),
     'undefined'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec calculate_amount(kz_json:objects()) -> integer().
 calculate_amount(JObjs) ->
     Adder = fun (JObj, Amount) ->
@@ -466,12 +442,10 @@ calculate_amount(JObjs) ->
             end,
     lists:foldl(Adder, 0, JObjs).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec already_charged(kz_term:ne_binary() | integer() , integer() | kz_json:objects()) -> boolean().
 already_charged(BillingId, Code) when is_integer(Code) ->
     lager:warning("checking if ~s has been charged for transaction of type ~p today", [BillingId, Code]),
@@ -485,25 +459,20 @@ already_charged(_, []) ->
     lager:warning("no transactions found matching code or made today"),
     'false';
 already_charged(Code, [Transaction|Transactions]) ->
-    case
-        already_charged_transaction(
-          Code
-                                   ,kz_json:get_value(<<"status">>, Transaction)
-                                   ,kz_json:get_value(<<"purchase_order">>, Transaction)
-                                   ,Transaction
-         )
+    case already_charged_transaction(Code
+                                    ,kz_json:get_value(<<"status">>, Transaction)
+                                    ,kz_json:get_value(<<"purchase_order">>, Transaction)
+                                    ,Transaction
+                                    )
     of
         'true' -> 'true';
-        'false' ->
-            already_charged(Code, Transactions)
+        'false' -> already_charged(Code, Transactions)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec already_charged_transaction(integer(), kz_term:ne_binary(), integer(), kz_json:object()) -> boolean().
 already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
     _Id = kz_doc:id(Transaction),
@@ -511,9 +480,9 @@ already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
     'false';
 already_charged_transaction(Code , _, Code, Transaction) ->
     <<Year:4/binary, _:1/binary
-      ,Month:2/binary, _:1/binary
-      ,Day:2/binary
-      ,_/binary
+     ,Month:2/binary, _:1/binary
+     ,Day:2/binary
+     ,_/binary
     >> = kz_json:get_value(<<"created_at">>, Transaction),
     Id = kz_doc:id(Transaction),
     {YearNow, M, D} = erlang:date(),
@@ -528,12 +497,10 @@ already_charged_transaction(Code , _, Code, Transaction) ->
 already_charged_transaction(_, _, _, _) ->
     'false'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_single_discount(kz_service_item:item(), braintree_subscription:subscription()) ->
                                     braintree_subscription:subscription().
 handle_single_discount(ServiceItem, Subscription) ->
@@ -552,12 +519,10 @@ handle_single_discount(ServiceItem, Subscription) ->
             braintree_subscription:update_discount_amount(S, DiscountId, Rate)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cumulative_discounts(kz_service_item:item(), braintree_subscription:subscription()) ->
                                          braintree_subscription:subscription().
 handle_cumulative_discounts(ServiceItem, Subscription) ->
@@ -576,12 +541,10 @@ handle_cumulative_discounts(ServiceItem, Subscription) ->
             braintree_subscription:update_discount_amount(S, DiscountId, Rate)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_subscriptions(kz_term:ne_binary(), braintree_subscription:subscription(), updates()) ->
                                   updates().
 update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=Subscriptions}=Updates) ->
@@ -591,12 +554,10 @@ update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=
     Replaced = lists:keystore(PlanId, #kz_service_update.plan_id, Subscriptions, Update),
     Updates#kz_service_updates{bt_subscriptions = Replaced}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_bt_customer(kz_term:ne_binary(), boolean()) ->
                                'undefined' | braintree_customer:customer().
 fetch_bt_customer(AccountId, NewItems) ->
@@ -608,12 +569,10 @@ fetch_bt_customer(AccountId, NewItems) ->
         'throw':{'not_found', _} -> 'undefined'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_or_create_subscription(kz_term:ne_binary(), updates() | braintree_customer:customer()) ->
                                           braintree_subscription:subscription().
 fetch_or_create_subscription(PlanId, #kz_service_updates{bt_subscriptions=[]
@@ -654,7 +613,6 @@ find_subscription_by_plan_id(PlanId, Subscriptions) ->
         [Subscription] -> Subscription
     end.
 
-%% @private
 -spec prepare_subscription(kz_service_item:item(), kz_term:ne_binary(), kz_term:ne_binary(), updates()) ->
                                   braintree_subscription:subscription().
 prepare_subscription(ServiceItem, AddOnId, PlanId, Updates) ->

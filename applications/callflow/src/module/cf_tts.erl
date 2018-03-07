@@ -1,16 +1,21 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
-%%%   "text":"This is what should be said"
-%%%   // optional
-%%%   ,"voice":"male" // or "female"
-%%%   ,"language":"en"
-%%%   ,"engine":"flite" // or "ispeech if configured
-%%% }
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2014-2018, 2600Hz
+%%% @doc Takes a text and uses TTS to play it to the caller.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`text'</dt>
+%%%   <dd>This is what should be said.</dd>
+%%%
+%%%   <dt>`voice'</dt>
+%%%   <dd>One of: `male' or `female'.</dd>
+%%%
+%%%   <dt>`engine'</dt>
+%%%   <dd>`flite' or `ispeech'.</dd>
+%%% </dl>
+%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_tts).
 
 -behaviour(gen_cf_action).
@@ -19,12 +24,10 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     kapps_call_command:answer(Call),

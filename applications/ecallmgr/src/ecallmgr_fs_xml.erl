@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Generate the XML for various FS responses
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Generate the XML for various FS responses
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
 -export([build_leg_vars/1, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
@@ -749,10 +747,12 @@ context(JObj) ->
 context(JObj, Props) ->
     kz_json:get_value(<<"Context">>, JObj, hunt_context(Props)).
 
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %% XML record creators and helpers
-%%%-------------------------------------------------------------------
--spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
+%%%-----------------------------------------------------------------------------
+-spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el() | kz_types:xml_els().
+acl_node_el(Type, CIDRs) when is_list(CIDRs) ->
+    [acl_node_el(Type, CIDR) || CIDR <- CIDRs];
 acl_node_el(Type, CIDR) ->
     #xmlElement{name='node'
                ,attributes=[xml_attrib('type', Type)
@@ -1078,7 +1078,11 @@ room_el(Name, Status) ->
                            ]
                }.
 
--spec prepend_child(kz_types:xml_el(), kz_types:xml_el()) -> kz_types:xml_el().
+-spec prepend_child(kz_types:xml_el(), kz_types:xml_el() | kz_types:xml_els()) -> kz_types:xml_el().
+prepend_child(#xmlElement{}=El, Children) when is_list(Children) ->
+    lists:foldl(fun(C, #xmlElement{content=Contents}=E) ->
+                        E#xmlElement{content=[C|Contents]}
+                end, El, Children);
 prepend_child(#xmlElement{content=Contents}=El, Child) ->
     El#xmlElement{content=[Child|Contents]}.
 

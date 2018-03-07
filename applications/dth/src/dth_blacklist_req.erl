@@ -1,11 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @doc
-%%% Handle requests from WhApps for the blacklist
+%%% @doc Handle requests from WhApps for the blacklist
 %%% @end
 %%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(dth_blacklist_req).
 
 -export([init/0, handle_req/2]).
@@ -25,4 +24,4 @@ handle_req(JObj, _Props) ->
                                            | kz_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
                                           ]),
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
+    kz_amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).

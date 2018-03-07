@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author OnNet (Kirill Sysoev github.com/onnet)
 %%% @end
-%%% @contributors
-%%%   OnNet (Kirill Sysoev github.com/onnet)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_cccps).
 
 -export([init/0
@@ -22,16 +20,14 @@
 -define(CB_LIST, <<"cccps/crossbar_listing">>).
 -define(AUTODIAL, <<"autodial">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     maybe_init_db(),
@@ -57,13 +53,11 @@ init_db() ->
     _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, ?APP, <<"views/cccps.json">>),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -73,15 +67,15 @@ allowed_methods() ->
 allowed_methods(_CCCPId) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /cccps => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% ```
+%%    /cccps => []
 %%    /cccps/foo => [<<"foo">>]
 %%    /cccps/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -89,16 +83,14 @@ resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /cccps mights load a list of cccp objects
 %% /cccps/123 might load the cccp object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -154,12 +146,10 @@ send_new_camping(JObj, AccountId) ->
           ],
     kz_amqp_worker:cast(Req, fun kapi_camping:publish_req/1).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context2 = crossbar_doc:save(Context),
@@ -170,25 +160,21 @@ put(Context) ->
 put(Context, ?AUTODIAL) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     Context2 = crossbar_doc:save(Context),
     kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     Context2 = crossbar_doc:delete(Context),
@@ -200,78 +186,64 @@ delete(Context, _) ->
             Context2
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%%------------------------------------------------------------------------------
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"cccps">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"cccp">>)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%%------------------------------------------------------------------------------
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"cccps">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"cccp">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"cccp">>)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Checks whether cid and pin are unique
+%%------------------------------------------------------------------------------
+%% @doc Checks whether cid and pin are unique
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec check_pin(cb_context:context()) -> cb_context:context().
 check_pin(Context) ->

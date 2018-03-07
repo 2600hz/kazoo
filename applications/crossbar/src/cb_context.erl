@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Helpers for manipulating the #cb_context{} record
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Helpers for manipulating the `#cb_context{}' record.
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_context).
 
 -export([store/3
@@ -172,7 +170,10 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 
 %% Accessors
 
-
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec account_id(context()) -> kz_term:api_ne_binary().
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 
@@ -226,12 +227,10 @@ account_doc(#cb_context{account_id = AccountId}) ->
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns true if the request contains a system admin module.
+%%------------------------------------------------------------------------------
+%% @doc Returns true if the request contains a system admin module.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_superduper_admin(kz_term:api_ne_binary() | context()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
@@ -448,7 +447,10 @@ resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 -spec resp_error_msg(context()) -> kz_term:api_ne_binary().
 resp_error_msg(#cb_context{resp_error_msg=Msg}) -> Msg.
 
-%% Setters
+%%------------------------------------------------------------------------------
+%% @doc Loop over a list of functions and values to set `cb_context()' parameters.
+%% @end
+%%------------------------------------------------------------------------------
 -spec setters(context(), setters()) -> context().
 setters(#cb_context{}=Context, []) -> Context;
 setters(#cb_context{}=Context, [_|_]=Setters) ->
@@ -694,7 +696,7 @@ update_doc(#cb_context{doc=Doc}=Context, Updaters)
 update_doc(#cb_context{doc=Doc}=Context, Updater) ->
     Context#cb_context{doc=setters_fold(Updater, Doc)}.
 
-%% Helpers
+%% % Helpers
 
 -spec add_content_types_provided(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
                                         context().
@@ -729,24 +731,18 @@ maybe_add_content_type_provided(Context, AttachmentId) ->
             add_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Sets a value in the crossbar context for later retrieval during
-%% this request.
+%%------------------------------------------------------------------------------
+%% @doc Sets a value in the crossbar context for later retrieval during this request.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec store(context(), any(), any()) -> context().
 store(#cb_context{storage=Storage}=Context, Key, Data) ->
     Context#cb_context{storage=[{Key, Data} | props:delete(Key, Storage)]}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Fetches a previously stored value from the current request.
+%%------------------------------------------------------------------------------
+%% @doc Fetches a previously stored value from the current request.
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec fetch(context(), any()) -> any().
 fetch(#cb_context{}=Context, Key) ->
     fetch(Context, Key, 'undefined').
@@ -758,23 +754,15 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
         Else -> Else
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function extracts the request ID and sets it as 'callid' in
+%%------------------------------------------------------------------------------
+%% @doc This function extracts the request ID and sets it as `call_id' in
 %% the process dictionary, where the logger expects it.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put_reqid(context()) -> 'ok'.
 put_reqid(#cb_context{req_id=ReqId}) ->
     kz_util:put_callid(ReqId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec has_errors(context()) -> boolean().
 has_errors(#cb_context{validation_errors=JObj
                       ,resp_status='success'
@@ -782,12 +770,6 @@ has_errors(#cb_context{validation_errors=JObj
     not kz_term:is_empty(JObj);
 has_errors(#cb_context{}) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec import_errors(context()) -> context().
 import_errors(#cb_context{}=Context) ->
     case response(Context) of
@@ -822,14 +804,12 @@ response(#cb_context{resp_error_code=Code
                 end,
     {'error', {ErrorCode, ErrorMsg, ErrorData}}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Add a validation error to the list of request errors
-%% @end
-%%--------------------------------------------------------------------
 -type after_fun() :: fun((context()) -> context()) | 'undefined'.
 
+%%------------------------------------------------------------------------------
+%% @doc Validate the request data with schema.
+%% @end
+%%------------------------------------------------------------------------------
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context()) ->
                                    context().
 validate_request_data(SchemaId, Context) ->
@@ -957,13 +937,6 @@ find_schema(Schema=?NE_BINARY) ->
             'undefined'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-
 -spec add_system_error(atom() | binary(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
@@ -1054,12 +1027,7 @@ add_system_error(Error, JObj, Context) ->
 add_system_error(Code, Error, JObj, Context) ->
     build_system_error(Code, Error, JObj, Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec build_system_error(integer(), atom() | kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) -> context().
 build_system_error(Code, Error, <<_/binary>> = Message, Context) ->
     build_system_error(Code, Error, kz_json:from_list([{<<"message">>, Message}]), Context);
@@ -1072,12 +1040,10 @@ build_system_error(Code, Error, JObj, Context) ->
                       ,resp_error_msg=kz_term:to_binary(Error)
                       }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Add a validation error to the list of request errors
+%%------------------------------------------------------------------------------
+%% @doc Add a validation error to the list of request errors.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_validation_error(kz_json:path(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
                                   context().
 add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->

@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Handle client requests for phone_number documents
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle client requests for phone_number documents
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_other).
 -behaviour(knm_gen_carrier).
 
@@ -62,33 +58,29 @@
        ).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec info() -> map().
 info() ->
     #{?CARRIER_INFO_MAX_PREFIX => 10
      }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Is this carrier handling numbers local to the system?
-%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%%------------------------------------------------------------------------------
+%% @doc Is this carrier handling numbers local to the system?
+%%
+%% <div class="notice">A non-local (foreign) carrier module makes HTTP requests.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the local system for a quanity of available numbers
+%%------------------------------------------------------------------------------
+%% @doc Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
                           {'ok', list()} |
                           {'bulk', list()} |
@@ -103,12 +95,10 @@ find_numbers(Prefix, Quantity, Options) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%%------------------------------------------------------------------------------
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
                                               {'error', any()}.
 check_numbers(Numbers) ->
@@ -131,22 +121,18 @@ check_numbers(Numbers) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the local system for a quanity of available numbers
+%%------------------------------------------------------------------------------
+%% @doc Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Acquire a given number from the carrier
+%%------------------------------------------------------------------------------
+%% @doc Acquire a given number from the carrier
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
 acquire_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
@@ -182,32 +168,28 @@ acquire_number(Number) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Release a number from the routing table
+%%------------------------------------------------------------------------------
+%% @doc Release a number from the routing table
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
 disconnect_number(Number) -> Number.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec format_check_numbers(kz_json:object()) ->
                                   {'ok', kz_json:object()} |
                                   {'error', 'resp_error'}.
@@ -234,11 +216,10 @@ format_check_numbers_success(Body) ->
                       ),
     {'ok', JObj}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_numbers(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
                          {'ok', list()} |
                          {'error', 'not_available'}.
@@ -292,11 +273,10 @@ format_numbers_resp(JObj, Options) ->
 format_found(QID, DID, CarrierData) ->
     {QID, {DID, ?MODULE, ?NUMBER_STATE_DISCOVERY, CarrierData}}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_blocks(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
                         {'ok', list()} |
                         {'error', 'not_available'}.
@@ -307,15 +287,15 @@ get_blocks(?BLOCK_PHONEBOOK_URL, _Prefix, _Quantity, Options) ->
 get_blocks(Url, Prefix, Quantity, Options) ->
     Offset = props:get_binary_value('offset', Options, <<"0">>),
     Limit = props:get_binary_value('blocks', Options, <<"0">>),
-    ReqBody = <<"?prefix=", (kz_util:uri_encode(Prefix))/binary
-                ,"&size=", (kz_term:to_binary(Quantity))/binary
-                ,"&offset=", Offset/binary
-                ,"&limit=", Limit/binary
-              >>,
-    Uri = <<Url/binary
-            ,"/blocks/", (?COUNTRY)/binary
-            ,"/search", ReqBody/binary
-          >>,
+    ReqBody = list_to_binary(["?prefix=", kz_util:uri_encode(Prefix)
+                             ,"&size=", kz_term:to_binary(Quantity)
+                             ,"&offset=", Offset
+                             ,"&limit=", Limit
+                             ]),
+    Uri = list_to_binary([Url
+                         ,"/blocks/", (?COUNTRY)
+                         ,"/search", ReqBody
+                         ]),
     lager:debug("making request to ~s", [Uri]),
     case kz_http:get(binary:bin_to_list(Uri)) of
         {'ok', 200, _Headers, Body} ->
@@ -353,11 +333,10 @@ format_block_resp_fold(Block, QID) ->
     ,format_found(QID, EndNumber, Block)
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec format_acquire_resp(knm_number:knm_number(), kz_json:object()) ->
                                  knm_number:knm_number().
 format_acquire_resp(Number, Body) ->
@@ -377,11 +356,10 @@ format_acquire_resp(Number, Body) ->
             knm_errors:by_carrier(?MODULE, 'lookup_resp_error', Num)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_merge_opaque(kz_json:object(), knm_number:knm_number()) ->
                                 knm_number:knm_number().
 maybe_merge_opaque(JObj, Number) ->
@@ -392,11 +370,10 @@ maybe_merge_opaque(JObj, Number) ->
             knm_number:set_phone_number(Number, PN)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_merge_locality(kz_json:object(), knm_number:knm_number()) ->
                                   knm_number:knm_number().
 maybe_merge_locality(JObj, Number) ->

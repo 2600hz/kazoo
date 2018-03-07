@@ -1,13 +1,15 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2017 Voxter Communications
-%%% @doc
-%%% Flush DTMF collection on a call
-%%% "data":{
-%%%   "collection_name":"your_name_here" // the collection to flush
-%%% }
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Flush DTMF collection on a call.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`collection_name'</dt>
+%%%   <dd>The collection to flush.</dd>
+%%% </dl>
+%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_flush_dtmf).
 
 -behaviour(gen_cf_action).
@@ -16,12 +18,10 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Collection = collection_name(Data),
