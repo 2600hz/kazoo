@@ -200,24 +200,17 @@ resource_exists(ModuleBin, FunctionBin) ->
 resource_exists(ModuleBin, FunctionBin, Args) ->
     does_resource_exist(ModuleBin, FunctionBin, Args).
 
+-spec does_resource_exist(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> boolean().
 does_resource_exist(ModuleBin, FunctionBin, Args) ->
     Arity = erlang:length(Args),
-    try {module_name(ModuleBin), kz_term:to_atom(FunctionBin)} of
-        {Module, Function} ->
-            lager:debug("checking existence of ~s:~s/~p", [Module, Function, Arity]),
-            kz_module:is_exported(Module, Function, Arity)
-    catch
-        'error':_ ->
-            lager:debug("failed to find ~s_maintenance:~s/~p", [ModuleBin, FunctionBin, Arity]),
-            'false'
-    end.
+    kz_module:is_exported(maintenance_module_name(ModuleBin), FunctionBin, Arity).
 
-module_name(ModuleBin) ->
+-spec maintenance_module_name(kz_term:ne_binary()) -> module().
+maintenance_module_name(ModuleBin) ->
     %% NOTE: the unsafe convertion to an atom is not an issue
     %%   in this module, despite coming from a user, because
     %%   only the system admin has access...
-    Module = kz_term:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true'),
-    Module = kz_module:ensure_loaded(Module).
+    kz_term:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true').
 
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
@@ -233,15 +226,15 @@ validate(Context) -> Context.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin) ->
-    validate_sup(Context, module_name(ModuleBin), 'status', []).
+    validate_sup(Context, maintenance_module_name(ModuleBin), 'status', []).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin, FunctionBin) ->
-    validate_sup(Context, module_name(ModuleBin), kz_term:to_atom(FunctionBin), []).
+    validate_sup(Context, maintenance_module_name(ModuleBin), kz_term:to_atom(FunctionBin), []).
 
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin, FunctionBin, Args) ->
-    validate_sup(Context, module_name(ModuleBin), kz_term:to_atom(FunctionBin), Args).
+    validate_sup(Context, maintenance_module_name(ModuleBin), kz_term:to_atom(FunctionBin), Args).
 
 validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),

@@ -622,7 +622,7 @@ is_cb_module(Context, Elem) ->
 -spec is_cb_module(kz_term:ne_binaries()) -> boolean().
 is_cb_module([]) -> 'false';
 is_cb_module([Module|Modules]) ->
-    'true' =:= (catch erlang:function_exported(kz_term:to_atom(Module), 'init', 0))
+    kz_module:is_exported(Module, 'init', 0)
         orelse is_cb_module(Modules).
 
 %%------------------------------------------------------------------------------
