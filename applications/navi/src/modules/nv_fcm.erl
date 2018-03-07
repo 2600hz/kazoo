@@ -47,7 +47,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'push', {RegistrationId, Message, Parameters}}, #state{name=Name}=State) ->
     lager:debug("Received request to push notification into fcm"),
     Data = [{<<"message">>, Message}
-           ,{<<"metadata">>, kz_json:to_proplist(props:get_value(<<"metadata">>, Parameters))}
+           ,{<<"metadata">>, kz_json:to_proplist(props:get_value(<<"metadata">>, Parameters, []))}
            ],
     FilteredData = props:filter_undefined(Data),
     MessageParams = [{<<"data">>, FilteredData}],

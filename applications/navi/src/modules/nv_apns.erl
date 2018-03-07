@@ -81,7 +81,7 @@ handle_cast({'push', {RegistrationId, Message, ExtraParams}}, #state{name=Name, 
     Headers = #{ 'apns_topic' => TrueTopic
                },
     Notification = #{aps => #{alert => Message}
-                    ,metadata => kz_json:to_map(props:get_value(<<"metadata">>, ExtraParams))},
+                    ,metadata => kz_json:to_map(props:get_value(<<"metadata">>, ExtraParams, []))},
     case apns:push_notification(Name, RegistrationId, Notification, Headers) of
         {'timeout', _StreamId} ->
             lager:info("apns notification timed out in connection"),
