@@ -21,6 +21,7 @@
 
 -export([handle_new_voicemail/2
         ,handle_push_request_device/2
+        ,handle_push_request_user/2
         ]).
 
 -include("navi.hrl").
@@ -31,11 +32,12 @@
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ['new_voicemail']}]}
-                  ,{'navi', [{'restrict_to', ['push_device']}]}
+                  ,{'navi', [{'restrict_to', ['push_device', 'push_user']}]}
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_new_voicemail'}, [{<<"notification">>, <<"voicemail_new">>}]}
                     ,{{?MODULE, 'handle_push_request_device'}, [{<<"navi">>, <<"push_device">>}]}
+                    ,{{?MODULE, 'handle_push_request_user'}, [{<<"navi">>, <<"push_user">>}]}
                     ]).
 -define(QUEUE_NAME, <<"navi_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -168,12 +170,12 @@ handle_new_voicemail(JObj, _Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Handles external requests to send push notifications
+%% @doc Handles external requests to send push notifications to a specific device
 %% @spec handle_push_request_device(Jobj, Props) -> ok
 %%--------------------------------------------------------------------
 -spec handle_push_request_device(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push_request_device(JObj, _Props) ->
-    lager:debug("Navi received external push request"),
+    lager:debug("Navi received external push request (device)"),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     DeviceId = kz_json:get_value(<<"Device-ID">>, JObj),
     Msg = kz_json:get_value(<<"Message">>, JObj),
@@ -182,6 +184,22 @@ handle_push_request_device(JObj, _Props) ->
     ExtraParameters = [{<<"metadata">>, kz_json:normalize(Metadata)}],
     push_notifications_device(AccountId, DeviceId, Event, Msg, ExtraParameters).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Handles external requests to send push notifications to a specific user.
+%% Pushes to all the user's devices
+%% @spec handle_push_request_device(Jobj, Props) -> ok
+%%--------------------------------------------------------------------
+-spec handle_push_request_user(kz_json:object(), kz_term:proplist()) -> 'ok'.
+handle_push_request_user(JObj, _Props) ->
+    lager:debug("Navi received external push request (user)"),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    UserId = kz_json:get_value(<<"User-ID">>, JObj),
+    Msg = kz_json:get_value(<<"Message">>, JObj),
+    Metadata = kz_json:get_value(<<"Metadata">>, JObj, kz_json:new()),
+    Event = kz_json:get_value(<<"Push-Topic">>, JObj),
+    ExtraParameters = [{<<"metadata">>, kz_json:normalize(Metadata)}],
+    push_notifications(AccountId, UserId, Event, Msg, ExtraParameters).
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
