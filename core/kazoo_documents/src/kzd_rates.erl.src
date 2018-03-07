@@ -7,6 +7,7 @@
 
 -export([new/0]).
 -export([account_id/1, account_id/2, set_account_id/2]).
+-export([caller_id_numbers/1, caller_id_numbers/2, set_caller_id_numbers/2]).
 -export([carrier/1, carrier/2, set_carrier/2]).
 -export([description/1, description/2, set_description/2]).
 -export([direction/1, direction/2, set_direction/2]).
@@ -49,6 +50,18 @@ account_id(Doc, Default) ->
 -spec set_account_id(doc(), binary()) -> doc().
 set_account_id(Doc, AccountId) ->
     kz_json:set_value([<<"account_id">>], AccountId, Doc).
+
+-spec caller_id_numbers(doc()) -> kz_term:api_binary().
+caller_id_numbers(Doc) ->
+    caller_id_numbers(Doc, 'undefined').
+
+-spec caller_id_numbers(doc(), Default) -> binary() | Default.
+caller_id_numbers(Doc, Default) ->
+    kz_json:get_binary_value([<<"caller_id_numbers">>], Doc, Default).
+
+-spec set_caller_id_numbers(doc(), binary()) -> doc().
+set_caller_id_numbers(Doc, CallerIdNumbers) ->
+    kz_json:set_value([<<"caller_id_numbers">>], CallerIdNumbers, Doc).
 
 -spec carrier(doc()) -> kz_term:api_binary().
 carrier(Doc) ->

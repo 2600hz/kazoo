@@ -25338,6 +25338,10 @@
                     "description": "Reseller's account ID",
                     "type": "string"
                 },
+                "caller_id_numbers": {
+                    "description": "String of caller id prefixes separated by ':'",
+                    "type": "string"
+                },
                 "carrier": {
                     "description": "Friendly name for the carrier providing this rate",
                     "type": "string"

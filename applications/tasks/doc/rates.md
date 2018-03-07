@@ -30,6 +30,7 @@ Name | Description | Required
 `rate_version`|rate version|
 `ratedeck_id`| ratedeck name, assigned to account via service plan|
 `weight`|when found several rates with same prefix, used rate with higher weight. If not set - calculated from `prefix` length and `rate_cost` (`pvt_rate_cost`)|
+`caller_id_numbers`|string of caller id prefixes separated by ":". For ex.: 441:442:443 It will be converted into ["^\\+?441.+$", "^\\+?442.+$", "^\\+?443.+$"]|
 
 CSV files for all actions use the same list of fields. Names of fields match the names of keys in the CouchDB [rate document](../../crossbar/doc/rates.md#schema).
 
