@@ -25401,6 +25401,10 @@
                     "minimum": 0,
                     "type": "integer"
                 },
+                "rate_suffix": {
+                    "description": "Suffix applied to rate name",
+                    "type": "string"
+                },
                 "rate_surcharge": {
                     "description": "The upfront cost of connecting the call",
                     "minimum": 0,
