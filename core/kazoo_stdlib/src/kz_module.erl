@@ -17,12 +17,15 @@ is_exported(Module, Function, Arity)
        is_atom(Function),
        is_integer(Arity),
        Arity >= 0 ->
-    case erlang:module_loaded(Module) of
-        'false' -> _ = code:ensure_loaded(Module), 'ok';
-        'true' -> 'ok'
-    end,
-    erlang:function_exported(Module, Function, Arity).
-
+    case ensure_loaded(Module) of
+        'false' -> 'false';
+        Module -> erlang:function_exported(Module, Function, Arity)
+    end;
+is_exported(Module, Function, Arity) ->
+    is_exported(kz_term:to_atom(Module)
+               ,kz_term:to_atom(Function)
+               ,kz_term:to_integer(Arity)
+               ).
 
 %%------------------------------------------------------------------------------
 %% @doc Given a module name try to verify its existence, loading it into the
