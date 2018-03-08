@@ -166,7 +166,7 @@ render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), ?INDEX_FILE, EncOpts).
 
-render_module(AppCat, App, Module, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri, file_suffix := Suffix}=Ctx) ->
+render_module(AppCat, App, {Module, _Desc}, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri, file_suffix := Suffix}=Ctx) ->
     Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
                   ,kz_app_cat => AppCat
                   ,kz_app_name => atom_to_list(App)
