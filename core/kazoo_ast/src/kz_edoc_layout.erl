@@ -984,9 +984,13 @@ export_content(E) ->
     export_content(E, #{kz_export_type => xmerl_html}).
 
 -spec export_content(exporty_thing() | [exporty_thing()], map()) -> exported().
-export_content(Es, #{kz_export_type := xmerl_html}) when is_list(Es) ->
+export_content([], _) ->
+    <<>>;
+export_content([Char | _]=String, Context) when is_integer(Char) ->
+    export_content([String], Context);
+export_content([_|_]=Es, #{kz_export_type := xmerl_html}) ->
     iolist_to_binary(xmerl:export_simple_content(Es, xmerl_html));
-export_content(Es, _) when is_list(Es) ->
+export_content([_|_]=Es, _) ->
     iolist_to_binary(xmerl:export_simple_content(Es, xmerl_xml));
 export_content(E, Context) ->
     export_content([E], Context).
