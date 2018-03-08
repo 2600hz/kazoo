@@ -84,7 +84,7 @@ module(#xmlElement{name = module, content = Es}=E
       ,{since, since(Es, Context)}
       ,{behaviours, behaviours_prop(Es, Name, Context)}
       ,{authors, authors(Es, Context)}
-      ,{references, [export_content(C, Context) || #xmlElement{content = C} <- get_elem(reference, Es)]}
+      ,{references, references(Es, Context)}
       ,{sees, sees(Es, Context)}
       ,{todos, todos(Es, Context)}
       ,{types, types(lists:sort(Types), Context)}
@@ -104,7 +104,7 @@ overview(#xmlElement{name = overview, content = Es}, Context) ->
       ,{version, export_content(get_content(version, Es), Context)}
       ,{since, since(Es, Context)}
       ,{authors, authors(Es, Context)}
-      ,{references, [export_content(C, Context) || #xmlElement{content = C} <- get_elem(reference, Es)]}
+      ,{references, references(Es, Context)}
       ,{sees, sees(Es, Context)}
       ,{todos, todos(Es, Context)}
       ,{full_desc, description(full, Es, Context)}
@@ -181,6 +181,12 @@ author(E=#xmlElement{}, _Context) ->
                          ,{website, URL}
                          ])
     end.
+
+-spec references([#xmlElement{}], map()) -> [exported()].
+references(Es, Context) ->
+    [export_content(normalize_paragraphs(C, Context), Context)
+     || #xmlElement{content = C} <- get_elem(reference, Es)
+    ].
 
 %%%=============================================================================
 %%% Type Tag functions
@@ -878,6 +884,50 @@ get_kazoo_app_or_mod(AppName, _AppCat, undefined) ->
     %% ?DEV_LOG("3 AppName ~p AppCat ~p", [AppName, _AppCat]),
     AppName ++ "/".
 
+-spec normalize_links([exporty_thing()], map()) -> [exporty_thing()].
+normalize_links(Es, Context) ->
+    lists:reverse(normalize_links(Es, Context, [])).
+
+-spec normalize_links([#xmlElement{}], map(), [exporty_thing()]) -> [exporty_thing()].
+normalize_links([], _, Acc) ->
+    Acc;
+normalize_links([#xmlElement{name = a, attributes = Attributes}=E|Es], Context, Acc) ->
+    normalize_links(Es, Context, normalize_link(E, get_attr(href, Attributes), Context) ++ Acc);
+normalize_links([#xmlElement{content = Content}=E|Es], Context, Acc) ->
+    normalize_links(Es, Context, [E#xmlElement{content = normalize_links(Content, Context)} | Acc]);
+normalize_links([{a, Attributes, String}|Es], Context, Acc) ->
+    URI = proplists:get_value(href, Attributes, undefined),
+    case URI =/= undefined
+        andalso kz_fix_link(URI, Context)
+    of
+        false ->
+            normalize_links(Es, Context, [{a, Attributes, String} | Acc]);
+        [] ->
+            normalize_links(Es, Context, [String | Acc]);
+        FixedURI ->
+            normalize_links(Es, Context, [{a, [{href, FixedURI} | proplists:delete(href, Attributes)], String} | Acc])
+    end;
+normalize_links([E|Es], Context, Acc) ->
+    normalize_links(Es, Context, [E | Acc]).
+
+normalize_link(#xmlElement{content = Es}=E, [], Context) ->
+    [E#xmlElement{content = normalize_links(Es, Context)}];
+normalize_link(#xmlElement{}=E, [#xmlAttribute{value = URI}=Href], Context) ->
+    fix_href_attribute(E, Href, kz_fix_link(URI, Context), Context).
+
+fix_href_attribute(#xmlElement{content = Es}, _Href, [], Context) ->
+    normalize_links(Es, Context);
+fix_href_attribute(#xmlElement{content = Es, attributes = Attributes}=E, Href, URI, Context) ->
+    [E#xmlElement{content = normalize_links(Es, Context)
+                 ,attributes = [Href#xmlAttribute{value = URI}
+                                | [Attr
+                                   || #xmlAttribute{name = AttrName}=Attr <- Attributes,
+                                      AttrName =/= href
+                                  ]
+                               ]
+                 }
+    ].
+
 -spec anchor_id_label(string() | binary() | [string()] | [binary()], #xmlElement{}) -> {binary(), string() | binary() | [string()] | [binary()]}.
 anchor_id_label(Content, E) ->
     case get_attrval(label, E) of
@@ -899,13 +949,13 @@ deprecated(Es, Context) ->
 
 -spec description(full | both, [#xmlElement{}], map()) -> exported() | [{short_desc | full_desc, exported()}].
 description(full, Es, Context) ->
-    export_content(normalize_paragraphs(get_content(fullDescription, get_content(description, Es))), Context);
+    export_content(normalize_paragraphs(get_content(fullDescription, get_content(description, Es)), Context), Context);
 %% description(short, Es, Context) ->
-%%     export_content(normalize_paragraphs(get_content(briefDescription, get_content(description, Es))), Context);
+%%     export_content(normalize_paragraphs(get_content(briefDescription, get_content(description, Es)), Context), Context);
 description(both, Es, Context) ->
     Desc = get_content(description, Es),
-    Short = normalize_paragraphs(get_content(briefDescription, Desc)),
-    Full = normalize_paragraphs(get_content(fullDescription, Desc)),
+    Short = normalize_paragraphs(get_content(briefDescription, Desc), Context),
+    Full = normalize_paragraphs(get_content(fullDescription, Desc), Context),
     %% ?DEV_LOG("Full ~p", [Full]),
     filter_empty(
       [{short_desc, export_content(Short, Context)}
@@ -919,7 +969,9 @@ since(Es, Context) ->
 
 -spec todos([#xmlElement{}], map()) -> [exported()].
 todos(Es, Context) ->
-    [export_content(C, Context) || #xmlElement{content = C} <- get_elem(todo, Es)].
+    [export_content(normalize_paragraphs(C, Context), Context)
+     || #xmlElement{content = C} <- get_elem(todo, Es)
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc Replaces types with their link.
@@ -1031,9 +1083,9 @@ strip_tickie(String) ->
 %% stupid whitespace only `#xmlText{}'.
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_paragraphs([#xmlElement{}]) -> [exporty_thing()].
-normalize_paragraphs(Es) ->
-    normalize_paragraphs(Es, [], []).
+-spec normalize_paragraphs([#xmlElement{}], map()) -> [exporty_thing()].
+normalize_paragraphs(Es, Context) ->
+    normalize_links(normalize_paragraphs(Es, [], []), Context).
 
 -spec normalize_paragraphs([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
 normalize_paragraphs([E=#xmlElement{name = Name}|Es], As, Bs) ->
