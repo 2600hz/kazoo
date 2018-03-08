@@ -15,8 +15,8 @@ main(Args) ->
     ScriptsDir = filename:dirname(escript:script_name()),
     ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
 
-    % kz_edoc_doclet:run(doclet_options(parse_args(Args))).
-    io:format("~n~p~n", [doclet_options(parse_args(Args))]).
+    %% io:format("~n~p~n", [doclet_options(parse_args(Args))]).
+    kz_edoc_doclet:run(doclet_options(parse_args(Args))).
 
 doclet_options(Opts) ->
     [{file_suffix, ".html"}

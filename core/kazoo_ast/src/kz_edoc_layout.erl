@@ -48,6 +48,8 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
+-define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+
 -type html_tag() :: atom().
 -type html_attrib() :: [{atom(), string() | iolist() | atom() | integer()}].
 -type exporty_thing() :: {html_tag(), html_attrib(), [exporty_thing()]} |
@@ -124,7 +126,7 @@ overview(#xmlElement{name = overview, content = Es}, Context) ->
                                                     {optional_callbacks, [exported()]}
                                                    ].
 behaviours_prop(Es, BehaviourName, Context) ->
-    Behaviours = [export_content(behaviour(B), Context) || B <- get_elem(behaviour, Es)],
+    Behaviours = [export_content(behaviour(B, Context), Context) || B <- get_elem(behaviour, Es)],
     Required = [export_content(callback(C, Context), Context) || C <- get_content(callbacks, Es)],
     Optional = [export_content(callback(C, Context), Context) || C <- get_content(optional_callbacks, Es)],
     case Required =/= []
@@ -140,9 +142,9 @@ behaviours_prop(Es, BehaviourName, Context) ->
             filter_empty([{behaviours, Behaviours}])
     end.
 
--spec behaviour(#xmlElement{}) -> [exporty_thing()].
-behaviour(E=#xmlElement{content = Es}) ->
-    see(E, Es).
+-spec behaviour(#xmlElement{}, map()) -> [exporty_thing()].
+behaviour(E=#xmlElement{content = Es}, Context) ->
+    see(E, Es, Context).
 
 -spec callback(#xmlElement{}, map()) -> [string()].
 callback(E=#xmlElement{}, Context) ->
@@ -246,7 +248,7 @@ format_type(Prefix, NameArgTypes, Type, #{pretty_printer := erl_pp}=Context) ->
         export_content([Prefix] ++ [" = "] ++ R, Context)
     catch _:_ ->
             %% Example: "t() = record(a)."
-            io:format("wtf type ~p~n", [Prefix]),
+            ?DEV_LOG("wtf type ~p", [Prefix]),
             format_type(Prefix, NameArgTypes, Type, Context#{pretty_printer => ''})
     end;
 format_type(Prefix, _Name, Type, Context) ->
@@ -408,7 +410,7 @@ equiv(Es, Context) ->
         {[Expr], []} ->
             export_content(Expr, Context);
         {[Expr], [E=#xmlElement{}]} ->
-            export_content(see(E, [Expr]), Context)
+            export_content(see(E, [Expr], Context), Context)
     end.
 
 -spec typespec_signature(#xmlElement{}, map()) -> exported().
@@ -454,7 +456,7 @@ format_spec(Name, Type, #{pretty_printer := erl_pp}=Context) ->
         R
     catch _E:_T ->
             %% Should not happen.
-            io:format("wtf spec ~p~n", [Name]),
+            ?DEV_LOG("wtf spec ~p", [Name]),
             format_spec(Name, Type, Context#{pretty_printer => ''})
     end;
 format_spec(Sep, Type, Context) ->
@@ -596,9 +598,9 @@ t_record(E, Es, Context) ->
     Name = ["#"] ++ t_type(get_elem(atom, Es), Context),
     case get_elem(field, Es) of
         [] ->
-            see(E, Name ++ ["{}"]);
+            see(E, Name ++ ["{}"], Context);
         Fs ->
-            see(E, Name) ++ ["{"] ++ seq(fun(F) -> t_field(F, Context) end, Fs, ["}"])
+            see(E, Name, Context) ++ ["{"] ++ seq(fun(F) -> t_field(F, Context) end, Fs, ["}"])
     end.
 
 t_field(#xmlElement{content = Es}, Context) ->
@@ -608,9 +610,9 @@ t_abstype(E, Es, Context) ->
     Name = t_name(get_elem(erlangName, Es), Context),
     case get_elem(type, Es) of
         [] ->
-            see(E, [Name, "()"]);
+            see(E, [Name, "()"], Context);
         Ts ->
-            see(E, [Name]) ++ ["("] ++ seq(t_utype_elem_fun(Context), Ts, [")"])
+            see(E, [Name], Context) ++ ["("] ++ seq(t_utype_elem_fun(Context), Ts, [")"])
     end.
 
 t_abstype(Es, Context) ->
@@ -796,32 +798,85 @@ ot_name([E]) ->
 %%------------------------------------------------------------------------------
 -spec sees([#xmlElement{}], map()) -> [exported()].
 sees(Es, Context) ->
-    [export_content(see(E), Context) || E <- get_elem(see, Es)].
+    [export_content(see(E, Context), Context) || E <- get_elem(see, Es)].
 
--spec see(#xmlElement{}) -> [exporty_thing()].
-see(E=#xmlElement{content = Es}) ->
-    see(E, Es).
+-spec see(#xmlElement{}, map()) -> [exporty_thing()].
+see(E=#xmlElement{content = Es}, Context) ->
+    see(E, Es, Context).
 
--spec see(#xmlElement{}, [#xmlElement{}] | [string()]) -> [exporty_thing()].
-see(E, Es) ->
-    case href(E) of
+-spec see(#xmlElement{}, [#xmlElement{}] | [string()], map()) -> [exporty_thing()].
+see(E, Es, Context) ->
+    case href(E, Context) of
         [] -> Es;
         Ref ->
             [{a, Ref, Es}]
     end.
 
-%% TODO: Modify links to Erlang module/behaviour and deps.
--spec href(#xmlElement{}) -> [{target, string()} | {href, string()}].
-href(E) ->
-    case get_attrval(href, E) of
-        "" -> [];
+-spec href(#xmlElement{}, map()) -> [{target, string()} | {href, string()}].
+href(E, Context) ->
+    case kz_fix_link(get_attrval(href, E), Context) of
+        [] -> [];
         URI ->
+            %% ?DEV_LOG("fixed link ~p", [URI]),
             T = case get_attrval(target, E) of
                     "" -> [];
                     S -> [{target, S}]
                 end,
             [{href, URI} | T]
     end.
+
+kz_fix_link("", _) ->
+    [];
+kz_fix_link(URI, #{file_suffix := Suffix
+                  ,kz_rel_path := RelPath
+                  ,kz_apps_uri := AppsUri
+                  ,kz_link_apps := Apps
+                  ,kz_link_mods := Mods
+                  }=Context) ->
+    App = maps:get(kz_app_name, Context, undefined),
+    Mod = maps:get(kz_mod_name, Context, undefined),
+
+    %% ?DEV_LOG("checking link ~p", [URI]),
+
+    case re:run(URI, "(([a-z_]+)/doc/)?([a-z_]+)\\" ++ Suffix ++ "(#.*)?", [{capture, [2, 3, 4], list}]) of
+        nomatch ->
+            URI;
+        {match, [App, Mod, Fragment]} ->
+            Mod ++ Suffix ++ "/" ++ Fragment;
+        {match, [App, SomeFile, Fragment]} ->
+            SomeFile ++ Suffix ++ "/" ++ Fragment;
+        {match, [[], SomeFile, Fragment]} ->
+            case get_kazoo_app_or_mod(SomeFile, Apps(SomeFile), Mods(SomeFile)) of
+                undefined -> [];
+                AppSlashMod ->
+                    RelPath ++ "/" ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ "/" ++ Fragment
+            end;
+        {match, [OtherApp, OtherMod, Fragment]} ->
+            %% ?DEV_LOG("OtherApp ~p OtherMod ~p, KA ~p KM ~p", [OtherApp, OtherMod, Apps(OtherApp), Mods(OtherMod)]),
+            case get_kazoo_app_or_mod(OtherMod, Apps(OtherApp), Mods(OtherMod)) of
+                undefined -> [];
+                AppSlashMod ->
+                    RelPath ++ "/" ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ Fragment
+            end
+    end.
+
+get_kazoo_app_or_mod(_, undefined, undefined) ->
+    %% don't create link for deps or erlang (mostly occurred for behaviour, e.g. gen_server) or other
+    %% non-kazoo app.
+    %% Also don't create links for kazoo apps/mods which we are not creating document for them (kz_docgen was called
+    %% with specific app names)
+
+    %% ?DEV_LOG("undefined undefined", []),
+    undefined;
+get_kazoo_app_or_mod(ModName, undefined, {AppName, _AppCat}) ->
+    %% ?DEV_LOG("1 AppName ~p ModName ~p", [AppName, ModName]),
+    AppName ++ "/" ++ ModName;
+get_kazoo_app_or_mod(ModName, _AppCat, {AppName, _AppCat}) ->
+    %% ?DEV_LOG("2 AppName ~p ModName ~p", [AppName, ModName]),
+    AppName ++ "/" ++ ModName;
+get_kazoo_app_or_mod(AppName, _AppCat, undefined) ->
+    %% ?DEV_LOG("3 AppName ~p AppCat ~p", [AppName, _AppCat]),
+    AppName ++ "/".
 
 -spec anchor_id_label(string() | binary() | [string()] | [binary()], #xmlElement{}) -> {binary(), string() | binary() | [string()] | [binary()]}.
 anchor_id_label(Content, E) ->
@@ -851,7 +906,7 @@ description(both, Es, Context) ->
     Desc = get_content(description, Es),
     Short = normalize_paragraphs(get_content(briefDescription, Desc)),
     Full = normalize_paragraphs(get_content(fullDescription, Desc)),
-    %% io:format("~n Full ~p~n", [Full]),
+    %% ?DEV_LOG("Full ~p", [Full]),
     filter_empty(
       [{short_desc, export_content(Short, Context)}
       ,{full_desc, export_content(Full, Context)}
@@ -903,7 +958,9 @@ app_fix(L, Context) ->
     try
         {"//" ++ R1,L2} = app_fix1(L, 1),
         [App, Mod] = string:tokens(R1, "/"),
-        "//" ++ atom(App, Context) ++ "/" ++ atom(Mod, Context) ++ L2
+        Res = "//" ++ atom(App, Context) ++ "/" ++ atom(Mod, Context) ++ L2,
+        ?DEV_LOG("app_fix L ~p Res ~p", [L, Res]),
+        Res
     catch _:_ -> L
     end.
 

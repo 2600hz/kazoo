@@ -26,7 +26,7 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
--import(edoc_report, [report/2, warning/2]).
+-define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 
 -define(APP_OVERVIEW_FILE, "overview.edoc").
 -define(APPS_OVERVIEW_FILE, "apps_overview.edoc").
@@ -52,10 +52,10 @@
 %%------------------------------------------------------------------------------
 -spec run(proplists:proplist()) -> ok.
 run(Options) ->
-    run(Options, proplists:proplist(kz_gen_apps, Options)).
+    run(Options, proplists:get_value(kz_gen_apps, Options)).
 
 run(_, []) ->
-    warning("no source files were found...", []),
+    ?DEV_LOG("no source files were found...", []),
     exit(error);
 run(Options, GenApps) ->
     gen_multi_app(init_context(Options, GenApps), GenApps).
@@ -85,14 +85,19 @@ process_cmds(Context, GenApps) ->
 %% Generating documentation (as a JSON) for a source file, adding its name to the
 %% set if it was successful. Errors are just flagged at this stage,
 %% allowing all source files to be processed even if some of them fail.
-source({M, App, AppCat, ErlFile}
-      ,#{kz_doc_site := OutDir, kz_apps_uri := AppsUri
+source(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri
         ,edoc_env := Env, edoc_opts := EDocOpts
-        } = Context
+        } = Ctx
+      ,{M, App, AppCat, ErlFile}
       ,{Map, HasError}
       ,Private, Hidden
       ) ->
-    report("processing source file '~ts'", [ErlFile]),
+    ?DEV_LOG("processing source file '~ts'", [ErlFile]),
+    Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
+                  ,kz_app_cat => AppCat
+                  ,kz_app_name => atom_to_list(App)
+                  ,kz_mod_name => atom_to_list(M)
+                  },
     try edoc:get_doc(ErlFile, Env, EDocOpts) of
         {Module, Doc} ->
             check_name(Module, M, ErlFile),
@@ -116,7 +121,7 @@ source({M, App, AppCat, ErlFile}
             end
     catch
         _:R ->
-            report("skipping source file '~ts': ~P.", [ErlFile, R, 15]),
+            ?DEV_LOG("skipping source file '~ts': ~P.", [ErlFile, R, 15]),
             {Map, true}
     end.
 
@@ -128,7 +133,7 @@ check_name([$? | _], _, _) ->
 check_name(Module, Module, _) ->
     ok;
 check_name(Module, _, File) ->
-    warning("file '~ts' actually contains module '~s'.", [File, Module]).
+    ?DEV_LOG("file '~ts' actually contains module '~s'.", [File, Module]).
 
 sidebar_apps_list(Modules) ->
     Side = maps:fold(fun({AppCat, App}, Mods, Acc) ->
@@ -144,25 +149,32 @@ render_apps(Modules, Sidebar, Context) ->
 
 render_app({AppCat, App}, Modules, Sidebar, Context) ->
     render_app_overview(AppCat, App, Modules, Sidebar, Context),
-    [render_modules(App, Ms, Sidebar, Context) || Ms <- Modules].
+    [render_module(AppCat, App, Ms, Sidebar, Context) || Ms <- Modules].
 
-render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_apps_uri := AppsUri}=Context) ->
+render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_apps_uri := AppsUri}=Ctx) ->
     File = filename:join([AppCat, App, "doc", ?APP_OVERVIEW_FILE]),
+    Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
+                  ,kz_app_cat => AppCat
+                  ,kz_app_name => atom_to_list(App)
+                  },
     Props = get_overview_data(File, "Application: " ++ atom_to_list(App), Context),
-    Rendered = render([{sidebar_apps, Sidebar}
-                      ,{application, App}
-                      ,{modules, lists:usort(Modules)}
+    Rendered = render([{kz_sidebar_apps, Sidebar}
+                      ,{kz_modules, lists:usort(Modules)}
                        | Props
                       ], Context, kz_edoc_app_template),
 
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), ?INDEX_FILE, EncOpts).
 
-render_modules(App, Module, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri, file_suffix := Suffix}=Context) ->
+render_module(AppCat, App, Module, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri, file_suffix := Suffix}=Ctx) ->
+    Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
+                  ,kz_app_cat => AppCat
+                  ,kz_app_name => atom_to_list(App)
+                  ,kz_mod_name => atom_to_list(Module)
+                  },
     Props = read_tmp_file(Context, App, Module),
 
-    Rendered = render([{sidebar_apps, Sidebar}
-                      ,{application, App}
+    Rendered = render([{kz_sidebar_apps, Sidebar}
                        | Props
                       ], Context, kz_edoc_mod_template),
 
@@ -170,21 +182,23 @@ render_modules(App, Module, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := App
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), Name, EncOpts).
 
-render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir}=Context) ->
+render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri}=Ctx) ->
     Apps = [App || {_, App} <- maps:keys(Modules)],
+    Context = Ctx#{kz_rel_path => make_rel_path(filename:split(AppsUri))},
     Props = get_overview_data(?APPS_OVERVIEW_FILE, "Kazoo Applications Index", Context),
-    Rendered = render([{sidebar_apps, Sidebar}
-                      ,{apps, lists:usort(Apps)}
+    Rendered = render([{kz_sidebar_apps, Sidebar}
+                      ,{kz_apps, lists:usort(Apps)}
                        | Props
                       ], Context, kz_edoc_apps_template),
 
     EncOpts = [{encoding, utf8}],
-    edoc_lib:write_file(Rendered, OutDir, ?INDEX_FILE, EncOpts).
+    edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri]), ?INDEX_FILE, EncOpts).
 
 %% Creating an index file.
-index_file(Sidebar, #{kz_doc_site := OutDir}=Context) ->
+index_file(Sidebar, #{kz_doc_site := OutDir}=Ctx) ->
+    Context = Ctx#{kz_rel_path => ""},
     Props = get_overview_data(?PROJ_OVERVIEW_FILE, "Kazoo Erlang Reference", Context),
-    Rendered = render([{sidebar_apps, Sidebar}
+    Rendered = render([{kz_sidebar_apps, Sidebar}
                        | Props
                       ], Context, kz_edoc_index_template),
 
@@ -195,7 +209,7 @@ run_layout(module, File, Doc, Context) ->
     try kz_edoc_layout:module(Doc, Context)
     catch
         _E:_T ->
-            report("failed to layout ~s: ~p:~p~n", [File, _E, _T]),
+            ?DEV_LOG("failed to layout ~s: ~p:~p", [File, _E, _T]),
             log_stacktrace(),
             exit(error)
     end;
@@ -203,7 +217,7 @@ run_layout(overview, File, Doc, Context) ->
     try kz_edoc_layout:overview(Doc, Context)
     catch
         _E:_T ->
-            report("failed to layout overview file ~s: ~p:~p~n", [File, _E, _T]),
+            ?DEV_LOG("failed to layout overview file ~s: ~p:~p", [File, _E, _T]),
             log_stacktrace(),
             exit(error)
     end.
@@ -211,14 +225,19 @@ run_layout(overview, File, Doc, Context) ->
 render(Props0, Context, Template) ->
     Name = proplists:get_value(name, Props0),
     Props = Props0 ++ maps:from_list(Context),
-    %% io:format("~n Props ~p~n~n", [Props]),
+    %% ?DEV_LOG("Props ~p", [Props]),
     case render(Template, Props) of
         {ok, Rendered} ->
             Rendered;
         {error, _Reason} ->
-            io:format("~nfailed to render ~s: ~p~n", [Name, _Reason]),
+            ?DEV_LOG("failed to render ~s: ~p", [Name, _Reason]),
             exit(error)
     end.
+
+make_rel_path([]) -> "";
+make_rel_path([_]) -> "..";
+make_rel_path([_|_]=Ps) ->
+    lists:flatten(["..", ["/.." || _ <- lists:seq(1, length(Ps) - 1)]]).
 
 render(Module, Props) when is_atom(Module) ->
     kz_template:render(Module, Props);
@@ -231,7 +250,7 @@ read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
         {ok, Bin} ->
             kz_json:recursive_to_proplist(kz_json:decode(Bin));
         {error, Reason} ->
-            io:format("~ncan not read temporary file ~p: ~p~n", [Path, Reason]),
+            ?DEV_LOG("can not read temporary file ~p: ~p", [Path, Reason]),
             exit(error)
     end.
 
@@ -261,8 +280,7 @@ compile_templates() ->
 -spec compile_templates([{string(), string()}]) -> ok.
 compile_templates([]) ->
     ok;
-compile_templates([{Key, File}|Keys]) ->
-    Mod = list_to_atom("kz_edoc_" ++ Key),
+compile_templates([{Mod, File}|Keys]) ->
     Mod = compile_template(Mod, File),
     compile_templates(Keys).
 
@@ -271,7 +289,7 @@ compile_template(Module, File) ->
     case kz_template:compile(File, Module, [{auto_escape, false}]) of
         {ok, Module} -> Module;
         {error, Reason} ->
-            io:format("~nfailed to compile template ~p (~p): ~p~n", [Module, File, Reason]),
+            ?DEV_LOG("failed to compile template ~p (~p): ~p", [Module, File, Reason]),
             error(Reason)
     end.
 
@@ -313,7 +331,7 @@ init_context(Opts, GenApps) ->
                    not is_kazoo_option(atom_to_list(K))
                ],
     Env = edoc_lib:get_doc_env(EDocOpts),
-    Linkage = make_doc_links(GenApps),
+    {AppLink, ModLink} = make_doc_links(GenApps),
     Context0 = maps:from_list(
                  [{edoc_opts, EDocOpts}
                  ,{edoc_env, Env}
@@ -330,7 +348,8 @@ init_context(Opts, GenApps) ->
                  ,{kz_export_type, xmerl_html}
                  ,{kz_ga, undefined}
                  ,{kz_gendate, kz_time:format_date()}
-                 ,{kz_linkage, Linkage}
+                 ,{kz_link_apps, AppLink}
+                 ,{kz_link_mods, ModLink}
                  ,{kz_template_dir, "doc/edoc-template"}
                  ,{kz_vsn, master}
                  ] ++ ?DEFAULT_TEMPLATES),
@@ -346,8 +365,8 @@ is_kazoo_option("kz_"++_) -> true;
 is_kazoo_option(_) -> false.
 
 make_doc_links(GenApps) ->
-    Mods = maps:from_list(list:sort([{M, {App, AppCat}} || {M, App, AppCat, _} <- GenApps])),
-    Apps = maps:from_list(list:usort([{App, AppCat} || {_, App, AppCat, _} <- GenApps])),
+    Mods = maps:from_list(lists:sort([{atom_to_list(M), {atom_to_list(App), AppCat}} || {M, App, AppCat, _} <- GenApps])),
+    Apps = maps:from_list(lists:usort([{atom_to_list(App), AppCat} || {_, App, AppCat, _} <- GenApps])),
     Module = fun(M) -> maps:get(M, Mods, undefined) end,
     App = fun(A) -> maps:get(A, Apps, undefined) end,
     {App, Module}.
@@ -362,14 +381,14 @@ log_stacktrace(ST) ->
     log_stacktrace(ST, "", []).
 
 log_stacktrace(ST, Fmt, Args) ->
-    warning("stacktrace: " ++ Fmt, Args),
+    ?DEV_LOG("stacktrace: " ++ Fmt, Args),
     _ = [log_stacktrace_mfa(M, F, A, Info)
          || {M, F, A, Info} <- ST
         ],
     'ok'.
 
 log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    warning("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
+    ?DEV_LOG("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
 log_stacktrace_mfa(M, F, Args, Info) ->
-    warning("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    lists:foreach(fun (Arg) -> warning("args: ~p", [Arg]) end, Args).
+    ?DEV_LOG("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    lists:foreach(fun (Arg) -> ?DEV_LOG("args: ~p", [Arg]) end, Args).
