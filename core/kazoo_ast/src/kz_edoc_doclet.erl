@@ -22,14 +22,11 @@
 -export([run/1]).
 
 -export([compile_templates/0
-        ,maybe_link_table/0
         ]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
 -import(edoc_report, [report/2, warning/2]).
-
--define(LINK_TABLE, kz_link_tab).
 
 -define(APP_OVERVIEW_FILE, "overview.edoc").
 -define(APPS_OVERVIEW_FILE, "apps_overview.edoc").
@@ -55,10 +52,16 @@
 %%------------------------------------------------------------------------------
 -spec run(proplists:proplist()) -> ok.
 run(Options) ->
-    gen_multi_app(init_context(Options)).
+    run(Options, proplists:proplist(kz_gen_apps, Options)).
 
-gen_multi_app(Context) ->
-    {Modules, HasError} = process_cmds(Context),
+run(_, []) ->
+    warning("no source files were found...", []),
+    exit(error);
+run(Options, GenApps) ->
+    gen_multi_app(init_context(Options, GenApps), GenApps).
+
+gen_multi_app(Context, GenApps) ->
+    {Modules, HasError} = process_cmds(Context, GenApps),
     Sidebar = sidebar_apps_list(Modules),
     render_apps(Modules, Sidebar, Context),
     render_apps_index(Modules, Sidebar, Context),
@@ -72,12 +75,12 @@ gen_multi_app(Context) ->
     end.
 
 %% Processing the individual source files
-process_cmds(Context) ->
+process_cmds(Context, GenApps) ->
     Private = maps:get(private, Context, false),
     Hidden = maps:get(hidden, Context, false),
 
     Fun = fun(Obj, Acc) -> source(Context, Obj, Acc, Private, Hidden) end,
-    ets:foldl(Fun, {#{}, false}, ?LINK_TABLE).
+    lists:foldl(Fun, {#{}, false}, GenApps).
 
 %% Generating documentation (as a JSON) for a source file, adding its name to the
 %% set if it was successful. Errors are just flagged at this stage,
@@ -303,14 +306,14 @@ is_hidden(E) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init_context(proplists:proplist()) -> map().
-init_context(Opts) ->
+-spec init_context(proplists:proplist(), any()) -> map().
+init_context(Opts, GenApps) ->
     EDocOpts = [KV
                 || {K, _}=KV <- Opts,
                    not is_kazoo_option(atom_to_list(K))
                ],
     Env = edoc_lib:get_doc_env(EDocOpts),
-    Linkage = make_doc_links(proplists:proplist(kz_gen_apps, Opts)),
+    Linkage = make_doc_links(GenApps),
     Context0 = maps:from_list(
                  [{edoc_opts, EDocOpts}
                  ,{edoc_env, Env}
@@ -342,32 +345,12 @@ init_context(Opts) ->
 is_kazoo_option("kz_"++_) -> true;
 is_kazoo_option(_) -> false.
 
-make_doc_links([]) ->
-    warning("no edoc-info were set...", []),
-    exit(error);
 make_doc_links(GenApps) ->
-    maybe_create_link_table(),
-    true = ets:insert(?LINK_TABLE, GenApps),
-    ?LINK_TABLE.
-
-maybe_create_link_table() ->
-    case ets:info(?LINK_TABLE, compressed) =/= undefined of
-        true -> ok;
-        false ->
-            Opts = [named_table, set, {read_concurrency, true}],
-            ?LINK_TABLE = ets:new(?LINK_TABLE, Opts),
-            ok
-    end.
-
-is_table_created() ->
-    ets:info(?LINK_TABLE, compressed) =/= undefined.
-
--spec maybe_link_table() -> ok.
-maybe_link_table() ->
-    case is_table_created() of
-        false -> ok;
-        true -> ets:delete(?LINK_TABLE)
-    end.
+    Mods = maps:from_list(list:sort([{M, {App, AppCat}} || {M, App, AppCat, _} <- GenApps])),
+    Apps = maps:from_list(list:usort([{App, AppCat} || {_, App, AppCat, _} <- GenApps])),
+    Module = fun(M) -> maps:get(M, Mods, undefined) end,
+    App = fun(A) -> maps:get(A, Apps, undefined) end,
+    {App, Module}.
 
 -spec log_stacktrace() -> 'ok'.
 log_stacktrace() ->
