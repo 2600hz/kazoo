@@ -842,9 +842,9 @@ kz_fix_link(URI, #{file_suffix := Suffix
         nomatch ->
             URI;
         {match, [App, Mod, Fragment]} ->
-            Mod ++ Suffix ++ "/" ++ Fragment;
+            Mod ++ Suffix ++ Fragment;
         {match, [App, SomeFile, Fragment]} ->
-            SomeFile ++ Suffix ++ "/" ++ Fragment;
+            SomeFile ++ Suffix ++ Fragment;
         {match, [[], SomeFile, Fragment]} ->
             case get_kazoo_app_or_mod(SomeFile, Apps(SomeFile), Mods(SomeFile)) of
                 undefined -> [];
