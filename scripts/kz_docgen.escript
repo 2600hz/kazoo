@@ -9,169 +9,119 @@
 
 -export([main/1]).
 
--define(CONFIG, #{dirs => []
-                 ,out_dir => "doc/edoc"
-                 ,apps_out_dir => "apps"
-                 ,template_dir => "doc/edoc-template"
-                 ,mod_template => kz_edoc_mod_template
-                 ,mod_template_file => "doc/edoc-template/module.html"
-                 ,app_template => kz_edoc_app_template
-                 ,app_template_file => "doc/edoc-template/app_overview.html"
-                 ,apps_template => kz_edoc_apps_template
-                 ,apps_template_file => "doc/edoc-template/apps_index.html"
-                 ,index_template => kz_edoc_index_template
-                 ,index_template_file => "doc/edoc-template/index.html"
-                 ,base => ""
-                 }).
-
--record(env, {module = []
-             ,root = ""
-             ,file_suffix
-             ,apps
-             ,modules
-             ,app_default
-             ,macros = []
-             ,includes = []
-             }).
-%% EDoc internal environment. Should not be here, but we need it to to make links relative.
-
 -spec main(_) -> boolean().
 main(Args) ->
     _ = io:setopts(user, [{encoding, unicode}]),
     ScriptsDir = filename:dirname(escript:script_name()),
     ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
-    io:format("cwd: ~p~n", [file:get_cwd()]),
 
-    run(parse_args(Args, ?CONFIG)).
+    % kz_edoc_doclet:run(doclet_options(parse_args(Args))).
+    io:format("~n~p~n", [doclet_options(parse_args(Args))]).
 
-%% This is copy pasta from `edoc:run/2' and modified to get
-%% a relative path to source modules, so links are relative.
-%%
-%% E.g. instead of `/home/user/kazoo/core/kazoo_amqp/src/api/kapi_rate.erl'
-%% we have `kazoo_amqp/src/api/kapi_rate.erl' for linkage.
-%%
-%% Generally this is considered dangerous, but there is no other way to make Edoc
-%% works properly with multi-application situation (except you are willingly happy
-%% to mess around with application dependency)
-%%
-%% Side effect: ALL kazoo project app/module/function/type links are relatives, even
-%% if links to the same document.
-run(Opts0) ->
-    EDocOpts = edoc_options(Opts0),
-    Sources = sources(Opts0),
+doclet_options(Opts) ->
+    [{file_suffix, ".html"}
+    ,{includes, include_paths()}
+    ,{preprocess, true}
+    ,{pretty_printer, erl_pp}
+    ,{sort_functions, true}
+    ,{todo, true}
 
-    Env = get_doc_env(Sources, EDocOpts),
-    Ctxt1 = kz_edoc_doclet:init_context(Env, EDocOpts),
-
-    Cmd = maps:values(Sources),
-    F = fun(M) -> M:run(Cmd, Ctxt1) end,
-
-    edoc_lib:run_doclet(F, EDocOpts).
-
-%%% Internals
+     %% kazoo specific options
+     | proplists:delete(all_apps, Opts)
+    ].
 
 include_paths() ->
     lists:usort(["core"]
-                ++ ["applications/tasks"]
-                ++ [filename:dirname(Path) || Path <- filelib:wildcard("core/*/{src,include}/**/*.hrl")]
                 ++ ["applications"]
-                ++ [filename:dirname(Path) || Path <- filelib:wildcard("applications/*/{src,include}/**/*.hrl")]
+                ++ ["applications/tasks"]
+                ++ [filename:dirname(Path) || Path <- filelib:wildcard("{applications,core}/*/{src,include}/**/*.hrl")]
                 ++ ["deps"]).
 
-edoc_options(Opts) ->
-    [{dir, maps:get(out_dir, Opts)}
-    ,{includes, include_paths()}
-    ,{application, "Kazoo"}
-    ,{preprocess, true}
-    ,{sort_functions, true}
-    ,{pretty_printer, erl_pp}
-    ,{todo, true}
-    ,{layout, kz_edoc_layout}
-    ,{doclet, kz_edoc_doclet}
-    ,{sidebar_links, sidebar_links()}
-     | maps:to_list(maps:remove(apps, Opts))
+option_spec_list() ->
+    [{help, $?, "help", undefined, "Show the program options"}
+
+    ,{all_apps, $a, "all-apps", {boolean, false}, "Produce documentation for all applications"}
+
+    ,{kz_doc_site, $o, "doc-site", {string, "doc/edoc"}, "Path to directory for produced html files and all images, css, ..."}
+    ,{kz_template_dir, $t, "template-dir", {string, "doc/edoc-template"}, "Path to directory where templates are"}
+
+    ,{kz_base_uri, undefined, "base-uri", {string, ""}, "Base URI for documentation site"}
+    ,{kz_apps_uri, undefined, "apps-uri", {string, "apps"}, "Base URI to put application docs"}
+
+    ,{kz_ga, undefined, "ga", {string, undefined}, "Google Analytics site's ID"}
+    ,{kz_gendate, undefined, "gendate", string, "The date string in YYYY-MM-DD format that will be used in the documentation, [default: current date]"}
+    ,{kz_vsn, undefined, "vsn", {string, "master"}, "The Kazoo version string"}
     ].
 
-%% [{id, label, href}]
-sidebar_links() ->
-    [].
+parse_args(CmdArgs) ->
+    case getopt:parse(option_spec_list(), CmdArgs) of
+        {ok, {Options, Args}} ->
+            maybe_print_help(Options),
+            parse_args(Options, Args);
+        {error, {_, _}} ->
+            usage()
+    end.
 
-sources(#{apps := AppDirs}) ->
-    maps:from_list([expand_sources(App, Dir) || {App, Dir} <- AppDirs]).
+parse_args(Options, Args) ->
+    case proplists:get_bool(all_apps, Options) of
+        true ->
+            add_edoc_infos(Options, all_apps);
+        false ->
+            add_edoc_infos(Options, Args)
+    end.
 
-expand_sources(App, Dir) ->
-    Erls = lists:usort(filelib:fold_files(filename:join(Dir, "src"), "\\.erl$", true, fun(H, T) -> [H|T] end, [])),
-    {{App, Dir}, kz_edoc_doclet:doclet_apps_gen(list_to_atom(App), Dir, Erls)}.
+add_edoc_infos(Options, all_apps) ->
+    Apps = [filename:basename(D) || D <- filelib:wildcard("{applications,core}/*"), filelib:is_dir(D)],
+    add_edoc_infos(Options, Apps);
+add_edoc_infos(_, []) ->
+    io:format("no application is given, either set 'all_apps' or give some app names.~n"),
+    halt(1);
+add_edoc_infos(Options, Args) ->
+    [{kz_gen_apps
+     ,lists:append([EdocInfo
+                    || App <- Args,
+                       EdocInfo <- [maybe_get_app_edoc(App)],
+                       EdocInfo =/= []
+                   ])
+     }
+      | Options
+    ].
 
-%% something like `edoc_lib:get_doc_env/3'
-get_doc_env(Sources, EDocOpts) ->
-    Includes = proplists:append_values(includes, EDocOpts),
-    {A, M} = get_doc_links(Sources),
+maybe_get_app_edoc(App) ->
+    case code:lib_dir(App) of
+        {error, bad_name} ->
+            io:format("invalid app name: ~p~n", [App]),
+            [];
+        Path ->
+            get_app_edoc(Path)
+    end.
 
-    #env{file_suffix = ".html"
-        ,apps = A
-        ,modules = M
-        ,app_default = "http://www.erlang.org/edoc/doc"
-        ,includes = Includes
-        }.
+get_app_edoc(Path) ->
+    {AppName, AppCat} = app_cat(lists:reverse(filename:split(Path))),
+    case [Erl || Erl <- filelib:wildcard(filename:join(Path, "src/**/*.erl"))] of
+        [] ->
+            io:format("no source files found for: ~p~n", [Path]),
+            [];
+        Erls ->
+            [{list_to_atom(filename:basename(Erl, ".erl")), list_to_atom(AppName), AppCat, Erl}
+             || Erl <- Erls
+            ]
+    end.
 
-%% something like `edoc_lib:get_doc_links/3'
-get_doc_links(Sources) ->
-    A = maps:from_list(maps:keys(Sources)),
-    M = maps:from_list(lists:usort(maps:fold(fun kz_edoc_doclet:get_modules_app_path/3, [], Sources))),
+app_cat([AppName, "core" | _]) ->
+    {AppName, "core"};
+app_cat([AppName, "application" | _]) ->
+    {AppName, "applications"};
+app_cat(_Other) ->
+    io:format("bad kazoo app name: ~p~n", [_Other]),
+    halt(1).
 
-    Fun = fun(D) -> fun(K) -> maps:get(K, D, "") end end,
-    {Fun(A), Fun(M)}.
-
-parse_args([], #{dirs := []}=Config) ->
-    C1 = Config#{apps => [{filename:basename(D), D}
-                          || D <- filelib:wildcard("{core,applications}/*"),
-                             filelib:is_dir(D)
-                         ]
-                },
-    maps:remove(dirs, C1);
-
-parse_args(["--out-dir", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{out_dir => DocSite});
-
-parse_args(["--doc-apps-dir", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{apps_out_dir => DocSite});
-
-parse_args(["--template-dir", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{template_dir => DocSite});
-
-parse_args(["--mod-template", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{mod_template => list_to_atom(DocSite)});
-parse_args(["--mod-template-file", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{mod_template_file => DocSite});
-
-parse_args(["--app-template", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{app_template => list_to_atom(DocSite)});
-parse_args(["--app-template-file", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{app_template_file => DocSite});
-
-parse_args(["--apps-template", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{apps_template => list_to_atom(DocSite)});
-parse_args(["--apps-template-file", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{apps_template_file => DocSite});
-
-parse_args(["--index-template", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{index_template => list_to_atom(DocSite)});
-parse_args(["--index-template-file", DocSite | Rest], Config) ->
-    parse_args(Rest, Config#{index_template_file => DocSite});
-
-parse_args(["--base", Base | Rest], Config) ->
-    parse_args(Rest, Config#{base => Base});
-
-parse_args(["--ga", GA | Rest], Config) ->
-    parse_args(Rest, Config#{ga => GA});
-
-parse_args([_ | Rest], Config) ->
-    parse_args(Rest, Config).
-%% parse_args([Dir | Rest], #{dirs := Dirs}=Config) ->
-%%     parse_args(Rest, Config#{dirs => [filename:absname(Dir) | Dirs]}).
+maybe_print_help(Options) ->
+    case proplists:get_value(help, Options) of
+        true -> usage();
+        _ -> ok
+    end.
 
 usage() ->
-    ok = io:setopts([{encoding, unicode}]),
-    io:format("Usage: \n\t~s  [--out-dir <output dir>]  <source path>+\n", [filename:basename(escript:script_name())]),
+    getopt:usage(option_spec_list(), "ERL_LIBS=deps/:core/applications/ ./scripts/kz_docgen.escript", "[app_name1 app_name2 ...]"),
     halt(1).

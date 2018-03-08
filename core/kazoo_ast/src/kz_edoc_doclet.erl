@@ -19,23 +19,17 @@
 
 %% Note that this is written so that it is *not* depending on edoc.hrl!
 
--export([run/2]).
--export([init_context/2
-        ,doclet_apps_gen/3
-        ,get_modules_app_path/3
+-export([run/1]).
 
-        ,compile_templates/0
+-export([compile_templates/0
+        ,maybe_link_table/0
         ]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
 -import(edoc_report, [report/2, warning/2]).
 
--define(NO_APP, []).
-
--define(DEFAULT_FILE_SUFFIX, ".html").
-
--define(DEFAULT_APPS_OUT_DIR, "apps").
+-define(LINK_TABLE, kz_link_tab).
 
 -define(APP_OVERVIEW_FILE, "overview.edoc").
 -define(APPS_OVERVIEW_FILE, "apps_overview.edoc").
@@ -44,77 +38,14 @@
 -define(INDEX_FILE, "index.html").
 -define(APP_SUMMARY_FILE, "index.html").
 
--record(context, {dir = "" :: string()
-                 ,env :: edoc_lib:edoc_env()
-                 ,opts = [] :: [term()]
-                 }).
-%% Context for doclets
-
--record(doclet_apps_gen, {sources = [] :: [{atom(), string(), string()}]
-                         ,app = ?NO_APP :: no_app() | atom()
-                         ,modules = [] :: [atom()]
-                         ,dir :: string()
-                         }).
-
--record(doclet_gen, {sources = [] :: [{atom(), string(), string()}]
-                    ,app = ?NO_APP :: no_app() | atom()
-                    ,modules = [] :: [atom()]
-                    }).
-
--record(doclet_toc, {paths :: [string()]
-                    ,indir :: string()
-                    }).
-
--type no_app() :: list().
-%% A value used to mark absence of an Erlang application
-%% context. Use the macro `NO_APP' to produce this value.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec init_context(edoc_lib:edoc_env(), list()) -> #context{}.
-init_context(Env, Opts) ->
-    #context{dir = proplists:get_value(dir, Opts)
-            ,opts = Opts
-            ,env = Env
-            }.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec doclet_apps_gen(atom(), string(), [string()]) -> #doclet_apps_gen{}.
-doclet_apps_gen(Atom, Dir, Erls) ->
-    Sources = [{list_to_atom(filename:basename(Erl, ".erl")), filename:basename(Erl), filename:dirname(Erl)}
-               || Erl <- Erls
-              ],
-    #doclet_apps_gen{sources = Sources
-                    ,app = Atom
-                    ,dir = Dir
-                    ,modules = [list_to_atom(filename:basename(Erl, ".erl")) || Erl <- Erls]
-                    }.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec get_modules_app_path({atom(), string()}, #doclet_apps_gen{}, {atom(), string()}) -> [{atom(), string()}].
-get_modules_app_path({_, Dir}, #doclet_apps_gen{modules = Modules}, Acc) ->
-    App = "../" ++ filename:basename(Dir),
-    [{Module, App} || Module <- Modules] ++ Acc.
-
-%% Sources is the list of inputs in the order they were found.
-%% Modules are sorted lists of atoms without duplicates. (They
-%% usually include the data from the edoc-info file in the target
-%% directory, if it exists.)
+-define(DEFAULT_TEMPLATES, [{kz_edoc_mod_template, "doc/edoc-template/module.html"}
+                           ,{kz_edoc_app_template, "doc/edoc-template/app_overview.html"}
+                           ,{kz_edoc_apps_template, "doc/edoc-template/apps_index.html"}
+                           ,{kz_edoc_index_template, "doc/edoc-template/index.html"}
+                           ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Main Kazoo doclet entry point.
-%%
-%% Also see {@link edoc:layout/2} for layout-related options, and
-%% {@link edoc:get_doc/2} for options related to reading source
-%% files. {@link edoc_doclet:run/2} for General doclet options.
 %%
 %% We only care about kazoo documentation, so not all options/features are
 %% implemented.
@@ -122,21 +53,13 @@ get_modules_app_path({_, Dir}, #doclet_apps_gen{modules = Modules}, Acc) ->
 %% Someone please document extra Kazoo options.
 %% @end
 %%------------------------------------------------------------------------------
--spec run(#doclet_gen{} | [#doclet_gen{}] | #doclet_toc{}, #context{}) -> ok.
-run(#doclet_gen{}=_Cmd, _Context) ->
-    io:format("doclet_gen not implemented.~n"),
-    exit(1);
-run(#doclet_toc{}=_Cmd, _Context) ->
-    io:format("doclet_toc not implemented.~n"),
-    exit(1);
-run([], #context{}) ->
-    io:format("no modules were found.~n");
-run(Cmds, #context{opts = Options}=Context) when is_list(Cmds) ->
-    gen_multi_app(Cmds, Context#context{opts = compile_templates(Options)}).
+-spec run(proplists:proplist()) -> ok.
+run(Options) ->
+    gen_multi_app(init_context(Options)).
 
-gen_multi_app(Cmds, Context) ->
-    {Modules, HasError} = process_cmds(Cmds, Context, {#{}, false}),
-    Sidebar = sidebar(Modules, Context),
+gen_multi_app(Context) ->
+    {Modules, HasError} = process_cmds(Context),
+    Sidebar = sidebar_apps_list(Modules),
     render_apps(Modules, Sidebar, Context),
     render_apps_index(Modules, Sidebar, Context),
     index_file(Sidebar, Context),
@@ -148,59 +71,49 @@ gen_multi_app(Cmds, Context) ->
         false -> ok
     end.
 
-%% Processing the individual source files for each applications.
-process_cmds([], _, Acc) ->
-    Acc;
-process_cmds([#doclet_apps_gen{sources = Sources}=Cmd|Cmds]
-            ,#context{opts = Options} = Context
-            ,{Map, HasError}) ->
-    Private = proplists:get_bool(private, Options),
-    Hidden = proplists:get_bool(hidden, Options),
+%% Processing the individual source files
+process_cmds(Context) ->
+    Private = maps:get(private, Context, false),
+    Hidden = maps:get(hidden, Context, false),
 
-    {NewMap, E} = lists:foldl(fun(Src, Acc) ->
-                                      source(Context, Cmd, Src, Acc, Private, Hidden)
-                              end
-                             ,{Map, HasError}
-                             ,Sources
-                             ),
-    process_cmds(Cmds, Context, {NewMap, E}).
+    Fun = fun(Obj, Acc) -> source(Context, Obj, Acc, Private, Hidden) end,
+    ets:foldl(Fun, {#{}, false}, ?LINK_TABLE).
 
-
-%% Generating documentation for a source file, adding its name to the
+%% Generating documentation (as a JSON) for a source file, adding its name to the
 %% set if it was successful. Errors are just flagged at this stage,
 %% allowing all source files to be processed even if some of them fail.
-
-source(#context{dir = OutDir, env = Env, opts = Options}
-      ,#doclet_apps_gen{app = App, dir = AppDir}
-      ,{M, Name, Path}
+source({M, App, AppCat, ErlFile}
+      ,#{kz_doc_site := OutDir, kz_apps_uri := AppsUri
+        ,edoc_env := Env, edoc_opts := EDocOpts
+        } = Context
       ,{Map, HasError}
       ,Private, Hidden
       ) ->
-    AppsOutDir = proplists:get_value(apps_out_dir, Options, ?DEFAULT_APPS_OUT_DIR),
-    File = filename:join(Path, Name),
-    report("processing source file '~ts'", [File]),
-    try edoc:get_doc(File, Env, Options) of
+    report("processing source file '~ts'", [ErlFile]),
+    try edoc:get_doc(ErlFile, Env, EDocOpts) of
         {Module, Doc} ->
-            check_name(Module, M, File),
+            check_name(Module, M, ErlFile),
             case (not is_private(Doc)
                   orelse Private)
                 andalso (not is_hidden(Doc)
                          orelse Hidden)
             of
                 true ->
-                    Props = run_layout(module, File, Doc, Options),
+                    Props = run_layout(module, ErlFile, Doc, Context),
                     JObj = kz_json:from_list_recursive(Props),
                     Name1 = atom_to_list(M) ++ ".json",
-                    Encoding = [{encoding, encoding(Doc)}],
-                    edoc_lib:write_file(kz_json:encode(JObj), filename:join([OutDir, "tmp", AppsOutDir, App]), Name1, Encoding),
+
+                    Encoding = [{encoding, utf8}],
+                    edoc_lib:write_file(kz_json:encode(JObj), filename:join([OutDir, "tmp", AppsUri, App]), Name1, Encoding),
+
                     ShortDesc = proplists:get_value(short_desc, Props, []),
-                    {maps:put({App, AppDir}, [{Module, ShortDesc} | maps:get(App, Map, [])], Map), HasError};
+                    {maps:put({AppCat, App}, [{Module, ShortDesc} | maps:get({AppCat, App}, Map, [])], Map), HasError};
                 false ->
                     {Map, HasError}
             end
     catch
         _:R ->
-            report("skipping source file '~ts': ~P.", [File, R, 15]),
+            report("skipping source file '~ts': ~P.", [ErlFile, R, 15]),
             {Map, true}
     end.
 
@@ -214,89 +127,77 @@ check_name(Module, Module, _) ->
 check_name(Module, _, File) ->
     warning("file '~ts' actually contains module '~s'.", [File, Module]).
 
-sidebar(Modules, #context{dir = OutDir, opts = Options}) ->
-    AppsOutDir = proplists:get_value(apps_out_dir, Options, ?DEFAULT_APPS_OUT_DIR),
-    Suffix = proplists:get_value(file_suffix, Options, ?DEFAULT_FILE_SUFFIX),
-
-    Side = maps:fold(fun({App, _}, Mods, Acc) ->
-                             [{App, [{Module, filename:join([OutDir, AppsOutDir, App, Module]) ++ Suffix} || {Module, _} <- Mods]}
-                              | Acc
-                             ]
+sidebar_apps_list(Modules) ->
+    Side = maps:fold(fun({AppCat, App}, Mods, Acc) ->
+                             [{AppCat, App, lists:sort([Module || {Module, _} <- Mods])} | Acc]
                      end
                     ,[]
                     ,Modules),
-    lists:usort(Side).
+    lists:sort(Side).
 
 render_apps(Modules, Sidebar, Context) ->
     _ = maps:map(fun(App, Ms) -> render_app(App, Ms, Sidebar, Context) end, Modules),
     ok.
 
-render_app({App, AppDir}, Modules, Sidebar, #context{opts = Options}=Context) ->
-    render_app_overview(App, AppDir, Modules, Sidebar, Context),
-    Suffix = proplists:get_value(file_suffix, Options, ?DEFAULT_FILE_SUFFIX),
-    [render_modules(App, Ms, Sidebar, Suffix, Context) || Ms <- Modules].
+render_app({AppCat, App}, Modules, Sidebar, Context) ->
+    render_app_overview(AppCat, App, Modules, Sidebar, Context),
+    [render_modules(App, Ms, Sidebar, Context) || Ms <- Modules].
 
-render_app_overview(App, AppDir, Modules, Sidebar, #context{dir = OutDir, opts = Options}=Context) ->
-    File = proplists:get_value(overview, Options, filename:join([AppDir, "doc", ?APP_OVERVIEW_FILE])),
-    Data = get_overview_data(File, "Application: " ++ atom_to_list(App), Context),
-    Props = run_layout(overview, File, Data, Options),
+render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_apps_uri := AppsUri}=Context) ->
+    File = filename:join([AppCat, App, "doc", ?APP_OVERVIEW_FILE]),
+    Props = get_overview_data(File, "Application: " ++ atom_to_list(App), Context),
     Rendered = render([{sidebar_apps, Sidebar}
                       ,{application, App}
                       ,{modules, lists:usort(Modules)}
-                       | proplists:delete(application, Props)
-                      ], Options, proplists:get_value(app_template, Options)),
+                       | Props
+                      ], Context, kz_edoc_app_template),
 
-    AppsOutDir = proplists:get_value(apps_out_dir, Options, ?DEFAULT_APPS_OUT_DIR),
     EncOpts = [{encoding, utf8}],
-    edoc_lib:write_file(Rendered, filename:join([OutDir, AppsOutDir, App]), ?INDEX_FILE, EncOpts).
+    edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), ?INDEX_FILE, EncOpts).
 
-render_modules(App, Module, Sidebar, Suffix, #context{dir = OutDir, opts = Options}) ->
-    AppsOutDir = proplists:get_value(apps_out_dir, Options, ?DEFAULT_APPS_OUT_DIR),
-    Props = read_tmp_file(OutDir, AppsOutDir, App, Module),
+render_modules(App, Module, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri, file_suffix := Suffix}=Context) ->
+    Props = read_tmp_file(Context, App, Module),
 
     Rendered = render([{sidebar_apps, Sidebar}
                       ,{application, App}
-                       | proplists:delete(application, Props)
-                      ], Options, proplists:get_value(mod_template, Options)),
+                       | Props
+                      ], Context, kz_edoc_mod_template),
 
     Name = atom_to_list(Module) ++ Suffix,
     EncOpts = [{encoding, utf8}],
-    edoc_lib:write_file(Rendered, filename:join([OutDir, AppsOutDir, App]), Name, EncOpts).
+    edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), Name, EncOpts).
 
-render_apps_index(Modules, Sidebar, #context{dir = OutDir, opts = Options}=Context) ->
-    Apps = [App || {App, _} <- maps:keys(Modules)],
-    Data = get_overview_data(?APPS_OVERVIEW_FILE, "Kazoo Applications Index", Context),
-    Props = run_layout(overview, ?APPS_OVERVIEW_FILE, Data, Options),
+render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir}=Context) ->
+    Apps = [App || {_, App} <- maps:keys(Modules)],
+    Props = get_overview_data(?APPS_OVERVIEW_FILE, "Kazoo Applications Index", Context),
     Rendered = render([{sidebar_apps, Sidebar}
                       ,{apps, lists:usort(Apps)}
                        | Props
-                      ], Options, proplists:get_value(app_template, Options)),
+                      ], Context, kz_edoc_apps_template),
 
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, OutDir, ?INDEX_FILE, EncOpts).
 
 %% Creating an index file.
-index_file(Sidebar, #context{dir = OutDir, opts = Options}=Context) ->
-    Data = get_overview_data(?PROJ_OVERVIEW_FILE, "Kazoo Erlang Reference", Context),
-    Props = run_layout(overview, ?PROJ_OVERVIEW_FILE, Data, Options),
+index_file(Sidebar, #{kz_doc_site := OutDir}=Context) ->
+    Props = get_overview_data(?PROJ_OVERVIEW_FILE, "Kazoo Erlang Reference", Context),
     Rendered = render([{sidebar_apps, Sidebar}
                        | Props
-                      ], Options, proplists:get_value(app_template, Options)),
+                      ], Context, kz_edoc_index_template),
 
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, OutDir, ?INDEX_FILE, EncOpts).
 
-run_layout(module, File, Doc, Options) ->
-    try kz_edoc_layout:module(Doc, Options)
+run_layout(module, File, Doc, Context) ->
+    try kz_edoc_layout:module(Doc, Context)
     catch
         _E:_T ->
             report("failed to layout ~s: ~p:~p~n", [File, _E, _T]),
             log_stacktrace(),
             exit(error)
     end;
-run_layout(overview, File, Doc, Options) ->
-    io:format("~n Doc ~p~n~n", [Doc]),
-    try kz_edoc_layout:overview(Doc, Options)
+run_layout(overview, File, Doc, Context) ->
+    try kz_edoc_layout:overview(Doc, Context)
     catch
         _E:_T ->
             report("failed to layout overview file ~s: ~p:~p~n", [File, _E, _T]),
@@ -304,11 +205,11 @@ run_layout(overview, File, Doc, Options) ->
             exit(error)
     end.
 
-render(Props0, Options, Template) ->
+render(Props0, Context, Template) ->
     Name = proplists:get_value(name, Props0),
-    Props = [{sidebar_links, proplists:get_value(sidebar_links, Options, [])} | Props0],
+    Props = Props0 ++ maps:from_list(Context),
     %% io:format("~n Props ~p~n~n", [Props]),
-    case kz_template:render(Template, Props) of
+    case render(Template, Props) of
         {ok, Rendered} ->
             Rendered;
         {error, _Reason} ->
@@ -316,39 +217,62 @@ render(Props0, Options, Template) ->
             exit(error)
     end.
 
+render(Module, Props) when is_atom(Module) ->
+    kz_template:render(Module, Props);
+render(TemplateFilePath, Props) when is_list(TemplateFilePath) ->
+    kz_template:render(TemplateFilePath, Props, [{auto_escape, false}]).
+
+read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
+    Path = filename:join([OutDir, "tmp", AppsUri, App, Module]) ++ ".json",
+    case file:read_file(Path) of
+        {ok, Bin} ->
+            kz_json:recursive_to_proplist(kz_json:decode(Bin));
+        {error, Reason} ->
+            io:format("~ncan not read temporary file ~p: ~p~n", [Path, Reason]),
+            exit(error)
+    end.
+
+get_overview_data(File, Title, #{edoc_env := Env, edoc_opts := Options}=Context) ->
+    Tags = extract_overview(File, Env, Options),
+    Data0 = edoc_data:overview(Title, Tags, Env, Options),
+    EncodingAttribute = #xmlAttribute{name = encoding
+                                     ,value = "utf8"
+                                     },
+    #xmlElement{attributes = As} = Data0,
+
+    run_layout(overview, File, Data0#xmlElement{attributes = [EncodingAttribute | As]}, Context).
+
+%% Read external source file. Fails quietly, returning empty tag list.
+extract_overview(File, Env, Opts) ->
+    case edoc_extract:file(File, overview, Env, Opts) of
+        {ok, Tags} ->
+            Tags;
+        {error, _} ->
+            []
+    end.
+
 -spec compile_templates() -> ok.
 compile_templates() ->
-    compile_templates([]).
+    compile_templates(?DEFAULT_TEMPLATES).
 
--spec compile_templates(proplists:proplist()) -> proplists:proplist().
-compile_templates(Options) ->
-    Keys = [{"mod_template", "doc/edoc-template/module.html"}
-           ,{"app_template", "doc/edoc-template/app_overview.html"}
-           ,{"apps_template", "doc/edoc-template/apps_index.html"}
-           ,{"index_template", "doc/edoc-template/index.html"}
-           ],
-    compile_templates(Keys, Options).
-
--spec compile_templates([{string(), string()}], proplists:proplist()) -> proplists:proplist().
-compile_templates([], Options) ->
-    Options;
-compile_templates([{Key, DefaultFile}|Keys], Options) ->
-    KeyAtom = list_to_atom(Key),
-    Mod = proplists:get_value(KeyAtom, Options, list_to_atom("kz_edoc_" ++ Key)),
-    File = proplists:get_value(list_to_atom(Key ++ "_file"), Options, DefaultFile),
-    compile_templates(Keys, proplists:delete(KeyAtom, Options) ++ [compile_template(Mod, File)]).
+-spec compile_templates([{string(), string()}]) -> ok.
+compile_templates([]) ->
+    ok;
+compile_templates([{Key, File}|Keys]) ->
+    Mod = list_to_atom("kz_edoc_" ++ Key),
+    Mod = compile_template(Mod, File),
+    compile_templates(Keys).
 
 -spec compile_template(atom(), string()) -> atom().
 compile_template(Module, File) ->
     case kz_template:compile(File, Module, [{auto_escape, false}]) of
-        {ok, _} -> Module;
+        {ok, Module} -> Module;
         {error, Reason} ->
             io:format("~nfailed to compile template ~p (~p): ~p~n", [Module, File, Reason]),
             error(Reason)
     end.
 
-copy_files(#context{opts = Options, dir = OutDir}) ->
-    Base = proplists:get_value(template_dir, Options, "doc/edoc-template"),
+copy_files(#{kz_template_dir := Base, kz_doc_site := OutDir}) ->
     Paths = ["css"
             ,"img"
             ,"js"
@@ -375,39 +299,75 @@ is_hidden(E) ->
         _ -> false
     end.
 
-encoding(E) ->
-    case kz_edoc_layout:get_attrval(encoding, E) of
-        "latin1" -> latin1;
-        _ -> utf8
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec init_context(proplists:proplist()) -> map().
+init_context(Opts) ->
+    EDocOpts = [KV
+                || {K, _}=KV <- Opts,
+                   not is_kazoo_option(atom_to_list(K))
+               ],
+    Env = edoc_lib:get_doc_env(EDocOpts),
+    Linkage = make_doc_links(proplists:proplist(kz_gen_apps, Opts)),
+    Context0 = maps:from_list(
+                 [{edoc_opts, EDocOpts}
+                 ,{edoc_env, Env}
+                 ,{file_suffix, ".html"}
+                 ,{preprocess, true}
+                 ,{pretty_printer, erl_pp}
+                 ,{sort_functions, true}
+                 ,{todo, true}
+
+                  %% kazoo specific options
+                 ,{kz_apps_uri, "apps"}
+                 ,{kz_base_uri, ""}
+                 ,{kz_doc_site, "doc/edoc"}
+                 ,{kz_export_type, xmerl_html}
+                 ,{kz_ga, undefined}
+                 ,{kz_gendate, kz_time:format_date()}
+                 ,{kz_linkage, Linkage}
+                 ,{kz_template_dir, "doc/edoc-template"}
+                 ,{kz_vsn, master}
+                 ] ++ ?DEFAULT_TEMPLATES),
+    compile_templates(),
+    Opts1 = [O
+             || {K, _}=O <- Opts,
+                K =/= kz_gen_apps,
+                K =/= includes
+            ],
+    maps:merge(Context0, maps:from_list(Opts1)).
+
+is_kazoo_option("kz_"++_) -> true;
+is_kazoo_option(_) -> false.
+
+make_doc_links([]) ->
+    warning("no edoc-info were set...", []),
+    exit(error);
+make_doc_links(GenApps) ->
+    maybe_create_link_table(),
+    true = ets:insert(?LINK_TABLE, GenApps),
+    ?LINK_TABLE.
+
+maybe_create_link_table() ->
+    case ets:info(?LINK_TABLE, compressed) =/= undefined of
+        true -> ok;
+        false ->
+            Opts = [named_table, set, {read_concurrency, true}],
+            ?LINK_TABLE = ets:new(?LINK_TABLE, Opts),
+            ok
     end.
 
-%% Read external source file. Fails quietly, returning empty tag list.
-read_file(File, Context, Env, Opts) ->
-    case edoc_extract:file(File, Context, Env, Opts) of
-        {ok, Tags} ->
-            Tags;
-        {error, _} ->
-            []
-    end.
+is_table_created() ->
+    ets:info(?LINK_TABLE, compressed) =/= undefined.
 
-read_tmp_file(OutDir, AppsOutDir, App, Module) ->
-    Path = filename:join([OutDir, "tmp", AppsOutDir, App, Module]) ++ ".json",
-    case file:read_file(Path) of
-        {ok, Bin} ->
-            kz_json:recursive_to_proplist(kz_json:decode(Bin));
-        {error, Reason} ->
-            io:format("~ncan not read temporary file ~p: ~p~n", [Path, Reason]),
-            exit(error)
+-spec maybe_link_table() -> ok.
+maybe_link_table() ->
+    case is_table_created() of
+        false -> ok;
+        true -> ets:delete(?LINK_TABLE)
     end.
-
-get_overview_data(File, Title, #context{env = Env, opts = Options}) ->
-    Tags = read_file(File, overview, Env, Options),
-    Data0 = edoc_data:overview(Title, Tags, Env, Options),
-    EncodingAttribute = #xmlAttribute{name = encoding
-                                     ,value = "utf8"
-                                     },
-    #xmlElement{attributes = As} = Data0,
-    Data0#xmlElement{attributes = [EncodingAttribute | As]}.
 
 -spec log_stacktrace() -> 'ok'.
 log_stacktrace() ->
