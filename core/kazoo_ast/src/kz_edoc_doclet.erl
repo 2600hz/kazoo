@@ -224,7 +224,7 @@ run_layout(overview, File, Doc, Context) ->
 
 render(Props0, Context, Template) ->
     Name = proplists:get_value(name, Props0),
-    Props = Props0 ++ maps:from_list(Context),
+    Props = Props0 ++ maps:to_list(Context),
     %% ?DEV_LOG("Props ~p", [Props]),
     case render(Template, Props) of
         {ok, Rendered} ->
