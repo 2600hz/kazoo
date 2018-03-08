@@ -293,20 +293,31 @@ compile_template(Module, File) ->
             error(Reason)
     end.
 
-copy_files(#{kz_template_dir := Base, kz_doc_site := OutDir}) ->
-    Paths = ["css"
-            ,"img"
-            ,"js"
-            ,"404.html"
-            ,"favicon.ico"
-            ,"icon.png"
-            ,"robot.txt"
-            ,"site.webmanifest"
-            ,"tile-wide.png"
-            ,"tile.png"
-            ],
-    _ = [edoc_lib:copy_file(filename:join(Base, P), filename:join(OutDir, P)) || P <- Paths],
-    ok.
+copy_files(#{kz_template_dir := TemplateDir}=Context) ->
+    Files = filelib:fold_files(TemplateDir, ".*", true, fun maybe_copy_file/2, []),
+    do_copy_files(Files, Context).
+
+do_copy_files([], _) ->
+    ok;
+do_copy_files([File | Files], #{kz_template_dir := TemplateDir, kz_doc_site := OutDir}=Context) ->
+    RelPath = case File -- TemplateDir of
+                  "/"++Rest -> Rest;
+                  Rest -> Rest
+              end,
+    NewPath = filename:join(OutDir, RelPath),
+    ok = filelib:ensure_dir(NewPath),
+    case file:copy(File, {NewPath, [write]}) of
+        {ok, _} -> do_copy_files(Files, Context);
+        {error, _Reason}=Error ->
+            ?DEV_LOG("failed to copy ~s to ~s: ~p", [File, NewPath, _Reason]),
+            exit(Error)
+    end.
+
+maybe_copy_file(File, Acc) ->
+    case filename:extension(File) of
+        ".html" -> Acc;
+        _ -> [File | Acc]
+    end.
 
 is_private(E) ->
     case kz_edoc_layout:get_attrval(private, E) of
