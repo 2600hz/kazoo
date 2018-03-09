@@ -62,7 +62,7 @@ run(Options, GenApps) ->
 
 gen_multi_app(Context, GenApps) ->
     {Modules, HasError} = process_cmds(Context, GenApps),
-    Sidebar = sidebar_apps_list(Modules),
+    Sidebar = sidebar_apps_list(Modules, Context),
     render_apps(Modules, Sidebar, Context),
     render_apps_index(Modules, Sidebar, Context),
     index_file(Sidebar, Context),
@@ -135,9 +135,14 @@ check_name(Module, Module, _) ->
 check_name(Module, _, File) ->
     ?DEV_LOG("file '~ts' actually contains module '~s'.", [File, Module]).
 
-sidebar_apps_list(Modules) ->
-    Side = maps:fold(fun({AppCat, App}, Mods, Acc) ->
-                             [{AppCat, App, lists:sort([Module || {Module, _} <- Mods])} | Acc]
+sidebar_apps_list(Modules, #{kz_apps_uri := AppsUri, file_suffix := Suffix}) ->
+    Side = maps:fold(fun({_AppCat, App}, Mods, Acc) ->
+                             [{App, lists:sort([{Module, Desc, AppsUri ++ "/" ++ atom_to_list(App) ++ "/" ++ atom_to_list(Module) ++ Suffix}
+                                               || {Module, Desc} <- Mods]
+                                               )
+                              }
+                              | Acc
+                             ]
                      end
                     ,[]
                     ,Modules),
@@ -196,7 +201,7 @@ render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := Apps
 
 %% Creating an index file.
 index_file(Sidebar, #{kz_doc_site := OutDir}=Ctx) ->
-    Context = Ctx#{kz_rel_path => ""},
+    Context = Ctx#{kz_rel_path => make_rel_path([])},
     Props = get_overview_data(?PROJ_OVERVIEW_FILE, "Kazoo Erlang Reference", Context),
     Rendered = render([{kz_sidebar_apps, Sidebar}
                        | Props
@@ -235,9 +240,8 @@ render(Props0, Context, Template) ->
     end.
 
 make_rel_path([]) -> "";
-make_rel_path([_]) -> "..";
-make_rel_path([_|_]=Ps) ->
-    lists:flatten(["..", ["/.." || _ <- lists:seq(1, length(Ps) - 1)]]).
+make_rel_path(Ps) ->
+    ["../" || _ <- lists:seq(1, length(Ps))].
 
 render(Module, Props) when is_atom(Module) ->
     kz_template:render(Module, Props);

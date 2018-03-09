@@ -3,26 +3,30 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>Application {{ application }} - Kazoo EDoc</title>
+    <title>Application {{ kz_app_name }} - Kazoo EDoc</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="manifest" href="../../site.webmanifest">
-    <link rel="apple-touch-icon" href="../../icon.png">
+    <link rel="manifest" href="{{ kz_rel_path }}site.webmanifest">
+    <link rel="apple-touch-icon" href="{{ kz_rel_path }}icon.png">
+
+    <meta name="application-name" content="Kazoo Erlang Reference">
 
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
-    <link rel="stylesheet" href="../../css/main.css">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/main.css">
 </head>
 <body>
     <div class="container">
             <aside class="sidebar">
                 <h4>Applications</h4>
                 <ul class="side-apps">
-                    {% for app, modules in sidebar_apps %}
-                    <li id="entry-app-{{ app }}" class="side-entry-app"><a href="apps/{{ app }}">{{ app }}</a>
+                    {% for app, modules in kz_sidebar_apps %}
+                    <li id="entry-app-{{ app }}" class="side-entry-app"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a>
                         <ul class="side-mods">
-                            {% for module, link in modules %}
-                            <li id="entry-module-{{ modules }}" class="side-entry-module{% ifequal module application %} side-selected{% endifequal %}"><a href="{{ link }}">{{ module }}</a></li>
+                            {% for module, desc, link in modules %}
+                            <li id="entry-module-{{ module }}" class="side-entry-module{% ifequal module kz_app_name %} side-selected{% endifequal %}">
+                                <a href="{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
+                            </li>
                             {% endfor %}
                         </ul>
                     </li>
@@ -32,7 +36,7 @@
             <div class="content-container">
                 <main class="content">
                     <section id="doc-summary" class="app">
-                        <h1>Application {{ application }}{% if deprecated %}
+                        <h1>Application {{ kz_app_name }}{% if deprecated %}
                             <small style="font-size: 60%"><strong> <span class="badge badge-secondary">Deprecated</span></strong></small>{% endif %}{% if version %}
                             <small><strong> version: </strong><span class="badge badge-dark">{{ version }}</span></small>{% endif %}{% if since %}
                             <small><strong> since: </strong><span class="badge badge-dark">{{ since }}</span></small>{% endif %}</h1>{% if full_desc %}
@@ -55,21 +59,21 @@
                                 {% for todo in todos %}<li>{{ todo }}</li>{% endfor %}
                             </ul>
                         </div>{% endif %}
-                    </section>{% if modules %}
+                    </section>{% if kz_modules %}
                     <section id="doc-app">
                         <h2>Modules List</h2>
                         <ul>
-                            {% for mod, desc in modules %}<li><a href="{{ mod }}.html"><code>{{ mod }}</code>: {{ mod}}</a> {{ desc }}</li>{% endfor %}
+                            {% for mod, desc in kz_modules %}<li><a href="{{ mod }}.html"><code>{{ mod }}</code>: {{ mod }}</a> {{ desc }}</li>{% endfor %}
                         </ul>
                     </section>{% endif %}
             </div>
     </div>
 
-    <script src="../../js/vendor/modernizr-3.5.0.min.js"></script>
+    <script src="{{ kz_rel_path }}js/vendor/modernizr-3.5.0.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-    <script>window.jQuery || document.write('<script src="../../js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
-    <script src="../../js/plugins.js"></script>
-    <script src="../../js/main.js"></script>
+    <script>window.jQuery || document.write('<script src="{{ kz_rel_path }}js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
+    <script src="{{ kz_rel_path }}js/plugins.js"></script>
+    <script src="{{ kz_rel_path }}js/main.js"></script>
 
   <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
 <!--         <script>
