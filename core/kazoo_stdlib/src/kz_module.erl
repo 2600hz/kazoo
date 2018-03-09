@@ -22,10 +22,13 @@ is_exported(Module, Function, Arity)
         Module -> erlang:function_exported(Module, Function, Arity)
     end;
 is_exported(Module, Function, Arity) ->
-    is_exported(kz_term:to_atom(Module)
-               ,kz_term:to_atom(Function)
-               ,kz_term:to_integer(Arity)
-               ).
+    try is_exported(kz_term:to_atom(Module)
+                   ,kz_term:to_atom(Function)
+                   ,kz_term:to_integer(Arity)
+                   )
+    catch
+        'error':'badarg' -> 'false'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Given a module name try to verify its existence, loading it into the
