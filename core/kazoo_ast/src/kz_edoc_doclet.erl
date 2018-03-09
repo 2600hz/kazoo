@@ -70,7 +70,9 @@ gen_multi_app(Context, GenApps) ->
 
     %% handle postponed error during processing of source files
     case HasError of
-        true -> exit(error);
+        true ->
+            io:format("doc generation is completed with some error~n"),
+            exit(error);
         false -> ok
     end.
 
@@ -79,8 +81,20 @@ process_cmds(Context, GenApps) ->
     Private = maps:get(private, Context, false),
     Hidden = maps:get(hidden, Context, false),
 
-    Fun = fun(Obj, Acc) -> source(Context, Obj, Acc, Private, Hidden) end,
-    lists:foldl(Fun, {#{}, false}, GenApps).
+    SourceFun = fun(Obj, Acc) -> source(Context, Obj, Acc, Private, Hidden) end,
+
+    Malt = [{'processes', 'schedulers'}],
+    Result = plists:fold(SourceFun, fun fuse_cmds/2, [], GenApps, Malt),
+
+    Fun = fun({AppCat, App, Module, ShortDesc}, Map) ->
+                  maps:put({AppCat, App}, [{Module, ShortDesc} | maps:get({AppCat, App}, Map, [])], Map)
+          end,
+
+    ?DEV_LOG("Total modules to process: ~b Successfully processed ~b~n", [length(GenApps), length(Result)]),
+    {lists:foldl(Fun, #{}, Result), length(GenApps) == length(Result)}.
+
+fuse_cmds(A, B) when is_list(A), is_list(B) ->
+    A ++ B.
 
 %% Generating documentation (as a JSON) for a source file, adding its name to the
 %% set if it was successful. Errors are just flagged at this stage,
@@ -89,10 +103,10 @@ source(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri
         ,edoc_env := Env, edoc_opts := EDocOpts
         } = Ctx
       ,{M, App, AppCat, ErlFile}
-      ,{Map, HasError}
+      ,Result
       ,Private, Hidden
       ) ->
-    ?DEV_LOG("processing source file '~ts'", [ErlFile]),
+    io:format("processing source file '~ts'~n", [ErlFile]),
     Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
                   ,kz_app_cat => AppCat
                   ,kz_app_name => atom_to_list(App)
@@ -115,14 +129,14 @@ source(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri
                     edoc_lib:write_file(kz_json:encode(JObj), filename:join([OutDir, "tmp", AppsUri, App]), Name1, Encoding),
 
                     ShortDesc = proplists:get_value(short_desc, Props, []),
-                    {maps:put({AppCat, App}, [{Module, ShortDesc} | maps:get({AppCat, App}, Map, [])], Map), HasError};
+                    [{AppCat, App, Module, ShortDesc} | Result];
                 false ->
-                    {Map, HasError}
+                    Result
             end
     catch
         _:R ->
             ?DEV_LOG("skipping source file '~ts': ~P.", [ErlFile, R, 15]),
-            {Map, true}
+            Result
     end.
 
 check_name([$? | _], _, _) ->
@@ -149,7 +163,9 @@ sidebar_apps_list(Modules, #{kz_apps_uri := AppsUri, file_suffix := Suffix}) ->
     lists:sort(Side).
 
 render_apps(Modules, Sidebar, Context) ->
-    _ = maps:map(fun(App, Ms) -> render_app(App, Ms, Sidebar, Context) end, Modules),
+    Malt = [{'processes', 'schedulers'}],
+    io:format(":: start rendering~n", []),
+    _ = plists:map(fun({App, Ms}) -> render_app(App, Ms, Sidebar, Context) end, maps:to_list(Modules), Malt),
     ok.
 
 render_app({AppCat, App}, Modules, Sidebar, Context) ->
@@ -157,6 +173,7 @@ render_app({AppCat, App}, Modules, Sidebar, Context) ->
     [render_module(AppCat, App, Ms, Sidebar, Context) || Ms <- Modules].
 
 render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_apps_uri := AppsUri}=Ctx) ->
+    io:format("rendering app ~p index~n", [App]),
     File = filename:join([AppCat, App, "doc", ?APP_OVERVIEW_FILE]),
     Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
                   ,kz_app_cat => AppCat
@@ -172,6 +189,7 @@ render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_
     edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), ?INDEX_FILE, EncOpts).
 
 render_module(AppCat, App, {Module, _Desc}, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri, file_suffix := Suffix}=Ctx) ->
+    io:format("rendering app ~p module ~p~n", [App, Module]),
     Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
                   ,kz_app_cat => AppCat
                   ,kz_app_name => atom_to_list(App)
@@ -188,6 +206,7 @@ render_module(AppCat, App, {Module, _Desc}, Sidebar, #{kz_doc_site := OutDir, kz
     edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), Name, EncOpts).
 
 render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri}=Ctx) ->
+    io:format("rendering apps index~n", []),
     Apps = [App || {_, App} <- maps:keys(Modules)],
     Context = Ctx#{kz_rel_path => make_rel_path(filename:split(AppsUri))},
     Props = get_overview_data(?APPS_OVERVIEW_FILE, "Kazoo Applications Index", Context),
@@ -201,6 +220,7 @@ render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := Apps
 
 %% Creating an index file.
 index_file(Sidebar, #{kz_doc_site := OutDir}=Ctx) ->
+    io:format("rendering index~n", []),
     Context = Ctx#{kz_rel_path => make_rel_path([])},
     Props = get_overview_data(?PROJ_OVERVIEW_FILE, "Kazoo Erlang Reference", Context),
     Rendered = render([{kz_sidebar_apps, Sidebar}

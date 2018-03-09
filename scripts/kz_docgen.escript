@@ -46,7 +46,7 @@ option_spec_list() ->
     ,{kz_template_dir, $t, "template-dir", {string, "doc/edoc-template"}, "Path to directory where templates are"}
 
     ,{kz_base_uri, undefined, "base-uri", {string, ""}, "Base URI for documentation site"}
-    ,{kz_apps_uri, undefined, "apps-uri", {string, "apps"}, "Base URI to put application docs"}
+    ,{kz_apps_uri, undefined, "apps-uri", {string, "erlref"}, "Base URI to put application docs"}
 
     ,{kz_ga, undefined, "ga", {string, undefined}, "Google Analytics site's ID"}
     ,{kz_gendate, undefined, "gendate", string, "The date string in YYYY-MM-DD format that will be used in the documentation, [default: current date]"}
@@ -113,7 +113,7 @@ get_app_edoc(Path) ->
 
 app_cat([AppName, "core" | _]) ->
     {AppName, "core"};
-app_cat([AppName, "application" | _]) ->
+app_cat([AppName, "applications" | _]) ->
     {AppName, "applications"};
 app_cat(_Other) ->
     io:format("bad kazoo app name: ~p~n", [_Other]),
