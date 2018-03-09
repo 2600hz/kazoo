@@ -18,7 +18,7 @@ clean-autogen:
 	@$(foreach ERL,$(ERL_FILES),cmp --silent $(ERL) $(ERL:.erl=.erl.src) && rm $(ERL);) true
 
 %.erl: %.erl.src
-	@cp -n $< $@
+	@$(cp -n $< $@) true
 
 diff:
 	@$(foreach ERL,$(ERL_FILES),cmp --silent $(ERL) $(ERL:.erl=.erl.src) || diff -c $(ERL) $(ERL).src;) true
