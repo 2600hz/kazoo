@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="manifest" href="site.webmanifest">
-    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="apple-touch-icon" href="favicon-180.png">
 
     <meta name="application-name" content="Kazoo Erlang Reference">
 
@@ -25,7 +25,7 @@
                         <ul class="side-mods">
                             {% for module, desc, link in modules %}
                             <li id="entry-module-{{ module }}" class="side-entry-module{% ifequal module kz_app_name %} side-selected{% endifequal %}">
-                                <a href="{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
+                                <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
                             </li>
                             {% endfor %}
                         </ul>
