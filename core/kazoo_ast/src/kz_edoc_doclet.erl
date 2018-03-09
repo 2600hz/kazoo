@@ -149,18 +149,21 @@ check_name(Module, Module, _) ->
 check_name(Module, _, File) ->
     ?DEV_LOG("file '~ts' actually contains module '~s'.", [File, Module]).
 
-sidebar_apps_list(Modules, #{kz_apps_uri := AppsUri, file_suffix := Suffix}) ->
-    Side = maps:fold(fun({_AppCat, App}, Mods, Acc) ->
-                             [{App, lists:sort([{Module, Desc, AppsUri ++ "/" ++ atom_to_list(App) ++ "/" ++ atom_to_list(Module) ++ Suffix}
-                                               || {Module, Desc} <- Mods]
-                                               )
-                              }
-                              | Acc
-                             ]
-                     end
-                    ,[]
-                    ,Modules),
-    lists:sort(Side).
+sidebar_apps_list(Modules, Context) ->
+    lists:map(fun(AppCat) -> {AppCat, sidebar_apps_cat(AppCat, Modules, Context)} end, ["core", "applications"]).
+
+sidebar_apps_cat(AppCat, Modules, #{kz_apps_uri := AppsUri, file_suffix := Suffix}) ->
+    Fun = fun({Cat, App}, Mods, Acc, Cat) ->
+                  [{App, lists:sort([{Module, Desc, AppsUri ++ "/" ++ atom_to_list(App) ++ "/" ++ atom_to_list(Module) ++ Suffix}
+                                     || {Module, Desc} <- Mods
+                                    ])
+                   }
+                   | Acc
+                  ];
+             (_, _, Acc, _) ->
+                  Acc
+          end,
+    lists:sort(maps:fold(fun(K, V, A) -> Fun(K, V, A, AppCat) end, [], Modules)).
 
 render_apps(Modules, Sidebar, Context) ->
     Malt = [{'processes', 'schedulers'}],
