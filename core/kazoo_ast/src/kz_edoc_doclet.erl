@@ -91,7 +91,7 @@ process_cmds(Context, GenApps) ->
           end,
 
     ?DEV_LOG("Total modules to process: ~b Successfully processed ~b~n", [length(GenApps), length(Result)]),
-    {lists:foldl(Fun, #{}, Result), length(GenApps) == length(Result)}.
+    {lists:foldl(Fun, #{}, Result), length(GenApps) /= length(Result)}.
 
 fuse_cmds(A, B) when is_list(A), is_list(B) ->
     A ++ B.
