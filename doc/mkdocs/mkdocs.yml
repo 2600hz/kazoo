@@ -454,3 +454,4 @@ pages:
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
   - 'Webhooks': 'doc/engineering/webhooks.md'
   - 'Attachments': 'core/kazoo_attachments/README.md'
+  - 'Attachment Handlers Errors': 'applications/crossbar/doc/att_handlers_errors.md'

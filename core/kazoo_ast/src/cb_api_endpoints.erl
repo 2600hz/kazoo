@@ -927,6 +927,8 @@ def_path_param(<<"{TRANSACTION_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{USERNAME}">>=P) -> base_path_param(P);
 def_path_param(<<"{VM_MSG_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
+def_path_param(<<"{ERROR_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{HANDLER_ID}">>=P) -> base_path_param(P);
 
 %% For all the edge cases out there:
 def_path_param(<<"report-{REPORT_ID}">>) ->
