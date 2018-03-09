@@ -54,12 +54,15 @@ option_spec_list() ->
     ].
 
 parse_args(CmdArgs) ->
-    case getopt:parse(option_spec_list(), CmdArgs) of
+    try getopt:parse(option_spec_list(), CmdArgs) of
         {ok, {Options, Args}} ->
             maybe_print_help(Options),
             parse_args(Options, Args);
         {error, {_, _}} ->
             usage()
+    catch
+        error:undef ->
+            simple_usage()
     end.
 
 parse_args(Options, Args) ->
@@ -122,6 +125,10 @@ maybe_print_help(Options) ->
         _ -> ok
     end.
 
+simple_usage() ->
+    io:format("Usage: ERL_LIBS=deps/:core/:applications/ ./scripts/kz_docgen.escript --help~n"),
+    halt(1).
+
 usage() ->
-    getopt:usage(option_spec_list(), "ERL_LIBS=deps/:core/applications/ ./scripts/kz_docgen.escript", "[app_name1 app_name2 ...]"),
+    getopt:usage(option_spec_list(), "ERL_LIBS=deps/:core/:applications/ ./scripts/kz_docgen.escript", "[app_name1 app_name2 ...]"),
     halt(1).
