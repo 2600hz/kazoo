@@ -855,7 +855,7 @@ kz_fix_link(URI, #{file_suffix := Suffix
             case get_kazoo_app_or_mod(SomeFile, Apps(SomeFile), Mods(SomeFile)) of
                 undefined -> [];
                 AppSlashMod ->
-                    RelPath ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ "/" ++ Fragment
+                    RelPath ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ Fragment
             end;
         {match, [OtherApp, OtherMod, Fragment]} ->
             %% ?DEV_LOG("OtherApp ~p OtherMod ~p, KA ~p KM ~p", [OtherApp, OtherMod, Apps(OtherApp), Mods(OtherMod)]),
