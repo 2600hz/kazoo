@@ -90,7 +90,10 @@ ebin/%.beam: src/*/%.erl
 depend: $(DEPS_RULES)
 
 edoc_info:
-	@erl -noshell -eval "try edoc_lib:write_info_file($(PROJECT), [$(MODULES)], \"doc\") of ok -> init:stop() catch _:_ -> io:format(\"~nfailed to create edoc-info file~n\"), init:stop(1) end."
+	@mkdir -p doc
+	@echo "%% encoding: UTF-8" > doc/edoc-info
+	@echo "{application,$(PROJECT)}." >> doc/edoc-info
+	@echo "{modules,[$(MODULES)]}." >> doc/edoc-info
 
 $(DEPS_RULES):
 	@rm -f $(DEPS_RULES)
