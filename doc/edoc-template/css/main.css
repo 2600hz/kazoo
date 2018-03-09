@@ -8,8 +8,7 @@ body {
     font-size: 1rem;
     line-height: 1.5;
     color: #212529;
-    /*background-color: #fff;*/
-    background-color: #f4f4f7;
+    background-color: #f1f3f5;
 }
 
 .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6 {
@@ -180,24 +179,42 @@ dd {
 }
 
 .sidebar {
-    flex-basis: 240px;
-    min-width: 240px;
-    background-color: #bada55;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
+    flex-basis: 20%;
+    min-width: 20%;
+    color: #909099;
+    padding: 15px;
+}
+
+.sidebar h4 {
+    color: #c0c0c9;
+}
+
+.sidebar .entry-app a {
+    color: #909099;
+}
+
+.sidebar .entry-module a {
+    color: #909099;
 }
 
 .content-container {
     display: flex;
     flex-direction: row;
+    flex-basis: 80%;
+    min-width: 80%;
 }
 
 .content {
     order: 1;
     margin: 0;
     padding: 15px;
+    box-shadow: 0 0 10px rgba(0,0,0,.05);
+    background-color: #f8f9fa;
+}
+
+.content.with-toc {
+    flex-basis: 75%;
+    min-width: 75%;
 }
 
 .page-toc {
@@ -205,8 +222,8 @@ dd {
     padding-bottom: 1.5rem;
     font-size: .875rem;
     order: 2;
-    flex-basis: 20rem;
-    min-width: 20rem;
+    flex-basis: 25%;
+    min-width: 25%;
     position: sticky;
     top: 0;
     height: 100vh;
@@ -215,10 +232,6 @@ dd {
 
 .section-nav {
     padding-left: 0;
-    border-left: 1px solid #ccc;
-    border-left-width: 1px;
-    border-left-style: solid;
-    border-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, #ccc 5%, #ccc 90%, rgba(0, 0, 0, 0) 100%) 1 100%;
 }
 
 .toc-entry {

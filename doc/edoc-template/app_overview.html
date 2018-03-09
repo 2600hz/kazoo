@@ -21,10 +21,10 @@
                 <h4>Applications</h4>
                 <ul class="side-apps">
                     {% for app, modules in kz_sidebar_apps %}
-                    <li id="entry-app-{{ app }}" class="side-entry-app"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a>
+                    <li id="entry-app-{{ app }}" class="entry-app"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a>
                         <ul class="side-mods">
                             {% for module, desc, link in modules %}
-                            <li id="entry-module-{{ module }}" class="side-entry-module{% ifequal module kz_app_name %} side-selected{% endifequal %}">
+                            <li id="entry-module-{{ module }}" class="entry-module{% ifequal module kz_app_name %} selected{% endifequal %}">
                                 <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
                             </li>
                             {% endfor %}
