@@ -2778,14 +2778,15 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
                 'true' -> Fun(JObj)
             end,
             wait_for_bridge('infinity', Fun, Call);
-        {<<"call_event">>, <<"CHANNEL_ANSWER">>, _} ->
-            CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-            lager:debug("channel bridged to ~s", [CallId]),
-            case is_function(Fun, 1) of
-                'false' -> 'ok';
-                'true' -> Fun(JObj)
-            end,
-            wait_for_bridge('infinity', Fun, Call);
+%% FIND THE REASON         
+%%         {<<"call_event">>, <<"CHANNEL_ANSWER">>, _} ->
+%%             CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+%%             lager:debug("channel bridged to ~s", [CallId]),
+%%             case is_function(Fun, 1) of
+%%                 'false' -> 'ok';
+%%                 'true' -> Fun(JObj)
+%%             end,
+%%             wait_for_bridge('infinity', Fun, Call);
         {<<"call_event">>, <<"CHANNEL_REPLACED">>, _} ->
             CallId = kz_json:get_value(<<"Replaced-By">>, JObj),
             _ = kz_util:put_callid(CallId),
