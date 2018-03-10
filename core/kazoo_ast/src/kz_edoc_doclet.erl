@@ -356,6 +356,12 @@ do_copy_files([File | Files], #{kz_template_dir := TemplateDir, kz_doc_site := O
 maybe_copy_file(File, Acc) ->
     case filename:extension(File) of
         ".html" -> Acc;
+        ".svg" ->
+            Name = filename:basename(File),
+            case lists:keyfind(Name, 2, ?INLINE_SVGS) of
+                false -> [File | Acc];
+                _ -> Acc
+            end;
         _ -> [File | Acc]
     end.
 
