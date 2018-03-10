@@ -104,7 +104,10 @@ jobs:
     - run: ${PWD}/scripts/check-unstaged.bash
     - run: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
     - run: |
-        [[ $(grep -c -v -F 'exit with reason shutdown' ${PWD}/_rel/kazoo/log/error.log) -gt 0 ]] && cat ${PWD}/_rel/kazoo/log/error.log && exit 1
+        if [[ $(grep -c -v -F 'exit with reason shutdown' ${PWD}/_rel/kazoo/log/error.log) -gt 0 ]]; then
+          cat ${PWD}/_rel/kazoo/log/error.log
+          exit 1
+        fi
     # This is based on your 1.0 configuration file or project settings
     - run: mkdir $CIRCLE_ARTIFACTS/logs
     - run: mv ${PWD}/_rel/kazoo/log/* $CIRCLE_ARTIFACTS/logs/
