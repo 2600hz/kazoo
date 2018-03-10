@@ -12,6 +12,7 @@
 
     <meta name="application-name" content="Kazoo Erlang Reference">
 
+    <link href="https://use.fontawesome.com/releases/v5.0.8/css/all.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
     <link rel="stylesheet" href="{{ kz_rel_path }}css/base.css">
     <link rel="stylesheet" href="{{ kz_rel_path }}css/grid.css">
@@ -39,9 +40,9 @@
                             <ul class="nav-apps">
                             {% for app, modules in apps %}
                                 <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
-                                    <span class="nav-app-head"><span data-kz-app="{{ app }}" class="fas fa-folder nav-flip"></span>{{ app }}</span>
+                                    <div class="nav-app-head"><span data-target-id="nav-app-{{ app }}" class="fas fa-folder nav-flip"></span><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a></div>
                                     <ul class="nav-mods">
-                                        <li id="nav-app-index" class="entry-module"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">Application Overview</a></li>
+                                        <li id="nav-app-index" class="entry-module"></li>
                                         {% for module, desc, link in modules %}
                                         <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
                                             <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>

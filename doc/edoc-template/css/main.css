@@ -74,6 +74,10 @@
     font-size: 1.10rem;
 }
 
+.nav .nav-item .nav-app-head a {
+    color: #67676f;
+}
+
 .entry-app .fa-folder, .entry-app .fa-folder-open {
     padding-right: .6rem;
     color: #4b9fe8;
@@ -92,6 +96,10 @@
 
 .entry-app.active ul.nav-mods {
     display: block;
+}
+
+.entry-module.active a {
+    color: #007bff;
 }
 
 .sidebar-dark {
@@ -121,6 +129,10 @@
 
 .sidebar-dark .nav-app-head {
     color: #f7f7f9;
+}
+
+.sidebar-dark .nav .nav-item .nav-app-head a {
+    color: #67676f;
 }
 
 .bg-middle {

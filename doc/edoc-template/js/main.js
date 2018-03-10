@@ -1,5 +1,16 @@
 $('.nav-flip').on('click', function() {
-    $('.entry-app.active').removeClass('active');
-    const targetApp = $(this).data('kzApp');
-    $('#nav-app-' + targetApp).addClass('active');
+    const activeEl = $('.entry-app.active');
+    const targetId = $(this).data('targetId');
+
+    if (!targetId) {
+        return
+    }
+
+    if (activeEl.length !== 0) {
+        const activeId = activeEl.attr('id');
+        if (activeId && (activeId !== targetId))
+        activeEl.removeClass('active')
+    }
+
+    $('#' + targetId).toggleClass('active');
 });
