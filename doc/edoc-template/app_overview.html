@@ -1,11 +1,11 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title>Application {{ kz_app_name }} - Kazoo EDoc</title>
     <meta name="description" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <link rel="manifest" href="{{ kz_rel_path }}site.webmanifest">
     <link rel="apple-touch-icon" href="{{ kz_rel_path }}favicon-180.png">
@@ -13,33 +13,49 @@
     <meta name="application-name" content="Kazoo Erlang Reference">
 
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/base.css">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/grid.css">
     <link rel="stylesheet" href="{{ kz_rel_path }}css/main.css">
 </head>
 <body>
-    <div class="container">
-            <aside class="sidebar">{% if kz_sidebar_apps %}
-                <ul class="nav">{% for appcat, apps in kz_sidebar_apps %}{% if apps %}
-                    <li class="nav-item">
-                        <span class="nav-head">{{ appcat|capfirst }} Applications</span>
-                        <ul class="nav-apps">
-                        {% for app, modules in apps %}
-                            <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
-                                <span class="nav-app-head">{{ app }}</span>
-                                <ul class="nav-mods">
-                                    <li id="nav-app-index" class="entry-module"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">Application Overview</a></li>
-                                    {% for module, desc, link in modules %}
-                                    <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
-                                        <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            </li>
-                        {% endfor %}
-                        </ul>
-                    </li>
-                {% endif %}{% endfor %}</ul>
-            {% endif %}</aside>
-            <div class="content-container">
+    <div class="container-fluid">
+        <div class="row no-gutters">
+            <aside class="col col-2 sidebar">
+                <nav class="sidebar-nav">
+                    <div class="sidebar-brand">
+                        <img src="../../img/kazoo.svg">
+                        <span class="display-7"><strong>Kazoo</strong></span><br>
+                        Erlang Reference Manual<br>
+                        <small>Version {{ kz_vsn }}</small>
+                    </div>
+                    <ul class="nav">
+                        <li class="nav-item"><a class="nav-head" href="{{ kz_rel_path }}index{{ file_suffix }}">Erlang Reference</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo#who-can-contribute">Contribute</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo/blob/master/doc/installation.md">Installation Guide</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://docs.2600hz.com/dev/">Crossbar REST API Reference</a></li>{% if kz_sidebar_apps %}
+                        {% for appcat, apps in kz_sidebar_apps %}{% if apps %}
+                        <li class="nav-item nav-kz-apps">
+                            <span class="nav-head">{{ appcat|capfirst }} Applications</span>
+                            <ul class="nav-apps">
+                            {% for app, modules in apps %}
+                                <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
+                                    <span class="nav-app-head">{{ app }}</span>
+                                    <ul class="nav-mods">
+                                        <li id="nav-app-index" class="entry-module"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">Application Overview</a></li>
+                                        {% for module, desc, link in modules %}
+                                        <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
+                                            <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        </li>{% endif %}{% endfor %}{% endif %}
+                    </ul>
+                </nav>
+            </aside>
+            <div class="col col-10 bg-middle">
                 <main class="content">
                     <section id="doc-summary" class="app">
                         <h1>Application {{ kz_app_name }}{% if deprecated %}
@@ -72,13 +88,13 @@
                             {% for mod, desc in kz_modules %}<li><a href="{{ mod }}.html"><code>{{ mod }}</code></a> {{ desc }}</li>{% endfor %}
                         </ul>
                     </section>{% endif %}
+                </main>
             </div>
+        </div>
     </div>
 
-    <script src="{{ kz_rel_path }}js/vendor/modernizr-3.5.0.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script>window.jQuery || document.write('<script src="{{ kz_rel_path }}js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
-    <script src="{{ kz_rel_path }}js/plugins.js"></script>
     <script src="{{ kz_rel_path }}js/main.js"></script>
 
   <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->

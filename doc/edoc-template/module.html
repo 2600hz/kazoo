@@ -5,42 +5,58 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title>Module {{ name }} - Kazoo EDoc</title>
     <meta name="description" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <link rel="manifest" href="{{ kz_rel_path }}site.webmanifest">
     <link rel="apple-touch-icon" href="{{ kz_rel_path }}favicon-180.png">
 
     <meta name="application-name" content="Kazoo Erlang Reference">
 
+    <link href="https://use.fontawesome.com/releases/v5.0.8/css/all.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/base.css">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/grid.css">
     <link rel="stylesheet" href="{{ kz_rel_path }}css/main.css">
 </head>
 <body>
-    <div class="container">
-            <aside class="sidebar">{% if kz_sidebar_apps %}
-                <ul class="nav">{% for appcat, apps in kz_sidebar_apps %}{% if apps %}
-                    <li class="nav-item">
-                        <span class="nav-head">{{ appcat|capfirst }} Applications</span>
-                        <ul class="nav-apps">
-                        {% for app, modules in apps %}
-                            <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
-                                <span class="nav-app-head">{{ app }}</span>
-                                <ul class="nav-mods">
-                                    <li id="nav-app-index" class="entry-module"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">Application Overview</a></li>
-                                    {% for module, desc, link in modules %}
-                                    <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
-                                        <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            </li>
-                        {% endfor %}
-                        </ul>
-                    </li>
-                {% endif %}{% endfor %}</ul>
-            {% endif %}</aside>
-            <div class="content-container">
-                <main class="content with-toc">
+    <div class="container-fluid">
+        <div class="row no-gutters">
+            <aside class="col col-2 sidebar">
+                <nav class="sidebar-nav">
+                    <div class="sidebar-brand">
+                        <img src="../../img/kazoo.svg">
+                        Erlang Reference Manual<br>
+                        <small>Version {{ kz_vsn }}</small>
+                    </div>
+                    <ul class="nav">
+                        <li class="nav-item"><a class="nav-head" href="{{ kz_rel_path }}index{{ file_suffix }}">Erlang Reference</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo#who-can-contribute">Contribute</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo/blob/master/doc/installation.md">Installation Guide</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://docs.2600hz.com/dev/">Crossbar REST API Reference</a></li>{% if kz_sidebar_apps %}
+                        {% for appcat, apps in kz_sidebar_apps %}{% if apps %}
+                        <li class="nav-item nav-kz-apps">
+                            <span class="nav-head">{{ appcat|capfirst }} Applications</span>
+                            <ul class="nav-apps">
+                            {% for app, modules in apps %}
+                                <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
+                                    <span class="nav-app-head"><span class="fas fa-folder"></span>{{ app }}</span>
+                                    <ul class="nav-mods">
+                                        <li id="nav-app-index" class="entry-module"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">Application Overview</a></li>
+                                        {% for module, desc, link in modules %}
+                                        <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
+                                            <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        </li>{% endif %}{% endfor %}{% endif %}
+                    </ul>
+                </nav>
+            </aside>
+            <div class="col col-8 bg-middle">
+                <main class="content">
                     <section id="doc-summary" class="module">
                         <h1>Module {{ name }}{% if deprecated %}
                             <small style="font-size: 60%"><strong> <span class="badge badge-secondary">Deprecated</span></strong></small>{% endif %}{% if version %}
@@ -135,27 +151,26 @@
                         {% endfor %}</ul>
                     </section>{% endif %}
                 </main>
-                <nav class="page-toc">
-                    <ul class="section-nav">
-                        <li class="toc-entry"><a href="#doc-summary">Description</a></li>{% if behaviours %}
-                        <li class="toc-entry"><a href="#doc-behaviors">Behaviors</a></li>{% endif %}{% if types %}
-                        <li class="toc-entry"><a href="#doc-types">Types</a></li>{% endif %}{% if functions %}
-                        <li class="toc-entry">
-                            <a href="#doc-functions">Functions</a>
-                            <ul>
-                                {% for function in functions %}<li><a class="text-truncate" href="#{{ function.id }}"><code>{{ function.label }}</code></a></li>{% endfor %}
-                            </ul>
-                        </li>{% endif %}{% if authors %}
-                        <li class="toc-entry"><a href="#doc-authors">Authors</a></li>{% endif %}
-                    </ul>
-                </nav>
             </div>
+            <nav class="col col-2 page-toc">
+                <ul class="section-nav">
+                    <li class="toc-entry"><a href="#doc-summary">Description</a></li>{% if behaviours %}
+                    <li class="toc-entry"><a href="#doc-behaviors">Behaviors</a></li>{% endif %}{% if types %}
+                    <li class="toc-entry"><a href="#doc-types">Types</a></li>{% endif %}{% if functions %}
+                    <li class="toc-entry">
+                        <a href="#doc-functions">Functions</a>
+                        <ul>
+                            {% for function in functions %}<li><a class="text-truncate" href="#{{ function.id }}"><code>{{ function.label }}</code></a></li>{% endfor %}
+                        </ul>
+                    </li>{% endif %}{% if authors %}
+                    <li class="toc-entry"><a href="#doc-authors">Authors</a></li>{% endif %}
+                </ul>
+            </nav>
+        </div>
     </div>
 
-    <script src="{{ kz_rel_path }}js/vendor/modernizr-3.5.0.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script>window.jQuery || document.write('<script src="{{ kz_rel_path }}js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
-    <script src="{{ kz_rel_path }}js/plugins.js"></script>
     <script src="{{ kz_rel_path }}js/main.js"></script>
 
   <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
