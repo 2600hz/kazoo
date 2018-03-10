@@ -304,7 +304,7 @@ extract_overview(File, Env, Opts) ->
 compile_templates() ->
     compile_templates(?DEFAULT_TEMPLATES).
 
--spec compile_templates([{string(), string()}]) -> ok.
+-spec compile_templates([{atom(), string()}]) -> ok.
 compile_templates([]) ->
     ok;
 compile_templates([{Mod, File}|Keys]) ->

@@ -87,7 +87,7 @@ add_edoc_infos(Options, Args) ->
                        EdocInfo =/= []
                    ])
      }
-      | Options
+     | Options
     ].
 
 maybe_get_app_edoc(App) ->
