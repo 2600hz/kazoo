@@ -39,7 +39,7 @@
                             <ul class="nav-apps">
                             {% for app, modules in apps %}
                                 <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
-                                    <span class="nav-app-head"><span class="fas fa-folder"></span>{{ app }}</span>
+                                    <span class="nav-app-head"><span data-kz-app="{{ app }}" class="fas fa-folder nav-flip"></span>{{ app }}</span>
                                     <ul class="nav-mods">
                                         <li id="nav-app-index" class="entry-module"><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">Application Overview</a></li>
                                         {% for module, desc, link in modules %}
