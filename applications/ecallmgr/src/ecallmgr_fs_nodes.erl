@@ -632,7 +632,7 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
         {'error', _R}=E -> E;
         'ok' ->
             lager:notice("successfully connected to freeswitch node ~s", [NodeName]),
-            _ = freeswitch:no_legacy(Node),
+            _ = freeswitch:no_legacy(NodeName),
             call_control_fs_nodeup(NodeName),
             'ok'
     end.
@@ -736,7 +736,10 @@ get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
 -spec get_fs_client_version(fs_node()) -> fs_node();
                            (atom()) -> kz_term:api_binary().
 get_fs_client_version(#node{node=NodeName}=Node) ->
-    Node#node{client_version=get_fs_client_version(NodeName)};
+    case get_fs_client_version(NodeName) of
+        'undefined' -> Node;
+        Version -> Node#node{client_version=Version}
+    end;
 get_fs_client_version(NodeName) ->
     try freeswitch:version(NodeName) of
         {'ok', Version} ->
