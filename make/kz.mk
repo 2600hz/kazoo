@@ -73,7 +73,7 @@ include $(DEPS_RULES)
 endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend edoc_info $(BEAMS)
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 
 ebin/$(PROJECT).app:
 	@mkdir -p ebin/
@@ -88,12 +88,6 @@ ebin/%.beam: src/*/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
 
 depend: $(DEPS_RULES)
-
-edoc_info:
-	@mkdir -p doc
-	@echo "%% encoding: UTF-8" > doc/edoc-info
-	@echo "{application,$(PROJECT)}." >> doc/edoc-info
-	@echo "{modules,[$(MODULES)]}." >> doc/edoc-info
 
 $(DEPS_RULES):
 	@rm -f $(DEPS_RULES)
