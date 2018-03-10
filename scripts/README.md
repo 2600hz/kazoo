@@ -366,6 +366,58 @@ Script for updating Erlang code to account for functions that have moved modules
 -   kz\_json to kz\_doc for public/private fields
 
 
+## `kz_docgen.escript`
+
+A script to build Kazoo Erlang Reference manual. Most important option is `-a` or `--all-apps` which build documentation for all Kazoo applications. If you want to build documentation from specific application, provide applications name separated by space.
+
+For more option use `ERL_LIBS=deps:core:applications scripts/kz_docgen.escript --help`.
+
+### Example
+
+```
+$ ERL_LIBS=deps:core:applications scripts/kz_docgen.escript kazoo_voicemail kazoo_stdlib
+processing source file 'core/kazoo_stdlib/src/kz_types.erl'
+processing source file 'core/kazoo_stdlib/src/kz_term.erl'
+processing source file 'core/kazoo_stdlib/src/kz_maps.erl'
+processing source file 'core/kazoo_stdlib/src/kz_date.erl'
+processing source file 'core/kazoo_voicemail/src/migrate/kvm_migrate_crawler.erl'
+processing source file 'core/kazoo_voicemail/src/kvm_util.erl'
+processing source file 'core/kazoo_voicemail/src/kvm_messages.erl'
+processing source file 'core/kazoo_voicemail/src/kazoo_voicemail_maintenance.erl'
+processing source file 'core/kazoo_voicemail/src/kvm_message.erl'
+processing source file 'core/kazoo_stdlib/src/kz_binary.erl'
+processing source file 'core/kazoo_stdlib/src/kz_mochinum.erl'
+processing source file 'core/kazoo_voicemail/src/migrate/kvm_migrate_account.erl'
+processing source file 'core/kazoo_stdlib/src/kz_json.erl'
+processing source file 'core/kazoo_stdlib/src/props.erl'
+processing source file 'core/kazoo_voicemail/src/kvm_mwi.erl'
+processing source file 'core/kazoo_stdlib/src/kz_time.erl'
+kz_edoc_doclet:93  Total modules to process: 16 Successfully processed 16
+
+:: start rendering
+rendering app kazoo_voicemail index
+rendering app kazoo_stdlib index
+rendering app kazoo_voicemail module kvm_migrate_crawler
+rendering app kazoo_stdlib module kz_types
+rendering app kazoo_voicemail module kvm_util
+rendering app kazoo_voicemail module kvm_migrate_account
+rendering app kazoo_stdlib module props
+rendering app kazoo_voicemail module kvm_messages
+rendering app kazoo_voicemail module kvm_mwi
+rendering app kazoo_stdlib module kz_term
+rendering app kazoo_voicemail module kazoo_voicemail_maintenance
+rendering app kazoo_voicemail module kvm_message
+rendering app kazoo_stdlib module kz_time
+rendering app kazoo_stdlib module kz_maps
+rendering app kazoo_stdlib module kz_mochinum
+rendering app kazoo_stdlib module kz_date
+rendering app kazoo_stdlib module kz_json
+rendering app kazoo_stdlib module kz_binary
+rendering apps index
+rendering index
+
+```
+
 ## `list-ext-deps.escript`
 
 This escript gathers information from all `.beam` files in the filesystem tree specified by a list of directories provided to it on the command line, determines which external calls these files collectively make, and compares these calls with the applications provided by the Erlang runtime under which the script is running.
