@@ -278,9 +278,9 @@ make_rel_path(Ps) ->
     ["../" || _ <- lists:seq(1, length(Ps))].
 
 render(Module, Props) when is_atom(Module) ->
-    kz_template:render(Module, Props);
-render(TemplateFilePath, Props) when is_list(TemplateFilePath) ->
-    kz_template:render(TemplateFilePath, Props, [{auto_escape, false}]).
+    kz_template:render(Module, Props).
+%%render(TemplateFilePath, Props) when is_list(TemplateFilePath) ->
+%%    kz_template:render(TemplateFilePath, Props, [{auto_escape, false}]).
 
 read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
     Path = filename:join([OutDir, "tmp", AppsUri, App, Module]) ++ ".json",
