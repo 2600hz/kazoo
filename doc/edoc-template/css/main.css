@@ -2,6 +2,105 @@
     padding: 0;
 }
 
+.navbar {
+    align-items: center;
+    padding: .5rem 1rem;
+    justify-content: flex-start;
+    flex-flow: row nowrap;
+    min-height: 4rem;
+    background-color: white;
+    color: #495057;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.05), inset 0 -1px 0 rgba(0,0,0,.1);
+    position: relative;
+    z-index: 1024;
+}
+
+.navbar-brand {
+    display: inline-block;
+    padding-top: .3125rem;
+    /*padding-bottom: .3125rem;*/
+    max-width: 175px;
+    margin-right: 1rem;
+    font-size: 1.25rem;
+    line-height: inherit;
+    white-space: nowrap;
+}
+
+.navbar-nav {
+    margin-bottom: 0;
+    padding-left: 0;
+    flex-wrap: nowrap;
+    justify-content: space-around;
+}
+
+.navbar-item {
+    display: block;
+    margin-bottom: 0;
+    padding-right: .5rem;
+    padding-left: .5rem;
+}
+
+.navbar-item a {
+    color: #495057;
+}
+
+.navbar-item a:hover {
+    color: #4dadf7;
+    text-decoration: none;
+}
+
+.navbar-text {
+    display: inline-block;
+    font-size: 1.25rem;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+}
+
+.logo-2600hz {
+    display: block;
+    height: auto;
+}
+
+.logo-2600hz .symbol {
+    fill: #ff5933;
+}
+
+.logo-2600hz .wordmark {
+    fill: #303039;
+}
+
+.logo-2600hz .attribution {
+    display: none;
+}
+
+.footer {
+    align-items: center;
+    padding: .5rem 1rem;
+    justify-content: flex-start;
+    flex-flow: row nowrap;
+    min-height: 4rem;
+    background-color: white;
+    color: #909099;
+    background-color: #343a40;
+    box-shadow: 0 -0.5rem 1rem rgba(0,0,0,.05);
+    position: relative;
+    z-index: 1024;
+    justify-content: space-between;
+}
+
+.footer .erlang-logo {
+    width: 140px;
+    height: auto;
+}
+
+.footer #erlang-text {
+    fill: white;
+}
+
+.footer .fa-heart {
+    color: #ff4033;
+}
+
 .sidebar {
     color: #909099;
 }

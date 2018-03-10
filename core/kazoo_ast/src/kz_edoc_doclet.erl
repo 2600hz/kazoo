@@ -28,6 +28,12 @@
 
 -define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 
+-define(DEFAULT_TEMPLATE_DIR, "doc/edoc-template").
+
+-define(INLINE_SVGS, [{kz_2600hz_logo_svg_file, "2600hz.svg"}
+                     ,{kz_erlang_logo, "erlang.svg"}
+                     ]).
+
 -define(APP_OVERVIEW_FILE, "overview.edoc").
 -define(APPS_OVERVIEW_FILE, "apps_overview.edoc").
 -define(PROJ_OVERVIEW_FILE, "doc/edoc_overview.edoc").
@@ -395,9 +401,9 @@ init_context(Opts, GenApps) ->
                  ,{kz_gendate, kz_time:format_date()}
                  ,{kz_link_apps, AppLink}
                  ,{kz_link_mods, ModLink}
-                 ,{kz_template_dir, "doc/edoc-template"}
+                 ,{kz_template_dir, ?DEFAULT_TEMPLATE_DIR}
                  ,{kz_vsn, master}
-                 ] ++ ?DEFAULT_TEMPLATES),
+                 ] ++ make_svgs_inline(Opts) ++ ?DEFAULT_TEMPLATES),
     compile_templates(),
     Opts1 = [O
              || {K, _}=O <- Opts,
@@ -415,6 +421,19 @@ make_doc_links(GenApps) ->
     Module = fun(M) -> maps:get(M, Mods, undefined) end,
     App = fun(A) -> maps:get(A, Apps, undefined) end,
     {App, Module}.
+
+make_svgs_inline(Options) ->
+    TemplateDir = proplists:get_value(kz_template_dir, Options, ?DEFAULT_TEMPLATE_DIR),
+    [{K, read_svg_file(TemplateDir, File)} || {K, File} <- ?INLINE_SVGS].
+
+read_svg_file(TemplateDir, File) ->
+    Path = filename:join([TemplateDir, "img"]) ++ "/" ++ File,
+    case file:read_file(Path) of
+        {ok, Svg} -> Svg;
+        {error, _Reason} ->
+            ?DEV_LOG("failed to read svg file from ~p: ~p", [Path, _Reason]),
+            ""
+    end.
 
 -spec log_stacktrace() -> 'ok'.
 log_stacktrace() ->

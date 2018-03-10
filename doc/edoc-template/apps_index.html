@@ -20,17 +20,29 @@
 </head>
 <body>
     <div class="container-fluid">
+        <header class="row no-gutters navbar">
+            <a class="col col-1 navbar-brand" href="{{ kz_rel_path }}index.html">
+                {{ kz_2600hz_logo_svg_file }}
+            </a>
+            <div class="col col-3 offset-8 navbar-nav-container">
+                <ul class="row no-gutters navbar-nav">
+                    <li class="navbar-item"><a href="https://github.com/2600hz/kazoo"><i class="fab fa-github"></i></a></li>
+                    <li class="navbar-item"><a href="https://2600hz.com/about-us">About</a></li>
+                    <li class="navbar-item"><a href="https://forums.2600hz.com/forums/home/">Community</a></li>
+                    <li class="navbar-item"><a href="https://2600hz.com"><i class="fas fa-chevron-left fa-fw"></i>&nbsp;Return to 2600Hz</a></li>
+                </ul>
+            </div>
+        </header>
         <div class="row no-gutters">
             <aside class="col col-2 sidebar">
                 <nav class="sidebar-nav">
                     <div class="sidebar-brand">
                         <img src="../../img/kazoo.svg">
-                        <span class="display-7"><strong>Kazoo</strong></span><br>
                         Erlang Reference Manual<br>
                         <small>Version {{ kz_vsn }}</small>
                     </div>
                     <ul class="nav">
-                        <li class="nav-item"><a class="nav-head" href="{{ kz_rel_path }}index{{ file_suffix }}">Erlang Reference</a></li>
+                        <li class="nav-item"><a class="nav-head" href="{{ kz_rel_path }}index{{ file_suffix }}">Overview</a></li>
                         <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo#who-can-contribute">Contribute</a></li>
                         <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo/blob/master/doc/installation.md">Installation Guide</a></li>
                         <li class="nav-item"><a class="nav-head" href="https://docs.2600hz.com/dev/">Crossbar REST API Reference</a></li>{% if kz_sidebar_apps %}
@@ -87,6 +99,10 @@
                     </section>{% endif %}
                 </main>
             </div>
+        </div>
+        <div class="row no-gutters footer">
+            <div class="legal-copy">&copy;&nbsp;2010–2018 2600Hz<span class="spacer">&nbsp; | &nbsp;</span>ALL RIGHTS RESERVED</div>
+            <div>Made with&nbsp;<i class="fas fa-heart fa-fw"></i>&nbsp;using {{ kz_erlang_logo }}</div>
         </div>
     </div>
 
