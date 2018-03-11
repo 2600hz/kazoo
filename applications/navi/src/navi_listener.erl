@@ -30,7 +30,7 @@
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ['new_voicemail']}]}
-                  ,{'push', [{'restrict_to', ['device', 'user']}]}
+                  ,{'push_notifications', [{'restrict_to', ['device', 'user']}]}
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_new_voicemail'}, [{<<"notification">>, <<"voicemail_new">>}]}
