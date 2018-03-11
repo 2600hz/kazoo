@@ -30,12 +30,12 @@
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ['new_voicemail']}]}
-                  ,{'navi', [{'restrict_to', ['push_device', 'push_user']}]}
+                  ,{'push', [{'restrict_to', ['device', 'user']}]}
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_new_voicemail'}, [{<<"notification">>, <<"voicemail_new">>}]}
-                    ,{{?MODULE, 'handle_push_request_device'}, [{<<"navi">>, <<"push_device">>}]}
-                    ,{{?MODULE, 'handle_push_request_user'}, [{<<"navi">>, <<"push_user">>}]}
+                    ,{{?MODULE, 'handle_push_request_device'}, [{<<"push">>, <<"device">>}]}
+                    ,{{?MODULE, 'handle_push_request_user'}, [{<<"push">>, <<"user">>}]}
                     ]).
 -define(QUEUE_NAME, <<"navi_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).

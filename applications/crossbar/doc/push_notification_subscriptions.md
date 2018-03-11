@@ -2,6 +2,11 @@
 
 #### About Push Notification Subscriptions
 
+Push notification subscriptions allows users to specify events that they want to receive push notifications about.
+A push notification subscription document describes the user's device, the application they want to receive notifications through and the events they want to receive notifications about.
+Once the document is created, when the events specified in `notification_preferences` occur, they will receive a push notification from the given app on the given mobile device.
+If a user wants to have multiple devices, they will need a push notification subscription for each.
+
 #### Schema
 
 Schema for a push notification subscription

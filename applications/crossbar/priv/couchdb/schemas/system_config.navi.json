@@ -8,11 +8,33 @@
             "items": {
                 "anyOf": [
                     {
+                        "description": "An iOS application that will use APNS as its notification service",
                         "properties": {
                             "notification_type": {
+                                "description": "the notification service that should be used for this notification server",
                                 "enum": [
                                     "apns"
                                 ]
+                            },
+                            "certificate": {
+                                "description": "the Apple provider certificate for apns notifications, stored in .pem format",
+                                "type": "string"
+                            },
+                            "default_topic": {
+                                "description": "the base topic for the app to receive notifications, usually the bundle id (apns only)",
+                                "type": "string"
+                            },
+                            "environment": {
+                                "description": "the environment of the app (prod or dev). Only used for apns",
+                                "enum": [
+                                    "dev",
+                                    "prod"
+                                ],
+                                "type": "string"
+                            },
+                            "key": {
+                                "description": "the RSA private key for apns notifications, stored in .pem format",
+                                "type": "string"
                             }
                         },
                         "required": [
@@ -23,11 +45,16 @@
                         ]
                     },
                     {
+                        "description": "An Android application that will use FCM as its notification service",
                         "properties": {
                             "notification_type": {
                                 "enum": [
                                     "fcm"
                                 ]
+                            },
+                            "api_key": {
+                                "description": "the android api key for the app that will send push notifications",
+                                "type": "string"
                             }
                         },
                         "required": [
@@ -36,35 +63,11 @@
                     }
                 ],
                 "properties": {
-                    "api_key": {
-                        "description": "the android api key for the app that will send push notifications",
-                        "type": "string"
-                    },
                     "app_name": {
                         "description": "an identifier for the app that will be sending push notifications",
                         "type": "string"
                     },
-                    "certificate": {
-                        "description": "the Apple provider certificate for apns notifications, stored in .pem format",
-                        "type": "string"
-                    },
-                    "default_topic": {
-                        "description": "the base topic for the app to receive notifications (iOS only)"
-                    },
-                    "environment": {
-                        "description": "the environment of the app (prod or dev). Only used for apns",
-                        "enum": [
-                            "dev",
-                            "prod"
-                        ],
-                        "type": "string"
-                    },
-                    "key": {
-                        "description": "the RSA private key for apns notifications, stored in .pem format",
-                        "type": "string"
-                    },
                     "notification_type": {
-                        "description": "the notification service that should be used for this notification server",
                         "enum": [
                             "apns",
                             "fcm"
