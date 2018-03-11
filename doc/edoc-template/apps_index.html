@@ -20,28 +20,31 @@
 </head>
 <body class="">
     <div class="container-fluid">
-        <header class="row no-gutters navbar">
-            <a class="col col-1 navbar-brand" href="{{ kz_rel_path }}index.html">
+        <header class="row navbar">
+            <a class="col-12 col-lg-2 navbar-brand" href="{{ kz_rel_path }}index.html">
                 {{ kz_2600hz_logo_svg_file }}
             </a>
-            <div class="col col-3 offset-8 navbar-nav-container">
-                <ul class="row no-gutters navbar-nav">
+            <nav class="col-12 col-lg-6 navbar-nav-container">
+                <ul class="row navbar-nav">
                     <li class="navbar-item"><a href="https://github.com/2600hz/kazoo"><i class="fab fa-github"></i></a></li>
                     <li class="navbar-item"><a href="https://2600hz.com/about-us">About</a></li>
                     <li class="navbar-item"><a href="https://forums.2600hz.com/forums/home/">Community</a></li>
-                    <li class="navbar-item"><a href="https://2600hz.com"><i class="fas fa-chevron-left fa-fw"></i>&nbsp;Return to 2600Hz</a></li>
+                    <li class="navbar-item"><a href="https://2600hz.com">Return to 2600Hz</a></li>
                 </ul>
-            </div>
+            </nav>
         </header>
+    </div>
+    <div class="container-fluid edge-to-edge">
         <div class="row no-gutters">
-            <aside class="col col-2 sidebar">
+            <aside class="col-12 col-md-3 col-xl-2 sidebar">
                 <nav class="sidebar-nav">
                     <div class="sidebar-brand">
-                        <img class="img-fluid" src="{{ kz_rel_path }}img/kazoo.svg">
-                        Erlang Reference Manual<br>
-                        <small>Version {{ kz_vsn }}</small>
+                        <div class="kz-logo"><img class="img-fluid" src="{{ kz_rel_path }}img/kazoo.svg"></div>
+                        <div>Erlang Reference Manual</div>
+                        <div><small>Version {{ kz_vsn }}</small></div>
                     </div>
-                    <ul class="nav">
+                    <button class="btn btn-link sidebar-toggle d-md-none" type="button" data-toggle="collapse" data-target="#sb-docs-nav" aria-controls="sb-docs-nav" aria-expanded="false" aria-label="Toggle docs navigation"><span class="fas fa-bars"></span></button>
+                    <ul id="sb-docs-nav" class="nav collapse">
                         <li class="nav-item"><a class="nav-head" href="{{ kz_rel_path }}index{{ file_suffix }}">Overview</a></li>
                         <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo#who-can-contribute">Contribute</a></li>
                         <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo/blob/master/doc/installation.md">Installation Guide</a></li>
@@ -52,12 +55,15 @@
                             <ul class="nav-apps">
                             {% for app, modules in apps %}
                                 <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
-                                    <div class="nav-app-head"><span data-target-id="nav-app-{{ app }}" class="fas fa-folder nav-flip"></span><a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a></div>
+                                    <div class="nav-app-head">
+                                        <span data-target-id="nav-app-{{ app }}" class="fas fa-fw nav-flip"></span>
+                                        <a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a>
+                                    </div>
                                     <ul class="nav-mods">
                                         <li id="nav-app-index" class="entry-module"></li>
                                         {% for module, desc, link in modules %}
                                         <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
-                                            <a href="{{ kz_rel_path }}{{ link }}">{{ module }}</a><span style="display: none;">{{ desc }}</span>
+                                            <a class="text-truncate" title="Module {{ module }}" href="{{ kz_rel_path }}{{ link }}">{{ module }}</a>
                                         </li>
                                         {% endfor %}
                                     </ul>
@@ -68,7 +74,7 @@
                     </ul>
                 </nav>
             </aside>
-            <div class="col col-10 bg-middle">
+            <div class="col-12 col-md-9 col-xl-8 bg-middle">
                 <main class="content">
                     <section id="doc-summary" class="app">
                         <h1>Kazoo Application Lists</h1>{% if full_desc %}
@@ -102,7 +108,7 @@
         </div>
         <div class="row no-gutters footer">
             <div class="legal-copy">&copy;&nbsp;2010–2018 2600Hz<span class="spacer">&nbsp; | &nbsp;</span>ALL RIGHTS RESERVED</div>
-            <div>Made with&nbsp;<i class="fas fa-heart fa-fw"></i>&nbsp;using {{ kz_erlang_logo }}</div>
+            <div>Made with&nbsp;<i class="fas fa-heart fa-fw"></i>&nbsp;using <a alt="Erlang Logo" href="erlang.org">{{ kz_erlang_logo }}</a></div>
         </div>
     </div>
 
@@ -113,6 +119,7 @@
         var kzRelPath = '{{ kz_rel_path }}';
         var kzAppsUri = '{{ kz_apps_uri }}';
     </script>
+    <script src="{{ kz_rel_path }}js/search_index.js"></script>
     <script src="{{ kz_rel_path }}js/main.js"></script>
 
   <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
