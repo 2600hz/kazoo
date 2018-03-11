@@ -37,7 +37,7 @@
             <aside class="col col-2 sidebar">
                 <nav class="sidebar-nav">
                     <div class="sidebar-brand">
-                        <img src="../../img/kazoo.svg">
+                        <img class="img-fluid" src="{{ kz_rel_path }}img/kazoo.svg">
                         Erlang Reference Manual<br>
                         <small>Version {{ kz_vsn }}</small>
                     </div>
@@ -110,8 +110,8 @@
     <script>window.jQuery || document.write('<script src="{{ kz_rel_path }}js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
     <script src="https://unpkg.com/lunr/lunr.js"></script>
     <script type="text/javascript">
-        var kzRelPath = {{ kz_rel_path }};
-        var kzAppsUri = {{ kz_apps_uri }};
+        var kzRelPath = '{{ kz_rel_path }}';
+        var kzAppsUri = '{{ kz_apps_uri }}';
     </script>
     <script src="{{ kz_rel_path }}js/main.js"></script>
 
