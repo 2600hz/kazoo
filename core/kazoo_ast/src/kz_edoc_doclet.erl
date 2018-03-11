@@ -395,7 +395,7 @@ build_search_index(IndexData, Context) when is_list(IndexData) ->
 build_search_index({error, Reason}, _) ->
     ?DEV_LOG("failed to save search index doc: ~p", [Reason]);
 build_search_index({ok, DocFile}, #{kz_doc_site := OutDir, kz_search_index_cmd := Builder}) ->
-    IndexFile = filename:join([OutDir, "js/search_index.json"]),
+    IndexFile = filename:join([OutDir, "js/search_index.js"]),
 
     ok = filelib:ensure_dir(IndexFile),
 
