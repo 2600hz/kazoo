@@ -210,6 +210,7 @@ type_name(#xmlElement{content = Es}, Context) ->
                    ].
 
 -type type_prop() :: [{id, binary()} |
+                      {name, binary()} |
                       {label, string()} |
                       {typedef, typedef()} |
                       {full_desc, exported()}
@@ -225,6 +226,7 @@ typedecl(Name, E=#xmlElement{content = Es}, Context) ->
     {Id, _} = anchor_id_label(Name ++ "()", E),
     filter_empty(
       [{id, Id}
+      ,{name, iolist_to_binary(Name)}
       ,{label, NameArgTypes}
       ,{typedef, typedef(NameArgTypes, get_content(typedef, Es), Context)}
       ,{full_desc, description(full, Es, Context)}

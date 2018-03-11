@@ -23,7 +23,7 @@
 %%% number of milliseconds or at a given datetime.
 %%%
 %%% <code>
-%%% {oneshot, 60000} % execute task once after waiting a minute<br />
+%%% {oneshot, 60000} % execute task once after waiting a minute<br>
 %%% {oneshot, {{2012, 2, 23}, {1, 0, 0}}} % execute task on Feb 23, 2012 at 1 am
 %%% </code>
 %%%

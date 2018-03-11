@@ -69,7 +69,8 @@ run(Options, GenApps) ->
 gen_multi_app(Context, GenApps) ->
     {Modules, HasError} = process_cmds(Context, GenApps),
     Sidebar = sidebar_apps_list(Modules, Context),
-    render_apps(Modules, Sidebar, Context),
+    IndexData = render_apps(Modules, Sidebar, Context),
+    build_search_index(IndexData, Context),
     render_apps_index(Modules, Sidebar, Context),
     index_file(Sidebar, Context),
     copy_files(Context),
@@ -95,7 +96,7 @@ process_cmds(Context, GenApps) ->
     io:format(":: Start processing ~b source file(s)~n", [GenAppsLength]),
 
     Malt = [{'processes', 'schedulers'}],
-    Result = plists:fold(SourceFun, fun fuse_cmds/2, [], GenApps, Malt),
+    Result = plists:fold(SourceFun, fun fuse_together/2, [], GenApps, Malt),
 
     Fun = fun({AppCat, App, Module, ShortDesc}, Map) ->
                   maps:put({AppCat, App}, [{Module, ShortDesc} | maps:get({AppCat, App}, Map, [])], Map)
@@ -104,7 +105,7 @@ process_cmds(Context, GenApps) ->
     io:format("~n:: Successfully processed: ~b~n~n", [length(Result)]),
     {lists:foldl(Fun, #{}, Result), GenAppsLength /= length(Result)}.
 
-fuse_cmds(A, B) when is_list(A), is_list(B) ->
+fuse_together(A, B) when is_list(A), is_list(B) ->
     A ++ B.
 
 %% Generating documentation (as a JSON) for a source file, adding its name to the
@@ -177,14 +178,21 @@ sidebar_apps_cat(AppCat, Modules, #{kz_apps_uri := AppsUri, file_suffix := Suffi
     lists:sort(maps:fold(fun(K, V, A) -> Fun(K, V, A, AppCat) end, [], Modules)).
 
 render_apps(Modules, Sidebar, Context) ->
-    Malt = [{'processes', 'schedulers'}],
     io:format(":: Start rendering~n", []),
-    _ = plists:map(fun({App, Ms}) -> render_app(App, Ms, Sidebar, Context) end, maps:to_list(Modules), Malt),
-    ok.
+
+    Malt = [{'processes', 'schedulers'}],
+    plists:fold(fun({App, Ms}, Acc) -> render_app(App, Ms, Sidebar, Context) ++ Acc end
+               ,fun fuse_together/2
+               ,[]
+               ,maps:to_list(Modules)
+               ,Malt
+               ).
 
 render_app({AppCat, App}, Modules, Sidebar, Context) ->
     render_app_overview(AppCat, App, Modules, Sidebar, Context),
-    [render_module(AppCat, App, Ms, Sidebar, Context) || Ms <- Modules].
+    [build_search_index_data(app, {list_to_binary(AppCat), atom_to_binary(App, utf8)}, Context, [])
+     | lists:flatten([render_module(AppCat, App, Ms, Sidebar, Context) || Ms <- Modules])
+    ].
 
 render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_apps_uri := AppsUri}=Ctx) ->
     io:format("."),
@@ -217,7 +225,8 @@ render_module(AppCat, App, {Module, _Desc}, Sidebar, #{kz_doc_site := OutDir, kz
 
     Name = atom_to_list(Module) ++ Suffix,
     EncOpts = [{encoding, utf8}],
-    edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), Name, EncOpts).
+    ok = edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), Name, EncOpts),
+    build_search_index_data(module, {atom_to_binary(App, utf8), atom_to_binary(Module, utf8)}, Context, Props).
 
 render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri}=Ctx) ->
     io:format("~n:: Rendering apps index file~n"),
@@ -309,6 +318,119 @@ extract_overview(File, Env, Opts) ->
             Tags;
         {error, _} ->
             []
+    end.
+
+build_search_index_data(module, {App, Module}=AppMod, #{file_suffix := Suffix}=Context, Props) ->
+    Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
+    FunsDesc = build_search_index_data(funcs, AppMod, Context, proplists:get_value(<<"functions">>, Props, [])),
+    TypesDesc = build_search_index_data(types, AppMod, Context, proplists:get_value(<<"types">>, Props, [])),
+    [kz_json:from_list(
+       [{<<"ref">>, <<App/binary, "/", Module/binary, (list_to_binary(Suffix))/binary>>}
+       ,{<<"module">>, Module}
+       ,{<<"desc">>, extract_xml_texts(Desc, <<"module ", App/binary, "/", Module/binary>>)}
+       ])
+     | FunsDesc ++ TypesDesc
+    ];
+build_search_index_data(funcs, AppMod, Context, Props) ->
+    [build_search_index_data(func, AppMod, Context, FunProps) || FunProps <- Props];
+build_search_index_data(func, {App, Module}, #{file_suffix := Suffix}, Props) ->
+    Id = proplists:get_value(<<"id">>, Props, <<>>),
+    Name = proplists:get_value(<<"name">>, Props, <<>>),
+    Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
+    Ref = <<App/binary, "/", Module/binary, (list_to_binary(Suffix))/binary, "#", Id/binary>>,
+    kz_json:from_list(
+      [{<<"ref">>, Ref}
+      ,{<<"fun">>, Name}
+      ,{<<"desc">>, extract_xml_texts(Desc, <<"func ", Ref/binary>>)}
+      ]
+     );
+build_search_index_data(types, AppMod, Context, Props) ->
+    [build_search_index_data(type, AppMod, Context, FunProps) || FunProps <- Props];
+build_search_index_data(type, {App, Module}, #{file_suffix := Suffix}, Props) ->
+    Id = proplists:get_value(<<"id">>, Props, <<>>),
+    Name = proplists:get_value(<<"name">>, Props, <<>>),
+    Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
+    Ref = <<App/binary, "/", Module/binary, (list_to_binary(Suffix))/binary, "#", Id/binary>>,
+    kz_json:from_list(
+      [{<<"ref">>, Ref}
+      ,{<<"type">>, Name}
+      ,{<<"desc">>, extract_xml_texts(Desc, <<"type ", Ref/binary>>)}
+      ]
+     );
+build_search_index_data(app, {_AppCat, App}, #{file_suffix := Suffix}, _) ->
+    kz_json:from_list(
+      [{<<"ref">>, <<App/binary, "/index", (list_to_binary(Suffix))/binary>>}
+      ,{<<"app">>, App}
+      ]
+     ).
+
+extract_xml_texts(<<>>, _) ->
+    <<>>;
+extract_xml_texts(Bin, Where) when is_binary(Bin) ->
+    extract_xml_texts(unicode:characters_to_list(Bin), Where);
+extract_xml_texts(Text, Where) ->
+    try xmerl_scan:string("<doc>" ++ Text ++ "</doc>", [{encoding, 'utf-8'}]) of
+        {E0, _} ->
+            iolist_to_binary([extract_xml_texts(E1) || E1 <- E0#xmlElement.content])
+    catch
+        _T:_E ->
+            ?DEV_LOG("exception occurred when converting to xml for extracting text for search index~nwhere: ~s~nxmerl exception: ~p:~p~n"
+                    ,[Where, _T, _E]),
+            <<>>
+    end.
+
+extract_xml_texts(#xmlText{value = Value}) ->
+    [C || C <- Value, C =/= $\n, C =/= $\r];
+extract_xml_texts(#xmlElement{content = Content}) ->
+    [extract_xml_texts(C) || C <- Content];
+extract_xml_texts(Text) when not is_tuple(Text) ->
+    unicode:characters_to_list(Text);
+extract_xml_texts(_) ->
+    [].
+
+build_search_index([], _) ->
+    ?DEV_LOG("no data to build search index", []);
+build_search_index(IndexData, Context) when is_list(IndexData) ->
+    build_search_index(save_search_docs(IndexData, Context), Context);
+build_search_index({error, Reason}, _) ->
+    ?DEV_LOG("failed to save search index doc: ~p", [Reason]);
+build_search_index({ok, DocFile}, #{kz_doc_site := OutDir, kz_search_index_cmd := Builder}) ->
+    IndexFile = filename:join([OutDir, "js/search_index.json"]),
+
+    ok = filelib:ensure_dir(IndexFile),
+
+    Cmd = Builder ++ " " ++ DocFile ++ " " ++ IndexFile,
+
+    io:format("~n~n:: Building search index with command ~s~n", [Cmd]),
+
+    Options = [exit_status
+              ,use_stdio
+              ,stderr_to_stdout
+              ,{env, [{"NODE_PATH", "$NODE_PATH:/usr/lib/node_modules"}]}
+              ],
+    Port = erlang:open_port({spawn, Cmd}, Options),
+    listen_to_index_builder(Port, []).
+
+listen_to_index_builder(Port, Acc) ->
+    receive
+        {Port, {data, Msg}} -> listen_to_index_builder(Port, Acc ++ Msg);
+        {Port, {exit_status, 0}} ->
+            case Acc of
+                "created"++_ -> ok;
+                _ ->
+                    ?DEV_LOG("build index command failed:", []),
+                    io:put_chars(Acc)
+            end;
+        {Port, {exit_status, _Exit}} ->
+            ?DEV_LOG("build index command failed with exit_status ~p:", [_Exit]),
+            io:put_chars(Acc)
+    end.
+
+save_search_docs(Docs, #{kz_doc_site := OutDir}) ->
+    Path = filename:join([OutDir, "tmp", "search-docs"]) ++ ".json",
+    case file:write_file(Path, kz_json:encode(Docs)) of
+        ok -> {ok, Path};
+        {error, _}=Error -> Error
     end.
 
 -spec compile_templates() -> ok.
@@ -405,6 +527,7 @@ init_context(Opts, GenApps) ->
                  ,{kz_export_type, xmerl_html}
                  ,{kz_ga, undefined}
                  ,{kz_gendate, kz_time:format_date()}
+                 ,{kz_search_index_cmd, "scripts/edoc_build_search_index.js"}
                  ,{kz_link_apps, AppLink}
                  ,{kz_link_mods, ModLink}
                  ,{kz_template_dir, ?DEFAULT_TEMPLATE_DIR}
