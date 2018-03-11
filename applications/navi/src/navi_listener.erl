@@ -34,8 +34,8 @@
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_new_voicemail'}, [{<<"notification">>, <<"voicemail_new">>}]}
-                    ,{{?MODULE, 'handle_push_request_device'}, [{<<"push">>, <<"device">>}]}
-                    ,{{?MODULE, 'handle_push_request_user'}, [{<<"push">>, <<"user">>}]}
+                    ,{{?MODULE, 'handle_push_request_device'}, [{<<"push_notifications">>, <<"device">>}]}
+                    ,{{?MODULE, 'handle_push_request_user'}, [{<<"push_notifications">>, <<"user">>}]}
                     ]).
 -define(QUEUE_NAME, <<"navi_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).

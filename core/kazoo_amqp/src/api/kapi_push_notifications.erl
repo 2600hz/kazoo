@@ -17,9 +17,9 @@
 
 -include_lib("kz_amqp_util.hrl").
 
--define(EVENT_CATEGORY, <<"push">>).
--define(KEY_PUSH_DEVICE, <<"push.device">>).
--define(KEY_PUSH_USER, <<"push.user">>).
+-define(EVENT_CATEGORY, <<"push_notifications">>).
+-define(KEY_PUSH_DEVICE, <<"push_notifications.device">>).
+-define(KEY_PUSH_USER, <<"push_notifications.user">>).
 -define(SHARED_HEADERS, [<<"Account-ID">>
                         ,<<"Message">>
                         ,<<"Push-Topic">>
@@ -40,8 +40,8 @@
 -define(PUSH_DEVICE_HEADERS, [<<"Device-ID">>|?SHARED_HEADERS]).
 -define(OPTIONAL_PUSH_DEVICE_HEADERS, [<<"Metadata">>]).
 -define(PUSH_DEVICE_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                                 ,{<<"Event-Name">>, <<"push_device">>}
-                                 ]).
+                            ,{<<"Event-Name">>, <<"device">>}
+                            ]).
 -define(PUSH_DEVICE_TYPES, [{<<"Device-ID">>, fun is_binary/1}|?SHARED_TYPES]).
 
 %% AMQP fields for Push notification (to user)
@@ -53,7 +53,7 @@
 %% Push-Topic    = the topic/event name of the push notifcation (e.g. chat)
 -define(PUSH_USER_HEADERS, [<<"User-ID">>|?SHARED_HEADERS]).
 -define(OPTIONAL_PUSH_USER_HEADERS, [<<"Metadata">>]).
--define(PUSH_USER_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY} ,{<<"Event-Name">>, <<"push_user">>} ]).
+-define(PUSH_USER_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY} ,{<<"Event-Name">>, <<"user">>} ]).
 -define(PUSH_USER_TYPES, [{<<"User-ID">>, fun is_binary/1}|?SHARED_TYPES]).
 
 %%------------------------------------------------------------------------------
@@ -90,10 +90,10 @@ bind_q(Queue, Props) ->
 bind_to_q(Q, 'undefined') ->
     'ok' = kz_amqp_util:bind_q_to_kapps(Q, ?KEY_PUSH_USER),
     'ok' = kz_amqp_util:bind_q_to_kapps(Q, ?KEY_PUSH_DEVICE);
-bind_to_q(Q, ['push_device'|T]) ->
+bind_to_q(Q, ['device'|T]) ->
     'ok' = kz_amqp_util:bind_q_to_kapps(Q, ?KEY_PUSH_DEVICE),
     bind_to_q(Q, T);
-bind_to_q(Q, ['push_user'|T]) ->
+bind_to_q(Q, ['user'|T]) ->
     'ok' = kz_amqp_util:bind_q_to_kapps(Q, ?KEY_PUSH_USER),
     bind_to_q(Q, T);
 bind_to_q(Q, [_|T]) ->
@@ -108,10 +108,10 @@ unbind_q(Q, Props) ->
 unbind_q_from(Q, 'undefined') ->
     'ok' = kz_amqp_util:bind_q_to_kapps(Q, ?KEY_PUSH_USER),
     'ok' = kz_amqp_util:unbind_q_from_kapps(Q, ?KEY_PUSH_DEVICE);
-unbind_q_from(Q, ['push_device'|T]) ->
+unbind_q_from(Q, ['device'|T]) ->
     'ok' = kz_amqp_util:unbind_q_from_kapps(Q, ?KEY_PUSH_DEVICE),
     unbind_q_from(Q, T);
-unbind_q_from(Q, ['push_user'|T]) ->
+unbind_q_from(Q, ['user'|T]) ->
     'ok' = kz_amqp_util:unbind_q_from_kapps(Q, ?KEY_PUSH_USER),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [_|T]) ->
