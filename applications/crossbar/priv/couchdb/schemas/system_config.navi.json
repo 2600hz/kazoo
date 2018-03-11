@@ -10,12 +10,6 @@
                     {
                         "description": "An iOS application that will use APNS as its notification service",
                         "properties": {
-                            "notification_type": {
-                                "description": "the notification service that should be used for this notification server",
-                                "enum": [
-                                    "apns"
-                                ]
-                            },
                             "certificate": {
                                 "description": "the Apple provider certificate for apns notifications, stored in .pem format",
                                 "type": "string"
@@ -35,6 +29,12 @@
                             "key": {
                                 "description": "the RSA private key for apns notifications, stored in .pem format",
                                 "type": "string"
+                            },
+                            "notification_type": {
+                                "description": "the notification service that should be used for this notification server",
+                                "enum": [
+                                    "apns"
+                                ]
                             }
                         },
                         "required": [
@@ -47,14 +47,14 @@
                     {
                         "description": "An Android application that will use FCM as its notification service",
                         "properties": {
+                            "api_key": {
+                                "description": "the android api key for the app that will send push notifications",
+                                "type": "string"
+                            },
                             "notification_type": {
                                 "enum": [
                                     "fcm"
                                 ]
-                            },
-                            "api_key": {
-                                "description": "the android api key for the app that will send push notifications",
-                                "type": "string"
                             }
                         },
                         "required": [
