@@ -246,9 +246,9 @@ acquire(Number, 'undefined', _DryRun) ->
 acquire(Number, _Mod, 'true') ->
     Number;
 acquire(Number, ?NE_BINARY=Mod, 'false') ->
-    case false =:= kz_util:try_load_module(Mod) of
-        false -> apply(Mod, acquire_number, [Number]);
-        true ->
+    case 'false' =:= kz_module:ensure_loaded(Mod) of
+        'false' -> apply(Mod, 'acquire_number', [Number]);
+        'true' ->
             lager:info("carrier '~s' does not exist, skipping", [Mod]),
             Number
     end.
@@ -371,5 +371,5 @@ keep_only_reachable(ModuleNames) ->
     ?LOG_DEBUG("resolving carrier modules: ~p", [ModuleNames]),
     [Module
      || M <- ModuleNames,
-        (Module = kz_util:try_load_module(M)) =/= 'false'
+        (Module = kz_module:ensure_loaded(M)) =/= 'false'
     ].

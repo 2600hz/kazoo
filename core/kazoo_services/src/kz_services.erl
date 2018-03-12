@@ -853,7 +853,7 @@ reconcile_only(#kz_services{account_id=AccountId}=Services) ->
 -spec reconcile_module(module(), services()) -> services().
 -ifdef(TEST).
 reconcile_module(M, Services) ->
-    {reconcile,1} = lists:keyfind(reconcile, 1, M:module_info(exports)),
+    'true' = kz_module:is_exported(M, 'reconcile', 1),
     Services.
 -else.
 reconcile_module(M, Services) ->

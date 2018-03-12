@@ -125,9 +125,9 @@ v(JObj) ->
 v(Prop, DPApp) ->
     try
         VFun = kz_term:to_atom(<<DPApp/binary, "_v">>),
-        case lists:keyfind(VFun, 1, ?MODULE:module_info('exports')) of
+        case kz_module:is_exported(?MODULE, VFun, 1) of
             'false' -> throw({'invalid_dialplan_object', Prop});
-            {_, 1} -> ?MODULE:VFun(Prop)
+            'true' -> ?MODULE:VFun(Prop)
         end
     catch
         _:R ->
@@ -1117,10 +1117,10 @@ build_command(JObj) ->
 build_command(Prop, DPApp) when is_list(Prop) ->
     try kz_term:to_atom(<<DPApp/binary>>) of
         BuildMsgFun ->
-            case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info('exports')) of
+            case kz_module:is_exported(?MODULE, BuildMsgFun, 1) of
                 'false' ->
                     {'error', 'invalid_dialplan_object'};
-                {_, 1} ->
+                'true' ->
                     ?MODULE:BuildMsgFun(kz_api:set_missing_values(Prop, ?DEFAULT_VALUES))
             end
     catch

@@ -230,7 +230,7 @@ stop_module(Module) ->
                                 {'ok', module()} |
                                 {'error', 'invalid_mod'}.
 module_from_binary(<<"teletype_", _/binary>> = Template) ->
-    case kz_util:try_load_module(Template) of
+    case kz_module:ensure_loaded(Template) of
         'false' -> invalid_module(Template);
         Module -> {'ok', Module}
     end;

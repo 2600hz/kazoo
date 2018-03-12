@@ -597,12 +597,11 @@ cf_module_prefix(_Call, _) -> <<"cf_">>.
                                    {kz_term:pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
-    try CFModule:module_info('exports') of
-        _ ->
+    case kz_module:is_exported(CFModule, 'handle', 2) of
+        'true' ->
             lager:info("moving to action '~s'", [CFModule]),
-            spawn_cf_module(CFModule, Data, Call)
-    catch
-        'error':'undef' ->
+            spawn_cf_module(CFModule, Data, Call);
+        'false' ->
             cf_module_skip(ModuleBin, Call)
     end.
 

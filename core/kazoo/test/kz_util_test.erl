@@ -147,18 +147,6 @@ is_account_expired_test_() ->
     [?_assertEqual(false, kz_util:is_account_expired(undefined))
     ].
 
-try_load_module_test_() ->
-    [?_assertEqual(false, kz_util:try_load_module(undefined))
-    ,?_assertEqual(false, kz_util:try_load_module("undefined"))
-    ,?_assertEqual(false, kz_util:try_load_module(<<"undefined">>))
-    ,?_assertEqual(kz_util, kz_util:try_load_module("kz_util"))
-    ,?_assertEqual(kz_util, kz_util:try_load_module(<<"kz_util">>))
-    ,?_assertEqual(kz_util, kz_util:try_load_module(kz_util))
-    ,?_assertEqual(false, kz_util:try_load_module(kz_term:to_list(?AN_ACCOUNT_ID)))
-    ,?_assertEqual(false, kz_util:try_load_module(?AN_ACCOUNT_ID))
-    ,?_assertEqual(false, kz_util:try_load_module(kz_term:to_atom(?AN_ACCOUNT_ID,true)))
-    ].
-
 spawns_test_() ->
     [?_assert(is_pid(kz_util:spawn(fun () -> io:format("x") end)))
     ,?_assert(is_pid(kz_util:spawn(fun (X) -> io:format("~p",[X]) end, [x])))

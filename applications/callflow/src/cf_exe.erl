@@ -686,12 +686,11 @@ launch_cf_module(#state{call=Call
                                    {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
-    try CFModule:module_info('exports') of
-        _ ->
+    case kz_module:is_exported(CFModule, 'handle', 2) of
+        'true' ->
             lager:info("moving to action '~s'", [CFModule]),
-            spawn_cf_module(CFModule, Data, Call)
-    catch
-        'error':'undef' ->
+            spawn_cf_module(CFModule, Data, Call);
+        'false' ->
             lager:debug("failed to find callflow module ~s", [CFModule]),
             cf_module_not_found(Call)
     end.
