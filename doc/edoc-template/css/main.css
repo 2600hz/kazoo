@@ -392,7 +392,7 @@
 .type-spec pre {
     margin: 0;
     word-break: break-word;
-    white-space: pre-line;
+    white-space: pre-wrap;
 }
 
 .localdefs {
