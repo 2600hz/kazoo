@@ -260,6 +260,48 @@ done (warnings were emitted)
 
 Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 
+## `edoc_build_search_index.js`
+
+Script to generate Kazoo EDoc search index file. This should only called by `kz_edoc_doclet` (which in turn should call by [`kz_docgen.escript`](kz_docgen.escript)).
+
+Requirements: `nodejs`, `lunrjs` (`sudo npm install lunr -g`).
+
+Fields which are indexed by this script is: `app`, `module`, `fun`, `type` and `desc`.
+
+### Sample source documents
+
+```json
+[
+    {
+        "ref": "kazoo_stdlib/index.html",
+        "app": "kazoo_stdlib"
+    },
+    {
+        "ref": "kazoo_stdlib/props.html",
+        "module": "props",
+        "desc": "Mostly a drop-in replacement and extension of the proplists module,   but using the lists module to implement  "
+    },
+    {
+        "ref": "kazoo_stdlib/props.html#delete-2",
+        "fun": "delete",
+        "desc": ""
+    },
+    {
+        "ref": "kazoo_stdlib/kz_term.html#type-api_atoms",
+        "type": "api_atoms",
+        "desc": "  Denotes either data type is defined as list of atom() or it's undefined."
+    }
+]
+```
+
+### Manually Running
+
+Arguments: search documents in JSON format and output file for generated index.
+
+```shell
+scripts/edoc_build_search_index.js doc/edoc/tmp/search-docs.json doc/edoc/js/search_index.js
+```
+
 
 ## `edocify.escript`
 
