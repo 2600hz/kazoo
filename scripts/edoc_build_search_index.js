@@ -46,7 +46,7 @@ var idx = lunr(function() {
 const jsonIdx = JSON.stringify(idx);
 
 try {
-    fs.writeFileSync(indexFile, 'var searchIdx = ' + jsonIdx);
+    fs.writeFileSync(indexFile, 'window.searchIdx = ' + jsonIdx);
 } catch (e) {
     console.error('There was an error writing the index file!', e);
     process.exit(1);

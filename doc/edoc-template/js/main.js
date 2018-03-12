@@ -596,3 +596,78 @@ $('.toggle-collapse').on('click', function () {
     $(this).parent().toggleClass('active');
     targetEl.collapse('toggle');
 });
+
+
+$(window).on('load', function() {
+    window.idxLunr = lunr.Index.load(searchIdx);
+
+    // Event when the search form is submitted
+    $('.side-search').submit(function(event) {
+        event.preventDefault();
+
+        const query = $(this).children('[type=search]').val();
+
+        if (query) {
+            const results = window.idxLunr.search(query);
+            display_search_results(results);
+        } else {
+            console.log("error: can't find search input value!");
+        }
+    });
+
+    $('.close-search').on('click', function () {
+        $('.main-content').toggle('slow');
+        $('.page-toc').toggle('slow');
+        $('.search-result-box').toggle('slow');
+        $('.search-result').empty();
+    });
+
+    function display_search_results(results) {
+        $('.main-content').toggle('slow');
+        $('.page-toc').toggle('slow');
+        $('.search-result-box').toggle('slow');
+
+        let $search_results = $('.search-result');
+
+        if (results.length) {
+            $search_results.empty();
+
+            // $search_results.append('<pre>' + JSON.stringify(results, null, 4) + '</pre>');
+            results.forEach(function(result) {
+                const resRef = result.ref;
+                const appFile = resRef.split('/');
+
+                if (!appFile || appFile.length !== 2) return;
+
+                const appName = appFile[0];
+                const fileFrag = appFile[1];
+
+                const fileNameFrag = fileFrag.split('#');
+
+                if (!fileNameFrag) return;
+
+                fileName = fileNameFrag[0];
+
+                if (fileNameFrag.length == 2) {
+                    const elementString = '<li><a href="' + window.kzRelPath + window.kzAppsUri + '/' + resRef + '">' + appName + '/' + fileName.replace(/\.html/g, '') + '#' + fileNameFrag[1] + '</a></li>';
+                    $search_results.append(elementString);
+                } else {
+                    const elementString = '<li><a href="' + window.kzRelPath + window.kzAppsUri + '/' + resRef + '">' + appName + '/' + fileName.replace(/\.html/g, '') + '</a></li>';
+                    $search_results.append(elementString);
+                }
+            });
+        } else {
+            $search_results.html('<p>No results found.<br/>Please check spelling, spacing, yada...</p>');
+        }
+    }
+
+    function is_type (fragment) {
+        if (fragment.charAt(0) === 'type-') {
+            return true;
+        }
+
+        return false;
+    }
+});
+
+

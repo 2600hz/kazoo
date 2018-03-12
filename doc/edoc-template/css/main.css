@@ -208,6 +208,14 @@
     display: block;
 }
 
+.side-search {
+    position: relative;
+    padding: 1.5rem 15px 1rem;
+    margin-right: -15px;
+    margin-left: -15px;
+    border-bottom: 1px solid rgba(0,0,0,.05);
+}
+
 .nav-kz-apps {
     padding: 15px 0;
 }
@@ -226,7 +234,6 @@
 }
 
 .side-toggle {
-    /*padding-left: .6rem;*/
     color: #4b9fe8;
     cursor: pointer;
     font-size: .8rem;
@@ -234,15 +241,6 @@
 
 .side-toggle:hover {
     color: #66adeb;
-}
-
-.nav .nav-item ul.nav-mods {
-    /*display: none;*/
-    /*padding-left: 1.2rem;*/
-}
-
-.entry-app.active ul.nav-mods {
-    /*display: block;*/
 }
 
 .entry-module a {
@@ -258,6 +256,10 @@
  * Main Content
  * ------------
  */
+
+.search-result-box {
+    display: none;
+}
 
 .bg-middle {
     box-shadow: 0 0 10px rgba(0,0,0,.1);
@@ -614,4 +616,28 @@
 .badge-dark {
     color: #fff;
     background-color: #343a40;
+}
+
+.badge-pill {
+    padding-right: .6em;
+    padding-left: .6em;
+    border-radius: 10rem;
+}
+
+.badge-circle {
+    padding-right: .6em;
+    padding-left: .6em;
+    border-radius: 50%;
+    line-height: 1.3rem;
+}
+
+.close-search {
+    color: #909099!important;
+    cursor: pointer!important;
+    display: block;
+    vertical-align: middle;
+}
+
+.close-search .close-text {
+    padding-left: .5rem;
 }
