@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.navi.push_v_device",
-    "description": "AMQP API for navi.push_v_device",
+    "_id": "kapi.push_notifications.push_device",
+    "description": "AMQP API for push_notifications.push_device",
     "properties": {
         "Account-ID": {
             "type": "string"
@@ -25,11 +25,17 @@
             "type": "string"
         },
         "Metadata": {
-            "type": "object"
+            "type": "string"
         },
         "Push-Topic": {
             "type": "string"
         }
     },
+    "required": [
+        "Account-ID",
+        "Device-ID",
+        "Message",
+        "Push-Topic"
+    ],
     "type": "object"
 }

@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.navi.push_user",
-    "description": "AMQP API for navi.push_user",
+    "_id": "kapi.push_notifications.push_user",
+    "description": "AMQP API for push_notifications.push_user",
     "properties": {
         "Account-ID": {
             "type": "string"
