@@ -220,40 +220,29 @@
     color: #212529;
 }
 
-.nav-app-head {
+.nav .nav-item a.nav-app-head {
     color: #67676f;
     font-size: 1.10rem;
 }
 
-.nav .nav-item .nav-app-head a {
-    color: #67676f;
-}
-
-.nav-app-head .nav-flip {
-    padding-right: .6rem;
+.side-toggle {
+    /*padding-left: .6rem;*/
     color: #4b9fe8;
     cursor: pointer;
     font-size: .8rem;
 }
-.nav-app-head .nav-flip:before {
-    content: "\f054";
-}
 
-.entry-app.active .nav-app-head .nav-flip:before {
-    content: "\f078";
-}
-
-.nav-app-head .fa-folder:hover {
+.side-toggle:hover {
     color: #66adeb;
 }
 
 .nav .nav-item ul.nav-mods {
-    display: none;
-    padding-left: 1.7rem;
+    /*display: none;*/
+    /*padding-left: 1.2rem;*/
 }
 
 .entry-app.active ul.nav-mods {
-    display: block;
+    /*display: block;*/
 }
 
 .entry-module a {
@@ -283,7 +272,6 @@
 .page-toc {
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
-    font-size: .875rem;
     position: sticky;
     top: 0;
     height: 100vh;
@@ -299,9 +287,13 @@
 }
 
 .toc-entry a {
-    display: block;
+    display: inline-block;
     padding: .125rem 1.5rem;
-    color: #99979c;
+    color: #67676f;
+}
+
+.toc-entry .toc-list a {
+    color: #909099;
 }
 
 .toc-entry a:hover {
@@ -309,9 +301,37 @@
     text-decoration: none;
 }
 
+.toc-entry.fun-type a {
+    padding-right: 0;
+}
+
+.toc-toggle {
+    color: #67676f;
+    font-size: .8rem;
+    padding: 0;
+}
+
+.toc-toggle:hover {
+    color: #007bff;
+}
+
+.toggle-collapse:before {
+    content: "\f054";
+}
+
+.active .toggle-collapse:before {
+    content: "\f078";
+}
+
+.fun-type .toc-list a {
+    padding: 0;
+}
+
 .toc-entry ul {
-    padding-left: 3rem;
+    font-size: .8rem;
+    padding: 0 1.5rem;
     list-style-type: none;
+    margin: 0;
 }
 
 .toc-entry li {
@@ -452,13 +472,8 @@
     color: #f7f7f9;
 }
 
-.dark .nav-app-head,
-.sidebar-dark .nav-app-head {
-    color: #f7f7f9;
-}
-
-.dark .nav .nav-item .nav-app-head a,
-.sidebar-dark .nav .nav-item .nav-app-head a {
+.dark .nav .nav-item a.nav-app-head,
+.sidebar-dark .nav .nav-item a.nav-app-head {
     color: #f7f7f9;
 }
 

@@ -555,19 +555,44 @@ const Collapse = (($) => {
   return Collapse
 })($)
 
-$('.nav-flip').on('click', function() {
-    const activeEl = $('.entry-app.active');
-    const targetId = $(this).data('targetId');
+$('.toggle-collapse').on('click', function () {
+    const parent = $(this).data('parent');
+    const target = $(this).data('target');
 
-    if (!targetId) {
+    let targetEl = $(target);
+
+    if (targetEl.length === 0 || !parent) {
         return
     }
 
+    let activeEl = $(parent + ' .collapse.show');
+
+    console.log('parent ' + parent);
+    console.log('target ' + target);
+
     if (activeEl.length !== 0) {
-        const activeId = activeEl.attr('id');
-        if (activeId && (activeId !== targetId))
-        activeEl.removeClass('active')
+        let shouldDeactivate = false;
+
+        if (target.charAt(0) === '#') {
+            activeId = activeEl.attr('id');
+            console.log('activeId ' + activeId);
+            if (activeId && ('#' + activeId !== target)) {
+                console.log('active != target ' + activeId);
+                shouldDeactivate = true;
+            }
+        } else {
+            console.log('hasClass');
+            shouldDeactivate = activeEl.hasClass(target + '.show');
+        }
+
+        if (shouldDeactivate) {
+            console.log('deactivating active element');
+            activeEl.collapse('hide');
+            activeEl.parent().removeClass('active');
+        }
     }
 
-    $('#' + targetId).toggleClass('active');
+    console.log('toggling class, hasClass ' + $(this).parent().hasClass('active'));
+    $(this).parent().toggleClass('active');
+    targetEl.collapse('toggle');
 });

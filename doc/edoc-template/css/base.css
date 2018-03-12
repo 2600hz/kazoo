@@ -275,7 +275,8 @@ dd {
   display: none;
 }
 
-.collapse.show {
+.collapse.show,
+.show .collapse {
   display: block;
 }
 

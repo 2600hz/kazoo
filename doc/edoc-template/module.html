@@ -54,16 +54,14 @@
                             <span class="nav-head">{{ appcat|capfirst }} Applications</span>
                             <ul class="nav-apps">
                             {% for app, modules in apps %}
-                                <li id="nav-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
-                                    <div class="nav-app-head">
-                                        <span data-target-id="nav-app-{{ app }}" class="fas fa-fw nav-flip"></span>
-                                        <a href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a>
-                                    </div>
-                                    <ul class="nav-mods">
+                                <li id="nav-kz-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
+                                    <a class="nav-app-head" href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a>
+                                    <span class="fas fa-fw toggle-collapse side-toggle" data-target="#nav-am-{{ app }}" data-parent=".nav-kz-apps"></span>
+                                    <ul id="nav-am-{{ app }}" class="nav-mods collapse{% ifequal app kz_app_name %} show{% endifequal %}">
                                         <li id="nav-app-index" class="entry-module"></li>
                                         {% for module, desc, link in modules %}
                                         <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
-                                            <a class="text-truncate" title="Module {{ module }}" href="{{ kz_rel_path }}{{ link }}">{{ module }}</a>
+                                            <a class="text-truncate" title="Module {{ module }}" href="{{ kz_rel_path }}{{ link }}">{{ module }}</a>{% if desc %}{% endif %}
                                         </li>
                                         {% endfor %}
                                     </ul>
@@ -175,12 +173,23 @@
                 <ul class="section-nav">
                     <li class="toc-entry"><a href="#doc-summary">Description</a></li>{% if behaviours %}
                     <li class="toc-entry"><a href="#doc-behaviors">Behaviors</a></li>{% endif %}{% if types %}
-                    <li class="toc-entry"><a href="#doc-types">Types</a></li>{% endif %}{% if functions %}
-                    <li class="toc-entry">
+                    <li class="toc-entry fun-type">
+                        <a href="#doc-types">Types</a>
+                        <span class="fas fa-fw toggle-collapse toc-toggle" data-target="#toc-types" data-parent=".fun-type"></span>
+                        <ul id="toc-types" class="toc-list collapse">{% for type in types %}
+                            <li>
+                                <a class="text-truncate" title="Type {{ type.label }}" href="#{{ type.id }}"><code>{{ type.label }}</code></a>
+                            </li>
+                        {% endfor %}</ul>
+                    </li>{% endif %}{% if functions %}
+                    <li class="toc-entry fun-type active">
                         <a href="#doc-functions">Functions</a>
-                        <ul>
-                            {% for function in functions %}<li><a class="text-truncate" title="Function {{ function.label }}" href="#{{ function.id }}"><code>{{ function.label }}</code></a></li>{% endfor %}
-                        </ul>
+                        <span class="fas fa-fw toggle-collapse toc-toggle" data-target="#toc-funs" data-parent=".fun-type"></span>
+                        <ul id="toc-funs" class="toc-list collapse show">{% for function in functions %}
+                            <li>
+                                <a class="text-truncate" title="Function {{ function.label }}" href="#{{ function.id }}"><code>{{ function.label }}</code></a>
+                            </li>
+                        {% endfor %}</ul>
                     </li>{% endif %}{% if authors %}
                     <li class="toc-entry"><a href="#doc-authors">Authors</a></li>{% endif %}
                 </ul>
