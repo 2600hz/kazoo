@@ -1,6 +1,13 @@
 #!/bin/bash
 set -x
 set -e
+
+pushd $(dirname $0) > /dev/null
+cd $(pwd -P)/..
+
+KAZOO_OTP_VERSION=$(<./make/erlang_version)
+OTP_VERSION=${OTP_VERSION:-$KAZOO_OTP_VERSION}
+
 if [[ ! -d ~/.kerl/$OTP_VERSION ]]; then
     if [[ ! -d ~/.kerl ]]; then
         mkdir ~/.kerl
@@ -11,3 +18,5 @@ if [[ ! -d ~/.kerl/$OTP_VERSION ]]; then
     ~/.kerl/kerl build $OTP_VERSION $OTP_VERSION
     ~/.kerl/kerl install $OTP_VERSION ~/.kerl/$OTP_VERSION
 fi
+
+popd > /dev/null

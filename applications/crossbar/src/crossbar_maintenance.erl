@@ -340,7 +340,10 @@ demote_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec create_account(input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
 create_account(AccountName, Realm, Username, Password)
-  when is_binary(AccountName), is_binary(Realm), is_binary(Username), is_binary(Password) ->
+  when is_binary(AccountName),
+       is_binary(Realm),
+       is_binary(Username),
+       is_binary(Password) ->
     Account = kz_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
                                 ,{<<"name">>, AccountName}
                                 ,{<<"realm">>, Realm}

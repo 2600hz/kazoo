@@ -98,7 +98,7 @@ release: ACT ?= console # start | attach | stop | console | foreground
 release: REL ?= kazoo_apps # kazoo_apps | ecallmgr | …
 release: COOKIE ?= change_me
 release:
-	@NODE_NAME="$(REL)" COOKIE="$(COOKIE)" $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
+	NODE_NAME="$(REL)" COOKIE="$(COOKIE)" $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
 
 install: compile build-release
 	cp -a _rel/kazoo /opt
@@ -150,13 +150,11 @@ xref_release: TO_XREF = $(shell find $(ROOT)/_rel/kazoo/lib -name ebin)
 xref_release:
 	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
 
-
 sup_completion: sup_completion_file = $(ROOT)/sup.bash
-sup_completion: kazoo
+sup_completion:
 	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
 	@$(ROOT)/core/sup/priv/build-autocomplete.escript $(sup_completion_file) applications/ core/
 	@echo SUP Bash completion file written at $(sup_completion_file)
-
 
 $(ELVIS):
 	wget 'https://github.com/inaka/elvis/releases/download/0.2.12/elvis' -O $@
