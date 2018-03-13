@@ -61,6 +61,7 @@
 
 -include("kazoo_apps.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
+-include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
 
 -define(REPLICATE_ENCODING, 'encoded').
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
@@ -143,6 +144,11 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 %%------------------------------------------------------------------------------
 -spec get_master_account_id() -> {'ok', kz_term:ne_binary()} |
                                  {'error', atom()}.
+
+-ifdef(TEST).
+get_master_account_id() ->
+    {'ok', ?FIXTURE_MASTER_ACCOUNT_ID}.
+-else.
 get_master_account_id() ->
     case kapps_config:get_ne_binary(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
         'undefined' ->
@@ -161,6 +167,7 @@ find_master_account_id({'ok', Accounts}) ->
     lager:debug("setting ~s.master_account_id to ~s", [?KZ_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
     {'ok', _} = kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
     Ok.
+-endif.
 
 %%------------------------------------------------------------------------------
 %% @doc Find the system admin database.

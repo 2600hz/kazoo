@@ -4,17 +4,15 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_account_test).
+-module(kzd_account_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
+
 
 -define(ID, <<"_id">>).
 -define(TREE, <<"pvt_tree">>).
-
--define(MASTER_ACCOUNT_ID, <<"account0000000000000000000000001">>).
--define(SUB_ACCOUNT_ID, <<"account0000000000000000000000002">>).
--define(SUB_SUB_ACCOUNT_ID, <<"account0000000000000000000000003">>).
 
 kz_account_test_() ->
     {setup
@@ -42,9 +40,9 @@ kz_account_test_() ->
 
 test_account_doc_against_fixture() ->
     {'ok', Schema} = kz_json_schema:fload(<<"accounts">>),
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
-    {'ok', SubAccount} = kzd_accounts:fetch(?SUB_ACCOUNT_ID),
-    {'ok', SubSubAccount} = kzd_accounts:fetch(?SUB_SUB_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
+    {'ok', SubAccount} = kzd_accounts:fetch(?FIXTURE_RESELLER_ACCOUNT_ID),
+    {'ok', SubSubAccount} = kzd_accounts:fetch(?FIXTURE_PARENT_ACCOUNT_ID),
     [{"validate master account fixture", ?_assertMatch({'ok', _}, validate(Schema, MasterAccount))}
     ,{"validate sub account fixture", ?_assertMatch({'ok', _}, validate(Schema, SubAccount))}
     ,{"validate sub-sub account fixture", ?_assertMatch({'ok', _}, validate(Schema, SubSubAccount))}
@@ -66,14 +64,14 @@ type_test_() ->
     [{"validate type returns the expected value", ?_assertEqual(<<"account">>, kzd_accounts:type())}].
 
 test_account_id() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
-    [{"validate id returns the expected value", ?_assertEqual(?MASTER_ACCOUNT_ID, kz_doc:id(MasterAccount))}].
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
+    [{"validate id returns the expected value", ?_assertEqual(?FIXTURE_MASTER_ACCOUNT_ID, kz_doc:id(MasterAccount))}].
 
 test_account_name() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"name">>, MasterAccount),
     Updated = kzd_accounts:set_name(MasterAccount, <<"updated">>),
-    [{"validate fetch_name returns the expected value", ?_assertEqual(<<"Master Account">>, kzd_accounts:fetch_name(?MASTER_ACCOUNT_ID))}
+    [{"validate fetch_name returns the expected value", ?_assertEqual(<<"Master Account">>, kzd_accounts:fetch_name(?FIXTURE_MASTER_ACCOUNT_ID))}
     ,{"validate name returns the expected value", ?_assertEqual(<<"Master Account">>, kzd_accounts:name(MasterAccount))}
     ,{"validate name returns 'undefined' if not found", ?_assertEqual('undefined', kzd_accounts:name(Missing))}
     ,{"validate name can return a default value if not found", ?_assertEqual(<<"default">>, kzd_accounts:name(Missing, <<"default">>))}
@@ -81,10 +79,10 @@ test_account_name() ->
     ].
 
 test_account_realm() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"realm">>, MasterAccount),
     Updated = kzd_accounts:set_realm(MasterAccount, <<"updated">>),
-    [{"validate fetch_realm returns the expected value", ?_assertEqual(<<"4a6863.sip.2600hz.local">>, kzd_accounts:fetch_realm(?MASTER_ACCOUNT_ID))}
+    [{"validate fetch_realm returns the expected value", ?_assertEqual(<<"4a6863.sip.2600hz.local">>, kzd_accounts:fetch_realm(?FIXTURE_MASTER_ACCOUNT_ID))}
     ,{"validate realm returns the expected value", ?_assertEqual(<<"4a6863.sip.2600hz.local">>, kzd_accounts:realm(MasterAccount))}
     ,{"validate realm returns 'undefined' if not found", ?_assertEqual('undefined', kzd_accounts:realm(Missing))}
     ,{"validate realm can return a default value if not found", ?_assertEqual(<<"default">>, kzd_accounts:realm(Missing, <<"default">>))}
@@ -92,7 +90,7 @@ test_account_realm() ->
     ].
 
 test_language() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"language">>, MasterAccount),
     Updated = kzd_accounts:set_language(MasterAccount, <<"updated">>),
     [{"validate language returns the expected value", ?_assertEqual(<<"en-US">>, kzd_accounts:language(MasterAccount))}
@@ -102,7 +100,7 @@ test_language() ->
     ].
 
 test_timezone() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"timezone">>, MasterAccount),
     Invalid = kz_json:set_value(<<"timezone">>, <<"inherit">>, MasterAccount),
     Updated = kzd_accounts:set_timezone(MasterAccount, <<"updated">>),
@@ -115,31 +113,31 @@ test_timezone() ->
     ].
 
 test_parent_account_id() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
-    {'ok', SubAccount} = kzd_accounts:fetch(?SUB_ACCOUNT_ID),
-    {'ok', SubSubAccount} = kzd_accounts:fetch(?SUB_SUB_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
+    {'ok', SubAccount} = kzd_accounts:fetch(?FIXTURE_RESELLER_ACCOUNT_ID),
+    {'ok', SubSubAccount} = kzd_accounts:fetch(?FIXTURE_PARENT_ACCOUNT_ID),
     [{"verify that fetching the parent id of the master account returns 'undefined'"
      ,?_assertEqual('undefined', kzd_accounts:parent_account_id(MasterAccount))
      }
     ,{"verify that fetching the parent id of sub account is the master account"
-     ,?_assertEqual(?MASTER_ACCOUNT_ID, kzd_accounts:parent_account_id(SubAccount))
+     ,?_assertEqual(?FIXTURE_MASTER_ACCOUNT_ID, kzd_accounts:parent_account_id(SubAccount))
      }
     ,{"verify fetching the parent id of a sub-sub account is the direct ancestor"
-     ,?_assertEqual(?SUB_ACCOUNT_ID, kzd_accounts:parent_account_id(SubSubAccount))
+     ,?_assertEqual(?FIXTURE_RESELLER_ACCOUNT_ID, kzd_accounts:parent_account_id(SubSubAccount))
      }
     ].
 
 test_account_tree() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
-    {'ok', SubAccount} = kzd_accounts:fetch(?SUB_ACCOUNT_ID),
-    {'ok', SubSubAccount} = kzd_accounts:fetch(?SUB_SUB_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
+    {'ok', SubAccount} = kzd_accounts:fetch(?FIXTURE_RESELLER_ACCOUNT_ID),
+    {'ok', SubSubAccount} = kzd_accounts:fetch(?FIXTURE_PARENT_ACCOUNT_ID),
     [?_assertEqual([], kzd_accounts:tree(MasterAccount))
-    ,?_assertEqual([?MASTER_ACCOUNT_ID], kzd_accounts:tree(SubAccount))
-    ,?_assertEqual([?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID], kzd_accounts:tree(SubSubAccount))
+    ,?_assertEqual([?FIXTURE_MASTER_ACCOUNT_ID], kzd_accounts:tree(SubAccount))
+    ,?_assertEqual([?FIXTURE_MASTER_ACCOUNT_ID, ?FIXTURE_RESELLER_ACCOUNT_ID], kzd_accounts:tree(SubSubAccount))
     ].
 
 test_notification_preference() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_notification_preference">>, MasterAccount),
     Updated = kzd_accounts:set_notification_preference(MasterAccount, <<"notify">>),
     [{"validate notification_preference returns the expected value", ?_assertEqual(<<"teletype">>, kzd_accounts:notification_preference(MasterAccount))}
@@ -148,7 +146,7 @@ test_notification_preference() ->
     ].
 
 test_enabled() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Disabled = kzd_accounts:disable(MasterAccount),
     ReEnabled = kzd_accounts:enable(MasterAccount),
     [{"validate is_enabled returns the expected value", ?_assert(kzd_accounts:is_enabled(MasterAccount))}
@@ -157,7 +155,7 @@ test_enabled() ->
     ].
 
 test_api_key() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_api_key">>, MasterAccount),
     Updated = kzd_accounts:set_api_key(MasterAccount, <<"updated">>),
     [{"validate api_key returns the expected value", ?_assertEqual(<<"apikey0000000000000000000000000000000000000000000000000000000001">>, kzd_accounts:api_key(MasterAccount))}
@@ -166,7 +164,7 @@ test_api_key() ->
     ].
 
 test_superduper_admin() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_superduper_admin">>, MasterAccount),
     Updated = kzd_accounts:set_superduper_admin(MasterAccount, 'false'),
     [{"validate superduper_admin returns the expected value", ?_assert(kzd_accounts:is_superduper_admin(MasterAccount))}
@@ -175,7 +173,7 @@ test_superduper_admin() ->
     ].
 
 test_allow_number_additions() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_wnm_allow_additions">>, MasterAccount),
     Updated = kzd_accounts:set_allow_number_additions(MasterAccount, 'false'),
     [{"validate allow_number_additions returns the expected value", ?_assert(kzd_accounts:allow_number_additions(MasterAccount))}
@@ -203,10 +201,10 @@ trial_time_test_() ->
     ].
 
 test_reseller() ->
-    {'ok', MasterAccount} = kzd_accounts:fetch(?MASTER_ACCOUNT_ID),
+    {'ok', MasterAccount} = kzd_accounts:fetch(?FIXTURE_MASTER_ACCOUNT_ID),
     DemotedMasterAccount = kzd_accounts:demote(MasterAccount),
     Missing = kz_json:delete_key(<<"pvt_reseller">>, MasterAccount),
-    {'ok', SubAccount} = kzd_accounts:fetch(?SUB_ACCOUNT_ID),
+    {'ok', SubAccount} = kzd_accounts:fetch(?FIXTURE_RESELLER_ACCOUNT_ID),
     Demoted = kzd_accounts:demote(SubAccount),
     RePromoted = kzd_accounts:promote(SubAccount),
     [{"validate master account is a reseller if improperly configured", ?_assert(kzd_accounts:is_reseller(DemotedMasterAccount))}
