@@ -22,7 +22,6 @@
 -define(SYS_ADMIN_MODS, [<<"acls">>
                         ,<<"global_provisioner_templates">>
                         ,<<"global_resources">>
-                        ,<<"ips">>
                         ,<<"rates">>
                         ,<<"sup">>
                         ,<<"templates">>
