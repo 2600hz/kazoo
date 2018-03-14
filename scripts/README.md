@@ -103,6 +103,10 @@ If there are any calls to nonexistent modules, or non-exported functions, you wi
 
 Removes trailing whitespaces from files
 
+## circleci.bash
+
+When building applications that don't live in the kazoo src tree, this script will configure CircleCI to run the necessary tests against Kazoo with the application added in.
+
 ## circleci-build-erlang.sh
 
 Fetches kerl and installs configured Erlang version (used in CircleCI)
