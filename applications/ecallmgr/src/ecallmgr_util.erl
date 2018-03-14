@@ -92,7 +92,6 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
-send_cmd(_Node, _UUID, <<"kz_multiset">>, <<"^^">>) -> 'ok';
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
     send_cmd(Node, UUID, kz_term:to_list(App), Args);
 send_cmd(Node, UUID, "xferext", Dialplan) ->
@@ -100,11 +99,13 @@ send_cmd(Node, UUID, "xferext", Dialplan) ->
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
                    {kz_term:to_list(K), kz_term:to_list(V)}
                end
-               || {K, V} <- Dialplan
+               || {K, V} <- Dialplan,
+                  not cmd_is_empty({kz_term:to_list(K), kz_term:to_list(V)})
               ],
     'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]);
 send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
     send_cmd(Node, UUID, App, kz_term:to_list(Args));
+send_cmd(_Node, _UUID, "kz_multiset", "^^") -> 'ok';
 send_cmd(Node, UUID, "playstop", _Args) ->
     lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
     freeswitch:api(Node, 'uuid_break', kz_term:to_list(<<UUID/binary, " all">>));
@@ -152,6 +153,10 @@ send_cmd(Node, UUID, App, Args) ->
                ,[Node, UUID, AppName, Args, Result]
                ),
     Result.
+
+-spec cmd_is_empty({list(), list()}) -> boolean().
+cmd_is_empty({"kz_multiset", "^^"}) -> 'true';
+cmd_is_empty(_) -> 'false'.
 
 -spec dialplan_application(string()) -> string().
 dialplan_application("blind_xfer") -> "transfer";
