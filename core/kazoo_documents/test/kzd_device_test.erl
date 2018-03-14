@@ -1,9 +1,9 @@
 %%%-----------------------------------------------------------------------------
-%%%%%% @copyright (C) 2010-2018, 2600Hz
-%%%%%% @doc Account document
-%%%%%% @author James Aimonetti
-%%%%%% @end
-%%%%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Account document
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kzd_device_test).
 
 -include_lib("eunit/include/eunit.hrl").
