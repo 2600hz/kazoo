@@ -45,8 +45,9 @@ authorize(Context) ->
     _ = cb_context:put_reqid(Context),
     authorize(Context, cb_context:req_nouns(Context)).
 
-authorize(Context, [{<<"ips">>, []}]) ->
+authorize(Context, [{<<"ips">>, _}]) ->
     cb_context:is_superduper_admin(Context);
+authorize(_Context, [{<<"ips">>, _}, {<<"accounts">>, _}]) -> 'true';
 authorize(_Context, _Nouns) -> 'false'.
 
 %%------------------------------------------------------------------------------
