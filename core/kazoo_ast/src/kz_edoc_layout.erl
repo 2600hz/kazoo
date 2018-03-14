@@ -184,7 +184,7 @@ author(E=#xmlElement{}, _Context) ->
 
 -spec references([#xmlElement{}], map()) -> [exported()].
 references(Es, Context) ->
-    [export_content(normalize_paragraphs(C, Context), Context)
+    [export_content(normalize_description(C, Context), Context)
      || #xmlElement{content = C} <- get_elem(reference, Es)
     ].
 
@@ -897,18 +897,18 @@ normalize_links([#xmlElement{name = a, attributes = Attributes}=E|Es], Context, 
     normalize_links(Es, Context, normalize_link(E, get_attr(href, Attributes), Context) ++ Acc);
 normalize_links([#xmlElement{content = Content}=E|Es], Context, Acc) ->
     normalize_links(Es, Context, [E#xmlElement{content = normalize_links(Content, Context)} | Acc]);
-normalize_links([{a, Attributes, String}|Es], Context, Acc) ->
-    URI = proplists:get_value(href, Attributes, undefined),
-    case URI =/= undefined
-        andalso kz_fix_link(URI, Context)
-    of
-        false ->
-            normalize_links(Es, Context, [{a, Attributes, String} | Acc]);
-        [] ->
-            normalize_links(Es, Context, [String | Acc]);
-        FixedURI ->
-            normalize_links(Es, Context, [{a, [{href, FixedURI} | proplists:delete(href, Attributes)], String} | Acc])
-    end;
+%% normalize_links([{a, Attributes, String}|Es], Context, Acc) ->
+%%     URI = proplists:get_value(href, Attributes, undefined),
+%%     case URI =/= undefined
+%%         andalso kz_fix_link(URI, Context)
+%%     of
+%%         false ->
+%%             normalize_links(Es, Context, [{a, Attributes, String} | Acc]);
+%%         [] ->
+%%             normalize_links(Es, Context, [String | Acc]);
+%%         FixedURI ->
+%%             normalize_links(Es, Context, [{a, [{href, FixedURI} | proplists:delete(href, Attributes)], String} | Acc])
+%%     end;
 normalize_links([E|Es], Context, Acc) ->
     normalize_links(Es, Context, [E | Acc]).
 
@@ -951,13 +951,13 @@ deprecated(Es, Context) ->
 
 -spec description(full | both, [#xmlElement{}], map()) -> exported() | [{short_desc | full_desc, exported()}].
 description(full, Es, Context) ->
-    export_content(normalize_paragraphs(get_content(fullDescription, get_content(description, Es)), Context), Context);
+    export_content(normalize_description(get_content(fullDescription, get_content(description, Es)), Context), Context);
 %% description(short, Es, Context) ->
-%%     export_content(normalize_paragraphs(get_content(briefDescription, get_content(description, Es)), Context), Context);
+%%     export_content(normalize_description(get_content(briefDescription, get_content(description, Es)), Context), Context);
 description(both, Es, Context) ->
     Desc = get_content(description, Es),
-    Short = normalize_paragraphs(get_content(briefDescription, Desc), Context),
-    Full = normalize_paragraphs(get_content(fullDescription, Desc), Context),
+    Short = normalize_description(get_content(briefDescription, Desc), Context),
+    Full = normalize_description(get_content(fullDescription, Desc), Context),
     %% ?DEV_LOG("Full ~p", [Full]),
     filter_empty(
       [{short_desc, export_content(Short, Context)}
@@ -971,7 +971,7 @@ since(Es, Context) ->
 
 -spec todos([#xmlElement{}], map()) -> [exported()].
 todos(Es, Context) ->
-    [export_content(normalize_paragraphs(C, Context), Context)
+    [export_content(normalize_description(C, Context), Context)
      || #xmlElement{content = C} <- get_elem(todo, Es)
     ].
 
@@ -1085,47 +1085,82 @@ strip_tickie(String) ->
 %% stupid whitespace only `#xmlText{}'.
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_paragraphs([#xmlElement{}], map()) -> [exporty_thing()].
-normalize_paragraphs(Es, Context) ->
-    normalize_links(normalize_paragraphs(Es, [], []), Context).
+-spec normalize_description([#xmlElement{}], map()) -> [exporty_thing()].
+normalize_description([], _) ->
+    [];
+normalize_description(Es, Context) ->
+    normalize_links(make_paraghraph(Es, [], []), Context).
 
--spec normalize_paragraphs([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
-normalize_paragraphs([E=#xmlElement{name = Name}|Es], As, Bs) ->
-    case Name of
-        'p'          -> par_flush(Es, [E | As], Bs);
-        'hr'         -> par_flush(Es, [E | As], Bs);
-        'h1'         -> par_flush(Es, [E | As], Bs);
-        'h2'         -> par_flush(Es, [E | As], Bs);
-        'h3'         -> par_flush(Es, [E | As], Bs);
-        'h4'         -> par_flush(Es, [E | As], Bs);
-        'h5'         -> par_flush(Es, [E | As], Bs);
-        'h6'         -> par_flush(Es, [E | As], Bs);
-        'pre'        -> par_flush(Es, [E | As], Bs);
-        'address'    -> par_flush(Es, [E | As], Bs);
-        'div'        -> par_flush(Es, [E | As], Bs);
-        'blockquote' -> par_flush(Es, [E | As], Bs);
-        'form'       -> par_flush(Es, [E | As], Bs);
-        'fieldset'   -> par_flush(Es, [E | As], Bs);
-        'noscript'   -> par_flush(Es, [E | As], Bs);
-        'ul'         -> par_flush(Es, [E | As], Bs);
-        'ol'         -> par_flush(Es, [E | As], Bs);
-        'dl'         -> par_flush(Es, [E | As], Bs);
-        'table'      -> par_flush(Es, [E | As], Bs);
-        _            -> normalize_paragraphs(Es, [E | As], Bs)
+-spec make_paraghraph([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
+make_paraghraph([E=#xmlElement{name = Name}|Es], As, Bs) ->
+    case is_block_element(Name) of
+        true -> par_flush(Es, As, [E | Bs]);
+        false -> make_paraghraph(Es, [E | As], Bs)
     end;
-normalize_paragraphs([E=#xmlText{value = Value}|Es], As, Bs) ->
+make_paraghraph([E=#xmlText{value = Value}|Es], As, Bs) ->
     case is_only_whitespace(Value) of
-        true -> normalize_paragraphs(Es, As, Bs);
-        false -> normalize_paragraphs(Es, [E | As], Bs)
+        true -> make_paraghraph(Es, As, Bs);
+        false ->
+            case trim(right, Value) of
+                "" -> make_paraghraph(Es, As, Bs);
+                Val ->
+                    make_paraghraph(Es, [E#xmlText{value = Val} | As], Bs)
+            end
     end;
-normalize_paragraphs([], [], Bs) ->
+make_paraghraph([], [], Bs) ->
     lists:reverse(Bs);
-normalize_paragraphs([], As, Bs) ->
+make_paraghraph([], As, Bs) ->
     lists:reverse([{p, lists:reverse(As)} | Bs]).
 
+trim(right, Cs) ->
+    lists:reverse(trim_whitespaces(lists:reverse(Cs))).
+
+trim_whitespaces([$\r | Cs]) -> trim_whitespaces(Cs);
+trim_whitespaces([$\n | Cs]) -> trim_whitespaces(Cs);
+trim_whitespaces([$\s | Cs]) -> trim_whitespaces(Cs);
+trim_whitespaces(Cs) -> Cs.
+
+is_block_element('article') -> true;
+is_block_element('aside') -> true;
+is_block_element('canvas') -> true;
+is_block_element('dd') -> true;
+is_block_element('div') -> true;
+is_block_element('dl') -> true;
+is_block_element('dt') -> true;
+is_block_element('fieldset') -> true;
+is_block_element('figcaption') -> true;
+is_block_element('figure') -> true;
+is_block_element('footer') -> true;
+is_block_element('form') -> true;
+is_block_element('h1') -> true;
+is_block_element('h2') -> true;
+is_block_element('h3') -> true;
+is_block_element('h4') -> true;
+is_block_element('h5') -> true;
+is_block_element('h6') -> true;
+is_block_element('header') -> true;
+is_block_element('hgroup') -> true;
+is_block_element('hr') -> true;
+is_block_element('li') -> true;
+is_block_element('main') -> true;
+is_block_element('nav') -> true;
+is_block_element('noscript') -> true;
+is_block_element('ol') -> true;
+is_block_element('output') -> true;
+is_block_element('p') -> true;
+is_block_element('pre') -> true;
+is_block_element('section') -> true;
+is_block_element('table') -> true;
+is_block_element('tfoot') -> true;
+is_block_element('ul') -> true;
+is_block_element('video') -> true;
+is_block_element(_) -> false.
+
 -spec par_flush([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
+par_flush(Es, [], Bs) ->
+    make_paraghraph(Es, [], Bs);
 par_flush(Es, As, Bs) ->
-    normalize_paragraphs(Es, [], As ++ Bs).
+    make_paraghraph(Es, [], Bs ++ [{p, As}]).
 
 -spec get_elem(atom(), [#xmlElement{}]) -> [#xmlElement{}].
 get_elem(Name, [#xmlElement{name = Name} = E | Es]) ->
@@ -1181,6 +1216,8 @@ is_only_whitespace([]) ->
 is_only_whitespace([$\s | C]) ->
     is_only_whitespace(C);
 is_only_whitespace([$\t | C]) ->
+    is_only_whitespace(C);
+is_only_whitespace([$\r | C]) ->
     is_only_whitespace(C);
 is_only_whitespace([$\n | C]) ->
     is_only_whitespace(C);
