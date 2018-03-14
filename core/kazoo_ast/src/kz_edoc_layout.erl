@@ -344,7 +344,7 @@ function_name_arity(E, Context) ->
                            {full_desc, exported()}
                           ].
 
--spec functions([#xmlElement{}], map()) -> [function_props()].
+-spec functions([{string(), #xmlElement{}}], map()) -> [function_props()].
 functions(Fs, Context) ->
     [function(NameArity, E, Context) || {NameArity, E} <- Fs].
 
@@ -1175,7 +1175,7 @@ get_attrval(Name, #xmlElement{attributes = As}) ->
         [] -> ""
     end.
 
--spec get_content(atom(), [#xmlElement{}]) -> any().
+-spec get_content(atom(), [#xmlElement{}]) -> [#xmlElement{} | #xmlText{}].
 get_content(Name, Es) ->
     case get_elem(Name, Es) of
         [#xmlElement{content = Es1}] ->

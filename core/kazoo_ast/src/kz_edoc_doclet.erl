@@ -115,7 +115,7 @@
 -type mods_map_key() :: {string(), atom()}.
 %% Map key is: `{"core" | "applications", AppName}'.
 
--type mods_map() :: #{{string(), atom()} => mod_desc()}.
+-type mods_map() :: #{mods_map_key() => mod_desc()}.
 %% Contains module information necessary for computing sidebar and render.
 %% See {@link mod_desc()} and {@link mods_map_key()}.
 
@@ -132,7 +132,7 @@
 run(Options) ->
     run(Options, proplists:get_value(kz_gen_apps, Options)).
 
--spec run(map(), [gen_app()]) -> ok.
+-spec run(proplists:proplist(), [gen_app()]) -> ok.
 run(_, []) ->
     ?DEV_LOG("no source files were found...", []),
     exit(error);
@@ -283,14 +283,14 @@ render_apps(Modules, Sidebar, Context) ->
                ,Malt
                ).
 
--spec render_app({string(), atom()}, [{mods_map_key(), mod_desc()}], sidebar_props(), map()) -> [kz_json:object()].
+-spec render_app({string(), atom()}, [mod_desc()], sidebar_props(), map()) -> [kz_json:object()].
 render_app({AppCat, App}, Modules, Sidebar, Context) ->
     render_app_overview(AppCat, App, Modules, Sidebar, Context),
     [build_search_index_data(app, {list_to_binary(AppCat), atom_to_binary(App, utf8)}, Context, [])
      | lists:flatten([render_module(AppCat, App, Ms, Sidebar, Context) || Ms <- Modules])
     ].
 
--spec render_app_overview(string(), atom(), [{mods_map_key(), mod_desc()}], sidebar_props(), map()) -> ok.
+-spec render_app_overview(string(), atom(), [mod_desc()], sidebar_props(), map()) -> ok.
 render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_apps_uri := AppsUri}=Ctx) ->
     io:format("."),
     File = filename:join([AppCat, App, "doc", ?APP_OVERVIEW_FILE]),
@@ -390,9 +390,9 @@ render(Props0, Context, Template) ->
 -spec make_rel_path(string()) -> string().
 make_rel_path([]) -> "";
 make_rel_path(Ps) ->
-    ["../" || _ <- lists:seq(1, length(Ps))].
+    lists:append(["../" || _ <- lists:seq(1, length(Ps))]).
 
--spec render(atom(), proplists:proplist()) -> iolist().
+-spec render(atom(), proplists:proplist()) -> {ok, iolist() | atom()} | {error, any()}.
 render(Module, Props) when is_atom(Module) ->
     kz_template:render(Module, Props).
 %%render(TemplateFilePath, Props) when is_list(TemplateFilePath) ->
@@ -430,7 +430,7 @@ extract_overview(File, Env, Opts) ->
             []
     end.
 
--spec build_search_index_data(build_search(), {binary(), binary()}, map(), proplists:proplist()) -> search_docs().
+-spec build_search_index_data(build_search(), {binary(), binary()}, map(), list()) -> search_docs().
 build_search_index_data(module, {App, Module}=AppMod, #{file_suffix := Suffix}=Context, Props) ->
     Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
     FunsDesc = build_search_index_data(funcs, AppMod, Context, proplists:get_value(<<"functions">>, Props, [])),
@@ -475,11 +475,11 @@ build_search_index_data(app, {_AppCat, App}, #{file_suffix := Suffix}, _) ->
       ]
      ).
 
--spec extract_xml_texts(binary(), binary()) -> binary().
+-spec extract_xml_texts(binary() | string(), binary()) -> binary().
 extract_xml_texts(<<>>, _) ->
     <<>>;
 extract_xml_texts(Bin, Where) when is_binary(Bin) ->
-    extract_xml_texts(unicode:characters_to_list(Bin), Where);
+    extract_xml_texts(binary_to_list(Bin), Where);
 extract_xml_texts(Text, Where) ->
     try xmerl_scan:string("<doc>" ++ Text ++ "</doc>", [{encoding, 'utf-8'}]) of
         {E0, _} ->
@@ -513,7 +513,7 @@ extract_xml_texts(_) ->
 %% `NODE_PATH' would be prefixed to this.
 %% @end
 %%------------------------------------------------------------------------------
--spec build_search_index(search_docs(), map()) -> ok.
+-spec build_search_index(search_docs() | {ok, string()} | {error, any()}, map()) -> ok.
 build_search_index([], _) ->
     ?DEV_LOG("no data to build search index", []);
 build_search_index(IndexData, Context) when is_list(IndexData) ->
@@ -539,8 +539,8 @@ build_search_index({ok, DocFile}, #{kz_doc_site := OutDir, kz_search_index_cmd :
 
 -spec get_node_path() -> string().
 get_node_path() ->
-    case os:getenv("NODE_PATH", undefined) of
-        undefined -> "";
+    case os:getenv("NODE_PATH", "noenv") of
+        "noenv" -> "";
         "" -> "";
         Path -> Path ++ ":"
     end.
@@ -660,12 +660,16 @@ is_hidden(E) ->
 %%------------------------------------------------------------------------------
 -spec default_context() -> map().
 default_context() ->
-    init_context([{file_suffix, ".html"}
-                 ,{preprocess, true}
-                 ,{pretty_printer, erl_pp}
-                 ,{sort_functions, true}
-                 ,{todo, true}
-                 ], []).
+    init_context(default_edoc_options(), []).
+
+-spec default_edoc_options() -> proplists:proplist().
+default_edoc_options() ->
+    [{file_suffix, ".html"}
+    ,{preprocess, true}
+    ,{pretty_printer, erl_pp}
+    ,{sort_functions, true}
+    ,{todo, true}
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc Returns a default `Context' with your given `Options' to help calling
@@ -674,7 +678,7 @@ default_context() ->
 %%------------------------------------------------------------------------------
 -spec init_context(proplists:proplist()) -> map().
 init_context(Opts) ->
-    init_context(lists:usort(Opts ++ default_context()), []).
+    init_context(lists:usort(Opts ++ default_edoc_options()), []).
 
 %%------------------------------------------------------------------------------
 %% @doc Merges your given `Options' with default values and {@link gen_apps()}
