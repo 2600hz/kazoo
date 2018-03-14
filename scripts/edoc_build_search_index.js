@@ -30,6 +30,8 @@ try {
 }
 
 
+lunr.tokenizer.separator = /[^a-zA-Z0-9]/;
+
 var idx = lunr(function() {
     this.ref('ref');
     this.field('app');
