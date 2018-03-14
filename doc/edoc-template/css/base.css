@@ -164,6 +164,7 @@ code {
     font-size: 87.5%;
     color: #e83e8c;
     word-break: break-word;
+    padding: 0 .1rem;
 }
 
 a code, a:hover code {
@@ -188,6 +189,8 @@ dt code {
     background-color: #d9dcf0;
     border-color: #c9ceea;
     font-weight: 700;
+    padding: 0.05rem .2rem;
+    margin-right: .02rem;
 }
 
 dt::after {

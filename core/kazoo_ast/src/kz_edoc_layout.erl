@@ -1101,24 +1101,13 @@ make_paraghraph([E=#xmlText{value = Value}|Es], As, Bs) ->
     case is_only_whitespace(Value) of
         true -> make_paraghraph(Es, As, Bs);
         false ->
-            case trim(right, Value) of
-                "" -> make_paraghraph(Es, As, Bs);
-                Val ->
-                    make_paraghraph(Es, [E#xmlText{value = Val} | As], Bs)
-            end
+            Normalized = E#xmlText{value = [C || C <- Value, C =/= $\n, C =/= $\r]},
+            make_paraghraph(Es, [Normalized | As], Bs)
     end;
 make_paraghraph([], [], Bs) ->
     lists:reverse(Bs);
 make_paraghraph([], As, Bs) ->
     lists:reverse([{p, lists:reverse(As)} | Bs]).
-
-trim(right, Cs) ->
-    lists:reverse(trim_whitespaces(lists:reverse(Cs))).
-
-trim_whitespaces([$\r | Cs]) -> trim_whitespaces(Cs);
-trim_whitespaces([$\n | Cs]) -> trim_whitespaces(Cs);
-trim_whitespaces([$\s | Cs]) -> trim_whitespaces(Cs);
-trim_whitespaces(Cs) -> Cs.
 
 is_block_element('article') -> true;
 is_block_element('aside') -> true;

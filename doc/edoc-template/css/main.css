@@ -395,6 +395,7 @@
 
 .type-spec {
     margin-top: 2rem;
+    padding-top: 1.5rem;
     padding: 5px;
     background-color: #f7f7f8;
     border: 1px solid #d2d2d5;
@@ -403,8 +404,7 @@
 
 .type-spec pre {
     margin: 0;
-    word-break: break-word;
-    white-space: pre-wrap;
+    background-color: inherit;
 }
 
 .localdefs {
@@ -413,6 +413,12 @@
     margin-left: 2rem;
 }
 
+.type pre,
+.function pre {
+    background-color: #f4f5f6;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
 
 /*
  * ------
@@ -460,7 +466,7 @@
 .sidebar.dark {
     color: #e2e3e4;
     /*background-color: #383b3d;*/
-    background-color: hsla(210, 10%, 32%, 1)
+    background-color: hsla(210, 12%, 33%, 1);
 }
 
 .dark .nav,
@@ -510,7 +516,7 @@
 
 .dark .navbar,
 .navbar.dark {
-    background-color: #3c4248;
+    background-color: #33383d;
     color: #a9b0b7;
 }
 
