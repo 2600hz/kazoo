@@ -55,7 +55,7 @@
                         </form>
                         {% for appcat, apps in kz_sidebar_apps %}{% if apps %}
                         <li class="nav-item nav-kz-apps">
-                            <span class="nav-head">{{ appcat|capfirst }} Applications</span>
+                            <span class="nav-head">{% ifequal appcat "core" %}Core{% else %}Kazoo{% endifequal %} Applications</span>
                             <ul class="nav-apps">
                             {% for app, modules in apps %}
                                 <li id="nav-kz-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">

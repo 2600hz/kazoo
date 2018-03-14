@@ -420,6 +420,11 @@
     white-space: pre-wrap;
 }
 
+.descriptions :last-child {
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
 /*
  * ------
  * Footer
