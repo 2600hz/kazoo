@@ -380,7 +380,7 @@ check_plan_ids(Context, ResellerId) ->
 
 -spec check_plan_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 check_plan_ids(Context, _ResellerId, []) ->
-    Context;
+    cb_context:set_resp_status(Context, 'success');
 check_plan_ids(Context, ResellerId, PlanIds) ->
     lists:foldl(fun(PlanId, Ctxt) ->
                         case cb_context:resp_status(Ctxt) of
