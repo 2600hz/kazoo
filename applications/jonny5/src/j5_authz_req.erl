@@ -229,16 +229,16 @@ authorize(Request, Limits) ->
                ,fun j5_flat_rate:authorize/2
                ,fun j5_per_minute:authorize/2
                ],
-    Request = lists:foldl(fun(F, R) ->
-                                  case j5_request:is_authorized(R, Limits) of
-                                      'false' -> F(R, Limits);
-                                      'true' -> R
-                                  end
-                          end
-                         ,Request
-                         ,Routines
-                         ),
-    maybe_soft_limit(Request, Limits).
+    Result = lists:foldl(fun(F, R) ->
+                                 case j5_request:is_authorized(R, Limits) of
+                                     'false' -> F(R, Limits);
+                                     'true' -> R
+                                 end
+                         end
+                        ,Request
+                        ,Routines
+                        ),
+    maybe_soft_limit(Result, Limits).
 
 -spec maybe_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_soft_limit(Request, Limits) ->

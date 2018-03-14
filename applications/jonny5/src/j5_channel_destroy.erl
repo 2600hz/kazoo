@@ -19,34 +19,36 @@ handle_req(JObj, _Props) ->
     kz_util:put_callid(JObj),
     timer:sleep(1000 + rand:uniform(2000)),
     Request = j5_request:from_jobj(JObj),
-    _ = account_reconcile_cdr(Request),
-    _ = reseller_reconcile_cdr(Request),
+    AccountId = j5_request:account_id(Request),
+    _ = account_reconcile_cdr(AccountId, Request),
+    _ = reseller_reconcile_cdr(AccountId, Request),
     'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec account_reconcile_cdr(j5_request:request()) -> 'ok'.
-account_reconcile_cdr(Request) ->
-    case j5_request:account_id(Request) of
-        'undefined' -> 'ok';
-        AccountId ->
-            reconcile_cdr(Request, j5_limits:get(AccountId))
-    end.
+-spec account_reconcile_cdr(kz_term:api_ne_binary(), j5_request:request()) -> 'ok'.
+account_reconcile_cdr('undefined', _Request) ->
+    lager:debug("no account id to reconcile cdr");
+account_reconcile_cdr(AccountId, Request) ->
+    lager:debug("reconciling cdr for account ~s", [AccountId]),
+    Limits = j5_limits:get(AccountId),
+    lager:debug("limits ~s : ~p", [AccountId, Limits]),
+    reconcile_cdr(Request, j5_limits:get(AccountId)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec reseller_reconcile_cdr(j5_request:request()) -> 'ok'.
-reseller_reconcile_cdr(Request) ->
-    AccountId = j5_request:account_id(Request),
+-spec reseller_reconcile_cdr(kz_term:api_ne_binary(), j5_request:request()) -> 'ok'.
+reseller_reconcile_cdr('undefined', _Request) ->
+    lager:debug("no account id to reconcile reseller cdr");
+reseller_reconcile_cdr(AccountId, Request) ->
     case j5_request:reseller_id(Request) of
-        'undefined' -> 'ok';
-        AccountId -> 'ok';
-        ResellerId ->
-            reconcile_cdr(Request, j5_limits:get(ResellerId))
+        'undefined' -> lager:debug("account id ~s has no reseller", [AccountId]);
+        AccountId -> lager:debug("account id ~s is its reseller", [AccountId]);
+        ResellerId -> reconcile_cdr(Request, j5_limits:get(ResellerId))
     end.
 
 %%------------------------------------------------------------------------------
