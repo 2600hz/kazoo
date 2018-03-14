@@ -20,7 +20,7 @@
 </head>
 <body class="">
     <div class="container-fluid">
-        <header class="row navbar">
+        <header class="row navbar dark">
             <a class="col-12 col-lg-2 navbar-brand" href="{{ kz_rel_path }}index.html">
                 {{ kz_2600hz_logo_svg_file }}
             </a>
@@ -36,7 +36,7 @@
     </div>
     <div class="container-fluid edge-to-edge">
         <div class="row no-gutters">
-            <aside class="col-12 col-md-3 col-xl-2 sidebar">
+            <aside class="col-12 col-md-3 col-xl-2 sidebar dark">
                 <nav class="sidebar-nav">
                     <div class="sidebar-brand">
                         <div class="kz-logo"><img class="img-fluid" src="{{ kz_rel_path }}img/kazoo.svg"></div>
@@ -85,9 +85,8 @@
                 <main class="content">
                     <section id="doc-summary" class="module">
                         <h1>Module {{ name }}{% if deprecated %}
-                            <small style="font-size: 60%"><strong> <span class="badge badge-secondary">Deprecated</span></strong></small>{% endif %}{% if version %}
-                            <small><strong> version: </strong><span class="badge badge-dark">{{ version }}</span></small>{% endif %}{% if since %}
-                            <small><strong> since: </strong><span class="badge badge-dark">{{ since }}</span></small>{% endif %}</h1>{% if full_desc %}
+                            <small style="font-size: 60%"><strong> <span class="badge badge-secondary">Deprecated</span></strong></small>{% endif %}
+                        </h1>{% if full_desc %}
                         <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if deprecated %}
                         <div class="alert alert-warning"><div class="h6"><strong>Deprecated</strong></div>{{ deprecated }}</div>{% endif %}{% if sees %}
                         <div>
