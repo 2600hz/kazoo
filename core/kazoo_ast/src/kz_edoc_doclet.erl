@@ -21,7 +21,18 @@
 
 -export([run/1]).
 
+-export([process_cmds/2
+        ,sidebar_apps_list/2
+        ,render_apps/3
+        ,build_search_index/2
+        ,render_apps_index/3
+        ,index_file/2
+        ,copy_files/1]).
+
 -export([compile_templates/0
+        ,default_context/0
+        ,init_context/1
+        ,init_context/2
         ]).
 
 -include_lib("xmerl/include/xmerl.hrl").
@@ -47,6 +58,67 @@
                            ,{kz_edoc_index_template, "doc/edoc-template/index.html"}
                            ]).
 
+
+-type gen_app() :: {atom(), atom(), string(), [string()]}.
+%% Contains of source files to process.
+%%
+%% <strong>Tuple description:</strong>
+%% ```{ModuleName, AppName, "core" | "applications", ErlFiles}'''
+
+-type build_search() :: app | module | funcs | func | types | type.
+
+-type search_docs() :: [kz_json:object()].
+%% Contains JSON objects of fields/value to be index for search.
+%%
+%% <strong>JSON object description:</strong>
+%%
+%% ```
+%% [
+%% {
+%%   "ref": "{{AppName}}/index.html",
+%%   "app": "{{AppName}}"
+%% },
+%% {
+%%   "ref": "{{AppName}}/{{ModuleName}}.html",
+%%   "module": "{{ModuleName}}",
+%%   "desc": "{{ModuleDescription}}"
+%% },
+%% {
+%%   "ref": "{{AppName}}/index.html#{{FuncTagID}}",
+%%   "fun": "{{FuncName}}"
+%%   "desc": "{{FuncDescription}}"
+%% },
+%% {
+%%   "ref": "{{AppName}}/{{ModuleName}}.html#{{TypeTagID}}",
+%%   "type": "{{TypeNameName}}",
+%%   "desc": "{{TypeNameDescription}}"
+%% }
+%% ]
+%% '''
+-type sidebar_props() :: proplists:proplist().
+%% Contains sidebar proplist.
+%%
+%% <strong>Proplist description:</strong>
+%% ```[{"core" | "applications", [{AppName, [ModuleName, ModuleDescription, ModuleOutfilePath]}]}]'''
+-type processed_mod() :: {string(), atom(), atom(), binary()}.
+%% Contains module information necessary for computing sidebar and render.
+%%
+%% <strong>Tuple description:</strong>
+%% ```{"core" | "applications, AppName, ModuleName, ModuleDescription}'''
+
+-type mod_desc() :: {atom(), binary()}.
+%% Contains module name and description for further doc generation.
+%%
+%% <strong>Tuple description:</strong>
+%% ```{ModuleName, ModuleDescription}'''
+
+-type mods_map_key() :: {string(), atom()}.
+%% Map key is: `{"core" | "applications", AppName}'.
+
+-type mods_map() :: #{{string(), atom()} => mod_desc()}.
+%% Contains module information necessary for computing sidebar and render.
+%% See {@link mod_desc()} and {@link mods_map_key()}.
+
 %%------------------------------------------------------------------------------
 %% @doc Main Kazoo doclet entry point.
 %%
@@ -60,6 +132,7 @@
 run(Options) ->
     run(Options, proplists:get_value(kz_gen_apps, Options)).
 
+-spec run(map(), [gen_app()]) -> ok.
 run(_, []) ->
     ?DEV_LOG("no source files were found...", []),
     exit(error);
@@ -84,7 +157,13 @@ gen_multi_app(Context, GenApps) ->
             io:format("~n~n Done.~n")
     end.
 
-%% Processing the individual source files
+%%------------------------------------------------------------------------------
+%% @doc Processing source files and save their EDoc as JSON. Returns a map of
+%% successful processed modules and their infos and whether or not all source files
+%% are successfully processed or not.
+%% @end
+%%------------------------------------------------------------------------------
+-spec process_cmds(map(), [gen_app()]) -> {mods_map(), boolean()}.
 process_cmds(Context, GenApps) ->
     Private = maps:get(private, Context, false),
     Hidden = maps:get(hidden, Context, false),
@@ -93,7 +172,7 @@ process_cmds(Context, GenApps) ->
 
     SourceFun = fun(Obj, Acc) -> source(Context, Obj, Acc, Private, Hidden) end,
 
-    io:format(":: Start processing ~b source file(s)~n", [GenAppsLength]),
+    io:format("~n:: Start processing ~b source file(s)~n", [GenAppsLength]),
 
     Malt = [{'processes', 'schedulers'}],
     Result = plists:fold(SourceFun, fun fuse_together/2, [], GenApps, Malt),
@@ -108,9 +187,13 @@ process_cmds(Context, GenApps) ->
 fuse_together(A, B) when is_list(A), is_list(B) ->
     A ++ B.
 
-%% Generating documentation (as a JSON) for a source file, adding its name to the
-%% set if it was successful. Errors are just flagged at this stage,
+%%------------------------------------------------------------------------------
+%% @doc Generating documentation (as a JSON) for a source file, adding its name to the
+%% `Acc' if it was successful. Errors are just flagged at this stage,
 %% allowing all source files to be processed even if some of them fail.
+%% @end
+%%------------------------------------------------------------------------------
+-spec source(map(), gen_app(), [processed_mod()], boolean(), boolean()) -> [processed_mod()].
 source(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri
         ,edoc_env := Env, edoc_opts := EDocOpts
         } = Ctx
@@ -161,6 +244,12 @@ check_name(Module, Module, _) ->
 check_name(Module, _, File) ->
     ?DEV_LOG("file '~ts' actually contains module '~s'.", [File, Module]).
 
+%%------------------------------------------------------------------------------
+%% @doc Processing the result of {@link process_cmds/2} and create sidebar
+%% proplist ready for render.
+%% @end
+%%------------------------------------------------------------------------------
+-spec sidebar_apps_list(mods_map(), map()) -> sidebar_props().
 sidebar_apps_list(Modules, Context) ->
     lists:map(fun(AppCat) -> {AppCat, sidebar_apps_cat(AppCat, Modules, Context)} end, ["core", "applications"]).
 
@@ -177,6 +266,12 @@ sidebar_apps_cat(AppCat, Modules, #{kz_apps_uri := AppsUri, file_suffix := Suffi
           end,
     lists:sort(maps:fold(fun(K, V, A) -> Fun(K, V, A, AppCat) end, [], Modules)).
 
+%%------------------------------------------------------------------------------
+%% @doc Processing the result of {@link process_cmds/2} and renders each
+%% application root index file and each module files.
+%% @end
+%%------------------------------------------------------------------------------
+-spec render_apps(mods_map(), sidebar_props(), map()) -> [kz_json:object()].
 render_apps(Modules, Sidebar, Context) ->
     io:format(":: Start rendering~n", []),
 
@@ -188,12 +283,14 @@ render_apps(Modules, Sidebar, Context) ->
                ,Malt
                ).
 
+-spec render_app({string(), atom()}, [{mods_map_key(), mod_desc()}], sidebar_props(), map()) -> [kz_json:object()].
 render_app({AppCat, App}, Modules, Sidebar, Context) ->
     render_app_overview(AppCat, App, Modules, Sidebar, Context),
     [build_search_index_data(app, {list_to_binary(AppCat), atom_to_binary(App, utf8)}, Context, [])
      | lists:flatten([render_module(AppCat, App, Ms, Sidebar, Context) || Ms <- Modules])
     ].
 
+-spec render_app_overview(string(), atom(), [{mods_map_key(), mod_desc()}], sidebar_props(), map()) -> ok.
 render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_apps_uri := AppsUri}=Ctx) ->
     io:format("."),
     File = filename:join([AppCat, App, "doc", ?APP_OVERVIEW_FILE]),
@@ -210,6 +307,7 @@ render_app_overview(AppCat, App, Modules, Sidebar, #{kz_doc_site := OutDir , kz_
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), ?INDEX_FILE, EncOpts).
 
+-spec render_module(string(), atom(), mod_desc(), sidebar_props(), map()) -> search_docs().
 render_module(AppCat, App, {Module, _Desc}, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri, file_suffix := Suffix}=Ctx) ->
     io:format("."),
     Context = Ctx#{kz_rel_path => make_rel_path(filename:split(filename:join(AppsUri, App)))
@@ -228,6 +326,7 @@ render_module(AppCat, App, {Module, _Desc}, Sidebar, #{kz_doc_site := OutDir, kz
     ok = edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri, App]), Name, EncOpts),
     build_search_index_data(module, {atom_to_binary(App, utf8), atom_to_binary(Module, utf8)}, Context, Props).
 
+-spec render_apps_index(mods_map(), sidebar_props(), map()) -> ok.
 render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := AppsUri}=Ctx) ->
     io:format("~n:: Rendering apps index file~n"),
     Apps = [App || {_, App} <- maps:keys(Modules)],
@@ -241,7 +340,11 @@ render_apps_index(Modules, Sidebar, #{kz_doc_site := OutDir, kz_apps_uri := Apps
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, filename:join([OutDir, AppsUri]), ?INDEX_FILE, EncOpts).
 
-%% Creating an index file.
+%%------------------------------------------------------------------------------
+%% @doc Renders root HTML index file.
+%% @end
+%%------------------------------------------------------------------------------
+-spec index_file(sidebar_props(), map()) -> ok.
 index_file(Sidebar, #{kz_doc_site := OutDir}=Ctx) ->
     io:format(":: Rendering index file~n~n"),
     Context = Ctx#{kz_rel_path => make_rel_path([])},
@@ -253,6 +356,7 @@ index_file(Sidebar, #{kz_doc_site := OutDir}=Ctx) ->
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, OutDir, ?INDEX_FILE, EncOpts).
 
+-spec run_layout(module | overview, string(), #xmlElement{}, map()) -> proplists:proplist().
 run_layout(module, File, Doc, Context) ->
     try kz_edoc_layout:module(Doc, Context)
     catch
@@ -270,6 +374,7 @@ run_layout(overview, File, Doc, Context) ->
             exit(error)
     end.
 
+-spec render(proplists:proplist(), map(), atom()) -> iolist().
 render(Props0, Context, Template) ->
     Name = proplists:get_value(name, Props0),
     Props = Props0 ++ maps:to_list(Context),
@@ -282,15 +387,18 @@ render(Props0, Context, Template) ->
             exit(error)
     end.
 
+-spec make_rel_path(string()) -> string().
 make_rel_path([]) -> "";
 make_rel_path(Ps) ->
     ["../" || _ <- lists:seq(1, length(Ps))].
 
+-spec render(atom(), proplists:proplist()) -> iolist().
 render(Module, Props) when is_atom(Module) ->
     kz_template:render(Module, Props).
 %%render(TemplateFilePath, Props) when is_list(TemplateFilePath) ->
 %%    kz_template:render(TemplateFilePath, Props, [{auto_escape, false}]).
 
+-spec read_tmp_file(map(), atom(), atom()) -> kz_json:object().
 read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
     Path = filename:join([OutDir, "tmp", AppsUri, App, Module]) ++ ".json",
     case file:read_file(Path) of
@@ -301,6 +409,7 @@ read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
             exit(error)
     end.
 
+-spec get_overview_data(string(), string(), map()) -> proplists:proplist().
 get_overview_data(File, Title, #{edoc_env := Env, edoc_opts := Options}=Context) ->
     Tags = extract_overview(File, Env, Options),
     Data0 = edoc_data:overview(Title, Tags, Env, Options),
@@ -312,6 +421,7 @@ get_overview_data(File, Title, #{edoc_env := Env, edoc_opts := Options}=Context)
     run_layout(overview, File, Data0#xmlElement{attributes = [EncodingAttribute | As]}, Context).
 
 %% Read external source file. Fails quietly, returning empty tag list.
+-spec extract_overview(string(), any(), any()) -> any().
 extract_overview(File, Env, Opts) ->
     case edoc_extract:file(File, overview, Env, Opts) of
         {ok, Tags} ->
@@ -320,6 +430,7 @@ extract_overview(File, Env, Opts) ->
             []
     end.
 
+-spec build_search_index_data(build_search(), {binary(), binary()}, map(), proplists:proplist()) -> search_docs().
 build_search_index_data(module, {App, Module}=AppMod, #{file_suffix := Suffix}=Context, Props) ->
     Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
     FunsDesc = build_search_index_data(funcs, AppMod, Context, proplists:get_value(<<"functions">>, Props, [])),
@@ -364,6 +475,7 @@ build_search_index_data(app, {_AppCat, App}, #{file_suffix := Suffix}, _) ->
       ]
      ).
 
+-spec extract_xml_texts(binary(), binary()) -> binary().
 extract_xml_texts(<<>>, _) ->
     <<>>;
 extract_xml_texts(Bin, Where) when is_binary(Bin) ->
@@ -379,6 +491,7 @@ extract_xml_texts(Text, Where) ->
             <<>>
     end.
 
+-spec extract_xml_texts(#xmlText{} | #xmlElement{} | any()) -> iolist().
 extract_xml_texts(#xmlText{value = Value}) ->
     [C || C <- Value, C =/= $\n, C =/= $\r];
 extract_xml_texts(#xmlElement{content = Content}) ->
@@ -388,6 +501,19 @@ extract_xml_texts(Text) when not is_tuple(Text) ->
 extract_xml_texts(_) ->
     [].
 
+%%------------------------------------------------------------------------------
+%% @doc Runs search index builder command on given index docs. Required
+%% `nodejs' and `lunr.js' to be installed on system.
+%%
+%% Default index builder command is `scripts/edoc_build_search_index.js'.
+%%
+%% If node-js can't find globally installed `lunr' package probably it because
+%% of `NODE_PATH' is not set. Try to export `node_modules' path before running
+%% this. By default `/usr/lib/node_modules' is being used for this. Exported
+%% `NODE_PATH' would be prefixed to this.
+%% @end
+%%------------------------------------------------------------------------------
+-spec build_search_index(search_docs(), map()) -> ok.
 build_search_index([], _) ->
     ?DEV_LOG("no data to build search index", []);
 build_search_index(IndexData, Context) when is_list(IndexData) ->
@@ -406,11 +532,20 @@ build_search_index({ok, DocFile}, #{kz_doc_site := OutDir, kz_search_index_cmd :
     Options = [exit_status
               ,use_stdio
               ,stderr_to_stdout
-              ,{env, [{"NODE_PATH", "$NODE_PATH:/usr/lib/node_modules"}]}
+              ,{env, [{"NODE_PATH", get_node_path() ++ "/usr/lib/node_modules"}]}
               ],
     Port = erlang:open_port({spawn, Cmd}, Options),
     listen_to_index_builder(Port, []).
 
+-spec get_node_path() -> string().
+get_node_path() ->
+    case os:getenv("NODE_PATH", undefined) of
+        undefined -> "";
+        "" -> "";
+        Path -> Path ++ ":"
+    end.
+
+-spec listen_to_index_builder(port(), string()) -> ok.
 listen_to_index_builder(Port, Acc) ->
     receive
         {Port, {data, Msg}} -> listen_to_index_builder(Port, Acc ++ Msg);
@@ -426,6 +561,7 @@ listen_to_index_builder(Port, Acc) ->
             io:put_chars(Acc)
     end.
 
+-spec save_search_docs(search_docs(), map()) -> {ok, string()} | {error, any()}.
 save_search_docs(Docs, #{kz_doc_site := OutDir}) ->
     Path = filename:join([OutDir, "tmp", "search-docs"]) ++ ".json",
     case file:write_file(Path, kz_json:encode(Docs)) of
@@ -433,6 +569,12 @@ save_search_docs(Docs, #{kz_doc_site := OutDir}) ->
         {error, _}=Error -> Error
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Compiles all default ErlyDTL templates. Useful if you're testing things in
+%% Erlang shell, otherwise it is useless, since templates are compiled to
+%% memory and are not saved to file system.
+%% @end
+%%------------------------------------------------------------------------------
 -spec compile_templates() -> ok.
 compile_templates() ->
     compile_templates(?DEFAULT_TEMPLATES).
@@ -453,11 +595,19 @@ compile_template(Module, File) ->
             error(Reason)
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Copy every files found in template directory to doc-site.
+%% All `.html' files are ignored. All `.svg' files which are in-lined by this
+%% module will be ignored too.
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_files(map()) -> ok.
 copy_files(#{kz_template_dir := TemplateDir}=Context) ->
     Files = filelib:fold_files(TemplateDir, ".*", true, fun maybe_copy_file/2, []),
     io:format(":: Copying ~b from template directory to doc-site~n", [length(Files)]),
     do_copy_files(Files, Context).
 
+-spec do_copy_files([string()], map()) -> ok.
 do_copy_files([], _) ->
     ok;
 do_copy_files([File | Files], #{kz_template_dir := TemplateDir, kz_doc_site := OutDir}=Context) ->
@@ -475,6 +625,7 @@ do_copy_files([File | Files], #{kz_template_dir := TemplateDir, kz_doc_site := O
             exit(Error)
     end.
 
+-spec maybe_copy_file(string(), [string()]) -> [string()].
 maybe_copy_file(File, Acc) ->
     case filename:extension(File) of
         ".html" -> Acc;
@@ -487,12 +638,14 @@ maybe_copy_file(File, Acc) ->
         _ -> [File | Acc]
     end.
 
+-spec is_private(#xmlElement{}) -> boolean().
 is_private(E) ->
     case kz_edoc_layout:get_attrval(private, E) of
         "yes" -> true;
         _ -> false
     end.
 
+-spec is_hidden(#xmlElement{}) -> boolean().
 is_hidden(E) ->
     case kz_edoc_layout:get_attrval(hidden, E) of
         "yes" -> true;
@@ -500,7 +653,32 @@ is_hidden(E) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Returns a default `Context' to help calling this module functions.
+%% @see init_context/1
+%% @see init_context/2
+%% @end
+%%------------------------------------------------------------------------------
+-spec default_context() -> map().
+default_context() ->
+    init_context([{file_suffix, ".html"}
+                 ,{preprocess, true}
+                 ,{pretty_printer, erl_pp}
+                 ,{sort_functions, true}
+                 ,{todo, true}
+                 ], []).
+
+%%------------------------------------------------------------------------------
+%% @doc Returns a default `Context' with your given `Options' to help calling
+%% this module functions.
+%% @end
+%%------------------------------------------------------------------------------
+-spec init_context(proplists:proplist()) -> map().
+init_context(Opts) ->
+    init_context(lists:usort(Opts ++ default_context()), []).
+
+%%------------------------------------------------------------------------------
+%% @doc Merges your given `Options' with default values and {@link gen_apps()}
+%% then returns a `Context'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init_context(proplists:proplist(), any()) -> map().
@@ -541,9 +719,11 @@ init_context(Opts, GenApps) ->
             ],
     maps:merge(Context0, maps:from_list(Opts1)).
 
+-spec is_kazoo_option(string()) -> boolean().
 is_kazoo_option("kz_"++_) -> true;
 is_kazoo_option(_) -> false.
 
+-spec make_doc_links([gen_app()]) -> {fun((string()) -> string() | undefined), fun((string()) -> string() | undefined)}.
 make_doc_links(GenApps) ->
     Mods = maps:from_list(lists:sort([{atom_to_list(M), {atom_to_list(App), AppCat}} || {M, App, AppCat, _} <- GenApps])),
     Apps = maps:from_list(lists:usort([{atom_to_list(App), AppCat} || {_, App, AppCat, _} <- GenApps])),
@@ -551,17 +731,19 @@ make_doc_links(GenApps) ->
     App = fun(A) -> maps:get(A, Apps, undefined) end,
     {App, Module}.
 
+-spec make_svgs_inline(proplists:proplist()) -> proplists:proplist().
 make_svgs_inline(Options) ->
     TemplateDir = proplists:get_value(kz_template_dir, Options, ?DEFAULT_TEMPLATE_DIR),
     [{K, read_svg_file(TemplateDir, File)} || {K, File} <- ?INLINE_SVGS].
 
+-spec read_svg_file(string(), string()) -> binary().
 read_svg_file(TemplateDir, File) ->
     Path = filename:join([TemplateDir, "img"]) ++ "/" ++ File,
     case file:read_file(Path) of
         {ok, Svg} -> Svg;
         {error, _Reason} ->
             ?DEV_LOG("failed to read svg file from ~p: ~p", [Path, _Reason]),
-            ""
+            <<>>
     end.
 
 -spec log_stacktrace() -> 'ok'.
