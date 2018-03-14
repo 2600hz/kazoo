@@ -48,7 +48,7 @@ jobs:
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1-dep-
     - checkout
-    - run: ${PWD}/scripts/circleci.bash
+    - run: ${KAZOO_ROOT}/scripts/circleci.bash
     - run: echo -e "export OTP_VERSION=$(<${HOME}/${CIRCLE_PROJECT_USERNAME}/kazoo/make/erlang_version)\nexport PATH=${HOME}/.kerl/${OTP_VERSION:-19.3}/bin:${PATH}\n" >> $BASH_ENV
     - run:
         command: bash ${KAZOO_ROOT}/scripts/circleci-build-erlang.sh
