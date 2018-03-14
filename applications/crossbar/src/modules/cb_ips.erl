@@ -46,8 +46,7 @@ authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
 authorize(Context, [{<<"ips">>, _}]) ->
-    cb_context:is_superduper_admin(Context);
-authorize(_Context, [{<<"ips">>, _}, {<<"accounts">>, _}]) -> 'true'.
+    cb_context:is_superduper_admin(Context).
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
