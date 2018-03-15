@@ -61,6 +61,7 @@ clean-deps:
 
 .erlang.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ROOT)/erlang.mk
+	@$(MAKE) -f erlang.mk erlang-mk
 
 deps: deps/Makefile
 	@$(MAKE) -C deps/ all
