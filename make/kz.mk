@@ -29,7 +29,10 @@ ifeq ($(PLATFORM),)
     export PLATFORM
 endif
 
+GIT_FOLDER = $(ROOT)/.git
+ifneq ($(wildcard $(GIT_FOLDER)),)
 VERSION=$(shell $(ROOT)/scripts/next_version)
+endif
 
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
@@ -59,12 +62,18 @@ TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
+ifneq ($(wildcard $(GIT_FOLDER)),)
 ebin/$(PROJECT).app: $(SOURCES)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src \
         | sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(VERSION)\"}/g" > $@
-
+else
+ebin/$(PROJECT).app: $(SOURCES)
+	@mkdir -p ebin/
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
+	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
+endif
 
 json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json'))
 json:
