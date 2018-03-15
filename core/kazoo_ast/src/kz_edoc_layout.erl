@@ -349,6 +349,7 @@ function_name_arity(E, Context) ->
 functions(Fs, Context) ->
     [function(NameArity, E, Context) || {NameArity, E} <- Fs].
 
+-spec function(string(), #xmlElement{}, map()) -> function_props().
 function(NameArity, E=#xmlElement{content = Es}, Context) ->
     Name = get_attrval(name, E),
     Arity = get_attrval(arity, E),
