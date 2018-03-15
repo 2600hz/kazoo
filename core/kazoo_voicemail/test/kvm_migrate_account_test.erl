@@ -1,10 +1,8 @@
 -module(kvm_migrate_account_test).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
 -include("kz_voicemail.hrl").
-
--define(ACCOUNT_ID_UNDER_TEST, <<"account0000000000000000000000001">>).
--define(ACCOUNT_DB_UNDER_TEST, <<"account%2Fac%2Fco%2Funt0000000000000000000000001">>).
 
 -define(LEGACY_VIEW, <<"vmboxes/legacy_msg_by_timestamp">>).
 
@@ -49,7 +47,7 @@ test_manual_mailbox() ->
              ,{<<"total_no_ids">>, 2}
              ],
     [{"Trying to migrate test mailbox"
-     ,?_assertEqual(Result, kvm_migrate_account:manual_vmbox_migrate(<<"account0000000000000000000000001">>, <<"vmbox01">>))
+     ,?_assertEqual(Result, kvm_migrate_account:manual_vmbox_migrate(?FIXTURE_MASTER_ACCOUNT_ID, <<"vmbox01">>))
      }
     ].
 
@@ -62,7 +60,7 @@ test_manual_voicemail_account() ->
              ,{<<"total_no_ids">>, 2}
              ],
     [{"Trying to migrate test account"
-     ,?_assertEqual(Result, kvm_migrate_account:manual_account_migrate(<<"account0000000000000000000000001">>))
+     ,?_assertEqual(Result, kvm_migrate_account:manual_account_migrate(?FIXTURE_MASTER_ACCOUNT_ID))
      }
     ].
 
@@ -87,11 +85,15 @@ this_month_db_exists() ->
                 orelse erlang:apply('kz_fixturedb_db_meck_original', db_exists, [Server, Db])
     end.
 
-is_db_under_test(ThisMonth, ThisMonth) ->                                             true;
-is_db_under_test(<<"account%2Fac%2Fco%2Funt0000000000000000000000001-201710">>, _) -> true;
-is_db_under_test(_, _) ->                                                             false.
+is_db_under_test(ThisMonth, ThisMonth) -> true;
+is_db_under_test(ThisMonth, _) ->
+    Expected = <<(?FIXTURE_MASTER_ACCOUNT_DB)/binary, "-201710">>,
+    case ThisMonth of
+        Expected -> true;
+        _Else -> false
+    end.
 
--define(GET_LAGACY_CALL, {kz_datamgr, get_results, [?ACCOUNT_DB_UNDER_TEST, ?LEGACY_VIEW, [{limit, 2000}, descending]]}).
+-define(GET_LAGACY_CALL, {kz_datamgr, get_results, [?FIXTURE_MASTER_ACCOUNT_DB, ?LEGACY_VIEW, [{limit, 2000}, descending]]}).
 
 %% Checking history calls  to kz_datamgr:get_results to see if any calls happens to
 %% get legacy messages, if yes return empty result to stop the process.
@@ -105,7 +107,7 @@ check_kz_datamgr_history() ->
             case lists:keyfind(?GET_LAGACY_CALL, 2, History) of
                 {_Pid, _MFA, {ok, ViewResult}} when length(ViewResult) == 10 ->
                     %% ViewResult length is 10. This should be same as what is inside vmboxes+legacy_msg_by_timestamp.json
-                    %% in ?ACCOUNT_DB_UNDER_TEST FixtureDb directory.
+                    %% in ?FIXTURE_MASTER_ACCOUNT_DB FixtureDb directory.
                     {ok, []};
                 _ ->
                     meck:passthrough([Db, View, Options])

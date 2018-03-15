@@ -1,12 +1,11 @@
 -module(cb_storage_test).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
 -include("cb_token_restrictions_test.hrl").
 
--define(ACCOUNT_ID_UNDER_TEST, <<"account0000000000000000000000001">>).
--define(ACCOUNT_DB_UNDER_TEST, <<"account%2Fac%2Fco%2Funt0000000000000000000000001">>).
 -define(ACCOUNT_DB_CURRENT_MONTH,
-        kazoo_modb:get_modb(kz_util:format_account_id(?ACCOUNT_ID_UNDER_TEST))).
+        kazoo_modb:get_modb(kz_util:format_account_id(?FIXTURE_MASTER_ACCOUNT_ID))).
 
 %%%=============================================================================
 %%% Fixtures / Generators
@@ -58,7 +57,7 @@ cleanup(Pid) ->
 %%--------------------------------------------------------------------
 maybe_check_storage_settings() ->
     UUID = kz_binary:rand_hex(16),
-    Setters = [{fun cb_context:set_account_id/2, ?ACCOUNT_ID_UNDER_TEST}
+    Setters = [{fun cb_context:set_account_id/2, ?FIXTURE_MASTER_ACCOUNT_ID}
               ,{fun cb_context:set_doc/2, kz_json:from_map(s3_storage_plan(UUID))}
               ],
     %% By default context.resp_status = error.
@@ -113,7 +112,7 @@ s3_storage_plan(UUID) ->
                        }
                  }
            }
-     ,<<"id">> => ?ACCOUNT_ID_UNDER_TEST
+     ,<<"id">> => ?FIXTURE_MASTER_ACCOUNT_ID
      ,<<"plan">> =>
           #{<<"modb">> =>
                 #{<<"types">> =>

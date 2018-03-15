@@ -815,17 +815,13 @@ get_category(Category) ->
 -ifdef(TEST).
 
 -spec get_category(kz_term:ne_binary(), boolean()) -> fetch_ret().
-get_category(Category, _)
-  when Category =:= <<"test_account_config">>;
-       Category =:= <<"test_account_config_sub_empty">>;
-       Category =:= <<"test_account_config_reseller_only">>;
-       Category =:= <<"test_account_config_reseller_system">>;
-       Category =:= <<"test_account_config_system_empty">>;
-       Category =:= <<"test_account_config_system_only">>;
-       Category =:= <<"no_cat_please">> ->
-    kz_datamgr:open_doc(?KZ_CONFIG_DB, Category);
-get_category(_, _) ->
-    {'error', 'not_found'}.
+get_category(Category, _) ->
+    try kz_datamgr:open_doc(?KZ_CONFIG_DB, Category) of
+        {'ok', JObj} -> {'ok', kapps_config_doc:config_with_default_node(JObj)};
+        _Other -> _Other
+    catch
+        _E:_R -> {'error', 'not_found'}
+    end.
 -else.
 
 -spec get_category(kz_term:ne_binary(), boolean()) -> fetch_ret().
