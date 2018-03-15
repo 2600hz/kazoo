@@ -178,7 +178,7 @@ bump-copyright:
 $(FMT):
 	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
 
-fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
+fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/4.2 -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
