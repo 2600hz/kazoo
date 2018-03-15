@@ -55,6 +55,7 @@
 -type exporty_thing() :: {html_tag(), html_attrib(), [exporty_thing()]} |
                          {html_tag(), exporty_thing()} |
                          html_tag() |
+                         list() |
                          iolist() |
                          #xmlText{} |
                          #xmlElement{}.
@@ -348,7 +349,6 @@ function_name_arity(E, Context) ->
 functions(Fs, Context) ->
     [function(NameArity, E, Context) || {NameArity, E} <- Fs].
 
--spec function(string(), #xmlElement{}, map()) -> function_props().
 function(NameArity, E=#xmlElement{content = Es}, Context) ->
     Name = get_attrval(name, E),
     Arity = get_attrval(arity, E),
@@ -1167,7 +1167,7 @@ get_attr(Name, [_ | As]) ->
 get_attr(_, []) ->
     [].
 
--spec get_attrval(atom(), #xmlElement{}) -> iolist() | atom() | integer().
+-spec get_attrval(atom(), #xmlElement{}) -> iolist() | atom() | integer() | string().
 get_attrval(Name, #xmlElement{attributes = As}) ->
     case get_attr(Name, As) of
         [#xmlAttribute{value = V}] ->
@@ -1229,7 +1229,7 @@ seq(F, [E | Es], Sep, Tail) ->
 seq(_F, [], _Sep, Tail) ->
     Tail.
 
--spec filter_empty([{atom(), list() | iolist() | binary()}]) -> [{atom(), list() | iolist() | binary()}].
+-spec filter_empty([{atom(), list() | iolist() | binary()}]) -> [{atom(), list() | iolist() | binary() | tuple()}].
 filter_empty(Props) ->
     [P || P <- Props, is_not_empty(P)].
 

@@ -67,7 +67,7 @@
 
 -type build_search() :: app | module | funcs | func | types | type.
 
--type search_docs() :: [kz_json:object()].
+-type search_doc() :: kz_json:object().
 %% Contains JSON objects of fields/value to be index for search.
 %%
 %% <strong>JSON object description:</strong>
@@ -95,11 +95,15 @@
 %% }
 %% ]
 %% '''
+
+-type search_docs() :: [kz_json:object()].
+
 -type sidebar_props() :: proplists:proplist().
 %% Contains sidebar proplist.
 %%
 %% <strong>Proplist description:</strong>
 %% ```[{"core" | "applications", [{AppName, [ModuleName, ModuleDescription, ModuleOutfilePath]}]}]'''
+
 -type processed_mod() :: {string(), atom(), atom(), binary()}.
 %% Contains module information necessary for computing sidebar and render.
 %%
@@ -398,7 +402,7 @@ render(Module, Props) when is_atom(Module) ->
 %%render(TemplateFilePath, Props) when is_list(TemplateFilePath) ->
 %%    kz_template:render(TemplateFilePath, Props, [{auto_escape, false}]).
 
--spec read_tmp_file(map(), atom(), atom()) -> kz_json:object().
+-spec read_tmp_file(map(), atom(), atom()) -> proplists:proplist().
 read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
     Path = filename:join([OutDir, "tmp", AppsUri, App, Module]) ++ ".json",
     case file:read_file(Path) of
@@ -430,7 +434,7 @@ extract_overview(File, Env, Opts) ->
             []
     end.
 
--spec build_search_index_data(build_search(), {binary(), binary()}, map(), list()) -> search_docs().
+-spec build_search_index_data(build_search(), {binary(), binary()}, map(), list()) -> search_doc() | search_docs().
 build_search_index_data(module, {App, Module}=AppMod, #{file_suffix := Suffix}=Context, Props) ->
     Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
     FunsDesc = build_search_index_data(funcs, AppMod, Context, proplists:get_value(<<"functions">>, Props, [])),
