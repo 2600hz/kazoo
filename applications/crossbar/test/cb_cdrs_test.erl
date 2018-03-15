@@ -12,33 +12,22 @@
 %% Test handle_utc_time_offset function with different server
 %% time zones and offsets
 handle_utc_time_offset_test_() ->
-    %% Simulate a time stamp from a CDR
-    %% (generated in freeswitch depending on system TZ)
-    LocalTimestamp = 63687252084,
-
-    %% Depending on the systems timezone, Calculate the UTC time from the LocalTimestamp
-    LocalDateTime = calendar:gregorian_seconds_to_datetime(LocalTimestamp),
-    UTCDateTimeList = calendar:local_time_to_universal_time_dst(LocalDateTime),
-    UTCTimestamp = calendar:datetime_to_gregorian_seconds(lists:last(UTCDateTimeList)),
-
+    Timestamp = 63687252084,
     [{"Verify the Atom 'undefined' returns unaltered timestamp"
-     ,?_assertEqual(LocalTimestamp, cb_cdrs:handle_utc_time_offset(LocalTimestamp, 'undefined'))
+     ,?_assertEqual(Timestamp, cb_cdrs:handle_utc_time_offset(Timestamp, 'undefined'))
      }
-    ,{"Verify the Atom 'true' returns unaltered timestamp"
-     ,?_assertEqual(LocalTimestamp, cb_cdrs:handle_utc_time_offset(LocalTimestamp, 'true'))
-     }
-    ,{"Verify the binary <<\"abc\">> returns unaltered timestamp as its NAN"
-     ,?_assertEqual(LocalTimestamp, cb_cdrs:handle_utc_time_offset(LocalTimestamp, <<"bla">>))
+    ,{"Verify the binary <<\"abc\">> triggers a crash as its NAN"
+     ,?_assertError('badarg', cb_cdrs:handle_utc_time_offset(Timestamp, <<"bla">>))
      }
     ,{"Verify with offset binary <<\"0\">> returns UTC timestamp"
-     ,?_assertEqual(UTCTimestamp, cb_cdrs:handle_utc_time_offset(LocalTimestamp, <<"0">>))
-     }
-    ,{"Verify with offset binary <<\"-14400\">> returns the UTC -4H"
-     ,?_assertEqual((UTCTimestamp - 14400), cb_cdrs:handle_utc_time_offset(LocalTimestamp, <<"-14400">>))
-     }
-    ,{"Verify with offset binary <<\"14400\">> returns the UTC +4H"
-     ,?_assertEqual((UTCTimestamp + 14400), cb_cdrs:handle_utc_time_offset(LocalTimestamp, <<"14400">>))
+     ,?_assertEqual(Timestamp, cb_cdrs:handle_utc_time_offset(Timestamp, <<"0">>))
      }
     ].
 
-
+handle_utc_time_offset_1_test_() ->
+    %% {CDR Time Stamp, Resulting Timestamp, UTC offset}
+    Timestamp = 63687252084,
+    Tests = [{Timestamp, Timestamp - 14400, <<"-14400">>}
+            ,{Timestamp, Timestamp + 14400, <<"14400">>}
+            ],
+    [?_assertEqual(Result, cb_cdrs:handle_utc_time_offset(UTC, Offset)) || {UTC, Result, Offset} <- Tests].

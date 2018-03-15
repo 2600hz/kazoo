@@ -204,7 +204,7 @@ provided_types(Context) ->
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_chunk_view(Context).
+    validate_utc_offset(Context).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_INTERACTION) ->
@@ -220,6 +220,23 @@ validate(Context, ?PATH_LEGS, InteractionId) ->
 validate(Context, _, _) ->
     lager:debug("invalid URL chain for cdr request"),
     cb_context:add_system_error('faulty_request', Context).
+
+-spec validate_utc_offset(cb_context:context()) -> cb_context:context().
+validate_utc_offset(Context) ->
+    UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UO),
+    validate_utc_offset(Context, UTCSecondsOffset).
+
+-spec validate_utc_offset(cb_context:context(), kz_time:gregorian_seconds()) -> cb_context:context().
+validate_utc_offset(Context, 'undefined') ->
+    validate_chunk_view(Context);
+validate_utc_offset(Context, 'true') ->
+    crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context);
+validate_utc_offset(Context, UTCSecondsOffset) ->
+    try kz_term:to_number(UTCSecondsOffset) of
+        _ -> validate_chunk_view(Context)
+    catch
+        error:badarg -> crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context)
+    end.
 
 -spec validate_chunk_view(cb_context:context()) -> cb_context:context().
 validate_chunk_view(Context) ->
@@ -454,20 +471,11 @@ col_call_priority(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<
 col_reseller_cost(JObj, _Timestamp, _Context) -> kz_term:to_binary(reseller_cost(JObj)).
 col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
 
--spec handle_utc_time_offset(pos_integer(), integer() | 'undefined') -> pos_integer().
-handle_utc_time_offset(Timestamp, Atom) when is_atom(Atom) -> Timestamp;
+-spec handle_utc_time_offset(kz_time:gregorian_seconds(), kz_term:api_integer()) -> kz_time:gregorian_seconds().
+handle_utc_time_offset(Timestamp, 'undefined') -> Timestamp;
 handle_utc_time_offset(Timestamp, UTCSecondsOffset) ->
-    try offset_timestamp_from_UTC(Timestamp, kz_term:to_number(UTCSecondsOffset))
-    catch error:badarg -> Timestamp
-    end.
-
--spec offset_timestamp_from_UTC(pos_integer(), integer()) -> pos_integer().
-offset_timestamp_from_UTC(Timestamp, UTCSecondsOffset) ->
-    lager:debug("Adjusting CDR timestamp with UTC Time Offset: ~p", [UTCSecondsOffset]),
-    LocalDateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
-    UTCDateTimeList = calendar:local_time_to_universal_time_dst(LocalDateTime),
-    UTCTimestamp = calendar:datetime_to_gregorian_seconds(lists:last(UTCDateTimeList)),
-    UTCTimestamp+UTCSecondsOffset.
+    lager:debug("adjusting CDR timestamp with UTC Time Offset: ~p", [UTCSecondsOffset]),
+    Timestamp + kz_term:to_number(UTCSecondsOffset).
 
 -spec pretty_print_datetime(kz_time:datetime() | integer()) -> kz_term:ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
