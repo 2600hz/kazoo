@@ -56,10 +56,7 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 
-GIT_FOLDER = $(ROOT)/.git
-ifneq ($(wildcard $(GIT_FOLDER)),)
-VERSION=$(shell $(ROOT)/scripts/next_version)
-endif
+KZ_VERSION ?= $(shell $(ROOT)/scripts/next_version)
 
 ## SOURCES provides a way to specify compilation order (left to right)
 SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
@@ -78,18 +75,11 @@ endif
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 
-ifneq ($(wildcard $(GIT_FOLDER)),)
 ebin/$(PROJECT).app:
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
 	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src \
-	| sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(VERSION)\"}/g" > $@
-else
-ebin/$(PROJECT).app:
-	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
-	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src > $@
-endif
+	| sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(KZ_VERSION)\"}/g" > $@
 
 ebin/%.beam: src/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
