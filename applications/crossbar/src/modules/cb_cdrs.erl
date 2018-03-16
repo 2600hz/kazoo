@@ -233,7 +233,9 @@ validate_utc_offset(Context, 'true') ->
     crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context);
 validate_utc_offset(Context, UTCSecondsOffset) ->
     try kz_term:to_number(UTCSecondsOffset) of
-        _ -> validate_chunk_view(Context)
+        _ ->
+            lager:debug("adjusting CDR datetime field with UTC Time Offset: ~p", [UTCSecondsOffset]),
+            validate_chunk_view(Context)
     catch
         error:badarg -> crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context)
     end.
@@ -474,7 +476,6 @@ col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CC
 -spec handle_utc_time_offset(kz_time:gregorian_seconds(), kz_term:api_integer()) -> kz_time:gregorian_seconds().
 handle_utc_time_offset(Timestamp, 'undefined') -> Timestamp;
 handle_utc_time_offset(Timestamp, UTCSecondsOffset) ->
-    lager:debug("adjusting CDR timestamp with UTC Time Offset: ~p", [UTCSecondsOffset]),
     Timestamp + kz_term:to_number(UTCSecondsOffset).
 
 -spec pretty_print_datetime(kz_time:datetime() | integer()) -> kz_term:ne_binary().
