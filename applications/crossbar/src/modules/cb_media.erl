@@ -395,14 +395,11 @@ post_media_binary(Context, MediaId, 'undefined') ->
 post_media_binary(Context, MediaId, _AccountId) ->
     update_media_binary(Context, MediaId).
 
-create_update_tts(Context, CreateOrUpdate) ->
-    C1 = maybe_create_tts_media_doc(Context, CreateOrUpdate),
-    maybe_update_media_file(C1, CreateOrUpdate, is_tts_changed(cb_context:doc(C1)), cb_context:resp_status(C1)).
-
-maybe_create_tts_media_doc(Context, <<"create">>) ->
-    update_and_save_tts_doc(Context);
-maybe_create_tts_media_doc(Context, _) ->
-    Context.
+create_update_tts(Context, <<"create">>) ->
+    C1 = update_and_save_tts_doc(Context),
+    maybe_update_media_file(C1, <<"create">>, 'true', cb_context:resp_status(C1));
+create_update_tts(Context, <<"update">>) ->
+    maybe_update_media_file(Context, <<"update">>, is_tts_changed(cb_context:doc(Context)), cb_context:resp_status(Context)).
 
 -spec maybe_update_media_file(cb_context:context(), ne_binary(), boolean(), crossbar_status()) ->
                                      cb_context:context().
