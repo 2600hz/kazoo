@@ -90,7 +90,7 @@
         ,{<<"reseller_call_type">>, fun col_reseller_call_type/3}
         ]).
 
--type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds()) -> kz_term:ne_binary()).
+-type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary()).
 
 %%%=============================================================================
 %%% API
