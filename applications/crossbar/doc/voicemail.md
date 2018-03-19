@@ -132,7 +132,7 @@ curl -v -X PUT \
 
 #### list all voicemail messages on an account
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/messages
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
 ```shell
 curl -v -X GET \
