@@ -181,11 +181,7 @@ cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
 -spec cache_origin(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> list().
 cache_origin(JObj, EndpointId, AccountDb) ->
     Routines = [fun(P) -> [{'db', AccountDb, EndpointId} | P] end
-               ,fun(P) ->
-                        [{'db', AccountDb, kz_util:format_account_id(AccountDb, 'raw')}
-                         | P
-                        ]
-                end
+               ,fun(P) -> [{'db', AccountDb, kz_util:format_account_id(AccountDb)} | P] end
                ,fun(P) -> maybe_cached_owner_id(P, JObj, AccountDb) end
                ,fun(P) -> maybe_cached_hotdesk_ids(P, JObj, AccountDb) end
                ],
@@ -1128,12 +1124,15 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = kz_json:get_json_value(<<"sip">>, Endpoint),
+    ToUsername = get_to_username(SIPJObj),
+    ToRealm = get_sip_realm(Endpoint, kapps_call:account_id(Call)),
     SIPEndpoint = kz_json:from_list(
                     props:filter_empty(
                       [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
                       ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
-                      ,{<<"To-Username">>, get_to_username(SIPJObj)}
-                      ,{<<"To-Realm">>, get_sip_realm(Endpoint, kapps_call:account_id(Call))}
+                      ,{<<"To-Username">>, ToUsername}
+                      ,{<<"To-Realm">>, ToRealm}
+                      ,{<<"To-URI">>, <<"sip:", ToUsername/binary, "@", ToRealm/binary>>}
                       ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
                       ,{<<"To-IP">>, kz_json:get_ne_binary_value(<<"ip">>, SIPJObj)}
                       ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
@@ -2051,9 +2050,9 @@ generate_profile(EndpointId, AccountId, Endpoint) ->
     CPVs = [{<<"Caller-ID-Number">>, CIDNumber}
            ,{<<"Caller-ID-Name">>, CIDName}
            ,{<<"Internal-Caller-ID-Number">>, CIDNumber}
-           ,{<<"Internal-Caller-ID-Number">>, CIDName}
+           ,{<<"Internal-Caller-ID-Name">>, CIDName}
            ,{<<"External-Caller-ID-Number">>, CEDNumber}
-           ,{<<"External-Caller-ID-Number">>, CEDName}
+           ,{<<"External-Caller-ID-Name">>, CEDName}
            ],
     Profile = [{<<"Domain-Name">>, AccountId}
               ,{<<"User-ID">>, EndpointId}
