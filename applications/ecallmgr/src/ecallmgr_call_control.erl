@@ -304,6 +304,8 @@ handle_cast(_, State) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'event', CallId, JObj}, #state{call_id=CallId}=State) ->
     handle_event_info(CallId, JObj, State);
+handle_info({'event', _CallId, _JObj}, State) ->
+    {'noreply', State};
 handle_info({'call_control', JObj}, State) ->
     handle_call_control(JObj, State),
     {'noreply', State};

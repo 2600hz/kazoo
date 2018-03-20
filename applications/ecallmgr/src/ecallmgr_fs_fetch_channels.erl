@@ -25,6 +25,7 @@
 -spec init() -> 'ok'.
 init() ->
     kazoo_bindings:bind(<<"fetch.channels.*.channel_req">>, ?MODULE, 'channel_req'),
+    kazoo_bindings:bind(<<"fetch.channels.*.query">>, ?MODULE, 'channel_req'),
     'ok'.
 
 
@@ -42,7 +43,7 @@ channel_req(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
     of
         'false' -> channel_not_found(Node, FetchId);
         'true' ->
-            [Uri] = kzsip_uri:uris(props:get_value(<<"Switch-URL">>, TargetChannel)),
+            [Uri] = kzsip_uri:uris(props:get_value(<<"switch_url">>, TargetChannel)),
             URL = kzsip_uri:ruri(
                     #uri{user=ToUser
                         ,domain=props:get_value(<<"realm">>, Channel)
@@ -85,8 +86,9 @@ channel_resp_dialprefix(JObj, Channel, ChannelVars, ForChannelCCVs) ->
 
               ,{<<"sip_h_X-FS-Auth-Token">>, nighmare_auth_token(ForChannelCCVs)}
               ,{<<"sip_h_X-FS-", ?CALL_INTERACTION_ID>>, props:get_value(<<"Call-Interaction-ID">>, ChannelVars)}
+              ,{<<"sip_h_X-ecallmgr_Account-ID">>, props:get_value(<<"Account-ID">>, ChannelVars)}
               ,{<<"sip_h_X-FS-From-Core-UUID">>, kz_json:get_value(<<"Core-UUID">>, JObj)}
-              ,{<<"sip_h_X-FS-Refer-Partner-UUID">>, props:get_value(<<"Other-Leg-Call-ID">>, Channel)}
+              ,{<<"sip_h_X-FS-Refer-Partner-UUID">>, props:get_value(<<"other_leg">>, Channel)}
 
               ]),
     fs_props_to_binary(Props).

@@ -267,6 +267,7 @@
                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
                               ,{<<"Loopback-Export">>, <<"loopback_export">>}
                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
+                              ,{<<"Loopback-From-URI">>, <<"sip_loopback_from_uri">>}
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
                               ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
@@ -299,6 +300,8 @@
                               ,{<<"Secure-ZRTP">>, <<"zrtp_secure_media">>}
                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}
                               ,{<<"To-URI">>, <<"sip_to_uri">>}
+                              ,{<<"To-User">>, <<"sip_to_user">>}
+                              ,{<<"To-Realm">>, <<"sip_to_realm">>}
                               ,{<<"Transfer-After-Pickup">>, <<"transfer_after_bridge">>}
                               ,{<<"Unanswered-Only">>, <<"intercept_unanswered_only">>}
                               ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
@@ -380,6 +383,7 @@
                               ,{<<"noop">>, <<"noop">>}
                               ,{<<"execute_extension">>, <<"execute_extension">>}
                               ,{<<"endless_playback">>, <<"hold">>}
+                              ,{<<"kz_endless_playback">>, <<"hold">>}
                               ,{<<"soft_hold">>, <<"soft_hold">>}
                               ,{<<"uuid_record">>, <<"record_call">>}
                               ,{<<"record">>, <<"record_call">>}
