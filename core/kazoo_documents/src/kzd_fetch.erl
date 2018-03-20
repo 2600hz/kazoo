@@ -72,7 +72,7 @@ fetch_action(JObj) ->
 
 -spec fetch_action(data(), Default) -> kz_term:api_binary() | Default.
 fetch_action(JObj, Default) ->
-    kz_json:get_binary_value(<<"Action">>, JObj, Default).
+    kz_json:get_first_defined([<<"Action">>, <<"action">>], JObj, Default).
 
 -spec fetch_key_name(data()) -> kz_term:api_ne_binary().
 fetch_key_name(JObj) ->
