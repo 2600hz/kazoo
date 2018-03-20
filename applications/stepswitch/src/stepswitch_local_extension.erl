@@ -310,6 +310,8 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, FromURI}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Loopback-From-URI">>, FromURI}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, Realm}
 
                    ,{<<"Resource-ID">>, AccountId}
                    ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
