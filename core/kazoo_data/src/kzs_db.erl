@@ -195,7 +195,7 @@ do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
                 'true' ->
                     add_update_remove_views(Server, Db, [], NewViews, Remove);
                 'false' ->
-                    lager:error("error fetching current views for db ~s", [Db]),
+                    lager:warning("tried to fetch current views for inexistent db ~s : ~p", [Db, _R]),
                     'true'
             end
     end.
