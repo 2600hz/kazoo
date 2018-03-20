@@ -2778,7 +2778,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
                 'true' -> Fun(JObj)
             end,
             wait_for_bridge('infinity', Fun, Call);
-%% FIND THE REASON         
+%% FIND THE REASON
 %%         {<<"call_event">>, <<"CHANNEL_ANSWER">>, _} ->
 %%             CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
 %%             lager:debug("channel bridged to ~s", [CallId]),
