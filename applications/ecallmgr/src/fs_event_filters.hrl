@@ -58,28 +58,8 @@
         ,<<"kazoo_application_name">>
         ,<<"kazoo_application_response">>
         ,<<"kazoo_event_name">>
-        ,<<"metadata">>
-        ,<<"old_node_channel_uuid">>
-        ,<<"port">>
-        ,<<"profile_name">>
-        ,<<"proto">>
-        ,<<"sip_auth_nonce">>
-        ,<<"sip_auth_realm">>
-        ,<<"sip_auth_response">>
-        ,<<"sip_auth_uri">>
-        ,<<"sip_call_id">>
         ,<<"sip_from_host">>
         ,<<"sip_from_user">>
-        ,<<"sip_request_host">>
-        ,<<"sip_to_host">>
-        ,<<"sip_user_agent">>
-        ,<<"sofia_profile_url">>
-        ,<<"status">>
-        ,<<"technology">>
-        ,<<"to_user">>
-        ,<<"user">>
-        ,<<"variable_Switch-URI">>
-        ,<<"variable_Switch-URL">>
         ,<<"variable_billmsec">>
         ,<<"variable_billsec">>
         ,<<"variable_bridge_hangup_cause">>
@@ -126,6 +106,7 @@
         ,<<"variable_loopback_bowout">>
         ,<<"variable_loopback_bowout_on_execute">>
         ,<<"variable_loopback_leg">>
+        ,<<"variable_media_group_id">>
         ,<<"variable_originate_disposition">>
         ,<<"variable_origination_callee_id_name">>
         ,<<"variable_origination_callee_id_number">>

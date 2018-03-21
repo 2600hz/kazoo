@@ -161,8 +161,9 @@ new_acc() ->
 
 -spec add_app_config(atom(), acc()) -> acc().
 add_app_config(App, Acc) ->
-    confirm_loaded(application:load(App)),
-    case application:get_env(App, 'schemas_to_priv') of
+    case confirm_loaded(application:load(App))
+        andalso application:get_env(App, 'schemas_to_priv') of
+        'false' -> Acc;
         {'ok', 'true'} ->
             ?DEBUG("detected schemas will go in ~s/priv~n", [code:priv_dir(App)]),
             Acc#{schema_dir => kz_term:to_binary(code:priv_dir(App))};
@@ -171,8 +172,9 @@ add_app_config(App, Acc) ->
             Acc#{schema_dir => kz_ast_util:default_schema_priv_dir()}
     end.
 
-confirm_loaded('ok') -> 'ok';
-confirm_loaded({'error',{'already_loaded',_App}}) -> 'ok'.
+confirm_loaded('ok') -> 'true';
+confirm_loaded({'error',{'already_loaded',_App}}) -> 'true';
+confirm_loaded(_) -> 'false'.
 
 add_schemas_to_bucket(_App, #{schema_dir := PrivDir
                              ,app_schemas := AppSchemas
@@ -221,6 +223,7 @@ config_to_schema(_, 'fetch_category', _Args, Schemas) ->
     Schemas;
 config_to_schema(Source, F='get_global', [Account, Cat, K], Schemas) ->
     config_to_schema(Source, F, [Account, Cat, K, 'undefined'], Schemas);
+config_to_schema(_Source, 'get_global', [_Account, _Cat, 'undefined', _Default], Schemas) -> Schemas;
 config_to_schema(Source, F='get_global', [_Account, Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
     case key_to_key_path(K) of
@@ -257,6 +260,7 @@ config_to_schema(Source, F, [Cat, K, Default], Schemas) ->
 
     case key_to_key_path(K) of
         'undefined' -> Schemas;
+        ['undefined'] -> Schemas;
         Key ->
             config_key_to_schema(Source, F, Document, Key, Default, Schemas)
     end.
