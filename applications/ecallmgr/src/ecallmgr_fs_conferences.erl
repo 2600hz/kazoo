@@ -312,7 +312,6 @@ init([]) ->
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'conference_create', Props, Node}, _, State) ->
-    lager:debug("created conference ~p", [Props]),
     Conference = conference_from_props(Props, Node),
     _ = ets:insert_new(?CONFERENCES_TBL, Conference),
     {'reply', Conference, State};
@@ -443,6 +442,8 @@ conference_from_props(Props, Node) ->
 -spec conference_from_props(kz_term:proplist(), atom(), conference()) -> conference().
 conference_from_props(Props, Node, Conference) ->
     CtrlNode = kz_term:to_atom(props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props), 'true'),
+    AccountId = find_account_id(Props),
+
     Conference#conference{node = Node
                          ,uuid = kzd_freeswitch:conference_uuid(Props)
                          ,name = kzd_freeswitch:conference_name(Props)
@@ -451,11 +452,30 @@ conference_from_props(Props, Node, Conference) ->
                          ,switch_hostname = kzd_freeswitch:hostname(Props, kz_term:to_binary(Node))
                          ,switch_url = ecallmgr_fs_nodes:sip_url(Node)
                          ,switch_external_ip = ecallmgr_fs_nodes:sip_external_ip(Node)
-                         ,account_id = props:get_value(?GET_CCV(<<"Account-ID">>), Props)
+                         ,account_id = AccountId
                          ,handling_locally = (CtrlNode =:= node())
                          ,origin_node = CtrlNode
                          ,control_node = CtrlNode
                          }.
+
+-spec find_account_id(kzd_freeswitch:doc()) -> kz_term:api_ne_binary().
+find_account_id(Props) ->
+    case kzd_freeswitch:account_id(Props) of
+        'undefined' -> find_account_id_from_call(kzd_freeswitch:call_id(Props));
+        AccountId -> AccountId
+    end.
+
+-spec find_account_id_from_call(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+find_account_id_from_call('undefined') ->
+    lager:info("failed to find account id for conference"),
+    'undefined';
+find_account_id_from_call(CallId) ->
+    case ecallmgr_fs_channel:fetch(CallId, 'record') of
+        {'ok', #channel{account_id=AccountId}} -> AccountId;
+        {'error', 'not_found'} ->
+            lager:debug("failed to find account id for missing channel ~s", [CallId]),
+            'undefined'
+    end.
 
 -spec participant_from_props(kzd_freeswitch:data(), atom()) -> participant().
 participant_from_props(Props, Node) ->

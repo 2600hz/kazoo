@@ -164,7 +164,9 @@ callflow_should_respond(Call) ->
             Number = kapps_call:request_user(Call),
             (not knm_converters:is_reconcilable(Number));
         'undefined' -> 'true';
-        _Else -> 'false'
+        _Else ->
+            lager:debug("not responding to calls from auth-type ~s", [_Else]),
+            'false'
     end.
 
 %%------------------------------------------------------------------------------
