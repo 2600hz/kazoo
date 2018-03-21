@@ -1152,7 +1152,7 @@ publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
                                                        | ?ERROR_RESP_VALUES
                                                       ], fun error/1),
-    kz_amqp_util:callevt_publish(kapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
+    kz_amqp_util:callevt_publish(kapi_call:event_routing_key(<<"dialplan">>, CallID), Payload, ContentType).
 
 -spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_originate_ready(ServerId, JObj) ->
