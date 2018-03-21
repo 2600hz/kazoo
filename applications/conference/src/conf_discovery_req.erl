@@ -30,6 +30,7 @@ create_conference(DiscoveryReq, Call) ->
 
 -spec create_conference(kapi_conference:discovery_req(), kapps_call:call(), kz_term:api_ne_binary()) -> kapps_conference:conference().
 create_conference(DiscoveryReq, Call, 'undefined') ->
+    lager:debug("using discovery to build conference"),
     kapps_conference:set_call(Call, kapps_conference:from_json(DiscoveryReq));
 create_conference(DiscoveryReq, Call, ConferenceId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), ConferenceId) of
@@ -44,6 +45,12 @@ create_conference(DiscoveryReq, Call, ConferenceId) ->
 
 -spec maybe_welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
 maybe_welcome_to_conference(Srv, Conference) ->
+    lager:debug("starting discovery process for conference ~s(~s)"
+               ,[kapps_conference:name(Conference)
+                ,kapps_conference:id(Conference)
+                ]
+               ),
+
     case kapps_conference:play_welcome(Conference) of
         'false' ->
             lager:debug("not playing welcome prompt"),
