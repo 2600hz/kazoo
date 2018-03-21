@@ -54,6 +54,7 @@
                                          ,<<"CHANNEL_TRANSFEROR">>
                                          ,<<"CHANNEL_EXECUTE_COMPLETE">>
                                          ,<<"CHANNEL_BRIDGE">>
+                                         ,<<"dialplan">>
                                          ]
                                         }
                                        ]

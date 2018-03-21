@@ -455,6 +455,10 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
+handle_cast('channel_destroyed', #state{stop_on_destroy='true'
+                                       ,cf_module_pid='undefined'
+                                       }=State) ->
+    {'stop', 'normal', State};
 handle_cast('channel_destroyed', State) ->
     {'noreply', State#state{destroyed='true'}};
 handle_cast('stop_on_destroy', State) ->
