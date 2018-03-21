@@ -395,14 +395,11 @@ post_media_binary(Context, MediaId, 'undefined') ->
 post_media_binary(Context, MediaId, _AccountId) ->
     update_media_binary(Context, MediaId).
 
-create_update_tts(Context, CreateOrUpdate) ->
-    C1 = maybe_create_tts_media_doc(Context, CreateOrUpdate),
-    maybe_update_media_file(C1, CreateOrUpdate, is_tts_changed(cb_context:doc(C1)), cb_context:resp_status(C1)).
-
-maybe_create_tts_media_doc(Context, <<"create">>) ->
-    update_and_save_tts_doc(Context);
-maybe_create_tts_media_doc(Context, _) ->
-    Context.
+create_update_tts(Context, <<"create">>) ->
+    C1 = update_and_save_tts_doc(Context),
+    maybe_update_media_file(C1, <<"create">>, 'true', cb_context:resp_status(C1));
+create_update_tts(Context, <<"update">>) ->
+    maybe_update_media_file(Context, <<"update">>, is_tts_changed(cb_context:doc(Context)), cb_context:resp_status(Context)).
 
 -spec maybe_update_media_file(cb_context:context(), ne_binary(), boolean(), crossbar_status()) ->
                                      cb_context:context().
@@ -426,8 +423,8 @@ maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
                                          ,{<<"contents">>, Content}
                                          ]),
             FileName = <<"text_to_speech_"
-                         ,(kz_term:to_binary(kz_time:current_tstamp()))/binary
-                         ,".wav"
+                        ,(kz_term:to_binary(kz_time:current_tstamp()))/binary
+                        ,".wav"
                        >>,
             C1 = update_media_binary(cb_context:set_req_files(Context, [{FileName, FileJObj}]), MediaId),
             case cb_context:resp_status(C1) =:= 'success'
@@ -863,18 +860,21 @@ load_media_binary(Context, MediaId) ->
             case kz_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [Attachment|_] ->
-                    cb_context:add_resp_headers(
-                      crossbar_doc:load_attachment(cb_context:doc(Context1)
-                                                  ,Attachment
-                                                  ,?TYPE_CHECK_OPTION(kzd_media:type())
-                                                  ,Context1
-                                                  )
-                                               ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                                                ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
-                                                ])
+                    Doc = cb_context:doc(Context1),
+                    Context2 = crossbar_doc:load_attachment(Doc, Attachment, ?TYPE_CHECK_OPTION(kzd_media:type()), Context1),
+                    maybe_add_resp_headers(Context2, Doc, Attachment, cb_context:resp_status(Context2))
             end;
         _Status -> Context1
     end.
+
+-spec maybe_add_resp_headers(cb_context:context(), kz_json:object(), ne_binary(), crossbar_status()) -> cb_context:context().
+maybe_add_resp_headers(Context, Doc, Attachment, 'success') ->
+    cb_context:add_resp_headers(Context
+                               ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
+                                ,{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, Attachment)}
+                                ]);
+maybe_add_resp_headers(Context, _, _, _) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -899,16 +899,13 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     lager:debug("file content type: ~s", [CT]),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_media:type())],
 
-    update_media_binary(
-      crossbar_doc:save_attachment(MediaId
-                                  ,cb_modules_util:attachment_name(Filename, CT)
-                                  ,Contents
-                                  ,Context
-                                  ,Opts
-                                  )
-                       ,MediaId
-                       ,Files
-     ).
+    C1 = crossbar_doc:save_attachment(MediaId, cb_modules_util:attachment_name(Filename, CT), Contents, Context, Opts),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            update_media_binary(C1, MediaId, Files);
+        _ ->
+            C1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
