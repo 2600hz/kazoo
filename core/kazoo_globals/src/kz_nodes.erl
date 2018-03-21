@@ -266,12 +266,51 @@ determine_whapp_zones_fold({Zone, Whapps}, {Whapp, Zones, C}=Acc) ->
 status() ->
     try
         Nodes = lists:sort(fun compare_nodes/2, ets:tab2list(?MODULE)),
-        print_status(Nodes, gen_listener:call(?SERVER, 'zone'))
+        print_status(Nodes, gen_listener:call(?SERVER, 'zone')),
+        check_node_versions(Nodes)
     catch
-        error:badarg ->
+        'error':'badarg' ->
             io:format("status unknown until node is fully initialized, try again in a moment\n"),
             'no_return'
     end.
+
+-spec check_node_versions(kz_types:kz_nodes()) -> 'ok'.
+check_node_versions([]) -> 'ok';
+check_node_versions([_Node]) -> 'ok';
+check_node_versions([#kz_node{version=Version
+                             ,node=Node
+                             }
+                     | Nodes
+                    ]) ->
+    [Name, _Host] = binary:split(kz_term:to_binary(Node), <<"@">>),
+    check_node_versions(Nodes, {Name, Node, Version}).
+
+-spec check_node_versions(kz_types:kz_nodes(), {kz_term:ne_binary(), node(), kz_term:ne_binary()}) -> 'ok'.
+check_node_versions([], _) -> 'ok';
+check_node_versions([#kz_node{version=Vsn
+                             ,node=N
+                             }
+                     | Nodes
+                    ]
+                   ,{Name, Node, Version}=Current
+                   ) ->
+    CheckAgainst =
+        case binary:split(kz_term:to_binary(N), <<"@">>) of
+            [Name, _Host] when Vsn =:= Version -> Current;
+            [Name, _Host] when Vsn > Version ->
+                lager:warning("node ~s is running a newer version (~s) than ~s (~s)"
+                             ,[N, Vsn, Node, Version]
+                             ),
+                Current;
+            [Name, _Host] ->
+                lager:warning("node ~s is running an older version (~s) than ~s (~s)"
+                             ,[N, Vsn, Node, Version]
+                             ),
+                Current;
+            [NewName, _Host] ->
+                {NewName, N, Vsn}
+        end,
+    check_node_versions(Nodes, CheckAgainst).
 
 -spec compare_nodes(kz_types:kz_node(), kz_types:kz_node()) -> boolean().
 compare_nodes(#kz_node{node = N1}, #kz_node{node = N2}) -> N1 > N2.
@@ -1190,4 +1229,3 @@ with_role_filter(Role, MatchSpec) ->
                ,[]
                ,ets:select(?MODULE, MatchSpec)
                ).
-

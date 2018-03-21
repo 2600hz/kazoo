@@ -1198,6 +1198,9 @@ load_fixture_from_file(App, Dir, File) ->
         {'ok', Bin} = file:read_file(Path),
         decode(Bin)
     catch
+        _Type:{'badmatch', {'error', 'enoent'}} ->
+            lager:error("failed to find ~s to read", [Path]),
+            {'error', 'enoent'};
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("badmatch error: ~p", [Reason]),
             {'error', Reason};
