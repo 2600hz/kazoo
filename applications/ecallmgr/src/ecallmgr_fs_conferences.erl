@@ -330,11 +330,12 @@ handle_call({'participant_create', Props, Node}, _, State) ->
     UUID = kzd_freeswitch:conference_uuid(Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
             [#conference{account_id='undefined'}] ->
-                lager:info("failed to find account_id in conference ~s, adding", [UUID]),
+                lager:info("failed to find account_id in conference ~s, adding from participant"
+                          ,[UUID]
+                          ),
                 Conference = conference_from_props(Props, Node),
                 _ = ets:insert(?CONFERENCES_TBL, Conference);
-            [#conference{}] ->
-                'ok';
+            [#conference{}] -> 'ok';
             _Else ->
                 lager:info("failed to find participants conference ~s, adding", [UUID]),
                 Conference = conference_from_props(Props, Node),
@@ -441,7 +442,7 @@ conference_from_props(Props, Node) ->
 
 -spec conference_from_props(kz_term:proplist(), atom(), conference()) -> conference().
 conference_from_props(Props, Node, Conference) ->
-    CtrlNode = kz_term:to_atom(props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props), 'true'),
+    CtrlNode = kz_term:to_atom(kzd_freeswitch:ccv(Props, <<"Ecallmgr-Node">>), 'true'),
     AccountId = find_account_id(Props),
 
     Conference#conference{node = Node

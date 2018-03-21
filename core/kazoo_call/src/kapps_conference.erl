@@ -171,9 +171,18 @@ from_json(JObj, Conference) ->
 
 -spec do_from_json(kz_json:object(), conference()) -> conference().
 do_from_json(JObj, Conference) ->
+    ConferenceName = kz_json:get_ne_binary_value(<<"Conference-Name">>, JObj, id(Conference)),
+    ConferenceId =
+        case kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj, id(Conference)) of
+            'undefined' -> ConferenceName;
+            Id -> Id
+        end,
+
+    lager:debug("building conference ~s(~s) from JSON", [ConferenceName, ConferenceId]),
+
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
-    Conference#kapps_conference{id = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj, id(Conference))
-                               ,name = kz_json:get_ne_binary_value(<<"Conference-Name">>, JObj, id(Conference))
+    Conference#kapps_conference{id = ConferenceId
+                               ,name = ConferenceName
                                ,profile_name = kz_json:get_ne_binary_value(<<"Profile-Name">>, JObj, profile_name(Conference))
                                ,profile = kz_json:get_json_value(<<"Profile">>, JObj, raw_profile(Conference))
                                ,focus = kz_json:get_ne_binary_value(<<"Conference-Focus">>, JObj, focus(Conference))
@@ -278,10 +287,15 @@ from_conference_doc(JObj) ->
 
 -spec from_conference_doc(kzd_conferences:doc(), conference()) -> conference().
 from_conference_doc(JObj, Conference) ->
-    Conference#kapps_conference{id = kz_doc:id(JObj, kz_binary:rand_hex(8))
-                               ,name = kzd_conferences:name(JObj, name(Conference))
+    ConferenceName = kzd_conferences:name(JObj, name(Conference)),
+    ConferenceId = kz_doc:id(JObj, ConferenceName),
+
+    lager:debug("building conference ~s(~s) from config", [ConferenceName, ConferenceId]),
+
+    Conference#kapps_conference{id = ConferenceId
+                               ,name = ConferenceName
                                ,account_id = kz_doc:account_id(JObj, account_id(Conference))
-                               ,profile_name = kzd_conferences:name(JObj, profile_name(Conference))
+                               ,profile_name = kzd_conferences:profile_name(JObj, profile_name(Conference))
                                ,profile = kzd_conferences:profile(JObj, raw_profile(Conference))
                                ,focus = kzd_conferences:focus(JObj, focus(Conference))
                                ,language = kzd_conferences:language(JObj, raw_language(Conference))
