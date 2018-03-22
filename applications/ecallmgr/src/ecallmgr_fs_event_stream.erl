@@ -6,7 +6,7 @@
 -module(ecallmgr_fs_event_stream).
 -behaviour(gen_server).
 
--export([start_link/2]).
+-export([start_link/3]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -21,6 +21,7 @@
 
 -type bindings() :: atom() | [atom(),...] | kz_term:ne_binary() | kz_term:ne_binaries().
 -type profile() :: {atom() | kz_term:ne_binary(), bindings()}.
+-type event_packet_type() :: 1 | 2 | 4.
 
 -record(state, {node :: atom()
                ,bindings :: bindings()
@@ -30,6 +31,7 @@
                ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: timeout()
                ,channel_mon :: kz_term:api_reference()
+               ,packet :: event_packet_type()
                }).
 -type state() :: #state{}.
 
@@ -41,9 +43,9 @@
 %% @doc Starts the server
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(atom(), bindings()) -> kz_types:startlink_ret().
-start_link(Node, Bindings) ->
-    gen_server:start_link(?SERVER, [Node, Bindings], []).
+-spec start_link(atom(), bindings(), event_packet_type()) -> kz_types:startlink_ret().
+start_link(Node, Bindings, Packet) ->
+    gen_server:start_link(?SERVER, [Node, Bindings, Packet], []).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -53,14 +55,15 @@ start_link(Node, Bindings) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([atom() | profile()]) -> {'ok', state()} | {'stop', any()}.
-init([Node, {Name, Bindings}]) ->
+-spec init([atom() | profile() | event_packet_type()]) -> {'ok', state()} | {'stop', any()}.
+init([Node, {Name, Bindings}, Packet]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream-">>, kz_term:to_binary(Name)])),
     request_event_stream(#state{node=Node
                                ,profile_name=Name
                                ,bindings=Bindings
                                ,idle_alert=idle_alert_timeout()
+                               ,packet=Packet
                                }).
 
 %%------------------------------------------------------------------------------
@@ -76,10 +79,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
-    PacketType = kapps_config:get_integer(?APP_NAME, <<"tcp_packet_type">>, 2),
+handle_cast('connect', #state{ip=IP, port=Port, packet=Packet, idle_alert=Timeout}=State) ->
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
-                                   ,{'packet', PacketType}
+                                   ,{'packet', Packet}
                                    ])
     of
         {'ok', Socket} ->

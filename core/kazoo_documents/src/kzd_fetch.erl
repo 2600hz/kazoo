@@ -34,6 +34,8 @@
         ,user_agent/1
         ,cshs/1
 
+
+        ,account_id/1        
         ]).
 
 -include("kz_documents.hrl").
@@ -45,6 +47,10 @@
 -spec call_id(data()) -> kz_term:api_binary().
 call_id(JObj) ->
     kz_json:get_binary_value(<<"Call-ID">>, JObj).
+
+-spec account_id(data()) -> kz_term:api_binary().
+account_id(JObj) ->
+    ccv(JObj, <<"Account-ID">>, 'undefined').
 
 -spec ccv(data(), kz_term:ne_binary()) -> kz_term:api_binary() | kz_term:ne_binaries().
 ccv(JObj, Key) ->
