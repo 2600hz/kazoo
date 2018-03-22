@@ -1,9 +1,9 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Receives PRESENCE_IN event
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(ecallmgr_fs_presence).
+-module(ecallmgr_presence_event_publisher).
 
 -export([init/0]).
 -export([publish_presence/1]).

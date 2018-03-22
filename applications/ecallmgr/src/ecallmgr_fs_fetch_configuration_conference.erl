@@ -85,22 +85,25 @@ maybe_convert_sound(_, _Key, _Value, Profile) ->
 fetch_conference_config(Node, Id, <<"COMMAND">>, JObj) ->
     Profile = kz_json:get_value(<<"profile_name">>, JObj),
     Conference = kz_json:get_value(<<"conference_name">>, JObj),
-    maybe_fetch_conference_profile(Node, Id, Profile, Conference);
+    AccountId = kzd_fetch:account_id(JObj),
+    maybe_fetch_conference_profile(Node, Id, Profile, Conference, AccountId);
 fetch_conference_config(Node, Id, <<"REQUEST_PARAMS">>, JObj) ->
     Action = kz_json:get_value(<<"Action">>, JObj),
     ConfName = kz_json:get_value(<<"Conf-Name">>, JObj),
     lager:debug("request conference:~p params:~p", [ConfName, Action]),
     fetch_conference_params(Node, Id, Action, ConfName, JObj).
 
-fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, JObj) ->
+fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, JObj) ->
     FSName = kz_json:get_value(<<"Controls">>, JObj),
     [KZName, Profile] = binary:split(FSName, <<"?profile=">>),
     lager:debug("request controls:~p for profile: ~p", [KZName, Profile]),
 
     Cmd = [{<<"Request">>, <<"Controls">>}
           ,{<<"Profile">>, Profile}
+          ,{<<"Conference-ID">>, ConfName}
           ,{<<"Controls">>, KZName}
           ,{<<"Call-ID">>, kzd_fetch:call_id(JObj)}
+          ,{<<"Account-ID">>, kzd_fetch:account_id(JObj)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kz_amqp_worker:call(Cmd
@@ -138,26 +141,33 @@ handle_conference_params_response(_Error) ->
     lager:debug("failed to lookup conference params, error:~p", [_Error]),
     ecallmgr_fs_xml:not_found().
 
--spec maybe_fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) -> fs_sendmsg_ret().
-maybe_fetch_conference_profile(Node, Id, 'undefined', _) ->
-    lager:debug("failed to lookup undefined conference profile"),
+-spec maybe_fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> fs_sendmsg_ret().
+maybe_fetch_conference_profile(Node, Id, _, _, 'undefined') ->
+    lager:debug("failed to lookup conference profile for undefined account-id"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
     send_conference_profile_xml(Node, Id, XmlResp);
 
-maybe_fetch_conference_profile(Node, Id, <<"page">> = Profile, Conference) ->
-    [_ , AccountId | _] = binary:split(Conference, <<"_">>, ['global']),
-    fetch_conference_profile(Node, Id, Profile, AccountId);
-maybe_fetch_conference_profile(Node, Id, Profile, _Conference) ->
-    [AccountId | _] = binary:split(Profile, <<"_">>),
-    fetch_conference_profile(Node, Id, Profile, AccountId).
+maybe_fetch_conference_profile(Node, Id, 'undefined', _Conference, _AccountId) ->
+    lager:debug("failed to lookup undefined profile conference"),
+    {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
+    send_conference_profile_xml(Node, Id, XmlResp);
 
--spec fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) -> fs_sendmsg_ret().
-fetch_conference_profile(Node, Id, Profile, AccountId) ->
+maybe_fetch_conference_profile(Node, Id, Profile, Conference, AccountId) ->
+    fetch_conference_profile(Node, Id, Profile, Conference, AccountId).
+
+-spec fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> fs_sendmsg_ret().
+fetch_conference_profile(Node, Id, Profile, Conference, AccountId) ->
     Cmd = [{<<"Request">>, <<"Conference">>}
           ,{<<"Profile">>, Profile}
+          ,{<<"Conference-ID">>, Conference}
+          ,{<<"Account-ID">>, AccountId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    lager:debug("fetching profile '~s'", [Profile]),
+    Variables = [{<<"Conference-Account-ID">>, AccountId}
+                ,{<<"Conference-Node">>, kz_term:to_binary(node())}
+                ,{<<"Conference-Profile">>, Profile}
+                ],
+    lager:debug("fetching profile '~s' for conference '~s' in account '~s'", [Profile, Conference, AccountId]),
     XmlResp = case kz_amqp_worker:call(Cmd
                                       ,fun kapi_conference:publish_config_req/1
                                       ,fun kapi_conference:config_resp_v/1
@@ -166,7 +176,7 @@ fetch_conference_profile(Node, Id, Profile, AccountId) ->
               of
                   {'ok', Resp} ->
                       FixedTTS = fix_conference_profile(Resp),
-                      {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(FixedTTS),
+                      {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(FixedTTS, Variables),
                       lager:debug("replying with conference profile ~s", [Profile]),
                       Xml;
                   {'error', 'timeout'} ->

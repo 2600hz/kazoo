@@ -76,15 +76,16 @@ node_bindings() ->
     'ok'.
 
 -define(EVENTSTREAM_MODS, ['ecallmgr_fs_channel_stream'
-                          ,'ecallmgr_fs_event_stream_notify_gproc'
-                          ,'ecallmgr_call_event_publisher'
                           ,'ecallmgr_fs_conference_stream'
-                          ,'ecallmgr_fs_conference_publish'
-                          ,'ecallmgr_fs_presence'
+                          ,'ecallmgr_fs_event_stream_registered'
+                          ,'ecallmgr_call_event_publisher'
+                          ,'ecallmgr_conference_event_publisher'
+                          ,'ecallmgr_presence_event_publisher'
                           ]).
 
 -define(EVENTSTREAM_PUBLISHERS_MODS, ['ecallmgr_call_event_publisher'
-                                     ,'ecallmgr_fs_conference_publish'
+                                     ,'ecallmgr_conference_event_publisher'
+                                     ,'ecallmgr_presence_event_publisher'
                                      ]).
 
 -spec event_stream_bind() -> 'ok'.

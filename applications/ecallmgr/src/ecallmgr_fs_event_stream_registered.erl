@@ -6,7 +6,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(ecallmgr_fs_event_stream_notify_gproc).
+-module(ecallmgr_fs_event_stream_registered).
 
 
 -export([init/0]).
@@ -27,7 +27,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"event_stream.notify.call_event.*">>, ?MODULE, 'notify_event'),
+    kazoo_bindings:bind(<<"event_stream.registered.call_event.*">>, ?MODULE, 'notify_event'),
     'ok'.
 
 -spec notify_event(map()) -> any().

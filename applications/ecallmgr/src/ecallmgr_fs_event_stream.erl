@@ -310,7 +310,7 @@ run_process(Ctx) ->
     kazoo_bindings:map(Routing, Ctx).
 
 run_notify(Ctx) ->
-    Routing = create_routing(<<"notify">>, Ctx),
+    Routing = create_routing(<<"registered">>, Ctx),
     kazoo_bindings:map(Routing, Ctx).
 
 run_publish(Ctx) ->

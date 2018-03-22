@@ -3,7 +3,7 @@
 %%% @doc Execute conference commands
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(ecallmgr_fs_conference_publish).
+-module(ecallmgr_conference_event_publisher).
 
 %% API
 -export([init/0
