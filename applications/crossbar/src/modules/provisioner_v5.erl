@@ -400,6 +400,9 @@ get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
       ]).
 
 -spec get_line_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
+get_line_key(<<"grandstream">>, _) -> <<"1">>;
+get_line_key(<<"obihai">>, _) -> <<"1">>;
+get_line_key(<<"vtech">>, _) -> <<"1">>;
 get_line_key(<<"yealink">>, _) -> <<"1">>;
 get_line_key(_, _) -> 'undefined'.
 
