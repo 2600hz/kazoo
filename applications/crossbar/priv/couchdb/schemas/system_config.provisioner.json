@@ -36,6 +36,15 @@
                         "speed_dial": "Speed Dial"
                     }
                 },
+                "vtech": {
+                    "_": {
+                        "line": "line",
+                        "parking": "blf",
+                        "personal_parking": "blf",
+                        "presence": "presense",
+                        "speed_dial": "speed"
+                    }
+                },
                 "yealink": {
                     "_": {
                         "line": "15",
