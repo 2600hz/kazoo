@@ -62,9 +62,8 @@ fetch_mod_kazoo_config_action(Node, Id, <<"request-filter">>, _Data) ->
     lager:debug("replying with xml response for request-filter params request"),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Xml));
 fetch_mod_kazoo_config_action(Node, Id, <<"request-handlers">>, _Data) ->
-    {'ok', Xml} = ecallmgr_fs_xml:event_filters_resp_xml(?FS_EVENT_FILTERS),
-    lager:debug("replying with xml response for request-filter params request"),
-    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Xml));
+    %% TODO get handlers/definitions/events
+    config_req_not_handled(Node, Id, <<"kazoo.conf">>);
 fetch_mod_kazoo_config_action(Node, Id, 'undefined', _Data) ->
     config_req_not_handled(Node, Id, <<"kazoo.conf">>);
 fetch_mod_kazoo_config_action(Node, Id, Action, _Data) ->
