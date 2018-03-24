@@ -11,6 +11,7 @@
 -export([build_leg_vars/1, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
         ,route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
         ,directory_resp_endpoint_xml/1, directory_resp_endpoint_xml/2
+        ,directory_resp_group_xml/2
         ,acl_xml/1, not_found/0, empty_response/0
         ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
         ,sip_channel_xml/1
@@ -73,7 +74,13 @@ directory_resp_domain(Endpoint, JObj) ->
 directory_resp_user_id(Endpoint, JObj) ->
     case kz_json:get_ne_binary_value(<<"Requested-User-ID">>, JObj) of
         'undefined' -> kz_json:get_ne_binary_value(<<"User-ID">>, Endpoint);
-        Domain -> Domain
+        UserID -> UserID
+    end.
+
+directory_resp_group_id(Endpoint, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Requested-Group-ID">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value(<<"Group-ID">>, Endpoint);
+        GroupID -> GroupID
     end.
 
 -spec directory_resp_endpoint_xml(kz_json:object()) -> {'ok', iolist()}.
@@ -85,7 +92,8 @@ directory_resp_endpoint_xml(Endpoint, JObj) ->
     DomainName = directory_resp_domain(Endpoint, JObj),
     UserId = directory_resp_user_id(Endpoint, JObj),
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(Endpoint)],
-    VariablesEl = variables_el(VariableEls),
+    V1 = [variable_el(<<"sip_h_X-KAZOO-AOR">>, <<"sip:995582130@teste.sip.90e9.com">>)],
+    VariablesEl = variables_el(VariableEls ++ V1),
     Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
                 kz_json:get_value(<<"Expires">>,Endpoint)
                ),
@@ -93,8 +101,25 @@ directory_resp_endpoint_xml(Endpoint, JObj) ->
     ProfileEls = [variable_el(K, V) || {K, V} <- get_profile_params(Endpoint)],
     ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
     UserProps = props:filter_undefined(user_el_props(Number, UserId, Expires)),
-    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl]),
+    Params = [param_el(<<"group-dial-string">>, <<"user/", UserId/binary, "@", DomainName/binary>>)
+             ,param_el(<<"dial-string">>, <<"sofia/sipinterface_1/995582130@teste.sip.90e9.com;fs_path=sip%3A192.168.16.125%3A7000">>)
+             ,param_el(<<"dial-var-sip_h_X-KAZOO-AOR">>, <<"sip:995582130@teste.sip.90e9.com">>)
+             ],
+    ParamsEl = params_el(Params),
+    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl, ParamsEl]),
     DomainEl = domain_el(DomainName, UserEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_group_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_group_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    GroupId = directory_resp_group_id(Endpoint, JObj),
+    GroupProps = [{<<"name">>, GroupId}],
+    MemberList = kz_json:get_list_value(<<"Members">>, Endpoint),
+    MembersEl = [user_ptr_el(MemberId) || MemberId <- MemberList],
+    GroupEl = group_el(GroupProps, [users_el(MembersEl)]),
+    DomainEl = domain_el(DomainName, [groups_el([GroupEl])]),
     SectionEl = section_el(<<"directory">>, DomainEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
@@ -786,6 +811,7 @@ get_profile_param({Key, Val}, Acc) ->
 -spec get_channel_params(kz_json:object() | kz_term:proplist()) -> kz_term:proplist().
 get_channel_params(Props) when is_list(Props) ->
     [get_channel_params_fold(K, V) || {K, V} <- Props];
+%%<param name="dial-string" value="${sofia_contact(${dialed_user}@${dialed_domain})},pickup/${dialed_user}@${dialed_domain}"/>
 get_channel_params(JObj) ->
     get_channel_params(
       kz_json:to_proplist(
@@ -809,9 +835,10 @@ get_custom_sip_headers(JObj) ->
 -spec arrange_acl_node({kz_term:ne_binary(), kz_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
     AclList = kz_json:get_value(<<"network-list-name">>, JObj),
-
-    NodeEl = acl_node_el(kz_json:get_value(<<"type">>, JObj), kz_json:get_value(<<"cidr">>, JObj)),
-
+    Type = kz_json:get_value(<<"type">>, JObj),
+    CIDR = kz_json:get_value(<<"cidr">>, JObj),
+    Ports = kz_json:get_value(<<"ports">>, JObj),
+    NodeEl = acl_node_el(Type, CIDR, Ports),
     case orddict:find(AclList, Dict) of
         {'ok', ListEl} ->
             orddict:store(AclList, prepend_child(ListEl, NodeEl), Dict);
@@ -835,13 +862,21 @@ context(JObj, Props) ->
 %%%-----------------------------------------------------------------------------
 %% XML record creators and helpers
 %%%-----------------------------------------------------------------------------
--spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el() | kz_types:xml_els().
-acl_node_el(Type, CIDRs) when is_list(CIDRs) ->
-    [acl_node_el(Type, CIDR) || CIDR <- CIDRs];
-acl_node_el(Type, CIDR) ->
+-spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), kz_term:api_integers()) -> kz_types:xml_el() | kz_types:xml_els().
+acl_node_el(Type, CIDRs, Ports) when is_list(CIDRs) ->
+    [acl_node_el(Type, CIDR, Ports) || CIDR <- CIDRs];
+acl_node_el(Type, CIDR, 'undefined') ->
     #xmlElement{name='node'
                ,attributes=[xml_attrib('type', Type)
                            ,xml_attrib('cidr', CIDR)
+                           ]
+               };
+acl_node_el(Type, CIDR, Ports) ->
+    BinPorts = kz_binary:join([kz_term:to_binary(P) || P <- Ports], <<",">>),
+    #xmlElement{name='node'
+               ,attributes=[xml_attrib('type', Type)
+                           ,xml_attrib('cidr', CIDR)
+                           ,xml_attrib('ports', BinPorts)
                            ]
                }.
 
@@ -924,6 +959,40 @@ domain_el(Name, Children) ->
     #xmlElement{name='domain'
                ,attributes=[xml_attrib('name', Name)]
                ,content=Children
+               }.
+
+group_el(Props, Children) when is_list(Props) ->
+    #xmlElement{name='group'
+               ,attributes=[xml_attrib(K, V)
+                            || {K, V} <- props:unique(
+                                           props:filter_undefined(Props)
+                                          )
+                           ]
+               ,content=Children
+               };
+group_el(Name, Children) ->
+    #xmlElement{name='group'
+               ,content=Children
+               ,attributes=[xml_attrib('name', Name)]
+               }.
+
+groups_el(Children) ->
+    #xmlElement{name='groups'
+               ,content=Children
+               }.
+
+
+users_el(Children) ->
+    #xmlElement{name='users'
+               ,content=Children
+               }.
+
+-spec user_ptr_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
+user_ptr_el(Id) ->
+    #xmlElement{name='user'
+               ,attributes=[xml_attrib(<<"id">>, Id)
+                           ,xml_attrib(<<"type">>, <<"pointer">>)
+                           ]
                }.
 
 -spec user_el(kz_types:xml_attrib_value() | kz_term:proplist(), kz_types:xml_els()) -> kz_types:xml_el().
@@ -1014,12 +1083,6 @@ profile_el(Name, Children) ->
 profiles_el(Children) ->
     #xmlElement{name='profiles'
                ,content=Children
-               }.
-
-group_el(Name, Children) ->
-    #xmlElement{name='group'
-               ,content=Children
-               ,attributes=[xml_attrib('name', Name)]
                }.
 
 control_el(Action, Digits) ->
@@ -1177,7 +1240,9 @@ prepend_child(#xmlElement{content=Contents}=El, Child) ->
 
 -spec xml_attrib(kz_types:xml_attrib_name(), kz_types:xml_attrib_value()) -> kz_types:xml_attrib().
 xml_attrib(Name, Value) when is_atom(Name) ->
-    #xmlAttribute{name=Name, value=kz_term:to_list(Value)}.
+    #xmlAttribute{name=Name, value=kz_term:to_list(Value)};
+xml_attrib(Name, Value) when is_binary(Name) ->
+    xml_attrib(kz_term:to_atom(Name, 'true'), Value).
 
 sofia_profiles_el(JObj) ->
     Content = lists:foldl(fun(Key, Xml) ->

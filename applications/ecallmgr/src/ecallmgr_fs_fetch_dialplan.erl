@@ -33,6 +33,7 @@ init() ->
 
 -spec dialplan(map()) -> fs_sendmsg_ret().
 dialplan(#{fetch_id := FetchId, payload := JObj}=Map) ->
+    lager:debug_unsafe("ROUTE REQ : ~s", [kz_json:encode(JObj, ['pretty'])]),
     lager:debug("start dialplan fetch ~s for ~s", [FetchId, kzd_fetch:call_id(JObj)]),
     Routines = [fun call_id/1
                ,fun timeout/1
@@ -67,7 +68,7 @@ timeout(#{payload := JObj}=Map) ->
     T4 = T3 - T0,
     T5 = T1 - T4,
     T6 = T5 div 1000,
-    Map#{timeout => T6 - 100}.
+    Map#{timeout => T6 - 500}.
 
 call_id(#{call_id := _CallId}=Map) -> Map;
 call_id(#{payload := JObj}=Map) ->
@@ -108,7 +109,8 @@ wait_for_route_resp(#{timeout := Timeout}=Map) ->
                     wait_for_route_resp(Map#{timeout => NewTimeout, reply => #{payload => Resp, props => Props}});
                 false ->
                     lager:info("received route reply"),
-                    maybe_wait_for_authz(Map#{reply => #{payload => Resp, props => Props}})
+                    NewTimeout = Timeout - kz_time:elapsed_ms(Now),
+                    maybe_wait_for_authz(Map#{reply => #{payload => Resp, props => Props}, authz_timeout => NewTimeout})
             end
     after Timeout ->
             lager:warning("timeout after ~B receiving route response", [Timeout]),
@@ -132,7 +134,7 @@ maybe_wait_for_authz(#{authz_worker := _AuthzWorker, reply := #{payload := Reply
 maybe_wait_for_authz(#{}=Map) ->
     send_reply(Map).
 
-wait_for_authz(#{authz_worker := {Pid, Ref}, reply := #{payload := JObj}=Reply}=Map) ->
+wait_for_authz(#{authz_worker := {Pid, Ref}, authz_timeout := Timeout, reply := #{payload := JObj}=Reply}=Map) ->
     lager:info("waiting for authz reply from worker ~p", [Pid]),
     receive
         {'authorize_reply', Ref, 'false'} -> send_reply(forbidden_reply(Map));
@@ -144,7 +146,8 @@ wait_for_authz(#{authz_worker := {Pid, Ref}, reply := #{payload := JObj}=Reply}=
                                  ,JObj
                                  ),
             send_reply(Map#{reply => Reply#{payload => J}})
-    after 5000 ->
+    after Timeout ->
+        %% TODO authz_dry_run ?
             lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
     end.
 
