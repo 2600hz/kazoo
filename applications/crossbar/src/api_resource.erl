@@ -405,6 +405,7 @@ malformed_request(Req, Context, ?HTTP_OPTIONS) ->
     {'false', Req, Context};
 malformed_request(Req, Context, _ReqVerb) ->
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
+        [<<>>] -> api_util:stop(Req, cb_context:add_system_error(<<"account_id is missing">>, Context));
         [AccountId] ->
             Context1 = cb_accounts:validate_resource(Context, AccountId),
             case cb_context:resp_status(Context1) of
