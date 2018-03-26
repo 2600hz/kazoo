@@ -52,6 +52,7 @@
                             ,{<<"cisco">>, ?CISCO_COMBO_KEYS}
                             ,{<<"grandstream">>, ?GRANDSTREAM_COMBO_KEYS}
                             ,{<<"obihai">>, ?OBIHAI_COMBO_KEYS}
+                            ,{<<"vtech">>, ?VTECH_COMBO_KEYS}
                             ])).
 
 -define(YEALINK_COMBO_KEYS,
@@ -72,6 +73,11 @@
 -define(OBIHAI_COMBO_KEYS,
         kz_json:from_list(
           [{<<"_">>, ?KEYS_FUN(<<"Busy Lamp Field">>, <<"Speed Dial">>, <<"Call Park Monitor">>, <<"Busy Lamp Field">>, <<"Call Appearance">>)}]
+         )).
+
+-define(VTECH_COMBO_KEYS,
+        kz_json:from_list(
+          [{<<"_">>, ?KEYS_FUN(<<"presense">>, <<"speed">>, <<"blf">>, <<"blf">>, <<"line">>)}]
          )).
 
 -define(PROVISIONER_V5_HRL, 'true').
