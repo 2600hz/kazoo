@@ -429,12 +429,15 @@ handle_cast({'continue', Key}, #state{flow=Flow
     end;
 handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
     {'stop', 'normal', State};
+handle_cast({'stop', _Cause}, #state{destroyed='true'}=State) ->
+    {'stop', 'normal', State};
 handle_cast({'stop', Cause}, #state{flows=[]
                                    ,call=Call
                                    }=State) ->
     hangup_call(Call, Cause),
     {'noreply', State};
 handle_cast({'stop', _Cause}, #state{flows=[Flow|Flows]}=State) ->
+    lager:info("ignoring stop (~s) as there are more flows", [_Cause]),
     {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
 handle_cast('hard_stop', State) ->
     {'stop', 'normal', State};
