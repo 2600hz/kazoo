@@ -28,15 +28,17 @@
        ).
 
 -define(DEFAULT_CACHE_PERIOD, 15 * ?SECONDS_IN_MINUTE).
+-define(ANY_TYPE_CACHING_POLICY, kz_json:from_list([{<<"any">>, ?DEFAULT_CACHE_PERIOD}])).
+-define(ANY_TYPE_CACHING_POLICY(T), kz_json:from_list([{<<"any">>, T}])).
 -define(DEFAULT_CACHING_POLICY, kz_json:from_list(
-                                  [{<<"deprecated">>, ?DEFAULT_CACHE_PERIOD}
-                                  ,{<<"aggregate">>, ?DEFAULT_CACHE_PERIOD}
-                                  ,{<<"numbers">>, ?DEFAULT_CACHE_PERIOD}
-                                  ,{<<"modb">>, ?DEFAULT_CACHE_PERIOD}
-                                  ,{<<"account">>, ?DEFAULT_CACHE_PERIOD}
-                                  ,{<<"system">>, ?DEFAULT_CACHE_PERIOD}
-                                  ,{<<"system_config">>, 'infinity'}
-                                  ,{<<"system_data">>, 'infinity'}
+                                  [{<<"deprecated">>, ?ANY_TYPE_CACHING_POLICY}
+                                  ,{<<"aggregate">>, ?ANY_TYPE_CACHING_POLICY}
+                                  ,{<<"numbers">>, ?ANY_TYPE_CACHING_POLICY}
+                                  ,{<<"modb">>, ?ANY_TYPE_CACHING_POLICY}
+                                  ,{<<"account">>, ?ANY_TYPE_CACHING_POLICY}
+                                  ,{<<"system">>, ?ANY_TYPE_CACHING_POLICY}
+                                  ,{<<"system_config">>, ?ANY_TYPE_CACHING_POLICY(<<"infinity">>)}
+                                  ,{<<"system_data">>, ?ANY_TYPE_CACHING_POLICY(<<"infinity">>)}
                                   ])).
 
 -spec open_cache_doc(kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) ->
@@ -215,9 +217,7 @@ expires_policy_value(DbName, Classification, Type) ->
                                    ,[DbName, <<"any">>]
                                    ,[Classification, Type]
                                    ,[Classification, <<"any">>]
-                                   ,[DbName]
-                                   ,[Type]
-                                   ,[Classification]
+                                   ,[<<"type">>, Type]
                                    ], CachePolicy, ?DEFAULT_CACHE_PERIOD) of
         <<"infinity">> -> 'infinity';
         Timeout -> kz_term:to_integer(Timeout)
