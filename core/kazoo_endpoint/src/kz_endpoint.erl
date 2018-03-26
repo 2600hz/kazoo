@@ -1672,8 +1672,7 @@ encryption_method_map(CCVs, []) -> CCVs;
 encryption_method_map(CCVs, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
         [] -> encryption_method_map(CCVs, Methods);
-        Values ->
-            encryption_method_map(kz_json:set_values(Values, CCVs), Method)
+        Values -> encryption_method_map(kz_json:set_values(Values, CCVs), Methods)
     end;
 encryption_method_map(CCVs, Endpoint) ->
     encryption_method_map(CCVs
