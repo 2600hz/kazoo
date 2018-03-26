@@ -3,7 +3,8 @@
 %%% @doc Handles branching the callflow based on the current average wait time
 %%% of a queue
 %%% Data: {
-%%%   "id":"queue id"
+%%%   "id":"queue id",
+%%%   "window":900 // Window over which average wait time is calc'd
 %%% }
 %%%
 %%%
@@ -24,11 +25,19 @@
 handle(Data, Call) ->
     AccountId = kapps_call:account_id(Call),
     QueueId = kz_json:get_ne_binary_value(<<"id">>, Data),
+    Window = kz_json:get_integer_value(<<"window">>, Data),
 
-    Req = [{<<"Account-ID">>, AccountId}
-          ,{<<"Queue-ID">>, QueueId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    case Window of
+        'undefined' -> 'ok';
+        _ -> lager:info("evaluating average wait time over last ~b seconds", [Window])
+    end,
+
+    Req = props:filter_undefined(
+            [{<<"Account-ID">>, AccountId}
+            ,{<<"Queue-ID">>, QueueId}
+            ,{<<"Window">>, Window}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
     case kapps_util:amqp_pool_request(Req
                                      ,fun kapi_acdc_stats:publish_average_wait_time_req/1
                                      ,fun kapi_acdc_stats:average_wait_time_resp_v/1
