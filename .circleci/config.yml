@@ -79,15 +79,15 @@ jobs:
     # Test
     #   This would typically be a build job when using workflows, possibly combined with build
     # This is based on your 1.0 configuration file or project settings
-    - run: echo -e "\nexport CHANGED=\"$(git --no-pager diff --name-only HEAD origin/master -- applications core)\"\nexport CHANGED_SWAGGER=\"$(git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)\"\n" >> $BASH_ENV
+    - run: echo -e "\nexport CHANGED=$(git --no-pager diff --name-only HEAD origin/master -- applications core | xargs readlink -e)\nexport CHANGED_SWAGGER=$(git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json | xargs readlink -e)\n" >> $BASH_ENV
     - run: echo $CHANGED
     - run: ./scripts/state-of-docs.sh || true
-    - run: ./scripts/code_checks.bash $($CHANGED)
+    - run: ./scripts/code_checks.bash $CHANGED
     - run: make fmt
     - run: JOBS="2" make
     - run: make code_checks
     - run: make app_applications
-    - run: ./scripts/validate-js.sh $($CHANGED)
+    - run: ./scripts/validate-js.sh $CHANGED
     - run: make apis
     - run: make docs
     - run: make validate-schemas
@@ -95,9 +95,9 @@ jobs:
     - run: make xref
     - run: make sup_completion
     - run: |
-        if [[ ! -z "$($CHANGED)" ]]; then
+        if [[ ! -z "$CHANGED" ]]; then
           make build-plt
-          TO_DIALYZE="$(echo $($CHANGED))" make dialyze
+          TO_DIALYZE="$CHANGED" make dialyze
         fi
     - run: make elvis
     - run: make build-ci-release
