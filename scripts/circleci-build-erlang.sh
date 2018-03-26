@@ -9,7 +9,8 @@ KAZOO_OTP_VERSION=$(<./make/erlang_version)
 OTP_VERSION=${OTP_VERSION:-$KAZOO_OTP_VERSION}
 
 echo "KERL_BUILD_BACKEND=git" > ~/.kerlrc
-
+echo "KERL_CONFIGURE_OPTIONS=\"--without-odbc --with-ssl --disable-hipe --enable-threads --enable-smp-support --enable-kernel-poll\"" >> ~/.kerlrc
+ 
 if [[ ! -d ~/.kerl/$OTP_VERSION ]]; then
     if [[ ! -d ~/.kerl ]]; then
         mkdir ~/.kerl
