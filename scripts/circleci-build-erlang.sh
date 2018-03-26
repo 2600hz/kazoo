@@ -8,6 +8,8 @@ cd $(pwd -P)/..
 KAZOO_OTP_VERSION=$(<./make/erlang_version)
 OTP_VERSION=${OTP_VERSION:-$KAZOO_OTP_VERSION}
 
+echo "KERL_BUILD_BACKEND=git" > ~/.kerlrc
+
 if [[ ! -d ~/.kerl/$OTP_VERSION ]]; then
     if [[ ! -d ~/.kerl ]]; then
         mkdir ~/.kerl
