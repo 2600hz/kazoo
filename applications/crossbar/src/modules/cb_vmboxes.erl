@@ -32,7 +32,7 @@
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 -define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
--define(BOX_ID_KEY_INDEX, 1).
+-define(BOX_ID_KEY_INDEX, 2).
 
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
@@ -762,7 +762,16 @@ empty_source_id(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_message_summary(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+load_message_summary('undefined', Context) ->
+    Options = [{'range_start_keymap', []}
+              ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
+              ],
+    load_message_summary('undefined', Context, <<"mailbox_messages/listing_by_timestamp">>, Options);
 load_message_summary(BoxId, Context) ->
+    load_message_summary(BoxId, Context, ?MSG_LISTING_BY_MAILBOX, [{'range_keymap', [BoxId]}]).
+
+-spec load_message_summary(kz_term:api_binary(), cb_context:context(), kz_term:ne_binary(), crossbar_view:options()) -> cb_context:context().
+load_message_summary(BoxId, Context, ViewName, Options) ->
     {MaxRange, RetentionSeconds} = get_max_range(Context),
     RetentionTimestamp = kz_time:now_s() - RetentionSeconds,
 
@@ -770,9 +779,9 @@ load_message_summary(BoxId, Context) ->
 
     ViewOptions = [{'mapper', Mapper}
                   ,{'max_range', MaxRange}
-                  ,{'range_keymap', [BoxId]}
+                   | Options
                   ],
-    crossbar_view:load_modb(prefix_qs_filter_keys(Context), ?MSG_LISTING_BY_MAILBOX, ViewOptions).
+    crossbar_view:load_modb(prefix_qs_filter_keys(Context), ViewName, ViewOptions).
 
 -spec prefix_qs_filter_keys(cb_context:context()) -> cb_context:context().
 prefix_qs_filter_keys(Context) ->
