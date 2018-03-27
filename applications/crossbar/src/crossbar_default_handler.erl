@@ -26,7 +26,7 @@ init(Req, HandlerOpts) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Path = cowboy_req:path(Req),
     case get_magic_token(Path) of
-        'undefined' -> {'ok', Req, 'undefined'};
+        'undefined' -> handle(Req, HandlerOpts);
         Magic ->
             case is_valid_magic_path(Magic) of
                 'true' ->
@@ -34,7 +34,7 @@ init(Req, HandlerOpts) ->
                     {?MODULE, Req, [{'magic_path', Magic} | HandlerOpts]};
                 'false' ->
                     lager:debug("invalid magic path: ~s", [Magic]),
-                    {'ok', Req, 'undefined'}
+                    handle(Req, HandlerOpts)
             end
     end.
 
