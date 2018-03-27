@@ -123,12 +123,19 @@ pretty_print_dollars(Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec base_call_cost(integer(), integer(), integer()) -> integer().
+-spec base_call_cost(units() | dollars(), units() | dollars(), units() | dollars()) -> units().
 base_call_cost(RateCost, RateMin, RateSurcharge)
   when is_integer(RateCost),
        is_integer(RateMin),
        is_integer(RateSurcharge) ->
-    RateCost * ( RateMin div 60 ) + RateSurcharge.
+    RateCost * (RateMin div 60) + RateSurcharge;
+base_call_cost(RateCost, RateMin, RateSurcharge) ->
+    Args = [maybe_convert_to_units(X) || X <- [RateCost, RateMin, RateSurcharge]],
+    apply(fun base_call_cost/3, Args).
+
+-spec maybe_convert_to_units(units() | dollars()) -> units().
+maybe_convert_to_units(Units) when is_integer(Units) -> Units;
+maybe_convert_to_units(Dollars) -> dollars_to_units(Dollars).
 
 %%------------------------------------------------------------------------------
 %% @doc
