@@ -915,12 +915,19 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
     end;
 get_value1([K|Ks], ?JSON_WRAPPER(Props), Default) ->
     get_value1(Ks, props:get_value(K, Props), Default);
-get_value1(_, undefined, Default) ->
+get_value1(_, 'undefined', Default) ->
     Default;
-get_value1(_, ?JSON_WRAPPER(_), Default) ->
-    Default;
-get_value1(_K, _V, _D) ->
-    erlang:error(badarg).
+get_value1(_K, JObj, Default) ->
+    try get_value_unwrap(JObj) of
+        'true' -> Default
+    catch
+        _:_ ->
+            lager:debug("unexpected params to get_value(~p, ~p, ~p)", [_K, JObj, Default]),
+            Default
+    end.
+
+-spec get_value_unwrap(any()) -> 'true'.
+get_value_unwrap(?JSON_WRAPPER(_)) -> 'true'.
 
 -spec values(object()) -> json_terms().
 values(JObj) ->
