@@ -1109,6 +1109,7 @@ handle_rm_binding(Binding, Props, #state{queue=Q
                                         ,Props
                                         ,Q
                                         )],
+    maybe_remove_federated_binding(Binding, Props, State),
     State#state{bindings=KeepBs}.
 
 -spec handle_add_binding(binding_module(), kz_term:proplist(), state()) ->
@@ -1172,6 +1173,18 @@ update_federated_bindings(#state{bindings=[{Binding, Props}|_]
             State#state{federators=NewListeners ++ Fs, waiting_federators=New ++ State#state.waiting_federators}
     end.
 
+-spec maybe_remove_federated_binding(binding(), kz_term:proplist(), state()) -> 'ok'.
+maybe_remove_federated_binding(Binding, Props, State) ->
+    maybe_remove_federated_binding(is_federated_binding(Props), Binding, Props, State).
+
+-spec maybe_remove_federated_binding(boolean(), binding(), kz_term:proplist(), state()) -> 'ok'.
+maybe_remove_federated_binding('true', Binding, Props, #state{federators=Fs}) when Fs =/= [] ->
+    NonFederatedProps = props:delete('federate', Props),
+    remove_federated_binding(Fs, Binding, NonFederatedProps);
+
+maybe_remove_federated_binding(_Flag, _Binging, _Props, _State) ->
+    'ok'.
+
 -spec broker_connections(federator_listeners(), kz_term:ne_binaries()) ->
                                 {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 broker_connections(Listeners, Brokers) ->
@@ -1192,6 +1205,13 @@ start_new_listener(Broker, Binding, Props, #state{params=Ps}) ->
     {'ok', Pid} = listener_federator:start_link(self(), Broker, FederateParams),
     lager:debug("started federated listener on broker ~s: ~p", [Broker, Pid]),
     {Broker, Pid}.
+
+-spec remove_federated_binding(federator_listeners(), binding_module(), kz_term:proplist()) -> 'ok'.
+remove_federated_binding(Listeners, Binding, Props) ->
+    _ = [?MODULE:rm_binding(Pid, Binding, Props)
+         || {_Broker, Pid} <- Listeners
+        ],
+    'ok'.
 
 -spec update_existing_listeners_bindings(federator_listeners(), binding_module(), kz_term:proplist()) -> 'ok'.
 update_existing_listeners_bindings(Listeners, Binding, Props) ->
