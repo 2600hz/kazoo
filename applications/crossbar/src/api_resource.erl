@@ -405,15 +405,23 @@ malformed_request(Req, Context, ?HTTP_OPTIONS) ->
     {'false', Req, Context};
 malformed_request(Req, Context, _ReqVerb) ->
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
-        [<<>>] -> api_util:stop(Req, cb_context:add_system_error(<<"account_id is missing">>, Context));
-        [AccountId] ->
-            Context1 = cb_accounts:validate_resource(Context, AccountId),
+        'undefined' ->
+            {'false', Req, Context};
+        [] ->
+            {'false', Req, Context};
+        [?MATCH_ACCOUNT_RAW(_) | _] = AccountArgs ->
+            Context1 = cb_accounts:validate_resource(Context, AccountArgs),
             case cb_context:resp_status(Context1) of
                 'success' -> {'false', Req, Context1};
                 _RespStatus -> api_util:stop(Req, Context1)
             end;
-        _Other ->
-            {'false', Req, Context}
+        [<<>> | _] ->
+            Error = kz_json:from_list([{<<"message">>, <<"missing account_id">>}]),
+            api_util:stop(Req, cb_context:add_system_error(404, <<"bad identifier">>, Error, Context));
+        [_Other | _] ->
+            Msg = kz_term:to_binary(io_lib:format("invalid account_id '~s'", [_Other])),
+            Error = kz_json:from_list([{<<"message">>, Msg}]),
+            api_util:stop(Req, cb_context:add_system_error(404, <<"bad identifier">>, Error, Context))
     end.
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
