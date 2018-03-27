@@ -2916,13 +2916,13 @@ wait_for_fax(Timeout) ->
 -spec get_event_type(kz_json:object()) -> {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_event_type(JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
-    {C, N, get_app(JObj)}.
+    {C, N, get_app(C, JObj)}.
 
--spec get_app(kz_json:object()) -> kz_term:api_binary().
-get_app(JObj) ->
-    kz_json:get_first_defined([<<"Application-Name">>
-                              ,[<<"Request">>, <<"Application-Name">>]
-                              ], JObj).
+-spec get_app(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
+get_app(<<"error">>, JObj) ->
+    kz_json:get_value([<<"Request">>, <<"Application-Name">>], JObj);
+get_app(_EvtCategory, JObj) ->
+    kz_json:get_value(<<"Application-Name">>, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc Sends call commands to the appropriate call control process.
