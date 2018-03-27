@@ -34,7 +34,7 @@
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 -define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
--define(BOX_ID_KEY_INDEX, 1).
+-define(BOX_ID_KEY_INDEX, 2).
 
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
@@ -782,9 +782,9 @@ load_message_summary(BoxId, Context) ->
     RetentionTimestamp = kz_time:current_tstamp() - RetentionSeconds,
     NormlizeFun = fun(J, Acc) -> message_summary_normalizer(BoxId, J, Acc, RetentionTimestamp) end,
     case message_summary_view_options(Context, BoxId, MaxRange) of
-        {'ok', ViewOptions} ->
+        {'ok', {ViewName, ViewOptions}} ->
             C1 = prefix_qs_filter_keys(cb_context:set_resp_status(Context, 'success')),
-            ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
+            ViewResults = crossbar_doc:load_view(ViewName
                                                 ,ViewOptions
                                                 ,C1
                                                 ,NormlizeFun
@@ -830,7 +830,7 @@ message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
     ].
 
 -spec message_summary_view_options(cb_context:context(), api_binary(), pos_integer()) ->
-                                          {'ok', crossbar_doc:view_options()} |
+                                          {'ok', {ne_binary(), crossbar_doc:view_options()}} |
                                           cb_context:context().
 message_summary_view_options(Context, BoxId, MaxRange) ->
     AccountId = cb_context:account_id(Context),
@@ -842,17 +842,21 @@ message_summary_view_options(Context, BoxId, MaxRange) ->
     end.
 
 -spec maybe_add_start_end_key(api_binary(), gregorian_seconds(), gregorian_seconds(), ne_binaries()) ->
-                                     crossbar_doc:view_options().
-maybe_add_start_end_key('undefined', _CreatedTo, _CreatedFrom, MODBs) ->
-    [{'databases', MODBs}
-    ,'descending'
-    ];
+                                     {ne_binary(), crossbar_doc:view_options()}.
+maybe_add_start_end_key('undefined', CreatedTo, CreatedFrom, MODBs) ->
+    {<<"mailbox_messages/listing_by_timestamp">>
+    ,[{'databases', MODBs}
+     ,{'startkey', [CreatedTo]}
+     ,{'endkey', [CreatedFrom, kz_json:new()]}
+     ,'descending'
+     ]};
 maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs) ->
-    [{'databases', MODBs}
-    ,{'startkey', [BoxId, CreatedTo]}
-    ,{'endkey', [BoxId, CreatedFrom]}
-    ,'descending'
-    ].
+    {?MSG_LISTING_BY_MAILBOX
+    ,[{'databases', MODBs}
+     ,{'startkey', [BoxId, CreatedTo]}
+     ,{'endkey', [BoxId, CreatedFrom]}
+     ,'descending'
+     ]}.
 
 %%--------------------------------------------------------------------
 %% @private
