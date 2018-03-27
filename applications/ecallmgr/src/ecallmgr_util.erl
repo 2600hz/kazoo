@@ -145,14 +145,20 @@ send_cmd(Node, _UUID, "kz_uuid_" ++ _ = API, Args) ->
     freeswitch:api(Node, kz_term:to_atom(API, 'true'), kz_term:to_list(Args));
 send_cmd(Node, UUID, App, Args) ->
     AppName = dialplan_application(App),
-    Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                            ,{"execute-app-name", AppName}
-                                            ,{"execute-app-arg", kz_term:to_list(Args)}
-                                            ]),
-    lager:debug("execute on node ~s(~s) ~s(~s): ~p"
-               ,[Node, UUID, AppName, Args, Result]
-               ),
-    Result.
+    case freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                        ,{"execute-app-name", AppName}
+                                        ,{"execute-app-arg", kz_term:to_list(Args)}
+                                        ])
+    of
+        {'error', 'baduuid'} ->
+            lager:info("uuid ~s on node ~s is bad", [UUID, Node]),
+            throw({'error', 'baduuid'});
+        Result ->
+            lager:debug("execute on node ~s(~s) ~s(~s): ~p"
+                       ,[Node, UUID, AppName, Args, Result]
+                       ),
+            Result
+    end.
 
 -spec cmd_is_empty({list(), list()}) -> boolean().
 cmd_is_empty({"kz_multiset", "^^"}) -> 'true';

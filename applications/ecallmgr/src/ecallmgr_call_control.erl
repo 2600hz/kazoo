@@ -1050,6 +1050,14 @@ execute_control_request(Cmd, #state{node=Node
 
     try Mod:exec_cmd(Node, CallLeg, Cmd, self())
     catch
+        'throw':{'error', 'baduuid'} ->
+            lager:debug("unable to execute command, baduuid"),
+            Msg = list_to_binary(["Session ", CallId
+                                 ," not found for ", Application
+                                 ]),
+            send_error_resp(CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId},
+            'ok';
         _:{'error', 'nosession'} ->
             lager:debug("unable to execute command, no session"),
             Msg = list_to_binary(["Session ", CallId
