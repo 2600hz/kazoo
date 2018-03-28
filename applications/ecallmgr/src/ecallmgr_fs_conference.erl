@@ -246,7 +246,6 @@ publish_event(Action, #conference{handling_locally=IsLocal} = Conference, Props,
 
 -spec publish_event(kz_term:proplist()) -> 'ok'.
 publish_event(Event) ->
-    lager:debug("publishing: ~p", [Event]),
     kz_amqp_worker:cast(Event, fun kapi_conference:publish_event/1).
 
 conference_event(Action, Conference, Props) ->

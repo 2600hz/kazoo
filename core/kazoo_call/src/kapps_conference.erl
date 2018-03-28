@@ -407,7 +407,7 @@ set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
--spec profile_name(conference()) -> kz_term:api_ne_binary().
+-spec profile_name(conference()) -> kz_term:ne_binary().
 profile_name(#kapps_conference{profile_name='undefined'}) -> ?DEFAULT_PROFILE_NAME;
 profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
 
@@ -419,10 +419,7 @@ set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
 profile(#kapps_conference{profile='undefined'}=Conference) ->
     build_conference_profile(Conference);
 profile(#kapps_conference{profile=Profile}=Conference) ->
-    case profile_name(Conference) of
-        'undefined' -> {id(Conference), Profile};
-        Name -> {Name, Profile}
-    end.
+    {profile_name(Conference), Profile}.
 
 -spec build_conference_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
 build_conference_profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME

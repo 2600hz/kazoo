@@ -167,7 +167,7 @@ elvis: $(ELVIS)
 
 ci: clean compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
 
-diff: export TO_DIALYZE = $(shell git diff --name-only master... -- $(ROOT)/applications/ $(ROOT)/core/)
+diff: export TO_DIALYZE = $(shell git diff --name-only 4.2... -- $(ROOT)/applications/ $(ROOT)/core/)
 diff: dialyze-it
 
 bump-copyright:
