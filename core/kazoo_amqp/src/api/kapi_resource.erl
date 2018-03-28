@@ -73,6 +73,8 @@
                                         ,<<"Export-Custom-Channel-Vars">>
                                         ,<<"Originate-Immediate">>
                                         ,<<"Outbound-Call-ID">>
+                                        ,<<"Origination-Call-ID">>
+
                                              %% Eavesdrop
                                         ,<<"Eavesdrop-Call-ID">>
                                         ,<<"Eavesdrop-Mode">>
