@@ -176,7 +176,7 @@
         ,<<"variable_sip_from_user">>
         ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
-        ,<<"variable_sip_origination_call_id">>
+        ,<<"variable_sip_origination_call_uuid">>
         ,<<"variable_sip_received_ip">>
         ,<<"variable_sip_received_port">>
         ,<<"variable_sip_refer_to">>
