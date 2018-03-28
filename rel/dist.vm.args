@@ -9,7 +9,7 @@
 +K true
 
 # Start a pool of asynchronous IO threads
-+A 100
++A 25
 
 # Treat error_logger:warning_msg/2 as warnings instead of errors (default)
 +W w
