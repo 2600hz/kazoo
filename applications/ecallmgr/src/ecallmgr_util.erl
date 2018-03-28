@@ -162,6 +162,7 @@ send_cmd(Node, UUID, App, Args) ->
 
 -spec cmd_is_empty({list(), list()}) -> boolean().
 cmd_is_empty({"kz_multiset", "^^"}) -> 'true';
+cmd_is_empty({_, "kz_multiset ^^"}) -> 'true';
 cmd_is_empty(_) -> 'false'.
 
 -spec dialplan_application(string()) -> string().
