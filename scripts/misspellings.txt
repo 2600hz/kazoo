@@ -31,6 +31,7 @@ becoming|becomeing
 beginning|begining
 believe|beleive
 bellwether|bellweather
+below|bellow
 buoy|bouy
 buoyant|bouyant
 business|buisness

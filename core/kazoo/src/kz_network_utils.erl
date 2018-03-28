@@ -222,7 +222,7 @@ verify_cidr(IP, CIDR) ->
     end.
 
 %%     %% As per the docs... "This operation should only be used for test purposes"
-%%     %% so, ummm ya, but probably cheaper then my expand bellow followed by a list
+%%     %% so, ummm ya, but probably cheaper then my expand below followed by a list
 %%     %% test.  Just be aware this should only be used where performance is not
 %%     %% critical
 %%     case orber_acl:verify(IP, CIDR, 'inet') of

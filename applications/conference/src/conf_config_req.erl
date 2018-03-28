@@ -15,11 +15,12 @@ handle_req(JObj, Props) ->
     'true' = kapi_conference:config_req_v(JObj),
     Request = kz_json:get_ne_binary_value(<<"Request">>, JObj),
 
-    case props:get_value('server', Props) of
+    case props:get_value('is_participant', Props) of
         'undefined' ->
             lager:debug("'~s' profile request received, no participant involved here", [Request]),
             handle_request(Request, JObj, create_conference(JObj));
-        Server ->
+        'true' ->
+            Server = props:get_value('server', Props),
             lager:debug("'~s' profile request received, asking participant ~p", [Request, Server]),
             {'ok', Conference} = conf_participant:conference(Server),
             handle_request(Request, JObj, Conference)
@@ -114,6 +115,7 @@ update_prompt(Key, Value, Acc) ->
 -spec update_prompt(kz_json:key(), kz_json:key(), kz_json:json_string(), update_acc()) -> update_acc().
 update_prompt(<<"dnuos-", _/binary>>, _Key, <<>>, Acc) -> Acc;
 update_prompt(<<"dnuos-", _/binary>>, _Key, <<"tone_stream://", _/binary>>, Acc) -> Acc;
+update_prompt(<<"dnuos-", _/binary>>, _Key, <<"silence_stream://", _/binary>>, Acc) -> Acc;
 update_prompt(<<"dnuos-", _/binary>>, _Key, <<"$${", _/binary>>, Acc) -> Acc;
 update_prompt(<<"dnuos-", _/binary>>, Key, PromptId, {Conference, Profile}) ->
     AccountId = prompt_account_id(Conference),
