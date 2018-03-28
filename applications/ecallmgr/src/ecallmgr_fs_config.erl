@@ -471,7 +471,7 @@ maybe_fetch_conference_profile(Node, Id, _Data, 'undefined') ->
     lager:debug("failed to lookup undefined conference profile"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
     send_conference_profile_xml(Node, Id, XmlResp);
-maybe_fetch_conference_profile(Node, Id, Data, Profile) ->
+maybe_fetch_conference_profile(Node, Id, _Data, Profile) ->
     Cmd = [{<<"Request">>, <<"Conference">>}
           ,{<<"Profile">>, Profile}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
