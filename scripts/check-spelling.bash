@@ -16,8 +16,10 @@ function check_spelling {
     bad_sed=${bad// /\\|}
 
     while IFS= read f; do
-        echo "  fixing $f with $correct"
-        sed -i "s/$bad_sed/$correct/g" $f
+        if [ $(basename $f) != "misspellings.txt" ]; then
+            echo "  fixing $f with $correct"
+            sed -i "s/$bad_sed/$correct/g" $f
+        fi
     done < <(echo $CHANGED | xargs egrep -lw "$bad_grep" )
 }
 
