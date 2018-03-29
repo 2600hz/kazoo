@@ -1218,8 +1218,10 @@ create_json_chunk_response(Req, Context) ->
     JObjs = cb_context:resp_data(Context),
     create_json_chunk_response(Req, JObjs, cb_context:fetch(Context, 'chunking_started', 'false')).
 
--spec create_json_chunk_response(cowboy_req:req(), kz_json:objects(), boolean()) ->
+-spec create_json_chunk_response(cowboy_req:req(), kz_json:api_objects(), boolean()) ->
                                         {boolean(), cowboy_req:req()}.
+create_json_chunk_response(Req, 'undefined', StartedChunk) ->
+    {StartedChunk, Req};
 create_json_chunk_response(Req, [], StartedChunk) ->
     {StartedChunk, Req};
 create_json_chunk_response(Req, JObjs, StartedChunk) ->
