@@ -46,9 +46,9 @@
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 -define(FS_MODULE, mod_kazoo).
 
--type fs_api_ok() :: {'ok', binary()}.
--type fs_api_error():: {'error', 'timeout' | 'exception' | binary()}.
--type fs_api_return() :: fs_api_ok() | fs_api_error() | 'ok'.
+-type fs_api_ok() :: mod_kazoo:fs_api_ok().
+-type fs_api_error():: mod_kazoo:fs_api_error().
+-type fs_api_return() :: mod_kazoo:fs_api_return().
 -export_type([fs_api_ok/0
              ,fs_api_error/0
              ,fs_api_return/0
