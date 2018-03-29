@@ -322,8 +322,14 @@ maybe_add_stale_to_options('false') ->[].
 %%------------------------------------------------------------------------------
 -spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_chunked_cdrs(Context, RespType) ->
+    load_chunked_cdrs(Context, RespType, cb_context:resp_data(Context)).
+
+-spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary(), resp_data()) -> cb_context:context().
+load_chunked_cdrs(Context, _, 'undefined') ->
+    Context;
+load_chunked_cdrs(Context, RespType, RespData) ->
     Fun = fun(JObj, Acc) -> split_to_modbs(cb_context:account_id(Context), kz_doc:id(JObj), Acc) end,
-    MapIds = lists:foldl(Fun, #{}, cb_context:resp_data(Context)),
+    MapIds = lists:foldl(Fun, #{}, RespData),
     C1 = cb_context:set_resp_data(Context, []),
     maps:fold(fun(Db, Ids, C) -> load_chunked_cdr_ids(C, RespType, Db, Ids) end, C1, MapIds).
 
@@ -363,10 +369,12 @@ load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
             crossbar_doc:handle_datamgr_errors(Reason, <<"load_cdrs">>, Context)
     end.
 
+-spec normalize_cdrs(cb_context:context(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects() | kz_term:binaries().
 normalize_cdrs(Context, <<"json">>, JObjs) ->
     [normalize_cdr_to_jobj(JObj, Context) || JObj <- JObjs];
 normalize_cdrs(Context, <<"csv">>, JObjs) ->
-    [normalize_cdr_to_csv(JObj, Context) || JObj <- JObjs].
+    {_, Data} = lists:foldl(fun(J, {C, Acc}) -> normalize_cdr_to_csv(J, C, Acc) end, {Context, []}, JObjs),
+    lists:reverse(Data).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalize CDR in JSON
@@ -382,15 +390,18 @@ normalize_cdr_to_jobj(JObj, Context) ->
 %% @doc Normalize CDR in CSV
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_cdr_to_csv(kz_json:object(), cb_context:context()) -> binary().
-normalize_cdr_to_csv(JObj, Context) ->
+-spec normalize_cdr_to_csv(kz_json:object(), cb_context:context(), kz_term:binaries()) -> {cb_context:context(), kz_term:binaries()}.
+normalize_cdr_to_csv(JObj, Context, Acc) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
     CSV = kz_binary:join([F(JObj, Timestamp) || {_, F} <- csv_rows(Context)], <<",">>),
     case cb_context:fetch(Context, 'chunking_started') of
-        'true' -> <<CSV/binary, "\r\n">>;
+        'true' ->
+            {Context, [<<CSV/binary, "\r\n">> | Acc]};
         'false' ->
             CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)], <<",">>),
-            <<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>
+            {cb_context:store(Context, chunking_started, 'true')
+            ,[<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">> | Acc]
+            }
 
     end.
 
