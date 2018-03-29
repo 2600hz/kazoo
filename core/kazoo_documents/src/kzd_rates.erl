@@ -114,7 +114,7 @@ direction(Doc, Default) ->
 
 -spec set_direction(doc(), kz_term:ne_binaries() | kz_term:ne_binary()) -> doc().
 set_direction(Doc, Directions) when is_list(Directions) ->
-    kz_json:set_value([<<"direction">>], Direction, Doc);
+    kz_json:set_value([<<"direction">>], Directions, Doc);
 set_direction(Doc, Direction) when is_binary(Direction) ->
     set_direction(Doc, [Direction]).
 
