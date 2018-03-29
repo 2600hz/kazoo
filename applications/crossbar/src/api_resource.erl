@@ -999,7 +999,6 @@ next_chunk_fold(#{chunking_started := StartedChunk
                  } = crossbar_view:next_chunk(ChunkMap0#{context := Context1}),
 
     case api_util:succeeded(Context2)
-        andalso cb_context:resp_data(Context2) =/= 'undefined'
         andalso crossbar_bindings:fold(Event, {Req0, Context2})
     of
         'false' ->
@@ -1058,10 +1057,20 @@ process_chunk(#{context := Context
     of
         'false' ->
             finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)});
+        0 ->
+            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
+                                     ,chunking_started => IsStarted
+                                     }
+                           );
         SentLength when is_integer(SentLength) ->
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, 'true')
                                      ,chunking_started => 'true'
                                      ,previous_chunk_length => SentLength
+                                     }
+                           );
+        [] ->
+            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
+                                     ,chunking_started => IsStarted
                                      }
                            );
         Resp when is_list(Resp) ->
