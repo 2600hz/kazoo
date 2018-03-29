@@ -53,9 +53,6 @@
                     ,{{?MODULE, 'handle_conference_error'}
                      ,[{<<"conference">>, <<"error">>}]
                      }
-                    ,{'conf_config_req'
-                     ,[{<<"conference">>, <<"config_req">>}]
-                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -75,7 +72,6 @@
                      ,last_dtmf = <<>> :: binary()
                      ,remote = 'false' :: boolean()
                      ,name_pronounced :: conf_pronounced_name:name_pronounced()
-                     ,config_queue = 'undefined' :: kz_term:api_binary()
                      }).
 -type participant() :: #participant{}.
 
@@ -238,9 +234,6 @@ handle_cast({'channel_replaced', NewCallId}
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     {'noreply', Participant#participant{call=NewCall}};
 
-handle_cast({'gen_listener', {'created_queue', <<"config-", _/binary>> = Q}}, P) ->
-    lager:debug("participant configuration queue created ~s", [Q]),
-    {'noreply', P#participant{config_queue=Q}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                 ,call=Call
                                                                 }=P) ->
@@ -269,14 +262,6 @@ handle_cast({'set_conference', Conference}, Participant=#participant{call=Call})
     CallId = kapps_call:call_id(Call),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
     gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'event', {ConferenceId, CallId}}]}]),
-    kz_util:spawn(fun gen_listener:add_queue/4
-                 ,[self()
-                  ,<<"config-", ConferenceId/binary>>
-                  ,[{'queue_options', [{'exclusive', 'false'}]}
-                   ,{'consume_options', [{'exclusive', 'false'}]}
-                   ]
-                  ,[{'conference', [{'restrict_to', [{'config', get_profile_name(Conference)}]}, 'federate']}]
-                  ]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
@@ -292,10 +277,6 @@ handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
                ,[_Message]
                ),
     {'noreply', Participant};
-handle_cast('join_local', #participant{config_queue='undefined'}=Participant) ->
-    lager:debug("configuration queue not created, delaying join_local by 100 ms"),
-    gen_listener:delayed_cast(self(), 'join_local', 100),
-    {'noreply', Participant};
 handle_cast('join_local', #participant{call=Call
                                       ,conference=Conference
                                       }=Participant) ->
@@ -303,10 +284,6 @@ handle_cast('join_local', #participant{call=Call
     send_conference_command(Conference, Call),
     {'noreply', Participant};
 
-handle_cast({'join_remote', JObj}, #participant{config_queue='undefined'}=Participant) ->
-    lager:debug("configuration queue not created, delaying join_remote by 100 ms"),
-    gen_listener:delayed_cast(self(), {'join_remote', JObj}, 100),
-    {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                ,conference=Conference
                                                ,name_pronounced=Name
