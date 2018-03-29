@@ -407,7 +407,7 @@ set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
--spec profile_name(conference()) -> kz_term:api_ne_binary().
+-spec profile_name(conference()) -> kz_term:ne_binary().
 profile_name(#kapps_conference{profile_name='undefined'}) -> ?DEFAULT_PROFILE_NAME;
 profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
 
@@ -417,26 +417,35 @@ set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
 
 -spec profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
 profile(#kapps_conference{profile='undefined'}=Conference) ->
+    lager:debug("profile not set, building"),
     build_conference_profile(Conference);
 profile(#kapps_conference{profile=Profile}=Conference) ->
-    case profile_name(Conference) of
-        'undefined' -> {id(Conference), Profile};
-        Name -> {Name, Profile}
-    end.
+    {profile_name(Conference), Profile}.
 
 -spec build_conference_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
 build_conference_profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
                                           ,account_id='undefined'
                                           }=Conference) ->
+    lager:debug("no account id for default profile '~s', using system", [?DEFAULT_PROFILE_NAME]),
     build_system_profile(Conference);
-build_conference_profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME}=Conference) ->
+build_conference_profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
+                                          ,account_id=_AccountId
+                                          }=Conference) ->
+    lager:debug("using account '~s' for default profile '~s'", [_AccountId, ?DEFAULT_PROFILE_NAME]),
     build_account_profile(Conference);
 
-build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id='undefined'}=Conference) ->
+build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME
+                                          ,account_id='undefined'
+                                          }=Conference) ->
+    lager:debug("no account id for page profile ~s, using system", [?PAGE_PROFILE_NAME]),
+
     Language = language(Conference),
     Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME], default_page_profile(Language, 'undefined')),
     {?PAGE_PROFILE_NAME, Profile};
-build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id=AccountId}=Conference) ->
+build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME
+                                          ,account_id=AccountId
+                                          }=Conference) ->
+    lager:debug("using account '~s' for page profile ~s", [AccountId, ?PAGE_PROFILE_NAME]),
     Language = language(Conference),
     DefaultPageProfile = default_page_profile(Language, AccountId),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME]) of
@@ -445,13 +454,20 @@ build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, acco
     end;
 build_conference_profile(#kapps_conference{profile_name='undefined'}=Conference) ->
     build_conference_profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
-build_conference_profile(#kapps_conference{profile_name=ProfileName, account_id='undefined'}=Conference) ->
+build_conference_profile(#kapps_conference{profile_name=ProfileName
+                                          ,account_id='undefined'
+                                          }=Conference) ->
+    lager:debug("no account id for profile ~s, building from defaults", [ProfileName]),
     Language = language(Conference),
     case kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
         'undefined' -> profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
         Profile -> {ProfileName, Profile}
     end;
-build_conference_profile(#kapps_conference{profile_name=ProfileName, account_id=AccountId}=Conference) ->
+build_conference_profile(#kapps_conference{profile_name=ProfileName
+                                          ,account_id=AccountId
+                                          }=Conference) ->
+    lager:debug("using account '~s' to build profile ~s", [AccountId, ProfileName]),
+
     Language = language(Conference),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
         'undefined' -> build_conference_profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
@@ -473,7 +489,9 @@ build_account_profile(Conference) ->
         {'undefined', 'undefined'} -> {ProfileName, DefaultProfile};
         {'undefined', Profile} -> {ProfileName, Profile};
         {LanguageProfile, 'undefined'} -> {ProfileName, LanguageProfile};
-        {LanguageProfile, Profile} -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
+        {LanguageProfile, Profile} ->
+            lager:debug("merging profiles"),
+            {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
 -spec build_system_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
@@ -491,7 +509,9 @@ build_system_profile(Conference) ->
                               )
     of
         'undefined' -> {ProfileName, LanguageProfile};
-        Profile -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
+        Profile ->
+            lager:debug("merging profiles"),
+            {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
 -spec raw_profile(conference()) -> kz_term:api_object().

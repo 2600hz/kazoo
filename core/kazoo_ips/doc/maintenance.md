@@ -2,7 +2,7 @@
 
 ## Operations
 
-Currently the operations team must maintain the list of IP addresses.  This should be facilitated by use of the SUP commands detailed bellow.
+Currently the operations team must maintain the list of IP addresses.  This should be facilitated by use of the SUP commands detailed below.
 
 ### Making IPs Available
 When a new block of IP addresses are aquired they should be distributed among the SBCs and added to the bind lists.  These IPs should then be added via the SUP command to the list of available IPs specifying the zone and host where the IP exists.
@@ -16,7 +16,7 @@ In the event of an issue, the IP summary can be used to determine:
 By filtering the summary by host the assignments to a particular server can be determined and compaired.  This allows rapid diagnostics and configuration reconstruction in the event an IP fails to route properly.
 
 ### Assigning IPs
-At this time IP assignment remains the take of operations.  When a client needs an IP address the operations team should find one in the customers perfered zone.  Once identified the IP should be assigned to the customers account using the SUP commands bellow.
+At this time IP assignment remains the take of operations.  When a client needs an IP address the operations team should find one in the customers perfered zone.  Once identified the IP should be assigned to the customers account using the SUP commands below.
 
 ## SUP Commands
 
