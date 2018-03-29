@@ -9,7 +9,6 @@ cd $ROOT
 FILE="$ROOT/scripts/misspellings.txt"
 CHANGED=${CHANGED:-$(git --no-pager diff --name-only HEAD origin/4.2 -- $ROOT/applications $ROOT/core $ROOT/doc)}
 
-echo "SPELLCHECK CHANGED: $CHANGED"
 function check_spelling {
     correct=$(echo "$1" | cut -f1 -d"|")
     bad=$(echo "$1" | cut -f2 -d"|")
@@ -17,7 +16,7 @@ function check_spelling {
     bad_sed=${bad// /\\|}
 
     while IFS= read f; do
-        if [ $(basename $f) != "mispellings.txt" ]; then
+        if [ $(basename $f) != $(basename $FILE) ]; then
             echo "  fixing $f with $correct"
             sed -i "s/$bad_sed/$correct/g" $f
         fi
