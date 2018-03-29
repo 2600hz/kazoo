@@ -1218,8 +1218,10 @@ create_json_chunk_response(Req, Context) ->
     JObjs = cb_context:resp_data(Context),
     create_json_chunk_response(Req, JObjs, cb_context:fetch(Context, 'chunking_started', 'false')).
 
--spec create_json_chunk_response(cowboy_req:req(), kz_json:objects(), boolean()) ->
+-spec create_json_chunk_response(cowboy_req:req(), kz_json:api_objects(), boolean()) ->
                                         {boolean(), cowboy_req:req()}.
+create_json_chunk_response(Req, 'undefined', StartedChunk) ->
+    {StartedChunk, Req};
 create_json_chunk_response(Req, [], StartedChunk) ->
     {StartedChunk, Req};
 create_json_chunk_response(Req, JObjs, StartedChunk) ->
@@ -1249,12 +1251,20 @@ do_encode_to_json(JObjs) ->
 -spec create_csv_chunk_response(cowboy_req:req(), cb_context:context()) ->
                                        {boolean(), cowboy_req:req()}.
 create_csv_chunk_response(Req, Context) ->
-    CSVs = cb_context:resp_data(Context),
-    case cb_context:fetch(Context, 'chunking_started', 'false') of
-        'true' ->
+    case {cb_context:resp_data(Context)
+         ,cb_context:fetch(Context, 'chunking_started', 'false')
+         }
+    of
+        {'undefined', IsStarted} ->
+            {IsStarted, Req};
+        {<<>>, IsStarted} ->
+            {IsStarted, Req};
+        {[], IsStarted} ->
+            {IsStarted, Req};
+        {CSVs, 'true'} ->
             'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req),
             {'true', Req};
-        'false' ->
+        {CSVs, 'false'} ->
             FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
             Req1 = init_chunk_stream(Req, <<"to_csv">>, FileName),
             'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req1),

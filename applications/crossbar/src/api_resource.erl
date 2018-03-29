@@ -676,11 +676,15 @@ does_request_validate(Req, Context0) ->
             {'false', Req, Context2};
         'false' ->
             lager:debug("failed to validate resource"),
-            Msg = case cb_context:resp_error_msg(Context2) of
-                      'undefined' ->
-                          Data = cb_context:resp_data(Context2),
+            Msg = case {cb_context:resp_error_msg(Context2)
+                       ,cb_context:resp_data(Context2)
+                       }
+                  of
+                      {'undefined', 'undefined'} ->
+                          <<"validation failed">>;
+                      {'undefined', Data} ->
                           kz_json:get_value(<<"message">>, Data, <<"validation failed">>);
-                      Message -> Message
+                      {Message, _} -> Message
                   end,
             api_util:stop(Req, cb_context:set_resp_error_msg(Context2, Msg))
     end.
@@ -839,7 +843,11 @@ to_binary(Req, Context, 'undefined') ->
     Event = api_util:create_event_name(Context, <<"to_binary">>),
     _ = crossbar_bindings:map(Event, {Req, Context}),
     %% Handle HTTP range header
-    case cb_context:req_header(Context, <<"range">>) of
+    case kz_term:is_ne_binary(RespData)
+        andalso cb_context:req_header(Context, <<"range">>)
+    of
+        'false' ->
+            {<<>>, api_util:set_resp_headers(Req, Context), Context};
         'undefined' ->
             {RespData, api_util:set_resp_headers(Req, Context), Context};
         RangeHeader ->
@@ -944,8 +952,10 @@ to_pdf(Req, Context) ->
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
     to_pdf(Req1, Context1, cb_context:resp_data(Context1)).
 
--spec to_pdf(cowboy_req:req(), cb_context:context(), binary()) ->
+-spec to_pdf(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
                     {binary(), cowboy_req:req(), cb_context:context()}.
+to_pdf(Req, Context, 'undefined') ->
+    to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, <<>>) ->
     to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, RespData) ->
@@ -1047,10 +1057,20 @@ process_chunk(#{context := Context
     of
         'false' ->
             finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)});
+        0 ->
+            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
+                                     ,chunking_started => IsStarted
+                                     }
+                           );
         SentLength when is_integer(SentLength) ->
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, 'true')
                                      ,chunking_started => 'true'
                                      ,previous_chunk_length => SentLength
+                                     }
+                           );
+        [] ->
+            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
+                                     ,chunking_started => IsStarted
                                      }
                            );
         Resp when is_list(Resp) ->
@@ -1063,7 +1083,7 @@ process_chunk(#{context := Context
                            );
         _Other ->
             lager:debug("event ~s returned unsupported chunk response, stopping here", [EventName]),
-            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)}) %% TOFU: stop
+            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)})
     end.
 
 -spec reset_context_between_chunks(cb_context:context(), boolean()) -> cb_context:context().
