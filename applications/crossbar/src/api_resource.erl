@@ -1083,7 +1083,7 @@ process_chunk(#{context := Context
                            );
         _Other ->
             lager:debug("event ~s returned unsupported chunk response, stopping here", [EventName]),
-            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)}) %% TOFU: stop
+            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)})
     end.
 
 -spec reset_context_between_chunks(cb_context:context(), boolean()) -> cb_context:context().
