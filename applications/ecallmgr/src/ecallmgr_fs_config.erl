@@ -412,13 +412,13 @@ maybe_convert_sound(_, _Key, _Value, Profile) ->
     Profile.
 
 -spec fetch_conference_config(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> fs_sendmsg_ret().
-fetch_conference_config(Node, Id, <<"COMMAND">>, Data) ->
-    maybe_fetch_conference_profile(Node, Id, Data, props:get_value(<<"profile_name">>, Data));
-fetch_conference_config(Node, Id, <<"REQUEST_PARAMS">>, Data) ->
+fetch_conference_config(Node, FetchId, <<"COMMAND">>, Data) ->
+    maybe_fetch_conference_profile(Node, FetchId, Data, props:get_value(<<"profile_name">>, Data));
+fetch_conference_config(Node, FetchId, <<"REQUEST_PARAMS">>, Data) ->
     Action = props:get_value(<<"Action">>, Data),
     ConfName = props:get_value(<<"Conf-Name">>, Data),
     lager:debug("request conference:~s params:~s", [ConfName, Action]),
-    fetch_conference_params(Node, Id, Action, ConfName, Data).
+    fetch_conference_params(Node, FetchId, Action, ConfName, Data).
 
 fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
     FSName = props:get_value(<<"Controls">>, Data),
@@ -467,13 +467,14 @@ handle_conference_params_response(_Error) ->
     ecallmgr_fs_xml:not_found().
 
 -spec maybe_fetch_conference_profile(atom(), kz_term:ne_binary(), kzd_freeswitch:doc(), kz_term:api_binary()) -> fs_sendmsg_ret().
-maybe_fetch_conference_profile(Node, Id, _Data, 'undefined') ->
+maybe_fetch_conference_profile(Node, FetchId, _Data, 'undefined') ->
     lager:debug("failed to lookup undefined conference profile"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
-    send_conference_profile_xml(Node, Id, XmlResp);
-maybe_fetch_conference_profile(Node, Id, _Data, Profile) ->
+    send_conference_profile_xml(Node, FetchId, XmlResp);
+maybe_fetch_conference_profile(Node, FetchId, Data, Profile) ->
     Cmd = [{<<"Request">>, <<"Conference">>}
           ,{<<"Profile">>, Profile}
+          ,{<<"Conference-ID">>, conference_id(props:get_value(<<"Conf-Name">>, Data), Profile)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("fetching profile '~s'", [Profile]),
@@ -497,7 +498,15 @@ maybe_fetch_conference_profile(Node, Id, _Data, Profile) ->
                       {'ok', Resp} = ecallmgr_fs_xml:not_found(),
                       Resp
               end,
-    send_conference_profile_xml(Node, Id, XmlResp).
+    send_conference_profile_xml(Node, FetchId, XmlResp).
+
+-spec conference_id(kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+conference_id('undefined', Profile) ->
+    case binary:split(Profile, <<"_">>) of
+        [ConferenceId, _AccountId] -> ConferenceId;
+        _ -> 'undefined'
+    end;
+conference_id(ConferenceId, _Profile) -> ConferenceId.
 
 -spec send_conference_profile_xml(atom(), kz_term:ne_binary(), iolist()) -> fs_sendmsg_ret().
 send_conference_profile_xml(Node, Id, XmlResp) ->
