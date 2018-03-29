@@ -19,7 +19,7 @@ handle_req(JObj, _Props) ->
 
 -spec create_conference(kz_json:object()) -> kapps_conference:conference().
 create_conference(JObj) ->
-    Conference = kapps_conference:new(),
+    Conference = kapps_conference:from_json(JObj),
     ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj),
     case binary:split(ProfileName, <<"_">>) of
         [ConferenceId, AccountId] ->
