@@ -9,6 +9,7 @@
 -export([candidate_rates/1, candidate_rates/2, candidate_rates/3
         ,matching_rates/2
         ,sort_rates/1
+        ,sort_rates_by_cost/1, sort_rates_by_weight/1
         ,account_ratedeck/1, account_ratedeck/2
         ]).
 
@@ -196,15 +197,23 @@ matching_rates(Rates, RateReq) ->
 -spec sort_rates(kzd_rates:docs()) -> kzd_rates:docs().
 sort_rates(Rates) ->
     case hotornot_config:should_sort_by_weight() of
-        'true' -> lists:usort(fun sort_rate_by_weight/2, Rates);
-        'false' -> lists:usort(fun sort_rate_by_cost/2, Rates)
+        'true' -> sort_rates_by_weight(Rates);
+        'false' -> sort_rates_by_cost(Rates)
     end.
+
+-spec sort_rates_by_weight(kzd_rates:docs()) -> kzd_rates:docs().
+sort_rates_by_weight(Rates) ->
+    lists:usort(fun sort_rate_by_weight/2, Rates).
+
+-spec sort_rates_by_cost(kzd_rates:docs()) -> kzd_rates:docs().
+sort_rates_by_cost(Rates) ->
+    lists:usort(fun sort_rate_by_cost/2, Rates).
 
 %% Private helper functions
 
 -spec matching_rate(kzd_rates:doc(), kz_term:ne_binary(), kapi_rate:req()) -> boolean().
 matching_rate(Rate, <<"direction">>, RateReq) ->
-    case kz_json:get_value(<<"Direction">>, RateReq) of
+    case kz_json:get_ne_binary_value(<<"Direction">>, RateReq) of
         'undefined' -> 'true';
         Direction ->
             lists:member(Direction, kzd_rates:direction(Rate))
@@ -251,8 +260,8 @@ matching_rate(_Rate, _FilterType, _RateReq) -> 'false'.
 %% Return true if RateA has lower weight than RateB
 -spec sort_rate_by_weight(kzd_rates:doc(), kzd_rates:doc()) -> boolean().
 sort_rate_by_weight(RateA, RateB) ->
-    PrefixA = byte_size(kzd_rates:prefix(RateA)),
-    PrefixB = byte_size(kzd_rates:prefix(RateB)),
+    PrefixA = byte_size(kz_term:to_binary(kzd_rates:prefix(RateA))),
+    PrefixB = byte_size(kz_term:to_binary(kzd_rates:prefix(RateB))),
 
     case PrefixA =:= PrefixB of
         'true' ->
@@ -263,8 +272,8 @@ sort_rate_by_weight(RateA, RateB) ->
 
 -spec sort_rate_by_cost(kzd_rates:doc(), kzd_rates:doc()) -> boolean().
 sort_rate_by_cost(RateA, RateB) ->
-    PrefixA = byte_size(kzd_rates:prefix(RateA)),
-    PrefixB = byte_size(kzd_rates:prefix(RateB)),
+    PrefixA = byte_size(kz_term:to_binary(kzd_rates:prefix(RateA))),
+    PrefixB = byte_size(kz_term:to_binary(kzd_rates:prefix(RateB))),
 
     case PrefixA =:= PrefixB of
         'true' ->

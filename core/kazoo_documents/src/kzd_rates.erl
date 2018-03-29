@@ -97,17 +97,26 @@ description(Doc, Default) ->
 set_description(Doc, Description) ->
     kz_json:set_value([<<"description">>], Description, Doc).
 
--spec direction(doc()) -> kz_term:api_ne_binaries().
+-define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
+
+-spec direction(doc()) -> kz_term:ne_binaries().
 direction(Doc) ->
-    direction(Doc, 'undefined').
+    direction(Doc, ?BOTH_DIRECTIONS).
 
 -spec direction(doc(), Default) -> kz_term:ne_binaries() | Default.
 direction(Doc, Default) ->
-    kz_json:get_list_value([<<"direction">>], Doc, Default).
+    case kz_json:get_value([<<"direction">>], Doc) of
+        'undefined' -> Default;
+        <<"inbound">>=V -> [V];
+        <<"outbound">>=V -> [V];
+        Directions when is_list(Directions) -> Directions
+    end.
 
--spec set_direction(doc(), kz_term:ne_binaries()) -> doc().
-set_direction(Doc, Direction) ->
-    kz_json:set_value([<<"direction">>], Direction, Doc).
+-spec set_direction(doc(), kz_term:ne_binaries() | kz_term:ne_binary()) -> doc().
+set_direction(Doc, Directions) when is_list(Directions) ->
+    kz_json:set_value([<<"direction">>], Directions, Doc);
+set_direction(Doc, Direction) when is_binary(Direction) ->
+    set_direction(Doc, [Direction]).
 
 -spec internal_rate_cost(doc()) -> kz_term:api_number().
 internal_rate_cost(Doc) ->
