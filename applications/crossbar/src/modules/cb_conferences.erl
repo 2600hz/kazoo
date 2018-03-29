@@ -289,27 +289,21 @@ move_to_read_only(Id, Realtime) ->
 add_realtime(Context, RunningConferences) ->
     ReadOnly = kz_json:map(fun move_to_read_only/2, RunningConferences),
 
-    Conferences = lists:foldl(fun(J, Acc) -> add_realtime_fold(J, ReadOnly, Acc) end
-                             ,[]
-                             ,cb_context:doc(Context)
-                             ),
-
-    Listing = kz_json:values(Conferences),
+    Conferences = [add_realtime_fold(JObj, ReadOnly) || JObj <-  cb_context:doc(Context)],
 
     cb_context:setters(Context
-                      ,[{fun cb_context:set_doc/2, Listing}
+                      ,[{fun cb_context:set_doc/2, Conferences}
                        ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, Listing}
+                       ,{fun cb_context:set_resp_data/2, Conferences}
                        ,{fun cb_context:set_resp_envelope/2
-                        ,kz_json:set_value(<<"page_size">>, length(Listing), cb_context:resp_envelope(Context))
+                        ,kz_json:set_value(<<"page_size">>, length(Conferences), cb_context:resp_envelope(Context))
                         }
                        ]).
 
--spec add_realtime_fold(kzd_conference:doc(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
-add_realtime_fold(Conference, ReadOnly, Acc) ->
+-spec add_realtime_fold(kzd_conference:doc(), kz_json:object()) -> kz_json:object().
+add_realtime_fold(Conference, ReadOnly) ->
     Realtime = kz_json:get_value(kz_doc:id(Conference), ReadOnly, empty_realtime_data()),
-    Amended = kz_json:merge(Conference, Realtime),
-    kz_json:set_value(kz_doc:id(Conference), Amended, Acc).
+    kz_json:merge(Conference, Realtime).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new conference document with the data provided, if it is valid
