@@ -127,14 +127,15 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%------------------------------------------------------------------------------
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    Context1 = search_conferences(Context),
-    RunningConferences = cb_context:fetch(Context1, 'conferences', kz_json:new()),
-    LoadedContext = crossbar_doc:load_view(?CB_LIST
-                                          ,[]
-                                          ,Context1
-                                          ,fun normalize_view_results/2
-                                          ),
-    add_realtime(LoadedContext, RunningConferences);
+    LoadedContext = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
+    case cb_context:resp_status(LoadedContext) of
+        'success' ->
+            Context1 = search_conferences(LoadedContext),
+            RunningConferences = cb_context:fetch(Context1, 'conferences', kz_json:new()),
+            add_realtime(LoadedContext, RunningConferences);
+        _ ->
+            LoadedContext
+    end;
 validate_conferences(?HTTP_PUT, Context) ->
     create_conference(Context).
 
@@ -267,12 +268,14 @@ normalize_view_results(ViewResult, Acc) ->
     [kz_json:get_json_value(<<"value">>, ViewResult) | Acc].
 
 empty_realtime_data() ->
-    kz_json:from_list(
-      [{<<"members">>, 0}
-      ,{<<"moderators">>, 0}
-      ,{<<"duration">>, 0}
-      ,{<<"is_locked">>, 'false'}
-      ]).
+    kz_json:from_list_recursive(
+      [{<<"_read_only">>
+       ,[{<<"members">>, 0}
+        ,{<<"moderators">>, 0}
+        ,{<<"duration">>, 0}
+        ,{<<"is_locked">>, 'false'}
+        ]
+       }]).
 
 -spec move_to_read_only(kz_json:key(), kz_json:object()) ->
                                {kz_json:key(), kz_json:object()}.
@@ -287,7 +290,7 @@ add_realtime(Context, RunningConferences) ->
     ReadOnly = kz_json:map(fun move_to_read_only/2, RunningConferences),
 
     Conferences = lists:foldl(fun add_realtime_fold/2
-                             ,ReadOnly
+                             ,[]
                              ,cb_context:doc(Context)
                              ),
 
@@ -302,11 +305,11 @@ add_realtime(Context, RunningConferences) ->
                         }
                        ]).
 
--spec add_realtime_fold(kzd_conference:doc(), kz_json:object()) -> kz_json:object().
-add_realtime_fold(Conference, RunningConferences) ->
-    Realtime = kz_json:get_value(kz_doc:id(Conference), RunningConferences, empty_realtime_data()),
+-spec add_realtime_fold(kzd_conference:doc(), kz_json:objects()) -> kz_json:objects().
+add_realtime_fold(Conference, Acc) ->
+    Realtime = kz_json:get_value(kz_doc:id(Conference), Acc, empty_realtime_data()),
     Amended = kz_json:merge(Conference, Realtime),
-    kz_json:set_value(kz_doc:id(Conference), Amended, RunningConferences).
+    kz_json:set_value(kz_doc:id(Conference), Amended, Acc).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new conference document with the data provided, if it is valid
