@@ -289,7 +289,7 @@ move_to_read_only(Id, Realtime) ->
 add_realtime(Context, RunningConferences) ->
     ReadOnly = kz_json:map(fun move_to_read_only/2, RunningConferences),
 
-    Conferences = lists:foldl(fun add_realtime_fold/2
+    Conferences = lists:foldl(fun(J, Acc) -> add_realtime_fold(J, ReadOnly, Acc) end
                              ,[]
                              ,cb_context:doc(Context)
                              ),
@@ -305,9 +305,9 @@ add_realtime(Context, RunningConferences) ->
                         }
                        ]).
 
--spec add_realtime_fold(kzd_conference:doc(), kz_json:objects()) -> kz_json:objects().
-add_realtime_fold(Conference, Acc) ->
-    Realtime = kz_json:get_value(kz_doc:id(Conference), Acc, empty_realtime_data()),
+-spec add_realtime_fold(kzd_conference:doc(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+add_realtime_fold(Conference, ReadOnly, Acc) ->
+    Realtime = kz_json:get_value(kz_doc:id(Conference), ReadOnly, empty_realtime_data()),
     Amended = kz_json:merge(Conference, Realtime),
     kz_json:set_value(kz_doc:id(Conference), Amended, Acc).
 
