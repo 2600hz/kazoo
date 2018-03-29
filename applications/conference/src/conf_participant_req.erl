@@ -17,6 +17,8 @@ handle_req(JObj, _Options) ->
     _ = kapps_call:put_callid(Call),
     case conf_participant_sup:start_participant(Call) of
         {'ok', Srv} ->
+            Conference = kapps_conference:from_json(JObj),
+            conf_participant:set_conference(Conference, Srv),
             lager:info("added participant at ~p", [Srv]);
         _Else ->
             lager:info("failed to add participant: ~p", [_Else])

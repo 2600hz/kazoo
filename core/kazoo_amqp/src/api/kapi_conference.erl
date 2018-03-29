@@ -185,6 +185,7 @@
                                           ,<<"Other-Leg-Destination-Number">>
                                           ,<<"Other-Leg-Direction">>
                                           ,<<"Participant-Flags">>
+                                          ,<<"Profile-Name">>
                                           ,<<"Presence-ID">>
                                           ,<<"Raw-Application-Data">>
                                           ,<<"Raw-Application-Name">>
@@ -417,6 +418,7 @@
                                ,<<"Custom-Application-Vars">>
                                ,<<"Outbound-Call-ID">>
                                ,<<"Participant-Flags">>
+                               ,<<"Profile-Name">>
                                ,<<"Target-Call-ID">>
                                ,<<"Timeout">>
                                ]).
