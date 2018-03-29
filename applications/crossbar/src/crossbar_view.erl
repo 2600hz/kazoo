@@ -621,7 +621,7 @@ next_chunk(#{options := #{last_key := OldLastKey}=LoadMap
                                                     ,context => Context
                                                     ,last_key => LastKey
                                                     }));
-%% just query next_db if there are any databases left
+%% only one database is left and it does not have any more result give, so request is completed.
 next_chunk(#{options := #{databases := [_]}
             ,previous_chunk_length := PrevLength
             ,total_queried := TotalQueried
@@ -630,6 +630,7 @@ next_chunk(#{options := #{databases := [_]}
     ChunkMap#{total_queried => TotalQueried + PrevLength
              ,chunking_finished => 'true'
              };
+%% just query next_db
 next_chunk(#{options := #{databases := [_|RestDbs], last_key := LastKey}=LoadMap
             ,total_queried := TotalQueried
             ,previous_chunk_length := PrevLength
@@ -643,11 +644,16 @@ next_chunk(#{options := #{databases := [_|RestDbs], last_key := LastKey}=LoadMap
                                                     }));
 %% starting chunked query
 next_chunk(#{context := Context}=ChunkMap) ->
-    LoadMap = cb_context:fetch(Context, 'load_view_opts'),
     lager:debug("(chunked) starting chunked query"),
-    chunk_map_roll_in(ChunkMap
-                     ,get_results(LoadMap#{context => cb_context:store(Context, 'load_view_opts', 'undefined')})
-                     ).
+    case cb_context:fetch(Context, 'load_view_opts') of
+        #{databases := []} ->
+            lager:debug("(chunked) databases exhausted"),
+            ChunkMap#{chunking_finished => 'true'};
+        #{}=LoadMap ->
+            chunk_map_roll_in(ChunkMap
+                             ,get_results(LoadMap#{context => cb_context:store(Context, 'load_view_opts', 'undefined')})
+                             )
+    end.
 
 -spec chunk_map_roll_in(map(), load_params()) -> map().
 chunk_map_roll_in(#{last_key := OldLastKey}=ChunkMap
