@@ -57,6 +57,7 @@
                        'unknown_req_id' |
                        'worker_is_dead' |
                        'resource_not_available' |
+                       kz_term:ne_binary() |
                        integer() |
                        {'EXIT', _} |
                        {'conn_failed', _} |

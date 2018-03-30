@@ -72,7 +72,9 @@ fetch_attachment(Conn, DbName, DocId, AName) ->
                 {'ok', Props} ->
                     {'ok', props:get_value('content', Props)};
                 {'error', FilePath, Error} ->
-                    NewRoutines = [{fun kz_att_error:set_req_url/2, FilePath} | Routines],
+                    NewRoutines = [{fun kz_att_error:set_req_url/2, FilePath}
+                                   | Routines
+                                  ],
                     handle_s3_error(Error, NewRoutines)
             end
     end.
@@ -211,7 +213,7 @@ convert_kv({<<"etag">> = K, V}) ->
 convert_kv(KV) -> KV.
 
 -spec put_object(string(), string() | kz_term:ne_binary(), binary(), aws_config()) ->
-                        {ok, kz_term:proplist()} |
+                        {'ok', kz_term:proplist()} |
                         {'error', string() | kz_term:ne_binary(), s3_error()}.
 put_object(Bucket, FilePath, Contents,Config)
   when is_binary(FilePath) ->
@@ -220,24 +222,21 @@ put_object(Bucket, FilePath, Contents, #aws_config{s3_host=Host} = Config) ->
     lager:debug("storing ~s to ~s", [FilePath, Host]),
     Options = ['return_all_headers'],
     try erlcloud_s3:put_object(Bucket, FilePath, Contents, Options, [], Config) of
-        Headers -> {ok, Headers}
+        Headers -> {'ok', Headers}
     catch
-        error : Error -> {'error', FilePath, Error}
+        'error':Error -> {'error', FilePath, Error}
     end.
 
--spec get_object(string(), string() | kz_term:ne_binary(), aws_config()) ->
-                        {ok, kz_term:proplist()} |
-                        {'error', string() | kz_term:ne_binary(), s3_error()}.
-get_object(Bucket, FilePath, Config)
-  when is_binary(FilePath) ->
-    get_object(Bucket, kz_term:to_list(FilePath), Config);
+-spec get_object(string(), kz_term:ne_binary(), aws_config()) ->
+                        {'ok', kz_term:proplist()} |
+                        {'error', kz_term:ne_binary(), s3_error()}.
 get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
     lager:debug("retrieving ~s from ~s", [FilePath, Host]),
     Options = [],
-    try erlcloud_s3:get_object(Bucket, FilePath, Options, Config) of
-        Headers -> {ok, Headers}
+    try erlcloud_s3:get_object(Bucket, kz_term:to_list(FilePath), Options, Config) of
+        Headers -> {'ok', Headers}
     catch
-        error : Error -> {'error', FilePath, Error}
+        'error':Error -> {'error', FilePath, Error}
     end.
 
 %% S3 REST API errors reference: https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingRESTError.html

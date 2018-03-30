@@ -245,7 +245,7 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path) ->
 
 -spec add_content_type(media_store_path(), kz_term:ne_binary()) -> media_store_path().
 add_content_type(#media_store_path{opt=Options}= Path, CT) ->
-    NewOptions = props:set_value('content-type', kz_term:to_list(CT), Options),
+    NewOptions = props:set_value('content-type', CT, Options),
     Path#media_store_path{opt=NewOptions}.
 
 -spec ensure_extension_present(media_store_path(), kz_term:ne_binary()) -> validate_request_ret().

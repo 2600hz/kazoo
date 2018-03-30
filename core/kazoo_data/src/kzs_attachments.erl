@@ -142,8 +142,9 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
         {'error', _Reason, _ExtendedError} = AttHandlerError ->
             case props:get_value('save_error', Options, 'true') of
                 'true' ->
-                    _ = kz_util:spawn(fun save_attachment_handler_error/3,
-                                      [Map, DbName, AttHandlerError]);
+                    _ = kz_util:spawn(fun save_attachment_handler_error/3
+                                     ,[Map, DbName, AttHandlerError]
+                                     );
                 'false' ->
                     lager:debug("Skipping error save because save_error is set to false")
             end,
@@ -152,7 +153,6 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
 put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:put_attachment(Conn, DbName, DocId, AName, Contents, Options).
-
 
 attachment_from_handler(AName, AttHandler, Size, CT) ->
     Props = [{<<"content_type">>, kz_term:to_binary(CT)}
@@ -236,9 +236,9 @@ save_attachment_handler_error(Map
 handle_attachment_handler_error({'error', Reason, _ExtendedError}, []) ->
     {'error', Reason};
 handle_attachment_handler_error({'error', Reason, ExtendedError}, Options) ->
-    case lists:keyfind('error_verbosity', 1, Options) of
-        'false' ->
+    case props:get_value('error_verbosity', Options) of
+        'undefined' ->
             {'error', Reason};
-        {'error_verbosity', 'verbose'} ->
+        'verbose' ->
             {'error', Reason, ExtendedError}
     end.

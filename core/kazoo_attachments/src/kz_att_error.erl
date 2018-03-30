@@ -123,7 +123,7 @@ set_handler_props(ExtendedError, HandlerProps) ->
 req_url(#{'req_url' := Url}) ->
     Url.
 
--spec set_req_url(extended_error(), req_url()) -> req_url().
+-spec set_req_url(extended_error(), req_url()) -> extended_error().
 set_req_url(ExtendedError, Url) ->
     ExtendedError#{'req_url' => Url}.
 
