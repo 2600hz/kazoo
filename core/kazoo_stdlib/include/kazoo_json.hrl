@@ -38,7 +38,12 @@
 -type json_array()  :: json_terms().
 %% Denotes array in JSON.
 
+-ifdef(PROPER).
+%% PropEr will blow up the atom table if running this in an interactive shell
+-type json_string() :: kz_term:ne_binary().
+-else.
 -type json_string() :: kz_term:ne_binary() | atom().
+-endif.
 %% Denotes string in JSON.
 
 -type json_number() :: integer() | float().

@@ -554,19 +554,32 @@ recursive_to_map(Else) -> Else.
 from_map(Map) when is_map(Map) ->
     recursive_from_map(Map).
 
--spec recursive_from_map(map()) -> object().
+-spec recursive_from_map(any()) -> any().
 recursive_from_map(Map) when is_map(Map) ->
     from_list([{K, recursive_from_map(V)} || {K, V} <- maps:to_list(Map)]);
 recursive_from_map([]) -> [];
 recursive_from_map(List) when is_list(List) ->
     Res = [recursive_from_map(Item) || Item <- List],
-    case lists:all(fun is_tuple/1, Res) of
-        'true' -> from_list(Res);
-        'false' -> Res
+
+    case lists:all(fun is_raw_tuple/1, Res) of
+        'false' -> [maybe_tuple_to_json(R) || R  <- Res];
+        'true' -> from_list(Res)
     end;
 recursive_from_map({K, V}) ->
     {K, recursive_from_map(V)};
 recursive_from_map(Else) -> Else.
+
+is_raw_tuple(?JSON_WRAPPER(_)) -> 'false';
+is_raw_tuple(Term) -> is_tuple(Term).
+
+-spec maybe_tuple_to_json(json_term() | tuple()) -> json_term().
+maybe_tuple_to_json({K, V})
+  when is_binary(K);
+       is_atom(K) ->
+    from_list([{K, V}]);
+maybe_tuple_to_json({K, V}) ->
+    from_list([{kz_term:to_binary(K), V}]);
+maybe_tuple_to_json(V) -> V.
 
 -spec get_json_value(path(), object()) -> kz_term:api_object().
 get_json_value(Key, JObj) -> get_json_value(Key, JObj, 'undefined').
