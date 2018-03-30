@@ -30,6 +30,11 @@ curl -v -X PUT \
     -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME"}, "method":[md5|sha1]}' \
     http://{SERVER}:8000/v2/user_auth
 ```
+Where {CREDENTIALS_HASH} is the hash of {username}:{password}.
+```# User/Pass credentials hash
+echo -n "{USERNAME}:{PASSWORD}" | md5sum
+{MD5_HASH}
+```
 
 ```json
 {
