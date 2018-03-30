@@ -182,7 +182,10 @@ do_process_route_req(Section, Node, FetchId, CallId, Props) ->
 
 -spec maybe_start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
-    case kz_json:get_value(<<"Method">>, JObj) of
+    case ecallmgr_fs_channel:exists(CallId)
+        andalso kz_json:get_value(<<"Method">>, JObj)
+    of
+        'false' -> lager:debug("call is not up anymore on ~s, not starting call handling", [Node]);
         <<"error">> -> lager:debug("sent error response to ~s, not starting call handling", [Node]);
         _Else -> start_call_handling(Node, FetchId, CallId, JObj)
     end.

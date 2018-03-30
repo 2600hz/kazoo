@@ -405,13 +405,18 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
-call_control_ready(#state{call_id=CallId
-                         ,controller_q=ControllerQ
-                         ,control_q=Q
-                         ,initial_ccvs=CCVs
-                         ,fetch_id=FetchId
-                         ,node=Node
-                         }) ->
+call_control_ready(#state{call_id=CallId}=State) ->
+    IsAlive = ecallmgr_fs_channel:exists(CallId),
+    call_control_ready(IsAlive, State).
+
+-spec call_control_ready(boolean(), state()) -> 'ok'.
+call_control_ready('true', #state{call_id=CallId
+                                 ,controller_q=ControllerQ
+                                 ,control_q=Q
+                                 ,initial_ccvs=CCVs
+                                 ,fetch_id=FetchId
+                                 ,node=Node
+                                 }) ->
     Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Call-ID">>, CallId}
           ,{<<"Control-Queue">>, Q}
@@ -427,7 +432,10 @@ call_control_ready(#state{call_id=CallId
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending control usurp for ~s", [FetchId]),
-    kapi_call:publish_usurp_control(CallId, Usurp).
+    kapi_call:publish_usurp_control(CallId, Usurp);
+call_control_ready('false', _) ->
+    lager:info("call is not in the channels cached, short lived call?"),
+    gen_listener:cast(self(), 'stop').
 
 %%------------------------------------------------------------------------------
 %% @doc
