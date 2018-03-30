@@ -516,7 +516,7 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
            ,#state{cf_module_pid='undefined'}=State
            ) ->
     lager:debug("ready to recv events, launching the callflow"),
-    {'noreply', launch_cf_module(State)};
+    handle_callflow_ready(State);
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -654,6 +654,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the call is still active
+%% and launches the first action
+%% Otherwise it will exit.
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_callflow_ready(state()) ->  kz_types:handle_cast_ret_state(state()).
+handle_callflow_ready(#state{call=Call}=State) ->
+    case kapps_call_command:b_channel_status(Call) of
+        {'ok', _} -> {'noreply', launch_cf_module(State)};
+        {'error', _} ->
+            lager:info("channel is not active, exiting"),
+            {'stop', 'channel_hungup', State}
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the callflow module specified at the
