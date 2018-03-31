@@ -185,7 +185,7 @@ maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
     case ecallmgr_fs_channel:exists(CallId)
         andalso kz_json:get_value(<<"Method">>, JObj)
     of
-        'false' -> lager:debug("call is not up anymore, not starting call handling", [Node]);
+        'false' -> lager:debug("call is not up anymore on ~s, not starting call handling", [Node]);
         <<"error">> -> lager:debug("sent error response to ~s, not starting call handling", [Node]);
         _Else -> start_call_handling(Node, FetchId, CallId, JObj)
     end.
