@@ -11,8 +11,9 @@
 -type conversion_return() :: {binary(), kz_term:ne_binary()} |
                              {'error', 'unsupported_content_type'}.
 
--type provider_errors() :: 'invalid_voice' | 'unknown_provider' | 'unsupported_content_type'.
--type provider_return() :: {'error', provider_errors()} |
+-type provider_error() :: 'invalid_voice' | 'unknown_provider' | 'unsupported_content_type'.
+-type provider_return() :: {'error', provider_error()} |
+                           {'error', 'asr_provider_failure', kz_term:ne_binary()} |
                            kz_http:ret().
 
 -type create_resp() :: provider_return() |
@@ -21,7 +22,7 @@
 
 -type asr_resp() :: kz_http:req_id() |
                     {'ok', kz_json:object()} | %% {'ok', JObj}
-                    {'error', provider_errors()} |
+                    {'error', provider_error()} |
                     {'error',  'asr_provider_failure', kz_json:object()}.
 
 -define(KAZOO_SPEECH_HRL, 'true').
