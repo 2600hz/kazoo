@@ -290,10 +290,8 @@ circle-unstaged:
 	exit 1
 
 circle-dialyze: build-plt
-# circle-dialyze: circle-dialyze: export TO_DIALYZE = $(CHANGED)
 circle-dialyze:
-	@export TO_DIALYZE="$(CHANGED)"
-	@$(MAKE) dialyze
+	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze-it
 
 circle-release:
 	@$(MAKE) build-ci-release
