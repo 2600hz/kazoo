@@ -8,6 +8,15 @@
             "description": "speech asr api key",
             "type": "string"
         },
+        "asr_api_key_google": {
+            "default": "",
+            "description": "API key for Google Cloud Speech",
+            "type": "string"
+        },
+        "asr_enable_word_time_offsets_google": {
+            "description": "top result includes a list of words and the start and end time offsets",
+            "type": "boolean"
+        },
         "asr_locale": {
             "default": "en-us",
             "description": "speech asr default locale",
@@ -23,6 +32,10 @@
             "description": "speech asr preferred content type",
             "type": "string"
         },
+        "asr_profanity_filter_google": {
+            "description": "server will attempt to filter out profanities, replacing all but the initial character in each filtered word with asterisks",
+            "type": "boolean"
+        },
         "asr_provider": {
             "default": "ispeech",
             "description": "speech asr provider",
@@ -31,6 +44,11 @@
         "asr_url": {
             "default": "http://api.ispeech.org/api/json",
             "description": "speech asr url",
+            "type": "string"
+        },
+        "asr_url_google": {
+            "default": "https://speech.googleapis.com/v1/speech:recognize",
+            "description": "Google Cloud Speech API url",
             "type": "string"
         },
         "temporary_storage_path": {
