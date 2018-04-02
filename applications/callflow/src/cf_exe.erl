@@ -663,7 +663,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec handle_callflow_ready(state()) ->  kz_types:handle_cast_ret_state(state()).
 handle_callflow_ready(#state{call=Call}=State) ->
-    case kapps_call_command:b_channel_status(Call) of
+    CallId = kapps_call:call_id_direct(Call),
+    case kapps_call_command:b_channel_status(CallId) of
         {'ok', _} -> {'noreply', launch_cf_module(State)};
         {'error', _} ->
             lager:info("channel is not active, exiting"),
