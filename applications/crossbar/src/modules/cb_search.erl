@@ -309,6 +309,6 @@ get_end_key(_, Type, Value) ->
 %%------------------------------------------------------------------------------
 -spec next_binary_key(binary()) -> kz_term:ne_binary().
 next_binary_key(<<>>) ->
-    <<"\ufff0">>;
+    <<16#fff0/utf16>>;
 next_binary_key(Bin) ->
-    <<Bin/binary, "\ufff0">>.
+    <<Bin/binary, 16#fff0/utf16>>.
