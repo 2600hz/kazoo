@@ -1240,7 +1240,7 @@ overwrite_temporary_unavailable_greeting(AttachmentName
 delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=_Box, _Call) ->
     'ok';
 delete_temporary_unavailable_greeting(Box, Call) ->
-    'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'undefined', Box, Call),
+    'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'null', Box, Call),
     Box#mailbox{temporary_unavailable_media_id='undefined'}.
 
 -spec record_unavailable_greeting(kz_term:ne_binary(), mailbox(), kapps_call:call()) ->
