@@ -228,13 +228,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
         %% attended transfer but the provided slot number is occupied, we are still connected to the 'parker'
         %% not the 'parkee'
         {'undefined', {'error', 'occupied'}} ->
-            lager:info("selected slot is occupied"),
-            %% Update screen with error that the slot is occupied
-            _ = kapps_call_command:b_answer(Call),
-            %% playback message that caller will have to try a different slot
-            _ = kapps_call_command:b_prompt(<<"park-already_in_use">>, Call),
-            cf_exe:stop(Call),
-            'ok';
+            error_occupied_slot(Call);
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
         %% not the 'parkee'
         {'undefined', _} ->
@@ -954,3 +948,19 @@ maybe_empty_slot(JObj) ->
                                     )
             }
     end.
+
+-spec error_occupied_slot(kapps_call:call()) -> 'ok'.
+error_occupied_slot(Call) ->
+    lager:info("selected slot is occupied"),
+    %% Update screen with error that the slot is occupied
+    case kapps_call_command:b_answer(Call) of
+        {'error', 'timeout'} ->
+            lager:info("timed out waiting for the answer to complete");
+        {'error', 'channel_hungup'} ->
+            lager:info("channel hungup while answering");
+        _ ->
+            lager:debug("channel answered, prompting of the slot being in use"),
+            %% playback message that caller will have to try a different slot
+            kapps_call_command:b_prompt(<<"park-already_in_use">>, Call)
+    end,
+    cf_exe:stop(Call).
