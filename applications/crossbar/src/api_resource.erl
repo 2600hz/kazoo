@@ -970,6 +970,7 @@ to_pdf(Req, Context, RespData) ->
 -spec to_chunk(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
                       {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_chunk(ToFun, Req, Context) ->
+    lager:debug("(chunked) starting '~s' chunked query", [ToFun]),
     EventName = to_fun_event_name(ToFun, Context),
     next_chunk_fold(#{start_key => 'undefined'
                      ,last_key => 'undefined'
@@ -988,10 +989,13 @@ next_chunk_fold(#{chunking_finished := 'true'
                  ,chunking_started := StartedChunk
                  ,context := Context
                  }=ChunkMap) ->
+    lager:debug("(chunked) chunked query finished"),
     finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, StartedChunk)});
 next_chunk_fold(#{chunking_started := StartedChunk
                  ,context := Context0
+                 ,chunk_response_type := _ToFun
                  }=ChunkMap0) ->
+    lager:debug("(chunked) calling next chunk"),
     Context1 = cb_context:store(Context0, 'chunking_started', StartedChunk),
     ChunkMap1 = #{context := Context2
                  ,cowboy_req := Req0
@@ -1002,12 +1006,15 @@ next_chunk_fold(#{chunking_started := StartedChunk
         andalso crossbar_bindings:fold(Event, {Req0, Context2})
     of
         'false' ->
+            lager:debug("(chunked) getting next chunk was unsuccessful"),
             finish_chunked_response(ChunkMap1#{context => reset_context_between_chunks(Context2, StartedChunk)});
         {Req1, Context3} ->
+            lager:debug("(chunked) runned '~s'", [_ToFun]),
             case api_util:succeeded(Context3) of
                 'true' ->
                     process_chunk(ChunkMap1#{cowboy_req := Req1, context := Context3});
                 'false' ->
+                    lager:debug("(chunked) '~s' was unsuccessful", [_ToFun]),
                     finish_chunked_response(ChunkMap1#{context => reset_context_between_chunks(Context3, StartedChunk)})
             end
     end.
@@ -1052,11 +1059,7 @@ process_chunk(#{context := Context
                ,event_name := EventName
                ,chunking_started := IsStarted
                }=ChunkMap) ->
-    case api_util:succeeded(Context)
-        andalso cb_context:resp_data(Context)
-    of
-        'false' ->
-            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)});
+    case cb_context:resp_data(Context) of
         0 ->
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
                                      ,chunking_started => IsStarted
@@ -1071,6 +1074,7 @@ process_chunk(#{context := Context
         [] ->
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
                                      ,chunking_started => IsStarted
+                                     ,previous_chunk_length => 0 %% the module filtered all queried result
                                      }
                            );
         Resp when is_list(Resp) ->
@@ -1110,11 +1114,19 @@ send_chunk_response(<<"to_csv">>, Req, Context) ->
 %%------------------------------------------------------------------------------
 -spec finish_chunked_response(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 finish_chunked_response(#{chunking_started := 'false'
+                         ,chunk_response_type := <<"to_json">>
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
     %% chunk is not started, return whatever error's or response data in Context
     api_util:create_pull_response(Req, Context);
+finish_chunked_response(#{chunking_started := 'false'
+                         ,chunk_response_type := <<"to_csv">>
+                         ,context := Context
+                         ,cowboy_req := Req
+                         }) ->
+    %% chunk is not started, return empty CSV
+    api_util:create_pull_response(Req, Context, fun api_util:create_csv_resp_content/2);
 finish_chunked_response(#{chunk_response_type := <<"to_csv">>
                          ,context := Context
                          ,cowboy_req := Req
