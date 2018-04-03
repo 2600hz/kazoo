@@ -45,7 +45,7 @@ jobs:
     # This is based on your 1.0 configuration file or project settings
     - run:
         working_directory: ~/2600hz/kazoo
-        command: echo -e "export OTP_VERSION=$(<~/2600hz/kazoo/make/erlang_version)\nexport PATH=${HOME}/.kerl/$OTP_VERSION/bin:${PATH}\n" >> $BASH_ENV
+        command: echo -e "export OTP_VERSION=$(<~/2600hz/kazoo/make/erlang_version)\nexport PATH=${HOME}/.kerl/\$OTP_VERSION/bin:${PATH}\n" >> $BASH_ENV
     # - run:
     #     working_directory: ~/2600hz/kazoo
     #     command: 'sudo service rabbitmq-server status || sudo service rabbitmq-server
