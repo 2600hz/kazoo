@@ -11,6 +11,8 @@
 -export([put/2]).
 -export([delete/1]).
 
+-export([braintree_server_url/0]).
+
 -include("bt.hrl").
 
 -type http_verb() :: 'put' | 'post' | 'get' | 'delete'.
@@ -173,6 +175,10 @@ verbose_debug(Format, Args) ->
 %% @doc Get the base URL for the braintree service.
 %% @end
 %%------------------------------------------------------------------------------
+
+-spec braintree_server_url() -> string() | 'undefined'.
+braintree_server_url() ->
+    braintree_server_url(?BT_DEFAULT_ENVIRONMENT).
 
 -spec braintree_server_url(string()) -> string() | 'undefined'.
 braintree_server_url(Env) ->
