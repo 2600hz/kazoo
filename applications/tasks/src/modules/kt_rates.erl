@@ -305,7 +305,7 @@ to_csv_row(Row) ->
 -spec generate_row(kz_tasks:args()) -> kzd_rates:doc().
 generate_row(Args) ->
     RateJObj = kzd_rates:from_map(Args),
-    Prefix = kzd_rates:prefix(RateJObj),
+    Prefix = kz_term:to_binary(kzd_rates:prefix(RateJObj)),
     lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
 
     Update = props:filter_undefined(
@@ -313,7 +313,7 @@ generate_row(Args) ->
                ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
                ,{fun kzd_rates:set_routes/2, [<<"^\\+?", Prefix/binary, ".+$">>]}
                ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
-                                                ]),
+               ]),
     kz_json:set_values(Update, RateJObj).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
@@ -408,7 +408,9 @@ maybe_generate_name(RateJObj, 'undefined') ->
                  );
 maybe_generate_name(_RateJObj, Name) -> Name.
 
--spec generate_name(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
+-spec generate_name(kz_term:ne_binary() | pos_integer(), kz_term:api_ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
+generate_name(Prefix, ISO, Directions) when is_integer(Prefix) ->
+    generate_name(kz_term:to_binary(Prefix), ISO, Directions);
 generate_name(Prefix, 'undefined', []) when is_binary(Prefix) ->
     Prefix;
 generate_name(Prefix, ISO, []) ->
@@ -432,8 +434,10 @@ maybe_generate_weight(RateJObj, 'undefined') ->
                    );
 maybe_generate_weight(_RateJObj, Weight) -> kzd_rates:constrain_weight(Weight).
 
--spec generate_weight(kz_term:ne_binary(), kz_transaction:units(), kz_transaction:units()) ->
+-spec generate_weight(kz_term:ne_binary() | pos_integer(), kz_transaction:units(), kz_transaction:units()) ->
                              kzd_rates:weight_range().
+generate_weight(Prefix, UnitCost, UnitIntCost) when is_integer(Prefix) ->
+    generate_weight(kz_term:to_binary(Prefix), UnitCost, UnitIntCost);
 generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
     UnitCostToUse = maybe_default(UnitIntCost, UnitCost),
     CostToUse = wht_util:units_to_dollars(UnitCostToUse),
