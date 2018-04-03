@@ -1090,6 +1090,7 @@ check_release() ->
              ,fun master_account_created/0
              ,fun migration_4_0_ran/0
              ,fun migration_ran/0
+             ,fun kazoo_proper_maintenance:run_seq_modules/0
              ],
     try lists:foreach(fun(F) -> F() end, Checks) of
         'ok' -> lager:info("check_release/0 succeeded"), init:stop()
