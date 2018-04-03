@@ -34,6 +34,8 @@
 -define(RATES_VIEW, <<"rates/lookup">>).
 -define(BULK_LIMIT, 500).
 
+-define(DOLLAR_SIGN, 36). % = $\$ but makes fmt wonky atm
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -307,13 +309,15 @@ generate_row(Args) ->
     RateJObj = kzd_rates:from_map(Args),
     Prefix = kz_term:to_binary(kzd_rates:prefix(RateJObj)),
     lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
+    Routes = [<<"^\\+?", Prefix/binary, ".+", ?DOLLAR_SIGN>>],
 
     Update = props:filter_undefined(
                [{fun kzd_rates:set_rate_name/2, maybe_generate_name(RateJObj)}
                ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
-               ,{fun kzd_rates:set_routes/2, [<<"^\\+?", Prefix/binary, ".+$">>]}
+               ,{fun kzd_rates:set_routes/2, Routes}
                ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
-               ]),
+               ]
+              ),
     kz_json:set_values(Update, RateJObj).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
@@ -451,6 +455,8 @@ maybe_generate_caller_id_numbers(RateJObj) ->
 
 -spec maybe_generate_caller_id_numbers(kzd_rates:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
 maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Numbers) ->
-    lists:map(fun(X) -> <<"^\\+?", X/binary, ".+$">> end, binary:split(CID_Numbers, <<":">>, [global]));
+    lists:map(fun(X) -> <<"^\\+?", X/binary, ".+", ?DOLLAR_SIGN>> end
+             ,binary:split(CID_Numbers, <<":">>, ['global'])
+             );
 maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
     'undefined'.
