@@ -331,7 +331,11 @@ load_chunked_cdrs(Context, RespType, RespData) ->
     Fun = fun(JObj, Acc) -> split_to_modbs(cb_context:account_id(Context), kz_doc:id(JObj), Acc) end,
     MapIds = lists:foldl(Fun, #{}, RespData),
     C1 = cb_context:set_resp_data(Context, []),
-    maps:fold(fun(Db, Ids, C) -> load_chunked_cdr_ids(C, RespType, Db, Ids) end, C1, MapIds).
+    try maps:fold(fun(Db, Ids, C) -> load_chunked_cdr_ids(C, RespType, Db, Ids) end, C1, MapIds)
+    catch
+        _T:_E ->
+            cb_context:add_system_error('datastore_fault', Context)
+    end.
 
 %% if request is not chunked, map Ids to MODBs
 -spec split_to_modbs(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
@@ -344,7 +348,11 @@ load_chunked_cdr_ids(Context, RespType, Ids) ->
     Fun = fun(Id, Acc) -> split_to_modbs(cb_context:account_id(Context), Id, Acc) end,
     MapIds = lists:foldl(Fun, #{}, Ids),
     C1 = cb_context:set_resp_data(Context, []),
-    maps:fold(fun(Db, DbIds, C) -> load_chunked_cdr_ids(C, RespType, Db, DbIds) end, C1, MapIds).
+    try maps:fold(fun(Db, DbIds, C) -> load_chunked_cdr_ids(C, RespType, Db, DbIds) end, C1, MapIds)
+    catch
+        _T:_E ->
+            cb_context:add_system_error('datastore_fault', Context)
+    end.
 
 -spec load_chunked_cdr_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
@@ -357,6 +365,11 @@ load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
 
             JObjs = [kz_json:get_json_value(<<"doc">>, Result)
                      || Result <- Results,
+                        %% Filter those docs which have accidentally put into this db.
+                        %% See {@link cdr_channel_destroy} comment for function `prepare_and_save/3`
+                        %% when it uses interaction_timestamp to generates modb_id like ID.
+                        kz_json:get_value(<<"error">>, Result) =:= 'undefined',
+
                         %% if there are no filters, include doc
                         %% otherwise run filters against doc for inclusion
                         (not HasFilters)

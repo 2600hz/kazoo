@@ -115,6 +115,7 @@
                         ,last_key => last_key()
                         ,mapper => mapper_fun()
                         ,page_size => pos_integer()
+                        ,previous_chunk_length => non_neg_integer()
                         ,queried_jobjs => kz_json:objects()
                         ,should_paginate => boolean()
                         ,start_key => kazoo_data:range_key()
@@ -620,6 +621,7 @@ next_chunk(#{options := #{last_key := OldLastKey}=LoadMap
     chunk_map_roll_in(ChunkMap, get_results(LoadMap#{total_queried => TotalQueried + PrevLength
                                                     ,context => Context
                                                     ,last_key => LastKey
+                                                    ,previous_chunk_length => 0
                                                     }));
 %% only one database is left and it does not have any more result give, so request is completed.
 next_chunk(#{options := #{databases := [_]}
@@ -641,18 +643,19 @@ next_chunk(#{options := #{databases := [_|RestDbs], last_key := LastKey}=LoadMap
                                                     ,databases => RestDbs
                                                     ,context => Context
                                                     ,last_key => LastKey
+                                                    ,previous_chunk_length => 0
                                                     }));
 %% starting chunked query
 next_chunk(#{context := Context}=ChunkMap) ->
-    lager:debug("(chunked) starting chunked query"),
     case cb_context:fetch(Context, 'load_view_opts') of
         #{databases := []} ->
             lager:debug("(chunked) databases exhausted"),
             ChunkMap#{chunking_finished => 'true'};
         #{}=LoadMap ->
             chunk_map_roll_in(ChunkMap
-                             ,get_results(LoadMap#{context => cb_context:store(Context, 'load_view_opts', 'undefined')})
-                             )
+                             ,get_results(LoadMap#{context => cb_context:store(Context, 'load_view_opts', 'undefined')
+                                                  ,previous_chunk_length => 0
+                                                  }))
     end.
 
 -spec chunk_map_roll_in(map(), load_params()) -> map().
@@ -660,11 +663,13 @@ chunk_map_roll_in(#{last_key := OldLastKey}=ChunkMap
                  ,#{start_key := StartKey
                    ,last_key := LastKey
                    ,total_queried := TotalQueried
+                   ,previous_chunk_length := PrevLength
                    ,context := Context
                    }=LoadMap) ->
     ChunkMap#{start_key => StartKey
              ,last_key => LastKey
              ,total_queried => TotalQueried
+             ,previous_chunk_length => PrevLength
              ,context => Context
              ,options => maps:remove(context, LoadMap#{last_key => OldLastKey}) %% to be checked in the next iteration
              }.
@@ -781,6 +786,7 @@ handle_query_result(#{last_key := LastKey
                                                    ,{fun cb_context:set_account_db/2, Db}
                                                    ]
                                                   )
+                    ,previous_chunk_length => Filtered
                     };
         {'exhausted', LoadMap2} -> LoadMap2;
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})
