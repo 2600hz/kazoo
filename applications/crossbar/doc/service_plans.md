@@ -73,6 +73,163 @@ Key | Description | Type | Default | Required
 
 
 
+#### Available Fields To Customize
+
+Get a list of fields that can be customize for each service plan.
+
+> GET /v2/service_plans/editable
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/service_plans/editable
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "devices": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+      },
+      "landline": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "limits": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+        }
+        "..."
+    },
+    "number_services": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+      },
+      "cnam": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "phone_numbers": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+        },
+      "did_us": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "ui_apps": {
+      "_all": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {},
+        "exceptions": {},
+        "as": {}
+      },
+      "accounts": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "users": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+            "maximum": {},
+            "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+        },
+      "admin": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    }
+  },
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "{STATUS}",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans
