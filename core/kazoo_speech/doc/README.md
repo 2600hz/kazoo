@@ -10,4 +10,7 @@ There are also modules for [iSpeech](http://www.ispeech.org/api/#text-to-speech)
 
 ## ASR
 
-Kazoo currently supports [iSpeech](http://www.ispeech.org/api/#automated-speech-recognition) as an ASR engine.
+Kazoo currently supports as an ASR engine:
+
+1. [iSpeech](http://www.ispeech.org/api/#automated-speech-recognition)
+2. [Google Cloud Speech API](https://cloud.google.com/speech/)
