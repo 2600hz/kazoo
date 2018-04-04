@@ -341,62 +341,7 @@ get_fs_app(Node, UUID, JObj, <<"page">>) ->
     case kapi_dialplan:page_v(JObj) of
         'false' -> {'error', <<"page failed to execute as JObj did not validate">>};
         'true' when Endpoints =:= [] -> {'error', <<"page request had no endpoints">>};
-        'true' ->
-            PageId = <<"page_", (kz_binary:rand_hex(8))/binary>>,
-            DefaultCCV = kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]),
-            CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, DefaultCCV)),
-            BargeParams = ecallmgr_util:multi_set_args(Node, UUID, CCVs, <<",">>, <<",">>),
-            AutoAnswer = list_to_binary(["{sip_invite_params=intercom=true"
-                                        ,",alert_info=intercom"
-                                        ,BargeParams
-                                        ,"}"
-                                        ]),
-            Routines = [fun(DP) ->
-                                [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
-                                ,{"application", <<"set conference_auto_outcall_profile=page">>}
-                                ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
-                                ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
-                                 |DP
-                                ]
-                        end
-                       ,fun(DP) ->
-                                case kz_json:is_true([<<"Page-Options">>, <<"Two-Way-Audio">>], JObj, false) of
-                                    true -> DP;
-                                    false -> [{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
-                                              | DP
-                                             ]
-                                end
-                        end
-                       ,fun(DP) ->
-                                CIDName = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"${caller_id_name}">>),
-                                [{"application", <<"set conference_auto_outcall_caller_id_name=", CIDName/binary>>}|DP]
-                        end
-                       ,fun(DP) ->
-                                CIDNumber = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, <<"${caller_id_number}">>),
-                                [{"application", <<"set conference_auto_outcall_caller_id_number=", CIDNumber/binary>>}|DP]
-                        end
-                       ,fun(DP) ->
-                                Timeout = kz_json:get_binary_value(<<"Timeout">>, JObj, <<"5">>),
-                                [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}|DP]
-                        end
-                       ,fun(DP) ->
-                                {'ok', #channel{interaction_id=Id}} = ecallmgr_fs_channel:fetch(UUID, 'record'),
-                                Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
-                                         ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], Id}
-                                         ],
-                                EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
-                                Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
-                                OutCall = kz_binary:join(Channels, <<"|">>),
-                                [{"application", <<"conference_set_auto_outcall ", OutCall/binary>>} | DP]
-                        end
-                       ,fun(DP) ->
-                                [{"application", <<"conference ", PageId/binary, "@page">>}
-                                ,{"application", <<"park">>}
-                                 |DP
-                                ]
-                        end
-                       ],
-            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
+        'true' -> get_page_app(Node, UUID, JObj, Endpoints)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"park">>) ->
@@ -1756,3 +1701,82 @@ sound_touch_options_fold({K, F}, {List, JObj}=Acc) ->
         'undefined' -> Acc;
         V -> {F(V, List), JObj}
     end.
+
+-spec get_page_app(node(), kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> fs_app().
+get_page_app(Node, UUID, JObj, Endpoints) ->
+    PageId = <<"page_", (kz_binary:rand_hex(8))/binary>>,
+    ConferenceName = list_to_binary([PageId, "@page"]),
+
+    Routines = [fun(DP) -> set_page_conference_vars(DP, PageId) end
+               ,fun(DP) -> maybe_set_page_two_way_audio(DP, JObj) end
+               ,fun(DP) -> set_page_caller_id(DP, JObj) end
+               ,fun(DP) -> set_page_timeout(DP, JObj) end
+               ,fun(DP) -> set_page_endpoints(DP, Node, UUID, JObj, Endpoints) end
+               ,fun(DP) -> add_page_conference_app(DP, ConferenceName) end
+               ],
+    {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}.
+
+-spec set_page_conference_vars(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:proplist().
+set_page_conference_vars(Dialplan, PageId) ->
+    [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
+    ,{"application", <<"set conference_auto_outcall_profile=page">>}
+    ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
+    ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
+     | Dialplan
+    ].
+
+-spec maybe_set_page_two_way_audio(kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+maybe_set_page_two_way_audio(Dialplan, JObj) ->
+    case kz_json:is_true([<<"Page-Options">>, <<"Two-Way-Audio">>], JObj, 'false') of
+        'true' -> Dialplan;
+        'false' ->
+            [{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
+             | Dialplan
+            ]
+    end.
+
+-spec set_page_caller_id(kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+set_page_caller_id(Dialplan, JObj) ->
+    CIDName = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"${caller_id_name}">>),
+    CIDNumber = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, <<"${caller_id_number}">>),
+
+    [{"application", <<"set conference_auto_outcall_caller_id_name=", CIDName/binary>>}
+    ,{"application", <<"set conference_auto_outcall_caller_id_number=", CIDNumber/binary>>}
+     |Dialplan
+    ].
+
+-spec set_page_timeout(kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+set_page_timeout(Dialplan, JObj) ->
+    Timeout = kz_json:get_binary_value(<<"Timeout">>, JObj, <<"5">>),
+    [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}
+     |Dialplan
+    ].
+
+-spec set_page_endpoints(kz_term:proplist(), node(), kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> kz_term:proplist().
+set_page_endpoints(Dialplan, Node, UUID, JObj, Endpoints) ->
+    DefaultCCV = kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]),
+    CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, DefaultCCV)),
+    BargeParams = ecallmgr_util:multi_set_args(Node, UUID, CCVs, <<",">>, <<",">>),
+    AutoAnswer = list_to_binary(["{sip_invite_params=intercom=true"
+                                ,",alert_info=intercom"
+                                ,BargeParams
+                                ,"}"
+                                ]),
+
+    {'ok', #channel{interaction_id=Id}} = ecallmgr_fs_channel:fetch(UUID, 'record'),
+    Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
+             ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], Id}
+             ],
+    EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
+    Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
+    OutCall = kz_binary:join(Channels, <<"|">>),
+    [{"application", <<"conference_set_auto_outcall ", OutCall/binary>>}
+     | Dialplan
+    ].
+
+-spec add_page_conference_app(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:proplist().
+add_page_conference_app(Dialplan, ConferenceName) ->
+    [{"application", <<"conference ", ConferenceName/binary>>}
+    ,{"application", <<"park">>}
+     | Dialplan
+    ].

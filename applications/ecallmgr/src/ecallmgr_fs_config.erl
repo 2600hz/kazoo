@@ -148,57 +148,43 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_config_req(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist() | 'undefined') -> fs_sendmsg_ret().
-handle_config_req(Node, Id, <<"acl.conf">>, _Props) ->
-    kz_util:put_callid(Id),
+handle_config_req(Node, FetchId, ConfFile, FSData) ->
+    kz_util:put_callid(FetchId),
+    try process_config_req(Node, FetchId, ConfFile, FSData)
+    catch
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:info("failed to process config request for ~s: ~s: ~p", [ConfFile, _E, _R]),
+            kz_util:log_stacktrace(ST),
+            config_req_not_handled(Node, FetchId, ConfFile)
+    end.
 
+-spec process_config_req(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist() | 'undefined') -> fs_sendmsg_ret().
+process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
     SysconfResp = ecallmgr_config:fetch(<<"acls">>, kz_json:new(), ecallmgr_fs_node:fetch_timeout(Node)),
 
-    try generate_acl_xml(SysconfResp) of
+    case generate_acl_xml(SysconfResp) of
         'undefined' ->
             lager:warning("failed to query for ACLs; is sysconf running?"),
             {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-            freeswitch:fetch_reply(Node, Id, 'configuration', Resp);
+            freeswitch:fetch_reply(Node, FetchId, 'configuration', Resp);
         ConfigXml ->
             lager:debug("sending acl XML to ~s: ~s", [Node, ConfigXml]),
-            freeswitch:fetch_reply(Node, Id, 'configuration', ConfigXml)
-    catch
-        _E:_R ->
-            lager:info("acl resp failed to convert to XML (~s): ~p", [_E, _R]),
-            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp))
+            freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXml)
     end;
-
-handle_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
-    kz_util:put_callid(Id),
-    case ecallmgr_config:is_true(<<"sofia_conf">>) of
-        'false' ->
-            lager:info("sofia conf disabled"),
-            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp));
-        'true' ->
-            Profiles = ecallmgr_config:fetch(<<"fs_profiles">>, kz_json:new()),
-            DefaultProfiles = default_sip_profiles(Node),
-            try ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)) of
-                {'ok', ConfigXml} ->
-                    lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
-                    freeswitch:fetch_reply(Node, Id, 'configuration', erlang:iolist_to_binary(ConfigXml))
-            catch
-                _E:_R ->
-                    lager:info("sofia profile resp failed to convert to XML (~s): ~p", [_E, _R]),
-                    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-                    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp))
-            end
-    end;
-
-handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
-    kz_util:put_callid(Id),
+process_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
+    'true' = ecallmgr_config:is_true(<<"sofia_conf">>),
+    Profiles = ecallmgr_config:fetch(<<"fs_profiles">>, kz_json:new()),
+    DefaultProfiles = default_sip_profiles(Node),
+    {'ok', ConfigXml} = ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)),
+    lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
+    freeswitch:fetch_reply(Node, Id, 'configuration', erlang:iolist_to_binary(ConfigXml));
+process_config_req(Node, Id, <<"conference.conf">>, Data) ->
     fetch_conference_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
-handle_config_req(Node, Id, <<"kazoo.conf">>, Data) ->
-    kz_util:put_callid(Id),
+process_config_req(Node, Id, <<"kazoo.conf">>, Data) ->
     lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
     fetch_mod_kazoo_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
-handle_config_req(Node, Id, Conf, Data) ->
-    kz_util:put_callid(Id),
+process_config_req(Node, Id, Conf, Data) ->
     case kazoo_bindings:map(<<"freeswitch.config.", Conf/binary>>, [Node, Id, Conf, Data]) of
         [] -> config_req_not_handled(Node, Id, Conf);
         _  -> 'ok'
@@ -210,7 +196,7 @@ config_req_not_handled(Node, Id, Conf) ->
     lager:debug("ignoring conf ~s: ~s", [Conf, Id]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled)).
 
--spec generate_acl_xml(kz_term:api_object()) -> kz_term:api_binary().
+-spec generate_acl_xml(kz_term:api_object()) -> kz_term:api_ne_binary().
 generate_acl_xml('undefined') ->
     'undefined';
 generate_acl_xml(SysconfResp) ->
@@ -422,7 +408,12 @@ fetch_conference_config(Node, FetchId, <<"REQUEST_PARAMS">>, Data) ->
 
 fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
     FSName = props:get_value(<<"Controls">>, Data),
-    [KZName, Profile] = binary:split(FSName, <<"?profile=">>),
+    lager:debug("request controls for ~s", [FSName]),
+
+    {KZName, Profile} = case binary:split(FSName, <<"?profile=">>) of
+                            [N, P] -> {N, P};
+                            [N] -> {N, props:get_value(<<"profile_name">>, Data)}
+                        end,
     lager:debug("request controls:~s for profile: ~s", [KZName, Profile]),
 
     Cmd = [{<<"Request">>, <<"Controls">>}
