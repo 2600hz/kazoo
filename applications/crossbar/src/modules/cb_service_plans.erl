@@ -24,6 +24,28 @@
 -define(SYNCHRONIZATION, <<"synchronization">>).
 -define(RECONCILIATION, <<"reconciliation">>).
 -define(OVERRIDE, <<"override">>).
+-define(EDITABLE, <<"editable">>).
+
+-define(ITEM_FIELDS,
+        kz_json:from_list(
+          [{<<"activation_charge">>, kz_json:new()}
+          ,{<<"discounts">>
+           ,kz_json:from_list(
+              [{<<"maximum">>, kz_json:new()}
+              ,{<<"rate">>, kz_json:new()}
+              ])
+           }
+          ,{<<"minimum">>, kz_json:new()}
+          ,{<<"rate">>, kz_json:new()}
+          ])
+       ).
+
+-define(UNDERSCORE_ALL_FIELDS,
+        kz_json:set_values([{<<"as">>, kz_json:new()}
+                           ,{<<"exceptions">>, kz_json:new()}
+                           ]
+                          ,?ITEM_FIELDS)
+       ).
 
 %%%=============================================================================
 %%% API
@@ -64,6 +86,8 @@ allowed_methods(?CURRENT) ->
 allowed_methods(?OVERRIDE) ->
     [?HTTP_POST];
 allowed_methods(?AVAILABLE) ->
+    [?HTTP_GET];
+allowed_methods(?EDITABLE) ->
     [?HTTP_GET];
 allowed_methods(_PlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
@@ -144,6 +168,8 @@ validate(Context, ?OVERRIDE) ->
                              );
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
+validate(Context, ?EDITABLE) ->
+    summary_editable_fields(Context);
 validate(Context, PlanId) ->
     validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
 
@@ -423,3 +449,44 @@ maybe_forbid_delete(DeletePlansIds, Context) ->
                 _ -> cb_context:add_system_error('plan_is_not_assigned', Context)
             end
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Returns fixtures of what fields in service plans is customizable
+%% @end
+%%------------------------------------------------------------------------------
+-spec summary_editable_fields(cb_context:context()) -> cb_context:context().
+summary_editable_fields(Context) ->
+    JObj = read_service_plan_editable(),
+    UIApps = kz_json:from_list(get_ui_apps(kapps_util:get_master_account_id())),
+    crossbar_doc:handle_json_success(kz_json:set_value(<<"ui_apps">>, UIApps, JObj), Context).
+
+-spec read_service_plan_editable() -> kz_json:object().
+read_service_plan_editable() ->
+    Path = filename:join([code:priv_dir(?APP), "service_plan_editable_fields.json"]),
+    case file:read_file(Path) of
+        {'ok', Bin} -> kz_json:decode(Bin);
+        {'error', _Reason} ->
+            lager:debug("failed to read file ~s: ~p", [Path, _Reason]),
+            kz_json:new()
+    end.
+
+-spec get_ui_apps({'ok', kz_term:ne_binary()} | {'error', any()}) -> kz_term:proplist().
+get_ui_apps({'ok', MasterId}) ->
+    case kzd_apps_store:fetch(MasterId) of
+        {'ok', JObj} ->
+            Apps = kzd_apps_store:apps(JObj),
+            Fun = fun(_App, AppJObj, Acc) ->
+                          case kzd_app:name(AppJObj) of
+                              ?NE_BINARY=Name ->
+                                  [{Name, ?ITEM_FIELDS}|Acc];
+                              _ -> Acc
+                          end
+                  end,
+            kz_json:foldl(Fun, [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}], Apps);
+        {'error', _Reason} ->
+            lager:debug("failed to read master's app_store: ~p", [_Reason]),
+            [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}]
+    end;
+get_ui_apps({'error', _Reason}) ->
+    lager:debug("failed to get master account_id: ~p", [_Reason]),
+    [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}].
