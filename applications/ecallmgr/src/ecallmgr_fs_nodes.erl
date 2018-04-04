@@ -896,10 +896,14 @@ print_summary([{_, Node}|Nodes], Count) ->
              ,[Node#node.node
               ,Node#node.connected
               ,Node#node.cookie
-              ,Node#node.client_version
+              ,print_version(Node#node.client_version)
               ]),
     print_summary(Nodes, Count + 1).
 
+-spec print_version(kz_term:ne_binary()) -> kz_term:ne_binary().
+print_version(<<"mod_kazoo ", Version/binary>>) -> Version;
+print_version(Version) -> Version.
+    
 -spec nodedown(atom()) -> 'ok'.
 nodedown(Node) ->
     ?SERVER ! {'nodedown', Node},
