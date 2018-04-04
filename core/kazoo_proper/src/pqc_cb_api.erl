@@ -199,7 +199,6 @@ handle_response(_ExpectedCode, {'error', _}=E) ->
     ?ERROR("broked req: ~p", [E]),
     E.
 
-
 -spec start_trace(kz_term:ne_binary()) -> {'ok', kz_data_tracing:trace_ref()}.
 start_trace(RequestId) ->
     lager:md([{'request_id', RequestId}]),

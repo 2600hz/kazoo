@@ -135,10 +135,14 @@ service_plan_id(RatedeckId) ->
 
 wait_for_task(API, TaskId) ->
     GetResp = pqc_cb_tasks:fetch(API, TaskId),
-    case kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
-                          ,kz_json:decode(GetResp)
-                          )
+    case is_binary(GetResp)
+        andalso kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
+                                 ,kz_json:decode(GetResp)
+                                 )
     of
+        'false' ->
+            ?ERROR("failed to query for task: ~p~n", [GetResp]),
+            throw(GetResp);
         <<"success">> -> pqc_cb_tasks:delete(API, TaskId);
         _Status ->
             timer:sleep(1000),
