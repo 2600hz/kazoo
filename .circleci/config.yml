@@ -94,7 +94,7 @@ jobs:
     - run: ./scripts/state-of-edoc.escript
     - run: make xref
     - run: make sup_completion
-    - run: TO_DIALYZE="$CHANGED" make build-plt dialyze
+    - run: TO_DIALYZE="$(echo $CHANGED)" make build-plt dialyze
     - run: make elvis
     - run: make build-ci-release
     - run: ${PWD}/scripts/check-unstaged.bash

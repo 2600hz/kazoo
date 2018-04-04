@@ -8,35 +8,37 @@
 
 %% API
 
+main([_KazooPLT]) -> 'ok';
 main([KazooPLT | Args]) ->
-    case lists:suffix(".plt", KazooPLT) of
-        'true' -> 'ok';
-        'false' ->
-            usage(),
-            halt(1)
-    end,
-    case [Arg || Arg <- lists:usort(Args ++ string:tokens(os:getenv("TO_DIALYZE", ""), " ")),
-                 not is_test(Arg)
-                     andalso (
-                       is_ebin_dir(Arg)
-                       orelse is_beam(Arg)
-                       orelse is_erl(Arg)
-                      )
-         ]
-    of
+    'false' =:= lists:suffix(".plt", KazooPLT)
+        andalso usage(1),
+
+    Env = string:tokens(os:getenv("TO_DIALYZE", ""), " "),
+    io:format("args: ~p~nenv: ~p~n", [Args, Env]),
+    case filter_for_erlang_files(lists:usort(Args ++ Env)) of
         [] ->
             io:format("No files to process\n"),
-            usage(),
-            halt(0);
+            usage(0);
         Paths ->
-            Count = warn(KazooPLT, Paths),
-            Count > 0
-                andalso io:format("~p Dialyzer warnings\n", [Count]),
-            halt(Count)
+            case warn(KazooPLT, Paths) of
+                0 -> halt(0);
+                Count ->
+                    io:format("~p Dialyzer warnings\n", [Count]),
+                    halt(Count)
+            end
     end;
 main(_) ->
-    usage(),
-    halt(0).
+    usage(0).
+
+filter_for_erlang_files(Files) ->
+    [Arg || Arg <- Files,
+            not is_test(Arg)
+                andalso (
+                  is_ebin_dir(Arg)
+                  orelse is_beam(Arg)
+                  orelse is_erl(Arg)
+                 )
+    ].
 
 %% Internals
 
@@ -53,13 +55,13 @@ is_ebin_dir(Path) ->
     "ebin" == filename:basename(Path).
 
 root_dir(Path) ->
-    filename:join(
-      lists:takewhile(fun ("src") -> 'false';
-                          (_) -> 'true'
-                      end
-                     ,string:tokens(Path, "/")
-                     )
-     ).
+    filename:join(lists:takewhile(fun is_not_src/1
+                                 ,string:tokens(Path, "/")
+                                 )
+                 ).
+
+is_not_src("src") -> 'false';
+is_not_src(_) -> 'true'.
 
 file_exists(Filename) ->
     case file:read_file_info(Filename) of
@@ -197,8 +199,9 @@ do_scan(PLT, Paths) ->
                                ]}
                  ]).
 
-usage() ->
+usage(Exit) ->
     Arg0 = escript:script_name(),
-    io:format("Usage: ~s  <path to .kazoo.plt> <path to ebin/>+\n", [filename:basename(Arg0)]).
+    io:format("Usage: ~s  <path to .kazoo.plt> <path to ebin/>+\n", [filename:basename(Arg0)]),
+    halt(Exit).
 
 %% End of Module
