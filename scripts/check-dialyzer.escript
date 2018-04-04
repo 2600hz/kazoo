@@ -14,7 +14,7 @@ main([KazooPLT | Args]) ->
         andalso usage(1),
 
     Env = string:tokens(os:getenv("TO_DIALYZE", ""), " "),
-    io:format("args: ~p~nenv: ~p~n", [Args, Env]),
+
     case filter_for_erlang_files(lists:usort(Args ++ Env)) of
         [] ->
             io:format("No files to process\n"),
