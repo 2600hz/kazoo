@@ -138,8 +138,8 @@ maybe_get_rate_discount(RateReq, AccountId) ->
 
 -spec rate_resp(kz_json:object(), kapi_rate:req()) -> kz_term:proplist().
 rate_resp(Rate, RateReq) ->
-    RateCost = kzd_rates:rate_cost(Rate),
-    RateSurcharge = kzd_rates:rate_surcharge(Rate),
+    RateCost = wht_util:dollars_to_units(kzd_rates:rate_cost(Rate, 0.0)),
+    RateSurcharge = wht_util:dollars_to_units(kzd_rates:rate_surcharge(Rate, 0.0)),
     RateMinimum = kzd_rates:rate_minimum(Rate, hotornot_config:default_minimum()),
     BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
     PrivateCost = kzd_rates:private_cost(Rate),
