@@ -172,7 +172,8 @@ rate_cost(Doc) ->
 
 -spec rate_cost(doc(), Default) -> number() | Default.
 rate_cost(Doc, Default) ->
-    kz_json:get_float_value([<<"rate_cost">>], Doc, Default).
+    Cost = kz_json:get_float_value([<<"rate_cost">>], Doc, Default),
+    wht_util:dollars_to_units(Cost).
 
 -spec set_rate_cost(doc(), number()) -> doc().
 set_rate_cost(Doc, RateCost) ->
@@ -232,7 +233,8 @@ rate_surcharge(Doc) ->
 
 -spec rate_surcharge(doc(), Default) -> number() | Default.
 rate_surcharge(Doc, Default) ->
-    kz_json:get_float_value([<<"rate_surcharge">>], Doc, Default).
+    Surcharge = kz_json:get_float_value([<<"rate_surcharge">>], Doc, Default),
+    wht_util:dollars_to_units(Surcharge).
 
 -spec set_rate_surcharge(doc(), number()) -> doc().
 set_rate_surcharge(Doc, RateSurcharge) ->
