@@ -125,7 +125,7 @@ curl -v -X POST \
         "id": "limits",
         "allow_prepay": true,
         "outbound_trunks": 5,
-        "accept_charges": trye
+        "accept_charges": true
     }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/limits
 ```
