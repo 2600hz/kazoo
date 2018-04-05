@@ -70,6 +70,7 @@
         ,<<"X-AUTH-PORT">>
         ,<<"action">>
         ,<<"att_xfer_replaced_by">>
+        ,<<"conference_name">>
         ,<<"context">>
         ,<<"domain">>
         ,<<"expires">>
