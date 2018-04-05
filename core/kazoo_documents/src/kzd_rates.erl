@@ -166,11 +166,11 @@ prefix(Doc, Default) ->
 set_prefix(Doc, Prefix) ->
     kz_json:set_value([<<"prefix">>], Prefix, Doc).
 
--spec rate_cost(doc()) -> kz_term:api_number().
+-spec rate_cost(doc()) -> kz_transaction:units().
 rate_cost(Doc) ->
-    rate_cost(Doc, 'undefined').
+    rate_cost(Doc, 0.0).
 
--spec rate_cost(doc(), Default) -> number() | Default.
+-spec rate_cost(doc(), float()) -> kz_transaction:units().
 rate_cost(Doc, Default) ->
     Cost = kz_json:get_float_value([<<"rate_cost">>], Doc, Default),
     wht_util:dollars_to_units(Cost).
@@ -229,9 +229,9 @@ set_rate_nocharge_time(Doc, RateNochargeTime) ->
 
 -spec rate_surcharge(doc()) -> kz_term:api_number().
 rate_surcharge(Doc) ->
-    rate_surcharge(Doc, 'undefined').
+    rate_surcharge(Doc, 0.0).
 
--spec rate_surcharge(doc(), Default) -> number() | Default.
+-spec rate_surcharge(doc(), float()) -> kz_transaction:units().
 rate_surcharge(Doc, Default) ->
     Surcharge = kz_json:get_float_value([<<"rate_surcharge">>], Doc, Default),
     wht_util:dollars_to_units(Surcharge).
