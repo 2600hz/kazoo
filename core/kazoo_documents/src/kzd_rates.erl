@@ -166,14 +166,13 @@ prefix(Doc, Default) ->
 set_prefix(Doc, Prefix) ->
     kz_json:set_value([<<"prefix">>], Prefix, Doc).
 
--spec rate_cost(doc()) -> kz_transaction:units().
+-spec rate_cost(doc()) -> kz_term:api_number().
 rate_cost(Doc) ->
-    rate_cost(Doc, 0.0).
+    rate_cost(Doc, 'undefined').
 
--spec rate_cost(doc(), float()) -> kz_transaction:units().
+-spec rate_cost(doc(), Default) -> number() | Default.
 rate_cost(Doc, Default) ->
-    Cost = kz_json:get_float_value([<<"rate_cost">>], Doc, Default),
-    wht_util:dollars_to_units(Cost).
+    kz_json:get_float_value([<<"rate_cost">>], Doc, Default).
 
 -spec set_rate_cost(doc(), number()) -> doc().
 set_rate_cost(Doc, RateCost) ->
@@ -229,12 +228,11 @@ set_rate_nocharge_time(Doc, RateNochargeTime) ->
 
 -spec rate_surcharge(doc()) -> kz_term:api_number().
 rate_surcharge(Doc) ->
-    rate_surcharge(Doc, 0.0).
+    rate_surcharge(Doc, 'undefined').
 
--spec rate_surcharge(doc(), float()) -> kz_transaction:units().
+-spec rate_surcharge(doc(), Default) -> number() | Default.
 rate_surcharge(Doc, Default) ->
-    Surcharge = kz_json:get_float_value([<<"rate_surcharge">>], Doc, Default),
-    wht_util:dollars_to_units(Surcharge).
+    kz_json:get_float_value([<<"rate_surcharge">>], Doc, Default).
 
 -spec set_rate_surcharge(doc(), number()) -> doc().
 set_rate_surcharge(Doc, RateSurcharge) ->
