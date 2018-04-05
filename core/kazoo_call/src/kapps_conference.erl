@@ -438,10 +438,7 @@ build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME
                                           ,account_id='undefined'
                                           }=Conference) ->
     lager:debug("no account id for page profile ~s, using system", [?PAGE_PROFILE_NAME]),
-
-    Language = language(Conference),
-    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME], default_page_profile(Language, 'undefined')),
-    {?PAGE_PROFILE_NAME, Profile};
+    build_system_page_profile(Conference);
 build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME
                                           ,account_id=AccountId
                                           }=Conference) ->
@@ -514,6 +511,21 @@ build_system_profile(Conference) ->
             {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
+-spec build_system_page_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
+build_system_page_profile(Conference) ->
+    Language = language(Conference),
+    LanguageProfile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT
+                                           ,[<<"profiles">>, Language, ?PAGE_PROFILE_NAME]
+                                           ,default_page_profile(Language, 'undefined')
+                                           ),
+    case kapps_config:get_json(?CONFERENCE_CONFIG_CAT
+                              ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
+                              )
+    of
+        'undefined' -> {?PAGE_PROFILE_NAME, LanguageProfile};
+        Profile -> {?PAGE_PROFILE_NAME, kz_json:merge(LanguageProfile, Profile)}
+    end.
+
 -spec raw_profile(conference()) -> kz_term:api_object().
 raw_profile(#kapps_conference{profile=Profile}) -> Profile.
 
@@ -542,6 +554,8 @@ update_profile_language(Language, AccountId, Profile) ->
 update_prompt_language(_Yek, Key, <<>> = Value, _Language, _AccountId) ->
     {Key, Value};
 update_prompt_language(_Yek, Key, <<"tone_stream://", _/binary>> = Value, _Language, _AccountId) ->
+    {Key, Value};
+update_prompt_language(_Yek, Key, <<"silence_stream://", _/binary>> = Value, _Language, _AccountId) ->
     {Key, Value};
 update_prompt_language(_Yek, Key, <<"$${", _/binary>> = Value, _Language, _AccountId) ->
     {Key, Value};
@@ -896,7 +910,6 @@ exit_tone(#kapps_conference{account_id=AccountId}) -> ?EXIT_TONE(AccountId).
 -spec moderator_exit_tone(conference()) -> kz_term:ne_binary().
 moderator_exit_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_EXIT_TONE;
 moderator_exit_tone(#kapps_conference{account_id=AccountId}) -> ?MOD_EXIT_TONE(AccountId).
-
 
 -spec get_tone(any()) -> tone().
 get_tone(Thing) ->

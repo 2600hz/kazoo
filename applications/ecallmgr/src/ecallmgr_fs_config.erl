@@ -408,7 +408,6 @@ fetch_conference_config(Node, FetchId, <<"REQUEST_PARAMS">>, Data) ->
 
 fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
     FSName = props:get_value(<<"Controls">>, Data),
-    lager:debug("request controls for ~s", [FSName]),
 
     {KZName, Profile} = case binary:split(FSName, <<"?profile=">>) of
                             [N, P] -> {N, P};
@@ -419,6 +418,7 @@ fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
     Cmd = [{<<"Request">>, <<"Controls">>}
           ,{<<"Profile">>, Profile}
           ,{<<"Controls">>, KZName}
+          ,{<<"Conference-ID">>, conference_id(Data, Profile)}
           ,{<<"Call-ID">>, kzd_freeswitch:call_id(Data)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
@@ -465,10 +465,11 @@ maybe_fetch_conference_profile(Node, FetchId, _Data, 'undefined') ->
 maybe_fetch_conference_profile(Node, FetchId, Data, Profile) ->
     Cmd = [{<<"Request">>, <<"Conference">>}
           ,{<<"Profile">>, Profile}
-          ,{<<"Conference-ID">>, conference_id(props:get_value(<<"Conf-Name">>, Data), Profile)}
+          ,{<<"Conference-ID">>, conference_id(Data, Profile)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("fetching profile '~s'", [Profile]),
+
     XmlResp = case kz_amqp_worker:call(Cmd
                                       ,fun kapi_conference:publish_config_req/1
                                       ,fun kapi_conference:config_resp_v/1
@@ -492,12 +493,17 @@ maybe_fetch_conference_profile(Node, FetchId, Data, Profile) ->
     send_conference_profile_xml(Node, FetchId, XmlResp).
 
 -spec conference_id(kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
-conference_id('undefined', Profile) ->
+conference_id(Data, Profile) ->
+    case props:get_first_defined([<<"Conf-Name">>, <<"conference_name">>], Data) of
+        'undefined' -> conference_id_from_profile(Profile);
+        Id -> Id
+    end.
+
+conference_id_from_profile(Profile) ->
     case binary:split(Profile, <<"_">>) of
         [ConferenceId, _AccountId] -> ConferenceId;
         _ -> 'undefined'
-    end;
-conference_id(ConferenceId, _Profile) -> ConferenceId.
+    end.
 
 -spec send_conference_profile_xml(atom(), kz_term:ne_binary(), iolist()) -> fs_sendmsg_ret().
 send_conference_profile_xml(Node, Id, XmlResp) ->
