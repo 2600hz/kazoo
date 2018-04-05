@@ -494,7 +494,7 @@ maybe_fetch_conference_profile(Node, FetchId, Data, Profile) ->
               end,
     send_conference_profile_xml(Node, FetchId, XmlResp).
 
--spec conference_id(kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec conference_id(kzd_freeswitch:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 conference_id(Data, Profile) ->
     case props:get_first_defined([<<"Conf-Name">>, <<"conference_name">>], Data) of
         'undefined' -> conference_id_from_profile(Profile);
