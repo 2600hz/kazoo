@@ -173,12 +173,16 @@ max_participants(Conference) ->
 
 -spec max_members_sound(kapps_conference:conference()) -> kz_term:api_binary().
 max_members_sound(Conference) ->
+    AccountId = kapps_conference:account_id(Conference),
     case kapps_conference:max_members_media(Conference) of
+        'undefined' when 'undefined' =:= AccountId ->
+            lager:debug("getting system max-members prompt"),
+            kz_media_util:get_prompt(?DEFAULT_MAX_MEMBERS_MEDIA);
         'undefined' ->
-            lager:debug("getting max members prompt from account"),
+            lager:debug("getting max members prompt from account ~s", [AccountId]),
             kz_media_util:get_account_prompt(?DEFAULT_MAX_MEMBERS_MEDIA
                                             ,'undefined'
-                                            ,kapps_conference:account_id(Conference)
+                                            ,AccountId
                                             );
         Media ->
             lager:debug("conference has max-members-sound: ~s", [Media]),
