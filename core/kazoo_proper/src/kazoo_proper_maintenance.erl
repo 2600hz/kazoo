@@ -35,7 +35,7 @@ quickcheck_exports(Module, Exports) ->
 -spec quickcheck_export(module(), {function(), arity()}) -> 'true'.
 quickcheck_export(Module, {'correct', 0}) ->
     io:format("quickchecking ~s:correct/0~n", [Module]),
-    'true' = proper:quickcheck(Module:correct());
+    'true' = proper:quickcheck(Module:correct(), ['noshrink']);
 quickcheck_export(Module, {'correct_parallel', 0}) ->
     io:format("quickchecking ~s:correct_parallel/0~n", [Module]),
     'true' = proper:quickcheck(Module:correct_parallel());
