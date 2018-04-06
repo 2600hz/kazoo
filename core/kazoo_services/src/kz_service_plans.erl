@@ -106,15 +106,18 @@ get_object_plans(ServicesJObj, ServicePlans) ->
     ResellerId = find_reseller_id(ServicesJObj),
     Account = kz_doc:id(ServicesJObj),
     AccountDb = kz_util:format_account_db(Account),
-    {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/object_plans">>),
-    Props = [{PlanId, kz_json:get_value([<<"value">>, PlanId], JObj)}
-             || JObj <- JObjs
-                    ,PlanId <- kz_json:get_keys(<<"value">>, JObj)
-            ],
-    lists:foldl(get_object_plans_fold(ResellerId)
-               ,ServicePlans
-               ,Props
-               ).
+    case kz_datamgr:get_results(AccountDb, <<"services/object_plans">>) of
+        {'ok', JObjs} ->
+            Props = [{PlanId, kz_json:get_value([<<"value">>, PlanId], JObj)}
+                     || JObj <- JObjs,
+                        PlanId <- kz_json:get_keys(<<"value">>, JObj)
+                    ],
+            lists:foldl(get_object_plans_fold(ResellerId)
+                       ,ServicePlans
+                       ,Props
+                       );
+        {'error', _} -> ServicePlans
+    end.
 
 -spec get_object_plans_fold(kz_term:api_binary()) ->
                                    fun(({kz_term:ne_binary(), kz_json:object()}, plans()) ->
