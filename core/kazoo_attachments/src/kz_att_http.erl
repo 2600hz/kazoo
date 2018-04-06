@@ -120,7 +120,7 @@ maybe_redirect_loop(ToUrl, Url, Redirects, Debug, Fun) ->
 
 add_debug(Debug, Url, Code, Headers) ->
     kz_json:set_values([{[Url, <<"code">>], Code}
-                       ,{[Url, <<"headers">>], kz_json:from_list(Headers)}
+                       ,{[Url, <<"headers">>], kz_json:from_list([{kz_term:to_binary(K), kz_term:to_binary(V)}|| {K,V} <- Headers])}
                        ], Debug).
 
 
