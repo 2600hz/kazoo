@@ -197,7 +197,7 @@ validate_account(Context, AccountId, ?HTTP_POST) ->
 validate_account(Context, AccountId, ?HTTP_PATCH) ->
     validate_patch_request(AccountId, prepare_context(AccountId, Context));
 validate_account(Context, AccountId, ?HTTP_DELETE) ->
-    validate_delete_request(AccountId, prepare_context(AccountId, Context)).
+    validate_delete_request(prepare_context(AccountId, Context)).
 
 -spec validate(cb_context:context(), path_token(), kz_term:ne_binary()) ->
                       cb_context:context().
@@ -658,20 +658,59 @@ maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
 %% @doc Load an account document from the database
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_delete_request(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-validate_delete_request(AccountId, Context) ->
+-spec validate_delete_request(cb_context:context()) -> cb_context:context().
+validate_delete_request(Context) ->
+    Routines = [fun maybe_account_has_descendants/2
+               ,fun maybe_account_has_active_port/2
+               ,fun maybe_account_service_is_dirty/2
+               ],
+    Ctx = cb_context:set_resp_status(Context, 'success'),
+    lists:foldl(fun validate_delete_request_fold/2, Ctx, Routines).
+
+-type validate_delete_fun() :: fun((kz_term:ne_binary(), cb_context:context()) -> cb_context:context()).
+
+-spec validate_delete_request_fold(validate_delete_fun(), cb_context:context()) -> cb_context:context().
+validate_delete_request_fold(Fun, Context) ->
+    Fun(cb_context:account_id(Context), Context).
+
+-spec maybe_account_has_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+maybe_account_has_descendants(AccountId, Context) ->
     case kapps_util:account_has_descendants(AccountId) of
         'true' ->  cb_context:add_system_error('account_has_descendants', Context);
-        'false' ->
-            case knm_port_request:account_has_active_port(AccountId) of
-                'false' -> cb_context:set_resp_status(Context, 'success');
-                'true' ->
-                    lager:debug("pervent deleting account ~s due to has active port request", [AccountId]),
-                    Msg = kz_json:from_list(
-                            [{<<"message">>, <<"Account has active port request">>}
-                            ]),
-                    cb_context:add_system_error('account_has_active_port', Msg, Context)
-            end
+        'false' -> Context
+    end.
+
+-spec maybe_account_has_active_port(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+maybe_account_has_active_port(AccountId, Context) ->
+    case knm_port_request:account_has_active_port(AccountId) of
+        'false' -> Context;
+        'true' ->
+            lager:debug("prevent deleting account ~s due to has active port request", [AccountId]),
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Account has active port request">>}
+                    ]),
+            cb_context:add_system_error('account_has_active_port', Msg, Context)
+    end.
+
+-spec maybe_account_service_is_dirty(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+maybe_account_service_is_dirty(AccountId, Context) ->
+    case kz_services:is_dirty(kz_services:fetch(AccountId)) of
+        'true' -> service_reconcile(AccountId, Context);
+        'false' -> Context
+    end.
+
+-spec service_reconcile(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+service_reconcile(AccountId, Context) ->
+    case kz_services:reconcile(AccountId) of
+        'false' -> cb_context:add_system_error('account_service_is_dirty', Context);
+        _ -> service_sync(AccountId, Context)
+    end.
+
+-spec service_sync(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+service_sync(AccountId, Context) ->
+    case kz_services:sync(AccountId) of
+        {'ok', _} -> Context;
+        {'error', _} -> cb_context:add_system_error('account_service_is_dirty', Context)
     end.
 
 -spec validate_patch_request(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
