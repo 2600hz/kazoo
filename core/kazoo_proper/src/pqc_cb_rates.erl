@@ -41,9 +41,6 @@
 -define(PHONE_NUMBERS, [<<"+12223334444">>]).
 -define(ACCOUNT_NAMES, [<<"account_for_rates">>]).
 
--define(GLOBAL_COST, 1).
--define(ACCOUNT_COST, 4).
-
 -spec rate_doc(kz_term:ne_binary() | proper_types:type(), number() | proper_types:type()) ->
                       kzd_rates:doc().
 rate_doc(RatedeckId, Cost) ->
@@ -138,10 +135,14 @@ service_plan_id(RatedeckId) ->
 
 wait_for_task(API, TaskId) ->
     GetResp = pqc_cb_tasks:fetch(API, TaskId),
-    case kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
-                          ,kz_json:decode(GetResp)
-                          )
+    case is_binary(GetResp)
+        andalso kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
+                                 ,kz_json:decode(GetResp)
+                                 )
     of
+        'false' ->
+            ?ERROR("failed to query for task: ~p~n", [GetResp]),
+            throw(GetResp);
         <<"success">> -> pqc_cb_tasks:delete(API, TaskId);
         _Status ->
             timer:sleep(1000),
@@ -198,7 +199,7 @@ rate_did(API, RatedeckId, DID) ->
 
     make_rating_request(API, URL).
 
--spec make_rating_request(pqc_cb_api:state(), string()) -> kz_term:api_integer().
+-spec make_rating_request(pqc_cb_api:state(), string()) -> kz_term:api_number().
 make_rating_request(API, URL) ->
     RequestHeaders = pqc_cb_api:request_headers(API),
 
@@ -210,7 +211,10 @@ make_rating_request(API, URL) ->
     RespJObj = kz_json:decode(Resp),
     case kz_json:get_ne_binary_value(<<"status">>, RespJObj) of
         <<"error">> -> 'undefined';
-        <<"success">> -> kz_json:get_float_value([<<"data">>, <<"Rate">>], RespJObj)
+        <<"success">> ->
+            Cost = kz_json:get_float_value([<<"data">>, <<"Base-Cost">>], RespJObj),
+            ?INFO("rate cost: ~p: ~p", [Cost, RespJObj]),
+            Cost
     end.
 
 rates_url() ->
@@ -311,7 +315,15 @@ seq() ->
     API = pqc_kazoo_model:api(Model),
 
     try
-        RateDoc = rate_doc(<<"custom">>, 1),
+        RateDoc = rate_doc(<<"custom">>, 1.0),
+
+        RateCost = wht_util:units_to_dollars(
+                     wht_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
+                                            ,kzd_rates:rate_minimum(RateDoc, 60)
+                                            ,kzd_rates:rate_surcharge(RateDoc)
+                                            )
+                    ),
+        ?INFO("rate cost from doc: ~p", [RateCost]),
 
         _Up = ?MODULE:upload_rate(API, RateDoc),
         ?INFO("upload: ~p~n", [_Up]),
@@ -319,8 +331,8 @@ seq() ->
         _Get = ?MODULE:get_rate(API, RateDoc),
         ?INFO("get: ~p~n", [_Get]),
 
-        _Rated = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
-        ?INFO("rated: ~p~n", [_Rated]),
+        RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
+        ?INFO("rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),
 
         _SP = ?MODULE:create_service_plan(API, kzd_rates:ratedeck_id(RateDoc)),
         ?INFO("created sp: ~p~n", [_SP]),
@@ -349,18 +361,20 @@ seq() ->
                 ?INFO("assigned service plan to account: ~p~n", [_Assigned])
         end,
 
-        _AcctRated = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
-        ?INFO("rated ~s in account ~s: ~p~n", [hd(?PHONE_NUMBERS), AccountId, _AcctRated]),
+        RateCost = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
+        ?INFO("rated ~s in account ~s", [hd(?PHONE_NUMBERS), AccountId]),
 
         _Deleted = ?MODULE:delete_rate(API, RateDoc),
-        ?INFO("deleted: ~p~n", [_Deleted])
+        ?INFO("deleted: ~p", [_Deleted]),
+
+        ?INFO("COMPLETED SUCCESSFULLY!")
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            ?INFO("crashed ~s: ~p~n", [_E, _R]),
+            ?ERROR("crashed ~s: ~p~n", [_E, _R]),
             io:format("crashed ~s: ~p~n", [_E, _R]),
             [begin
-                 ?INFO("s: ~p~n", [S]),
+                 ?ERROR("s: ~p~n", [S]),
                  io:format("s: ~p~n", [S])
              end
              || S <- ST
@@ -393,7 +407,7 @@ ratedeck_id() ->
     oneof(?RATEDECK_NAMES).
 
 rate_cost() ->
-    range(1,10).
+    range(1.0, 10.0).
 
 phone_number() ->
     elements(?PHONE_NUMBERS).

@@ -226,9 +226,9 @@ rate_nocharge_time(Doc, Default) ->
 set_rate_nocharge_time(Doc, RateNochargeTime) ->
     kz_json:set_value([<<"rate_nocharge_time">>], RateNochargeTime, Doc).
 
--spec rate_surcharge(doc()) -> kz_term:api_number().
+-spec rate_surcharge(doc()) -> number().
 rate_surcharge(Doc) ->
-    rate_surcharge(Doc, 'undefined').
+    rate_surcharge(Doc, 0.0).
 
 -spec rate_surcharge(doc(), Default) -> number() | Default.
 rate_surcharge(Doc, Default) ->
@@ -312,13 +312,13 @@ maybe_fix_direction(Rate) ->
 
 -spec ensure_id(doc()) -> doc().
 ensure_id(Rate) ->
-    ensure_id(Rate, kz_json:get_ne_binary_value(<<"_id">>, Rate)).
+    ensure_id(Rate, kz_doc:id(Rate)).
 
 -spec ensure_id(doc(), kz_term:api_ne_binary()) -> doc().
 ensure_id(Rate, 'undefined') ->
     ID = list_to_binary([iso_country_code(Rate, <<"XX">>)
                         ,<<"-">>
-                        ,prefix(Rate)
+                        ,kz_term:to_binary(prefix(Rate))
                         ,rate_suffix(Rate)
                         ]),
     kz_doc:set_id(Rate, ID);

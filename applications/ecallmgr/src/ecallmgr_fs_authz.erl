@@ -322,7 +322,7 @@ authz_default(Props, CallId, Node) ->
 
 -spec maybe_set_rating_ccvs(kzd_freeswitch:data(), kz_json:object(), atom()) -> 'ok'.
 maybe_set_rating_ccvs(Props, JObj, Node) ->
-    case kz_json:get_integer_value(<<"Rate">>, JObj) of
+    case kz_json:get_value(<<"Rate">>, JObj) of
         'undefined' -> maybe_kill_unrated_channel(Props, Node);
         _Rate -> set_rating_ccvs(JObj, Node)
     end.

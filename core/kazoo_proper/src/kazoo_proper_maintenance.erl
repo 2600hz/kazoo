@@ -61,7 +61,7 @@ seq_exports(Module, Exports) ->
 -spec seq_export(module(), {function(), arity()}) -> any().
 seq_export(Module, {'seq', 0}) ->
     io:format("run ~s:seq/0~n", [Module]),
-    (catch Module:seq());
+    Module:seq();
 seq_export(_Module, _FunArity) ->
     'true'.
 
