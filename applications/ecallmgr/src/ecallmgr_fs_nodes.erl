@@ -903,7 +903,7 @@ print_summary([{_, Node}|Nodes], Count) ->
 -spec print_version(kz_term:ne_binary()) -> kz_term:ne_binary().
 print_version(<<"mod_kazoo ", Version/binary>>) -> Version;
 print_version(Version) -> Version.
-    
+
 -spec nodedown(atom()) -> 'ok'.
 nodedown(Node) ->
     ?SERVER ! {'nodedown', Node},

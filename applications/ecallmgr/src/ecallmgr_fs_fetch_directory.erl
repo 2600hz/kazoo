@@ -38,7 +38,7 @@ init() ->
 -spec directory_lookup(map()) -> fs_handlecall_ret().
 directory_lookup(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
     kz_util:put_callid(FetchId),
-    lager:debug_unsafe("DIRECTORY FETCH ~s", [kz_json:encode(JObj, ['pretty'])]),    
+    lager:debug_unsafe("DIRECTORY FETCH ~s", [kz_json:encode(JObj, ['pretty'])]),
     lager:debug("received fetch request (~s) user directory from ~s", [FetchId, Node]),
     case kzd_fetch:fetch_action(JObj, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, FetchId, <<"reverse-lookup">>, JObj);
@@ -74,7 +74,6 @@ group_response(Node, Id, JObj) ->
     {'ok', Xml} = ecallmgr_fs_xml:directory_resp_group_xml(Group, J1),
     lager:debug_unsafe("sending directory XML to ~w: ~s", [Node, iolist_to_binary(Xml)]),
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
-    
 
 -spec maybe_sip_auth_response(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_handlecall_ret().
 maybe_sip_auth_response(Node, Id, JObj) ->
