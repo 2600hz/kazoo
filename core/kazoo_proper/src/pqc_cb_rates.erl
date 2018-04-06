@@ -314,75 +314,61 @@ seq() ->
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
-    try
-        RateDoc = rate_doc(<<"custom">>, 1.0),
+    RateDoc = rate_doc(<<"custom">>, 1.0),
 
-        RateCost = wht_util:units_to_dollars(
-                     wht_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
-                                            ,kzd_rates:rate_minimum(RateDoc, 60)
-                                            ,kzd_rates:rate_surcharge(RateDoc)
-                                            )
-                    ),
-        ?INFO("rate cost from doc: ~p", [RateCost]),
+    RateCost = wht_util:units_to_dollars(
+                 wht_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
+                                        ,kzd_rates:rate_minimum(RateDoc, 60)
+                                        ,kzd_rates:rate_surcharge(RateDoc)
+                                        )
+                ),
+    ?INFO("rate cost from doc: ~p", [RateCost]),
 
-        _Up = ?MODULE:upload_rate(API, RateDoc),
-        ?INFO("upload: ~p~n", [_Up]),
+    _Up = ?MODULE:upload_rate(API, RateDoc),
+    ?INFO("upload: ~p~n", [_Up]),
 
-        _Get = ?MODULE:get_rate(API, RateDoc),
-        ?INFO("get: ~p~n", [_Get]),
+    _Get = ?MODULE:get_rate(API, RateDoc),
+    ?INFO("get: ~p~n", [_Get]),
 
-        RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
-        ?INFO("rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),
+    RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
+    ?INFO("rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),
 
-        _SP = ?MODULE:create_service_plan(API, kzd_rates:ratedeck_id(RateDoc)),
-        ?INFO("created sp: ~p~n", [_SP]),
+    _SP = ?MODULE:create_service_plan(API, kzd_rates:ratedeck_id(RateDoc)),
+    ?INFO("created sp: ~p~n", [_SP]),
 
-        AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
-        AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
+    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+    AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
 
-        case is_binary(AccountId) of
-            'true' -> ?INFO("created account ~s~n", [AccountId]);
-            'false' ->
-                ?INFO("failed to get account id from ~s~n", [AccountResp]),
-                throw('no_account_id')
-        end,
+    case is_binary(AccountId) of
+        'true' -> ?INFO("created account ~s~n", [AccountId]);
+        'false' ->
+            ?INFO("failed to get account id from ~s~n", [AccountResp]),
+            throw('no_account_id')
+    end,
 
-        RatedeckId = kzd_rates:ratedeck_id(RateDoc),
+    RatedeckId = kzd_rates:ratedeck_id(RateDoc),
 
-        _Assigned = ?MODULE:assign_service_plan(API, AccountId, kzd_rates:ratedeck_id(RateDoc)),
-        case kz_json:get_value([<<"data">>, <<"plan">>, <<"ratedeck">>, RatedeckId]
-                              ,kz_json:decode(_Assigned)
-                              )
-        of
-            'undefined' ->
-                ?ERROR("failed to assign service plan for ~s to account ~s", [RatedeckId, AccountId]),
-                throw('no_plan');
-            _ ->
-                ?INFO("assigned service plan to account: ~p~n", [_Assigned])
-        end,
+    _Assigned = ?MODULE:assign_service_plan(API, AccountId, kzd_rates:ratedeck_id(RateDoc)),
+    case kz_json:get_value([<<"data">>, <<"plan">>, <<"ratedeck">>, RatedeckId]
+                          ,kz_json:decode(_Assigned)
+                          )
+    of
+        'undefined' ->
+            ?ERROR("failed to assign service plan for ~s to account ~s", [RatedeckId, AccountId]),
+            throw('no_plan');
+        _ ->
+            ?INFO("assigned service plan to account: ~p~n", [_Assigned])
+    end,
 
-        RateCost = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
-        ?INFO("rated ~s in account ~s", [hd(?PHONE_NUMBERS), AccountId]),
+    RateCost = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
+    ?INFO("rated ~s in account ~s", [hd(?PHONE_NUMBERS), AccountId]),
 
-        _Deleted = ?MODULE:delete_rate(API, RateDoc),
-        ?INFO("deleted: ~p", [_Deleted]),
+    _Deleted = ?MODULE:delete_rate(API, RateDoc),
+    ?INFO("deleted: ~p", [_Deleted]),
 
-        ?INFO("COMPLETED SUCCESSFULLY!")
-    catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            ?ERROR("crashed ~s: ~p~n", [_E, _R]),
-            io:format("crashed ~s: ~p~n", [_E, _R]),
-            [begin
-                 ?ERROR("s: ~p~n", [S]),
-                 io:format("s: ~p~n", [S])
-             end
-             || S <- ST
-            ]
-    after
-        cleanup(API),
-        io:format("done: ~p~n", [API])
-    end.
+    ?INFO("COMPLETED SUCCESSFULLY!"),
+    cleanup(API),
+    io:format("done: ~p~n", [API]).
 
 -spec command(any()) -> proper_types:type().
 command(Model) ->

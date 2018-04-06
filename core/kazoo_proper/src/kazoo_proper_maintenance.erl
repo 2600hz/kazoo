@@ -47,23 +47,13 @@ run_seq_modules() ->
 
 -spec run_seq_module(atom() | kz_term:ne_binary()) -> 'no_return'.
 run_seq_module(Module) when is_atom(Module) ->
-    Exports = Module:module_info('exports'),
-    _ = seq_exports(Module, Exports),
+    _ = [Module:Function()
+         || Function <- ['seq'],
+            kz_module:is_exported(Module, Function, 0)
+        ],
     'no_return';
 run_seq_module(ModuleBin) ->
     run_seq_module(kz_term:to_atom(ModuleBin)).
-
--spec seq_exports(module(), [{function(), arity()}]) -> 'ok'.
-seq_exports(Module, Exports) ->
-    _ = [seq_export(Module, Export) || Export <- Exports],
-    'ok'.
-
--spec seq_export(module(), {function(), arity()}) -> any().
-seq_export(Module, {'seq', 0}) ->
-    io:format("run ~s:seq/0~n", [Module]),
-    Module:seq();
-seq_export(_Module, _FunArity) ->
-    'true'.
 
 -spec modules() -> [module()].
 modules() ->

@@ -124,6 +124,8 @@ pretty_print_dollars(Amount) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec base_call_cost(units() | dollars(), units() | dollars(), units() | dollars()) -> units().
+base_call_cost(RateCost, 0, RateSurcharge) ->
+    base_call_cost(RateCost, 60, RateSurcharge);
 base_call_cost(RateCost, RateMin, RateSurcharge)
   when is_integer(RateCost),
        is_integer(RateMin),
@@ -308,7 +310,8 @@ calculate_call(JObj) ->
             Surcharge = get_integer_value(<<"Surcharge">>, CCVs),
             {ChargedSeconds, Cost} = calculate_call(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             Discount = trunc((get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost),
-            lager:info("rate $~p/~ps,"
+            lager:info("rate $~p,"
+                       " increment ~ps,"
                        " minimum ~ps,"
                        " surcharge $~p,"
                        " for ~ps (~ps),"

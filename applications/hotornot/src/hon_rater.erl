@@ -143,7 +143,7 @@ rate_resp(Rate, RateReq) ->
     RateMinimum = kzd_rates:rate_minimum(Rate, hotornot_config:default_minimum()),
     BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
     PrivateCost = kzd_rates:private_cost(Rate),
-    lager:debug("base cost for a minute call: ~p", [BaseCost]),
+    lager:debug("base cost for a call: ~p", [BaseCost]),
     ShouldUpdateCalleeId = should_update_callee_id(RateReq),
 
     [{<<"Rate">>, kz_term:to_binary(RateCost)}
