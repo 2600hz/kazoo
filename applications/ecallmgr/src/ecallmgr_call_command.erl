@@ -1777,6 +1777,5 @@ set_page_endpoints(Dialplan, Node, UUID, JObj, Endpoints) ->
 -spec add_page_conference_app(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:proplist().
 add_page_conference_app(Dialplan, ConferenceName) ->
     [{"application", <<"conference ", ConferenceName/binary>>}
-    ,{"application", <<"park">>}
      | Dialplan
     ].
