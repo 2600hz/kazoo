@@ -834,6 +834,7 @@ default_object(Schema) ->
     catch
         _Ex:_Err ->
             lager:debug("exception getting schema default ~p : ~p", [_Ex, _Err]),
+            kz_util:log_stacktrace(erlang:get_stacktrace()),
             kz_json:new()
     end.
 

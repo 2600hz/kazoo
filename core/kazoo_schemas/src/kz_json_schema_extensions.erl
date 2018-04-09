@@ -16,9 +16,12 @@
 -spec extra_validator(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
 extra_validator(Value, State) ->
     Schema = jesse_state:get_current_schema(State),
+    SystemSL = kapps_config:get_binary(<<"crossbar">>, <<"stability_level">>),
+    ParamSL = kz_json:get_value(<<"stability_level">>, Schema),
+    State1 = maybe_check_param_stability_level(SystemSL, ParamSL, State),
     case kz_json:is_true(<<"kazoo-validation">>, Schema, 'false') of
-        'true' -> extra_validation(Value, State);
-        'false' -> State
+        'true' -> extra_validation(Value, State1);
+        'false' -> State1
     end.
 
 -spec extra_validation(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
@@ -115,3 +118,31 @@ validate_attachment_oauth_doc_id(Value, State) ->
             lager:debug("~s", [ErrorMsg]),
             jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
     end.
+
+maybe_check_param_stability_level('undefined', _ParamSL, State) ->
+    State; %% SystemSL is undefined, skip checking
+maybe_check_param_stability_level(_SystemSL, 'undefined', State) ->
+    State; %% ParamSL is undefined, skip checking
+maybe_check_param_stability_level(SystemSL, ParamSL, State) ->
+    SystemSLInt = stability_level_to_int(SystemSL),
+    ParamSLInt = stability_level_to_int(ParamSL),
+    case check_param_stability_level(SystemSLInt, ParamSLInt) of
+        valid ->
+            State;
+        invalid ->
+            ErrorMsg = <<"Disallowed parameter, it has lower stability level (",
+                         ParamSL/binary, ") than system's stability level (",
+                         SystemSL/binary, ")">>,
+            lager:debug("~s", [ErrorMsg]),
+            jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
+    end.
+
+check_param_stability_level(SystemSLInt, ParamSLInt) when ParamSLInt < SystemSLInt ->
+    invalid;
+check_param_stability_level(_SystemSLInt, _ParamSLInt) ->
+    valid.
+
+-spec stability_level_to_int(kz_term:ne_binary()) -> pos_integer().
+stability_level_to_int(<<"stable">>) -> 3;
+stability_level_to_int(<<"beta">>) -> 2;
+stability_level_to_int(<<"alpha">>) -> 1.
