@@ -14,6 +14,7 @@
 1. You're all set!
 
 Now access `kazoo_example_ws_client.html` with your favourite Web browser and open the Javascript console.
+
 * You should be able to see whether your client connected to Kazoo
 * Make a call: the events your client is listening for will appear in the console!
 
@@ -49,7 +50,7 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
                 request_id: '{REQUEST_ID}',
                 data: {
                     account_id: '{ACCOUNT_ID}',
-                    bindings: ['call.CHANNEL_ANSWER.*', 'call.CHANNEL_DESTROY.*']
+                    binding: conference.event.{CONFERENCE_ID}.*'
                 }
             });
 
@@ -59,7 +60,7 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
                 request_id: '{REQUEST_ID}',
                 data: {
                     account_id: '{ACCOUNT_ID}',
-                    bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
+                    binding: 'doc_created.*.user.*'
                 }
             });
         }
