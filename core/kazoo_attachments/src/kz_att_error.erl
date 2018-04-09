@@ -149,7 +149,7 @@ resp_headers(#{'resp_headers' := Headers}) ->
 
 -spec set_resp_headers(extended_error(), resp_headers()) -> extended_error().
 set_resp_headers(ExtendedError, Headers) ->
-    ExtendedError#{'resp_headers' => Headers}.
+    ExtendedError#{'resp_headers' => [{kz_term:to_binary(K), kz_term:to_binary(V)}|| {K,V} <- Headers]}.
 
 -spec options(extended_error()) -> gen_attachment:options().
 options(#{'options' := Options}) ->
