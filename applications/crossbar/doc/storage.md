@@ -81,7 +81,7 @@ Key | Description | Type | Default | Required | Support Level
 `handler` | What handler module to use | `string('azure')` |   | `true` |
 `settings.account` | the azure account name | `string()` |   | `true` |
 `settings.container` | the azure container where the files should be saved | `string()` |   | `true` |
-`settings.key` | the azure api key | `string()` |   | `true` |
+`settings.key` | the azure API key | `string()` |   | `true` |
 `settings` | Settings for the Azure account | `object()` |   | `true` |
 
 ### storage.attachment.dropbox
@@ -223,7 +223,79 @@ Key | Description | Type | Default | Required | Support Level
 `attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |
 `connection` |   | `string()` |   | `false` |
 
+#### Create
 
+First, you should create a 32-character UUID to identify the S3 configuration:
+
+```shell
+echo $(tr -dc a-f0-9 < /dev/urandom | dd bs=32 count=1 2> /dev/null)
+403f90f67d1b71341f2ea6426eed3d90
+```
+
+Using your `{UUID}`, create the storage document using the `{UUID}` as the reference to the S3 configuration parameters.
+
+> PUT /v2/accounts/{ACCOUNT_ID}/storage
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+ -d '{"data":{
+        "attachments": {
+            "{UUID}": {
+                "handler": "s3",
+                "name": "S3 Storage",
+                "settings": {
+                    "bucket": "{S3_BUCKET}",
+                    "key": "{AWS_ACCESS_KEY}",
+                    "secret": "{AWS_SECRET_KEY}"
+                }
+            }
+        },
+        "plan": {
+            "modb": {
+                "types": {
+                    "mailbox_message": {
+                        "attachments": {
+                            "handler": "{UUID}"
+                        }
+                    }
+                }
+            }
+        }
+        }}' \
+  http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
+```
+
+```json
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "attachments": {
+      "{UUID}": {
+        "handler": "s3",
+        "name": "S3 Storage",
+        "settings": {
+          "bucket": "{S3_BUCKET}",
+          "key": "{AWS_ACCESS_KEY}",
+          "secret": "{AWS_SECRET_KEY}"
+        }
+      }
+    },
+    "plan": {
+      "modb": {
+        "types": {
+          "mailbox_message": {
+            "attachments": {
+              "handler": "{UUID}"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 ## Fetch
 
