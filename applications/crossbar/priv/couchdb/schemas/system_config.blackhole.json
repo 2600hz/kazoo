@@ -26,6 +26,15 @@
         },
         "bindings": {
             "description": "blackhole bindings",
+            "patternProperties": {
+                "[a-z_]+": {
+                    "description": "Patterns for the bindings exposed by the various modules",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
             "type": "object"
         },
         "compress_response_body": {
