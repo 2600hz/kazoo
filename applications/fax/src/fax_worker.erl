@@ -1107,7 +1107,7 @@ validate_tiff_content(Filename) ->
         Exe ->
             Dir = filename:dirname(Filename),
             OutputFile = filename:join(Dir, <<(kz_binary:rand_hex(16))/binary, ".pdf">>),
-            Cmd = io_lib:format("~s ~s -o ~s", [Exe, Filename, OutputFile]),
+            Cmd = io_lib:format("~s -o ~s ~s", [Exe, OutputFile, Filename]),
             catch(os:cmd(Cmd)),
             case file:read_file_info(OutputFile) of
                 {'ok', _} ->
