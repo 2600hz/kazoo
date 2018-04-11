@@ -16,25 +16,37 @@
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_documents/include/doc_types.hrl").
 
+-define(OBJECT(Action, Type)
+       ,<<"object.", Action/binary, ".", Type/binary>>
+       ).
+
 -spec init() -> any().
 init() ->
+    init_bindings(),
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.object">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.object">>, ?MODULE, 'bindings').
+
+init_bindings() ->
+    Bindings = [?OBJECT(Action, Type)
+                || Action <- ?DOC_ACTIONS,
+                   Type <- ?DOC_TYPES
+               ],
+    case kapps_config:set_default(?CONFIG_CAT, [<<"bindings">>, <<"object">>], Bindings) of
+        {'ok', _} -> lager:debug("initialized object bindings");
+        {'error', _E} -> lager:info("failed to initialize object bindings: ~p", [_E])
+    end.
 
 %% example binding: object.fax.doc_update
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
-validate(Context, #{keys := [<<"*">>, <<"*">>]
-                   }) ->
+validate(Context, #{keys := [<<"*">>, <<"*">>]}) ->
     Context;
-validate(Context, #{keys := [Action, <<"*">>]
-                   }) ->
+validate(Context, #{keys := [Action, <<"*">>]}) ->
     case lists:member(Action, ?DOC_ACTIONS) of
         'true' -> Context;
         'false' -> bh_context:add_error(Context, <<"event ", Action/binary, ".* not supported">>)
     end;
-validate(Context, #{keys := [<<"*">>, Type]
-                   }) ->
+validate(Context, #{keys := [<<"*">>, Type]}) ->
     case lists:member(Type, ?DOC_TYPES) of
         'true' -> Context;
         'false' -> bh_context:add_error(Context, <<"event *.", Type/binary, " not supported">>)
@@ -56,7 +68,7 @@ bindings(_Context, #{account_id := AccountId
                     }=Map) ->
     AccountDb = kz_util:format_account_db(AccountId),
     AccountMODB = kazoo_modb:get_modb(AccountId),
-    Requested = <<"object.", Action/binary, ".", Type/binary>>,
+    Requested = ?OBJECT(Action, Type),
     Map#{requested => Requested
         ,subscribed => subscribed(Type, Action, AccountDb, AccountMODB)
         ,listeners => listeners(Type, Action, AccountDb, AccountMODB)

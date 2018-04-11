@@ -21,19 +21,30 @@
                    ,<<"PARK_PARKED">>, <<"PARK_RETRIEVED">>, <<"PARK_ABANDONED">>
                    ]).
 
+-define(ACCOUNT_BINDING(AccountId, Event, CallId)
+       ,<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>
+       ).
+-define(BINDING(Event, CallId), <<"call.", Event/binary, ".", CallId/binary>>).
+-define(BINDING(Event), ?BINDING(Event, <<"*">>)).
 
 -spec init() -> any().
 init() ->
+    init_bindings(),
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.call">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.call">>, ?MODULE, 'bindings').
 
+-spec init_bindings() -> 'ok'.
+init_bindings() ->
+    Bindings = [?BINDING(Event, <<"{CALL_ID}">>) || Event <- ?LISTEN_TO],
+    case kapps_config:set_default(?CONFIG_CAT, [<<"bindings">>, <<"call">>], Bindings) of
+        {'ok', _} -> lager:debug("initialized call bindings");
+        {'error', _E} -> lager:info("failed to initialize call bindings: ~p", [_E])
+    end.
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
-validate(Context, #{keys := [<<"*">>, _]
-                   }) ->
+validate(Context, #{keys := [<<"*">>, _]}) ->
     Context;
-validate(Context, #{keys := [Event, _]
-                   }) ->
+validate(Context, #{keys := [Event, _]}) ->
     case lists:member(Event, ?LISTEN_TO) of
         'true' -> Context;
         'false' -> bh_context:add_error(Context, <<"event ", Event/binary, " not supported">>)
@@ -41,14 +52,14 @@ validate(Context, #{keys := [Event, _]
 validate(Context, #{keys := Keys}) ->
     bh_context:add_error(Context, <<"invalid format for call subscription : ", (kz_binary:join(Keys))/binary>>).
 
-
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{account_id := AccountId
                     ,keys := [<<"*">>, CallId]
                     }=Map) ->
-    Requested = <<"call.*.", CallId/binary>>,
-    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>
-                      || Event <- ?LISTEN_TO],
+    Requested = ?BINDING(<<"*">>, CallId),
+    Subscribed = [?ACCOUNT_BINDING(AccountId, Event, CallId)
+                  || Event <- ?LISTEN_TO
+                 ],
     Listeners = [{'hook', AccountId, Event} || Event <- ?LISTEN_TO],
     Map#{requested => Requested
         ,subscribed => Subscribed
@@ -57,8 +68,8 @@ bindings(_Context, #{account_id := AccountId
 bindings(_Context, #{account_id := AccountId
                     ,keys := [Event, CallId]
                     }=Map) ->
-    Requested = <<"call.", Event/binary, ".", CallId/binary>>,
-    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>],
+    Requested = ?BINDING(Event, CallId),
+    Subscribed = [?ACCOUNT_BINDING(AccountId, Event, CallId)],
     Listeners = [{'hook', AccountId, Event}],
     Map#{requested => Requested
         ,subscribed => Subscribed
