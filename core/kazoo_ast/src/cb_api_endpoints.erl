@@ -19,7 +19,10 @@
 -endif.
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("crossbar/src/crossbar.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_web/include/kazoo_web.hrl").
+-include_lib("kazoo_documents/include/kazoo_documents.hrl").
+
 -include_lib("kazoo_ast/src/kz_ast.hrl").
 
 -define(REF_PATH
@@ -600,6 +603,7 @@ process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
                    ],
     process_api_ast_functions(Module, APIFunctions).
 
+-type http_methods() :: kz_term:ne_binaries().
 -type path_with_methods() :: {iodata(), http_methods()}.
 -type paths_with_methods() :: [path_with_methods()].
 -type allowed_methods() :: {'allowed_methods', paths_with_methods()}.
