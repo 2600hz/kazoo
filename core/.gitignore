@@ -1,0 +1,14 @@
+.deps.mk
+*.beam
+*.app
+
+/kazoo_auth/c_src/env.mk
+
+/kazoo_number_manager/src/knm_iso3166a2_itu.erl
+/kazoo_number_manager/dialcodes.json
+
+/sup/sup
+
+/kazoo/src/kz_mime.erl
+/kazoo/mime.types
+/*/cover/*.html

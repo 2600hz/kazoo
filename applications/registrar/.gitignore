@@ -1,0 +1,5 @@
+.deps.mk
+*.beam
+*.app
+
+/c_src/env.mk
