@@ -49,7 +49,7 @@ set_hook(Data, CallJObj) ->
     kz_json:from_list(
       [{<<"_id">>, kz_term:to_binary(Now)}
       ,{<<"uri">>, kz_json:get_ne_binary_value(<<"uri">>, Data)}
-      ,{<<"hook">>, <<"callflow">>}
+      ,{<<"hook">>, <<"notifications">>}
       ,{<<"http_verb">>, kz_json:get_ne_binary_value(<<"http_verb">>, Data)}
       ,{<<"retries">>, kz_json:get_integer_value(<<"retries">>, Data)}
       ,{<<"pvt_account_id">>, kz_json:get_ne_binary_value(<<"account_id">>, CallJObj)}
