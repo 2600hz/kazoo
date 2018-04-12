@@ -29,6 +29,7 @@
 -define(DEFAULT_TYPE_EXCEPTION, [<<"system_alert">>
                                 ,<<"voicemail_save">>
                                 ,<<"register">>
+                                ,<<"webhook">>
                                 ]).
 -define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION,
         kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_persist_temporary_force_exceptions">>, [])
