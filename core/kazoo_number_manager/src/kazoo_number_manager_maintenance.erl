@@ -243,14 +243,12 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     put(trunkstore_DIDs, get_DIDs_trunkstore(AccountDb)),
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
 
-    ?DEV_LOG("~nHESAAM: ~p self ~p~n", [erlang:system_info(schedulers), self()]),
     Malt = [1
-           ,{processes, schedulers}
+           ,{processes, ?PARALLEL_JOBS_COUNT}
            ],
     Leftovers =
         plists:fold(fun (NumberDb, Leftovers) ->
                             Fixer = fun (DID) -> fix_docs(AccountDb, NumberDb, DID) end,
-                            ?DEV_LOG("~nHESAAM: Leftovers pid ~p~n", [self()]),
                             ?SUP_LOG_DEBUG("[~s] getting numbers from ~s", [AccountDb, NumberDb]),
                             AuthoritativePNs = get_DIDs_assigned_to(NumberDb, AccountId),
                             ?SUP_LOG_DEBUG("[~s] start fixing ~s", [AccountDb, NumberDb]),
