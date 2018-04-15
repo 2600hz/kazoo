@@ -1315,7 +1315,8 @@ get_page_app(Node, UUID, JObj, Endpoints) ->
     PageId = <<"page_", (kz_binary:rand_hex(8))/binary>>,
     ConferenceName = list_to_binary([PageId, "@page"]),
 
-    Routines = [fun(DP) -> set_page_conference_vars(DP, PageId) end
+    Routines = [fun add_page_exports/1
+               ,fun(DP) -> set_page_conference_vars(DP, PageId) end
                ,fun(DP) -> maybe_set_page_two_way_audio(DP, JObj) end
                ,fun(DP) -> set_page_caller_id(DP, JObj) end
                ,fun(DP) -> set_page_timeout(DP, JObj) end
@@ -1364,16 +1365,14 @@ set_page_timeout(Dialplan, JObj) ->
 set_page_endpoints(Dialplan, Node, UUID, JObj, Endpoints) ->
     DefaultCCV = kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]),
     CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, DefaultCCV)),
-    BargeParams = ecallmgr_util:multi_set_args(Node, UUID, CCVs, <<",">>, <<",">>),
-    AutoAnswer = list_to_binary(["{sip_invite_params=intercom=true"
-                                ,",alert_info=intercom"
+    BargeParams = ecallmgr_util:multi_set_args(Node, UUID, CCVs, <<";">>, <<";">>),
+    AutoAnswer = list_to_binary(["{^^;sip_invite_params=intercom=true"
+                                ,";alert_info=intercom"
                                 ,BargeParams
                                 ,"}"
                                 ]),
 
-    {'ok', #channel{interaction_id=Id}} = ecallmgr_fs_channel:fetch(UUID, 'record'),
     Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
-             ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], Id}
              ],
     EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
     Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
@@ -1387,3 +1386,15 @@ add_page_conference_app(Dialplan, ConferenceName) ->
     [{"application", <<"conference ", ConferenceName/binary>>}
      | Dialplan
     ].
+
+-spec add_page_exports(kz_term:proplist()) -> kz_term:proplist().
+add_page_exports(DP) ->
+    Exports = [{<<"sip_redirect_context">>, <<"context_2">>}
+              ,{<<?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID>>, <<"${", ?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID, "}">>}
+              ,{<<"ecallmgr_Ecallmgr-Node">>, <<"${ecallmgr_Ecallmgr-Node}">>}
+              ],
+    ExportVars = kz_binary:join([K || {K, _V} <- Exports], <<",">>),
+    [{"application", <<"set conference_auto_outcall_export_vars=", ExportVars/binary>>}
+     |DP
+    ].
+
