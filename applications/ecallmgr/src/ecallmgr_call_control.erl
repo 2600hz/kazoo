@@ -318,6 +318,8 @@ handle_info({'force_queue_advance', CallId}, #state{call_id=CallId}=State) ->
     {'noreply', force_queue_advance(State)};
 handle_info({'force_queue_advance', _}, State) ->
     {'noreply', State};
+handle_info({'forward_queue', CallId}, #state{call_id=CallId}=State) ->
+    {'noreply', forward_queue(State)};
 handle_info('keep_alive_expired', State) ->
     lager:debug("no new commands received after channel destruction, our job here is done"),
     {'stop', 'normal', State};
@@ -477,16 +479,7 @@ publish_route_win(#state{call_id=CallId
            | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
-    kapi_route:publish_win(ControllerQ, Win),
-    Usurp = [{<<"Call-ID">>, CallId}
-            ,{<<"Fetch-ID">>, FetchId}
-            ,{<<"Reason">>, <<"Route-Win">>}
-            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    lager:debug("sending control usurp for ~s", [FetchId]),
-    kapi_call:publish_usurp_control(CallId, Usurp),
-    ecallmgr_usurp_monitor:register(CallId).
+    kapi_route:publish_win(ControllerQ, Win).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -621,6 +614,9 @@ force_queue_advance(#state{call_id=CallId
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_execute_complete(kz_term:api_binary(), kz_term:api_binary(), kz_json:object(), state()) -> state().
+handle_execute_complete(_AppName, <<"null">>, _JObj, State) ->
+    lager:debug_unsafe("ignoring ~s completion", [_AppName]),
+    State;
 handle_execute_complete('undefined', _, _JObj, State) ->
     lager:debug_unsafe("call control received undefined : ~s", [kz_json:encode(_JObj, ['pretty'])]),
     State;
@@ -628,6 +624,7 @@ handle_execute_complete(_, 'undefined', _JObj, State) ->
     lager:debug_unsafe("call control received undefined : ~s", [kz_json:encode(_JObj, ['pretty'])]),
     State;
 handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_cmd_uuid='undefined'}=State) ->
+    lager:debug_unsafe("execute complete not handled : ~s:~s : ~s", [_AppName, _EventUUID, kz_json:encode(_JObj, ['pretty'])]),
     State;
 handle_execute_complete(AppName, EventUUID, _, #state{current_app=AppName
                                                      ,current_cmd_uuid=EventUUID
@@ -794,7 +791,7 @@ handle_dialplan(JObj, #state{call_id=CallId
                                ,msg_id=MsgId
                                };
                 'ok' ->
-                    self() ! {'force_queue_advance', CallId},
+                    self() ! {'forward_queue', CallId},
                     lager:debug("command ~s execute complete", [AppName]),
                     State#state{command_q=NewCmdQ1
                                ,current_app=AppName
