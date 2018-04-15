@@ -29,18 +29,25 @@ handle_req(JObj, _Props) ->
 create_conference(JObj) ->
     Conference = kapps_conference:from_json(JObj),
     ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj),
-    case binary:split(ProfileName, <<"_">>) of
-        [ConferenceId, AccountId] ->
-            lager:debug("creating conference config for ~s in account ~s", [ConferenceId, AccountId]),
-            Routines = [{fun kapps_conference:set_account_id/2, AccountId}
-                       ,{fun kapps_conference:set_id/2, ConferenceId}
-                       ],
-            kapps_conference:update(Routines, Conference);
-        _Else ->
-            lager:debug("profile name ~s not split: ~p", [ProfileName, _Else]),
-            Routines = [{fun kapps_conference:set_profile_name/2, ProfileName}],
-            kapps_conference:update(Routines, Conference)
-    end.
+    ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
+    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj),
+    Routines = [{fun kapps_conference:set_account_id/2, AccountId}
+               ,{fun kapps_conference:set_profile_name/2, ProfileName}
+               ,{fun kapps_conference:set_id/2, ConferenceId}
+               ],
+    kapps_conference:update(Routines, Conference).
+
+
+%% create_conference(JObj, AccountId, ConferenceId) ->
+%%     case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConferenceId) of
+%%         {'ok', Doc} ->
+%%             lager:debug("config request contained a valid conference id, building object"),
+%%             WithConferenceDoc = kz_json:set_value(<<"Conference-Doc">>, Doc, JObj),
+%%             kapps_conference:from_json(WithConferenceDoc));
+%%         _Else ->
+%%             lager:debug("could not find specified conference id ~s: ~p", [ConferenceId, _Else]),
+%%             kapps_conference:set_call(Call, kapps_conference:from_json(DiscoveryReq))
+%%     end.
 
 -spec handle_request(kz_term:ne_binary(), kz_json:object(), kapps_conference:conference()) -> 'ok'.
 handle_request(<<"Conference">>, JObj, Conference) ->
