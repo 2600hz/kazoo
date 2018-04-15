@@ -89,9 +89,9 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
                   ],
     case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
+            Count = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-            lists:foreach(fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
+            lists:foreach(fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, Count) end
                          ,JObjs
                          ),
             'ok';
@@ -99,8 +99,9 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R])
     end.
 
--spec maybe_send_unsolicited_mwi_update(kz_json:object(), kz_term:ne_binary(), integer(), integer()) -> 'ok'.
-maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) ->
+-spec maybe_send_unsolicited_mwi_update(kz_json:object(), kz_term:ne_binary(), kvm_messages:vm_count()) -> 'ok'.
+maybe_send_unsolicited_mwi_update(_JObj, _AccountId, 'no_vm') -> 'ok';
+maybe_send_unsolicited_mwi_update(JObj, AccountId, Count) ->
     J = kz_json:get_value(<<"doc">>, JObj),
     Username = kzd_devices:sip_username(J),
     Realm = kz_endpoint:get_sip_realm(J, AccountId),
@@ -111,7 +112,7 @@ maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) ->
         andalso 'undefined' =/= OwnerId
         andalso kzd_devices:mwi_unsolicited_updates(J)
     of
-        'true' -> send_unsolicited_mwi_update(New, Saved, Username, Realm);
+        'true' -> send_unsolicited_mwi_update(Count, Username, Realm);
         'false' -> 'ok'
     end.
 
@@ -153,16 +154,16 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     of
         'false' -> {'error', 'not_appropriate'};
         'true' ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            send_unsolicited_mwi_update(New, Saved, Username, Realm)
+            send_unsolicited_mwi_update(vm_count_by_owner(AccountDb, OwnerId), Username, Realm)
     end.
 
 %%------------------------------------------------------------------------------
 %% @end
 %%------------------------------------------------------------------------------
 -type vm_count() :: non_neg_integer().
--spec send_unsolicited_mwi_update(vm_count(), vm_count(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_unsolicited_mwi_update(New, Saved, Username, Realm) ->
+-spec send_unsolicited_mwi_update(kvm_messages:vm_count(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+send_unsolicited_mwi_update('no_vm', _Username, _Realm) -> 'ok';
+send_unsolicited_mwi_update({New, Saved}, Username, Realm) ->
     send_unsolicited_mwi_update(New, Saved, Username, Realm, kz_json:new()).
 
 -spec send_unsolicited_mwi_update(vm_count(), vm_count(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
@@ -182,8 +183,8 @@ is_unsolicited_mwi_enabled(AccountId) ->
     kapps_config:get_is_true(?VM_CONFIG_CAT, ?MWI_SEND_UNSOLICITED_UPDATES, 'true')
         andalso kz_term:is_true(kapps_account_config:get(AccountId, ?VM_CONFIG_CAT, ?MWI_SEND_UNSOLICITED_UPDATES, 'true')).
 
--spec vm_count_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
+-spec vm_count_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> kvm_message:vm_count().
+vm_count_by_owner(_AccountDb, 'undefined') -> 'no_vm';
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
 

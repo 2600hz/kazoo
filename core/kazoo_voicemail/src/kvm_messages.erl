@@ -38,8 +38,11 @@
 
 -type count_map() :: #{kz_term:ne_binary() => per_folder_count()}.
 -type non_deleted_tuple() :: {non_neg_integer(), non_neg_integer()}.
+-type vm_count() :: 'no_vm' | non_deleted_tuple().
 
 -type get_map() :: #{kz_term:ne_binary() => kz_json:objects()}.
+
+-export_type([vm_count/0]).
 
 %%------------------------------------------------------------------------------
 %% @doc Get all voicemail messages metadata for an account which
@@ -114,7 +117,7 @@ count_non_deleted(AccountId, BoxId) ->
 %%------------------------------------------------------------------------------
 -spec count_by_owner(AccountId, OwnerId) -> Count when AccountId :: kz_term:ne_binary(),
                                                        OwnerId :: kz_term:ne_binary(),
-                                                       Count :: non_deleted_tuple().
+                                                       Count :: vm_count().
 count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
     AccountId = kz_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
@@ -123,14 +126,14 @@ count_by_owner(AccountId, OwnerId) ->
     case kz_datamgr:get_results(kvm_util:get_db(AccountId), <<"attributes/owned">>, ViewOptions) of
         {'ok', []} ->
             lager:info("no voicemail boxes belonging to user ~s found", [OwnerId]),
-            {0, 0};
+            'no_vm';
         {'ok', Boxes} ->
             BoxIds = [kz_json:get_value(<<"value">>, Box) || Box <- Boxes],
             lager:debug("found ~p voicemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
             sum_owner_mailboxes(AccountId, BoxIds, {0, 0});
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),
-            {0, 0}
+            'no_vm'
     end.
 
 -spec sum_owner_mailboxes(kz_term:ne_binary(), kz_term:ne_binaries(), non_deleted_tuple()) -> non_deleted_tuple().
