@@ -15,6 +15,9 @@
 
 -include("ecallmgr.hrl").
 
+-define(EXCLUDE_PUBLISH_EVENTS, [<<"CHANNEL_DATA">>
+                                ,<<"CALL_UPDATE">>
+                                ]).
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -29,14 +32,24 @@ init() ->
     'ok'.
 
 -spec publish_call_event(map()) -> any().
-publish_call_event(#{payload := JObj}) ->
+publish_call_event(#{payload := JObj}=Map) ->
     kz_util:put_callid(JObj),
+    EventName = kz_api:event_name(JObj),
+    case lists:member(EventName, ?EXCLUDE_PUBLISH_EVENTS) of
+        'true' -> 'ok';
+        'false' -> do_publish_call_event(Map)
+    end.
+
+-spec do_publish_call_event(map()) -> any().
+do_publish_call_event(#{payload := JObj}) ->
     Node = kz_term:to_binary(node()),
     case ?RESTRICTED_PUBLISHING
-        andalso kz_call_event:custom_channel_var(JObj, <<"Ecallmgr-Node">>)
+        andalso kz_evt_freeswitch:ccv(JObj, <<"Ecallmgr-Node">>)
     of
         'false' -> kapi_call:publish_event(JObj);
-        'undefined' -> kapi_call:publish_event(JObj);
+        'undefined' ->
+            lager:debug("publishing ~s with restricted and undefined", [kz_api:event_name(JObj)]),
+            kapi_call:publish_event(JObj);
         Node -> kapi_call:publish_event(JObj);
         _Other -> 'ok'
     end.
