@@ -36,15 +36,14 @@ authorize(Request, Limits) ->
 reconcile_cdr(Request, Limits) ->
     case j5_request:billing(Request, Limits) of
         <<"per_minute">> -> reconcile_call_cost(Request, Limits);
-        _Else -> 'ok'
+        _Else -> lager:debug("billing is ~p", [_Else])
     end.
 
 -spec reconcile_call_cost(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_call_cost(Request, Limits) ->
     case j5_request:calculate_call(Request) of
-        {_, 0} -> 'ok';
-        {Seconds, Amount} ->
-            create_ledger_usage(Seconds, Amount, Request, Limits)
+        {_, 0} -> lager:debug("call cost for per-minute rating is 0");
+        {Seconds, Amount} -> create_ledger_usage(Seconds, Amount, Request, Limits)
     end.
 
 %%------------------------------------------------------------------------------
