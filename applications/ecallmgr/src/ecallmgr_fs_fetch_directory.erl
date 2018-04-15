@@ -92,12 +92,10 @@ maybe_kamailio_association(Node, Id, JObj) ->
 kamailio_association(Node, Id, 'undefined', _AccountId, _) -> directory_not_found(Node, Id);
 kamailio_association(Node, Id, _EndpointId, 'undefined', _) -> directory_not_found(Node, Id);
 kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
-    case kz_endpoint:profile(EndpointId, AccountId) of
+    case kz_endpoint_profile:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
             {'ok', Xml} = ecallmgr_fs_xml:directory_resp_endpoint_xml(Endpoint, JObj),
-            lager:debug_unsafe("SENDING ENDPOINT ~s", [kz_json:encode(Endpoint, ['pretty'])]),
-            lager:debug_unsafe("SENDING JOBJ ~s", [kz_json:encode(JObj, ['pretty'])]),
             lager:debug_unsafe("sending directory XML to ~w: ~s", [Node, iolist_to_binary(Xml)]),
             freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml));
         {error, _Err} ->

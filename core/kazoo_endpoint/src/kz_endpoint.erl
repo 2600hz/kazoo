@@ -16,7 +16,6 @@
         ,maybe_start_metaflow/2
         ,encryption_method_map/2
         ,get_sip_realm/2, get_sip_realm/3
-        ,profile/2
         ]).
 
 -ifdef(TEST).
@@ -1614,12 +1613,6 @@ maybe_set_endpoint_id({Endpoint, Call, CallFwd, CCVs}) ->
      end
     }.
 
--spec set_presence_id(ccv_acc()) -> ccv_acc().
-set_presence_id({Endpoint, Call, CallFwd, CCVs}) ->
-    {Endpoint, Call, CallFwd
-    ,kz_json:set_value(<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call), CCVs)
-    }.
-
 -spec maybe_set_owner_id(ccv_acc()) -> ccv_acc().
 maybe_set_owner_id({Endpoint, Call, CallFwd, CCVs}) ->
     {Endpoint, Call, CallFwd
@@ -1991,73 +1984,3 @@ maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
                     {Endpoint, Call, CallFwd, NewActions}
             end
     end.
-
--spec set_realm(ccv_acc()) -> ccv_acc().
-set_realm({Endpoint, Call, CallFwd, CCVs}) ->
-    Realm = kz_json:get_value(<<"realm">>, Endpoint),
-    {Endpoint, Call, CallFwd
-    ,kz_json:set_value(<<"Realm">>, Realm, CCVs)
-    }.
-
--spec profile(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
-profile(EndpointId, AccountId) ->
-    case ?MODULE:get(EndpointId, AccountId) of
-        {'ok', Endpoint} -> generate_profile(EndpointId, AccountId, Endpoint);
-        Error -> Error
-    end.
-
--spec generate_profile(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> {'ok', kz_json:object()}.
-generate_profile(EndpointId, AccountId, Endpoint) ->
-    %% I DON'T LIKE THIS
-    %% kz_endpoint should not depend on kapps_call
-    %% or we should split the kz_endpoint implemention
-    %% dial properties, doc properties, profile properties
-    %% maybe move the funs in this module to other modules
-    %% and have this module only deal with high-level request and caching
-    %% the 1st i notice is that i need to create a kapps_call to reuse the generation of the CCVs
-    %% same thing with kz_attributes dependency on kapps_call
-    %% we also should implement a kzd_endpoint to access the returned JObj properties
-
-    %% we need to implement profile for resources so that inbound gets its properties filled
-    %% we get X-AUTH-ACL-Token from kamailio into freeswitch
-    %% freeswitch only accepts inbound traffic from kamailio
-    %% freeswitch asks for properties of ACL-Token
-    %%
-
-    Realm = kz_json:get_value(<<"realm">>, Endpoint),
-    CallFuns = [{fun kapps_call:set_account_id/2, AccountId}
-               ,{fun kapps_call:set_request/2, <<"burp@", Realm/binary>>}
-               ],
-
-    CCVFuns = [fun maybe_set_endpoint_id/1
-              ,fun maybe_set_owner_id/1
-              ,fun maybe_set_account_id/1
-              ,fun maybe_rtcp_mux/1
-              ,fun maybe_enable_fax/1
-              ,fun maybe_enforce_security/1
-              ,fun maybe_set_encryption_flags/1
-              ,fun set_sip_invite_domain/1
-              ,fun maybe_set_webrtc/1
-              ,fun set_presence_id/1
-              ,fun set_realm/1
-              ],
-    Acc0 = {Endpoint, kapps_call:exec(CallFuns, kapps_call:new()), 'undefined', kz_json:new()},
-    {_Endpoint, Call, _CallFwd, CCVs} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
-
-
-    {CIDNumber, CIDName} = kz_attributes:get_endpoint_cid(true, <<"internal">>, Endpoint, Call),
-    {CEDNumber, CEDName} = kz_attributes:get_endpoint_cid(true, <<"external">>, Endpoint, Call),
-    CPVs = [{<<"Caller-ID-Number">>, CIDNumber}
-           ,{<<"Caller-ID-Name">>, CIDName}
-           ,{<<"Internal-Caller-ID-Number">>, CIDNumber}
-           ,{<<"Internal-Caller-ID-Name">>, CIDName}
-           ,{<<"External-Caller-ID-Number">>, CEDNumber}
-           ,{<<"External-Caller-ID-Name">>, CEDName}
-           ],
-    Profile = [{<<"Domain-Name">>, AccountId}
-              ,{<<"User-ID">>, EndpointId}
-              ,{<<"Custom-Channel-Vars">>, CCVs}
-              ,{<<"Custom-Profile-Vars">>, kz_json:from_list(CPVs)}
-              ,{<<"Expires">>, 360}
-              ],
-    {ok, kz_json:from_list(Profile)}.
