@@ -317,9 +317,21 @@ run_notify(Ctx) ->
 
 run_publish(Ctx) ->
     Routing = create_routing(<<"publish">>, Ctx),
-    kazoo_bindings:map(Routing, Ctx).
+    kazoo_bindings:map(Routing, Ctx, run_publish_options()).
 
 create_routing(Name, #{category := undefined} = Ctx) ->
     create_routing(Name, Ctx#{category => <<"invalid">>});
 create_routing(Name, #{category := Category, event := Event}) ->
     <<"event_stream.", Name/binary, ".", Category/binary, ".", Event/binary>>.
+
+-spec run_publish_options() -> kazoo_bindings:rt_options().
+run_publish_options() ->
+    [{'candidates', fun run_publish_candidates/1}
+    ].
+
+-spec run_publish_candidates(kz_term:ne_binary()) -> kazoo_bindings:kz_bindings().
+run_publish_candidates(Routing) ->
+    case lists:sort(kazoo_bindings:bindings(Routing)) of
+        [] -> [];
+        Bindings -> [lists:last(Bindings)]
+    end.
