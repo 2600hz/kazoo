@@ -359,7 +359,7 @@ set_notifications_low_balance(Doc, NotificationsLowBalance) ->
 
 -spec notifications_low_balance_enabled(doc()) -> boolean().
 notifications_low_balance_enabled(Doc) ->
-    notifications_low_balance_enabled(Doc, true).
+    notifications_low_balance_enabled(Doc, 'undefined').
 
 -spec notifications_low_balance_enabled(doc(), Default) -> boolean() | Default.
 notifications_low_balance_enabled(Doc, Default) ->
