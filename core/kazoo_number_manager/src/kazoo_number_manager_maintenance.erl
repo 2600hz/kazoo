@@ -267,8 +267,10 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                    ),
 
     ToRm0 = case Leftovers =:= [] of
-                'true' -> []; %% Only if there is no number_dbs, plists would return empty list
-                              %% regardless of initAcc value. See `plists:fuse/2'.
+                'true' ->
+                    %% Only if there is no number_dbs, plists would return empty list
+                    %% regardless of initAcc value. See `plists:fuse/2'.
+                    [];
                 'false' -> gb_sets:to_list(Leftovers)
             end,
     lists:foreach(fun (_DID) -> log_alien(AccountDb, _DID) end, ToRm0),
