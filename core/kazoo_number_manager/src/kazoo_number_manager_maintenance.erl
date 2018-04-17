@@ -242,8 +242,12 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     put(callflow_DIDs, get_DIDs_callflow(AccountDb)),
     put(trunkstore_DIDs, get_DIDs_trunkstore(AccountDb)),
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
+
+    Malt = [1
+           ,{processes, schedulers}
+           ],
     Leftovers =
-        lists:foldl(fun (NumberDb, Leftovers) ->
+        plists:fold(fun (NumberDb, Leftovers) ->
                             Fixer = fun (DID) -> fix_docs(AccountDb, NumberDb, DID) end,
                             ?SUP_LOG_DEBUG("[~s] getting numbers from ~s", [AccountDb, NumberDb]),
                             AuthoritativePNs = get_DIDs_assigned_to(NumberDb, AccountId),
@@ -253,13 +257,22 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                                                     ,gb_sets:to_list(AuthoritativePNs)
                                                     ),
                             ?SUP_LOG_DEBUG("[~s] done fixing ~s", [AccountDb, NumberDb]),
-                            timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
+                            %% timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
                             gb_sets:subtract(Leftovers, AuthoritativePNs)
                     end
+                   ,fun (Set1, Set2) -> gb_sets:union(Set1, Set2) end
                    ,DisplayPNs
                    ,knm_util:get_all_number_dbs()
+                   ,Malt
                    ),
-    ToRm0 = gb_sets:to_list(Leftovers),
+
+    ToRm0 = case Leftovers =:= [] of
+                'true' ->
+                    %% Only if there is no number_dbs, plists would return empty list
+                    %% regardless of initAcc value. See `plists:fuse/2'.
+                    [];
+                'false' -> gb_sets:to_list(Leftovers)
+            end,
     lists:foreach(fun (_DID) -> log_alien(AccountDb, _DID) end, ToRm0),
     ToRm = [DID
             || DID <- ToRm0,

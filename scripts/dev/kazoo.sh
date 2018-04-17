@@ -36,7 +36,8 @@ else
 fi
 echo "Kazoo config file path: $KAZOO_CONFIG"
 
-NODE_NAME=${NODE_NAME:-"kazoo_apps"}
+KAZOO_NODE=${KAZOO_NODE:-"kazoo_apps"}
+NODE_NAME=${NODE_NAME:-"$KAZOO_NODE"}
 echo "Node name: $NODE_NAME"
 
 COOKIE=${COOKIE:-"change_me"}
