@@ -199,7 +199,7 @@ create_credit_tansaction(CreditType, Context) ->
              [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}
              ]),
     Reason = kz_json:get_value(<<"reason">>, JObj, wht_util:manual_addition()),
-    Description = kz_json:get_value(<<"description">>, JObj),
+    Description = kz_json:get_ne_binary_value(<<"description">>, JObj, wht_util:admin_discretion()),
 
     Routines = [fun(Tr) -> kz_transaction:set_reason(Reason, Tr) end
                ,fun(Tr) -> kz_transaction:set_description(Description, Tr) end
@@ -272,7 +272,7 @@ create_debit_tansaction(Context) ->
     Meta =
         kz_json:from_list([{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]),
     Reason = kz_json:get_value(<<"reason">>, JObj, wht_util:admin_discretion()),
-    Description = kz_json:get_value(<<"description">>, JObj),
+    Description = kz_json:get_ne_binary_value(<<"description">>, JObj, wht_util:admin_discretion()),
 
     Routines = [fun(Tr) -> kz_transaction:set_reason(Reason, Tr) end
                ,fun(Tr) -> kz_transaction:set_description(Description, Tr) end
