@@ -13,14 +13,14 @@
 -define(INVALID_STORAGE_ATTACHMENT_REFERENCE(R), <<"invalid reference '", R/binary, "' to attachments">>).
 -define(INVALID_STORAGE_CONNECTION_REFERENCE(R), <<"invalid reference '", R/binary, "' to connections">>).
 
--spec extra_validator(jesse:json_term(), jesse_state:state(), kz_term:proplist()) -> jesse_state:state().
+-spec extra_validator(jesse:json_term(), jesse_state:state(), kz_json_schema:extra_validator_options()) -> jesse_state:state().
 extra_validator(Value, State, Options) ->
     Routines = [fun stability_level/3
                ,fun extended_validation/3
                ],
     lists:foldl(fun(Fun, AccState) -> Fun(Value, AccState, Options) end, State, Routines).
 
--spec extended_validation(jesse:json_term(), jesse_state:state(), kz_term:proplist()) -> jesse_state:state().
+-spec extended_validation(jesse:json_term(), jesse_state:state(), kz_json_schema:extra_validator_options()) -> jesse_state:state().
 extended_validation(Value, State, _Options) ->
     Schema = jesse_state:get_current_schema(State),
     case kz_json:is_true(<<"kazoo-validation">>, Schema, 'false') of
@@ -123,8 +123,8 @@ validate_attachment_oauth_doc_id(Value, State) ->
             jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
     end.
 
--spec stability_level(jesse:json_term(), jesse_state:state(), kz_term:proplist()) -> jesse_state:state().
-stability_level(Value, State, Options) ->
+-spec stability_level(jesse:json_term(), jesse_state:state(), kz_json_schema:extra_validator_options()) -> jesse_state:state().
+stability_level(_Value, State, Options) ->
     Schema = jesse_state:get_current_schema(State),
     SystemSL = props:get_ne_binary_value('stability_level', Options),
     ParamSL = kz_json:get_value(<<"stability_level">>, Schema),

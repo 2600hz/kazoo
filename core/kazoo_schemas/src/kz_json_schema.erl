@@ -21,7 +21,10 @@
 -export([flatten/1]).
 -endif.
 
--export_type([validation_error/0, validation_errors/0]).
+-export_type([validation_error/0
+             ,validation_errors/0
+             ,extra_validator_options/0
+             ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -32,6 +35,8 @@
 -type extra_validator() :: fun((jesse:json_term(), jesse_state:state()) -> jesse_state:state()).
 -type validator_option() :: 'use_defaults' | 'apply_defaults_to_empty_objects'.
 -type validator_options() :: [validator_option()].
+-type extra_validator_option() :: {'stability_level', kz_term:ne_binary()}.
+-type extra_validator_options() :: [extra_validator_option()].
 
 -type jesse_option() :: {'parser_fun', fun((_) -> _)} |
 {'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
@@ -41,7 +46,8 @@
 {'schema_loader_fun', fun((kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found')} |
 {'extra_validator', extra_validator()} |
 {'setter_fun', fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object())} |
-{'validator_options', validator_options()}.
+{'validator_options', validator_options()} |
+{'extra_validator_options', extra_validator_options()}.
 
 -type jesse_options() :: [jesse_option()].
 
@@ -58,7 +64,7 @@ setup_extra_validator(Options) ->
     Fun = fun(Value, State) ->
                   kz_json_schema_extensions:extra_validator(Value, State, ExtraOptions)
           end,
-    props:set_value({'extra_validator', Fun}, Props).
+    props:set_value({'extra_validator', Fun}, Options).
 
 -ifdef(TEST).
 load(Schema) -> fload(Schema).

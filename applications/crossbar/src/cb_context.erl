@@ -849,7 +849,7 @@ validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, Schema
 validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired) ->
     Strict = fetch(Context, 'schema_strict_validation', ?SHOULD_FAIL_ON_INVALID_DATA),
     SystemSL = kapps_config:get_binary(<<"crossbar">>, <<"stability_level">>),
-    Options = [{'extra_validator_options', [{'stability_level', SystemSL}]],
+    Options = [{'extra_validator_options', [{'stability_level', SystemSL}]}],
     try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context)), Options) of
         {'ok', JObj} ->
             lager:debug("validation passed"),
