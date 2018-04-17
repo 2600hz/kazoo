@@ -775,8 +775,10 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
     lager:debug("part is application/octet-stream, try check attachment filename extension"),
     case props:get_value(<<"disposition">>, Parameters) of
         <<"attachment">> ->
-            Props = props:get_value(<<"disposition-params">>, Parameters, []),
-            Filename = kz_term:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
+            DispositionParams = props:get_value(<<"disposition-params">>, Parameters, []),
+            ContentTypeParams = props:get_value(<<"content-type-params">>, Parameters, []),
+            Props = DispositionParams ++ ContentTypeParams,
+            Filename = kz_term:to_lower_binary(props:get_first_defined([<<"filename">>, <<"name">>], Props, <<>>)),
             case kz_mime:from_filename(Filename) of
                 <<"application/octet-stream">> ->
                     lager:debug("unable to determine content-type for extension : ~s", [Filename]),
