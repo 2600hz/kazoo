@@ -47,12 +47,18 @@
 
 -define(DEFAULT_OPTIONS, [{'schema_loader_fun', fun load/1}
                          ,{'allowed_errors', 'infinity'}
-                         ,{'extra_validator', fun kz_json_schema_extensions:extra_validator/2}
                          ,{'setter_fun', fun set_value/3}
                          ,{'validator_options', ['use_defaults'
                                                 ,'apply_defaults_to_empty_objects'
                                                 ]}
                          ]).
+
+setup_extra_validator(Options) ->
+    ExtraOptions = props:get_value('extra_validator_options', Options, []),
+    Fun = fun(Value, State) ->
+                  kz_json_schema_extensions:extra_validator(Value, State, ExtraOptions)
+          end,
+    props:set_value({'extra_validator', Fun}, Props).
 
 -ifdef(TEST).
 load(Schema) -> fload(Schema).
@@ -150,7 +156,8 @@ validate(<<_/binary>> = Schema, DataJObj, Options) ->
     {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, props:insert_values([{'schema_loader_fun', ?DEFAULT_LOADER}], Options));
 validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->
-    Options = props:insert_values(?DEFAULT_OPTIONS, Options0),
+    Options1 = props:insert_values(?DEFAULT_OPTIONS, Options0),
+    Options = setup_extra_validator(Options1),
     jesse:validate_with_schema(SchemaJObj, DataJObj, Options).
 
 -type option() :: {'version', kz_term:ne_binary()} |

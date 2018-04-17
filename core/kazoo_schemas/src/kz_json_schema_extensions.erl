@@ -5,7 +5,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_json_schema_extensions).
 
--export([extra_validator/2
+-export([extra_validator/3
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -13,15 +13,19 @@
 -define(INVALID_STORAGE_ATTACHMENT_REFERENCE(R), <<"invalid reference '", R/binary, "' to attachments">>).
 -define(INVALID_STORAGE_CONNECTION_REFERENCE(R), <<"invalid reference '", R/binary, "' to connections">>).
 
--spec extra_validator(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
-extra_validator(Value, State) ->
+-spec extra_validator(jesse:json_term(), jesse_state:state(), kz_term:proplist()) -> jesse_state:state().
+extra_validator(Value, State, Options) ->
+    Routines = [fun stability_level/3
+               ,fun extended_validation/3
+               ],
+    lists:foldl(fun(Fun, AccState) -> Fun(Value, AccState, Options) end, State, Routines).
+
+-spec extended_validation(jesse:json_term(), jesse_state:state(), kz_term:proplist()) -> jesse_state:state().
+extended_validation(Value, State, _Options) ->
     Schema = jesse_state:get_current_schema(State),
-    SystemSL = kapps_config:get_binary(<<"crossbar">>, <<"stability_level">>),
-    ParamSL = kz_json:get_value(<<"stability_level">>, Schema),
-    State1 = maybe_check_param_stability_level(SystemSL, ParamSL, State),
     case kz_json:is_true(<<"kazoo-validation">>, Schema, 'false') of
-        'true' -> extra_validation(Value, State1);
-        'false' -> State1
+        'true' -> extra_validation(Value, State);
+        'false' -> State
     end.
 
 -spec extra_validation(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
@@ -118,6 +122,13 @@ validate_attachment_oauth_doc_id(Value, State) ->
             lager:debug("~s", [ErrorMsg]),
             jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
     end.
+
+-spec stability_level(jesse:json_term(), jesse_state:state(), kz_term:proplist()) -> jesse_state:state().
+stability_level(Value, State, Options) ->
+    Schema = jesse_state:get_current_schema(State),
+    SystemSL = props:get_ne_binary_value('stability_level', Options),
+    ParamSL = kz_json:get_value(<<"stability_level">>, Schema),
+    maybe_check_param_stability_level(SystemSL, ParamSL, State).
 
 maybe_check_param_stability_level('undefined', _ParamSL, State) ->
     State; %% SystemSL is undefined, skip checking
