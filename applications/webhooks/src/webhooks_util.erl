@@ -26,6 +26,7 @@
 
         ,reenable/2
         ,init_metadata/2
+        ,available_events/0
         ]).
 
 %% ETS Management
