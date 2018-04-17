@@ -39,7 +39,7 @@ Key | Description | Type | Default | Required | Support Level
 `notifications.first_occurrence.sent_initial_call` | has the account made their first call | `boolean()` | `false` | `false` |  
 `notifications.first_occurrence.sent_initial_registration` | has the account registered their first device | `boolean()` | `false` | `false` |  
 `notifications.first_occurrence` | send emails on these account-firsts | `object()` |   | `false` |  
-`notifications.low_balance.enabled` | should the account be checked for this alert | `boolean()` | `true` | `false` |  
+`notifications.low_balance.enabled` | should the account be checked for this alert | `boolean()` |   | `false` |  
 `notifications.low_balance.last_notification` | Timestamp, in gregorian seconds, of when the last low_balance alert was sent | `integer()` |   | `false` |  
 `notifications.low_balance.sent_low_balance` | has the alert been sent (avoids duplication/spamming) | `boolean()` |   | `false` |  
 `notifications.low_balance.threshold` | account balance to send alert on | `number()` |   | `false` |  

@@ -126,7 +126,6 @@
                     "description": "Low balance settings",
                     "properties": {
                         "enabled": {
-                            "default": true,
                             "description": "should the account be checked for this alert",
                             "type": "boolean"
                         },
