@@ -42,7 +42,7 @@ ERLC_OPTS += -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}'
 ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec +deterministic
 #ERLC_OPTS += +warn_untyped_record
 
-ELIBS ?= $(if $(ERL_LIBS), $(ERL_LIBS):)$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
+ELIBS ?= $(if $(ERL_LIBS),$(ERL_LIBS):)$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
 
 EBINS += $(ROOT)/deps/lager/ebin
 
