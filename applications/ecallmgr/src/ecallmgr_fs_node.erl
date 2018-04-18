@@ -461,7 +461,10 @@ run_start_cmds(Node, Options, Parent, Cmds) ->
     case is_list(Res)
         andalso [R || R <- Res, was_not_successful_cmd(R)]
     of
-        [] -> sync(Parent);
+        [] ->
+            lager:debug("ask freeswitch ~s to get latest config", [Node]),
+            freeswitch:config(Node),
+            sync(Parent);
         'false' ->
             lager:debug("failed to run start commands, retrying"),
             run_start_cmds(Node, Options, Parent);
