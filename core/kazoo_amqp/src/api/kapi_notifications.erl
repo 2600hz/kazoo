@@ -1431,12 +1431,21 @@ find_account_db(Req, StrictMODB, GetFun) ->
                 'undefined' -> 'undefined';
                 AccountId -> kz_util:format_account_db(AccountId)
             end;
-        ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db when StrictMODB -> kz_util:format_account_modb(Db, 'encoded');
-        ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db when StrictMODB -> kz_util:format_account_modb(Db, 'encoded');
-        ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db when StrictMODB -> Db;
-        ?NE_BINARY=Db -> kz_util:format_account_db(Db);
-        _ -> 'undefined'
+        ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
+        ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
+        ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
+        ?MATCH_ACCOUNT_RAW(_)=Db -> kz_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kz_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_db(Db);
+        OtherDb -> OtherDb
     end.
+
+-spec maybe_strict_modb(kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
+maybe_strict_modb(Db, 'true') ->
+    kz_util:format_account_modb(Db, 'encoded');
+maybe_strict_modb(Db, 'false') ->
+    kz_util:format_account_db(Db).
 
 %%------------------------------------------------------------------------------
 %% @doc Get a list of required and optional headers of the given Notification API.
