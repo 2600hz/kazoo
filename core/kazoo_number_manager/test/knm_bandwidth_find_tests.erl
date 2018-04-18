@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_bandwidth_find_test).
+-module(knm_bandwidth_find_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

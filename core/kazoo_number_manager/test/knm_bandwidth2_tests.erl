@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_bandwidth2_test).
+-module(knm_bandwidth2_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

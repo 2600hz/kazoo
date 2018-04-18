@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_rename_carrier_test).
+-module(knm_rename_carrier_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

@@ -5,7 +5,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_ubiquiti_util_test).
+-module(cb_ubiquiti_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

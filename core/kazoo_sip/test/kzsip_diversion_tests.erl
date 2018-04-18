@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzsip_diversion_test).
+-module(kzsip_diversion_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

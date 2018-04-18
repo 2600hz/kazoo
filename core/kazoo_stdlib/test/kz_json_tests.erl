@@ -5,7 +5,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_json_test).
+-module(kz_json_tests).
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 

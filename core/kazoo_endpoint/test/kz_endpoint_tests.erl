@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_endpoint_test).
+-module(kz_endpoint_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

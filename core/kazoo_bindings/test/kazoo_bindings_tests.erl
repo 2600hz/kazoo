@@ -17,7 +17,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kazoo_bindings_test).
+-module(kazoo_bindings_tests).
 
 -ifdef(PROPER).
 - include_lib("proper/include/proper.hrl").

@@ -1,4 +1,4 @@
--module(kapps_config_migrate_test).
+-module(kapps_config_migrate_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("kazoo_config.hrl").

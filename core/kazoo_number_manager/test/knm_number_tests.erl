@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_number_test).
+-module(knm_number_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

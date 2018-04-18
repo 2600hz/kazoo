@@ -4,7 +4,7 @@
 %%% @author SIPLABS LLC (Ilya Ashchepkov)
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cf_ring_group_test).
+-module(cf_ring_group_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(ecallmgr_registrar_test).
+-module(ecallmgr_registrar_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

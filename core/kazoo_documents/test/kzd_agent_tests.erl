@@ -4,7 +4,7 @@
 %%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzd_agent_test).
+-module(kzd_agent_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

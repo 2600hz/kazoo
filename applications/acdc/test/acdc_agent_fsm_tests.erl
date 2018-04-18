@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(acdc_agent_fsm_test).
+-module(acdc_agent_fsm_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

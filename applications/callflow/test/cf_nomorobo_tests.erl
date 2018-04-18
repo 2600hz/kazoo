@@ -3,7 +3,7 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cf_nomorobo_test).
+-module(cf_nomorobo_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

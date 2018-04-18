@@ -3,7 +3,7 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_services_test).
+-module(kz_services_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("services.hrl").

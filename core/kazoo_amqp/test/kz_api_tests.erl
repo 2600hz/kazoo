@@ -5,7 +5,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_api_test).
+-module(kz_api_tests).
 
 %% EUNIT TESTING
 -include_lib("eunit/include/eunit.hrl").

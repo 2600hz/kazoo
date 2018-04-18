@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_voip_innovations_test).
+-module(knm_voip_innovations_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

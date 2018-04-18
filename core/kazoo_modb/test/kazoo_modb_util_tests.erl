@@ -3,7 +3,7 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kazoo_modb_util_test).
+-module(kazoo_modb_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

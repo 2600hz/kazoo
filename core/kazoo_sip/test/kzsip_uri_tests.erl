@@ -4,7 +4,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzsip_uri_test).
+-module(kzsip_uri_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

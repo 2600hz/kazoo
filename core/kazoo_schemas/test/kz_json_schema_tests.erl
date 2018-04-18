@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_json_schema_test).
+-module(kz_json_schema_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("schemas.hrl").

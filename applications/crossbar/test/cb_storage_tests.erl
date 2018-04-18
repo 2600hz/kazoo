@@ -1,4 +1,4 @@
--module(cb_storage_test).
+-module(cb_storage_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").

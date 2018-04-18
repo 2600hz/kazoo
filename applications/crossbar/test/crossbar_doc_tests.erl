@@ -5,7 +5,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(crossbar_doc_test).
+-module(crossbar_doc_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

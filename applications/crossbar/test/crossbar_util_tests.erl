@@ -5,7 +5,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(crossbar_util_test).
+-module(crossbar_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

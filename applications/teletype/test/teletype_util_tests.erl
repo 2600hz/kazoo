@@ -3,7 +3,7 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(teletype_util_test).
+-module(teletype_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("teletype.hrl").

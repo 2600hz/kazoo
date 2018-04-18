@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_port_request_test).
+-module(knm_port_request_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

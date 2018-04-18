@@ -1,4 +1,4 @@
--module(api_resource_test).
+-module(api_resource_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

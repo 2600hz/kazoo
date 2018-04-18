@@ -3,6 +3,6 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(skel_test).
+-module(skel_tests).
 
 -include_lib("eunit/include/eunit.hrl").

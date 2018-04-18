@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_telnyx_test).
+-module(knm_telnyx_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

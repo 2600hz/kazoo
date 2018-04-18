@@ -1,4 +1,4 @@
--module(ecallmgr_bridge_string_test).
+-module(ecallmgr_bridge_string_tests).
 
 -include("src/ecallmgr.hrl").
 -include_lib("eunit/include/eunit.hrl").

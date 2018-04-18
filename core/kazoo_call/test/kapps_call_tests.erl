@@ -3,7 +3,7 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kapps_call_test).
+-module(kapps_call_tests).
 
 -export([create_callflow_call/0
         ,create_trunkstore_call/0

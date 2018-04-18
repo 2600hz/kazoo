@@ -4,6 +4,6 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzt_util_test).
+-module(kzt_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").

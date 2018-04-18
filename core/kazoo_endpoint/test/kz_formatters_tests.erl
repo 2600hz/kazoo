@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_formatters_test).
+-module(kz_formatters_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

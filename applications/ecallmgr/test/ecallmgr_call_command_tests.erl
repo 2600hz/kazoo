@@ -5,7 +5,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(ecallmgr_call_command_test).
+-module(ecallmgr_call_command_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

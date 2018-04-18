@@ -1,4 +1,4 @@
--module(kz_module_test).
+-module(kz_module_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

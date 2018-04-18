@@ -5,7 +5,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_notifications_test).
+-module(cb_notifications_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

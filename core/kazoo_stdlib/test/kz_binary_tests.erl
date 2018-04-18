@@ -1,4 +1,4 @@
--module(kz_binary_test).
+-module(kz_binary_tests).
 
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").

@@ -6,7 +6,7 @@
 %%% @author Edouard Swiac
 %%% @end
 %%%-------------------------------------------------------------------
--module(kz_amqp_util_test).
+-module(kz_amqp_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

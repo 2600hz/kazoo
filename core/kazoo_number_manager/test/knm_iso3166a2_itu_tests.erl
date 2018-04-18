@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_iso3166a2_itu_test).
+-module(knm_iso3166a2_itu_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_token_restrictions_test).
+-module(cb_token_restrictions_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("cb_token_restrictions_test.hrl").

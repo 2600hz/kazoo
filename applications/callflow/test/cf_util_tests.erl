@@ -5,7 +5,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cf_util_test).
+-module(cf_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

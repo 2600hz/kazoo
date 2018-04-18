@@ -4,7 +4,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_converters_test).
+-module(knm_converters_tests).
 
 -define(MODULE_TESTED, knm_converters).
 

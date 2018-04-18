@@ -3,7 +3,7 @@
 %%% @doc Account document
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(stepswitch_resources_test).
+-module(stepswitch_resources_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("src/stepswitch.hrl").

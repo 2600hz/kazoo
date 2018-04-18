@@ -4,7 +4,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cf_temporal_route_test).
+-module(cf_temporal_route_tests).
 
 -include("callflow.hrl").
 -include("module/cf_temporal_route.hrl").

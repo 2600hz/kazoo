@@ -1,4 +1,4 @@
--module(kvm_migrate_account_test).
+-module(kvm_migrate_account_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").

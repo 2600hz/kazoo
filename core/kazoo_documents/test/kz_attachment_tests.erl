@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_attachment_test).
+-module(kz_attachment_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

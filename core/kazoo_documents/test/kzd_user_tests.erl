@@ -4,7 +4,7 @@
 %%% @author SIPLABS, LLS (Ilya Ashchepkov)
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzd_user_test).
+-module(kzd_user_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

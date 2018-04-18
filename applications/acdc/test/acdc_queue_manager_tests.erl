@@ -4,7 +4,7 @@
 %%% @author Daniel Finke
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(acdc_queue_manager_test).
+-module(acdc_queue_manager_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

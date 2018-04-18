@@ -4,7 +4,7 @@
 %%% @author Conversant Ltd (Max Lay)
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(edr_binding_test).
+-module(edr_binding_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("edr.hrl").

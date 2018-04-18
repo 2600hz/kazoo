@@ -1,5 +1,5 @@
 %% -*- coding: utf-8 -*-
--module(ci_parsers_test).
+-module(ci_parsers_tests).
 
 %% ci_parsers_test: tests for module ci_chunk.
 

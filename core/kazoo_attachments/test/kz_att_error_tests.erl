@@ -1,4 +1,4 @@
--module(kz_att_error_test).
+-module(kz_att_error_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

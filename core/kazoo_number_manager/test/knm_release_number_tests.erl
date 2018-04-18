@@ -5,7 +5,7 @@
 %%% @author Pierre Fenoll
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_release_number_test).
+-module(knm_release_number_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").

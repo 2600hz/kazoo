@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzt_twiml_dial_test).
+-module(kzt_twiml_dial_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

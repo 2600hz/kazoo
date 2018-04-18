@@ -7,7 +7,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(props_test).
+-module(props_tests).
 
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").

@@ -1,4 +1,4 @@
--module(webhooks_channel_util_test).
+-module(webhooks_channel_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("webhooks.hrl").

@@ -4,7 +4,7 @@
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_util_test).
+-module(knm_util_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 
