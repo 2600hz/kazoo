@@ -55,7 +55,7 @@ terminate_db(Pid) ->
 
 
 test_get_flags_callflow() ->
-    Call = kapps_call_test:create_callflow_call(),
+    Call = kapps_call_tests:create_callflow_call(),
     ExpectedOld = [<<"user_old_static_flag">>
                   ,<<"device_old_static_flag">>
                   ,<<"account_old_static_flag">>
@@ -85,7 +85,7 @@ test_get_flags_callflow() ->
     ].
 
 test_get_flags_trunkstore() ->
-    Call = kapps_call_test:create_trunkstore_call(),
+    Call = kapps_call_tests:create_trunkstore_call(),
     ExpectedOld = [<<"account_old_static_flag">>],
     ExpectedNew = [<<"local">>
                   ,<<"account_new_static_flag">>
@@ -99,7 +99,7 @@ test_get_flags_trunkstore() ->
     ].
 
 test_process_dynamic_flags() ->
-    Call = kapps_call_test:create_callflow_call(),
+    Call = kapps_call_tests:create_callflow_call(),
     [{"verify that dynamic CCVs can be fetched and are converted to binary"
      ,?_assertEqual([<<"device">>], kz_attributes:process_dynamic_flags([<<"custom_channel_vars.authorizing_type">>], Call))
      }
