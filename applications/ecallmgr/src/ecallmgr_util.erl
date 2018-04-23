@@ -393,7 +393,7 @@ custom_application_vars(Props) ->
 -spec custom_application_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 custom_application_vars(Props, Initial) ->
     CCVs = lists:foldl(fun custom_application_vars_fold/2, Initial, Props),
-    maybe_update_referred_ccv(Props, application_vars_sort(CCVs)).
+    application_vars_sort(CCVs).
 
 -spec application_vars_sort(kz_term:proplist()) -> kz_term:proplist().
 application_vars_sort(ApplicationVars) ->
