@@ -884,17 +884,9 @@ callee_id_number(#kapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 set_request(Request, #kapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#kapps_call{request=Request
-                   ,request_user=to_e164(RequestUser)
+                   ,request_user=RequestUser
                    ,request_realm=RequestRealm
                    }.
-
--ifdef(TEST).
-to_e164(Number) -> Number.
--else.
-to_e164(<<"*", _/binary>>=Number) -> Number;
-to_e164(Number) ->
-    knm_converters:normalize(Number).
--endif.
 
 -spec request(call()) -> kz_term:ne_binary().
 request(#kapps_call{request=Request}) ->
