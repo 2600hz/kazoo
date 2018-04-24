@@ -37,10 +37,12 @@ maybe_send_route_response(JObj, Call) ->
                                  'ok'.
 send_route_response(JObj, Call, Conference) ->
     lager:info("conference knows how to route the call! sending park response"),
+    CCVS = [{<<"Account-ID">>, kapps_conference:account_id(Conference)}],
     Resp = props:filter_undefined([{?KEY_MSG_ID, kz_api:msg_id(JObj)}
                                   ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
                                   ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
                                   ,{<<"Routes">>, []}
+                                  ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVS)}
                                   ,{<<"Method">>, <<"park">>}
                                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
