@@ -24,6 +24,7 @@
         ]).
 
 -export([load_doc_from_file/2]).
+-export([refresh_views/1]).
 
 -export([cache_strategy/0, set_cache_strategy/1]).
 
@@ -153,3 +154,7 @@ dataplan_reload() ->
 dataplan_reload(AccountId) ->
     _ = kzs_plan:reload(AccountId),
     io:format("dataplan for account ~s reloaded~n", [AccountId]).
+
+-spec refresh_views(kz_term:ne_binary()) -> no_return.
+refresh_views(Db) ->
+    kz_datamgr:refresh_views(Db).
