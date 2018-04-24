@@ -147,7 +147,6 @@ wait_for_authz(#{authz_worker := {Pid, Ref}, authz_timeout := Timeout, reply := 
                                  ),
             send_reply(Map#{reply => Reply#{payload => J}})
     after Timeout ->
-        %% TODO authz_dry_run ?
             lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
     end.
 

@@ -9,9 +9,7 @@
 
 -include("ecallmgr.hrl").
 
--export([start_link/2
-%%         ,add_child/2
-        ]).
+-export([start_link/2]).
 -export([init/1]).
 
 -define(EVENTS, ?FS_EVENTS).
@@ -37,12 +35,6 @@ sup_name(Node) ->
                             ,kz_term:to_binary(Node)
                             ]),
     kz_term:to_atom(Name, 'true').
-
-%% -spec add_child(atom(), {'CUSTOM', atom()} | atom()) -> kz_types:sup_startchild_ret().
-%% add_child(Node, {'CUSTOM', Subclass}) ->
-%%     supervisor:start_child(sup_name(Node), event_child(Node, Subclass));
-%% add_child(Node, Event) ->
-%%     supervisor:start_child(sup_name(Node), event_child(Node, Event)).
 
 %%==============================================================================
 %% Supervisor callbacks
