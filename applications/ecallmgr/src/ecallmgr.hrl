@@ -511,9 +511,13 @@
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
 -define(FS_CALL_EVENT_MSG(Node, EvtName, CallId), {'call_event', Node, EvtName, CallId}).
--define(FS_CALL_EVENTS_PROCESS_REG(Node, CallId)
-       ,{'n', 'l', {'call_events_process', Node, CallId}}
-       ).
+-define(FS_CALL_EVENTS_PROCESS_REG(Node, CallId), {'n', 'l', {'call_events_process', Node, CallId}}).
+
+-define(FS_CONFERENCE_ALL_REG_MSG(Node), {'conference', Node}).
+-define(FS_CONFERENCE_ALL_EVENT_REG_MSG(Node, EvtName), {'conference', Node, 'all', EvtName}).
+-define(FS_CONFERENCE_EVENT_ALL_REG_MSG(Node, ConferenceId), {'conference', Node, ConferenceId, 'all'}).
+-define(FS_CONFERENCE_EVENT_REG_MSG(Node, ConferenceId, EvtName), {'conference', Node, ConferenceId, EvtName}).
+-define(FS_CONFERENCE_EVENT_MSG(ConferenceId, EvtName, JObj), {'conference', ConferenceId, EvtName, JObj}).
 
 -define(FS_ROUTE_MSG(Node, Section, Context), {'route', Node, Section, Context}).
 
