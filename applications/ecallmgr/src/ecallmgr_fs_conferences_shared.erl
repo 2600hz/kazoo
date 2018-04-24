@@ -183,7 +183,7 @@ exec_endpoint(Parent, ConferenceNode, ConferenceId, JObj, EP) ->
     lager:debug("endpoint ~s(~s)", [EndpointId, EndpointCallId]),
     _ = (catch gproc:reg({'p', 'l', ?FS_CONFERENCE_EVENT_REG_MSG(ConferenceNode, ConferenceId, <<"add-member">>)})),
     _ = (catch gproc:reg({'p', 'l', ?FS_CONFERENCE_EVENT_REG_MSG(ConferenceNode, ConferenceId, <<"bgdial-result">>)})),
-    _ = (catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_MSG(ConferenceNode, <<"CHANNEL_BOWOUT">>, EndpointCallId)})),
+    _ = (catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_MSG(ConferenceNode, <<"CHANNEL_REPLACED">>, EndpointCallId)})),
 
     try ecallmgr_conference_command:dial(ConferenceNode
                                         ,ConferenceId
@@ -211,7 +211,7 @@ wait_for_dial_result(Parent, EndpointId, JobId, EndpointCallId, Timeout) ->
     receive
         {'event', <<"CHANNEL_DESTROY">>, EndpointCallId, JObj} ->
             Parent ! {'result', error_resp(EndpointId, kz_evt_freeswitch:hangup_cause(JObj))};
-        {'event', <<"CHANNEL_BOWOUT">>, EndpointCallId, JObj} ->
+        {'event', <<"CHANNEL_REPLACED">>, EndpointCallId, JObj} ->
             UUID = kz_json:get_ne_binary_value(<<"Acquired-UUID">>, JObj),
             Node = kz_api:node(JObj),
             _ = (catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_MSG(Node, <<"CHANNEL_DESTROY">>, UUID)})),
