@@ -352,6 +352,7 @@
 %% applications convert from FS-named applications to Kazoo-named
 %% Dialplan applications
 -define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
+                              ,{<<"broadcast">>, <<"play">>}
                               ,{<<"playback">>, <<"tts">>}
                               ,{<<"play-file">>, <<"play">>}
                               ,{<<"play-file-done">>, <<"play">>}
