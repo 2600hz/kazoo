@@ -137,9 +137,14 @@ send_default_response(Call, Response) ->
         ,kapps_call:control_queue(Call)
         ,kz_json:get_value(<<"Code">>, Response)
         ,kz_json:get_value(<<"Message">>, Response)
-        ,kapps_call:get_prompt(Call, Media)
+        ,maybe_get_prompt(Media, Call)
         ).
 
+-spec maybe_get_prompt(kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:api_ne_binary().
+maybe_get_prompt('undefined', _Call) -> 'undefined';
+maybe_get_prompt(<<"tone_stream://", _/binary>> = Media, _Call) -> Media;
+maybe_get_prompt(Media, Call) -> kapps_call:get_prompt(Call, Media).
+    
 %%------------------------------------------------------------------------------
 %% @doc Returns the configured response proplist.
 %% @end
