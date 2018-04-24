@@ -11,7 +11,8 @@
 
 -export([init/0]).
 
--export([notify_event/1
+-export([notify_call_event/1
+        ,notify_conference_event/1
         ]).
 
 
@@ -27,11 +28,12 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"event_stream.registered.call_event.*">>, ?MODULE, 'notify_event'),
+    kazoo_bindings:bind(<<"event_stream.registered.call_event.*">>, ?MODULE, 'notify_call_event'),
+    kazoo_bindings:bind(<<"event_stream.registered.conference.event">>, ?MODULE, 'notify_conference_event'),
     'ok'.
 
--spec notify_event(map()) -> any().
-notify_event(#{node := Node, call_id := UUID, event := Event, payload := JObj}) ->
+-spec notify_call_event(map()) -> any().
+notify_call_event(#{node := Node, call_id := UUID, event := Event, payload := JObj}) ->
     kz_util:put_callid(JObj),
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}, {'event', UUID , JObj}),
     maybe_send_call_event(UUID, Event, JObj, Node).
@@ -41,3 +43,13 @@ maybe_send_call_event('undefined', _, _, _) -> 'ok';
 maybe_send_call_event(CallId, Event, JObj, Node) ->
     gproc:send({'p', 'l', ?FS_CALL_EVENT_MSG(Node, Event, CallId)}, {'event', Event, CallId, JObj}),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', CallId, JObj}).
+
+-spec notify_conference_event(map()) -> any().
+notify_conference_event(#{node := Node, payload := JObj}) ->
+    kz_util:put_callid(JObj),
+    ConferenceId = kz_conference_event:conference_id(JObj),
+    Event = kz_conference_event:event(JObj),
+    gproc:send({'p', 'l', ?FS_CONFERENCE_EVENT_REG_MSG(Node, ConferenceId, Event)}, {'conference', ConferenceId, Event, JObj}),
+    gproc:send({'p', 'l', ?FS_CONFERENCE_EVENT_ALL_REG_MSG(Node, ConferenceId)}, {'conference', ConferenceId, Event, JObj}),
+    gproc:send({'p', 'l', ?FS_CONFERENCE_ALL_EVENT_REG_MSG(Node, Event)}, {'conference', ConferenceId, Event, JObj}),
+    gproc:send({'p', 'l', ?FS_CONFERENCE_ALL_REG_MSG(Node)}, {'conference', ConferenceId, Event, JObj}).
