@@ -176,7 +176,7 @@ channel_data(Node, UUID) ->
 
 -spec to_json(channel()) -> kz_json:object().
 to_json(Channel) ->
-    kz_json:from_list_recursive(to_props(Channel)).
+    kz_json:from_list(to_props(Channel)).
 
 -spec to_props(channel()) -> kz_term:proplist().
 to_props(Channel) ->
