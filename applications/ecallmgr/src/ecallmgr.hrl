@@ -340,6 +340,10 @@
                              ,{<<"Caller-ID-Number">>, <<"caller_id_number">>}
                              ,{<<"Callee-ID-Name">>, <<"callee_id_name">>}
                              ,{<<"Callee-ID-Number">>, <<"callee_id_number">>}
+                             ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+                             ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+                             ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+                             ,{<<"Outbound-Caller-ID-Number">>, <<"origination_caller_id_number">>}
                              ,{<<"Caller-Callee-ID-Name">>, <<"callee_id_name">>}
                              ,{<<"Caller-Callee-ID-Number">>, <<"callee_id_number">>}
                              ,{<<"Caller-Caller-ID-Name">>, <<"caller_id_name">>}
