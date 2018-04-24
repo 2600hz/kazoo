@@ -26,11 +26,35 @@
 %% @end
 %%------------------------------------------------------------------------------
 
+maybe_apply_endpoint_dialplan(<<"*", _/binary>>=Number, _Call) -> Number;
+maybe_apply_endpoint_dialplan(Number, Call) ->
+    AccountId = kapps_call:account_id(Call),
+    case kz_endpoint:get(Call) of
+        {'ok', Endpoint} -> maybe_apply_dialplan(Number, AccountId, Endpoint);
+        {'error', _} -> maybe_apply_account_dialplan(Number, AccountId)
+    end.
+
+maybe_apply_account_dialplan(Number, AccountId) ->
+    {'ok', Endpoint} = kzd_accounts:fetch(AccountId),
+    maybe_apply_dialplan(Number, AccountId, Endpoint).
+
+maybe_apply_dialplan(Number, AccountId, Endpoint) ->
+    case kz_json:get_json_value(<<"dial_plan">>, Endpoint) of
+        'undefined' -> knm_converters:normalize(Number, AccountId);
+        DialPlan -> apply_dialplan(Number, AccountId, DialPlan)
+    end.
+
+apply_dialplan(Number, AccountId, DialPlan) ->
+    Num = cf_util:apply_dialplan(Number, DialPlan),
+    knm_converters:normalize(Num, AccountId, DialPlan).
+
 -type lookup_ret() :: {'ok', kzd_callflows:doc(), boolean()} | {'error', any()}.
 
 -spec lookup(kapps_call:call()) -> lookup_ret().
 lookup(Call) ->
-    lookup(kapps_call:request_user(Call), kapps_call:account_id(Call)).
+    RequestNumber = kapps_call:request_user(Call),
+    Number = maybe_apply_endpoint_dialplan(RequestNumber, Call),
+    lookup(Number, kapps_call:account_id(Call)).
 
 -spec lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 lookup(Number, AccountId) when not is_binary(Number) ->
