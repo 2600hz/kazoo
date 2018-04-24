@@ -90,8 +90,7 @@ maybe_fix_presence_id_realm(PresenceId, Endpoint, CCVs) ->
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' ->
             Realm = kz_json:get_value(<<"realm">>, Endpoint),
-            kz_json:set_value(<<"Presence-ID">>, <<PresenceId/binary, $@, Realm/binary>>, CCVs)
-            ;
+            kz_json:set_value(<<"Presence-ID">>, <<PresenceId/binary, $@, Realm/binary>>, CCVs);
         _Else -> kz_json:set_value(<<"Presence-ID">>, PresenceId, CCVs)
     end.
 
