@@ -745,6 +745,7 @@ maybe_owner_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     case CanCallSelf
         orelse (not is_binary(OwnerId))
         orelse (not is_binary(EndpointOwnerId))
+        orelse kapps_call:authorizing_type(Call) =/= <<"device">>
         orelse EndpointOwnerId =/= OwnerId
     of
         'true' -> 'ok';
