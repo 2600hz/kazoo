@@ -262,6 +262,7 @@
                               ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
                               ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                               ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
+                              ,{<<"Ignore-Ring-Ready">>, <<"ignore_ring_ready">>}
                               ,{<<"Ignore-Forward">>, <<"outbound_redirect_fatal">>}
                               ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
