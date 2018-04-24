@@ -50,7 +50,7 @@ call_id(JObj) ->
 
 -spec account_id(data()) -> kz_term:api_binary().
 account_id(JObj) ->
-    ccv(JObj, <<"Account-ID">>, 'undefined').
+    kz_json:get_ne_binary_value(<<"Account-ID">>, JObj, ccv(JObj, <<"Account-ID">>)).
 
 -spec ccv(data(), kz_term:ne_binary()) -> kz_term:api_binary() | kz_term:ne_binaries().
 ccv(JObj, Key) ->
