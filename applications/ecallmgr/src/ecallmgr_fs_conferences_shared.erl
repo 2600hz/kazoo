@@ -145,8 +145,8 @@ exec_dial(ConferenceNode, ConferenceId, JObj) ->
 exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
     Pid = self(),
-    Pids = [kz_util:spawn(fun() -> 
-                                  exec_endpoint(Pid, ConferenceNode, ConferenceId, JObj, Endpoint) 
+    Pids = [kz_util:spawn(fun() ->
+                                  exec_endpoint(Pid, ConferenceNode, ConferenceId, JObj, Endpoint)
                           end) || Endpoint <- Endpoints],
     Num = length(Pids),
     handle_responses(JObj, Num, []).
@@ -164,7 +164,7 @@ handle_responses(JObj, N, Responses) ->
 update_endpoint(Endpoint, EndpointCallId) ->
     Updates = [{fun kz_json:insert_value/3, <<"Outbound-Call-ID">>, EndpointCallId}
               ,{fun kz_json:set_value/3, [<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], node()}
-              ,{fun kz_json:set_value/3, [<<"Custom-Channel-Vars">>, <<"Ignore-Early-Media">>], 'true'}              
+              ,{fun kz_json:set_value/3, [<<"Custom-Channel-Vars">>, <<"Ignore-Early-Media">>], 'true'}
               ],
     lists:foldl(fun({F, K, V}, JObj) -> F(K, V, JObj) end, Endpoint, Updates).
 
@@ -207,7 +207,7 @@ exec_endpoint(Parent, ConferenceNode, ConferenceId, JObj, EP) ->
             Parent ! {'result', error_resp(EndpointId, Msg)}
     end.
 
-wait_for_dial_result(Parent, EndpointId, JobId, EndpointCallId, Timeout) ->    
+wait_for_dial_result(Parent, EndpointId, JobId, EndpointCallId, Timeout) ->
     receive
         {'event', <<"CHANNEL_DESTROY">>, EndpointCallId, JObj} ->
             Parent ! {'result', error_resp(EndpointId, kz_evt_freeswitch:hangup_cause(JObj))};
@@ -244,7 +244,7 @@ wait_for_dial_result(Parent, EndpointId, JobId, EndpointCallId, Timeout) ->
             lager:info("timed out waiting for ~s/~s", [JobId, EndpointCallId]),
             Parent ! {'result', error_resp(EndpointId, <<"timeout">>)}
     end.
-    
+
 -spec success_resp(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 success_resp(EndpointId, CallId) ->
     kz_json:from_list([{<<"Message">>, <<"dialing endpoints">>}

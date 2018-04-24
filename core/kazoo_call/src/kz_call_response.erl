@@ -144,7 +144,7 @@ send_default_response(Call, Response) ->
 maybe_get_prompt('undefined', _Call) -> 'undefined';
 maybe_get_prompt(<<"tone_stream://", _/binary>> = Media, _Call) -> Media;
 maybe_get_prompt(Media, Call) -> kapps_call:get_prompt(Call, Media).
-    
+
 %%------------------------------------------------------------------------------
 %% @doc Returns the configured response proplist.
 %% @end
