@@ -78,11 +78,7 @@ authorize(Context, _) -> is_authorize(Context, cb_context:req_verb(Context), cb_
 
 -spec is_authorize(cb_context:context(), req_verb(), req_nouns()) -> boolean() | {'halt', cb_context:context()}.
 is_authorize(_Context, ?HTTP_GET, [{<<"service_plans">>, ?EDITABLE}]) ->
-    'true';
-is_authorize(_Context, ?HTTP_GET, [{<<"service_plans">>, _} | _]) ->
-    'true';
-is_authorize(Context, _, _) ->
-    'false'.
+    'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
