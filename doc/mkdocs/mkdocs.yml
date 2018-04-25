@@ -9,7 +9,7 @@ pages:
     - 'applications/crossbar/doc/multipart.md'
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md'
-    - 'Authenticating REST request': 'applications/crossbar/doc/how_to_authenticate.md'
+    - 'applications/crossbar/doc/how_to_authenticate.md'
   - 'Authentication':
     - 'applications/crossbar/doc/api_authentication.md'
     - 'applications/crossbar/doc/auth.md'
