@@ -200,7 +200,7 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
                           ,kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
                           ),
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
-    _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+    _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs, []),
 
     lager:debug("started event ~p and control ~p processes", [_Evt, _Ctl]),
 

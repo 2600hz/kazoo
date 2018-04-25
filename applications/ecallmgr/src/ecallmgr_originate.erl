@@ -772,7 +772,8 @@ start_control_process(#state{originate_req=JObj
                             ,fetch_id=FetchId
                             ,control_pid='undefined'
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ControllerQ, kz_json:new()) of
+    Options = [{'no_short_lived_protection', 'true'}],
+    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ControllerQ, kz_json:new(), Options) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
