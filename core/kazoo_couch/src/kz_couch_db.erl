@@ -196,36 +196,39 @@ do_db_import(#server{}=Conn, DbName, Docs) ->
     kz_couch_doc:save_docs(Conn, DbName, JObjs, []).
 
 filter_views(<<"_design", _/binary>>) -> 'false';
-filter_views(_Id) -> true.
+filter_views(_Id) -> 'true'.
 
 %% Internal DB-related functions -----------------------------------------------
 
 -spec do_db_compact(db()) -> boolean().
 do_db_compact(#db{}=Db) ->
     case ?RETRY_504(couchbeam:compact(Db)) of
-        'ok' -> 'true';
+        'ok' ->
+            lager:debug("compaction has started"),
+            'true';
         {'error', {'conn_failed', {'error', 'timeout'}}} ->
-            lager:debug("connection timed out"),
+            lager:warning("connection timed out"),
             'false';
         {'error', 'not_found'} ->
-            lager:debug("db_compact failed because db wasn't found"),
+            lager:warning("db_compact failed because db wasn't found"),
             'false';
         {'error', _E} ->
-            lager:debug("failed to compact: ~p", [_E]),
+            lager:warning("failed to compact: ~p", [_E]),
             'false'
     end.
 
 -spec do_db_view_cleanup(db()) -> boolean().
 do_db_view_cleanup(#db{}=Db) ->
     case ?RETRY_504(couchbeam:view_cleanup(Db)) of
-        {'ok', JObj} -> kz_json:is_true(<<"ok">>, JObj);
+        {'ok', JObj} ->
+            kz_json:is_true(<<"ok">>, JObj);
         {'error', {'conn_failed', {'error', 'timeout'}}} ->
-            lager:debug("connection timed out"),
+            lager:warning("connection timed out"),
             'false';
         {'error', 'not_found'} ->
-            lager:debug("db_view_cleanup failed because db wasn't found"),
+            lager:warning("db_view_cleanup failed because db wasn't found"),
             'false';
         {'error', _E} ->
-            lager:debug("failed to clean up views: ~p", [_E]),
+            lager:warning("failed to clean up views: ~p", [_E]),
             'false'
     end.
