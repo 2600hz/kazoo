@@ -45,7 +45,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/5, stop/1]).
+-export([start_link/6, stop/1]).
 -export([queue_name/1]).
 -export([callid/1]).
 -export([node/1]).
@@ -94,6 +94,7 @@
                ,control_q :: kz_term:api_ne_binary()
                ,initial_ccvs :: kz_json:object()
                ,node_down_tref :: kz_term:api_reference()
+               ,options :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -110,9 +111,9 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
+-spec start_link(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object(), kz_term:proplist()) ->
                         kz_types:startlink_ret().
-start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
+start_link(Node, CallId, FetchId, ControllerQ, CCVs, Options) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
     %% then transferred to A->D, but the route landed in a different
@@ -131,7 +132,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ]
-                           ,[Node, CallId, FetchId, ControllerQ, CCVs]
+                           ,[Node, CallId, FetchId, ControllerQ, CCVs, Options]
                            ).
 
 -spec stop(pid()) -> 'ok'.
@@ -193,7 +194,7 @@ fs_nodedown(Srv, Node) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([atom() | kz_term:ne_binary() | kz_json:object()]) -> {'ok', state()}.
-init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
+init([Node, CallId, FetchId, ControllerQ, CCVs, Options]) ->
     kz_util:put_callid(CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
@@ -209,6 +210,7 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
                  ,fetch_id=FetchId
                  ,controller_q=ControllerQ
                  ,initial_ccvs=CCVs
+                 ,options=Options
                  }}.
 
 %%------------------------------------------------------------------------------
@@ -406,12 +408,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
 call_control_ready(#state{call_id=CallId
-                         ,controller_q=ControllerQ
-                         ,control_q=Q
-                         ,initial_ccvs=CCVs
-                         ,fetch_id=FetchId
-                         ,node=Node
-                         }) ->
+                         ,options=Options
+                         }=State) ->
+    IsAlive = ecallmgr_fs_channel:exists(CallId)
+        orelse props:is_true('no_short_lived_protection', Options, 'false'),
+    call_control_ready(IsAlive, State).
+
+-spec call_control_ready(boolean(), state()) -> 'ok'.
+call_control_ready('true', #state{call_id=CallId
+                                 ,controller_q=ControllerQ
+                                 ,control_q=Q
+                                 ,initial_ccvs=CCVs
+                                 ,fetch_id=FetchId
+                                 ,node=Node
+                                 }) ->
     Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Call-ID">>, CallId}
           ,{<<"Control-Queue">>, Q}
@@ -427,7 +437,10 @@ call_control_ready(#state{call_id=CallId
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending control usurp for ~s", [FetchId]),
-    kapi_call:publish_usurp_control(CallId, Usurp).
+    kapi_call:publish_usurp_control(CallId, Usurp);
+call_control_ready('false', _) ->
+    lager:info("call is not in the channels cache, short lived call?"),
+    gen_listener:cast(self(), 'stop').
 
 %%------------------------------------------------------------------------------
 %% @doc
