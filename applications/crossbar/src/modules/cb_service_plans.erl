@@ -8,6 +8,7 @@
 -module(cb_service_plans).
 
 -export([init/0
+        ,authorize/2
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
@@ -58,13 +59,26 @@
 -spec init() -> 'ok'.
 init() ->
     cb_modules_util:bind(?MODULE
-                        ,[{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
+                        ,[{<<"*.authorize.service_plans">>, 'authorize'}
+                         ,{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
                          ,{<<"*.resource_exists.service_plans">>, 'resource_exists'}
                          ,{<<"*.content_types_provided.service_plans">>, 'content_types_provided'}
                          ,{<<"*.validate.service_plans">>, 'validate'}
                          ,{<<"*.execute.post.service_plans">>, 'post'}
                          ,{<<"*.execute.delete.service_plans">>, 'delete'}
                          ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
+%% @end
+%%------------------------------------------------------------------------------
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) -> is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec is_authorize(cb_context:context(), req_verb(), req_nouns()) -> boolean() | {'halt', cb_context:context()}.
+is_authorize(_Context, ?HTTP_GET, [{<<"service_plans">>, ?EDITABLE}]) ->
+    'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
