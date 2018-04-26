@@ -162,7 +162,7 @@ compact_db(_Extra, 'false', _Args) ->
 compact_db(_Extra, 'true', #{<<"database">> := Database}=Row) ->
     {do_compact_db(Database, heuristic_from_flag(maps:get(<<"force">>, Row))), 'true'}.
 
--spec compact_db(kz_term:ne_binary()) -> rows().
+-spec compact_db(kz_term:ne_binary()) -> 'ok'.
 compact_db(Database) ->
     Rows = do_compact_db(Database, ?HEUR_NONE),
     print_csv(Rows).
@@ -192,7 +192,7 @@ do_compact_all() ->
     Shuffled = kz_term:shuffle_list(Dbs),
     lists:foldl(fun do_compact_db_fold/2, [], Shuffled).
 
--spec compact_node(kz_term:ne_binary()) -> rows().
+-spec compact_node(kz_term:ne_binary()) -> 'ok'.
 compact_node(Node) ->
     Rows = do_compact_node(Node, ?HEUR_NONE),
     print_csv(Rows).
