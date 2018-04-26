@@ -325,7 +325,7 @@ connection_info(#server{url=Url}=Conn) ->
         {'ok', ConnData} ->
             CouchVersion = kz_json:get_ne_binary_value(<<"version">>, ConnData),
             BigCouchVersion = kz_json:get_ne_binary_value(<<"bigcouch">>, ConnData),
-            lager:info("connected successfully to ~s", [Url]),
+            lager:debug("connected successfully to ~s", [Url]),
             lager:debug("responding CouchDB version: ~p", [CouchVersion]),
             lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
             {'ok', add_couch_version(CouchVersion, BigCouchVersion, Conn)};
