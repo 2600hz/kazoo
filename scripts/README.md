@@ -695,6 +695,10 @@ Searches for undocumented source files:
     Files without documentations in module header: 769/1277 (%60)
     Files with undocumented functions: 1021/1277 (%79)
 
+## `sync_mkdocs_pages.sh`
+
+A script to missing pages (MakrDown files) from `mkdocs.yml` to other YAML files. Flag those files which are deleted or rename.
+
 ## `sync_to_remote.bash`
 
 ```bash
