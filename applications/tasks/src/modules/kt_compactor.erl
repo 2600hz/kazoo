@@ -162,9 +162,16 @@ compact_db(_Extra, 'false', _Args) ->
 compact_db(_Extra, 'true', #{<<"database">> := Database}=Row) ->
     {do_compact_db(Database, heuristic_from_flag(maps:get(<<"force">>, Row))), 'true'}.
 
--spec compact_db(kz_term:ne_binary()) -> rows().
+-spec compact_db(kz_term:ne_binary()) -> 'ok'.
 compact_db(Database) ->
-    do_compact_db(Database, ?HEUR_NONE).
+    Rows = do_compact_db(Database, ?HEUR_NONE),
+    print_csv(Rows).
+
+-spec print_csv(iolist()) -> 'ok'.
+print_csv(Rows) ->
+    io:format("~s~n", [kz_binary:join(?OUTPUT_HEADER)]),
+    [io:format("~s~n", [kz_binary:join(Row)]) || Row <- Rows],
+    'ok'.
 
 -spec heuristic_from_flag(kz_term:api_ne_binary()) -> heuristic().
 heuristic_from_flag(Force) ->
@@ -185,9 +192,10 @@ do_compact_all() ->
     Shuffled = kz_term:shuffle_list(Dbs),
     lists:foldl(fun do_compact_db_fold/2, [], Shuffled).
 
--spec compact_node(kz_term:ne_binary()) -> rows().
+-spec compact_node(kz_term:ne_binary()) -> 'ok'.
 compact_node(Node) ->
-    do_compact_node(Node, ?HEUR_NONE).
+    Rows = do_compact_node(Node, ?HEUR_NONE),
+    print_csv(Rows).
 
 -spec do_compact_node(kz_term:ne_binary(), heuristic()) ->
                              rows().
@@ -213,7 +221,7 @@ do_compact_node(Node, Heuristic, APIConn, AdminConn) ->
                                )
     of
         {'ok', []} -> lager:debug("no databases on node ~s", [Node]), [];
-        {'error', _E} -> lager:debug("error getting databases on node ~s: ~p", [Node, _E]), [];
+        {'error', _E} -> lager:warning("error getting databases on node ~s: ~p", [Node, _E]), [];
         {'ok', ViewResults} ->
             NodeDBs = [kz_doc:id(ViewResult) || ViewResult <- ViewResults],
             do_compact_node(Node, Heuristic, APIConn, AdminConn, NodeDBs)
@@ -263,8 +271,12 @@ do_compact_db_fold(Database, Rows) ->
     Rows ++ do_compact_db(Database).
 
 -spec do_compact_db_by_nodes(kz_term:ne_binary(), heuristic()) -> rows().
+do_compact_db_by_nodes(?MATCH_ACCOUNT_RAW(_)=AccountId, Heuristic) ->
+    do_compact_db_by_nodes(kz_util:format_account_id(AccountId, 'unencoded'), Heuristic);
+do_compact_db_by_nodes(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, Heuristic) ->
+    do_compact_db_by_nodes(kz_util:format_account_id(AccountDb, 'unencoded'), Heuristic);
 do_compact_db_by_nodes(Database, Heuristic) ->
-    {'ok', DbInfo} = kz_datamgr:open_cache_doc(kazoo_couch:get_admin_dbs(), Database),
+    {'ok', DbInfo} = kz_datamgr:open_doc(kazoo_couch:get_admin_dbs(), Database),
     kz_json:foldl(fun(Node, _, Rows) ->
                           do_compact_db_by_node(Node, Heuristic, Database, Rows)
                   end
@@ -274,7 +286,7 @@ do_compact_db_by_nodes(Database, Heuristic) ->
 
 -spec do_compact_db_by_node(kz_term:ne_binary(), heuristic(), kz_term:ne_binary(), rows()) -> rows().
 do_compact_db_by_node(Node, Heuristic, Database, Acc) ->
-    #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
+    #{'server' := {_App, #server{}=Conn}} = kzs_plan:plan(),
     case get_node_connections(Node, Conn) of
         {'error', _E} ->
             lager:error("failed to get node connections for ~s", [Node]),
@@ -313,7 +325,7 @@ get_node_connections(Node, #server{options=Options}) ->
     NodeAPIPort = ?NODE_API_PORT(Node),
     NodeAdminPort = ?NODE_ADMIN_PORT(Node),
 
-    lager:info("getting connection information for ~s, ~p and ~p", [Host, NodeAPIPort, NodeAdminPort]),
+    lager:debug("getting connection information for ~s, ~p and ~p", [Host, NodeAPIPort, NodeAdminPort]),
     C1 = couchbeam:server_connection(Hostname, NodeAPIPort, "", Options),
     C2 = couchbeam:server_connection(Hostname, NodeAdminPort, "", Options),
 
@@ -322,16 +334,16 @@ get_node_connections(Node, #server{options=Options}) ->
         }
     of
         {{'error', 'timeout'}, _} ->
-            lager:debug("timed out getting connection for ~s, try again", [Host]),
+            lager:warning("timed out getting connection for ~s, try again", [Host]),
             {'error', 'no_connection'};
         {_, {'error', 'timeout'}} ->
-            lager:debug("timed out getting connection for ~s, try again", [Host]),
+            lager:warning("timed out getting connection for ~s, try again", [Host]),
             {'error', 'no_connection'};
         {{'error', _E}, _} ->
-            lager:debug("error getting conn: ~p", [_E]),
+            lager:warning("error getting conn: ~p", [_E]),
             {'error', 'no_connection'};
         {_, {'error', _E}} ->
-            lager:debug("error getting admin conn: ~p", [_E]),
+            lager:warning("error getting admin conn: ~p", [_E]),
             {'error', 'no_connection'};
         {{'ok', N1}, {'ok', N2}} -> {N1, N2}
     catch
