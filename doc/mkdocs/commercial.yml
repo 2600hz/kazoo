@@ -30,6 +30,7 @@ pages:
   - 'Account API Authentication': 'applications/crossbar/doc/api_authentication.md'
   - 'Basic Auth': 'applications/crossbar/doc/basic_auth.md'
   - 'Multi Factor Authentication Configuration': 'applications/crossbar/doc/multi_factor.md'
+  - 'Kazoo Multi Factor Authentication': 'core/kazoo_auth/doc/multi_factor.md'
 #    - 'applications/crossbar/doc/ip_auth.md' ##
 #    - 'applications/crossbar/doc/shared_auth.md' ##
 #    - 'applications/crossbar/doc/token_auth.md'
@@ -54,7 +55,6 @@ pages:
   #   - 'applications/crossbar/doc/sms.md'
 
 - 'Integrations':
-  - 'Click To Call': 'applications/crossbar/doc/clicktocall.md' ##
   - 'Webhooks': 'applications/crossbar/doc/webhooks.md'
   - 'Pivot':
     - 'Pivot Intro': 'applications/pivot/doc/README.md'
@@ -81,6 +81,8 @@ pages:
     - 'Blackhole HAproxy Configuration': 'applications/blackhole/doc/haproxy.md'
     # - 'Troubleshooting': 'applications/blackhole/doc/troubleshooting.md' ###
     # - 'doc/kazoocon/realtime_events2016.md'
+  - 'Quick Call': 'applications/crossbar/doc/quickcall.md'
+  - 'Click To Call': 'applications/crossbar/doc/clicktocall.md' ##
   - 'Call Status':
     - 'Call Channels': 'applications/crossbar/doc/channels.md'
     # - 'Parked Calls Slots': 'applications/crossbar/doc/parked_calls.md' ##
@@ -142,6 +144,7 @@ pages:
       - 'Text-to-speech (TTS)': 'applications/callflow/doc/tts.md' ##
       - 'Sleep': 'applications/callflow/doc/sleep.md' ##
       - 'Hangup': 'applications/callflow/doc/hangup.md' ###
+      - 'Languages': 'applications/callflow/doc/language.md' ##
   - 'Time of Day Routing':
     - 'Temporal Rules': 'applications/crossbar/doc/temporal_rules.md' ##
     - 'Temporal Rules Sets': 'applications/crossbar/doc/temporal_rules_sets.md'
@@ -194,6 +197,12 @@ pages:
     - 'Support & Liability': 'doc/appexchange/support.md'
     - 'FAQ' : 'doc/appexchange/sell_faq.md'
 
+- 'Advanced System API':
+  - 'Tasks':
+    - 'Tasks API': 'applications/crossbar/doc/tasks.md'
+    - 'Rates Task': 'applications/tasks/doc/rates.md'
+  - 'System Configuration': 'applications/crossbar/doc/system_configs.md'
+  - 'SUP Over API': 'applications/crossbar/doc/sup.md'
 
 #### STARTS "STILL NEEDS SORTING" SECTION - please pair with configuration APIs as applicable, in the right section
 

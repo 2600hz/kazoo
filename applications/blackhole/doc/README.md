@@ -78,7 +78,7 @@ From here, you can write your own Javascript callbacks, triggered every time a r
 
 You can add one or multiple bindings by using:
 
-!!! note:
+!!! note
     Binding will be picked first over bindings in case both are added
 
 ```javascript

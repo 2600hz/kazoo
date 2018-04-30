@@ -7,7 +7,7 @@ Crossbar API to configure authentication for an account.
 Crossbar authenticator modules can have their own account's version configuration to control some aspect of them like enabling/disabling the module or use multi factor authenticator for that specific module.
 
 !!! note
-    This API endpoint is _only_ configuring the authentication for a account, for configuring the system, you should use [System Configuration](./system_configs.md) instead. System config category is `crossbar.auth`.
+    This API endpoint is _only_ configuring the authentication for a account, for configuring the system, you should use `system_configs` instead as super duper admin. System config category is `crossbar.auth`.
 
 ### How Crossbar is looking for authentication configuration
 

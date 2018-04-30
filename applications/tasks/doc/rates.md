@@ -1,8 +1,9 @@
-# Rates
+# Rates Task
 
-Manage ratedeck DB.
-Category - "rates".
-Only superadmin can use this module.
+Background job to manage `ratedeck` DB.
+
+!!! note
+    Only super admin can use this module.
 
 ## About rates
 
@@ -14,7 +15,7 @@ An account can be assigned a ratedeck; if no ratedeck is assigned, the default r
 
 Name | Description | Required
 ---- | ----------- | --------
-`account_id`|reseller's account (see **Note 1** below)|
+`account_id`|reseller's account (see first below)|
 `description`|description for rate|
 `direction`|direction of call leg ("inbound", "outbound"), if not set - rate matches both directions|
 `iso_country_code`|[ISO 3166-1](https://en.wikipedia.org/wiki/ISO_3166-1#Officially_assigned_code_elements) code for prefix's country|
@@ -34,9 +35,12 @@ Name | Description | Required
 
 CSV files for all actions use the same list of fields. Names of fields match the names of keys in the CouchDB [rate document](../../crossbar/doc/rates.md#schema).
 
-**Note 1**: for `import` & `delete` actions, value of `account_id` from CSV file will be ignored, value for this field is taken from task Account-ID .
+!!! note
+    For `import` and `delete` actions, value of `account_id` from CSV file will be ignored, value for this field is taken from task Account-ID .
 
-**Note 2**: `routes` and `options` fields can not be defined via CSV file (because their values are lists).
+!!! note
+    `routes` and `options` fields can not be defined via CSV file (because their values are lists).
+
 `routes` is automatically generated from `prefix`. Example: `prefix` 380 generates `routes` - `["^\\+?380.+$"]`.
 
 ## Actions
@@ -46,7 +50,8 @@ CSV files for all actions use the same list of fields. Names of fields match the
 Import rates from CSV.
 `prefix` and `rate_cost` are mandatory fields.
 
-Create the task:
+* Create the task:
+
 ```shell
 curl -v -X PUT \
 -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -55,27 +60,30 @@ curl -v -X PUT \
 'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
 ```
 
-Start the task:
+* Start the task:
+
 ```shell
 curl -v -X PATCH \
 -H "X-Auth-Token: {AUTH_TOKEN}" \
 'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
 ```
 
-Query the task's status:
+* Query the task's status:
+
 ```shell
 curl -v -X GET \
--H "X-Auth-Token: {AUTH_TOKEN}" \
-'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
+   -H "X-Auth-Token: {AUTH_TOKEN}" \
+   'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
 ```
 
 #### Sample CSV
 
 First, query the API to see what fields must be defined and what fields are optional:
 
-```bash
+```shell
 curl 'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
 ```
+
 ```json
 {
     "data": {
@@ -126,7 +134,7 @@ The CSV must then define a header row with at least the mandatory fields defined
 1415,0.05,"San Francisco"
 ```
 
-Prefixes will match against the E164 number with the '+' stripped. Longest prefix matched wins.
+Prefixes will match against the E164 number with the `+` stripped. Longest prefix matched wins.
 
 Any fields not in the **mandatory** or **optional** list will be ignored. Order of the columns is irrelevant.
 
@@ -134,12 +142,12 @@ Any fields not in the **mandatory** or **optional** list will be ignored. Order 
 
 Export all rates into CSV.
 
-#### Start the export
+* Start the export
 
 ```shell
 curl -v -X PUT \
--H "X-Auth-Token: {AUTH_TOKEN}" \
-'http://{SERVER}:8000/v2/tasks/?category=rates&action=export'
+   -H "X-Auth-Token: {AUTH_TOKEN}" \
+   'http://{SERVER}:8000/v2/tasks/?category=rates&action=export'
 ```
 
 ```json
@@ -162,27 +170,28 @@ curl -v -X PUT \
 }
 ```
 
-Start the export task:
+* Start the export task:
+
 ```shell
 curl -v -X PATCH \
 -H "X-Auth-Token: {AUTH_TOKEN}" \
 'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
 ```
 
-#### Save the CSV
+* Save the CSV
 
 Once the task has completed, save the CSV locally:
 
 ```shell
 curl -v -X GET \
--o export.csv
--H "Accept: text/csv"
--H "X-Auth-Token: $AUTH_TOKEN"
-'http://{SERVER}:8000/v2/tasks/{TASK_ID}?csv_name=out.csv'
+   -o export.csv
+   -H "Accept: text/csv"
+   -H "X-Auth-Token: $AUTH_TOKEN"
+   'http://{SERVER}:8000/v2/tasks/{TASK_ID}?csv_name=out.csv'
 ```
 
 ### Delete
 
-Delete rates for prefixes in CSV file.
-`prefix` is a mandatory field.
+Delete rates for prefixes in CSV file. `prefix` is a mandatory field.
+
 The rate will be deleted only if all defined fields in CSV file match the appropriate keys in rate document. An undefined field in CSV file means "match any".
