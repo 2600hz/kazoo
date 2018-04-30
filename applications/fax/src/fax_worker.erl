@@ -88,7 +88,6 @@
 -define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
 -define(DEFAULT_ENSURE_CID, kapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
--define(CONVERTAPI_URL, kapps_config:get_ne_binary(?CONFIG_CAT, <<"convertapi_url">>, <<"https://v2.convertapi.com">>)).
 -define(CONVERTAPI_SECRET, kapps_config:get_ne_binary(?CONFIG_CAT, <<"convertapi_secret">>)).
 
 %%%=============================================================================
@@ -876,25 +875,22 @@ prepare_contents(<<"image/", SubType/binary>>, JobId, RespContent, TmpDir) ->
     end;
 
 prepare_contents(<<?OPENXML_MIME_PREFIX, _/binary>> = CT, JobId, RespContent, TmpDir) ->
-    Secret = ?CONVERTAPI_SECRET,
-    case Secret of
+    case ?CONVERTAPI_SECRET of
         'undefined' -> convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        _ -> convert_msoffice_document(CT, TmpDir, JobId, RespContent, Secret)
+        Secret -> fax_converters_convertapi:prepare_contents(CT, TmpDir, JobId, RespContent, Secret)
     end;
 
 prepare_contents(<<?OPENOFFICE_MIME_PREFIX, _/binary>> = CT, JobId, RespContent, TmpDir) ->
-    Secret = ?CONVERTAPI_SECRET,
-    case Secret of
+    case ?CONVERTAPI_SECRET of
         'undefined' -> convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        _ -> convert_msoffice_document(CT, TmpDir, JobId, RespContent, Secret)
+        Secret -> fax_converters_convertapi:prepare_contents(CT, TmpDir, JobId, RespContent, Secret)
     end;
 
 prepare_contents(CT, JobId, RespContent, TmpDir)
   when ?OPENOFFICE_COMPATIBLE(CT) ->
-    Secret = ?CONVERTAPI_SECRET,
-    case Secret of
+    case ?CONVERTAPI_SECRET of
         'undefined' -> convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        _ -> convert_msoffice_document(CT, TmpDir, JobId, RespContent, Secret)
+        Secret -> fax_converters_convertapi:prepare_contents(CT, TmpDir, JobId, RespContent, Secret)
     end;
 
 prepare_contents(CT, _JobId, _RespContent, _TmpDir) ->
@@ -918,41 +914,6 @@ convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
         Type:Exception ->
             lager:debug("could not covert file: ~p:~p", [Type, Exception]),
             {'error', <<"can not convert file, try uploading a tiff">>}
-    end.
-
--spec convert_msoffice_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                         {'ok', kz_term:ne_binary()} |
-                                         {'error', kz_term:ne_binary()}.
-convert_msoffice_document(CT, TmpDir, JobId, RespContent, Secret) ->
-    Extension = kz_mime:to_extension(CT),
-    FileName = list_to_binary([JobId, ".", Extension]),
-    RequestURL = list_to_binary([?CONVERTAPI_URL, "/", Extension, "/to/tiff?ImageResolutionH=204&ImageResolutionV=392&ScaleImage=true&ScaleProportions=true&ScaleIfLarger=true&ImageHeight=4312&ImageWidth=1728&Secret=", Secret]),
-    Boundary = kz_term:to_hex_binary(crypto:strong_rand_bytes(24)),
-    ContentTypeHeaderValue = list_to_binary(["multipart/form-data; boundary=", Boundary]),
-    Headers = [{"Content-Type", ContentTypeHeaderValue}],
-    Body = list_to_binary(["--", Boundary
-                          ,"\r\nContent-Disposition: form-data; name=\"File\"; filename=\"", FileName, "\""
-                          ,"\r\nContent-Type: ", CT
-                          ,"\r\n\r\n", RespContent
-                          ,"\r\n--", Boundary, "--\r\n"]),
-
-    lager:debug("attemting to convert document using convertapi for JobId: ~s", [JobId]),
-    case kz_http:post(kz_term:to_list(RequestURL), Headers, Body) of
-        {'ok', 200, _RespHeaders, RespBody} ->
-            JObj = kz_json:decode(RespBody),
-            case kz_json:is_defined(<<"Files">>, JObj) of
-                'true' ->
-                    lager:debug("jobid ~s converted successfully using convertapi", [JobId]),
-                    [File|_] = kz_json:get_list_value(<<"Files">>, JObj),
-                    FileDataBase64 = kz_json:get_value(<<"FileData">>, File),
-                    prepare_contents(<<"image/tiff">>, JobId, base64:decode(FileDataBase64), TmpDir);
-                'false' ->
-                    lager:error("we got convertapi responce without files for jobid ~s : ~p", [JobId, JObj]),
-                    {'error', <<"we got responce without files">>}
-            end;
-        _Response ->
-            lager:debug("unexpected canvertapi response sending update_job_status: ~p", [_Response]),
-            {'error', <<"can not convert file">>}
     end.
 
 -spec get_sizes(kz_term:ne_binary()) -> {integer(), non_neg_integer()}.
