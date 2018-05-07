@@ -1131,6 +1131,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Failover">>, maybe_build_failover(Endpoint, Clid, Call)}
                       ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
                       ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
+                      ,{<<"Exclude-From-Queues">>, kz_json:get_value(<<"exclude_from_queues">>, Endpoint)}
                        | maybe_get_t38(Endpoint, Call)
                       ])),
     maybe_format_endpoint(SIPEndpoint, kz_json:get_json_value(<<"formatters">>, Endpoint)).
@@ -1272,6 +1273,7 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
       ,{<<"To-Username">>, get_to_username(SkypeJObj)}
       ,{<<"Endpoint-Type">>, <<"skype">>}
       ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
+      ,{<<"Exclude-From-Queues">>, kz_json:get_value(<<"exclude_from_queues">>, Endpoint)}
       ]).
 
 %%------------------------------------------------------------------------------
@@ -1356,6 +1358,7 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
               ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
               ,{<<"SIP-Interface">>, SIPInterface}
               ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+              ,{<<"Exclude-From-Queues">>, kz_json:get_value(<<"exclude_from_queues">>, Endpoint)}
               ])
     end.
 
@@ -1812,6 +1815,7 @@ create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
                      ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
                      ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
+                     ,{<<"Exclude-From-Queues">>, kz_json:get_value(<<"exclude_from_queues">>, Endpoint)}
                      ]),
             EP = create_mobile_sms_endpoint_failover(Prop, Failover),
             kz_json:from_list(EP)
