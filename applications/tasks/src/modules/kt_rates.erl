@@ -304,9 +304,22 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [kz_json:get_binary_value(Key, Doc) || Key <- ?DOC_FIELDS].
 
+-spec maybe_override_rate(kz_tasks:args()) -> kzd_rates:doc().
+maybe_override_rate(Args) ->
+    RateJObj = kzd_rates:from_map(Args),
+    Id = kz_doc:id(RateJObj),
+    Db = kzd_ratedeck:format_ratedeck_db(kzd_rates:ratedeck_id(RateJObj, ?KZ_RATES_DB)),
+
+    case kz_datamgr:open_cache_doc(Db, Id) of
+        {'ok', ExistingJObj} ->
+            lager:debug("updating existing rate ~s(~s) in ~s", [Id, kz_doc:revision(ExistingJObj), Db]),
+            kz_json:merge(ExistingJObj, RateJObj);
+        {'error', 'not_found'} -> RateJObj
+    end.
+
 -spec generate_row(kz_tasks:args()) -> kzd_rates:doc().
 generate_row(Args) ->
-    RateJObj = kzd_rates:from_map(Args),
+    RateJObj = maybe_override_rate(Args),
     Prefix = kz_term:to_binary(kzd_rates:prefix(RateJObj)),
     lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
     Routes = [<<"^\\+?", Prefix/binary, ".+", ?DOLLAR_SIGN>>],
