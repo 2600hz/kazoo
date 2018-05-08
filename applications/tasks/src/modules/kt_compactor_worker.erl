@@ -1,6 +1,8 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc Runs the compaction job which consists of:
+%%% @doc Runs the compaction.
+%%%
+%%% Task consists of:
 %%%   1. The node to run it on (and API/Admin connections directly to the node
 %%%   2. The database to compact
 %%%   3. The heuristic to use

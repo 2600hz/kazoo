@@ -5,6 +5,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_resource_selectors).
+
 %% behaviour: tasks_provider
 
 -export([init/0

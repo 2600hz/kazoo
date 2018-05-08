@@ -174,4 +174,3 @@ sbc_discovery() ->
             ecallmgr_config:set_node(<<"acls">>, kz_json:set_values(sbc_acls(Updates), ACLs), <<"default">>),
             ecallmgr_maintenance:reload_acls()
     end.
-

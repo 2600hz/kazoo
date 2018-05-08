@@ -1,17 +1,23 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-, 2600Hz
-%%% @author Vladimir Ralev
+%%% @copyright (C) 2016, Vladimir Ralev
 %%% @doc Allow to change volume for channels, mute and unmute.
-%%% Data = {
-%%%   "action":"start" // or "stop"
-%%%   ,"mode":"read" // or "write" depends on direction
-%%%   ,"level":"-4" // -4 is mute, 0 is unmute, other values are not studied
-%%% }
-%%% Created : 17. Mar 2016 6:25 AM
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>`start' or `stop'.</dd>
+%%%
+%%%   <dt>`mode'</dt>
+%%%   <dd>`read' or `write' (depends on direction).</dd>
+%%%
+%%%   <dt>`level'</dt>
+%%%   <dd>`-4' is mute, `0' is unmute.</dd>
+%%% </dl>
+%%%
+%%% @author Vladimir Ralev
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_audio_level).
--author("vladimirralev").
 
 -export([handle/2
         ]).

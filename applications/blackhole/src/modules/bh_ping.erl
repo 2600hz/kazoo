@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-, 2600Hz
+%%% @copyright (C) 2017 Conversant Ltd
 %%% @doc Receives a ping, responds with a pong.
 %%% Useful for both keeping a websocket connection up, and figuring
 %%% out if a websocket connection is still up

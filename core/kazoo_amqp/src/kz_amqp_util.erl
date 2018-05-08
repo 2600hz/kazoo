@@ -7,7 +7,7 @@
 %%% @author Edouard Swiac
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_amqp_util).
 
 -include("kz_amqp_util.hrl").

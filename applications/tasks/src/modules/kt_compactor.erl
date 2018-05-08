@@ -5,6 +5,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_compactor).
+
 %% behaviour: tasks_provider
 
 -export([init/0]).
