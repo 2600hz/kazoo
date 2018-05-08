@@ -9,7 +9,7 @@
 -module(api_resource).
 
 -export([init/2, rest_init/2
-        ,terminate/2, rest_terminate/2
+        ,terminate/3
         ,known_methods/2
         ,allowed_methods/2
         ,malformed_request/2
@@ -241,17 +241,16 @@ find_path(Req, Opts) ->
             Magic
     end.
 
--spec terminate(cowboy_req:req(), cb_context:context()) -> 'ok'.
-terminate(_Req, _Context) ->
-    lager:debug("session finished").
-
--spec rest_terminate(cowboy_req:req(), cb_context:context()) -> 'ok'.
-rest_terminate(Req, Context) ->
+-spec terminate(any(), cowboy_req:req(), cb_context:context()) -> 'ok'.
+terminate(_Reason, Req, Context) ->
+    lager:debug("session finished: ~p", [_Reason]),
     rest_terminate(Req, Context, cb_context:method(Context)).
 
+-spec rest_terminate(cowboy_req:req(), cb_context:context(), http_method()) -> 'ok'.
 rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
     lager:info("OPTIONS request fulfilled in ~p ms"
-              ,[kz_time:elapsed_ms(cb_context:start(Context))]),
+              ,[kz_time:elapsed_ms(cb_context:start(Context))]
+              ),
     _ = api_util:finish_request(Req, Context),
     'ok';
 rest_terminate(Req, Context, Verb) ->
