@@ -240,13 +240,8 @@ validate_messages(Context, DocId, ?HTTP_PUT) ->
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
     Messages = kvm_messages:get(cb_context:account_id(Context), DocId),
 
-    Filter = case kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context)) of
-                 L when is_list(L) -> L;
-                 _ -> get_folder_filter(Context, <<"all">>)
-             end,
-
+    Filter = kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), get_folder_filter(Context, <<"all">>)),
     ToDelete = filter_messages(Messages, Filter, Context),
-
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success'), ToDelete).
 
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
@@ -488,7 +483,7 @@ save_attachment(Context, Filename, FileJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_folder_filter(cb_context:context(), kz_term:ne_binary()) -> kvm_message:vm_folder().
+-spec get_folder_filter(cb_context:context(), kz_term:api_ne_binary()) -> kvm_message:vm_folder() | 'undefined'.
 get_folder_filter(Context, Default) ->
     ReqData = cb_context:req_data(Context),
     QS = cb_context:query_string(Context),
@@ -508,45 +503,47 @@ get_folder_filter(Context, Default) ->
 %% Note: Filter can be `<<"all">>' which return all messages.
 %% @end
 %%------------------------------------------------------------------------------
--type filter_options() :: kvm_message:vm_folder() | kz_term:ne_binaries().
+-type filter_options() :: kvm_message:vm_folder() | kz_term:api_ne_binaries().
 
 -spec filter_messages(kz_json:objects(), filter_options(), cb_context:context()) -> kz_term:ne_binaries().
+filter_messages(_, 'undefined', _) ->
+    [];
 filter_messages(Messages, {?VM_FOLDER_DELETED, _}, Context) ->
     %% move to delete folder and soft-delete
-    filter_messages(Messages, ?VM_FOLDER_DELETED, Context, []);
+    filter_messages(Messages, ?VM_FOLDER_DELETED, Context);
 filter_messages(Messages, Filters, Context) ->
-    filter_messages(Messages, Filters, Context, []).
+    filter_messages(Messages, Filters, Context, [], crossbar_filter:is_defined(Context)).
 
 %% Filter by folder
 
--spec filter_messages(kz_json:objects(), filter_options(), cb_context:context(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
-filter_messages([], _Filters, _Context, Selected) -> Selected;
-filter_messages([Mess|Messages], <<"all">> = Filter, Context, Selected) ->
-    Id = kzd_box_message:media_id(Mess),
-    filter_messages(Messages, Filter, Context, [Id|Selected]);
-filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
-  when Filter =:= ?VM_FOLDER_NEW;
-       Filter =:= ?VM_FOLDER_SAVED;
-       Filter =:= ?VM_FOLDER_DELETED ->
-    Id = kzd_box_message:media_id(Mess),
-    QsFiltered = crossbar_filter:by_doc(Mess, Context),
-    case QsFiltered
+-spec filter_messages(kz_json:objects(), filter_options(), cb_context:context(), kz_term:ne_binaries(), boolean()) -> kz_term:ne_binaries().
+filter_messages([], _Filters, _Context, Selected, _) ->
+    Selected;
+filter_messages([Mess|Messages], <<"all">> = Filter, Context, Selected, HasQSFilter) ->
+    filter_messages(Messages, Filter, Context, [kzd_box_message:media_id(Mess)|Selected], HasQSFilter);
+filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected, HasQSFilter) when Filter =:= ?VM_FOLDER_NEW;
+                                                                                             Filter =:= ?VM_FOLDER_SAVED;
+                                                                                             Filter =:= ?VM_FOLDER_DELETED ->
+    case (HasQSFilter
+          andalso crossbar_filter:by_doc(Mess, Context, HasQSFilter)
+         )
         orelse kzd_box_message:folder(Mess) =:= Filter
     of
-        'true' -> filter_messages(Messages, Filter, Context, [Id|Selected]);
-        'false' -> filter_messages(Messages, Filter, Context, Selected)
+        'true' -> filter_messages(Messages, Filter, Context, [kzd_box_message:media_id(Mess)|Selected], HasQSFilter);
+        'false' -> filter_messages(Messages, Filter, Context, Selected, HasQSFilter)
     end;
 %% Filter by Ids
-filter_messages(_, [], _Context, Selected) -> Selected;
-filter_messages([Mess|Messages], Filters, Context, Selected) ->
+filter_messages(_, [], _Context, Selected, _) -> Selected;
+filter_messages([Mess|Messages], Filters, Context, Selected, HasQSFilter) ->
     Id = kzd_box_message:media_id(Mess),
-    QsFiltered = crossbar_filter:by_doc(Mess, Context),
 
-    case QsFiltered
+    case (HasQSFilter
+          andalso crossbar_filter:by_doc(Mess, Context, HasQSFilter)
+         )
         orelse lists:member(Id, Filters)
     of
-        'true' -> filter_messages(Messages, Filters, Context, [Id|Selected]);
-        'false' -> filter_messages(Messages, Filters, Context, Selected)
+        'true' -> filter_messages(Messages, Filters, Context, [Id|Selected], HasQSFilter);
+        'false' -> filter_messages(Messages, Filters, Context, Selected, HasQSFilter)
     end.
 
 -spec validate_media_binary(cb_context:context(), kz_term:proplist(), boolean()) -> cb_context:context().
