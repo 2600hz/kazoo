@@ -167,7 +167,7 @@ import(_ExtraArgs, Dict, Args) ->
 
     case dict:find(Db, Dict) of
         'error' ->
-            lager:debug("adding prefix ~s to ratedeck '~s'", [kzd_rates:prefix(Rate), Db]),
+            lager:debug("adding prefix ~p to ratedeck '~s'", [kzd_rates:prefix(Rate), Db]),
             {'ok', dict:store(Db, {1, [Rate]}, Dict)};
         {'ok', {BulkLimit, Rates}} ->
             lager:info("saving ~b rates to '~s'", [BulkLimit, Db]),
@@ -204,7 +204,7 @@ delete(_ExtraArgs, State, Args) ->
 
     Limit = props:get_value('limit', State),
     Count = props:get_value('count', State) + 1,
-    P = kz_term:to_integer(kzd_rates:prefix(Rate)),
+    P = kzd_rates:prefix(Rate),
 
     %% override account-ID from task props
     Dict = dict:append(P, Rate, props:get_value('dict', State)),
