@@ -266,10 +266,10 @@ do_update(AccountId, FetchMap, Funs, RetenTimestamp) ->
 
 -spec bulk_result(bulk_map()) -> kz_json:object().
 bulk_result(Map) ->
-    kz_json:from_list_recursive(
+    kz_json:from_list(
       props:filter_empty(
         [{<<"succeeded">>, maps:get(succeeded, Map, [])}
-        ,{<<"failed">>, maps:get(failed, Map, [])}
+        ,{<<"failed">>, kz_json:from_list(maps:get(failed, Map, []))}
         ])
      ).
 
@@ -346,7 +346,7 @@ change_folder(Folder, Msgs, AccountId, BoxId) ->
 %% <div class="notice">Messages prior to retention duration will not update.</div>
 %%
 %% <div class="notice">If `Folder' is `` {<<"deleted">>, 'true'} '', the message
-%% would move to deleted folder and and its document will marked as soft-deleted,
+%% would move to deleted folder and its document will marked as soft-deleted,
 %% otherwise it just move to deleted folder (for recovering later by user).</div>
 %% @end
 %%------------------------------------------------------------------------------
@@ -478,7 +478,7 @@ get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
 -spec maybe_add_range_to_keys(kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:proplist()) -> kz_term:proplist().
 maybe_add_range_to_keys(From, To, ViewOpts) ->
     [{'startkey', add_timestamp_if_defined('startkey', To, ViewOpts)}
-    ,{'endkey', add_timestamp_if_defined('startkey', From, ViewOpts)}
+    ,{'endkey', add_timestamp_if_defined('endkey', From, ViewOpts)}
     ,'descending'
      | props:delete_keys(['startkey', 'endkey'], ViewOpts)
     ].
