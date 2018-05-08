@@ -277,6 +277,9 @@ do_compact_db_by_nodes(?MATCH_ACCOUNT_RAW(_)=AccountId, Heuristic) ->
 do_compact_db_by_nodes(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, Heuristic) ->
     lager:info("formatting unencoded account db ~s", [AccountDb]),
     do_compact_db_by_nodes(kz_util:format_account_id(AccountDb, 'unencoded'), Heuristic);
+do_compact_db_by_nodes(?MATCH_MODB_SUFFIX_RAW(_AccountId, _Year, _Month)=MODB, Heuristic) ->
+    lager:info("formatting raw modb ~s", [MODB]),
+    do_compact_db_by_nodes(kz_util:format_account_db(MODB, 'unencoded'), Heuristic);
 do_compact_db_by_nodes(Database, Heuristic) ->
     lager:debug("opening in ~s: ~s", [kazoo_couch:get_admin_dbs(), Database]),
     {'ok', DbInfo} = kz_datamgr:open_doc(kazoo_couch:get_admin_dbs(), Database),
