@@ -85,7 +85,9 @@ handle_ringback(Node, UUID, JObj) ->
                                   ,JObj
                                   )
     of
-        'undefined' -> 'ok';
+        'undefined' ->
+            {'ok', Default} = ecallmgr_util:get_setting(<<"default_ringback">>),
+            ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, kz_term:to_binary(Default)}]);
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom ringback: ~s", [Stream]),
