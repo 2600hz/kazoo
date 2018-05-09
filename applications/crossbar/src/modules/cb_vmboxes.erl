@@ -240,19 +240,9 @@ validate_messages(Context, DocId, ?HTTP_PUT) ->
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
     Messages = kvm_messages:get(cb_context:account_id(Context), DocId),
 
-    case kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), get_folder_filter(Context, 'undefined')) of
-        'undefined' ->
-            Message = kz_json:from_list([{<<"message">>, <<"No array of message ids are specified">>}]),
-            cb_context:add_validation_error(<<"messages">>, <<"required">>, Message, Context);
-        Filter ->
-            case filter_messages(Messages, Filter, Context) of
-                [] ->
-                    Msg = <<"no messages matched the filter">>,
-                    cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Msg}]), Context);
-                ToDelete ->
-                    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success'), ToDelete)
-            end
-    end.
+    Filter = kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), get_folder_filter(Context, <<"all">>)),
+    ToDelete = filter_messages(Messages, Filter, Context),
+    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success'), ToDelete).
 
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
