@@ -254,9 +254,9 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Doc = lists:foldl(fun doc_updates/2
-                     ,cb_context:doc(Context)
-                     ,[{fun kz_doc:set_type/2, <<"rate">>}
+    Doc = lists:foldl(fun(F, R) -> F(R) end
+                     ,kzd_rates:from_json(cb_context:doc(Context))
+                     ,[fun kzd_rates:set_type/1
                       ,fun ensure_routes_set/1
                       ]
                      ),
@@ -264,28 +264,17 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
 
--spec doc_updates({fun(), kz_term:ne_binary()} | fun(), kz_json:object()) ->
-                         kz_json:object().
-doc_updates({Fun, Value}, Doc) when is_function(Fun, 2) ->
-    Fun(Doc, Value);
-doc_updates(Fun, Doc) when is_function(Fun, 1) ->
-    Fun(Doc).
-
 -spec ensure_routes_set(kz_json:object()) -> kz_json:object().
-ensure_routes_set(Doc) ->
-    ensure_routes_set(Doc, kz_json:get_value(<<"routes">>, Doc)).
+ensure_routes_set(Rate) ->
+    ensure_routes_set(Rate, kzd_rates:routes(Rate)).
 
--spec ensure_routes_set(kz_json:object(), kz_term:api_binaries()) -> kz_json:object().
-ensure_routes_set(Doc, 'undefined') ->
-    add_default_route(Doc, kz_json:get_value(<<"prefix">>, Doc));
-ensure_routes_set(Doc, []) ->
-    add_default_route(Doc, kz_json:get_value(<<"prefix">>, Doc));
-ensure_routes_set(Doc, _) ->
-    Doc.
-
--spec add_default_route(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
-add_default_route(Doc, Prefix) ->
-    kz_json:set_value(<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>], Doc).
+-spec ensure_routes_set(kzd_rates:doc(), kz_term:api_ne_binaries()) -> kz_json:object().
+ensure_routes_set(Rate, 'undefined') ->
+    kzd_rates:set_default_route(Rate);
+ensure_routes_set(Rate, []) ->
+    kzd_rates:set_default_route(Rate);
+ensure_routes_set(Rate, _Routes) ->
+    Rate.
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
