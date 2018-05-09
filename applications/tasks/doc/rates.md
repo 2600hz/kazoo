@@ -181,6 +181,8 @@ curl -v -X GET \
 
 When `data.status` changes from `executing`, the task is completed.
 
+Once the rate import is done, check out the [rates API](../../crossbar/doc/rates.md) to see how to rate a DID via the API.
+
 !!! note
     By default, there is a generous pause built into the system to avoid overloading the system. You can speed up task processing by decreasing the pause, in milliseconds (at the expense of more database load): `sup kapps_config set_default tasks wait_after_row_ms 100`
 

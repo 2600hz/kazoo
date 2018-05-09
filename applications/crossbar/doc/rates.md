@@ -56,6 +56,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ```shell
 curl -v -X GET \
+    -H "Accept: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/rates
 ```
@@ -78,6 +79,8 @@ curl -v -X GET \
     "status": "success"
 }
 ```
+
+Switch the `Accept` header to `text/csv` to get the page as a CSV.
 
 ## Upload a RateDeck CSV
 
