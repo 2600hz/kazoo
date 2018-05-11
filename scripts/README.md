@@ -299,6 +299,28 @@ Checks JSON schemas for empty "description" properties and exit(1) if any are fo
 
 Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
 
+```bash
+./scripts/export_auth_token.bash -h
+Gets an auth token and outputs Bash script to export the following environment
+variables:
+
+    ACCOUNT_ID
+    AUTH_TOKEN
+
+Usage:
+
+$(eval ./scripts/export_auth_token.bash [options])
+
+Options:
+
+-v:                      Print extra information (verbose)
+-c CREDENTIALS_HASH      $(echo -n "username:password" | md5sum | cut -d ' ' -f 1)
+-a ACCOUNT_NAME
+-p PHONE_NUMBER
+-r ACCOUNT_REALM
+-k API_KEY
+-s BASE_URL             Defaults to http://localhost:8000; include the http(s) scheme
+```
 
 ## format-json.sh
 
