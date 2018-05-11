@@ -38,6 +38,9 @@
         kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
        ).
 
+-define(DEFAULT_RETRY_PERIOD,
+        kapps_config:get_integer(<<"tasks.notify_resend">>, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)).
+
 -type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
 %%------------------------------------------------------------------------------
@@ -131,7 +134,7 @@ maybe_handle_error(NotifyType, Req, Reason) ->
 %%------------------------------------------------------------------------------
 -spec handle_error(kz_term:ne_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 handle_error(NotifyType, Req, {Reason, Metadata}) ->
-    lager:warning("attempt to publishing notification ~s was unsuccessful: ~p", [NotifyType, Reason]),
+    lager:warning("failed to publish notification ~s: ~p  , saving the payload...", [NotifyType, Reason]),
     Props = props:filter_undefined(
               [{<<"description">>, <<"failed to publish notification">>}
               ,{<<"failure_reason">>, Reason}
@@ -139,6 +142,7 @@ handle_error(NotifyType, Req, {Reason, Metadata}) ->
               ,{<<"notification_type">>, NotifyType}
               ,{<<"payload">>, Req}
               ,{<<"attempts">>, 1}
+              ,{<<"retry_after">>, ?DEFAULT_RETRY_PERIOD}
               ]),
     PvtOptions = [{'type', <<"failed_notify">>}
                  ,{'account_id', kapi_notifications:account_id(Req)}
@@ -149,11 +153,11 @@ handle_error(NotifyType, Req, {Reason, Metadata}) ->
 
 -spec save_pending_notification(kz_term:ne_binary(), kz_json:object(), integer()) -> 'ok'.
 save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
-    lager:error("max try to save payload for notification ~s publish attempt", [_NotifyType]);
+    lager:error("max try to save payload for notification ~s", [_NotifyType]);
 save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?KZ_PENDING_NOTIFY_DB, JObj) of
         {'ok', _SavedJObj} ->
-            lager:warning("payload for failed ~s publish attempt is saved to ~s", [NotifyType, kz_doc:id(_SavedJObj)]);
+            lager:warning("payload for notification ~s is saved to ~s", [NotifyType, kz_doc:id(_SavedJObj)]);
         {'error', 'not_found'} ->
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
@@ -162,7 +166,7 @@ save_pending_notification(NotifyType, JObj, Loop) ->
         {'error', 'conflict'} ->
             save_pending_notification(NotifyType, JObj, Loop - 1);
         {'error', _E} ->
-            lager:error("failed to save payload for ~s publish attempt: ~p", [NotifyType, _E])
+            lager:error("failed to save payload for notification ~s: ~p", [NotifyType, _E])
     end.
 
 %%------------------------------------------------------------------------------
@@ -299,13 +303,13 @@ find_reason_from_jsons(Reason, JObjs, Map) ->
         Val -> maps:update_with(Reason, fun(List) -> [Val|List] end, [Val], Map)
     end.
 
--spec cast_to_binary(any()) -> kz_term:ne_binary().
+-spec cast_to_binary(any()) -> kz_term:api_ne_binary().
 cast_to_binary(Error) ->
     try kz_term:to_binary(Error)
     catch
         _:_ ->
             lager:debug("failed to convert notification failure reason to binary: ~p", [Error]),
-            <<"unknown_reason">>
+            'undefined'
     end.
 
 %%------------------------------------------------------------------------------

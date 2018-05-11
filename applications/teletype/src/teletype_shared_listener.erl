@@ -109,6 +109,8 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, _State) ->
+    CallId = kz_util:find_callid(JObj),
+    lager:debug("instrumenting teletype for call_id ~p", [CallId]),
     case teletype_util:should_handle_notification(JObj) of
         'false' -> 'ignore';
         'true' -> {'reply', []}

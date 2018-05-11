@@ -313,7 +313,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                  ],
 
-    lager:debug("notifying of voicemail saved"),
+    lager:debug("sending voicemail_new notification"),
     kapps_notify_publisher:call_collect(NotifyProp, fun kapi_notifications:publish_voicemail_new/1).
 
 %%------------------------------------------------------------------------------
