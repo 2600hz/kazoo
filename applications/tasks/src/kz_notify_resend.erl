@@ -226,7 +226,9 @@ process_single(JObj) ->
     PublishFun = map_to_publish_fun(NotifyType),
 
     case handle_result(call_collect(API, PublishFun)) of
-        'true' -> {'ok', JObj};
+        'true' ->
+            maybe_send_mwi(NotifyType, JObj),
+            {'ok', JObj};
         'false' -> {'failed', JObj}
     end.
 
@@ -253,7 +255,9 @@ send_notification(JObj, #{ok := OK}=Map) ->
     PublishFun = map_to_publish_fun(NotifyType),
 
     case handle_result(call_collect(API, PublishFun)) of
-        'true' -> Map#{ok := [JObj|OK]};
+        'true' ->
+            maybe_send_mwi(NotifyType, JObj),
+            Map#{ok := [JObj|OK]};
         'false' -> maybe_reschedule(NotifyType, JObj, Map)
     end.
 
@@ -394,3 +398,20 @@ new_results_map() ->
     #{ok => []
      ,ko => []
      }.
+
+maybe_send_mwi(<<"voicemail_new">>, JObj) ->
+    AccountId = kz_json:get_first_defined([[<<"payload">>, <<"Account-ID">>], [<<"payload">>, <<"Account-DB">>]], JObj),
+    BoxId = kz_json:get_value([<<"payload">>, <<"Voicemail-Box">>], JObj),
+
+    case {AccountId, BoxId} of
+        {'undefined', 'undefined'} ->
+            lager:warning("undefined account_id and box_id, not sending mwi update");
+        {'undefined', _} ->
+            lager:warning("undefined account_id, not sending mwi update");
+        {_, 'undefined'} ->
+            lager:warning("undefined box_id, not sending mwi update");
+        {AccountId, BoxId} ->
+            kvm_mwi:notify_vmbox(AccountId, BoxId)
+    end;
+maybe_send_mwi(_, _) ->
+    'ok'.
