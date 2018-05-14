@@ -1124,7 +1124,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Codecs">>, get_codecs(Endpoint)}
                       ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
                       ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, PushHeaders, Call)}
+                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"sip">>, PushHeaders, Call)}
                       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
                       ,{<<"Flags">>, get_outbound_flags(Endpoint)}
                       ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
@@ -1201,7 +1201,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
         ,{<<"Codecs">>, get_codecs(Endpoint)}
         ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
         ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-        ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, PushHeaders, Call)}
+        ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"failover">>, PushHeaders, Call)}
         ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
         ,{<<"Flags">>, get_outbound_flags(Endpoint)}
         ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
@@ -1315,7 +1315,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
       ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
       ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
       ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
-      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"forward">>, Call)}
       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
       ]).
 
@@ -1351,7 +1351,7 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
               ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
               ,{<<"Endpoint-Delay">>, get_delay(Properties)}
               ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-              ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+              ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"mobile">>, Call)}
               ,{<<"Codecs">>, Codecs}
               ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
               ,{<<"SIP-Interface">>, SIPInterface}
@@ -1404,18 +1404,18 @@ maybe_add_mobile_path(Route) ->
 %% the endpoint
 %% @end
 %%------------------------------------------------------------------------------
--spec generate_sip_headers(kz_json:object(), kapps_call:call()) ->
+-spec generate_sip_headers(kz_json:object(), kz_term:ne_binary(), kapps_call:call()) ->
                                   kz_json:object().
-generate_sip_headers(Endpoint, Call) ->
-    generate_sip_headers(Endpoint, kz_json:new(), Call).
+generate_sip_headers(Endpoint, Type, Call) ->
+    generate_sip_headers(Endpoint, Type, kz_json:new(), Call).
 
--spec generate_sip_headers(kz_json:object(), kz_json:object(), kapps_call:call()) ->
+-spec generate_sip_headers(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
                                   kz_json:object().
-generate_sip_headers(Endpoint, Acc, Call) ->
+generate_sip_headers(Endpoint, Type, Acc, Call) ->
     Inception = kapps_call:inception(Call),
 
     HeaderFuns = [fun(J) -> maybe_add_sip_headers(J, Endpoint, Call) end
-                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Call) end
+                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Type, Call) end
                  ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_invite_format(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
@@ -1457,8 +1457,10 @@ merge_custom_sip_headers('undefined', JObj) ->
 merge_custom_sip_headers(CustomHeaders, JObj) ->
     kz_json:merge_jobjs(CustomHeaders, JObj).
 
--spec maybe_add_alert_info(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
-maybe_add_alert_info(JObj, Endpoint, Call) ->
+-spec maybe_add_alert_info(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
+maybe_add_alert_info(JObj, _Endpoint, <<"forward">>, _Call) ->
+    JObj;
+maybe_add_alert_info(JObj, Endpoint, _, Call) ->
     case kapps_call:kvs_fetch(<<"Override-Ringtone">>, Call) of
         'undefined' -> maybe_add_alert_info_from_endpoint(JObj, Endpoint, kapps_call:inception(Call));
         Ringtone -> set_alert_info(Ringtone, JObj)
@@ -1810,7 +1812,7 @@ create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
                      ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
                      ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
                      ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-                     ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+                     ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"sms">>, Call)}
                      ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
                      ]),
             EP = create_mobile_sms_endpoint_failover(Prop, Failover),
