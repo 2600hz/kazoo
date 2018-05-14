@@ -4,16 +4,37 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(fax_converters_convertapi).
--export([prepare_contents/5
+-export([prepare_contents/4
         ]).
 
 -include("fax.hrl").
 
 -define(CONVERTAPI_URL, kapps_config:get_ne_binary(?CONFIG_CAT, <<"convertapi_url">>, <<"https://v2.convertapi.com">>)).
+-define(CONVERTAPI_SECRET, kapps_config:get_ne_binary(?CONFIG_CAT, <<"convertapi_secret">>)).
+
+-spec prepare_contents(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                              {'ok', kz_term:ne_binary()} |
+                              {'error', kz_term:ne_binary()}.
+prepare_contents(CT, JobId, RespContent, TmpDir) ->
+    case ?CONVERTAPI_SECRET of
+        'undefined' ->
+            lager:debug("Converapi secret is not defined. Cannot process JobId : ~p", [JobId]),
+            {'error', <<"convertapi secret not defined">>};
+        Secret -> prepare_contents(CT, TmpDir, JobId, RespContent, Secret)
+    end.
 
 -spec prepare_contents(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', kz_term:ne_binary()} |
                               {'error', kz_term:ne_binary()}.
+prepare_contents(<<"application/pdf">>=CT, JobId, RespContent, TmpDir, _Secret) ->
+    lager:debug("For 'pdf' file is used genereic converter."),
+    fax_converters_generic:prepare_contents(CT, JobId, RespContent, TmpDir);
+
+prepare_contents(<<"image/", _/binary>>=CT, JobId, RespContent, TmpDir, _Secret) ->
+    Extension = kz_mime:to_extension(CT),
+    lager:debug("For '~p' file is used genereic converter.", [Extension]),
+    fax_converters_generic:prepare_contents(CT, JobId, RespContent, TmpDir);
+
 prepare_contents(CT, TmpDir, JobId, RespContent, Secret) ->
     Extension = kz_mime:to_extension(CT),
     FileName = list_to_binary([JobId, ".", Extension]),
@@ -36,12 +57,12 @@ prepare_contents(CT, TmpDir, JobId, RespContent, Secret) ->
                     lager:debug("jobid ~s converted successfully using convertapi", [JobId]),
                     [File|_] = kz_json:get_list_value(<<"Files">>, JObj),
                     FileDataBase64 = kz_json:get_value(<<"FileData">>, File),
-                    fax_converters_generic:prepare_contents(<<"image/tiff">>, JobId, base64:decode(FileDataBase64), TmpDir);
+                    prepare_contents(<<"image/tiff">>, JobId, base64:decode(FileDataBase64), TmpDir, Secret);
                 'false' ->
                     lager:error("we got convertapi responce without files for jobid ~s : ~p", [JobId, JObj]),
                     {'error', <<"we got responce without files">>}
             end;
-        _Response ->
-            lager:debug("unexpected canvertapi response sending update_job_status: ~p", [_Response]),
+        Response ->
+            lager:debug("unexpected canvertapi response sending update_job_status: ~p", [Response]),
             {'error', <<"can not convert file">>}
     end.

@@ -107,6 +107,11 @@
             },
             "type": "array"
         },
+        "doc_converter": {
+            "default": "generic",
+            "description": "fax doc_converter",
+            "type": "string"
+        },
         "endpoint_timeout": {
             "default": 40,
             "description": "fax endpoint timeout",
