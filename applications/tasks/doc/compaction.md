@@ -153,3 +153,28 @@ For instance, compact two databases, forcing compaction on the first database, a
     ```
 
 Start, query and export as before.
+
+### Via SUP
+
+You can compact all databases on a node:
+
+```shell
+> sup kt_compactor compact_node {BIGCOUCH@SERVER1.COM}
+node, database, before_disk, before_data, after_disk, after_data
+{BIGCOUCH@SERVER1.COM}, webhooks, 41056, 8273, 24672, 8273
+{BIGCOUCH@SERVER1.COM}, token_auth, 24672, 283, 8288, 283
+{BIGCOUCH@SERVER1.COM}, tasks, 28768, 2724, 12384, 2724
+...
+```
+
+You can compact a database across all nodes:
+
+```shell
+> shell kt_compactor compact_db {DATABASE}
+node, database, before_disk, before_data, after_disk, after_data
+{BIGCOUCH@SERVER1.COM}, {DATABASE}, 24672, 4192, 16480, 4192
+{BIGCOUCH@SERVER2.COM}, {DATABASE}, 24672, 4192, 16480, 4192
+{BIGCOUCH@SERVER3.COM}, {DATABASE}, 24672, 4192, 16480, 4192
+```
+
+You can compact account databases by using the account id; compact MODBs with `{ACCOUNT_ID}-{YYYY}{MM}`.

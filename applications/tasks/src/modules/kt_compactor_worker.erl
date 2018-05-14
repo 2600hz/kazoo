@@ -37,6 +37,7 @@
 -record(compactor, {node :: kz_term:ne_binary()
                    ,conn :: kz_data:connection()
                    ,admin :: kz_data:connection()
+                   ,driver :: kazoo_couch:couch_version()
                    ,database :: kz_term:ne_binary()
                    ,shards :: kz_term:ne_binaries()
                    ,design_docs = [] :: kz_term:ne_binaries()
@@ -58,7 +59,7 @@ run_compactor(Compactor) ->
     end.
 
 -spec run_compactor_job(compactor(), kz_term:ne_binaries()) -> 'ok'.
-run_compactor_job(_Compactor, []) -> 'ok';
+run_compactor_job(_Compactor, []) -> lager:debug("  finished compacting shards");
 run_compactor_job(Compactor, Shards) ->
     try lists:split(?MAX_COMPACTING_SHARDS, Shards) of
         {Compact, ShardsLeft} ->
@@ -116,7 +117,7 @@ compact_shard(#compactor{shards=[Shard]}=Compactor) ->
 
 -spec start_compacting_shard(compactor()) -> 'ok'.
 start_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
-    lager:debug("compacting shard '~s' via admin port", [Shard]),
+    lager:debug("compacting shard ~s", [Shard]),
     case kz_couch_db:db_compact(compactor_admin(Compactor), Shard) of
         'true' -> continue_compacting_shard(Compactor);
         'false' -> lager:debug("  compaction of shard failed, skipping")
@@ -128,13 +129,13 @@ continue_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
 
     %% cleans up old view indexes
     IsCleanup = kz_couch_db:db_view_cleanup(compactor_conn(Compactor), shard_to_db(Shard)),
-    lager:debug("  is shard view cleaning up started ~s: ~s", [Shard, IsCleanup]),
+    lager:debug("  is db view cleanup started ~s: ~s", [shard_to_db(Shard), IsCleanup]),
 
-    wait_for_compaction(compactor_conn(Compactor), Shard),
+    wait_for_compaction(compactor_admin(Compactor), Shard),
 
     %% compacts views
     lager:debug("  design doc compaction starting for shard ~s", [Shard]),
-    compact_design_docs(compactor_conn(Compactor), shard_to_db(Shard), compactor_design_docs(Compactor)),
+    compact_design_docs(Compactor, Shard, compactor_design_docs(Compactor)),
 
     case get_db_disk_and_data(compactor_admin(Compactor), Shard) of
         'undefined' -> lager:debug("  finished compacting shard");
@@ -143,22 +144,25 @@ continue_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
             lager:debug("  finished compacting shard: ~p disk/~p data", [AfterDisk, AfterData])
     end.
 
--spec compact_design_docs(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
-compact_design_docs(_Conn, _Shard, []) -> 'ok';
-compact_design_docs(Conn, Shard, DDs) ->
+-spec compact_design_docs(compactor(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
+compact_design_docs(_Compactor, _Shard, []) -> 'ok';
+compact_design_docs(Compactor, Shard, DDs) ->
+    Conn = compactor_admin(Compactor),
     try lists:split(?MAX_COMPACTING_VIEWS, DDs) of
         {Compact, Remaining} ->
             IsStarted = [{DD, kz_couch_view:design_compact(Conn, Shard, DD)}
                          || DD <- Compact
                         ],
-            lager:debug("  is shard ~s compacting chunk of views started: ~p", [Shard, IsStarted]),
-            wait_for_design_compaction(Conn, Shard, Compact),
-            compact_design_docs(Conn, Shard, Remaining)
+            lager:debug("  has shard ~s started compacting chunk of views: ~p", [Shard, IsStarted]),
+            wait_for_design_compaction(compactor_admin(Compactor), Shard, Compact),
+            compact_design_docs(Compactor, Shard, Remaining)
     catch
         'error':'badarg' ->
-            IsStarted = [{DD, kz_couch_view:design_compact(Conn, Shard, DD)} || DD <- DDs],
+            IsStarted = [{DD, kz_couch_view:design_compact(Conn, Shard, DD)}
+                         || DD <- DDs
+                        ],
             lager:debug("  is shard ~s compacting last chunk of views started: ~p", [Shard, IsStarted]),
-            wait_for_design_compaction(Conn, Shard, DDs)
+            wait_for_design_compaction(compactor_admin(Compactor), Shard, DDs)
     end.
 
 -type db_info_resp() :: {'ok', kz_json:object()} |
@@ -200,7 +204,7 @@ wait_for_compaction(AdminConn, Shard) ->
 
 -spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary(), db_info_resp()) -> 'ok'.
 wait_for_compaction(_AdminConn, _Shard, {'error', 'db_not_found'}) ->
-    lager:debug("shard '~s' wasn't found", [_Shard]);
+    lager:info("shard '~s' wasn't found on this connection: ~p", [_Shard, _AdminConn]);
 wait_for_compaction(AdminConn, Shard, {'error', 'timeout'}) ->
     lager:warning("timed out querying db status; that seems irregular!"),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL * 2),
@@ -214,7 +218,6 @@ wait_for_compaction(AdminConn, Shard, {'ok', ShardData}) ->
             'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
             wait_for_compaction(AdminConn, Shard)
     end.
-
 
 -spec should_compact(compactor()) -> boolean().
 should_compact(Compactor) ->
@@ -323,6 +326,7 @@ new(Node, Heuristic, APIConn, AdminConn, Database) ->
               ,database=kz_http_util:urlencode(Database)
               ,conn=APIConn
               ,admin=AdminConn
+              ,driver=kazoo_couch:server_version(APIConn)
               ,heuristic=Heuristic
               ,shards=node_shards(Node, Database)
               ,design_docs=db_design_docs(APIConn, Database)
