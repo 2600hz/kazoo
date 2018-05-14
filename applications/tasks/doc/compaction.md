@@ -170,7 +170,7 @@ node, database, before_disk, before_data, after_disk, after_data
 You can compact a database across all nodes:
 
 ```shell
-> shell kt_compacotr compact_db {DATABASE}
+> shell kt_compactor compact_db {DATABASE}
 node, database, before_disk, before_data, after_disk, after_data
 {BIGCOUCH@SERVER1.COM}, {DATABASE}, 24672, 4192, 16480, 4192
 {BIGCOUCH@SERVER2.COM}, {DATABASE}, 24672, 4192, 16480, 4192
