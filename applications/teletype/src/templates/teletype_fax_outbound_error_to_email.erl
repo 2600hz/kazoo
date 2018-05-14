@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Error sending Fax to {{callee_id.name}} ({% firstof fax.remote_station_id callee_id.number \"Unknown Number\" %})">>).
+-define(TEMPLATE_SUBJECT, <<"Error sending Fax{% if callee_id.name_number or fax.remote_station_id %} to {% firstof callee_id.name_number fax.remote_station_id %}{% endif %}">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax Error to Email">>).
 

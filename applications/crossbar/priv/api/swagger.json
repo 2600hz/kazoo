@@ -16692,10 +16692,28 @@
                 "Fax-To-Email": {
                     "type": "string"
                 },
+                "FaxBox-ID": {
+                    "type": "string"
+                },
+                "FaxBox-Name": {
+                    "type": "string"
+                },
+                "FaxBox-Timezone": {
+                    "type": "string"
+                },
                 "From": {
                     "type": "string"
                 },
                 "HTML": {
+                    "type": "string"
+                },
+                "Number": {
+                    "type": "string"
+                },
+                "Original-Number": {
+                    "type": "string"
+                },
+                "Owner-ID": {
                     "type": "string"
                 },
                 "Preview": {
@@ -16708,6 +16726,9 @@
                     "type": "string"
                 },
                 "Text": {
+                    "type": "string"
+                },
+                "Timestamp": {
                     "type": "string"
                 },
                 "To": {

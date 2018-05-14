@@ -1,1 +1,34 @@
-Error sending fax to faxbox: {{error}}
+        Unable Processing Email-To-Fax
+
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
+
+An attempt to receive a fax document from Email address {{fax.from}} was unsuccessful.
+
+Here are some more details on what went wrong during transmission.
+
+
+=== Email to Fax Failure Details ===
+
+    Sender: {{fax.from}}
+    Destination Email Address: {{fax.to}}
+    Original Destination Fax Number: {% firstof {{fax.original_number}} "Unknown" %} (originally dialed number)
+    Destination Fax Number: {% firstof {{fax.number}} "Unknown" %}
+    Error Reason: {{fax.error}}
+    Sent Date: {{date.local|date:"l, F j, Y \\a\\t H:i"}}
+
+    -------
+
+    FaxBox Name: {{faxbox.name}}
+    FaxBox ID: {{faxbox.id}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

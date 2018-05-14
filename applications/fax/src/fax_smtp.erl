@@ -929,13 +929,30 @@ send_outbound_smtp_fax_error(#state{account_id=AccountId
                                    ,from=From
                                    ,to=To
                                    ,errors=Errors
-                                   }) ->
+                                   ,original_number=FaxNumber
+                                   ,owner_id=OwnerId
+                                   ,number=Number
+                                   }=State) ->
     Message = props:filter_empty(
                 [{<<"Account-ID">>, AccountId}
                 ,{<<"Fax-From-Email">>, From}
                 ,{<<"Fax-To-Email">>, To}
+
                 ,{<<"Errors">>, Errors}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ,{<<"Original-Number">>, FaxNumber}
+                ,{<<"Owner-ID">>, OwnerId}
+                ,{<<"Number">>, Number}
+                ,{<<"Timestamp">>, kz_time:now_s()}
+                 | maybe_add_faxbox_info(State) ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     %% Do not crash if fields were undefined
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound_smtp_error/1).
+
+-spec maybe_add_faxbox_info(state()) -> kz_term:proplist().
+maybe_add_faxbox_info(#state{faxbox='undefined'}) ->
+    [];
+maybe_add_faxbox_info(#state{faxbox=FaxBoxDoc}) ->
+    [{<<"FaxBox-ID">>, kz_doc:id(FaxBoxDoc)}
+    ,{<<"FaxBox-Name">>, kzd_faxbox:name(FaxBoxDoc)}
+    ,{<<"FaxBox-Timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
+    ].

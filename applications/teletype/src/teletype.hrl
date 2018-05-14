@@ -74,11 +74,13 @@
 -define(CALLER_ID_MACROS
        ,[?MACRO_VALUE(<<"caller_id.number">>, <<"caller_id_number">>, <<"Caller ID Number">>, <<"Number of the caller">>)
         ,?MACRO_VALUE(<<"caller_id.name">>, <<"caller_id_name">>, <<"Caller ID Name">>, <<"Name of the caller">>)
+        ,?MACRO_VALUE(<<"caller_id.name_number">>, <<"caller_id_name_number">>, <<"Caller ID Name and Number">>, <<"Pretty print of Name and Number of the caller">>)
         ]).
 
 -define(CALLEE_ID_MACROS
        ,[?MACRO_VALUE(<<"callee_id.number">>, <<"callee_id_number">>, <<"Callee ID Number">>, <<"Number of the callee">>)
         ,?MACRO_VALUE(<<"callee_id.name">>, <<"callee_id_name">>, <<"Callee ID Name">>, <<"Name of the callee">>)
+        ,?MACRO_VALUE(<<"callee_id.name_number">>, <<"callee_id_name_number">>, <<"Callee ID Name and Number">>, <<"Pretty print of Name and Number of the callee">>)
         ]).
 
 -define(DATE_CALLED_MACROS

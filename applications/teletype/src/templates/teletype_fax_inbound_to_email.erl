@@ -23,7 +23,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"New fax from {{caller_id.name}} ({{caller_id.number}})">>).
+-define(TEMPLATE_SUBJECT, <<"New fax from {{caller_id.name_number}}">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Inbound Fax to Email">>).
 

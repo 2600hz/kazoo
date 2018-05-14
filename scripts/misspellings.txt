@@ -186,7 +186,7 @@ tomorrow|tommorow tommorrow
 twelfth|twelth
 tyranny|tyrany
 underrate|underate
-unfortunatly|unfortunately
+unfortunately|unfortunatly
 until|untill
 upholstery|upholstry
 usable|usible
