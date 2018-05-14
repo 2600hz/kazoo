@@ -1387,20 +1387,34 @@ maybe_add_terminators(Acc, JObj) ->
 %%------------------------------------------------------------------------------
 -spec get_terminators(kz_term:api_binary() | kz_term:ne_binaries() | kz_json:object()) ->
                              {kz_term:ne_binary(), kz_term:ne_binary()} | 'undefined'.
-get_terminators('undefined') -> {<<"playback_terminators">>, <<"none">>};
-get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
-get_terminators([]) -> {<<"playback_terminators">>, <<"none">>};
+get_terminators('undefined') ->
+    cache_terminators('undefined'),
+    {<<"playback_terminators">>, <<"none">>};
+get_terminators(Ts) when is_binary(Ts) ->
+    get_terminators([Ts]);
+get_terminators([]) ->
+    cache_terminators('undefined'),
+    {<<"playback_terminators">>, <<"none">>};
 get_terminators(Ts) when is_list(Ts) ->
-    case Ts =:= get('$prior_terminators') of
+    case Ts =:= cached_terminators() of
         'true' -> 'undefined';
         'false' ->
-            put('$prior_terminators', Ts),
+            cache_terminators(Ts),
             case kz_term:is_empty(Ts) of
                 'true' ->  {<<"playback_terminators">>, <<"none">>};
                 'false' -> {<<"playback_terminators">>, kz_term:to_binary(Ts)}
             end
     end;
 get_terminators(JObj) -> get_terminators(kz_json:get_ne_value(<<"Terminators">>, JObj)).
+
+-spec cache_terminators(kz_term:api_ne_binaries()) -> 'ok'.
+cache_terminators(Ts) ->
+    _ = put('$prior_terminators', Ts),
+    lager:debug("cached terminators: ~p", [Ts]).
+
+-spec cached_terminators() -> kz_term:api_ne_binaries().
+cached_terminators() ->
+    get('$prior_terminators').
 
 -spec set_terminators(atom(), kz_term:ne_binary(), kz_term:api_binary() | kz_term:ne_binaries()) ->
                              ecallmgr_util:send_cmd_ret().
