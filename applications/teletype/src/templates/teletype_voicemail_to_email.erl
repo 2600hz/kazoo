@@ -39,7 +39,7 @@ macros() ->
       ]).
 
 -spec subject() -> kz_term:ne_binary().
-subject() -> <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>.
+subject() -> <<"New voicemail from {{caller_id.name_number}}">>.
 
 -spec category() -> kz_term:ne_binary().
 category() -> <<"voicemail">>.

@@ -23,7 +23,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Fax has been sent to {{callee_id.name}} ({{callee_id.number}})">>).
+-define(TEMPLATE_SUBJECT, <<"Fax has been sent to {{callee_id.name_number}}">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax to Email">>).
 

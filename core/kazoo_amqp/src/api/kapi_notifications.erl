@@ -522,8 +522,15 @@ outbound_smtp_fax_error_definition() ->
                     ,required_headers = [<<"Account-ID">>
                                         ,<<"Fax-From-Email">>
                                         ,<<"Errors">>
+                                        ,<<"Timestamp">>
                                         ]
                     ,optional_headers = [<<"Fax-To-Email">>
+                                        ,<<"FaxBox-ID">>
+                                        ,<<"FaxBox-Name">>
+                                        ,<<"FaxBox-Timezone">>
+                                        ,<<"Number">>
+                                        ,<<"Owner-ID">>
+                                        ,<<"Original-Number">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]
                     ,values = ?NOTIFY_VALUES(<<"outbound_smtp_fax_error">>)

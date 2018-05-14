@@ -827,6 +827,7 @@ fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
     props:filter_undefined(
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
       ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, TZ)}
+      ,{<<"timestamp">>, Timestamp}
       ,{<<"timezone">>, TZ}
       ]);
 fix_timestamp(Timestamp, 'undefined') ->
@@ -855,17 +856,37 @@ build_call_data(DataJObj, Timezone) ->
 
 -spec build_caller_id_data(kz_json:object()) -> kz_term:proplist().
 build_caller_id_data(DataJObj) ->
+    Name = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_name">>, DataJObj)),
+    Number = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_number">>, DataJObj)),
+    NameNumber = build_name_and_number(Name, Number),
     props:filter_undefined(
-      [{<<"name">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_name">>, DataJObj))}
-      ,{<<"number">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_number">>, DataJObj))}
+      [{<<"name">>, Name}
+      ,{<<"number">>, Number}
+      ,{<<"name_number">>, NameNumber}
       ]).
 
 -spec build_callee_id_data(kz_json:object()) -> kz_term:proplist().
 build_callee_id_data(DataJObj) ->
+    Name = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_name">>, DataJObj)),
+    Number = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_number">>, DataJObj)),
+    NameNumber = build_name_and_number(Name, Number),
     props:filter_undefined(
-      [{<<"name">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_name">>, DataJObj))}
-      ,{<<"number">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_number">>, DataJObj))}
+      [{<<"name">>, Name}
+      ,{<<"number">>, Number}
+      ,{<<"name_number">>, NameNumber}
       ]).
+
+-spec build_name_and_number(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+build_name_and_number(<<"unknown">>, <<"unknown">>) ->
+    'undefined';
+build_name_and_number(<<"unknown">>, Number) ->
+    Number;
+build_name_and_number(Name, <<"unknown">>) ->
+    Name;
+build_name_and_number(Number, Number) ->
+    Number;
+build_name_and_number(Name, Number) ->
+    <<Name/binary, "(", Number/binary, ")">>.
 
 -spec build_date_called_data(kz_json:object(), kz_term:api_ne_binary()) -> kz_term:proplist().
 build_date_called_data(DataJObj, Timezone) ->
@@ -915,7 +936,7 @@ notification_ignored(TemplateId) -> {'ignored', TemplateId}.
 -spec notification_failed(kz_term:ne_binary(), any()) -> template_response().
 notification_failed(TemplateId, Reason) -> {'failed', Reason, TemplateId}.
 
--spec notification_disabled(kz_term:ne_binary(), kz_json:object()) -> template_response().
+-spec notification_disabled(kz_json:object(), kz_term:ne_binary()) -> template_response().
 notification_disabled(DataJObj, TemplateId) ->
     AccountId = kapi_notifications:account_id(DataJObj),
     lager:debug("notification ~s is disabled for account ~s", [TemplateId, AccountId]),

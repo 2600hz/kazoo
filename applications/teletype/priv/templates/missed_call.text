@@ -1,14 +1,14 @@
                 Missed Call
 
 
-A call was received on phone number {%firstof to.user callee_id.number %}
+A call was received on phone number {%firstof callee_id.name_number to.user %}
 but went unanswered and left no voicemail message.
 
-The caller was {{caller_id.name}} ({{caller_id.number}}).
+The caller was {{caller_id.name_number}}.
 
 === Call Details ===
 
-    Caller: {{caller_id.name}} ({{caller_id.number}})
+    Caller: {{caller_id.name_numbaer}}
     Callee: {{to.user}} (originally dialed number)
     Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
     Hangup Cause: {{missed_call.reason}}

@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Missed call from {{caller_id.name}} ({{caller_id.number}})">>).
+-define(TEMPLATE_SUBJECT, <<"Missed call from {{caller_id.name_number}}">>).
 -define(TEMPLATE_CATEGORY, <<"sip">>).
 -define(TEMPLATE_NAME, <<"Missed Call">>).
 
