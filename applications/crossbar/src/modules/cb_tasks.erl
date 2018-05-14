@@ -280,7 +280,7 @@ validate_tasks(Context, TaskId, ?HTTP_DELETE) ->
 validate_new_attachment(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     CSVBinary = kz_json:get_value(<<"contents">>, FileJObj),
-    case kz_csv:count_rows(CSVBinary) of
+    try kz_csv:count_rows(CSVBinary) of
         0 ->
             lager:debug("failed to count rows in the CSV"),
             Msg = kz_json:from_list([{<<"message">>, <<"Empty CSV or some row(s) longer than others or header missing">>}
@@ -290,6 +290,11 @@ validate_new_attachment(Context, 'true') ->
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                         ,{fun cb_context:store/3, 'total_rows', TotalRows}
                                         ])
+    catch
+        _E:_R ->
+            lager:error("malformed CSV: ~s: ~p", [_E, _R]),
+            Msg = kz_json:from_list([{<<"message">>, <<"Malformed CSV - unable to process the file due to errors in the CSV">>}]),
+            cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context)
     end;
 validate_new_attachment(Context, 'false') ->
     Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),

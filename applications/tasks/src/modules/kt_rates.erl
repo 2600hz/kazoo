@@ -168,7 +168,7 @@ import(_ExtraArgs, Dict, Args) ->
 
     case dict:find(Db, Dict) of
         'error' ->
-            lager:debug("adding prefix ~s to ratedeck '~s'", [kzd_rates:prefix(Rate), Db]),
+            lager:debug("adding prefix ~p to ratedeck '~s'", [kzd_rates:prefix(Rate), Db]),
             {'ok', dict:store(Db, {1, [Rate]}, Dict)};
         {'ok', {BulkLimit, Rates}} ->
             lager:info("saving ~b rates to '~s'", [BulkLimit, Db]),
@@ -205,7 +205,7 @@ delete(_ExtraArgs, State, Args) ->
 
     Limit = props:get_value('limit', State),
     Count = props:get_value('count', State) + 1,
-    P = kz_term:to_integer(kzd_rates:prefix(Rate)),
+    P = kzd_rates:prefix(Rate),
 
     %% override account-ID from task props
     Dict = dict:append(P, Rate, props:get_value('dict', State)),
@@ -305,21 +305,32 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [kz_json:get_binary_value(Key, Doc) || Key <- ?DOC_FIELDS].
 
+-spec maybe_override_rate(kz_tasks:args()) -> kzd_rates:doc().
+maybe_override_rate(Args) ->
+    RateJObj = kzd_rates:from_map(Args),
+    Id = kz_doc:id(RateJObj),
+    Db = kzd_ratedeck:format_ratedeck_db(kzd_rates:ratedeck_id(RateJObj, ?KZ_RATES_DB)),
+
+    case kz_datamgr:open_cache_doc(Db, Id) of
+        {'ok', ExistingJObj} ->
+            lager:debug("updating existing rate ~s(~s) in ~s", [Id, kz_doc:revision(ExistingJObj), Db]),
+            kz_json:merge(ExistingJObj, RateJObj);
+        {'error', 'not_found'} -> RateJObj
+    end.
+
 -spec generate_row(kz_tasks:args()) -> kzd_rates:doc().
 generate_row(Args) ->
-    RateJObj = kzd_rates:from_map(Args),
+    RateJObj = maybe_override_rate(Args),
     Prefix = kz_term:to_binary(kzd_rates:prefix(RateJObj)),
     lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
-    Routes = [<<"^\\+?", Prefix/binary, ".+", ?DOLLAR_SIGN>>],
 
     Update = props:filter_undefined(
                [{fun kzd_rates:set_rate_name/2, maybe_generate_name(RateJObj)}
                ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
-               ,{fun kzd_rates:set_routes/2, Routes}
                ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
                ]
               ),
-    kz_json:set_values(Update, RateJObj).
+    kz_json:set_values(Update, kzd_rates:set_default_route(RateJObj)).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 save_rates(Db, Rates) ->

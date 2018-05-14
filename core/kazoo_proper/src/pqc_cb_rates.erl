@@ -324,19 +324,23 @@ seq() ->
                 ),
     ?INFO("rate cost from doc: ~p", [RateCost]),
 
-    _Up = ?MODULE:upload_rate(API, RateDoc),
-    ?INFO("upload: ~p~n", [_Up]),
+    {'ok', TaskId} = ?MODULE:upload_rate(API, RateDoc),
+    ?INFO("uploaded task: ~s~n", [TaskId]),
 
-    _Get = ?MODULE:get_rate(API, RateDoc),
-    ?INFO("get: ~p~n", [_Get]),
+    GetResp = ?MODULE:get_rate(API, RateDoc),
+    GetJObj = kz_json:decode(GetResp),
+    RateJObj = kz_json:get_json_value(<<"data">>, GetJObj),
+    ?INFO("get rate: ~p~n", [RateJObj]),
+    'true' = kz_doc:id(RateDoc) =:= kz_doc:id(RateJObj),
 
     RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
-    ?INFO("rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),
+    ?INFO("successfully rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),
 
-    _SP = ?MODULE:create_service_plan(API, kzd_rates:ratedeck_id(RateDoc)),
-    ?INFO("created sp: ~p~n", [_SP]),
+    'ok' = ?MODULE:create_service_plan(API, kzd_rates:ratedeck_id(RateDoc)),
+    ?INFO("created service plan for ratedeck"),
 
     AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("create account resp: ~p", [AccountResp]),
     AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
 
     case is_binary(AccountId) of
@@ -357,11 +361,11 @@ seq() ->
             ?ERROR("failed to assign service plan for ~s to account ~s", [RatedeckId, AccountId]),
             throw('no_plan');
         _ ->
-            ?INFO("assigned service plan to account: ~p~n", [_Assigned])
+            ?INFO("assigned service plan to account ~s~n", [AccountId])
     end,
 
     RateCost = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
-    ?INFO("rated ~s in account ~s", [hd(?PHONE_NUMBERS), AccountId]),
+    ?INFO("rated DID ~s in account ~s", [hd(?PHONE_NUMBERS), AccountId]),
 
     _Deleted = ?MODULE:delete_rate(API, RateDoc),
     ?INFO("deleted: ~p", [_Deleted]),

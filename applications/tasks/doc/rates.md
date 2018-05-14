@@ -48,40 +48,13 @@ CSV files for all actions use the same list of fields. Names of fields match the
 ### Import
 
 Import rates from CSV.
-`prefix` and `rate_cost` are mandatory fields.
 
-* Create the task:
+First, query the tasks API to learn what fields must be present in your CSV:
 
 ```shell
-curl -v -X PUT \
+curl -v \
 -H "X-Auth-Token: {AUTH_TOKEN}" \
--H "Content-type: text/csv" \
---data-binary @rates.csv \
 'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
-```
-
-* Start the task:
-
-```shell
-curl -v -X PATCH \
--H "X-Auth-Token: {AUTH_TOKEN}" \
-'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
-```
-
-* Query the task's status:
-
-```shell
-curl -v -X GET \
-   -H "X-Auth-Token: {AUTH_TOKEN}" \
-   'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
-```
-
-#### Sample CSV
-
-First, query the API to see what fields must be defined and what fields are optional:
-
-```shell
-curl 'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
 ```
 
 ```json
@@ -99,6 +72,7 @@ curl 'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
                     ],
                     "optional": [
                         "account_id",
+                        "caller_id_numbers",
                         "carrier",
                         "description",
                         "direction",
@@ -109,6 +83,7 @@ curl 'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
                         "rate_minimum",
                         "rate_name",
                         "rate_nocharge_time",
+                        "rate_suffix",
                         "rate_surcharge",
                         "rate_version",
                         "ratedeck_id",
@@ -118,11 +93,146 @@ curl 'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
                 }
             }
         }
-    },
-    "request_id": "{REQUEST_ID}",
-    "status": "success",
-    "timestamp": "2017-04-19T21:58:45",
-    "version": "4.0.0"
+    }
+}
+```
+
+You can see `prefix` and `rate_cost` are mandatory fields and must be in the CSV header line. You can also name columns after the optional fields.
+
+!!! note
+    The `direction` field defaults to both `inbound` and `outbound`, meaning calls in and out will be rated accordingly. Alternatively, you can create a `direction` column in your CSV to specify the direction.
+
+* Create the task (upload the ratedeck):
+
+```shell
+curl -v -X PUT \
+-H "X-Auth-Token: {AUTH_TOKEN}" \
+-H "Content-type: text/csv" \
+--data-binary @rates.csv \
+'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
+```
+```json
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "_read_only": {
+      "account_id": "{ACCOUNT_ID}",
+      "action": "import",
+      "auth_account_id": "{ACCOUNT_ID}",
+      "category": "rates",
+      "created": 63693042154,
+      "id": "{TASK_ID}",
+      "status": "pending",
+      "total_count": 5
+    }
+  },
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "timestamp": "{TIMESTAMP}",
+  "version": "4.2.29"
+}
+```
+
+* Start the task (begin importing rates):
+
+```shell
+curl -v -X PATCH \
+-H "X-Auth-Token: {AUTH_TOKEN}" \
+'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
+```
+```json
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "_read_only": {
+      "account_id": "{ACCOUNT_ID}",
+      "action": "import",
+      "auth_account_id": "{ACCOUNT_ID}",
+      "category": "rates",
+      "created": 63693042154,
+      "id": "{TASK_ID}",
+      "node": "{VM}@{HOSTNAME}",
+      "start_timestamp": 63693042179,
+      "status": "executing",
+      "total_count": 101914
+    }
+  },
+  "node": "{NODE_HASH}",
+  "page_size": 1,
+  "request_id": "{REQUEST_ID}",
+  "revision": "automatic",
+  "status": "success",
+  "timestamp": "{TIMESTAMP}",
+  "version": "4.2.29"
+}
+```
+
+!!! note
+    If the rate exists already (based on `prefix`, `iso_country_code`, and `rate_suffix` if present), it will be updated with the new value(s) in the CSV.
+
+* Query the task's status:
+
+```shell
+curl -v -X GET \
+   -H "X-Auth-Token: {AUTH_TOKEN}" \
+   'http://{SERVER}:8000/v2/tasks/{TASK_ID}'
+```
+
+When `data.status` changes from `executing`, the task is completed.
+
+Once the rate import is done, check out the [rates API](../../crossbar/doc/rates.md) to see how to rate a DID via the API.
+
+!!! note
+    By default, there is a generous pause built into the system to avoid overloading the system. You can speed up task processing by decreasing the pause, in milliseconds (at the expense of more database load): `sup kapps_config set_default tasks wait_after_row_ms 100`
+
+#### Sample CSV
+
+As noted before, query the API to see what fields must be defined and what fields are optional:
+
+```shell
+curl -v \
+-H "X-Auth-Token: {AUTH_TOKEN}" \
+'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
+```
+
+```json
+{
+    "data": {
+        "tasks": {
+            "rates": {
+                "import": {
+                    "description": "Bulk-import rates to a specified ratedeck",
+                    "doc": "Creates rates from file",
+                    "expected_content": "text/csv",
+                    "mandatory": [
+                        "prefix",
+                        "rate_cost"
+                    ],
+                    "optional": [
+                        "account_id",
+                        "caller_id_numbers",
+                        "carrier",
+                        "description",
+                        "direction",
+                        "internal_rate_cost",
+                        "iso_country_code",
+                        "options",
+                        "rate_increment",
+                        "rate_minimum",
+                        "rate_name",
+                        "rate_nocharge_time",
+                        "rate_suffix",
+                        "rate_surcharge",
+                        "rate_version",
+                        "ratedeck_id",
+                        "routes",
+                        "weight"
+                    ]
+                }
+            }
+        }
+    }
 }
 ```
 

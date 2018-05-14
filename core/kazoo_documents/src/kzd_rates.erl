@@ -27,11 +27,12 @@
 -export([routes/1, routes/2, set_routes/2]).
 -export([weight/1, weight/2, set_weight/2]).
 
--export([from_map/1]).
+-export([from_map/1, from_json/1]).
 -export([type/0, type/1, set_type/1]).
 -export([constrain_weight/1]).
 -export([private_cost/1, private_cost/2, set_private_cost/2]).
 -export([private_surcharge/1, private_surcharge/2, set_private_surcharge/2]).
+-export([set_default_route/1]).
 
 -include("kz_documents.hrl").
 -define(KEY_DIRECTION, <<"direction">>).
@@ -292,14 +293,18 @@ constrain_weight(X) when X =< 0 -> 1;
 constrain_weight(X) when X >= 100 -> 100;
 constrain_weight(X) -> X.
 
--spec from_map(map()) -> doc().
-from_map(Map) ->
-    Rate = kz_doc:public_fields(kz_json:from_map(Map)),
+-spec from_json(kz_json:object()) -> doc().
+from_json(JObj) ->
+    Rate = kz_doc:public_fields(JObj),
     Fs = [fun set_type/1
          ,fun ensure_id/1
          ,fun maybe_fix_direction/1
          ],
     lists:foldl(fun(F, R) -> F(R) end, Rate, Fs).
+
+-spec from_map(map()) -> doc().
+from_map(Map) ->
+    from_json(kz_json:from_map(Map)).
 
 -spec maybe_fix_direction(doc()) -> doc().
 maybe_fix_direction(Rate) ->
@@ -374,3 +379,12 @@ private_surcharge(Rate, Default) ->
 -spec set_private_surcharge(doc(), float()) -> doc().
 set_private_surcharge(Rate, Surcharge) when is_float(Surcharge) ->
     kz_json:set_value(<<"pvt_rate_surcharge">>, Surcharge, Rate).
+
+-spec set_default_route(doc()) -> doc().
+set_default_route(Rate) ->
+    set_default_route(Rate, prefix(Rate)).
+
+-spec set_default_route(doc(), integer()) -> doc().
+set_default_route(Rate, Prefix) ->
+    PrefixBin = kz_term:to_binary(Prefix),
+    set_routes(Rate, [<<"^\\+?", PrefixBin/binary, ".+$">>]).
