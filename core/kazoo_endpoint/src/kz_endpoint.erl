@@ -1286,7 +1286,8 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
                                       kz_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, Call) ->
     CallForward = kz_json:get_ne_value(<<"call_forward">>, Endpoint, kz_json:new()),
-    lager:info("call forwarding endpoint to ~s", [kz_json:get_value(<<"number">>, CallForward)]),
+    ToDID = kz_json:get_value(<<"number">>, CallForward),
+    lager:info("call forwarding endpoint to ~s", [ToDID]),
     IgnoreEarlyMedia = case kz_json:is_true(<<"require_keypress">>, CallForward)
                            orelse not kz_json:is_true(<<"substitute">>, CallForward)
                        of
@@ -1299,9 +1300,9 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
            end,
 
     kz_json:from_list(
-      [{<<"Invite-Format">>, <<"route">>}
+      [{<<"Invite-Format">>, <<"loopback">>}
       ,{<<"To-DID">>, kz_json:get_value(<<"number">>, Endpoint, kapps_call:request_user(Call))}
-      ,{<<"Route">>, <<"loopback/", (kz_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary>>}
+      ,{<<"Route">>, ToDID}
       ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
       ,{<<"Bypass-Media">>, <<"false">>}
       ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
