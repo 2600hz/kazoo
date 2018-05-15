@@ -725,8 +725,9 @@ other_leg_handling_locally(OtherLeg) ->
 
 -spec handling_locally(kz_term:proplist(), kz_term:api_binary()) -> boolean().
 handling_locally(Props, 'undefined') ->
-    props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
-        =:= kz_term:to_binary(node());
+    ChannelEcallmgr = props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props),
+    lager:debug("channel has ecallmgr ~s", [ChannelEcallmgr]),
+    ChannelEcallmgr =:= kz_term:to_binary(node());
 handling_locally(Props, OtherLeg) ->
     Node = kz_term:to_binary(node()),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
