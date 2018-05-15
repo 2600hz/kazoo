@@ -85,6 +85,7 @@
                                   ,<<"Presence-ID">>
                                   ,<<"Extended-Presence-ID">>
                                   ,<<"From">>, <<"From-User">>, <<"From-Realm">>
+                                  ,<<"To-User">>, <<"To-Realm">>
                                   ]).
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
                         ,{<<"Event-Name">>, <<"mwi_update">>}

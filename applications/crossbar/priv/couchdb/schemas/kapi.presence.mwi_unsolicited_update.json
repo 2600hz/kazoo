@@ -56,6 +56,12 @@
         },
         "To": {
             "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
         }
     },
     "required": [
