@@ -251,11 +251,6 @@ handle_cast({'event_execute_complete', _, _, _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{control_q=Q}};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
-           ,#state{controller_q='undefined'}=State
-           ) ->
-    lager:debug("call control got is_consuming but controller is undefined"),
-    {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     call_control_ready(State),
     {'noreply', State};
@@ -361,9 +356,9 @@ handle_conference_command(JObj) ->
 -spec handle_call_events(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_call_events(JObj, FetchId) ->
     kz_util:put_callid(kz_json:get_value(<<"Call-ID">>, JObj)),
-    case kz_json:get_value(<<"Event-Name">>, JObj) of
+    case kz_api:event_name(JObj) of
         <<"usurp_control">> ->
-            case kz_json:get_value(<<"Fetch-ID">>, JObj) =:= FetchId of
+            case kz_json:get_ne_binary_value(<<"Fetch-ID">>, JObj) =:= FetchId of
                 'false' -> gen_listener:cast(self(), {'usurp_control', JObj});
                 'true' -> 'ok'
             end;
@@ -405,13 +400,31 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
-call_control_ready(#state{call_id=CallId
-                         ,controller_q=ControllerQ
-                         ,control_q=Q
-                         ,initial_ccvs=CCVs
-                         ,fetch_id=FetchId
-                         ,node=Node
-                         }) ->
+call_control_ready(#state{controller_q=ControllerQ}=State) ->
+    'undefined' =/= ControllerQ
+        andalso publish_route_win(State),
+    publish_usurp(State).
+
+-spec publish_usurp(state()) -> 'ok'.
+publish_usurp(#state{call_id=CallId
+                    ,fetch_id=FetchId
+                    ,node=Node
+                    }) ->
+    Usurp = [{<<"Call-ID">>, CallId}
+            ,{<<"Fetch-ID">>, FetchId}
+            ,{<<"Reason">>, <<"Route-Win">>}
+            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    lager:debug("sending control usurp for ~s(~s)", [FetchId, CallId]),
+    kapi_call:publish_usurp_control(CallId, Usurp).
+
+-spec publish_route_win(state()) -> 'ok'.
+publish_route_win(#state{call_id=CallId
+                        ,controller_q=ControllerQ
+                        ,control_q=Q
+                        ,initial_ccvs=CCVs
+                        }) ->
     Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Call-ID">>, CallId}
           ,{<<"Control-Queue">>, Q}
@@ -419,15 +432,7 @@ call_control_ready(#state{call_id=CallId
            | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
-    kapi_route:publish_win(ControllerQ, Win),
-    Usurp = [{<<"Call-ID">>, CallId}
-            ,{<<"Fetch-ID">>, FetchId}
-            ,{<<"Reason">>, <<"Route-Win">>}
-            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    lager:debug("sending control usurp for ~s", [FetchId]),
-    kapi_call:publish_usurp_control(CallId, Usurp).
+    kapi_route:publish_win(ControllerQ, Win).
 
 %%------------------------------------------------------------------------------
 %% @doc
