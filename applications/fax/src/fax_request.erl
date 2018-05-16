@@ -314,7 +314,7 @@ maybe_update_fax_settings(#state{call=Call
                     Notify = kz_json:set_value([<<"email">>,<<"send_to">>], [UserEmail] , kz_json:new()),
                     State#state{fax_notify=Notify};
                 'false' ->
-                    lager:debug("User has disabled fax_to_email, not going to send email"),
+                    lager:debug("user ~p has disabled fax_to_email - not going to send email", [OwnerId]),
                     State
             end;
         {'error', _} ->
