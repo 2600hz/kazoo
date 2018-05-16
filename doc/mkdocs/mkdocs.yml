@@ -254,6 +254,7 @@ pages:
     - 'Camping': 'applications/callflow/doc/camping_feature.md'
     - 'Deprecated':
         - 'Offnet': 'applications/callflow/doc/offnet.md'
+    - 'BLF on mailbox via *98': 'applications/callflow/doc/blf_on_mailbox.md'
   - 'Call Inspector':
     - 'applications/call_inspector/doc/README.md'
   - 'CCCP':
