@@ -565,6 +565,8 @@ notify_failure(JObj, 'undefined', State) ->
     notify_failure(JObj, <<"unknown error">>, State);
 notify_failure(JObj, NonBinary, State) when not is_binary(NonBinary) ->
     notify_failure(JObj, kz_term:to_binary(NonBinary), State);
+notify_failure(_JObj, _Reason, #state{fax_notify='undefined'}) ->
+    ok;
 notify_failure(JObj, Reason, #state{call=Call
                                    ,owner_id=OwnerId
                                    ,faxbox_id=FaxBoxId
@@ -588,6 +590,8 @@ notify_failure(JObj, Reason, #state{call=Call
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_inbound_error/1).
 
 -spec notify_success(state()) -> 'ok'.
+notify_success(#state{fax_notify='undefined'}) ->
+    ok;
 notify_success(#state{call=Call
                      ,owner_id=OwnerId
                      ,faxbox_id=FaxBoxId
