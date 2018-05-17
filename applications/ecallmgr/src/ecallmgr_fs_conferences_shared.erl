@@ -236,6 +236,7 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
         end,
     Endpoint = kz_json:set_values([{<<"Outbound-Call-ID">>, LoopbackId}
                                   ,{[<<"Custom-Channel-Vars">>, <<"Outbound-Call-ID">>], OutboundId}
+                                  ,{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], kz_api:msg_id(JObj)}
                                   ]
                                  ,Loopback
                                  ),
