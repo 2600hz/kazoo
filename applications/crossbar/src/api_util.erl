@@ -320,8 +320,9 @@ get_url_encoded_body(ReqBody) ->
 -spec extract_multipart(cb_context:context(), cowboy_multipart_response(), kz_json:object()) ->
                                {cb_context:context(), cowboy_req:req()}.
 extract_multipart(Context, {'done', Req}, _QS) ->
-    {Context, Req};
-extract_multipart(Context, {'ok', Headers, Req}, QS) ->
+    {cb_context:store(Context, <<"multipart_headers">>, 'undefined'), Req};
+extract_multipart(Context0, {'ok', Headers, Req}, QS) ->
+    Context = cb_context:store(Context0, <<"multipart_headers">>, Headers),
     {Ctx, R} = get_req_data(Context, Req, maps:get(<<"content-type">>, Headers, 'undefined'), QS),
     extract_multipart(Ctx
                      ,cowboy_req:read_part(R)
@@ -387,18 +388,21 @@ handle_max_filesize_exceeded(Context, Req1) ->
                                   {cb_context:context(), cowboy_req:req()} |
                                   stop_return().
 handle_file_contents(Context, ContentType, Req, FileContents) ->
+
+    MultiPartHeaders = cb_context:fetch(Context, <<"multipart_headers">>, #{}),
     %% http://tools.ietf.org/html/rfc2045#page-17
-    case cowboy_req:header(<<"content-transfer-encoding">>, Req) of
+    TransferKey = <<"content-transfer-encoding">>,
+    case maps:get(TransferKey, MultiPartHeaders, cowboy_req:header(TransferKey, Req)) of
         <<"base64">> ->
             lager:debug("base64 encoded request coming in"),
-            decode_base64(Context, ContentType, Req);
+            decode_base64(Context, ContentType, Req, FileContents);
         _Else ->
             lager:debug("unexpected transfer encoding: '~s'", [_Else]),
-            ContentLength = cowboy_req:header(<<"content-length">>, Req),
-            Headers = kz_json:from_list([{<<"content_type">>, ContentType}
-                                        ,{<<"content_length">>, ContentLength}
-                                        ]),
-            FileJObj = kz_json:from_list([{<<"headers">>, Headers}
+            ContentLength = maps:get(<<"content-length">>, MultiPartHeaders, cowboy_req:header(<<"content-length">>, Req)),
+            FileHeaders = kz_json:from_list([{<<"content_type">>, ContentType}
+                                            ,{<<"content_length">>, ContentLength}
+                                            ]),
+            FileJObj = kz_json:from_list([{<<"headers">>, FileHeaders}
                                          ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a file upload of type: ~s", [ContentType]),
@@ -424,9 +428,6 @@ default_filename() ->
                            {cb_context:context(), cowboy_req:req()} |
                            stop_return().
 decode_base64(Context, CT, Req0) ->
-    decode_base64(Context, CT, Req0, []).
-
-decode_base64(Context, CT, Req0, Body) ->
     case cowboy_req:read_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
@@ -441,11 +442,18 @@ decode_base64(Context, CT, Req0, Body) ->
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', Base64Data, Req1} ->
-            Data = iolist_to_binary(lists:reverse([Base64Data | Body])),
+            decode_base64(Context, CT, Req1, Base64Data)
+    end.
 
-            {EncodedType, FileContents} = kz_attachment:decode_base64(Data),
+-spec decode_base64(cb_context:context(), kz_term:ne_binary(), cowboy_req:req(), binary()) ->
+                           {cb_context:context(), cowboy_req:req()} |
+                           stop_return().
+decode_base64(Context, CT, Req, Base64Data) ->
+    try kz_attachment:decode_base64(Base64Data) of
+        {EncodedType, FileContents} ->
             ContentType = case EncodedType of
                               'undefined' -> CT;
+                              {'error', 'badarg'} -> CT;
                               <<"application/base64">> -> <<"application/octet-stream">>;
                               Else -> Else
                           end,
@@ -456,7 +464,18 @@ decode_base64(Context, CT, Req0, Body) ->
                                          ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
-            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req1}
+            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req}
+    catch
+        _T:_E ->
+            lager:debug("failed to decode base64 data: ~p:~p", [_T,_E]),
+            JObj = kz_json:from_list([{<<"message">>, <<"failed to decode base64 data">>}]),
+            Context1 = cb_context:add_validation_error(<<"file">>
+                                                      ,<<"encoding">>
+                                                      ,JObj
+                                                      ,cb_context:set_resp_error_code(Context, 413)
+                                                      ),
+
+            ?MODULE:stop(Req, Context1)
     end.
 
 -spec get_request_body(cowboy_req:req()) ->
