@@ -140,7 +140,7 @@ get_cors_headers(Allow) ->
                           stop_return().
 get_req_data(Context, Req0) ->
     {QS, Req1} = get_query_string_data(Req0),
-    get_req_data(Context, Req1, get_content_type(Req1), QS).
+    get_req_data(Context, Req1, get_content_type(Req1), cowboy_req:headers(Req1), QS).
 
 -spec get_query_string_data(cowboy_req:req()) ->
                                    {kz_json:object(), cowboy_req:req()}.
@@ -165,43 +165,43 @@ get_content_type(Req) ->
             <<Main/binary, "/", Sub/binary>>
     end.
 
--spec get_req_data(cb_context:context(), cowboy_req:req(), content_type(), kz_json:object()) ->
+-spec get_req_data(cb_context:context(), cowboy_req:req(), content_type(), cowboy:http_headers(), kz_json:object()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
-get_req_data(Context, Req0, 'undefined', QS) ->
+get_req_data(Context, Req0, 'undefined', _Headers, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
     {Body, Req1} = get_request_body(Req0),
     Ctx = cb_context:set_req_header(Context, <<"content-type">>, ?DEFAULT_CONTENT_TYPE),
     try_json(Body, QS, Ctx, Req1);
-get_req_data(Context, Req, <<"multipart/form-data">>, QS) ->
+get_req_data(Context, Req, <<"multipart/form-data">>, _Headers, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
 
 %% cURL defaults to this content-type, so check it for JSON if parsing fails
-get_req_data(Context, Req1, <<"application/x-www-form-urlencoded">>, QS) ->
+get_req_data(Context, Req1, <<"application/x-www-form-urlencoded">>, _Headers, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
     handle_failed_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
 
-get_req_data(Context, Req0, <<"application/json">>, QS) ->
+get_req_data(Context, Req0, <<"application/json">>, _Headers, QS) ->
     lager:debug("application/json content type when getting req data"),
     {Body, Req1} = get_request_body(Req0),
     try_json(Body, QS, Context, Req1);
-get_req_data(Context, Req0, <<"application/x-json">>, QS) ->
+get_req_data(Context, Req0, <<"application/x-json">>, _Headers, QS) ->
     lager:debug("application/x-json content type when getting req data"),
     {Body, Req1} = get_request_body(Req0),
     try_json(Body, QS, Context, Req1);
-get_req_data(Context, Req1, <<"application/base64">>, QS) ->
+get_req_data(Context, Req1, <<"application/base64">>, _Headers, QS) ->
     lager:debug("application/base64 content type when getting req data"),
     decode_base64(cb_context:set_query_string(Context, QS), <<"application/base64">>, Req1);
-get_req_data(Context, Req1, <<"application/x-base64">>, QS) ->
+get_req_data(Context, Req1, <<"application/x-base64">>, _Headers, QS) ->
     lager:debug("application/x-base64 content type when getting req data"),
     decode_base64(cb_context:set_query_string(Context, QS), <<"application/base64">>, Req1);
-get_req_data(Context, Req, <<"multipart/", C/binary>>, QS) ->
+get_req_data(Context, Req, <<"multipart/", C/binary>>, _Headers, QS) ->
     lager:debug("multipart ~s content type when getting req data", [C]),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
-get_req_data(Context, Req1, ContentType, QS) ->
+get_req_data(Context, Req1, ContentType, Headers, QS) ->
     lager:debug("file's content-type: ~p", [ContentType]),
-    extract_file(cb_context:set_query_string(Context, QS), ContentType, Req1).
+    extract_file(cb_context:set_query_string(Context, QS), ContentType, Headers, Req1).
 
 -spec maybe_extract_multipart(cb_context:context(), cowboy_req:req(), kz_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
@@ -322,7 +322,7 @@ get_url_encoded_body(ReqBody) ->
 extract_multipart(Context, {'done', Req}, _QS) ->
     {Context, Req};
 extract_multipart(Context, {'ok', Headers, Req}, QS) ->
-    {Ctx, R} = get_req_data(Context, Req, maps:get(<<"content-type">>, Headers, 'undefined'), QS),
+    {Ctx, R} = get_req_data(Context, Req, maps:get(<<"content-type">>, Headers, 'undefined'), Headers, QS),
     extract_multipart(Ctx
                      ,cowboy_req:read_part(R)
                      ,QS
@@ -333,36 +333,36 @@ extract_multipart(Context, Req, QS) ->
                      ,QS
                      ).
 
--spec extract_file(cb_context:context(), kz_term:ne_binary(), cowboy_req:req()) ->
+-spec extract_file(cb_context:context(), kz_term:ne_binary(), cowboy:http_headers(), cowboy_req:req()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
-extract_file(Context, ContentType, Req0) ->
-    try extract_file_part_body(Context, ContentType, Req0)
+extract_file(Context, ContentType, Headers, Req0) ->
+    try extract_file_part_body(Context, ContentType, Headers, Req0)
     catch
         _E:_R ->
-            extract_file_body(Context, ContentType, Req0)
+            extract_file_body(Context, ContentType, Headers, Req0)
     end.
 
--spec extract_file_part_body(cb_context:context(), kz_term:ne_binary(), cowboy_req:req()) ->
+-spec extract_file_part_body(cb_context:context(), kz_term:ne_binary(), cowboy:http_headers(), cowboy_req:req()) ->
                                     {cb_context:context(), cowboy_req:req()} |
                                     stop_return().
-extract_file_part_body(Context, ContentType, Req0) ->
+extract_file_part_body(Context, ContentType, Headers, Req0) ->
     case cowboy_req:read_part_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', FileContents, Req1} ->
-            handle_file_contents(Context, ContentType, Req1, FileContents)
+            handle_file_contents(Context, ContentType, Headers, Req1, FileContents)
     end.
 
--spec extract_file_body(cb_context:context(), kz_term:ne_binary(), cowboy_req:req()) ->
+-spec extract_file_body(cb_context:context(), kz_term:ne_binary(), cowboy:http_headers(), cowboy_req:req()) ->
                                {cb_context:context(), cowboy_req:req()} |
                                stop_return().
-extract_file_body(Context, ContentType, Req0) ->
+extract_file_body(Context, ContentType, Headers, Req0) ->
     case cowboy_req:read_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', FileContents, Req1} ->
-            handle_file_contents(Context, ContentType, Req1, FileContents)
+            handle_file_contents(Context, ContentType, Headers, Req1, FileContents)
     end.
 
 -spec handle_max_filesize_exceeded(cb_context:context(), cowboy_req:req()) ->
@@ -383,22 +383,22 @@ handle_max_filesize_exceeded(Context, Req1) ->
 
     ?MODULE:stop(Req1, Context1).
 
--spec handle_file_contents(cb_context:context(), kz_term:ne_binary(), cowboy_req:req(), binary()) ->
+-spec handle_file_contents(cb_context:context(), kz_term:ne_binary(), cowboy:http_headers(), cowboy_req:req(), binary()) ->
                                   {cb_context:context(), cowboy_req:req()} |
                                   stop_return().
-handle_file_contents(Context, ContentType, Req, FileContents) ->
+handle_file_contents(Context, ContentType, Headers, Req, FileContents) ->
     %% http://tools.ietf.org/html/rfc2045#page-17
-    case cowboy_req:header(<<"content-transfer-encoding">>, Req) of
+    case cowboy_req:header(<<"content-transfer-encoding">>, Req, maps:get(<<"content-transfer-encoding">>, Headers, 'undefined')) of
         <<"base64">> ->
             lager:debug("base64 encoded request coming in"),
             decode_base64(Context, ContentType, Req);
         _Else ->
             lager:debug("unexpected transfer encoding: '~s'", [_Else]),
-            ContentLength = cowboy_req:header(<<"content-length">>, Req),
-            Headers = kz_json:from_list([{<<"content_type">>, ContentType}
+            ContentLength = maps:get(<<"content-length">>, Headers, cowboy_req:header(<<"content-length">>, Req)),
+            FileHeaders = kz_json:from_list([{<<"content_type">>, ContentType}
                                         ,{<<"content_length">>, ContentLength}
                                         ]),
-            FileJObj = kz_json:from_list([{<<"headers">>, Headers}
+            FileJObj = kz_json:from_list([{<<"headers">>, FileHeaders}
                                          ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a file upload of type: ~s", [ContentType]),
