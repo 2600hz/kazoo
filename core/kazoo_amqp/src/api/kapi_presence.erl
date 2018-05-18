@@ -322,16 +322,20 @@ mwi_extended_update(Prop) ->
     To = props:get_value(<<"To">>, Prop),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     CallId = ?FAKE_CALLID(To),
-    props:delete(<<"Call-ID">>, Prop)
+    props:delete_keys([<<"Call-ID">>, <<"To">>], Prop)
         ++ [{<<"From">>, <<"sip:", To/binary>>}
            ,{<<"From-User">>, ToUsername}
            ,{<<"From-Realm">>, ToRealm}
+           ,{<<"To">>, <<"sip:", To/binary>>}
+           ,{<<"To-User">>, ToUsername}
+           ,{<<"To-Realm">>, ToRealm}
            ,{<<"Message-Account">>, <<"sip:", To/binary>>}
            ,{<<"Messages-Waiting">>, MessagesWaiting}
            ,{<<"Messages-New">>, MessagesNew}
            ,{<<"Messages-Saved">>, 0}
            ,{<<"Messages-Urgent">>, 0}
            ,{<<"Messages-Urgent-Saved">>, 0}
+           ,{<<"Presence-ID">>, To}
            ,{<<"Call-ID">>, CallId}
            ].
 
