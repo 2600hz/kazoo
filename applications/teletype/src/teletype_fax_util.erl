@@ -228,7 +228,7 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     end.
 
 -spec maybe_convert_attachment(kz_json:object(), kz_term:proplist(), kz_term:api_binary(), binary()) -> attachments().
-maybe_convert_attachment(DataJObj, Macros, ContentType, Bin) ->
+maybe_convert_attachment(DataJObj, Macros, ContentType = <<"image/tiff">>, Bin) ->
     ToFormat = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
     FromFormat = from_format_from_content_type(ContentType),
 
@@ -240,7 +240,10 @@ maybe_convert_attachment(DataJObj, Macros, ContentType, Bin) ->
         {'error', Reason} ->
             lager:debug("error converting attachment with reason : ~p", [Reason]),
             []
-    end.
+    end;
+maybe_convert_attachment(_DataJObj, Macros, ContentType, Bin) ->
+    Filename = get_file_name(Macros, kz_mime:to_extension(ContentType)),
+    [{ContentType, Filename, Bin}].
 
 -spec from_format_from_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 from_format_from_content_type(<<"application/pdf">>) -> <<"pdf">>;
