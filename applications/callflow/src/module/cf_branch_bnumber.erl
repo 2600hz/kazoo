@@ -19,7 +19,13 @@ handle(_Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),
     NumberToBranch = case kz_term:is_empty(Number) of
                          'true' -> kapps_call:request_user(Call);
-                         'false' -> Number
+                         'false' -> cf_util:normalize_capture_group(Number)
                      end,
-    lager:debug("trying to branch to ~p", [NumberToBranch]),
-    cf_exe:continue(NumberToBranch, Call).
+    case NumberToBranch of
+        'undefined' ->
+            lager:debug("capture group is empty and can not be set as destination."),
+            cf_exe:continue(Call);
+        _ ->
+            lager:debug("trying to branch to ~p", [NumberToBranch]),
+            cf_exe:continue(NumberToBranch, Call)
+    end.

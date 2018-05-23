@@ -92,10 +92,16 @@ handle(Data, Call, _Manual, CaptureGroup) ->
 %%------------------------------------------------------------------------------
 -spec handle_manual(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 handle_manual(Data, Call, CaptureGroup) ->
-    CID = collect_cid_number(Data, Call),
-    update_call(Call, CID, CaptureGroup),
-    kapps_call_command:flush_dtmf(Call),
-    cf_exe:continue(Call).
+    case collect_cid_number(Data, Call) of
+        {'ok', CID} ->
+            Number = cf_util:normalize_capture_group(CaptureGroup),
+            kapps_call_command:flush_dtmf(Call),
+            maybe_update_call_and_continue(Call, CID, Number);
+        {'error', 'channel_hungup'} ->
+            lager:info("caller hungup while collecting caller id number"),
+            cf_exe:stop(Call)
+    end.
+
 
 %%------------------------------------------------------------------------------
 %% @doc Handle static mode of dynamic cid
@@ -104,8 +110,8 @@ handle_manual(Data, Call, CaptureGroup) ->
 -spec handle_static(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 handle_static(Data, Call, CaptureGroup) ->
     {CIDName, CIDNumber} = get_static_cid_entry(Data, Call),
-    update_call(Call, CIDNumber, CIDName, CaptureGroup),
-    cf_exe:continue(Call).
+    Number = cf_util:normalize_capture_group(CaptureGroup),
+    maybe_update_call_and_continue('undefined', Call, CIDNumber, CIDName, Number).
 
 %%------------------------------------------------------------------------------
 %% @doc Read CID info from a list of CID defined in database
@@ -125,16 +131,11 @@ handle_lists(Data, Call) ->
 
 -spec maybe_proceed_with_call(list_cid_entry(), kz_json:object(), kapps_call:call()) -> 'ok'.
 maybe_proceed_with_call({CIDName, CIDNumber, Destination}, Data, Call) ->
-    proceed_with_call(CIDName, CIDNumber, Destination, Data, Call);
+    Number = cf_util:normalize_capture_group(Destination),
+    maybe_update_call_and_continue(Data, Call, CIDNumber, CIDName, Number);
 maybe_proceed_with_call(_, _, Call) ->
-    _ = kapps_call_command:answer(Call),
-    _ = kapps_call_command:prompt(<<"fault-can_not_be_completed_at_this_time">>, Call),
-    kapps_call_command:queued_hangup(Call).
-
--spec proceed_with_call(kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
-proceed_with_call(CIDName, CIDNumber, Destination, Data, Call) ->
-    update_call(Call, CIDNumber, CIDName, Destination),
-    maybe_route_to_callflow(Data, Call, Destination).
+    lager:debug("failed to find cid name/number and destination from list(s), hanging up."),
+    cf_exe:stop_bad_destination(Call).
 
 %%------------------------------------------------------------------------------
 %% @doc Update caller id number. If call
@@ -142,8 +143,11 @@ proceed_with_call(CIDName, CIDNumber, Destination, Data, Call) ->
 %% request, to and callee_number
 %% @end
 %%------------------------------------------------------------------------------
--spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
-update_call(Call, CIDNumber, Destination) ->
+-spec maybe_update_call_and_continue(kapps_call:call(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
+maybe_update_call_and_continue(Call, _, 'undefined') ->
+    lager:debug("remaining capture group is empty and can not be set as destination, hanging up."),
+    cf_exe:stop_bad_destination(Call);
+maybe_update_call_and_continue(Call, CIDNumber, Destination) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
               ],
@@ -151,13 +155,27 @@ update_call(Call, CIDNumber, Destination) ->
     lager:info("setting the caller id number to ~s (from ~s)"
               ,[CIDNumber, kapps_call:caller_id_number(Call)]
               ),
-    maybe_strip_features_code(kapps_call:exec(Updates, C1), Destination).
+    maybe_strip_features_code(kapps_call:exec(Updates, C1), Destination),
+    cf_exe:continue(Call).
 
 %%------------------------------------------------------------------------------
-%% @doc Same as update_call/3, but also sets caller id name
+%% @doc Same as maybe_update_call_and_continue/3, but also sets caller id name
 %% @end
 %%------------------------------------------------------------------------------
--spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
+-spec maybe_update_call_and_continue(kz_term:api_object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
+maybe_update_call_and_continue(_, Call, _, _, 'undefined') ->
+    lager:debug("remaining capture group is empty and can not be set as destination, hanging up."),
+    cf_exe:stop_bad_destination(Call);
+maybe_update_call_and_continue('undefined', Call, CIDNumber, CIDName, Destination) ->
+    %% handling static action
+    update_call(Call, CIDNumber, CIDName, Destination),
+    cf_exe:continue(Call);
+maybe_update_call_and_continue(Data, Call, CIDNumber, CIDName, Destination) ->
+    %% handling list, lists actions
+    update_call(Call, CIDNumber, CIDName, Destination),
+    maybe_route_to_callflow(Data, Call, Destination).
+
+-spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_call(Call, CIDNumber, CIDName, Destination) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {CIDNumber, CIDName}}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
@@ -177,21 +195,16 @@ update_call(Call, CIDNumber, CIDName, Destination) ->
 %% @doc If Destination exists correct "request", "to" and "callee_id_number"
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_strip_features_code(kapps_call:call(), kz_term:api_binary()) -> 'ok'.
-maybe_strip_features_code(Call, 'undefined') ->
-    cf_exe:set_call(Call);
-maybe_strip_features_code(Call, <<>>) ->
-    cf_exe:set_call(Call);
-maybe_strip_features_code(Call, Destination) ->
-    Norm = knm_converters:normalize(Destination),
-    Request = list_to_binary([Norm, "@", kapps_call:request_realm(Call)]),
-    To = list_to_binary([Norm, "@", kapps_call:to_realm(Call)]),
+-spec maybe_strip_features_code(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
+maybe_strip_features_code(Call, Number) ->
+    Request = list_to_binary([Number, "@", kapps_call:request_realm(Call)]),
+    To = list_to_binary([Number, "@", kapps_call:to_realm(Call)]),
 
-    lager:info("sending the call onto real destination of: ~s", [Norm]),
+    lager:info("sending the call onto real destination of: ~s", [Number]),
 
     Updates = [{fun kapps_call:set_request/2, Request}
               ,{fun kapps_call:set_to/2, To}
-              ,{fun kapps_call:set_callee_id_number/2, Norm}
+              ,{fun kapps_call:set_callee_id_number/2, Number}
               ],
     cf_exe:set_call(kapps_call:exec(Updates, Call)).
 
@@ -199,9 +212,7 @@ maybe_strip_features_code(Call, Destination) ->
 %% @doc Lookup callflow and continue with the call if we have a destination number
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), binary()) -> 'ok'.
-maybe_route_to_callflow(_, Call, <<>>) ->
-    cf_exe:continue(Call);
+-spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 maybe_route_to_callflow(Data, Call, Number) ->
     case cf_flow:lookup(Number, kapps_call:account_id(Call)) of
         {'ok', Flow, 'true'} ->
@@ -261,7 +272,9 @@ should_restrict_call(Call, Number) ->
 %% @doc Collect CID number from user
 %% @end
 %%------------------------------------------------------------------------------
--spec collect_cid_number(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
+-spec collect_cid_number(kz_json:object(), kapps_call:call()) ->
+                                {'ok', kz_term:ne_binary()} |
+                                {'error', 'channel_hungup'}.
 collect_cid_number(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
@@ -292,22 +305,21 @@ collect_cid_number(Data, Call) ->
     case kapps_call_command:collect_digits(Max, CollectTimeout, Interdigit, NoopId, Call) of
         {'ok', <<>>} ->
             _ = kapps_call_command:play(Prompts#prompts.reject_tone, Call),
-            DefaultCID;
+            {'ok', DefaultCID};
         {'ok', Digits} ->
             case re:run(Digits, Regex) of
                 {'match', _} when byte_size(Digits) >= Min ->
                     kapps_call_command:play(Prompts#prompts.accept_tone, Call),
-                    Digits;
+                    {'ok', Digits};
                 _ ->
                     _ = kapps_call_command:play(Prompts#prompts.reject_tone, Call),
-                    DefaultCID
+                    {'ok', DefaultCID}
             end;
         {'error', 'channel_hungup'} ->
-            lager:info("caller hungup while collecting caller id number"),
-            cf_exe:stop(Call);
+            {'error', 'channel_hungup'};
         {'error', _} ->
             _ = kapps_call_command:play(Prompts#prompts.reject_tone, Call),
-            DefaultCID
+            {'ok', DefaultCID}
     end.
 
 %%------------------------------------------------------------------------------

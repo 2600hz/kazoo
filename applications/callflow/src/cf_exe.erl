@@ -37,6 +37,8 @@
         ,remove_termination_handler/2
         ]).
 
+-export([stop_bad_destination/1]).
+
 %% gen_listener callbacks
 -export([init/1
         ,handle_call/3
@@ -886,3 +888,8 @@ handle_channel_pivoted(Self, PidRef, JObj, Call) ->
 maybe_stop_action({Pid, _Ref}) ->
     exit(Pid, 'normal');
 maybe_stop_action('undefined') -> 'ok'.
+
+-spec stop_bad_destination(kapps_call:call()) -> 'ok'.
+stop_bad_destination(Call) ->
+    _ = kapps_call_command:prompt(<<"fault-can_not_be_completed_as_dialed">>, Call),
+    stop(Call).

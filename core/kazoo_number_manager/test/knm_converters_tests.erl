@@ -92,13 +92,13 @@ to_1npan_test_() ->
 converters_fields_in_order_test_() ->
     Props = kz_json:to_proplist(knm_converter_regex:get_e164_converters()),
     [?_assertEqual(lists:nth(3, Props)
-                  ,{<<"^[2-9]\\d{7,}\$">>, kz_json:from_list([{<<"prefix">>, <<"+">>}])}
+                  ,{<<"^[2-9]\\d{7,}$">>, kz_json:from_list([{<<"prefix">>, <<"+">>}])}
                   )
     ,?_assertEqual(lists:nth(2, Props)
-                  ,{<<"^011(\\d*)$|^00(\\d*)\$">>, kz_json:from_list([{<<"prefix">>, <<"+">>}])}
+                  ,{<<"^011(\\d{5,})$|^00(\\d{5,})$">>, kz_json:from_list([{<<"prefix">>, <<"+">>}])}
                   )
     ,?_assertEqual(lists:nth(1, Props)
-                  ,{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, kz_json:from_list([{<<"prefix">>, <<"+1">>}])}
+                  ,{<<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$">>, kz_json:from_list([{<<"prefix">>, <<"+1">>}])}
                   )
     ].
 

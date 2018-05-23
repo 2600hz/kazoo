@@ -48,7 +48,9 @@ handle_noop_recv(Call, {'error', _E}) ->
     lager:debug("failure playing: ~p", [_E]),
     cf_exe:continue(Call).
 
--spec play(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec play(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
+                  {'ok', kapps_call:call()} |
+                  {'error', 'channel_hungup' | kz_json:object()}.
 play(Data, Call, Media) ->
     case kz_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';

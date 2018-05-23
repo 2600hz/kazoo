@@ -45,6 +45,8 @@
 
 -export([flush_control_queue/1]).
 
+-export([normalize_capture_group/1, normalize_capture_group/2]).
+
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
@@ -726,3 +728,31 @@ flush_control_queue(Call) ->
               ],
     lager:debug("flushing with ~p", [Command]),
     kz_amqp_worker:cast(Command, fun(C) -> kapi_dialplan:publish_command(ControlQueue, C) end).
+
+%% @equiv normalize_capture_group(CaptureGroup, 'undefined')
+-spec normalize_capture_group(kz_term:api_binary()) -> kz_term:api_ne_binary().
+normalize_capture_group(CaptureGroup) ->
+    normalize_capture_group(CaptureGroup, 'undefined').
+
+%%------------------------------------------------------------------------------
+%% @doc Normalize CaptureGroup number.
+%%
+%% If a module is using capture group as destination number, it should normalize
+%% the number before continue/branch callflow or lookup callflow for the number.
+%%
+%% @param CaptureGroup the capture group number.
+%% @param Call {@link kapps_call:call()} object or Account ID or undefined
+%% to use system default normalizer.
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_capture_group(kz_term:api_binary(), kapps_call:call() | kapps_call:api_ne_binary()) -> kz_term:api_ne_binary().
+normalize_capture_group('undefined', _) ->
+    'undefined';
+normalize_capture_group(<<>>, _) ->
+    'undefined';
+normalize_capture_group(CaptureGroup, 'undefined') ->
+    knm_converters:normalize(CaptureGroup);
+normalize_capture_group(CaptureGroup, ?NE_BINARY=AccountId) ->
+    knm_converters:normalize(CaptureGroup, AccountId);
+normalize_capture_group(CaptureGroup, Call) ->
+    normalize_capture_group(CaptureGroup, kapps_call:account_id(Call)).
