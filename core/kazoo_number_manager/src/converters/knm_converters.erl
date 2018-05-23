@@ -22,7 +22,7 @@
 -define(DEFAULT_CONVERTER_B, <<"regex">>).
 -define(DEFAULT_CONVERTERS, [?DEFAULT_CONVERTER_B]).
 
--define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*\$">>).
+-define(DEFAULT_RECONCILE_REGEX, <<"^(\\+?1)?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
 
 -define(CLASSIFIER_TOLLFREE_US,
@@ -38,7 +38,7 @@
                           ])).
 
 -define(CLASSIFIER_EMERGENCY,
-        kz_json:from_list([{<<"regex">>, <<"^(911)\$">>}
+        kz_json:from_list([{<<"regex">>, <<"^(911|922|933|833|811|711|999)\$">>}
                           ,{<<"emergency">>, 'true'}
                           ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
                           ])).
@@ -50,13 +50,13 @@
                           ])).
 
 -define(CLASSIFIER_DID_US,
-        kz_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>}
+        kz_json:from_list([{<<"regex">>, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})\$">>}
                           ,{<<"friendly_name">>, <<"US DID">>}
                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                           ])).
 
 -define(CLASSIFIER_INTERNATIONAL,
-        kz_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)\$">>}
+        kz_json:from_list([{<<"regex">>, <<"^\\+([2-9]\\d{7,})\$">>}
                           ,{<<"friendly_name">>, <<"International">>}
                           ])).
 
