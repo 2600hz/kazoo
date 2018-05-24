@@ -238,7 +238,12 @@ publish_req(JObj) ->
 
 -spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,?ROUTE_REQ_VALUES
+                                                ,[{'formatter', fun req/1}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
     kz_amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
