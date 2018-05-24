@@ -334,7 +334,12 @@ publish_event(Event) -> publish_event(Event, ?DEFAULT_CONTENT_TYPE).
 publish_event(Event, ContentType) when is_list(Event) ->
     CallId = props:get_first_defined([<<"Origination-Call-ID">>, <<"Call-ID">>, <<"Unique-ID">>], Event),
     EventName = props:get_value(<<"Event-Name">>, Event),
-    {'ok', Payload} = kz_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun event/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Event
+                                                ,?CALL_EVENT_VALUES
+                                                ,[{'formatter', fun event/1}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY(EventName, CallId), Payload, ContentType);
 publish_event(Event, ContentType) ->
     publish_event(kz_json:to_proplist(Event), ContentType).
