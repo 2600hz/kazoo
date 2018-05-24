@@ -64,7 +64,7 @@ apply_schema_defaults_to_default(Id, Config) ->
 
 -spec schema_defaults(kz_term:ne_binary()) -> kz_json:object().
 schema_defaults(Id) ->
-    kz_json_schema:default_object(kapps_config_util:system_schema(Id)).
+    kz_json_schema:default_object(kapps_config_util:system_config_document_schema(Id)).
 
 -spec maybe_insert_default_node(kz_json:object()) -> kz_json:object().
 maybe_insert_default_node(Config) ->
