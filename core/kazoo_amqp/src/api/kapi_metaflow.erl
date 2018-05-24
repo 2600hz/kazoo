@@ -236,7 +236,12 @@ publish_flow(JObj) ->
 
 -spec publish_flow(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flow(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_FLOW_VALUES, fun flow/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,?METAFLOW_FLOW_VALUES
+                                                ,[{'formatter', fun flow/1}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
     RK = ?METAFLOW_FLOW_ROUTING_KEY(rk_call_id(Req)),
     kz_amqp_util:basic_publish(?METAFLOW_EXCHANGE, RK, Payload, ContentType).
 
