@@ -474,7 +474,7 @@ check_permissions(#state{from=From
                         ,errors=Errors
                         }=State, Permissions) ->
     case lists:any(fun(A) -> match(From, A) end, Permissions)
-        orelse From =:= OwnerEmail
+        orelse From =:= kz_term:to_lower_binary(OwnerEmail)
     of
         'true' -> add_fax_document(State);
         'false' ->
