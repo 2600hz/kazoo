@@ -1,4 +1,4 @@
-%%%=============================================================================
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018-, 2600Hz
 %%% The origin of this file is the edoc module `edoc_doclet.erl'
 %%% written by Richard Carlsson.
@@ -14,7 +14,7 @@
 %%% @see kz_edoc_layout
 %%% @see edoc
 %%% @end
-%%%=============================================================================
+%%%-----------------------------------------------------------------------------
 -module(kz_edoc_doclet).
 
 %% Note that this is written so that it is *not* depending on edoc.hrl!
