@@ -37,51 +37,31 @@
 
 -export([module/2
         ,overview/2
-
-        ,get_elem/2
-        ,get_attr/2
-        ,get_attrval/2
-        ,get_content/2
-
-        ,export_content/1
         ]).
 
--include_lib("xmerl/include/xmerl.hrl").
-
--define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
-
--type html_tag() :: atom().
--type html_attrib() :: [{atom(), string() | iolist() | atom() | integer()}].
--type exporty_thing() :: {html_tag(), html_attrib(), [exporty_thing()]} |
-                         {html_tag(), exporty_thing()} |
-                         html_tag() |
-                         list() |
-                         iolist() |
-                         #xmlText{} |
-                         #xmlElement{}.
--type exported() :: binary().
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec module(#xmlElement{}, map()) -> proplists:proplist().
+-spec module(kz_types:xml_el(), map()) -> proplists:proplist().
 module(#xmlElement{name = module, content = Es}=E
       ,#{sort_functions := SortFunctions}=Context
       ) ->
-    Name = get_attrval(name, E),
+    Name = kz_xml:get_attrval(name, E),
 
-    Functions = case [{function_name_arity(F, Context), F} || F <- get_content(functions, Es)] of
+    Functions = case [{function_name_arity(F, Context), F} || F <- kz_xml:get_content(functions, Es)] of
                     Funs when SortFunctions =:= true -> lists:sort(Funs);
                     Funs -> Funs
                 end,
-    Types = [{type_name(T, Context), T} || T <- get_content(typedecls, Es)],
+    Types = [{type_name(T, Context), T} || T <- kz_xml:get_content(typedecls, Es)],
 
     filter_empty(
       [{name, list_to_binary(Name)}
-      ,{copyright, export_content(get_content(copyright, Es), Context)}
+      ,{copyright, export_content(kz_xml:get_content(copyright, Es), Context)}
       ,{deprecated, deprecated(Es, Context)}
-      ,{version, export_content(get_content(version, Es), Context)}
+      ,{version, export_content(kz_xml:get_content(version, Es), Context)}
       ,{since, since(Es, Context)}
       ,{behaviours, behaviours_prop(Es, Name, Context)}
       ,{authors, authors(Es, Context)}
@@ -97,12 +77,12 @@ module(#xmlElement{name = module, content = Es}=E
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec overview(#xmlElement{}, map()) -> proplists:proplist().
+-spec overview(kz_types:xml_el(), map()) -> proplists:proplist().
 overview(#xmlElement{name = overview, content = Es}, Context) ->
     filter_empty(
-      [{title, export_content(get_text(title, Es), Context)}
-      ,{copyright, export_content(get_content(copyright, Es), Context)}
-      ,{version, export_content(get_content(version, Es), Context)}
+      [{title, export_content(kz_xml:get_textval(title, Es), Context)}
+      ,{copyright, export_content(kz_xml:get_content(copyright, Es), Context)}
+      ,{version, export_content(kz_xml:get_content(version, Es), Context)}
       ,{since, since(Es, Context)}
       ,{authors, authors(Es, Context)}
       ,{references, references(Es, Context)}
@@ -120,16 +100,16 @@ overview(#xmlElement{name = overview, content = Es}, Context) ->
 %% @doc Behaviour tag to proplist.
 %% @end
 %%------------------------------------------------------------------------------
--spec behaviours_prop([#xmlElement{}], string(), map()) ->
+-spec behaviours_prop(kz_types:xml_els(), string(), map()) ->
                              Result when Result :: [{name, string()} |
-                                                    {behaviours, [exported()]} |
-                                                    {callbacks, [exported()]} |
-                                                    {optional_callbacks, [exported()]}
+                                                    {behaviours, [kz_html:exported()]} |
+                                                    {callbacks, [kz_html:exported()]} |
+                                                    {optional_callbacks, [kz_html:exported()]}
                                                    ].
 behaviours_prop(Es, BehaviourName, Context) ->
-    Behaviours = [export_content(behaviour(B, Context), Context) || B <- get_elem(behaviour, Es)],
-    Required = [export_content(callback(C, Context), Context) || C <- get_content(callbacks, Es)],
-    Optional = [export_content(callback(C, Context), Context) || C <- get_content(optional_callbacks, Es)],
+    Behaviours = [export_content(behaviour(B, Context), Context) || B <- kz_xml:get_elem(behaviour, Es)],
+    Required = [export_content(callback(C, Context), Context) || C <- kz_xml:get_content(callbacks, Es)],
+    Optional = [export_content(callback(C, Context), Context) || C <- kz_xml:get_content(optional_callbacks, Es)],
     case Required =/= []
         orelse Optional =/= []
     of
@@ -143,14 +123,14 @@ behaviours_prop(Es, BehaviourName, Context) ->
             filter_empty([{behaviours, Behaviours}])
     end.
 
--spec behaviour(#xmlElement{}, map()) -> [exporty_thing()].
+-spec behaviour(kz_types:xml_el(), map()) -> kz_html:exporties().
 behaviour(E=#xmlElement{content = Es}, Context) ->
     see(E, Es, Context).
 
--spec callback(#xmlElement{}, map()) -> [string()].
+-spec callback(kz_types:xml_el(), map()) -> [string()].
 callback(E=#xmlElement{}, Context) ->
-    Name = get_attrval(name, E),
-    Arity = get_attrval(arity, E),
+    Name = kz_xml:get_attrval(name, E),
+    Arity = kz_xml:get_attrval(arity, E),
     [atom(Name, Context), "/", Arity].
 
 %%------------------------------------------------------------------------------
@@ -162,19 +142,19 @@ callback(E=#xmlElement{}, Context) ->
                    {email, binary()} |
                    {website, binary()}
                   ].
--spec authors([#xmlElement{}], map()) -> [{binary(), author()}].
+-spec authors(kz_types:xml_els(), map()) -> [{binary(), author()}].
 authors(Es, Context) ->
     lists:usort([{proplists:get_value(name, Author), Author}
-                 || A <- get_elem(author, Es),
+                 || A <- kz_xml:get_elem(author, Es),
                     Author <- [author(A, Context)],
                     Author =/= []
                 ]).
 
--spec author(#xmlElement{}, map()) -> author().
+-spec author(kz_types:xml_el(), map()) -> author().
 author(E=#xmlElement{}, _Context) ->
-    Email = iolist_to_binary(get_attrval(email, E)),
-    URL = iolist_to_binary(get_attrval(website, E)),
-    case get_attrval(name, E) of
+    Email = iolist_to_binary(kz_xml:get_attrval(email, E)),
+    URL = iolist_to_binary(kz_xml:get_attrval(website, E)),
+    case kz_xml:get_attrval(name, E) of
         [] -> [];
         Name ->
             filter_empty([{name, iolist_to_binary(Name)}
@@ -183,10 +163,10 @@ author(E=#xmlElement{}, _Context) ->
                          ])
     end.
 
--spec references([#xmlElement{}], map()) -> [exported()].
+-spec references(kz_types:xml_els(), map()) -> [kz_html:exported()].
 references(Es, Context) ->
     [export_content(normalize_description(C, Context), Context)
-     || #xmlElement{content = C} <- get_elem(reference, Es)
+     || #xmlElement{content = C} <- kz_xml:get_elem(reference, Es)
     ].
 
 %%%=============================================================================
@@ -198,14 +178,14 @@ references(Es, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec type_name(#xmlElement{}, map()) -> string().
+-spec type_name(kz_types:xml_el(), map()) -> string().
 type_name(#xmlElement{content = Es}, Context) ->
-    t_name(get_elem(erlangName, get_content(typedef, Es)), Context).
+    t_name(kz_xml:get_elem(erlangName, kz_xml:get_content(typedef, Es)), Context).
 
 %% <!ELEMENT typedecl (typedef, description?)>
 %% <!ELEMENT typedef (erlangName, argtypes, type?, localdef*)>
 
--type typedef() :: [{def, exported()} |
+-type typedef() :: [{def, kz_html:exported()} |
                     {localdefs, localdefs()} |
                     {abstract_datatype, boolean()}
                    ].
@@ -214,31 +194,31 @@ type_name(#xmlElement{content = Es}, Context) ->
                       {name, binary()} |
                       {label, string()} |
                       {typedef, typedef()} |
-                      {full_desc, exported()}
+                      {full_desc, kz_html:exported()}
                      ].
 
--spec types([#xmlElement{}], map()) -> [type_prop()].
+-spec types(kz_types:xml_els(), map()) -> [type_prop()].
 types(Ts, Context) ->
     [typedecl(Name, E, Context) || {Name, E} <- Ts].
 
--spec typedecl(string(), #xmlElement{}, map()) -> type_prop().
+-spec typedecl(string(), kz_types:xml_el(), map()) -> type_prop().
 typedecl(Name, E=#xmlElement{content = Es}, Context) ->
-    NameArgTypes = lists:append([Name, "("] ++ seq(t_utype_elem_fun(Context), get_content(argtypes, Es), [")"])),
+    NameArgTypes = lists:append([Name, "("] ++ seq(t_utype_elem_fun(Context), kz_xml:get_content(argtypes, Es), [")"])),
     {Id, _} = anchor_id_label(Name ++ "()", E),
     filter_empty(
       [{id, Id}
       ,{name, iolist_to_binary(Name)}
       ,{label, NameArgTypes}
-      ,{typedef, typedef(NameArgTypes, get_content(typedef, Es), Context)}
+      ,{typedef, typedef(NameArgTypes, kz_xml:get_content(typedef, Es), Context)}
       ,{full_desc, description(full, Es, Context)}
       ]
      ).
 
--spec typedef(string(), [#xmlElement{}], map()) -> typedef().
+-spec typedef(string(), kz_types:xml_els(), map()) -> typedef().
 typedef(NameArgTypes, Es, Context) ->
-    Typedef = filter_empty([{localdefs, local_defs(get_elem(localdef, Es), Context)}]),
+    Typedef = filter_empty([{localdefs, local_defs(kz_xml:get_elem(localdef, Es), Context)}]),
 
-    case get_elem(type, Es) of
+    case kz_xml:get_elem(type, Es) of
         [] ->
             [{def, export_content([NameArgTypes], Context)}
             ,{abstract_datatype, true}
@@ -248,11 +228,11 @@ typedef(NameArgTypes, Es, Context) ->
             [{def, format_type(NameArgTypes, NameArgTypes, Type, Context)} | Typedef]
     end.
 
--spec format_type(string(), string(), [#xmlElement{}], map()) -> exported().
+-spec format_type(string(), string(), kz_types:xml_els(), map()) -> kz_html:exported().
 format_type(Prefix, NameArgTypes, Type, #{pretty_printer := erl_pp}=Context) ->
     try
         L = t_utype(Type, Context),
-        O = pp_type(NameArgTypes, Type, Context),
+        O = pp_type(NameArgTypes, Type),
         {R, ".\n"} = etypef(L, O, Context),
         export_content([Prefix] ++ [" = "] ++ R, Context)
     catch _:_ ->
@@ -263,7 +243,8 @@ format_type(Prefix, NameArgTypes, Type, #{pretty_printer := erl_pp}=Context) ->
 format_type(Prefix, _Name, Type, Context) ->
     export_content([Prefix] ++ [" = "] ++ t_utype(Type, Context), Context).
 
-pp_type(Prefix, Type, _Context) ->
+-spec pp_type(string(), kz_types:xml_els()) -> string().
+pp_type(Prefix, Type) ->
     Atom = list_to_atom(lists:duplicate(string:len(Prefix), $a)),
     Attr = {attribute, 0, type, {Atom, ot_utype(Type), []}},
     L1 = erl_pp:attribute(erl_parse:new_anno(Attr)
@@ -280,25 +261,25 @@ pp_type(Prefix, Type, _Context) ->
     %% avoid escaped tickies like (#'\'queue.declare'\'{}).
     re:replace(S1, "\\\\'", "", [{return,list},global,unicode]).
 
--type localdef() :: exported().
+-type localdef() :: kz_html:exported().
 -type localdefs() :: [localdef()].
 
--spec local_defs([#xmlElement{}], map()) -> localdefs().
+-spec local_defs(kz_types:xml_els(), map()) -> localdefs().
 local_defs(Es, Context) ->
     [localdef(E1, Context) || E1 <- Es].
 
--spec localdef(#xmlElement{}, map()) -> localdef().
+-spec localdef(kz_types:xml_el(), map()) -> localdef().
 localdef(E = #xmlElement{content = Es}, Context) ->
     {{_, Name}, TypeName} =
-        case get_elem(typevar, Es) of
+        case kz_xml:get_elem(typevar, Es) of
             [] ->
-                N0 = lists:append(t_abstype(get_content(abstype, Es), Context)),
+                N0 = lists:append(t_abstype(kz_xml:get_content(abstype, Es), Context)),
                 {anchor_id_label(N0, E), N0};
             [V] ->
                 N0 = lists:append(t_var(V)),
                 {{<<>>, N0}, N0}
         end,
-    format_type(Name, TypeName, get_elem(type, Es), Context).
+    format_type(Name, TypeName, kz_xml:get_elem(type, Es), Context).
 
 %%%=============================================================================
 %%% Function Tags functions
@@ -309,9 +290,9 @@ localdef(E = #xmlElement{content = Es}, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec function_name_arity(#xmlElement{}, map()) -> string().
+-spec function_name_arity(kz_types:xml_el(), map()) -> string().
 function_name_arity(E, Context) ->
-    atom(get_attrval(name, E), Context) ++ "/" ++ get_attrval(arity, E).
+    atom(kz_xml:get_attrval(name, E), Context) ++ "/" ++ kz_xml:get_attrval(arity, E).
 
 %% <!ELEMENT function (args, typespec?, returns?, throws?, equiv?,
 %%                     description?, since?, deprecated?, see*, todo?)>
@@ -324,35 +305,35 @@ function_name_arity(E, Context) ->
 %% <!ELEMENT equiv (expr, see?)>
 %% <!ELEMENT expr (#PCDATA)>
 
--type throws() :: [{type, exported()} | {localdefs, localdefs()}].
--type params() :: [{string(), exported()}].
+-type throws() :: [{type, kz_html:exported()} | {localdefs, localdefs()}].
+-type params() :: [{string(), kz_html:exported()}].
 -type function_props() :: [{id, binary()} |
                            {label, string()} |
                            {name, string()} |
                            {arity, string()} |
                            {is_exported, boolean()} |
-                           {typespec, exported()} |
+                           {typespec, kz_html:exported()} |
                            {localdefs, localdefs()} |
                            {params, params()} |
-                           {returns, exported()} |
+                           {returns, kz_html:exported()} |
                            {throws, throws()} |
-                           {equiv, exported()} |
-                           {deprecated, exported()} |
-                           {since, exported()} |
-                           {sees, [exported()]} |
-                           {todos, [exported()]} |
-                           {short_desc, exported()} |
-                           {full_desc, exported()}
+                           {equiv, kz_html:exported()} |
+                           {deprecated, kz_html:exported()} |
+                           {since, kz_html:exported()} |
+                           {sees, [kz_html:exported()]} |
+                           {todos, [kz_html:exported()]} |
+                           {short_desc, kz_html:exported()} |
+                           {full_desc, kz_html:exported()}
                           ].
 
--spec functions([{string(), #xmlElement{}}], map()) -> [function_props()].
+-spec functions([{string(), kz_types:xml_el()}], map()) -> [function_props()].
 functions(Fs, Context) ->
     [function(NameArity, E, Context) || {NameArity, E} <- Fs].
 
--spec function(string(), #xmlElement{}, map()) -> function_props().
+-spec function(string(), kz_types:xml_el(), map()) -> function_props().
 function(NameArity, E=#xmlElement{content = Es}, Context) ->
-    Name = get_attrval(name, E),
-    Arity = get_attrval(arity, E),
+    Name = kz_xml:get_attrval(name, E),
+    Arity = kz_xml:get_attrval(arity, E),
     {Id, Label} = anchor_id_label(NameArity, E),
     filter_empty(
       [{id, Id}
@@ -361,7 +342,7 @@ function(NameArity, E=#xmlElement{content = Es}, Context) ->
       ,{arity, Arity}
       ,{is_exported, is_exported(E)}
       ,{typespec, typespec_signature(E, Context)}
-      ,{localdefs, local_defs(get_elem(localdef, get_content(typespec, Es)), Context)}
+      ,{localdefs, local_defs(kz_xml:get_elem(localdef, kz_xml:get_content(typespec, Es)), Context)}
       ,{params, params(Es, Context)}
       ,{returns, returns(Es, Context)}
       ,{throws, throws(Es, Context)}
@@ -374,70 +355,70 @@ function(NameArity, E=#xmlElement{content = Es}, Context) ->
       ]
      ).
 
--spec is_exported(#xmlElement{}) -> boolean().
+-spec is_exported(kz_types:xml_el()) -> boolean().
 is_exported(E) ->
-    case get_attrval(exported, E) of
+    case kz_xml:get_attrval(exported, E) of
         "yes" -> true;
         _ -> false
     end.
 
 %% parameter descriptions (if any)
--spec params([#xmlElement{}], map()) -> params().
+-spec params(kz_types:xml_els(), map()) -> params().
 params(Es, Context) ->
-    [{get_text(argName, Es1), Desc}
-     || #xmlElement{content = Es1} <- get_content(args, Es),
+    [{kz_xml:get_textval(argName, Es1), Desc}
+     || #xmlElement{content = Es1} <- kz_xml:get_content(args, Es),
         Desc <- [description(full, Es1, Context)],
         Desc =/= <<>>
     ].
 
 %% return value descriptions (if any)
--spec returns([#xmlElement{}], map()) -> exported().
+-spec returns(kz_types:xml_els(), map()) -> kz_html:exported().
 returns(Es, Context) ->
-    description(full, get_content(returns, Es), Context).
+    description(full, kz_xml:get_content(returns, Es), Context).
 
 %% <!ELEMENT throws (type, localdef*)>
 
--spec throws([#xmlElement{}], map()) -> throws().
+-spec throws(kz_types:xml_els(), map()) -> throws().
 throws(Es, Context) ->
-    case get_content(throws, Es) of
+    case kz_xml:get_content(throws, Es) of
         [] -> [];
         Es1 ->
             %% Don't use format_type; keep it short!
-            [{type, export_content(t_utype(get_elem(type, Es1), Context), Context)}
-            ,{localdefs, local_defs(get_elem(localdef, Es1), Context)}
+            [{type, export_content(t_utype(kz_xml:get_elem(type, Es1), Context), Context)}
+            ,{localdefs, local_defs(kz_xml:get_elem(localdef, Es1), Context)}
             ]
     end.
 
--spec equiv([#xmlElement{}], map()) -> exported().
+-spec equiv(kz_types:xml_els(), map()) -> kz_html:exported().
 equiv(Es, Context) ->
-    Es1 = get_content(equiv, Es),
-    case {get_content(expr, Es1)
-         ,get_elem(see, Es1)
+    Es1 = kz_xml:get_content(equiv, Es),
+    case {kz_xml:get_content(expr, Es1)
+         ,kz_xml:get_elem(see, Es1)
          }
     of
         {[], _} -> <<>>;
         {[Expr], []} ->
-            export_content(Expr, Context);
+            export_content([Expr], Context);
         {[Expr], [E=#xmlElement{}]} ->
             export_content(see(E, [Expr], Context), Context)
     end.
 
--spec typespec_signature(#xmlElement{}, map()) -> exported().
+-spec typespec_signature(kz_types:xml_el(), map()) -> kz_html:exported().
 typespec_signature(E=#xmlElement{content = Es}, Context) ->
-    case typespec(get_content(typespec, Es), Context) of
+    case typespec(kz_xml:get_content(typespec, Es), Context) of
         [] ->
-            export_content(signature(get_content(args, Es), atom(get_attrval(name, E), Context)), Context);
+            export_content(signature(kz_xml:get_content(args, Es), atom(kz_xml:get_attrval(name, E), Context)), Context);
         Spec ->
             export_content(Spec, Context)
     end.
 
 %% <!ELEMENT typespec (erlangName, type, localdef*)>
 
--spec typespec([#xmlElement{}], map()) -> [string()].
+-spec typespec(kz_types:xml_els(), map()) -> [string()].
 typespec([], _Context) -> [];
 typespec(Es, Context) ->
-    Name = t_name(get_elem(erlangName, Es), Context),
-    [Type] = get_elem(type, Es),
+    Name = t_name(kz_xml:get_elem(erlangName, Es), Context),
+    [Type] = kz_xml:get_elem(type, Es),
     format_spec(Name, Type, Context).
 
 %% <!ELEMENT args (arg*)>
@@ -446,17 +427,18 @@ typespec(Es, Context) ->
 
 %% This is currently only done for functions without type spec.
 
--spec signature([#xmlElement{}], string()) -> [string()].
+-spec signature(kz_types:xml_els(), string()) -> [string()].
 signature(Es, Name) ->
     [Name, "("] ++ seq(fun function_arg/1, Es) ++ [") -> any()"].
 
--spec function_arg(#xmlElement{}) -> [string()].
+-spec function_arg(kz_types:xml_el()) -> [string()].
 function_arg(#xmlElement{content = Es}) ->
-    [get_text(argName, Es)].
+    [kz_xml:get_textval(argName, Es)].
 
 %% Use the default formatting of EDoc, which creates references, and
 %% then insert newlines and indentation according to erl_pp (the
 %% (fast) Erlang pretty printer).
+-spec format_spec(string(), kz_types:xml_el(), map()) -> [string()].
 format_spec(Name, Type, #{pretty_printer := erl_pp}=Context) ->
     try
         L = t_clause(Name, Type, Context),
@@ -472,10 +454,12 @@ format_spec(Sep, Type, Context) ->
     %% Very limited formatting.
     t_clause(Sep, Type, Context).
 
+-spec t_clause(string(), kz_types:xml_el(), map()) -> [string()].
 t_clause(Name, Type, Context) ->
     #xmlElement{content = [#xmlElement{name = 'fun', content = C}]} = Type,
     [Name] ++ t_fun(C, Context).
 
+-spec pp_clause(string(), kz_types:xml_el(), map()) -> string().
 pp_clause(Pre, Type, _Context) ->
     Types = ot_utype([Type]),
     Atom = lists:duplicate(string:len(Pre), $a),
@@ -499,17 +483,17 @@ pp_clause(Pre, Type, _Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec t_utype([#xmlElement{}], map()) -> any().
+-spec t_utype(kz_types:xml_els(), map()) -> any().
 t_utype([E], Context) ->
     t_utype_elem(E, Context).
 
--spec t_utype_elem_fun(map()) -> fun((#xmlElement{}) -> any()).
+-spec t_utype_elem_fun(map()) -> fun((kz_types:xml_el()) -> any()).
 t_utype_elem_fun(Context) ->
     fun(E) -> t_utype_elem(E, Context) end.
 
--spec t_utype_elem(#xmlElement{}, map()) -> any().
+-spec t_utype_elem(kz_types:xml_el(), map()) -> any().
 t_utype_elem(E=#xmlElement{content = Es}, Context) ->
-    case get_attrval(name, E) of
+    case kz_xml:get_attrval(name, E) of
         "" -> t_type(Es, Context);
         Name ->
             T = t_type(Es, Context),
@@ -553,43 +537,43 @@ t_type([#xmlElement{name = union, content = Es}], Context) ->
     t_union(Es, Context).
 
 t_var(E) ->
-    [get_attrval(name, E)].
+    [kz_xml:get_attrval(name, E)].
 
 t_atom(E, Context) ->
-    [atom(get_attrval(value, E), Context)].
+    [atom(kz_xml:get_attrval(value, E), Context)].
 
 t_integer(E) ->
-    [get_attrval(value, E)].
+    [kz_xml:get_attrval(value, E)].
 
 t_range(E) ->
-    [get_attrval(value, E)].
+    [kz_xml:get_attrval(value, E)].
 
 t_binary(E) ->
-    [get_attrval(value, E)].
+    [kz_xml:get_attrval(value, E)].
 
 t_float(E) ->
-    [get_attrval(value, E)].
+    [kz_xml:get_attrval(value, E)].
 
 t_nil() ->
     ["[]"].
 
 t_paren(Es, Context) ->
-    ["("] ++ t_utype(get_elem(type, Es), Context) ++ [")"].
+    ["("] ++ t_utype(kz_xml:get_elem(type, Es), Context) ++ [")"].
 
 t_list(Es, Context) ->
-    ["["] ++ t_utype(get_elem(type, Es), Context) ++ ["]"].
+    ["["] ++ t_utype(kz_xml:get_elem(type, Es), Context) ++ ["]"].
 
 t_nonempty_list(Es, Context) ->
-    ["["] ++ t_utype(get_elem(type, Es), Context) ++ [", ...]"].
+    ["["] ++ t_utype(kz_xml:get_elem(type, Es), Context) ++ [", ...]"].
 
 t_map(Es, Context) ->
-    Fs = get_elem(map_field, Es),
+    Fs = kz_xml:get_elem(map_field, Es),
     ["#{"] ++ seq(fun(E) -> t_map_field(E, Context) end, Fs, ["}"]).
 
 t_map_field(#xmlElement{content = [K,V]}=E, Context) ->
     KElem = t_utype_elem(K, Context),
     VElem = t_utype_elem(V, Context),
-    AS = case get_attrval(assoc_type, E) of
+    AS = case kz_xml:get_attrval(assoc_type, E) of
              "assoc" -> " => ";
              "exact" -> " := "
          end,
@@ -598,14 +582,14 @@ t_map_field(#xmlElement{content = [K,V]}=E, Context) ->
 t_tuple(Es, Context) ->
     ["{"] ++ seq(t_utype_elem_fun(Context), Es, ["}"]).
 
--spec t_fun([#xmlElement{}], map()) -> [exporty_thing()].
+-spec t_fun(kz_types:xml_els(), map()) -> kz_html:exporties().
 t_fun(Es, Context) ->
-    ["("] ++ seq(t_utype_elem_fun(Context), get_content(argtypes, Es),
-                 [") -> "] ++ t_utype(get_elem(type, Es), Context)).
+    ["("] ++ seq(t_utype_elem_fun(Context), kz_xml:get_content(argtypes, Es),
+                 [") -> "] ++ t_utype(kz_xml:get_elem(type, Es), Context)).
 
 t_record(E, Es, Context) ->
-    Name = ["#"] ++ t_type(get_elem(atom, Es), Context),
-    case get_elem(field, Es) of
+    Name = ["#"] ++ t_type(kz_xml:get_elem(atom, Es), Context),
+    case kz_xml:get_elem(field, Es) of
         [] ->
             see(E, Name ++ ["{}"], Context);
         Fs ->
@@ -613,11 +597,11 @@ t_record(E, Es, Context) ->
     end.
 
 t_field(#xmlElement{content = Es}, Context) ->
-    t_type(get_elem(atom, Es), Context) ++ [" = "] ++ t_utype(get_elem(type, Es), Context).
+    t_type(kz_xml:get_elem(atom, Es), Context) ++ [" = "] ++ t_utype(kz_xml:get_elem(type, Es), Context).
 
 t_abstype(E, Es, Context) ->
-    Name = t_name(get_elem(erlangName, Es), Context),
-    case get_elem(type, Es) of
+    Name = t_name(kz_xml:get_elem(erlangName, Es), Context),
+    case kz_xml:get_elem(type, Es) of
         [] ->
             see(E, [Name, "()"], Context);
         Ts ->
@@ -625,8 +609,8 @@ t_abstype(E, Es, Context) ->
     end.
 
 t_abstype(Es, Context) ->
-    [t_name(get_elem(erlangName, Es), Context), "("]
-        ++ seq(t_utype_elem_fun(Context), get_elem(type, Es), [")"]).
+    [t_name(kz_xml:get_elem(erlangName, Es), Context), "("]
+        ++ seq(t_utype_elem_fun(Context), kz_xml:get_elem(type, Es), [")"]).
 
 t_union(Es, Context) ->
     seq(t_utype_elem_fun(Context), Es, " | ", []).
@@ -645,7 +629,7 @@ ot_utype([E]) ->
     ot_utype_elem(E).
 
 ot_utype_elem(E=#xmlElement{content = Es}) ->
-    case get_attrval(name, E) of
+    case kz_xml:get_attrval(name, E) of
         "" -> ot_type(Es);
         N ->
             Name = {var,0,list_to_atom(N)},
@@ -690,17 +674,17 @@ ot_type([#xmlElement{name = union, content = Es}]) ->
     ot_union(Es).
 
 ot_var(E) ->
-    {var, 0, list_to_atom(get_attrval(name, E))}.
+    {var, 0, list_to_atom(kz_xml:get_attrval(name, E))}.
 
 ot_atom(E) ->
-    Name = list_to_atom(get_attrval(value, E)),
+    Name = list_to_atom(kz_xml:get_attrval(value, E)),
     {atom, erl_anno:new(0), Name}.
 
 ot_integer(E) ->
-    {integer, 0, list_to_integer(get_attrval(value, E))}.
+    {integer, 0, list_to_integer(kz_xml:get_attrval(value, E))}.
 
 ot_range(E) ->
-    [I1, I2] = string:tokens(get_attrval(value, E), "."),
+    [I1, I2] = string:tokens(kz_xml:get_attrval(value, E), "."),
     {type, 0, range, [{integer, 0, list_to_integer(I1)}
                      ,{integer, 0, list_to_integer(I2)}
                      ]
@@ -708,7 +692,7 @@ ot_range(E) ->
 
 ot_binary(E) ->
     {Base, Unit} =
-        case string:tokens(get_attrval(value, E), ",:*><") of
+        case string:tokens(kz_xml:get_attrval(value, E), ",:*><") of
             [] ->
                 {0, 0};
             ["_", B] ->
@@ -721,53 +705,53 @@ ot_binary(E) ->
     {type, 0, binary, [{integer, 0, Base}, {integer, 0, Unit}]}.
 
 ot_float(E) ->
-    {float, 0, list_to_float(get_attrval(value, E))}.
+    {float, 0, list_to_float(kz_xml:get_attrval(value, E))}.
 
 ot_nil() ->
     {nil, 0}.
 
 ot_paren(Es) ->
-    {paren_type, 0, [ot_utype(get_elem(type, Es))]}.
+    {paren_type, 0, [ot_utype(kz_xml:get_elem(type, Es))]}.
 
 ot_list(Es) ->
-    {type, 0, list, [ot_utype(get_elem(type, Es))]}.
+    {type, 0, list, [ot_utype(kz_xml:get_elem(type, Es))]}.
 
 ot_nonempty_list(Es) ->
-    {type, 0, nonempty_list, [ot_utype(get_elem(type, Es))]}.
+    {type, 0, nonempty_list, [ot_utype(kz_xml:get_elem(type, Es))]}.
 
 ot_tuple(Es) ->
     {type, 0, tuple, [ot_utype_elem(E) || E <- Es]}.
 
 ot_map(Es) ->
-    {type, 0, map, [ot_map_field(E) || E <- get_elem(map_field,Es)]}.
+    {type, 0, map, [ot_map_field(E) || E <- kz_xml:get_elem(map_field,Es)]}.
 
 ot_map_field(#xmlElement{content=[K,V]}=E) ->
-    A = case get_attrval(assoc_type, E) of
+    A = case kz_xml:get_attrval(assoc_type, E) of
             "assoc" -> map_field_assoc;
             "exact" -> map_field_exact
         end,
     {type, 0, A, [ot_utype_elem(K), ot_utype_elem(V)]}.
 
 ot_fun(Es) ->
-    Range = ot_utype(get_elem(type, Es)),
-    Args = [ot_utype_elem(A) || A <- get_content(argtypes, Es)],
+    Range = ot_utype(kz_xml:get_elem(type, Es)),
+    Args = [ot_utype_elem(A) || A <- kz_xml:get_content(argtypes, Es)],
     {type, 0, 'fun', [{type,0,product,Args},Range]}.
 
 ot_record(Es) ->
-    {type, 0, record, [ot_type(get_elem(atom, Es))
-                       | [ot_field(F) || F <- get_elem(field, Es)]
+    {type, 0, record, [ot_type(kz_xml:get_elem(atom, Es))
+                       | [ot_field(F) || F <- kz_xml:get_elem(field, Es)]
                       ]
     }.
 
 ot_field(#xmlElement{content = Es}) ->
-    {type, 0, field_type, [ot_type(get_elem(atom, Es))
-                          ,ot_utype(get_elem(type, Es))
+    {type, 0, field_type, [ot_type(kz_xml:get_elem(atom, Es))
+                          ,ot_utype(kz_xml:get_elem(type, Es))
                           ]
     }.
 
 ot_abstype(Es) ->
-    ot_name(get_elem(erlangName, Es)
-           ,[ot_utype_elem(Elem) || Elem <- get_elem(type, Es)]
+    ot_name(kz_xml:get_elem(erlangName, Es)
+           ,[ot_utype_elem(Elem) || Elem <- kz_xml:get_elem(type, Es)]
            ).
 
 ot_union(Es) ->
@@ -787,11 +771,11 @@ ot_name(Es, T) ->
     end.
 
 ot_name([E]) ->
-    Atom = get_attrval(name, E),
-    case get_attrval(module, E) of
+    Atom = kz_xml:get_attrval(name, E),
+    case kz_xml:get_attrval(module, E) of
         "" -> Atom;
         M ->
-            case get_attrval(app, E) of
+            case kz_xml:get_attrval(app, E) of
                 "" -> [M, ":", Atom];
                 A -> ["//" ++ A ++ "/" ++ M, ":", Atom] %% EDoc only!
             end
@@ -805,15 +789,15 @@ ot_name([E]) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec sees([#xmlElement{}], map()) -> [exported()].
+-spec sees(kz_types:xml_els(), map()) -> [kz_html:exported()].
 sees(Es, Context) ->
-    [export_content(see(E, Context), Context) || E <- get_elem(see, Es)].
+    [export_content(see(E, Context), Context) || E <- kz_xml:get_elem(see, Es)].
 
--spec see(#xmlElement{}, map()) -> [exporty_thing()].
+-spec see(kz_types:xml_el(), map()) -> kz_html:exporties().
 see(E=#xmlElement{content = Es}, Context) ->
     see(E, Es, Context).
 
--spec see(#xmlElement{}, [#xmlElement{}] | [string()], map()) -> [exporty_thing()].
+-spec see(kz_types:xml_el(), kz_types:xml_els() | [string()], map()) -> kz_html:exporties().
 see(E, Es, Context) ->
     case href(E, Context) of
         [] -> Es;
@@ -821,119 +805,22 @@ see(E, Es, Context) ->
             [{a, Ref, Es}]
     end.
 
--spec href(#xmlElement{}, map()) -> [{target, string()} | {href, string()}].
+-spec href(kz_types:xml_el(), map()) -> [{target, string()} | {href, string()}].
 href(E, Context) ->
-    case kz_fix_link(get_attrval(href, E), Context) of
+    case kz_fix_link(kz_xml:get_attrval(href, E), Context) of
         [] -> [];
         URI ->
             %% ?DEV_LOG("fixed link ~p", [URI]),
-            T = case get_attrval(target, E) of
+            T = case kz_xml:get_attrval(target, E) of
                     "" -> [];
                     S -> [{target, S}]
                 end,
             [{href, URI} | T]
     end.
 
-kz_fix_link("", _) ->
-    [];
-kz_fix_link(URI, #{file_suffix := Suffix
-                  ,kz_rel_path := RelPath
-                  ,kz_apps_uri := AppsUri
-                  ,kz_link_apps := Apps
-                  ,kz_link_mods := Mods
-                  }=Context) ->
-    App = maps:get(kz_app_name, Context, undefined),
-    Mod = maps:get(kz_mod_name, Context, undefined),
-
-    %% ?DEV_LOG("checking link ~p", [URI]),
-
-    case re:run(URI, "(([a-z_]+)/doc/)?([a-z_]+)\\" ++ Suffix ++ "(#.*)?", [{capture, [2, 3, 4], list}]) of
-        nomatch ->
-            URI;
-        {match, [App, Mod, Fragment]} ->
-            Mod ++ Suffix ++ Fragment;
-        {match, [App, SomeFile, Fragment]} ->
-            SomeFile ++ Suffix ++ Fragment;
-        {match, [[], SomeFile, Fragment]} ->
-            case get_kazoo_app_or_mod(SomeFile, Apps(SomeFile), Mods(SomeFile)) of
-                undefined -> [];
-                AppSlashMod ->
-                    RelPath ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ Fragment
-            end;
-        {match, [OtherApp, OtherMod, Fragment]} ->
-            %% ?DEV_LOG("OtherApp ~p OtherMod ~p, KA ~p KM ~p", [OtherApp, OtherMod, Apps(OtherApp), Mods(OtherMod)]),
-            case get_kazoo_app_or_mod(OtherMod, Apps(OtherApp), Mods(OtherMod)) of
-                undefined -> [];
-                AppSlashMod ->
-                    RelPath ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ Fragment
-            end
-    end.
-
-get_kazoo_app_or_mod(_, undefined, undefined) ->
-    %% don't create link for deps or erlang (mostly occurred for behaviour, e.g. gen_server) or other
-    %% non-kazoo app.
-    %% Also don't create links for kazoo apps/mods which we are not creating document for them (kz_docgen was called
-    %% with specific app names)
-
-    %% ?DEV_LOG("undefined undefined", []),
-    undefined;
-get_kazoo_app_or_mod(ModName, undefined, {AppName, _AppCat}) ->
-    %% ?DEV_LOG("1 AppName ~p ModName ~p", [AppName, ModName]),
-    AppName ++ "/" ++ ModName;
-get_kazoo_app_or_mod(ModName, _AppCat, {AppName, _AppCat}) ->
-    %% ?DEV_LOG("2 AppName ~p ModName ~p", [AppName, ModName]),
-    AppName ++ "/" ++ ModName;
-get_kazoo_app_or_mod(AppName, _AppCat, undefined) ->
-    %% ?DEV_LOG("3 AppName ~p AppCat ~p", [AppName, _AppCat]),
-    AppName ++ "/".
-
--spec normalize_links([exporty_thing()], map()) -> [exporty_thing()].
-normalize_links(Es, Context) ->
-    lists:reverse(normalize_links(Es, Context, [])).
-
--spec normalize_links([#xmlElement{}], map(), [exporty_thing()]) -> [exporty_thing()].
-normalize_links([], _, Acc) ->
-    Acc;
-normalize_links([#xmlElement{name = a, attributes = Attributes}=E|Es], Context, Acc) ->
-    normalize_links(Es, Context, normalize_link(E, get_attr(href, Attributes), Context) ++ Acc);
-normalize_links([#xmlElement{content = Content}=E|Es], Context, Acc) ->
-    normalize_links(Es, Context, [E#xmlElement{content = normalize_links(Content, Context)} | Acc]);
-%% normalize_links([{a, Attributes, String}|Es], Context, Acc) ->
-%%     URI = proplists:get_value(href, Attributes, undefined),
-%%     case URI =/= undefined
-%%         andalso kz_fix_link(URI, Context)
-%%     of
-%%         false ->
-%%             normalize_links(Es, Context, [{a, Attributes, String} | Acc]);
-%%         [] ->
-%%             normalize_links(Es, Context, [String | Acc]);
-%%         FixedURI ->
-%%             normalize_links(Es, Context, [{a, [{href, FixedURI} | proplists:delete(href, Attributes)], String} | Acc])
-%%     end;
-normalize_links([E|Es], Context, Acc) ->
-    normalize_links(Es, Context, [E | Acc]).
-
-normalize_link(#xmlElement{content = Es}=E, [], Context) ->
-    [E#xmlElement{content = normalize_links(Es, Context)}];
-normalize_link(#xmlElement{}=E, [#xmlAttribute{value = URI}=Href], Context) ->
-    fix_href_attribute(E, Href, kz_fix_link(URI, Context), Context).
-
-fix_href_attribute(#xmlElement{content = Es}, _Href, [], Context) ->
-    normalize_links(Es, Context);
-fix_href_attribute(#xmlElement{content = Es, attributes = Attributes}=E, Href, URI, Context) ->
-    [E#xmlElement{content = normalize_links(Es, Context)
-                 ,attributes = [Href#xmlAttribute{value = URI}
-                                | [Attr
-                                   || #xmlAttribute{name = AttrName}=Attr <- Attributes,
-                                      AttrName =/= href
-                                  ]
-                               ]
-                 }
-    ].
-
--spec anchor_id_label(string() | binary() | [string()] | [binary()], #xmlElement{}) -> {binary(), string() | binary() | [string()] | [binary()]}.
+-spec anchor_id_label(string() | binary() | [string()] | [binary()], kz_types:xml_el()) -> {binary(), string() | binary() | [string()] | [binary()]}.
 anchor_id_label(Content, E) ->
-    case get_attrval(label, E) of
+    case kz_xml:get_attrval(label, E) of
         "" -> {<<>>, Content};
         Ref -> {iolist_to_binary(Ref), Content}
     end.
@@ -946,19 +833,19 @@ anchor_id_label(Content, E) ->
 %% @doc Deprecated tag to proplist.
 %% @end
 %%------------------------------------------------------------------------------
--spec deprecated([#xmlElement{}], map()) -> exported().
+-spec deprecated(kz_types:xml_els(), map()) -> kz_html:exported().
 deprecated(Es, Context) ->
-    description(full, get_content(deprecated, Es), Context).
+    description(full, kz_xml:get_content(deprecated, Es), Context).
 
--spec description(full | both, [#xmlElement{}], map()) -> exported() | [{short_desc | full_desc, exported()}].
+-spec description(full | both, kz_types:xml_els(), map()) -> kz_html:exported() | [{short_desc | full_desc, kz_html:exported()}].
 description(full, Es, Context) ->
-    export_content(normalize_description(get_content(fullDescription, get_content(description, Es)), Context), Context);
+    export_content(normalize_description(kz_xml:get_content(fullDescription, kz_xml:get_content(description, Es)), Context), Context);
 %% description(short, Es, Context) ->
-%%     export_content(normalize_description(get_content(briefDescription, get_content(description, Es)), Context), Context);
+%%     export_content(normalize_description(kz_xml:get_content(briefDescription, kz_xml:get_content(description, Es)), Context), Context);
 description(both, Es, Context) ->
-    Desc = get_content(description, Es),
-    Short = normalize_description(get_content(briefDescription, Desc), Context),
-    Full = normalize_description(get_content(fullDescription, Desc), Context),
+    Desc = kz_xml:get_content(description, Es),
+    Short = normalize_description(kz_xml:get_content(briefDescription, Desc), Context),
+    Full = normalize_description(kz_xml:get_content(fullDescription, Desc), Context),
     %% ?DEV_LOG("Full ~p", [Full]),
     filter_empty(
       [{short_desc, export_content(Short, Context)}
@@ -966,14 +853,14 @@ description(both, Es, Context) ->
       ]
      ).
 
--spec since([#xmlElement{}], map()) -> exported().
+-spec since(kz_types:xml_els(), map()) -> kz_html:exported().
 since(Es, Context) ->
-    export_content(get_content(since, Es), Context).
+    export_content(kz_xml:get_content(since, Es), Context).
 
--spec todos([#xmlElement{}], map()) -> [exported()].
+-spec todos(kz_types:xml_els(), map()) -> [kz_html:exported()].
 todos(Es, Context) ->
     [export_content(normalize_description(C, Context), Context)
-     || #xmlElement{content = C} <- get_elem(todo, Es)
+     || #xmlElement{content = C} <- kz_xml:get_elem(todo, Es)
     ].
 
 %%------------------------------------------------------------------------------
@@ -1034,30 +921,22 @@ app_fix1(L, I) -> % a bit slow
 %% @doc Export simple content of elements to HTML.
 %% @end
 %%------------------------------------------------------------------------------
--spec export_content(exporty_thing() | [exporty_thing()]) -> exported().
-export_content(E) ->
-    export_content(E, #{kz_export_type => xmerl_html}).
+-spec export_content(kz_html:exporty() | kz_html:exporties(), map()) -> kz_html:exported().
+export_content(ErlHtml, #{kz_export_type := xmerl_html}) ->
+    kz_html:export_content(ErlHtml, 'xmerl_html');
+export_content(ErlHtml, #{kz_export_type := xmerl_xml}) ->
+    kz_html:export_content(ErlHtml, 'xmerl_xml');
+export_content(ErlHtml, _) ->
+    kz_html:export_content(ErlHtml, 'xmerl_html').
 
--spec export_content(exporty_thing() | [exporty_thing()], map()) -> exported().
-export_content([], _) ->
-    <<>>;
-export_content([Char | _]=String, Context) when is_integer(Char) ->
-    export_content([String], Context);
-export_content([_|_]=Es, #{kz_export_type := xmerl_html}) ->
-    iolist_to_binary(xmerl:export_simple_content(Es, xmerl_html));
-export_content([_|_]=Es, _) ->
-    iolist_to_binary(xmerl:export_simple_content(Es, xmerl_xml));
-export_content(E, Context) ->
-    export_content([E], Context).
-
--spec t_name([#xmlElement{}], map()) -> string().
+-spec t_name(kz_types:xml_els(), map()) -> string().
 t_name([E], Context) ->
-    N = get_attrval(name, E),
-    case get_attrval(module, E) of
+    N = kz_xml:get_attrval(name, E),
+    case kz_xml:get_attrval(module, E) of
         "" -> atom(N, Context);
         M ->
             S = atom(M, Context) ++ ":" ++ atom(N, Context),
-            case get_attrval(app, E) of
+            case kz_xml:get_attrval(app, E) of
                 "" -> S;
                 A -> "//" ++ atom(A, Context) ++ "/" ++ S
             end
@@ -1086,143 +965,133 @@ strip_tickie(String) ->
 %% stupid whitespace only `#xmlText{}'.
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_description([#xmlElement{}], map()) -> [exporty_thing()].
+-spec normalize_description(kz_types:xml_els(), map()) -> kz_html:exporties().
 normalize_description([], _) ->
     [];
 normalize_description(Es, Context) ->
-    normalize_links(make_paraghraph(Es, [], []), Context).
-
--spec make_paraghraph([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
-make_paraghraph([E=#xmlElement{name = Name}|Es], As, Bs) ->
-    case is_block_element(Name) of
-        true -> par_flush(Es, As, [E | Bs]);
-        false -> make_paraghraph(Es, [E | As], Bs)
-    end;
-make_paraghraph([E=#xmlText{value = Value}|Es], As, Bs) ->
-    case is_only_whitespace(Value) of
-        true -> make_paraghraph(Es, As, Bs);
-        false ->
-            Normalized = E#xmlText{value = [C || C <- Value, C =/= $\n, C =/= $\r]},
-            make_paraghraph(Es, [Normalized | As], Bs)
-    end;
-make_paraghraph([], [], Bs) ->
-    lists:reverse(Bs);
-make_paraghraph([], As, Bs) ->
-    lists:reverse([{p, lists:reverse(As)} | Bs]).
-
-is_block_element('article') -> true;
-is_block_element('aside') -> true;
-is_block_element('canvas') -> true;
-is_block_element('dd') -> true;
-is_block_element('div') -> true;
-is_block_element('dl') -> true;
-is_block_element('dt') -> true;
-is_block_element('fieldset') -> true;
-is_block_element('figcaption') -> true;
-is_block_element('figure') -> true;
-is_block_element('footer') -> true;
-is_block_element('form') -> true;
-is_block_element('h1') -> true;
-is_block_element('h2') -> true;
-is_block_element('h3') -> true;
-is_block_element('h4') -> true;
-is_block_element('h5') -> true;
-is_block_element('h6') -> true;
-is_block_element('header') -> true;
-is_block_element('hgroup') -> true;
-is_block_element('hr') -> true;
-is_block_element('li') -> true;
-is_block_element('main') -> true;
-is_block_element('nav') -> true;
-is_block_element('noscript') -> true;
-is_block_element('ol') -> true;
-is_block_element('output') -> true;
-is_block_element('p') -> true;
-is_block_element('pre') -> true;
-is_block_element('section') -> true;
-is_block_element('table') -> true;
-is_block_element('tfoot') -> true;
-is_block_element('ul') -> true;
-is_block_element('video') -> true;
-is_block_element(_) -> false.
-
--spec par_flush([#xmlElement{}], [exporty_thing()], [exporty_thing()]) -> [exporty_thing()].
-par_flush(Es, [], Bs) ->
-    make_paraghraph(Es, [], Bs);
-par_flush(Es, As, Bs) ->
-    make_paraghraph(Es, [], Bs ++ [{p, As}]).
-
--spec get_elem(atom(), [#xmlElement{}]) -> [#xmlElement{}].
-get_elem(Name, [#xmlElement{name = Name} = E | Es]) ->
-    [E | get_elem(Name, Es)];
-get_elem(Name, [_ | Es]) ->
-    get_elem(Name, Es);
-get_elem(_, []) ->
-    [].
-
--spec get_attr(atom(), [#xmlAttribute{}]) -> [#xmlAttribute{}].
-get_attr(Name, [#xmlAttribute{name = Name} = A | As]) ->
-    [A | get_attr(Name, As)];
-get_attr(Name, [_ | As]) ->
-    get_attr(Name, As);
-get_attr(_, []) ->
-    [].
-
--spec get_attrval(atom(), #xmlElement{}) -> iolist() | atom() | integer() | string().
-get_attrval(Name, #xmlElement{attributes = As}) ->
-    case get_attr(Name, As) of
-        [#xmlAttribute{value = V}] ->
-            V;
-        [] -> ""
-    end.
-
--spec get_content(atom(), [#xmlElement{}]) -> [#xmlElement{} | #xmlText{}].
-get_content(Name, Es) ->
-    case get_elem(Name, Es) of
-        [#xmlElement{content = Es1}] ->
-            Es1;
-        [] -> []
-    end.
-
--spec get_text(atom(), [#xmlElement{}]) -> string().
-get_text(Name, Es) ->
-    case get_content(Name, Es) of
-        [#xmlText{value = Text}] ->
-            Text;
-        [] -> ""
-    end.
+    normalize_links(kz_html:make_paraghraph(Es), Context).
 
 %%%=============================================================================
 %%% Utility functions
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Fix links to Kazoo applications, modules and types.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_only_whitespace(string()) -> boolean().
-is_only_whitespace([]) ->
-    true;
-is_only_whitespace([$\s | C]) ->
-    is_only_whitespace(C);
-is_only_whitespace([$\t | C]) ->
-    is_only_whitespace(C);
-is_only_whitespace([$\r | C]) ->
-    is_only_whitespace(C);
-is_only_whitespace([$\n | C]) ->
-    is_only_whitespace(C);
-is_only_whitespace(_) ->
-    false.
+-spec kz_fix_link(string(), map()) -> string().
+kz_fix_link("", _) ->
+    [];
+kz_fix_link(URI, #{file_suffix := Suffix
+                  ,kz_rel_path := RelPath
+                  ,kz_apps_uri := AppsUri
+                  ,kz_link_apps := Apps
+                  ,kz_link_mods := Mods
+                  }=Context) ->
+    App = maps:get(kz_app_name, Context, undefined),
+    Mod = maps:get(kz_mod_name, Context, undefined),
 
--spec seq(fun((#xmlElement{}) -> exporty_thing()), [#xmlElement{}]) -> [exporty_thing()].
+    %% ?DEV_LOG("checking link ~p", [URI]),
+
+    case re:run(URI, "(([a-z_]+)/doc/)?([a-z_]+)\\" ++ Suffix ++ "(#.*)?", [{capture, [2, 3, 4], list}]) of
+        nomatch ->
+            URI;
+        {match, [App, Mod, Fragment]} ->
+            Mod ++ Suffix ++ Fragment;
+        {match, [App, SomeFile, Fragment]} ->
+            SomeFile ++ Suffix ++ Fragment;
+        {match, [[], SomeFile, Fragment]} ->
+            case get_kazoo_app_or_mod(SomeFile, Apps(SomeFile), Mods(SomeFile)) of
+                undefined -> [];
+                AppSlashMod ->
+                    RelPath ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ Fragment
+            end;
+        {match, [OtherApp, OtherMod, Fragment]} ->
+            %% ?DEV_LOG("OtherApp ~p OtherMod ~p, KA ~p KM ~p", [OtherApp, OtherMod, Apps(OtherApp), Mods(OtherMod)]),
+            case get_kazoo_app_or_mod(OtherMod, Apps(OtherApp), Mods(OtherMod)) of
+                undefined -> [];
+                AppSlashMod ->
+                    RelPath ++ AppsUri ++ "/" ++ AppSlashMod ++ Suffix ++ Fragment
+            end
+    end.
+
+-spec get_kazoo_app_or_mod(string(), kz_term:api_string(), kz_term:api_string()) -> kz_term:api_string().
+get_kazoo_app_or_mod(_, undefined, undefined) ->
+    %% don't create link for deps or erlang (mostly occurred for behaviour, e.g. gen_server) or other
+    %% non-kazoo app.
+    %% Also don't create links for kazoo apps/mods which we are not creating document for them (kz_docgen was called
+    %% with specific app names)
+
+    %% ?DEV_LOG("undefined undefined", []),
+    undefined;
+get_kazoo_app_or_mod(ModName, undefined, {AppName, _AppCat}) ->
+    %% ?DEV_LOG("1 AppName ~p ModName ~p", [AppName, ModName]),
+    AppName ++ "/" ++ ModName;
+get_kazoo_app_or_mod(ModName, _AppCat, {AppName, _AppCat}) ->
+    %% ?DEV_LOG("2 AppName ~p ModName ~p", [AppName, ModName]),
+    AppName ++ "/" ++ ModName;
+get_kazoo_app_or_mod(AppName, _AppCat, undefined) ->
+    %% ?DEV_LOG("3 AppName ~p AppCat ~p", [AppName, _AppCat]),
+    AppName ++ "/".
+
+-spec normalize_links(kz_html:exporties(), map()) -> kz_html:exporties().
+normalize_links(Es, Context) ->
+    lists:reverse(normalize_links(Es, Context, [])).
+
+-spec normalize_links(kz_types:xml_els(), map(), kz_html:exporties()) -> kz_html:exporties().
+normalize_links([], _, Acc) ->
+    Acc;
+normalize_links([#xmlElement{name = a, attributes = Attributes}=E|Es], Context, Acc) ->
+    normalize_links(Es, Context, normalize_link(E, kz_xml:get_attr(href, Attributes), Context) ++ Acc);
+normalize_links([#xmlElement{content = Content}=E|Es], Context, Acc) ->
+    normalize_links(Es, Context, [E#xmlElement{content = normalize_links(Content, Context)} | Acc]);
+%% normalize_links([{a, Attributes, String}|Es], Context, Acc) ->
+%%     URI = proplists:get_value(href, Attributes, undefined),
+%%     case URI =/= undefined
+%%         andalso kz_fix_link(URI, Context)
+%%     of
+%%         false ->
+%%             normalize_links(Es, Context, [{a, Attributes, String} | Acc]);
+%%         [] ->
+%%             normalize_links(Es, Context, [String | Acc]);
+%%         FixedURI ->
+%%             normalize_links(Es, Context, [{a, [{href, FixedURI} | proplists:delete(href, Attributes)], String} | Acc])
+%%     end;
+normalize_links([E|Es], Context, Acc) ->
+    normalize_links(Es, Context, [E | Acc]).
+
+normalize_link(#xmlElement{content = Es}=E, [], Context) ->
+    [E#xmlElement{content = normalize_links(Es, Context)}];
+normalize_link(#xmlElement{}=E, [#xmlAttribute{value = URI}=Href], Context) ->
+    fix_href_attribute(E, Href, kz_fix_link(URI, Context), Context).
+
+fix_href_attribute(#xmlElement{content = Es}, _Href, [], Context) ->
+    normalize_links(Es, Context);
+fix_href_attribute(#xmlElement{content = Es, attributes = Attributes}=E, Href, URI, Context) ->
+    [E#xmlElement{content = normalize_links(Es, Context)
+                 ,attributes = [Href#xmlAttribute{value = URI}
+                                | [Attr
+                                   || #xmlAttribute{name = AttrName}=Attr <- Attributes,
+                                      AttrName =/= href
+                                  ]
+                               ]
+                 }
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc Run a sequence of functions over elements, optionally adding
+%% separator characters.
+%% @end
+%%------------------------------------------------------------------------------
+-spec seq(fun((kz_types:xml_el()) -> kz_html:exporty()), kz_types:xml_els()) -> kz_html:exporties().
 seq(F, Es) ->
     seq(F, Es, []).
 
--spec seq(fun((#xmlElement{}) -> exporty_thing()), [#xmlElement{}], [string()]) -> [exporty_thing()].
+-spec seq(fun((kz_types:xml_el()) -> kz_html:exporty()), kz_types:xml_els(), [string()]) -> kz_html:exporties().
 seq(F, Es, Tail) ->
     seq(F, Es, ", ", Tail).
 
--spec seq(fun((#xmlElement{}) -> exporty_thing()), [#xmlElement{}], string(), [string()]) -> [exporty_thing()].
+-spec seq(fun((kz_types:xml_el()) -> kz_html:exporty()), kz_types:xml_els(), string(), [string()]) -> kz_html:exporties().
 seq(F, [E], _Sep, Tail) ->
     F(E) ++ Tail;
 seq(F, [E | Es], Sep, Tail) ->
@@ -1230,11 +1099,11 @@ seq(F, [E | Es], Sep, Tail) ->
 seq(_F, [], _Sep, Tail) ->
     Tail.
 
--spec filter_empty([{atom(), list() | iolist() | binary()}]) -> [{atom(), list() | iolist() | binary() | tuple() | atom() | boolean()}].
+-spec filter_empty([{atom(), any()}]) -> [{atom(), any()}].
 filter_empty(Props) ->
     [P || P <- Props, is_not_empty(P)].
 
--spec is_not_empty({atom(), list() | iolist() | binary()}) -> boolean().
+-spec is_not_empty({atom(), any()}) -> boolean().
 is_not_empty({_, []}) -> 'false';
 is_not_empty({_, <<>>}) -> 'false';
 is_not_empty(_V) -> 'true'.

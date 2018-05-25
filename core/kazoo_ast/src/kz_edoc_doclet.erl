@@ -35,9 +35,7 @@
         ,init_context/2
         ]).
 
--include_lib("xmerl/include/xmerl.hrl").
-
--define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(DEFAULT_TEMPLATE_DIR, "doc/edoc-template").
 
@@ -98,7 +96,7 @@
 
 -type search_docs() :: [kz_json:object()].
 
--type sidebar_props() :: proplists:proplist().
+-type sidebar_props() :: kz_term:proplist().
 %% Contains sidebar proplist.
 %%
 %% <strong>Proplist description:</strong>
@@ -132,11 +130,11 @@
 %% Someone please document extra Kazoo options.
 %% @end
 %%------------------------------------------------------------------------------
--spec run(proplists:proplist()) -> ok.
+-spec run(kz_term:proplist()) -> ok.
 run(Options) ->
-    run(Options, proplists:get_value(kz_gen_apps, Options)).
+    run(Options, props:get_value(kz_gen_apps, Options)).
 
--spec run(proplists:proplist(), [gen_app()]) -> ok.
+-spec run(kz_term:proplist(), [gen_app()]) -> ok.
 run(_, []) ->
     ?DEV_LOG("no source files were found...", []),
     exit(error);
@@ -227,7 +225,7 @@ source(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri
                     Encoding = [{encoding, utf8}],
                     edoc_lib:write_file(kz_json:encode(JObj), filename:join([OutDir, "tmp", AppsUri, App]), Name1, Encoding),
 
-                    ShortDesc = proplists:get_value(short_desc, Props, []),
+                    ShortDesc = props:get_value(short_desc, Props, []),
                     [{AppCat, App, Module, ShortDesc} | Result];
                 false ->
                     Result
@@ -360,13 +358,14 @@ index_file(Sidebar, #{kz_doc_site := OutDir}=Ctx) ->
     EncOpts = [{encoding, utf8}],
     edoc_lib:write_file(Rendered, OutDir, ?INDEX_FILE, EncOpts).
 
--spec run_layout(module | overview, string(), #xmlElement{}, map()) -> proplists:proplist().
+-spec run_layout(module | overview, string(), kz_types:xml_el(), map()) -> kz_term:proplist().
 run_layout(module, File, Doc, Context) ->
     try kz_edoc_layout:module(Doc, Context)
     catch
         _E:_T ->
             ?DEV_LOG("failed to layout ~s: ~p:~p", [File, _E, _T]),
-            log_stacktrace(),
+            ST = erlang:get_stacktrace(),
+            kz_util:log_stacktrace(ST),
             exit(error)
     end;
 run_layout(overview, File, Doc, Context) ->
@@ -374,13 +373,14 @@ run_layout(overview, File, Doc, Context) ->
     catch
         _E:_T ->
             ?DEV_LOG("failed to layout overview file ~s: ~p:~p", [File, _E, _T]),
-            log_stacktrace(),
+            ST = erlang:get_stacktrace(),
+            kz_util:log_stacktrace(ST),
             exit(error)
     end.
 
--spec render(proplists:proplist(), map(), atom()) -> iolist().
+-spec render(kz_term:proplist(), map(), atom()) -> iolist().
 render(Props0, Context, Template) ->
-    Name = proplists:get_value(name, Props0),
+    Name = props:get_value(name, Props0),
     Props = Props0 ++ maps:to_list(Context),
     %% ?DEV_LOG("Props ~p", [Props]),
     case render(Template, Props) of
@@ -396,13 +396,13 @@ make_rel_path([]) -> "";
 make_rel_path(Ps) ->
     lists:append(["../" || _ <- lists:seq(1, length(Ps))]).
 
--spec render(atom(), proplists:proplist()) -> {ok, iolist() | atom()} | {error, any()}.
+-spec render(atom(), kz_term:proplist()) -> {ok, iolist() | atom()} | {error, any()}.
 render(Module, Props) when is_atom(Module) ->
     kz_template:render(Module, Props).
 %%render(TemplateFilePath, Props) when is_list(TemplateFilePath) ->
 %%    kz_template:render(TemplateFilePath, Props, [{auto_escape, false}]).
 
--spec read_tmp_file(map(), atom(), atom()) -> proplists:proplist().
+-spec read_tmp_file(map(), atom(), atom()) -> kz_term:proplist().
 read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
     Path = filename:join([OutDir, "tmp", AppsUri, App, Module]) ++ ".json",
     case file:read_file(Path) of
@@ -413,7 +413,7 @@ read_tmp_file(#{kz_doc_site := OutDir, kz_apps_uri := AppsUri}, App, Module) ->
             exit(error)
     end.
 
--spec get_overview_data(string(), string(), map()) -> proplists:proplist().
+-spec get_overview_data(string(), string(), map()) -> kz_term:proplist().
 get_overview_data(File, Title, #{edoc_env := Env, edoc_opts := Options}=Context) ->
     Tags = extract_overview(File, Env, Options),
     Data0 = edoc_data:overview(Title, Tags, Env, Options),
@@ -436,9 +436,9 @@ extract_overview(File, Env, Opts) ->
 
 -spec build_search_index_data(build_search(), {binary(), binary()}, map(), list()) -> search_doc() | search_docs().
 build_search_index_data(module, {App, Module}=AppMod, #{file_suffix := Suffix}=Context, Props) ->
-    Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
-    FunsDesc = build_search_index_data(funcs, AppMod, Context, proplists:get_value(<<"functions">>, Props, [])),
-    TypesDesc = build_search_index_data(types, AppMod, Context, proplists:get_value(<<"types">>, Props, [])),
+    Desc = props:get_value(<<"full_desc">>, Props, <<>>),
+    FunsDesc = build_search_index_data(funcs, AppMod, Context, props:get_value(<<"functions">>, Props, [])),
+    TypesDesc = build_search_index_data(types, AppMod, Context, props:get_value(<<"types">>, Props, [])),
     [kz_json:from_list(
        [{<<"ref">>, <<App/binary, "/", Module/binary, (list_to_binary(Suffix))/binary>>}
        ,{<<"module">>, Module}
@@ -449,9 +449,9 @@ build_search_index_data(module, {App, Module}=AppMod, #{file_suffix := Suffix}=C
 build_search_index_data(funcs, AppMod, Context, Props) ->
     [build_search_index_data(func, AppMod, Context, FunProps) || FunProps <- Props];
 build_search_index_data(func, {App, Module}, #{file_suffix := Suffix}, Props) ->
-    Id = proplists:get_value(<<"id">>, Props, <<>>),
-    Name = proplists:get_value(<<"name">>, Props, <<>>),
-    Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
+    Id = props:get_value(<<"id">>, Props, <<>>),
+    Name = props:get_value(<<"name">>, Props, <<>>),
+    Desc = props:get_value(<<"full_desc">>, Props, <<>>),
     Ref = <<App/binary, "/", Module/binary, (list_to_binary(Suffix))/binary, "#", Id/binary>>,
     kz_json:from_list(
       [{<<"ref">>, Ref}
@@ -462,9 +462,9 @@ build_search_index_data(func, {App, Module}, #{file_suffix := Suffix}, Props) ->
 build_search_index_data(types, AppMod, Context, Props) ->
     [build_search_index_data(type, AppMod, Context, FunProps) || FunProps <- Props];
 build_search_index_data(type, {App, Module}, #{file_suffix := Suffix}, Props) ->
-    Id = proplists:get_value(<<"id">>, Props, <<>>),
-    Name = proplists:get_value(<<"name">>, Props, <<>>),
-    Desc = proplists:get_value(<<"full_desc">>, Props, <<>>),
+    Id = props:get_value(<<"id">>, Props, <<>>),
+    Name = props:get_value(<<"name">>, Props, <<>>),
+    Desc = props:get_value(<<"full_desc">>, Props, <<>>),
     Ref = <<App/binary, "/", Module/binary, (list_to_binary(Suffix))/binary, "#", Id/binary>>,
     kz_json:from_list(
       [{<<"ref">>, Ref}
@@ -495,7 +495,7 @@ extract_xml_texts(Text, Where) ->
             <<>>
     end.
 
--spec extract_xml_texts(#xmlText{} | #xmlElement{} | any()) -> iolist().
+-spec extract_xml_texts(kz_types:xml_text() | kz_types:xml_el() | any()) -> iolist().
 extract_xml_texts(#xmlText{value = Value}) ->
     [C || C <- Value, C =/= $\n, C =/= $\r];
 extract_xml_texts(#xmlElement{content = Content}) ->
@@ -642,16 +642,16 @@ maybe_copy_file(File, Acc) ->
         _ -> [File | Acc]
     end.
 
--spec is_private(#xmlElement{}) -> boolean().
+-spec is_private(kz_types:xml_el()) -> boolean().
 is_private(E) ->
-    case kz_edoc_layout:get_attrval(private, E) of
+    case kz_xml:get_attrval(private, E) of
         "yes" -> true;
         _ -> false
     end.
 
--spec is_hidden(#xmlElement{}) -> boolean().
+-spec is_hidden(kz_types:xml_el()) -> boolean().
 is_hidden(E) ->
-    case kz_edoc_layout:get_attrval(hidden, E) of
+    case kz_xml:get_attrval(hidden, E) of
         "yes" -> true;
         _ -> false
     end.
@@ -666,7 +666,7 @@ is_hidden(E) ->
 default_context() ->
     init_context(default_edoc_options(), []).
 
--spec default_edoc_options() -> proplists:proplist().
+-spec default_edoc_options() -> kz_term:proplist().
 default_edoc_options() ->
     [{file_suffix, ".html"}
     ,{preprocess, true}
@@ -680,7 +680,7 @@ default_edoc_options() ->
 %% this module functions.
 %% @end
 %%------------------------------------------------------------------------------
--spec init_context(proplists:proplist()) -> map().
+-spec init_context(kz_term:proplist()) -> map().
 init_context(Opts) ->
     init_context(lists:usort(Opts ++ default_edoc_options()), []).
 
@@ -689,7 +689,7 @@ init_context(Opts) ->
 %% then returns a `Context'.
 %% @end
 %%------------------------------------------------------------------------------
--spec init_context(proplists:proplist(), any()) -> map().
+-spec init_context(kz_term:proplist(), any()) -> map().
 init_context(Opts, GenApps) ->
     EDocOpts = [KV
                 || {K, _}=KV <- Opts,
@@ -739,9 +739,9 @@ make_doc_links(GenApps) ->
     App = fun(A) -> maps:get(A, Apps, undefined) end,
     {App, Module}.
 
--spec make_svgs_inline(proplists:proplist()) -> proplists:proplist().
+-spec make_svgs_inline(kz_term:proplist()) -> kz_term:proplist().
 make_svgs_inline(Options) ->
-    TemplateDir = proplists:get_value(kz_template_dir, Options, ?DEFAULT_TEMPLATE_DIR),
+    TemplateDir = props:get_value(kz_template_dir, Options, ?DEFAULT_TEMPLATE_DIR),
     [{K, read_svg_file(TemplateDir, File)} || {K, File} <- ?INLINE_SVGS].
 
 -spec read_svg_file(string(), string()) -> binary().
@@ -753,25 +753,3 @@ read_svg_file(TemplateDir, File) ->
             ?DEV_LOG("failed to read svg file from ~p: ~p", [Path, _Reason]),
             <<>>
     end.
-
--spec log_stacktrace() -> 'ok'.
-log_stacktrace() ->
-    ST = erlang:get_stacktrace(),
-    log_stacktrace(ST).
-
--spec log_stacktrace(list()) -> ok.
-log_stacktrace(ST) ->
-    log_stacktrace(ST, "", []).
-
-log_stacktrace(ST, Fmt, Args) ->
-    ?DEV_LOG("stacktrace: " ++ Fmt, Args),
-    _ = [log_stacktrace_mfa(M, F, A, Info)
-         || {M, F, A, Info} <- ST
-        ],
-    'ok'.
-
-log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    ?DEV_LOG("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
-log_stacktrace_mfa(M, F, Args, Info) ->
-    ?DEV_LOG("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    lists:foreach(fun (Arg) -> ?DEV_LOG("args: ~p", [Arg]) end, Args).

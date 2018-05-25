@@ -99,7 +99,7 @@
 
 %% XML types
 -type xml_attrib_name() :: atom().
--type xml_attrib_value() :: kz_term:ne_binary() | nonempty_string() | iolist() | atom() | number().
+-type xml_attrib_value() :: binary() | string() | iolist() | atom() | number().
 -type xml_attrib() :: #xmlAttribute{}.
 -type xml_attribs() :: [xml_attrib()].
 
