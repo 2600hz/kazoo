@@ -1230,7 +1230,7 @@ seq(F, [E | Es], Sep, Tail) ->
 seq(_F, [], _Sep, Tail) ->
     Tail.
 
--spec filter_empty([{atom(), list() | iolist() | binary()}]) -> [{atom(), list() | iolist() | binary() | tuple()}].
+-spec filter_empty([{atom(), list() | iolist() | binary()}]) -> [{atom(), list() | iolist() | binary() | tuple() | atom() | boolean()}].
 filter_empty(Props) ->
     [P || P <- Props, is_not_empty(P)].
 
