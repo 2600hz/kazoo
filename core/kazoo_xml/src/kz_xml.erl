@@ -51,6 +51,8 @@ get_attrs(#xmlElement{attributes = Attribs}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_attr(atom(), kz_types:xml_attribs() | kz_types:xml_el()) -> kz_types:xml_attribs().
+get_attr(_, []) ->
+    [];
 get_attr(Name, [#xmlAttribute{}|_]=Attributes) ->
     [Atr || #xmlAttribute{name = N} = Atr <- Attributes, N =:= Name];
 get_attr(Name, #xmlElement{attributes = Attribs}) ->
