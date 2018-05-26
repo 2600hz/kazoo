@@ -47,7 +47,7 @@ create_conference(DiscoveryReq, Call, ConferenceId) ->
 cleanup_conference_doc(DiscoveryReq) ->
     cleanup_conference_doc(DiscoveryReq, kz_json:get_json_value(<<"Conference-Doc">>, DiscoveryReq)).
 
--spec cleanup_conference_doc(kapi_conference:discovery_req(), kzd_conferenced:doc() | 'undefined') -> kapi_conference:discovery_req().
+-spec cleanup_conference_doc(kapi_conference:discovery_req(), kzd_conferences:doc() | 'undefined') -> kapi_conference:discovery_req().
 cleanup_conference_doc(DiscoveryReq, 'undefined') -> DiscoveryReq;
 cleanup_conference_doc(DiscoveryReq, ConferenceDoc) ->
     kz_json:set_value(<<"Conference-Doc">>, kz_doc:public_fields(ConferenceDoc), DiscoveryReq).
