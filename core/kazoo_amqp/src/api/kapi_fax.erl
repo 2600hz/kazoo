@@ -66,6 +66,7 @@
                                      ,<<"Account-ID">>, <<"Fax-Info">>
                                      ,<<"Cloud-Job-ID">>, <<"Cloud-Printer-ID">>
                                      ,<<"Fax-State">>, <<"Direction">>, <<"Page">>
+                                     ,<<"Stage">>
                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
                                      ,<<"Callee-ID-Number">>, <<"Callee-ID-Name">>
                                      ]).
