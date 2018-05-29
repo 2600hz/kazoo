@@ -1088,7 +1088,7 @@ send_control_status(CtrlQ, Q, JobId, FaxState, Stage) ->
 
 -spec handle_start_job(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_start_job(JObj, _Props) ->
-    'true' = kapi_fax:start_job_v(JObj),    
+    'true' = kapi_fax:start_job_v(JObj),
     case fax_worker_sup:start_fax_job(JObj) of
         {'error', _Reason} ->
             JobId = kapi_fax:job_id(JObj),
