@@ -967,8 +967,8 @@ send_fax(JobId, JObj, Q) ->
 -spec maybe_ensure_valid_caller_id(kz_json:object(), function()) -> 'ok'.
 maybe_ensure_valid_caller_id(JObj, SendFax) ->
     case kz_json:is_true(?ENSURE_CID_KEY, JObj, ?DEFAULT_ENSURE_CID) of
-        'true' -> SendFax();
-        'false' -> ensure_valid_caller_id(JObj, SendFax)
+        'false' -> SendFax();
+        'true' -> ensure_valid_caller_id(JObj, SendFax)
     end.
 
 -spec ensure_valid_caller_id(kz_json:object(), function()) -> 'ok'.
