@@ -14270,6 +14270,9 @@
                 "Page": {
                     "type": "string"
                 },
+                "Stage": {
+                    "type": "string"
+                },
                 "Status": {
                     "type": "string"
                 }
