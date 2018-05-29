@@ -49,6 +49,7 @@
                ,stage :: api_binary()
                ,resp :: api_object()
                ,move_retry = 0 :: integer()
+               ,error :: kz_term:api_ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -159,6 +160,7 @@ init([FaxJob, CallId]) ->
                  ,job_id = JobId
                  ,account_id = kapi_fax:account_id(FaxJob)
                  ,controller = CtrlQ
+                 ,stage = ?FAX_ACQUIRE
                  }
     }.
 
@@ -276,6 +278,7 @@ handle_cast({'query_status', JobId, Queue, MsgId, _JObj}, State) ->
 handle_cast('attempt_transmission', #state{job_id = JobId
                                           ,queue_name=Q
                                           ,controller=CtrlQ
+                                          ,stage=Stage
                                           }=State) ->
     case attempt_to_acquire_job(JobId, Q) of
         {'ok', JObj} ->
@@ -285,16 +288,16 @@ handle_cast('attempt_transmission', #state{job_id = JobId
                                   ,status = Status
                                   ,page = 0
                                   ,fax_status = 'undefined'
-                                  ,stage = ?FAX_ACQUIRE
+                                  ,stage = ?FAX_PREPARE
                                   },
             send_status(NewState, <<"job acquired">>, ?FAX_START, 'undefined'),
-            send_control_status(CtrlQ, Q, JobId, ?FAX_START),
+            send_control_status(CtrlQ, Q, JobId, ?FAX_START, Stage),
             gen_server:cast(self(), 'prepare_job'),
             {'noreply', NewState};
         {'error', Reason} ->
             lager:debug("failed to acquire job ~s: ~p", [JobId, Reason]),
-            gen_server:cast(self(), 'stop'),
-            {'noreply', State}
+            gen_server:cast(self(), 'error'),
+            {'noreply', State#state{error=kz_term:to_binary(Reason)}}
     end;
 handle_cast('prepare_job', #state{job_id=JobId
                                  ,job=JObj
@@ -373,7 +376,7 @@ handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     lager:debug("fax worker is consuming : ~p", [_IsConsuming]),
     {'noreply', State};
-handle_cast('stop', #state{stage='undefined'} = State) ->
+handle_cast('error', State) ->
     {'stop', 'normal', State};
 handle_cast('stop', State) ->
     gen_listener:cast(self(), 'move_doc'),
@@ -450,17 +453,17 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, #state{stage='undefined'}) ->
-    lager:debug("fax worker ~p terminated on undefined stage: ~p", [self(), _Reason]);
-terminate('normal' = _Reason, #state{stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
+terminate('normal' = _Reason, #state{error=Error, stage=Stage, job_id=JobId, controller=CtrlQ})
+  when Error =/= 'undefined' ->
     lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]),
-    send_control_status(CtrlQ, Q, JobId, ?FAX_END),
+    send_control_error(JobId, CtrlQ, Stage, Error);
+terminate('normal' = _Reason, #state{stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
+    send_control_status(CtrlQ, Q, JobId, ?FAX_END, Stage),
     lager:debug("fax worker ~p terminated on stage ~s with reason : ~p", [self(), Stage, _Reason]);
 terminate(_Reason, #state{job=JObj, stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
-    lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]),
     JObj1 = kz_json:set_value(<<"retries">>, 0, JObj),
     _ = release_failed_job('uncontrolled_termination', 'undefined', JObj1),
-    send_control_status(CtrlQ, Q, JobId, ?FAX_END),
+    send_control_status(CtrlQ, Q, JobId, ?FAX_END, Stage),
     lager:debug("fax worker ~p terminated on stage ~s with reason : ~p", [self(), Stage, _Reason]).
 
 %%--------------------------------------------------------------------
@@ -657,7 +660,11 @@ release_job(Result, JObj) ->
 -spec release_job(kz_proplist(), kz_json:object(), kz_json:object()) -> release_ret().
 release_job(Result, JObj, Resp) ->
     Success = props:is_true(<<"success">>, Result, 'false'),
-    Updaters = [fun(J) -> kz_json:set_value(<<"tx_result">>, kz_json:from_list(Result), J) end
+    Updaters = [fun(J) ->
+                        Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
+                        kz_json:set_value(<<"attempts">>, Attempts + 1, J)
+                end
+               ,fun(J) -> kz_json:set_value(<<"tx_result">>, kz_json:from_list(Result), J) end
                ,fun(J) -> kz_json:delete_key(<<"pvt_queue">>, J) end
                ,fun apply_reschedule_logic/1
                ,fun(J) ->
@@ -675,12 +682,8 @@ release_job(Result, JObj, Resp) ->
                                 kz_json:set_value(<<"pvt_job_status">>, <<"failed">>, J)
                         end
                 end
-               ,fun(J) ->
-                        Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
-                        kz_json:set_value(<<"attempts">>, Attempts + 1, J)
-                end
                ],
-    Update = lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters),
+    Update = lists:foldl(fun(F, J) -> F(J) end, JObj, Updaters),
     {'ok', Saved} = kz_datamgr:ensure_saved(?KZ_FAXES_DB, Update),
     {Resp, Saved}.
 
@@ -964,8 +967,8 @@ send_fax(JobId, JObj, Q) ->
 -spec maybe_ensure_valid_caller_id(kz_json:object(), function()) -> 'ok'.
 maybe_ensure_valid_caller_id(JObj, SendFax) ->
     case kz_json:is_true(?ENSURE_CID_KEY, JObj, ?DEFAULT_ENSURE_CID) of
-        'false' -> SendFax();
-        'true' -> ensure_valid_caller_id(JObj, SendFax)
+        'true' -> SendFax();
+        'false' -> ensure_valid_caller_id(JObj, SendFax)
     end.
 
 -spec ensure_valid_caller_id(kz_json:object(), function()) -> 'ok'.
@@ -1109,10 +1112,11 @@ send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
                 ]),
     kapi_fax:publish_targeted_status(Q, Payload).
 
--spec send_control_status(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_control_status(CtrlQ, Q, JobId, FaxState) ->
+-spec send_control_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+send_control_status(CtrlQ, Q, JobId, FaxState, Stage) ->
     Payload = [{<<"Job-ID">>, JobId}
               ,{<<"Fax-State">>, FaxState}
+              ,{<<"Stage">>, Stage}
                | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ],
     Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
@@ -1121,7 +1125,24 @@ send_control_status(CtrlQ, Q, JobId, FaxState) ->
 -spec handle_start_job(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_start_job(JObj, _Props) ->
     'true' = kapi_fax:start_job_v(JObj),
-    fax_worker_sup:start_fax_job(JObj).
+    case fax_worker_sup:start_fax_job(JObj) of
+        {'error', _Reason} ->
+            JobId = kapi_fax:job_id(JObj),
+            CtrlQ = kz_api:server_id(JObj),
+            send_control_error(JobId, CtrlQ, <<"start">>, <<"already running">>);
+        _ -> 'ok'
+    end.
+
+-spec send_control_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+send_control_error(JobId, CtrlQ, Stage, Reason) ->
+    Payload = [{<<"Job-ID">>, JobId}
+              ,{<<"Fax-State">>, <<"error">>}
+              ,{<<"Stage">>, Stage}
+              ,{<<"Status">>, Reason}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
+    kz_amqp_worker:cast(Payload, Publisher).
 
 -spec validate_tiff(ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
 validate_tiff(Filename) ->

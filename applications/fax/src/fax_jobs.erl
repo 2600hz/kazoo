@@ -57,7 +57,7 @@
 
 -define(SERVER(AccountId), {'via', 'kz_globals', ?FAX_OUTBOUND_SERVER(AccountId)}).
 
--define(JOB_STATUS(J), {'job_status', {kapi_fax:job_id(J), kapi_fax:state(J), kz_api:server_id(J)}}).
+-define(JOB_STATUS(J), {'job_status', {kapi_fax:job_id(J), kapi_fax:state(J), J}}).
 
 %%%===================================================================
 %%% API
@@ -137,12 +137,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
 %% @end
-%%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending := Pending
-                                                                        ,running := Running
-                                                                        }=Jobs
-                                                                 }=State) ->
+%%------------------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast({'job_status',{JobId, <<"start">>, JObj}}, #state{jobs=#{pending := Pending
+                                                                    ,running := Running
+                                                                    }=Jobs
+                                                             }=State) ->
+    ServerId = kz_api:server_id(JObj),
     #{JobId := #{number := Number}} = Pending,
     {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
                                       ,running => Running#{JobId => #{number => Number
@@ -153,11 +154,12 @@ handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending
                                       }
                            }, ?POLLING_INTERVAL
     };
-handle_cast({'job_status',{JobId, <<"end">>, ServerId}}, #state{jobs=#{pending := Pending
-                                                                      ,running := Running
-                                                                      ,numbers := Numbers
-                                                                      }=Jobs
-                                                               }=State) ->
+handle_cast({'job_status',{JobId, <<"end">>, JObj}}, #state{jobs=#{pending := Pending
+                                                                  ,running := Running
+                                                                  ,numbers := Numbers
+                                                                  }=Jobs
+                                                           }=State) ->
+    ServerId = kz_api:server_id(JObj),
     #{JobId := #{queue := ServerId
                 ,number := Number
                 }
@@ -168,6 +170,10 @@ handle_cast({'job_status',{JobId, <<"end">>, ServerId}}, #state{jobs=#{pending :
                                       }
                            }, ?POLLING_INTERVAL
     };
+handle_cast({'job_status',{JobId, <<"error">>, JObj}}, #state{jobs=Jobs
+                                                             ,account_id=AccountId
+                                                             }=State) ->
+    {'noreply', State#state{jobs=handle_error(JobId, AccountId, JObj, Jobs)}, ?POLLING_INTERVAL};
 handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#state{queue=Queue}, ?POLLING_INTERVAL};
 handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
@@ -314,6 +320,7 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
             Start = kz_time:now_ms(),
             distribute_jobs(State#state{jobs=Map#{pending => Pending#{JobId => #{number => ToNumber
                                                                                 ,start => Start
+                                                                                ,job => Job
                                                                                 }
                                                                      }
                                                  ,numbers => Numbers#{ToNumber => JobId}
@@ -431,3 +438,31 @@ cleanup_jobs(AccountId) ->
             'ok';
         {'error', _R} -> lager:debug("unable to cleanup account_id ~s fax jobs: ~p", [AccountId, _R])
     end.
+
+-spec handle_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+handle_error(JobId, AccountId, JObj, #{pending := Pending
+                                      ,numbers := Numbers
+                                      ,serialize := Serialize
+                                      } = Jobs) ->
+    Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
+    Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
+    case kz_maps:get([JobId, job], Pending, 'undefined') of
+        'undefined' ->
+            lager:warning("received error on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
+            Jobs;
+        Job ->
+            Number = knm_converters:normalize(number(Job), AccountId),
+            lager:warning("received error for fax job ~s/~s/~s on stage ~p: ~p", [AccountId, JobId, Number, Stage, Status]),
+            Jobs#{pending => maps:remove(JobId, Pending)
+                 ,numbers => maps:remove(Number, Numbers)
+                 ,serialize => Serialize ++ maybe_serialize(Status, Stage, JobId, AccountId, Job)
+                 }
+    end.
+
+-spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:objects().
+maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, _Job) ->
+    lager:debug("dropping job ~s/~s from cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
+    [];
+maybe_serialize(Status, Stage, JobId, AccountId, Job) ->
+    lager:debug("serializing job ~s/~s into cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
+    [Job].
