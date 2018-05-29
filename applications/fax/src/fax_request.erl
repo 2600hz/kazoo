@@ -461,6 +461,9 @@ end_receive_fax(JObj, #state{call=Call}=State) ->
     end.
 
 -spec end_receive_fax(state()) -> handle_cast_return().
+end_receive_fax(#state{page=Page, fax_result=JObj}=State) when Page =:= 0 ->
+    notify_failure(JObj, State),
+    {'stop', 'normal', State};
 end_receive_fax(#state{}=State) ->
     {'noreply', State#state{monitor=store_document(State)}}.
 
