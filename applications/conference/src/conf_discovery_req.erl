@@ -40,8 +40,17 @@ create_conference(DiscoveryReq, Call, ConferenceId) ->
             kapps_conference:set_call(Call, kapps_conference:from_json(WithConferenceDoc));
         _Else ->
             lager:debug("could not find specified conference id ~s: ~p", [ConferenceId, _Else]),
-            kapps_conference:set_call(Call, kapps_conference:from_json(DiscoveryReq))
+            kapps_conference:set_call(Call, kapps_conference:from_json(cleanup_conference_doc(DiscoveryReq)))
     end.
+
+-spec cleanup_conference_doc(kapi_conference:discovery_req()) -> kapi_conference:discovery_req().
+cleanup_conference_doc(DiscoveryReq) ->
+    cleanup_conference_doc(DiscoveryReq, kz_json:get_json_value(<<"Conference-Doc">>, DiscoveryReq)).
+
+-spec cleanup_conference_doc(kapi_conference:discovery_req(), kzd_conferences:doc() | 'undefined') -> kapi_conference:discovery_req().
+cleanup_conference_doc(DiscoveryReq, 'undefined') -> DiscoveryReq;
+cleanup_conference_doc(DiscoveryReq, ConferenceDoc) ->
+    kz_json:set_value(<<"Conference-Doc">>, kz_doc:public_fields(ConferenceDoc), DiscoveryReq).
 
 -spec maybe_welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
 maybe_welcome_to_conference(Srv, Conference) ->
