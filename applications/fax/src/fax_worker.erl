@@ -634,6 +634,7 @@ release_job(Result, JObj, Resp) ->
                ,fun(J) ->
                         Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
                         Retries = kz_json:get_integer_value(<<"retries">>, J, 1),
+                        lager:debug("releasing job with retries: ~i attempts: ~i", [Retries, Attempts]),
                         case Retries - Attempts >= 1 of
                             _ when Success ->
                                 lager:debug("releasing job with status: completed"),
