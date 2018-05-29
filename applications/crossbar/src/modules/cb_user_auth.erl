@@ -101,26 +101,43 @@ authorize_nouns(Context
                 ]
                ,?HTTP_PUT
                ) ->
-    case cb_context:auth_account_id(Context) =/= AccountId
+    case cb_context:auth_account_id(Context) =/= 'undefined'
+        andalso cb_context:auth_user_id(Context) =/= 'undefined'
+        andalso cb_context:auth_account_id(Context) =/= AccountId
         andalso cb_context:is_superduper_admin(Context)
         andalso cb_context:is_account_admin(Context)
     of
-        'true' -> 'true';
+        'true' ->
+            lager:debug("authorizing request"),
+            'true';
         'false' ->
             lager:error("non-admin user ~s in non super-duper admin account tries to impersonate user ~s in account ~s"
                        ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context), UserId, AccountId]
                        ),
             {'stop', cb_context:add_system_error('forbidden', Context)}
     end;
-authorize_nouns(Context, _, ?HTTP_PUT) ->
+authorize_nouns(_Context, [{<<"user_auth">>, [?RECOVERY]}], Method) when Method =:= ?HTTP_POST;
+                                                                         Method =:= ?HTTP_PUT ->
+    %% allow recovery
+    lager:debug("authorizing request"),
+    'true';
+authorize_nouns(Context, [{<<"user_auth">>, []}], ?HTTP_PUT) ->
     case cb_context:req_value(Context, <<"action">>) of
-        %% do not allow if no user/account is set
+        'undefined' ->
+            %% allow user auth
+            lager:debug("authorizing request"),
+            'true';
         ?SWITCH_USER ->
-            lager:error("not authorizing user impersonation when invalid user or account are provided"),
+            %% do not allow if no user/account is set
+            lager:error("not authorizing user impersonation when no user or account are provided"),
             {'stop', cb_context:add_system_error('forbidden', Context)};
-        _ -> 'true'
+        _ ->
+            %% disallow other actions
+            'false'
     end;
-authorize_nouns(_, [{<<"user_auth">>, _}], _) -> 'true';
+authorize_nouns(_, [{<<"user_auth">>, [_AuthToken]}], ?HTTP_GET) ->
+    lager:debug("authorizing request"),
+    'true';
 authorize_nouns(_, _Nouns, _) -> 'false'.
 
 %%------------------------------------------------------------------------------
@@ -133,7 +150,6 @@ authenticate(Context) ->
 
 authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
-authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _ResetId]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%------------------------------------------------------------------------------
