@@ -276,7 +276,9 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
                                            }=Map
                                     }=State) ->
     JobId = kz_doc:id(Job),
-    case maps:is_key(ToNumber, Numbers) of
+    case ?SERIALIZE_OUTBOUND_NUMBER
+         andalso maps:is_key(ToNumber, Numbers)
+    of
         'true' -> distribute_jobs(State#state{jobs=Map#{serialize => [Job | Serialize]}});
         'false' ->
             Payload = [{<<"Job-ID">>, JobId}
@@ -294,6 +296,7 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
                                                  ,numbers => Numbers#{ToNumber => JobId}
                                                  }})
     end.
+
 
 -spec handle_start_account(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_start_account(JObj, _Props) ->
