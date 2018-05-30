@@ -277,7 +277,7 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
                                     }=State) ->
     JobId = kz_doc:id(Job),
     case ?SERIALIZE_OUTBOUND_NUMBER
-         andalso maps:is_key(ToNumber, Numbers)
+        andalso maps:is_key(ToNumber, Numbers)
     of
         'true' -> distribute_jobs(State#state{jobs=Map#{serialize => [Job | Serialize]}});
         'false' ->
