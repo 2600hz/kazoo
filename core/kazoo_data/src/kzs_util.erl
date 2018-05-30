@@ -79,6 +79,7 @@ db_classification(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 'account';
 db_classification(?MATCH_PROVISIONER_RAW(_AccountId)) -> 'provisioner';
 db_classification(?MATCH_PROVISIONER_ENCODED(_AccountId)) -> 'provisioner';
 db_classification(?MATCH_PROVISIONER_encoded(_AccountId)) -> 'provisioner';
+db_classification(<<"cache_load_tests">>) -> 'external';
 db_classification(_Database) ->
     lager:warning("unknown type for database ~s", [_Database]),
     {current_stacktrace, ST} = erlang:process_info(self(),current_stacktrace),

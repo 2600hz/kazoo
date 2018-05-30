@@ -15,10 +15,14 @@
         ,flush_cache_docs/1
         ,flush_cache_docs/2
         ,flush_cache_docs/3
+        ,load_test/0
+        ,load_test/1
         ]).
 
 
 -include("kz_data.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_amqp/include/kz_amqp.hrl").
 
 -define(DEFAULT_NO_CACHING_TYPES, [<<"media">>, <<"private_media">>, <<"call_recording">>
                                   ,<<"fax">>, <<"mailbox_message">>
@@ -262,3 +266,49 @@ flush_cache_docs(Db, Docs, Options) ->
          || Doc <- Docs
         ],
     'ok'.
+
+-spec load_test() -> 'true'.
+load_test() ->
+    load_test(1000).
+
+-spec load_test(MaxAgents::pos_integer()) -> 'true'.
+load_test(MaxAgents) when MaxAgents > 0 ->
+    DbName = 'cache_load_tests',
+    Spawns =
+        case kz_datamgr:db_create(DbName) of
+            'true' ->
+                [spawn_monitor(fun() -> load_test_agent(DbName) end)
+                 || _  <- lists:seq(1, MaxAgents)];
+            _ ->
+                lager:debug("Error trying to create *~p* db, stopping test", [DbName]),
+                []
+        end,
+    ok = wait_for(Spawns),
+    'true' = kz_datamgr:db_delete(DbName).
+
+-spec load_test_agent(DbName::kz_term:text()) -> {pid(), reference()}.
+load_test_agent(DbName) ->
+    %% Create the doc
+    Value = kz_binary:rand_hex(5),
+    JObj = kz_json:from_list([{<<"value">>, Value}]),
+    {ok, SavedDoc} = kz_datamgr:save_doc(DbName, JObj),
+    %% Give some time so the doc gets cached
+    ok = timer:sleep(rand:uniform(900) + 100),
+    %% Update cached doc
+    Id = kz_json:get_ne_binary_value(<<"_id">>, SavedDoc),
+    NewValue = kz_binary:rand_hex(5),
+    UpdateFun = fun(SavedJObj) -> kz_json:set_value(<<"value">>, NewValue, SavedJObj) end,
+    {ok, _UpdatedDoc} = kz_datamgr:update_cache_doc(DbName, Id, UpdateFun),
+    ok.
+
+-spec wait_for([] | [{pid(), reference()}]) -> 'ok' | 'no_return'.
+wait_for([]) ->
+    ok;
+wait_for([{Pid, Ref} | Spawns]) ->
+    receive
+        {'DOWN', Ref, process, Pid, normal} ->
+            wait_for(Spawns)
+        after 180000 ->
+            lager:info("~p failed to return, ~p workers left.", [Pid, length(Spawns)]),
+            exit("Failed to return")
+    end.
