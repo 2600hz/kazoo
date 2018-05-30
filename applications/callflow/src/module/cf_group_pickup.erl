@@ -66,7 +66,7 @@ maybe_allowed_to_intercept(Data, Call) ->
                 UserId -> maybe_belongs_to_user(UserId, Call)
             end;
         DeviceId ->
-                                                % Compare approved device_id with calling one
+            %% Compare approved device_id with calling one
             DeviceId == kapps_call:authorizing_id(Call)
     end.
 
