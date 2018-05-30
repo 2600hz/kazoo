@@ -29113,6 +29113,11 @@
                     "description": "fax reschedule",
                     "type": "object"
                 },
+                "serialize_outbound_numbers": {
+                    "default": true,
+                    "description": "fax serialize_outbound_numbers",
+                    "type": "boolean"
+                },
                 "smtp_max_msg_size": {
                     "default": 10485670,
                     "description": "fax smtp maximum msg size",
