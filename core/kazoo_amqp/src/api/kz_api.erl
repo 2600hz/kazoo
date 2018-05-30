@@ -285,7 +285,6 @@ do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
 
 -spec is_empty(any()) -> boolean().
 is_empty('undefined') -> 'true';
-is_empty([]) -> 'true';
 is_empty(<<>>) -> 'true';
 is_empty(_) -> 'false'.
 
