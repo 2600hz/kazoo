@@ -237,7 +237,7 @@ set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
     lists:foldl(fun({_, V}, PropAcc) when is_list(V) ->
                         PropAcc;
                    ({K, _}=KV, PropAcc) ->
-                        case is_empty(props:get_value(K, Prop)) of
+                        case should_strip_from_payload(props:get_value(K, Prop)) of
                             'true' -> [ KV | PropAcc ];
                             'false' -> PropAcc
                         end
@@ -267,7 +267,7 @@ do_empty_value_removal([{?KEY_SERVER_ID,_}=KV|T], Recursive, Acc) ->
 do_empty_value_removal([{?KEY_MSG_ID,_}=KV|T], Recursive, Acc) ->
     do_empty_value_removal(T, Recursive, [KV|Acc]);
 do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
-    case is_empty(V) of
+    case should_strip_from_payload(V) of
         'true' -> do_empty_value_removal(T, Recursive, Acc);
         'false' ->
             case (kz_json:is_json_object(V)
@@ -283,10 +283,10 @@ do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
             end
     end.
 
--spec is_empty(any()) -> boolean().
-is_empty('undefined') -> 'true';
-is_empty(<<>>) -> 'true';
-is_empty(_) -> 'false'.
+-spec should_strip_from_payload(any()) -> boolean().
+should_strip_from_payload('undefined') -> 'true';
+should_strip_from_payload(<<>>) -> 'true';
+should_strip_from_payload(_) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Extract just the default headers from a message
