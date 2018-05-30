@@ -227,7 +227,7 @@ handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
 handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
     Data = kz_call_event:application_data(JObj),
     TransferRate = kz_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
-    lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
+    lager:debug("fax status - negotiate result - ~s : ~p",[JobId, TransferRate]),
     Status = list_to_binary(["Fax negotiated at ", kz_term:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status
@@ -679,7 +679,7 @@ release_job(Result, JObj, Resp) ->
                ,fun(J) ->
                         Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
                         Retries = kz_json:get_integer_value(<<"retries">>, J, 1),
-                        lager:debug("releasing job with retries: ~i attempts: ~i", [Retries, Attempts]),
+                        lager:debug("releasing job with retries: ~b attempts: ~b", [Retries, Attempts]),
                         case Retries - Attempts >= 1 of
                             _ when Success ->
                                 lager:debug("releasing job with status: completed"),

@@ -167,7 +167,7 @@ handle_cast('start_action', #state{call=_Call
 handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
     TransferRate = kz_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
-    lager:debug("fax status - negociate result - ~s : ~p",[State#state.fax_id, TransferRate]),
+    lager:debug("fax status - negotiate result - ~s : ~p",[State#state.fax_id, TransferRate]),
     Status = list_to_binary(["fax negotiated at ", kz_term:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status
