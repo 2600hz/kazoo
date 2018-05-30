@@ -43,6 +43,8 @@
         ,always_true/1, always_false/1
         ]).
 
+-export([is_only_whitespace/1]).
+
 -export([a1hash/3, floor/1, ceiling/1]).
 
 -type text() :: string() | atom() | binary() | iolist().
@@ -539,3 +541,16 @@ error_to_binary(Reason) ->
 -spec words_to_bytes(integer()) -> integer().
 words_to_bytes(Words) ->
     Words * erlang:system_info('wordsize').
+
+-spec is_only_whitespace(string() | binary()) -> boolean().
+is_only_whitespace(<<>>) -> 'true';
+is_only_whitespace(<<$\s, Rest/binary>>) -> is_only_whitespace(Rest);
+is_only_whitespace(<<$\t, Rest/binary>>) -> is_only_whitespace(Rest);
+is_only_whitespace(<<$\r, Rest/binary>>) -> is_only_whitespace(Rest);
+is_only_whitespace(<<$\n, Rest/binary>>) -> is_only_whitespace(Rest);
+is_only_whitespace([]) -> 'true';
+is_only_whitespace([$\s | C]) -> is_only_whitespace(C);
+is_only_whitespace([$\t | C]) -> is_only_whitespace(C);
+is_only_whitespace([$\r | C]) -> is_only_whitespace(C);
+is_only_whitespace([$\n | C]) -> is_only_whitespace(C);
+is_only_whitespace(_) -> 'false'.

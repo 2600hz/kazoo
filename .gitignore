@@ -61,6 +61,9 @@ compile_commands.json
 /doc/blog/.org/*.csv
 /doc/blog/.org/*.shell
 
+doc/edoc
+edoc-info
+
 /applications/tasks/src/modules/kt_rates.hrl
 /applications/tasks/src/task_modules.hrl
 

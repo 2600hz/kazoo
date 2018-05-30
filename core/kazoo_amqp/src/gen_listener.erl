@@ -1,11 +1,12 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Behaviour for setting up an AMQP listener.
+%%%
 %%% Add/remove responders for `Event-Cat'/`Event-Name' pairs. Each responder
 %%% corresponds to a module that has defined a `handle/1' function, receiving
 %%% the {@link kz_json:object()} from the AMQP request.
 %%%
-%%% Options:
+%%% <h3>Options</h3>
 %%% <dl>
 %%%   <dt>`{bindings, [{atom(), kz_term:proplist()}, ...]}'</dt>
 %%%   <dd>The type of bindings, with optional properties to pass along.</dd>

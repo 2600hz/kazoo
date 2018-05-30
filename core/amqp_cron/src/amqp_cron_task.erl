@@ -22,21 +22,25 @@
 %%% A oneshot schedule executes a task once after sleeping a specified
 %%% number of milliseconds or at a given datetime.
 %%%
-%%% <code>
-%%% {oneshot, 60000} % execute task once after waiting a minute<br />
+%%% ```
+%%% {oneshot, 60000} % execute task once after waiting a minute
 %%% {oneshot, {{2012, 2, 23}, {1, 0, 0}}} % execute task on Feb 23, 2012 at 1 am
-%%% </code>
+%%% '''
 %%%
 %%% A sleeper mode schedule repeatedly executes a task then sleeps for a
 %%% specified number of milliseconds before repeating the task.
 %%%
-%%% <code>{sleeper, 5000} % execute task then wait 5 seconds before the
-%%% next execution</code>
+%%% ```
+%%% {sleeper, 5000} % execute task then wait 5 seconds before the
+%%% next execution
+%%% '''
 %%%
 %%% A cron mode schedule acts similarly to Unix cron. The schedule is
 %%% defined by the cron tuple
 %%%
-%%% <code>{cron, {Minute, Hour, DayOfMonth, Month, DayOfWeek}}</code>
+%%% ```
+%%% {cron, {Minute, Hour, DayOfMonth, Month, DayOfWeek}}
+%%% '''
 %%%
 %%% The valid range of values for these fields are
 %%%

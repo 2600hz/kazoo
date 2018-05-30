@@ -6,7 +6,12 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_xml).
 
--export([elements/1, elements/2
+-export([elements/1
+        ,get_elem/2
+        ,get_attr/2 ,get_attrs/1
+        ,get_attrval/1, get_attrval/2
+        ,get_content/1, get_content/2
+        ,get_textval/1, get_textval/2
         ,texts_to_binary/1, texts_to_binary/2
         ,attributes_to_proplist/1
         ,filter_empty_text/1
@@ -17,11 +22,100 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
+%%------------------------------------------------------------------------------
+%% @doc Get all `#xmlElement{}' from list `Els'.
+%% @end
+%%------------------------------------------------------------------------------
 -spec elements(list()) -> kz_types:xml_els().
 elements(Els) -> [El || #xmlElement{}=El <- Els].
 
--spec elements(list(), atom()) -> kz_types:xml_els().
-elements(Els, Name) -> [El || #xmlElement{name=N}=El <- Els, N =:= Name].
+%%------------------------------------------------------------------------------
+%% @doc Get `#xmlElement{}' by name from a list of elements.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_elem(atom(), kz_types:xml_els()) -> kz_types:xml_els().
+get_elem(Name, Els) ->
+    [El || #xmlElement{name = N} = El <- Els, N =:= Name].
+
+%%------------------------------------------------------------------------------
+%% @doc Extract element's attributes from `#xmlElement{}' record.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_attrs(kz_types:xml_el()) -> kz_types:xml_attribs().
+get_attrs(#xmlElement{attributes = Attribs}) ->
+    Attribs.
+
+%%------------------------------------------------------------------------------
+%% @doc Get `#xmlAttribute{}' by name from a list of attributes or element's
+%% list of attributes.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_attr(atom(), kz_types:xml_attribs() | kz_types:xml_el()) -> kz_types:xml_attribs().
+get_attr(_, []) ->
+    [];
+get_attr(Name, [#xmlAttribute{}|_]=Attributes) ->
+    [Atr || #xmlAttribute{name = N} = Atr <- Attributes, N =:= Name];
+get_attr(Name, #xmlElement{attributes = Attribs}) ->
+    get_attr(Name, Attribs).
+
+%%------------------------------------------------------------------------------
+%% @doc Extract attribute value from `#xmlAttribute{}' record.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_attrval(kz_types:xml_attrib()) -> kz_types:xml_attrib_value().
+get_attrval(#xmlAttribute{value = Value}) ->
+    Value.
+
+%%------------------------------------------------------------------------------
+%% @doc Get value of the attribute with name `Name' from element's attributes.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_attrval(atom(), kz_types:xml_el()) -> kz_types:xml_attrib_value().
+get_attrval(Name, #xmlElement{attributes = As}) ->
+    case get_attr(Name, As) of
+        [#xmlAttribute{value = Value}] -> Value;
+        [] -> ""
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Extract content of element from `#xmlElement{}' record.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_content(kz_types:xml_el()) -> kz_types:xml_els().
+get_content(#xmlElement{content = Els}) ->
+    Els.
+
+%%------------------------------------------------------------------------------
+%% @doc Get first element by name from list and return its content.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_content(atom(), kz_types:xml_els()) -> [#xmlElement{}| #xmlText{} | #xmlPI{} | #xmlComment{} | #xmlDecl{} | any()].
+get_content(Name, Els) ->
+    case get_elem(Name, Els) of
+        [#xmlElement{content = Els1} | _] ->
+            Els1;
+        [] -> []
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Extract value of `#xmlText{}'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_textval(kz_types:xml_text()) -> string() | iolist().
+get_textval(#xmlText{value = Text}) ->
+    Text.
+
+%%------------------------------------------------------------------------------
+%% @doc Get element by name from list and extract its first `#xmlText{}' value.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_textval(atom(), kz_types:xml_els()) -> string() | iolist().
+get_textval(Name, Els) ->
+    case get_content(Name, Els) of
+        [#xmlText{value = Text} | _] ->
+            Text;
+        [] -> ""
+    end.
 
 -spec texts_to_binary(kz_types:xml_texts()) -> binary().
 texts_to_binary([]) -> <<>>;

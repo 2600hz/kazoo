@@ -20,7 +20,7 @@ function check_MODULE {
         base=$(basename "$f")
         [[ 'erl' != ${base##*.} ]] && continue
         local err=0
-        m=$(grep -Fe '-module(' "$f"  2>/dev/null | cut -d'(' -f2 | cut -d')' -f1)
+        m=$(grep -E '^ *\-module\(' "$f"  2>/dev/null | cut -d'(' -f2 | cut -d')' -f1)
         grep -nE '^[^%]*[^a-zA-Z0-9_]'$m[[:space:]]*: "$f"
         [[ $? -ne 1 ]] && ((err++))
         grep -nE "^[^%]*'$m[[:space:]]*:'" "$f"

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Application {{ kz_app_name }} - Kazoo EDoc</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="manifest" href="{{ kz_rel_path }}site.webmanifest">
+    <link rel="apple-touch-icon" href="{{ kz_rel_path }}favicon-180.png">
+
+    <meta name="application-name" content="Kazoo Erlang Reference">
+
+    <link href="https://use.fontawesome.com/releases/v5.0.8/css/all.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/base.css">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/grid.css">
+    <link rel="stylesheet" href="{{ kz_rel_path }}css/main.css">
+</head>
+<body class="">
+    <div class="container-fluid">
+        <header class="row navbar dark">
+            <a class="col-12 col-lg-2 navbar-brand" href="{{ kz_rel_path }}index.html">
+                {{ kz_2600hz_logo_svg_file }}
+            </a>
+            <nav class="col-12 col-lg-6 navbar-nav-container">
+                <ul class="row navbar-nav">
+                    <li class="navbar-item"><a href="https://github.com/2600hz/kazoo"><i class="fab fa-github"></i></a></li>
+                    <li class="navbar-item"><a href="https://2600hz.com/about-us">About</a></li>
+                    <li class="navbar-item"><a href="https://forums.2600hz.com/forums/home/">Community</a></li>
+                    <li class="navbar-item"><a href="https://2600hz.com">Return to 2600Hz</a></li>
+                </ul>
+            </nav>
+        </header>
+    </div>
+    <div class="container-fluid edge-to-edge">
+        <div class="row no-gutters">
+            <aside class="col-12 col-md-3 col-xl-2 sidebar dark">
+                <nav class="sidebar-nav">
+                    <div class="sidebar-brand">
+                        <div class="kz-logo"><img class="img-fluid" src="{{ kz_rel_path }}img/kazoo.svg"></div>
+                        <div>Erlang Reference Manual</div>
+                        <div><small>Version {{ kz_vsn }}</small></div>
+                    </div>
+                    <button class="btn btn-link sidebar-toggle d-md-none" type="button" data-toggle="collapse" data-target="#sb-docs-nav" aria-controls="sb-docs-nav" aria-expanded="false" aria-label="Toggle docs navigation"><span class="fas fa-bars"></span></button>
+                    <ul id="sb-docs-nav" class="nav collapse">
+                        <li class="nav-item"><a class="nav-head" href="{{ kz_rel_path }}index{{ file_suffix }}">Overview</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo#who-can-contribute">Contribute</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://github.com/2600hz/kazoo/blob/master/doc/installation.md">Installation Guide</a></li>
+                        <li class="nav-item"><a class="nav-head" href="https://docs.2600hz.com/dev/">Crossbar REST API Reference</a></li>{% if kz_sidebar_apps %}
+                        <form class="side-search">
+                            <input type="search" class="form-control" id="side-search-input-1" placeholder="Search..." autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" dir="auto" style="position: relative; vertical-align: top;">
+                        </form>
+                        {% for appcat, apps in kz_sidebar_apps %}{% if apps %}
+                        <li class="nav-item nav-kz-apps">
+                            <span class="nav-head">{% ifequal appcat "core" %}Core{% else %}Kazoo{% endifequal %} Applications</span>
+                            <ul class="nav-apps">
+                            {% for app, modules in apps %}
+                                <li id="nav-kz-app-{{ app }}" class="entry-app{% ifequal app kz_app_name %} active{% endifequal %}">
+                                    <a class="nav-app-head" href="{{ kz_rel_path }}{{ kz_apps_uri }}/{{ app }}/index{{ file_suffix }}">{{ app }}</a>
+                                    <span class="fas fa-fw toggle-collapse side-toggle" data-target="#nav-am-{{ app }}" data-parent=".nav-kz-apps"></span>
+                                    <ul id="nav-am-{{ app }}" class="nav-mods collapse{% ifequal app kz_app_name %} show{% endifequal %}">
+                                        <li id="nav-app-index" class="entry-module"></li>
+                                        {% for module, desc, link in modules %}
+                                        <li id="nav-mod-{{ module }}" class="entry-module{% ifequal module kz_mod_name %} active{% endifequal %}">
+                                            <a class="text-truncate" title="Module {{ module }}" href="{{ kz_rel_path }}{{ link }}">{{ module }}</a>{% if desc %}{% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        </li>{% endif %}{% endfor %}{% endif %}
+                    </ul>
+                </nav>
+            </aside>
+            <div class="col-12 col-md-9 col-xl-10 search-result-box bg-middle">
+                <div class="content">
+                    <a class="close-search"><span class="fas fa-times-circle fa-fw"></span><span class="close-text">Close search</span></a>
+                    <ul class="search-result"></ul>
+                </div>
+            </div>
+            <div class="col-12 col-md-9 col-xl-10 main-content bg-middle">
+                <main class="content">
+                    <section id="doc-summary" class="app">
+                        <h1>Application {{ kz_app_name }}{% if deprecated %}
+                            <small style="font-size: 60%"><strong> <span class="badge badge-secondary">Deprecated</span></strong></small>{% endif %}{% if version %}
+                            <small><strong> version: </strong><span class="badge badge-dark">{{ version }}</span></small>{% endif %}{% if since %}
+                            <small><strong> since: </strong><span class="badge badge-dark">{{ since }}</span></small>{% endif %}</h1>{% if full_desc %}
+                        <div class="descriptions">{{ full_desc }}</div>{% endif %}{% if deprecated %}
+                        <div class="alert alert-warning"><div class="h6"><strong>Deprecated</strong></div>{{ deprecated }}</div>{% endif %}{% if sees %}
+                        <div>
+                            <strong>See Also: </strong>
+                            <ul>
+                                {% for see in sees %}<li>{{ see }}</li>{% endfor %}
+                            </ul>
+                        </div>{% endif %}{% if references %}<div>
+                            <strong>References: </strong>
+                            <ul>
+                            {% for reference in references %}<li>{{ reference }}</li>{% endfor %}
+                            </ul>
+                        </div>{% endif %}{% if todos %}
+                        <div>
+                            <strong>To do: </strong>
+                            <ul>
+                                {% for todo in todos %}<li>{{ todo }}</li>{% endfor %}
+                            </ul>
+                        </div>{% endif %}
+                    </section>{% if kz_modules %}
+                    <section id="doc-app">
+                        <h2>Modules List</h2>
+                        <ul>
+                            {% for mod, desc in kz_modules %}<li><a href="{{ mod }}.html"><code>{{ mod }}</code></a> {{ desc }}</li>{% endfor %}
+                        </ul>
+                    </section>{% endif %}
+                </main>
+            </div>
+        </div>
+        <div class="row no-gutters footer">
+            <div class="legal-copy">&copy;&nbsp;2010–2018 2600Hz<span class="spacer">&nbsp; | &nbsp;</span>ALL RIGHTS RESERVED</div>
+            <div>Made with&nbsp;<i class="fas fa-heart fa-fw"></i>&nbsp;using <a alt="Erlang Logo" href="erlang.org">{{ kz_erlang_logo }}</a></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="{{ kz_rel_path }}js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
+    <script src="https://unpkg.com/lunr/lunr.js"></script>
+    <script type="text/javascript">
+        window.kzRelPath = '{{ kz_rel_path }}';
+        window.kzAppsUri = '{{ kz_apps_uri }}';
+    </script>
+    <script src="{{ kz_rel_path }}js/search_index.js"></script>
+    <script src="{{ kz_rel_path }}js/main.js"></script>
+
+  <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
+<!--         <script>
+      window.ga=function(){ga.q.push(arguments)};ga.q=[];ga.l=+new Date;
+      ga('create','UA-XXXXX-Y','auto');ga('send','pageview')
+  </script>
+  <script src="https://www.google-analytics.com/analytics.js" async defer></script> -->
+</body>
+</html>

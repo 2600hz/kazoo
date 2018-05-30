@@ -118,6 +118,7 @@ clean: clean-test
 	@$(if $(wildcard ebin/*), rm ebin/*)
 	@$(if $(wildcard *crash.dump), rm *crash.dump)
 	@$(if $(wildcard $(DEPS_RULES)), rm $(DEPS_RULES))
+	@$(if $(wildcard doc/edoc-info), rm doc/edoc-info)
 
 clean-test: $(CLEAN_MOAR)
 	$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)
