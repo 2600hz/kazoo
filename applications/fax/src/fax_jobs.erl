@@ -308,7 +308,9 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
                                            }=Map
                                     }=State) ->
     JobId = kz_doc:id(Job),
-    case maps:is_key(ToNumber, Numbers) of
+    case ?SERIALIZE_OUTBOUND_NUMBER
+         andalso maps:is_key(ToNumber, Numbers)
+    of
         'true' -> distribute_jobs(State#state{jobs=Map#{serialize => [Job | Serialize]}});
         'false' ->
             Payload = [{<<"Job-ID">>, JobId}
@@ -439,7 +441,7 @@ cleanup_jobs(AccountId) ->
         {'error', _R} -> lager:debug("unable to cleanup account_id ~s fax jobs: ~p", [AccountId, _R])
     end.
 
--spec handle_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+-spec handle_error(ne_binary(), ne_binary(), kz_json:object(), map()) -> map().
 handle_error(JobId, AccountId, JObj, #{pending := Pending
                                       ,numbers := Numbers
                                       ,serialize := Serialize
@@ -459,7 +461,7 @@ handle_error(JobId, AccountId, JObj, #{pending := Pending
                  }
     end.
 
--spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:objects().
+-spec maybe_serialize(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> kz_json:objects().
 maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, _Job) ->
     lager:debug("dropping job ~s/~s from cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
     [];

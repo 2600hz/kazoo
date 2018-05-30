@@ -44,6 +44,7 @@
 -define(FAX_ERROR, <<"error">>).
 
 -define(FAX_STATE_LIST, [?FAX_START, ?FAX_PREPARE, ?FAX_SEND, ?FAX_RECEIVE, ?FAX_END, ?FAX_ERROR]).
+-define(SERIALIZE_OUTBOUND_NUMBER, kapps_config:get_is_true(?CONFIG_CAT, <<"serialize_outbound_numbers">>, 'true')).
 
 -define(OPENXML_MIME_PREFIX, "application/vnd.openxmlformats-officedocument.").
 -define(OPENOFFICE_MIME_PREFIX, "application/vnd.oasis.opendocument.").

@@ -49,7 +49,7 @@
                ,stage :: api_binary()
                ,resp :: api_object()
                ,move_retry = 0 :: integer()
-               ,error :: kz_term:api_ne_binary()
+               ,error :: api_ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -102,10 +102,7 @@
 -spec start_link(fax_job()) -> startlink_ret().
 start_link(FaxJob) ->
     CallId = kz_binary:rand_hex(16),
-    _JobId = kapi_fax:job_id(FaxJob),
-    AccountId = kapi_fax:account_id(FaxJob),
-    Number = knm_converters:normalize(kapi_fax:to_number(FaxJob), AccountId),
-    gen_listener:start_link(?SERVER(Number)
+    gen_listener:start_link(server_name(FaxJob)
                            ,?MODULE
                            ,[{'bindings', ?BINDINGS(CallId)}
                             ,{'responders', ?RESPONDERS}
@@ -114,6 +111,18 @@ start_link(FaxJob) ->
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
                            ,[FaxJob, CallId]).
+
+-spec server_name(kz_json:object()) -> {'via', 'kz_globals', ne_binary()}.
+server_name(FaxJob) ->
+    case ?SERIALIZE_OUTBOUND_NUMBER of
+        'true' ->
+            AccountId = kapi_fax:account_id(FaxJob),
+            Number = knm_converters:normalize(kapi_fax:to_number(FaxJob), AccountId),
+            ?SERVER(Number);
+        'false' ->
+            JobId = kapi_fax:job_id(FaxJob),
+            ?SERVER(JobId)
+    end.
 
 -spec handle_tx_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_tx_resp(JObj, Props) ->
@@ -1113,7 +1122,7 @@ send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
                 ]),
     kapi_fax:publish_targeted_status(Q, Payload).
 
--spec send_control_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec send_control_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_control_status(CtrlQ, Q, JobId, FaxState, Stage) ->
     Payload = [{<<"Job-ID">>, JobId}
               ,{<<"Fax-State">>, FaxState}
@@ -1134,7 +1143,7 @@ handle_start_job(JObj, _Props) ->
         _ -> 'ok'
     end.
 
--spec send_control_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec send_control_error(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_control_error(JobId, CtrlQ, Stage, Reason) ->
     Payload = [{<<"Job-ID">>, JobId}
               ,{<<"Fax-State">>, <<"error">>}
