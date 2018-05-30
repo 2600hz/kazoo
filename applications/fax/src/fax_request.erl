@@ -432,8 +432,12 @@ end_receive_fax(JObj, #state{call=Call}=State) ->
 
 -spec end_receive_fax(state()) -> handle_cast_return().
 end_receive_fax(#state{page=Page, fax_result=JObj}=State) when Page =:= 0 ->
-    notify_failure(JObj, State),
-    {'stop', 'normal', State};
+    Props = [{[<<"Application-Data">>,<<"Fax-Success">>], 'false'}
+            ,{[<<"fax_info">>, <<"fax_result_text">>], <<"no pages received">>}
+            ],
+    NewJObj = kz_json:set_values(Props, JObj),
+    notify_failure(NewJObj, State),
+    {'stop', 'normal', State#state{fax_result=NewJObj}};
 end_receive_fax(#state{}=State) ->
     {'noreply', State#state{monitor=store_document(State)}}.
 
