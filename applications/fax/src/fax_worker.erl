@@ -101,10 +101,7 @@
 -spec start_link(fax_job()) -> kz_types:startlink_ret().
 start_link(FaxJob) ->
     CallId = kz_binary:rand_hex(16),
-    _JobId = kapi_fax:job_id(FaxJob),
-    AccountId = kapi_fax:account_id(FaxJob),
-    Number = knm_converters:normalize(kapi_fax:to_number(FaxJob), AccountId),
-    gen_listener:start_link(?SERVER(Number)
+    gen_listener:start_link(server_name(FaxJob)
                            ,?MODULE
                            ,[{'bindings', ?BINDINGS(CallId)}
                             ,{'responders', ?RESPONDERS}
@@ -113,6 +110,18 @@ start_link(FaxJob) ->
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
                            ,[FaxJob, CallId]).
+
+-spec server_name(kz_json:object()) -> {'via', 'kz_globals', kz_term:ne_binary()}.
+server_name(FaxJob) ->
+    case ?SERIALIZE_OUTBOUND_NUMBER of
+        'true' ->
+            AccountId = kapi_fax:account_id(FaxJob),
+            Number = knm_converters:normalize(kapi_fax:to_number(FaxJob), AccountId),
+            ?SERVER(Number);
+        'false' ->
+            JobId = kapi_fax:job_id(FaxJob),
+            ?SERVER(JobId)
+    end.
 
 -spec handle_tx_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_tx_resp(JObj, Props) ->
