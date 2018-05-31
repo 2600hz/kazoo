@@ -80,7 +80,6 @@
 
 -export([recursive_from_list/1]).
 
-
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
 -ifdef(TEST).
@@ -287,6 +286,7 @@ recursive_from_list([First | _]=List)
 recursive_from_list(X) when is_float(X) -> X;
 recursive_from_list(X) when is_integer(X) -> X;
 recursive_from_list(X) when is_atom(X) -> X;
+recursive_from_list([]) -> [];
 recursive_from_list(X) when is_list(X) ->
     case io_lib:printable_unicode_list(X) of
         'true' -> kz_term:to_binary(X);
@@ -295,7 +295,7 @@ recursive_from_list(X) when is_list(X) ->
 recursive_from_list(X) when is_binary(X) -> X;
 recursive_from_list({_Y, _M, _D}=Date) -> kz_date:to_iso8601_extended(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
-recursive_from_list(_Else) -> null.
+recursive_from_list(_Else) -> 'null'.
 
 %% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
 
@@ -380,26 +380,6 @@ merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 %% @doc Only a top-level merge.
 %% Merges JObj1 into JObj2
 %% @end
--spec recursive_from_list(json_proplist() | json_array()) -> object() | json_array().
--spec recursive_from_list(json_proplist() | json_array(), json_proplist()) ->
-                                 json_proplist() | json_array().
-recursive_from_list(L) when is_list(L) ->
-    %% If no keys are defined, it is a JSON array
-    case props:get_keys(L) of
-        [] -> recursive_from_list(L, []);
-        _ -> ?JSON_WRAPPER(recursive_from_list(L, []))
-    end.
-
-recursive_from_list([], Acc) -> lists:reverse(Acc);
-recursive_from_list([{K,V}|T], Acc) when is_list(V) ->
-    recursive_from_list(T, [{K, recursive_from_list(V)} | Acc]);
-recursive_from_list([V|T], Acc) when is_list(V) ->
-    recursive_from_list(T, [recursive_from_list(V) | Acc]);
-recursive_from_list([H|T], Acc) ->
-    recursive_from_list(T, [H | Acc]).
-
-%% only a top-level merge
-%% merges JObj1 into JObj2
 -spec merge_jobjs(object(), object()) -> object().
 merge_jobjs(?JSON_WRAPPER(Props1), ?JSON_WRAPPER(_)=JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->
