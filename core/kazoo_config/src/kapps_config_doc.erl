@@ -116,7 +116,7 @@ build_default(Id, JObj) ->
 
 -spec build_default(kz_term:ne_binary()) -> kz_json:object().
 build_default(Id) ->
-    schema_defaults(Id).
+    kz_json_schema:default_object(kapps_config_util:system_config_document_schema(Id)).
 
 %%%=============================================================================
 %%% Node API
