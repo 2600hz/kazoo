@@ -295,6 +295,29 @@ Already EDocified! 🎉
 Checks JSON schemas for empty "description" properties and exit(1) if any are found
 
 
+## `eunit_run.escript`
+
+Run EUnit tests on specified module names, filtering test modules which has same as their normal module name like `fobar` and `fobar_tests` to avoid running the `fobar_tests` twice.
+
+Usage:
+
+```bash
+cd core/kazoo_stdlib ## or your desire application or on the root kazoo project dir
+KAZOO_CONFIG=../../rel/config-test.ini ERL_LIBS=../../deps:../../core:../../applications ../../scripts/eunit_run.escript --with-cover \
+    --cover-project-name kazoo_stdlib --cover-report-dir cover \
+    kz_binary kz_binary_tests kz_date kz_date_tests kz_json kz_json_tests kz_maps kz_maps_tests kz_mochinum kz_module kz_module_tests
+    kz_term kz_term_tests kz_time kz_time_tests kz_types props props_tests
+
+```
+
+or simply:
+
+```bash
+cd core/kazoo_stdlib ## or your desire application or on the root kazoo project dir
+make eunit # or make test
+```
+
+
 ## `export_auth_token.bash`
 
 Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
