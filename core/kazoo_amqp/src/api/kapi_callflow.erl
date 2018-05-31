@@ -64,5 +64,10 @@ declare_exchanges() ->
 %%------------------------------------------------------------------------------
 -spec publish_resume(kz_term:api_terms()) -> 'ok'.
 publish_resume(JObj) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?RESUME_VALUES, fun resume/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj
+                                                ,?RESUME_VALUES
+                                                ,[{'formatter', fun resume/1}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
     amqp_util:kapps_publish(?RESUME_ROUTING_KEY, Payload).
