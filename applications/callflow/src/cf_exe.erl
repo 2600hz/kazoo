@@ -697,30 +697,30 @@ launch_cf_module(#state{call=Call
 
 -spec apply_dynamic_values(kz_json:object(), kz_json:object(), kz_json:object()) ->
                                   kz_json:object().
--spec apply_dynamic_values(kz_json:keys(), kz_json:object(), kz_json:object(), kz_json:object()) ->
-                                  kz_json:object().
-apply_dynamic_values(Variables, Data, KVs) ->
-    apply_dynamic_values(kz_json:get_keys(Variables), Variables, Data, KVs).
+apply_dynamic_values(ActionVariables, Data, KVs) ->
+    apply_dynamic_values(ActionVariables, Data, KVs, kz_json:get_keys(ActionVariables)).
 
-apply_dynamic_values([], _, Data, _) -> Data;
-apply_dynamic_values([DataKey|Keys], Variables, Data, KVs) ->
-    case has_dynamic_value_variable_reference(DataKey, Data) of
+-spec apply_dynamic_values(kz_json:object(), kz_json:object(), kz_json:object(), kz_json:keys()) ->
+                                  kz_json:object().
+apply_dynamic_values(_ActionVariables, Data, _KVs, []) -> Data;
+apply_dynamic_values(ActionVariables, Data, KVs, [ActionVariableKey|ActionVariableKeys]) ->
+    case has_dynamic_value_variable_reference(ActionVariableKey, Data) of
         'false' ->
-            lager:debug("dynamic value key '~s' not present in cf data, ignored", [DataKey]),
-            apply_dynamic_values(Keys, Variables, Data, KVs);
+            lager:debug("dynamic value key '~s' not present in cf data, ignored", [ActionVariableKey]),
+            apply_dynamic_values(ActionVariables, Data, KVs, ActionVariableKeys);
         'true' ->
             %% The KV that should replace the DataKey value in Data
-            VariableReference = kz_json:get_value(DataKey, Variables),
-            apply_dynamic_values(Keys
-                                ,Variables
-                                ,apply_dynamic_value(VariableReference, DataKey, Data, KVs)
+            VariableReference = kz_json:get_value(ActionVariableKey, ActionVariables),
+            apply_dynamic_values(ActionVariables
+                                ,apply_dynamic_value(VariableReference, ActionVariableKey, Data, KVs)
                                 ,KVs
+                                ,ActionVariableKeys
                                 )
     end.
 
 -spec has_dynamic_value_variable_reference(kz_json:key(), kz_json:object()) -> boolean().
 has_dynamic_value_variable_reference(Key, Data) ->
-    kz_json:get_value(Key, Data) =/= 'undefined'.
+    kz_json:is_defined(Key, Data).
 
 -spec apply_dynamic_value(kz_json:key(), kz_json:key(), kz_json:object(), kz_json:object()) ->
                                  kz_json:object().
