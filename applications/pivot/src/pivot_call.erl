@@ -560,7 +560,7 @@ debug_error(Call, Errors, RespBody) ->
                                   ])
                ).
 
--spec debug_json_error(kapps_call:call(), ne_binary(), binary(), binary(), binary()) ->
+-spec debug_json_error(kapps_call:call(), kz_term:ne_binary(), binary(), binary(), binary()) ->
                               'ok'.
 debug_json_error(Call, Msg, Before, After, RespBody) ->
     JObj = kz_json:from_list([{<<"resp_body">>, RespBody}
@@ -594,7 +594,7 @@ store_debug(Call, DebugJObj) ->
 
     save_debug(AccountModDb, JObj).
 
--spec save_debug(ne_binary(), kz_json:object()) -> 'ok'.
+-spec save_debug(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 save_debug(AccountMODB, JObj) ->
     case kazoo_modb:save_doc(AccountMODB, JObj) of
         {'ok', _Saved} ->

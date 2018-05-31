@@ -732,7 +732,7 @@ apply_dynamic_value(VariableReference, DataKey, Data, KVs) ->
         Value -> kz_json:set_value(DataKey, Value, Data)
     end.
 
--spec maybe_start_cf_module(ne_binary(), kz_json:object(), kapps_call:call()) ->
+-spec maybe_start_cf_module(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
                                    {'undefined', atom()} |
                                    {kz_term:pid_ref(), atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
