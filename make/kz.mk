@@ -126,19 +126,19 @@ TEST_CONFIG=$(ROOT)/rel/config-test.ini
 
 ## Use this one when debugging
 test: compile-test
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $(TEST_MODULE_NAMES)
 test.%: compile-test
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$*], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $*
 
-COVERDATA=$(PROJECT).coverdata
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
 eunit: compile-test eunit-run
 
 eunit-run:
-	@mkdir -p $(COVER_REPORT_DIR)
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript --with-cover \
+		--cover-project-name $(PROJECT) --cover-report-dir $(COVER_REPORT_DIR) \
+		$(TEST_MODULE_NAMES)
 
 cover: $(ROOT)/make/cover.mk
 	COVER=1 $(MAKE) eunit
