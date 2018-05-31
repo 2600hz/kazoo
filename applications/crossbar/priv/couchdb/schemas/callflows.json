@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows",
     "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
     "properties": {
@@ -9,49 +9,19 @@
                 "name": {
                     "maxLength": 128,
                     "minLength": 1,
-                    "required": false,
                     "type": "string"
                 },
                 "number": {
                     "maxLength": 30,
                     "minLength": 1,
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "flow": {
-            "description": "A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-            "properties": {
-                "children": {
-                    "default": null,
-                    "description": "Children callflows",
-                    "required": false,
-                    "type": "object"
-                },
-                "data": {
-                    "default": null,
-                    "description": "The data/arguments of the callflow module",
-                    "required": true,
-                    "type": "object"
-                },
-                "module": {
-                    "description": "The name of the callflow module to excute at this node",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "required": true,
-                    "type": "string"
-                },
-                "variables": {
-                    "description": "A map of data object keys to custom KV keys whose values should replace the values in the data object",
-                    "required": false,
-                    "type": "object"
-                }
-            },
-            "required": true,
-            "type": "object"
+            "$ref": "callflows.action",
+            "description": "A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to"
         },
         "metaflow": {
             "$ref": "metaflows",
@@ -63,10 +33,8 @@
             "items": {
                 "maxLength": 36,
                 "minLength": 1,
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array",
             "uniqueItems": true
         },
@@ -75,13 +43,10 @@
             "description": "A list of regular expressions that the callflow should execute for, with optional capture groups",
             "items": {
                 "minLength": 1,
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         }
     },
-    "required": true,
     "type": "object"
 }
