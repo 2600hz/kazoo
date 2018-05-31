@@ -337,7 +337,7 @@
     "fax.report_faxbox_system_errors": "fax report faxbox system errors",
     "fax.report_smtp_errors": "Report SMTP-related errors via notifications",
     "fax.reschedule": "fax reschedule",
-    "fax.serialize_outbound_numbers": "fax serialize_outbound_numbers",
+    "fax.serialize_outbound_numbers": "serialize fax worker sending faxes per outbound number",
     "fax.smtp_max_msg_size": "fax smtp maximum msg size",
     "fax.smtp_port": "fax smtp port",
     "fax.smtp_sessions": "fax smtp sessions",
