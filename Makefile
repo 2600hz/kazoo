@@ -174,7 +174,7 @@ fmt-all: $(FMT)
 
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
-	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
+	$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
 clean-fmt:
 	@$(if $(FMT), rm -rf $(shell dirname $(FMT)))
@@ -231,8 +231,8 @@ sdks:
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
-CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
+CHANGED := $(shell git --no-pager diff --name-only HEAD origin/4.1 -- applications core scripts)
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/4.1 -- applications/crossbar/priv/api/swagger.json)
 PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 
 circle-pre:
@@ -258,7 +258,7 @@ circle-codechecks:
 	@./scripts/validate-js.sh $(CHANGED)
 
 circle-fmt:
-	@$(MAKE) fmt
+	TO_FMT="$(CHANGED)" $(MAKE) fmt
 	@$(MAKE) elvis
 
 circle-build:
