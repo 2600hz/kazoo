@@ -23,8 +23,7 @@
 
 -spec start_fax_job(fax_job()) -> any().
 start_fax_job(FaxJob) ->
-    _ = supervisor:start_child(?MODULE, [FaxJob]),
-    'ok'.
+    supervisor:start_child(?MODULE, [FaxJob]).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -167,7 +167,7 @@ handle_cast('start_action', #state{call=_Call
 handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
     TransferRate = kz_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
-    lager:debug("fax status - negociate result - ~s : ~p",[State#state.fax_id, TransferRate]),
+    lager:debug("fax status - negotiate result - ~s : ~p",[State#state.fax_id, TransferRate]),
     Status = list_to_binary(["fax negotiated at ", kz_term:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status
@@ -317,9 +317,9 @@ get_fax_storage(Call) ->
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     FaxDb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_date:pad_month(Month))/binary
-              ,"-"
-              ,(kz_binary:rand_hex(16))/binary
+             ,(kz_date:pad_month(Month))/binary
+             ,"-"
+             ,(kz_binary:rand_hex(16))/binary
             >>,
     AttachmentId = kz_binary:rand_hex(16),
     Ext = kapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
@@ -461,6 +461,13 @@ end_receive_fax(JObj, #state{call=Call}=State) ->
     end.
 
 -spec end_receive_fax(state()) -> handle_cast_return().
+end_receive_fax(#state{page=Page, fax_result=JObj}=State) when Page =:= 0 ->
+    Props = [{[<<"Application-Data">>,<<"Fax-Success">>], 'false'}
+            ,{[<<"fax_info">>, <<"fax_result_text">>], <<"no pages received">>}
+            ],
+    NewJObj = kz_json:set_values(Props, JObj),
+    notify_failure(NewJObj, State),
+    {'stop', 'normal', State#state{fax_result=NewJObj}};
 end_receive_fax(#state{}=State) ->
     {'noreply', State#state{monitor=store_document(State)}}.
 
@@ -525,9 +532,9 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
 
     ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
     CdrId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_date:pad_month(Month))/binary
-              ,"-"
-              ,(kapps_call:call_id(Call))/binary
+             ,(kz_date:pad_month(Month))/binary
+             ,"-"
+             ,(kapps_call:call_id(Call))/binary
             >>,
 
     Props = props:filter_undefined(
