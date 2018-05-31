@@ -1389,8 +1389,6 @@ custom_kv_evaluate2(Value, Call) ->
 
 -spec custom_kv_evaluate_ui(kz_json:json_term(), call()) ->
                                    kz_json:json_term().
--spec custom_kv_evaluate_ui(kz_json:keys(), kz_json:object(), call()) ->
-                                   kz_json:json_term().
 custom_kv_evaluate_ui(Value, Call) ->
     case kz_json:is_json_object(Value) of
         'true' -> custom_kv_evaluate_ui(kz_json:get_keys(Value), Value, Call);
@@ -1399,6 +1397,9 @@ custom_kv_evaluate_ui(Value, Call) ->
 
 %% When assigning a custom KV in Kazoo-UI, a type field is used to create a
 %% dropdown. In this case, use the value field
+
+-spec custom_kv_evaluate_ui(kz_json:keys(), kz_json:object(), call()) ->
+                                   kz_json:json_term().
 custom_kv_evaluate_ui([<<"type">>, <<"value">>], Value, Call) ->
     KeyToCheck = kz_json:get_value(<<"value">>, Value),
     kz_json:set_value(<<"value">>, custom_kv_evaluate(KeyToCheck, Call), Value);
