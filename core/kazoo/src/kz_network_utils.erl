@@ -12,6 +12,7 @@
         ,is_ipv6/1
         ,is_ip/1
         ,is_ip_family_supported/1
+        ,is_cidr/1
         ,default_binding_all_ip/0
         ]).
 -export([to_cidr/1
@@ -113,6 +114,15 @@ is_ip(Address) ->
     is_ipv4(Address)
         orelse is_ipv6(Address).
 
+-spec is_cidr(kz_term:text()) -> boolean().
+is_cidr(Address) ->
+    try inet_cidr:parse(Address) of
+        {_Start, _End, _Len} -> 'true'
+    catch
+        'error':{'badmatch', _} -> 'false';
+        'error':'invalid_cidr' -> 'false'
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc Detects if specified IP family is supported by system.
 %% Needs `ping' command installed on the system.
@@ -132,7 +142,7 @@ listen_to_ping(Family, Cmd, Try) ->
               ,'use_stdio'
               ,'stderr_to_stdout'
               ],
-    Port = erlang:open_port({spawn, Cmd}, Options),
+    Port = erlang:open_port({'spawn', Cmd}, Options),
     listen_to_ping(Family, Cmd, Port, Try, []).
 
 -spec listen_to_ping(inet:address_family(), string(), port(), integer(), list()) -> boolean().
@@ -221,36 +231,6 @@ verify_cidr(IP, CIDR) ->
         {'error', _} -> 'false'
     end.
 
-%%     %% As per the docs... "This operation should only be used for test purposes"
-%%     %% so, ummm ya, but probably cheaper then my expand below followed by a list
-%%     %% test.  Just be aware this should only be used where performance is not
-%%     %% critical
-%%     case orber_acl:verify(IP, CIDR, 'inet') of
-%%         'true' -> 'true';
-%%         {'false', _, _} -> 'false';
-%%         {'error', _} -> 'false'
-%%     end.
-
-%% -spec expand_cidr(kz_term:text()) -> kz_term:ne_binaries().
-%% expand_cidr(CIDR) when is_binary(CIDR) ->
-%%     expand_cidr(kz_term:to_list(CIDR));
-%% expand_cidr(CIDR) ->
-%%     %% EXTREMELY wastefull/naive approach, should never be used, but if you
-%%     %% must we keep it in a class C
-%%     case orber_acl:range(CIDR, 'inet') of
-%%         {'error', _} -> [];
-%%         {'ok', Start, End} ->
-%%             [A1, B1, C1, D1] = lists:map(fun kz_term:to_integer/1, string:tokens(Start, ".")),
-%%             [A2, B2, C2, D2] = lists:map(fun kz_term:to_integer/1, string:tokens(End, ".")),
-%%             'true' = ((A2 + B2 + C2 + D2) - (A1 + B1 + C1 + D1)) =< 510,
-%%             [iptuple_to_binary({A,B,C,D})
-%%              || A <- lists:seq(A1, A2),
-%%                 B <- lists:seq(B1, B2),
-%%                 C <- lists:seq(C1, C2),
-%%                 D <- lists:seq(D1, D2)
-%%             ]
-%%     end.
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -301,16 +281,24 @@ resolve(Address) ->
 
 -spec resolve(kz_term:ne_binary(), options()) -> kz_types:ip_list().
 resolve(Address, Options) ->
-    case binary:split(Address, <<":">>) of
-        [Addr|_Port] -> maybe_is_ip(Addr, Options);
-        _ -> maybe_is_ip(Address, Options)
+    case is_cidr(Address) of
+        'true' -> [Address];
+        'false' -> resolve_ip_or_hostname(Address, Options)
     end.
 
--spec maybe_is_ip(kz_term:ne_binary(), options()) -> kz_term:ne_binaries().
-maybe_is_ip(Address, Options) ->
-    case is_ip(Address) of
-        'true' -> [Address];
-        'false' -> maybe_resolve_srv_records(Address, Options)
+-spec resolve_ip_or_hostname(kz_term:ne_binary(), options()) -> kz_types:ip_list().
+resolve_ip_or_hostname(Address, Options) ->
+    Addr = maybe_strip_port(Address),
+    case is_ip(Addr) of
+        'true' -> [Addr];
+        'false' -> maybe_resolve_srv_records(Addr, Options)
+    end.
+
+-spec maybe_strip_port(kz_term:ne_binary()) -> kz_term:ne_binary().
+maybe_strip_port(Address) ->
+    case binary:split(Address, <<":">>) of
+        [Address] -> Address;
+        [Addr, _Port] -> Addr
     end.
 
 -spec maybe_resolve_srv_records(kz_term:ne_binary(), options()) -> kz_term:ne_binaries().
