@@ -25,6 +25,7 @@
         ,prompt_language/1, prompt_language/2
         ,prompt_id/1, prompt_id/2
         ,prompt_path/1, prompt_path/2
+        ,is_not_prompt/1
         ]).
 -export([store_path_from_doc/1, store_path_from_doc/2]).
 
@@ -446,7 +447,13 @@ prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
 prompt_id(PromptId, 'undefined') -> PromptId;
 prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
-    filename:join([Lang, PromptId]).
+    case is_not_prompt(PromptId) of
+        'true' ->
+            lager:debug("not building a prompt id from ~s", [PromptId]),
+            PromptId;
+        'false' ->
+            filename:join([Lang, PromptId])
+    end.
 
 -spec get_prompt(kz_term:ne_binary()) ->
                         kz_term:api_ne_binary().
@@ -468,7 +475,14 @@ get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId) ->
 get_prompt(<<"/system_media/", Name/binary>>, Lang, AccountId) ->
     get_prompt(Name, Lang, AccountId);
 get_prompt(PromptId, Lang, 'undefined') ->
-    kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>);
+    case is_not_prompt(PromptId) of
+        'true' ->
+            lager:debug("media ~s is not a prompt, leaving alone", [PromptId]),
+            PromptId;
+        'false' ->
+            lager:debug("using system prompt for ~s(~s)", [PromptId, Lang]),
+            kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>)
+    end;
 get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
     get_prompt(PromptId, Lang, AccountId, ?USE_ACCOUNT_OVERRIDES).
 
@@ -478,11 +492,34 @@ get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId, _UseOverride
     lager:debug("prompt is already encoded: ~s", [PromptId]),
     PromptId;
 get_prompt(PromptId, Lang, AccountId, 'true') ->
-    lager:debug("using account override for ~s in account ~s", [PromptId, AccountId]),
-    kz_binary:join([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
+    case is_not_prompt(PromptId) of
+        'true' ->
+            lager:debug("media ~s is not a prompt, leaving alone", [PromptId]),
+            PromptId;
+        'false' ->
+            lager:debug("using account override for ~s in account ~s", [PromptId, AccountId]),
+            kz_binary:join([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>)
+    end;
 get_prompt(PromptId, Lang, _AccountId, 'false') ->
-    lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
-    kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>).
+    case is_not_prompt(PromptId) of
+        'true' ->
+            lager:debug("media ~s is not a prompt, leaving alone", [PromptId]),
+            PromptId;
+        'false' ->
+            lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
+            kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>)
+    end.
+
+-spec is_not_prompt(binary()) -> boolean().
+is_not_prompt(<<>>) -> 'true';
+is_not_prompt(<<"silence">>) -> 'true';
+is_not_prompt(<<"silence_stream://", _/binary>>) -> 'true';
+is_not_prompt(<<"tone_stream://", _/binary>>) -> 'true';
+is_not_prompt(<<"shout://", _/binary>>) -> 'true';
+is_not_prompt(<<"local_stream://", _/binary>>) -> 'true';
+is_not_prompt(<<"http://", _/binary>>) -> 'true';
+is_not_prompt(<<"https://", _/binary>>) -> 'true';
+is_not_prompt(?NE_BINARY = _Media) -> 'false'.
 
 %% tries account default, then system
 
