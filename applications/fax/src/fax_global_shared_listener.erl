@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(fax_shared_listener).
+-module(fax_global_shared_listener).
 -behaviour(gen_listener).
 
 %% API
@@ -28,52 +28,20 @@
 
 -define(SERVER, ?MODULE).
 
--define(NOTIFY_RESTRICT, ['outbound_fax'
-                         ,'outbound_fax_error'
-                         ]).
-
--define(FAXBOX_RESTRICT, [{'db', <<"faxes">>}
-                         ,{'doc_type', <<"faxbox">>}
-                         ]).
-
--define(RESPONDERS, [{{'fax_cloud', 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax">>}]
+-define(RESPONDERS, [{{'fax_jobs', 'handle_start_account'}
+                     ,[{<<"start">>, <<"account">>}]
                      }
-                    ,{{'fax_cloud', 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax_error">>}]
-                     }
-                    ,{{'fax_cloud', 'handle_push'}
-                     ,[{<<"xmpp_event">>, <<"push">>}]
-                     }
-                    ,{{'fax_cloud', 'handle_faxbox_created'}
-                     ,[{<<"configuration">>, ?DOC_CREATED}]
-                     }
-                    ,{{'fax_cloud', 'handle_faxbox_edited'}
-                     ,[{<<"configuration">>, ?DOC_EDITED}]
-                     }
-                    ,{{'fax_cloud', 'handle_faxbox_deleted'}
-                     ,[{<<"configuration">>, ?DOC_DELETED}]
-                     }
-                    ,{{'fax_request', 'new_request'}
-                     ,[{<<"dialplan">>, <<"fax_req">>}]
-                     }
-                    ,{{'fax_xmpp', 'handle_printer_start'}
-                     ,[{<<"xmpp_event">>, <<"start">>}]
-                     }
-                    ,{{'fax_xmpp', 'handle_printer_stop'}
-                     ,[{<<"xmpp_event">>, <<"stop">>}]
+                    ,{{'fax_worker', 'handle_start_job'}
+                     ,[{<<"start">>, <<"job">>}]
                      }
                     ]).
 
--define(BINDINGS, [{'notifications', [{'restrict_to', ?NOTIFY_RESTRICT}]}
-                  ,{'xmpp',[{'restrict_to',['push']}]}
-                  ,{'xmpp', [{'restrict_to', ['start']}, 'federate']}
-                  ,{'conf',?FAXBOX_RESTRICT}
-                  ,{'fax', [{'restrict_to', ['req']}]}
-                  ,{'self', []}
+-define(BINDINGS, [{'fax', [{'restrict_to', ['start']}, 'federate']}
                   ]).
--define(QUEUE_NAME, <<"fax_shared_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(QUEUE_NAME, <<"fax_global_shared_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}
+                       ,{'federated_queue_name_is_global', 'true'}
+                       ]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%=============================================================================
