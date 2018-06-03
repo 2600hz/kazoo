@@ -37,6 +37,7 @@
                   ,?SUPER('fax_xmpp_sup')
                   ,?SUPER('fax_jobs_sup')
                   ,?SUPER('fax_worker_sup')
+                  ,?WORKER('fax_global_shared_listener')
                   ,?WORKER('fax_shared_listener')
                   ,?WORKER('fax_monitor')
                   ,?WORKER_ARGS('gen_smtp_server', ?SMTP_ARGS)

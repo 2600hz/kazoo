@@ -1148,18 +1148,21 @@ update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
 -spec create_federated_params({binding_module(), kz_proplist()}, kz_proplist()) ->
                                      kz_proplist().
 create_federated_params(FederateBindings, Params) ->
+    QueueOptions = props:get_value('queue_options', Params, []),
     [{'responders', []}
     ,{'bindings', [FederateBindings]}
-    ,{'queue_name', federated_queue_name(Params)}
-    ,{'queue_options', props:get_value('queue_options', Params, [])}
+    ,{'queue_name', federated_queue_name(Params, QueueOptions)}
+    ,{'queue_options', QueueOptions}
     ,{'consume_options', props:get_value('consume_options', Params, [])}
     ].
 
--spec federated_queue_name(kz_proplist()) -> api_binary().
-federated_queue_name(Params) ->
+-spec federated_queue_name(kz_proplist(), kz_proplist()) -> api_binary().
+federated_queue_name(Params, Options) ->
     QueueName = props:get_value('queue_name', Params, <<>>),
+    IsGlobalQueue = props:is_true('federated_queue_name_is_global', Options, 'false'),
     case kz_term:is_empty(QueueName) of
         'true' -> QueueName;
+        'false' when IsGlobalQueue -> QueueName;
         'false' ->
             Zone = kz_config:zone('binary'),
             <<QueueName/binary, "-", Zone/binary>>
