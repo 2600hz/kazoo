@@ -121,6 +121,7 @@ handle_cast({'job_status',{JobId, <<"start">>, JObj}}, #state{jobs=#{pending := 
                                                              }=State) ->
     ServerId = kz_api:server_id(JObj),
     #{JobId := #{number := Number}} = Pending,
+    lager:debug("received fax start control status for ~s", [JobId]),
     {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
                                       ,running => Running#{JobId => #{number => Number
                                                                      ,queue => ServerId
@@ -140,6 +141,7 @@ handle_cast({'job_status',{JobId, <<"end">>, JObj}}, #state{jobs=#{pending := Pe
                 ,number := Number
                 }
      } = Running,
+    lager:debug("received fax end control status for ~s", [JobId]),
     {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
                                       ,running => maps:remove(JobId, Running)
                                       ,numbers => maps:remove(Number, Numbers)
@@ -268,35 +270,56 @@ invalidate_job(Job, #state{account_id=AccountId}=State) ->
     State.
 
 -spec distribute_job(kz_term:ne_binary(), kz_json:object(), state()) -> state().
-distribute_job(ToNumber, Job, #state{account_id=AccountId
-                                    ,queue=Q
-                                    ,jobs=#{pending := Pending
-                                           ,serialize := Serialize
-                                           ,numbers := Numbers
-                                           }=Map
-                                    }=State) ->
+distribute_job(ToNumber, Job, #state{jobs=#{numbers := Numbers}}=State) ->
     JobId = kz_doc:id(Job),
     case ?SERIALIZE_OUTBOUND_NUMBER
         andalso maps:is_key(ToNumber, Numbers)
     of
-        'true' -> distribute_jobs(State#state{jobs=Map#{serialize => [Job | Serialize]}});
-        'false' ->
-            Payload = [{<<"Job-ID">>, JobId}
-                      ,{<<"Account-ID">>, AccountId}
-                      ,{<<"To-Number">>, ToNumber}
-                       | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                      ],
-            kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_job/1),
-            Start = kz_time:now_ms(),
-            distribute_jobs(State#state{jobs=Map#{pending => Pending#{JobId => #{number => ToNumber
-                                                                                ,start => Start
-                                                                                ,job => Job
-                                                                                }
-                                                                     }
-                                                 ,numbers => Numbers#{ToNumber => JobId}
-                                                 }})
+        'true' -> distribute_jobs(serialize_job(Job, State));
+        'false' -> distribute_jobs(start_job(JobId, ToNumber, Job, State))
     end.
 
+-spec start_job(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), state()) -> state().
+start_job(JobId, ToNumber, Job, #state{account_id=AccountId
+                                      ,queue=Queue
+                                      }=State) ->
+    Payload = start_job_payload(AccountId, JobId, ToNumber, Queue),
+    case kz_amqp_worker:call(Payload, fun kapi_fax:publish_start_job/1, fun validate_job_started/1) of
+        {'error', 'timeout'} -> serialize_job(Job, State);
+        {'ok', Reply} -> set_pending_job(JobId, kz_api:node(Reply), Job, ToNumber, State)
+    end.
+
+-spec validate_job_started(kz_json:object()) -> boolean().
+validate_job_started(JObj) ->
+    lager:debug("job start reply for ~s : ~s", [kapi_fax:job_id(JObj), kapi_fax:state(JObj)]),
+    kapi_fax:state(JObj) =:= <<"start">>.
+
+-spec start_job_payload(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> list().
+start_job_payload(AccountId, JobId, ToNumber, Queue) ->
+    [{<<"Job-ID">>, JobId}
+    ,{<<"Account-ID">>, AccountId}
+    ,{<<"To-Number">>, ToNumber}
+    ,{<<"Control-Queue">>, Queue}
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+
+-spec serialize_job(kz_json:object(), state()) -> state().
+serialize_job(Job, #state{jobs=#{serialize := Serialize}=Jobs}=State) ->
+    State#state{jobs=Jobs#{serialize => [Job | Serialize]}}.
+
+-spec set_pending_job(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), state()) -> state().
+set_pending_job(JobId, Node, Job, ToNumber, #state{jobs=#{pending := Pending
+                                                         ,numbers := Numbers
+                                                         }=Jobs
+                                                  }=State) ->
+    State#state{jobs=Jobs#{pending => Pending#{JobId => #{number => ToNumber
+                                                         ,start => kz_time:now_ms()
+                                                         ,job => Job
+                                                         ,node => Node
+                                                         }
+                                              }
+                          ,numbers => Numbers#{ToNumber => JobId}
+                          }}.
 
 -spec handle_start_account(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_start_account(JObj, _Props) ->
@@ -412,12 +435,11 @@ cleanup_jobs(AccountId) ->
     end.
 
 -spec handle_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
-handle_error(JobId, AccountId, JObj, #{pending := Pending
-                                      ,numbers := Numbers
-                                      ,serialize := Serialize
-                                      } = Jobs) ->
+handle_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
     Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
     Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
+    lager:debug_unsafe("PENDING ~p", [Pending]),
+    lager:debug_unsafe("JOB ~s", [kz_json:encode(JObj, ['pretty'])]),
     case kz_maps:get([JobId, job], Pending, 'undefined') of
         'undefined' ->
             lager:warning("received error on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
@@ -425,16 +447,27 @@ handle_error(JobId, AccountId, JObj, #{pending := Pending
         Job ->
             Number = knm_converters:normalize(number(Job), AccountId),
             lager:warning("received error for fax job ~s/~s/~s on stage ~p: ~p", [AccountId, JobId, Number, Stage, Status]),
-            Jobs#{pending => maps:remove(JobId, Pending)
-                 ,numbers => maps:remove(Number, Numbers)
-                 ,serialize => Serialize ++ maybe_serialize(Status, Stage, JobId, AccountId, Job)
-                 }
+            maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs)
     end.
 
--spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:objects().
-maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, _Job) ->
+-spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> kz_json:objects().
+maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, Number, _Job, Jobs) ->
     lager:debug("dropping job ~s/~s from cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
-    [];
-maybe_serialize(Status, Stage, JobId, AccountId, Job) ->
+    #{pending := Pending
+     ,numbers := Numbers
+     ,serialize := Serialize
+     } = Jobs,
+    Jobs#{pending => maps:remove(JobId, Pending)
+         ,numbers => maps:remove(Number, Numbers)
+         ,serialize => Serialize
+         };
+maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs) ->
     lager:debug("serializing job ~s/~s into cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
-    [Job].
+    #{pending := Pending
+     ,numbers := Numbers
+     ,serialize := Serialize
+     } = Jobs,
+    Jobs#{pending => maps:remove(JobId, Pending)
+         ,numbers => maps:remove(Number, Numbers)
+         ,serialize => Serialize ++ [Job]
+         }.
