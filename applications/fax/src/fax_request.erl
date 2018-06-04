@@ -308,15 +308,9 @@ maybe_update_fax_settings(#state{call=Call
         {'ok', JObj} ->
             lager:debug("updating fax settings from user ~s", [OwnerId]),
             update_fax_settings(Call, kzd_user:fax_settings(JObj)),
-            case kz_json:is_true(<<"fax_to_email_enabled">>, JObj, 'true') of
-                'true' ->
-                    UserEmail = kz_json:get_value(<<"email">>, JObj),
-                    Notify = kz_json:set_value([<<"email">>,<<"send_to">>], [UserEmail] , kz_json:new()),
-                    State#state{fax_notify=Notify};
-                'false' ->
-                    lager:debug("user ~p has disabled fax_to_email - not going to send email", [OwnerId]),
-                    State
-            end;
+            UserEmail = kz_json:get_value(<<"email">>, JObj),
+            Notify = kz_json:set_value([<<"email">>,<<"send_to">>], [UserEmail] , kz_json:new()),
+            State#state{fax_notify=Notify};
         {'error', _} ->
             maybe_update_fax_settings_from_account(State)
     end;
@@ -574,8 +568,6 @@ notify_failure(JObj, 'undefined', State) ->
     notify_failure(JObj, <<"unknown error">>, State);
 notify_failure(JObj, NonBinary, State) when not is_binary(NonBinary) ->
     notify_failure(JObj, kz_term:to_binary(NonBinary), State);
-notify_failure(_JObj, _Reason, #state{fax_notify='undefined'}) ->
-    'ok';
 notify_failure(JObj, Reason, #state{call=Call
                                    ,owner_id=OwnerId
                                    ,faxbox_id=FaxBoxId
@@ -599,8 +591,6 @@ notify_failure(JObj, Reason, #state{call=Call
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_inbound_error/1).
 
 -spec notify_success(state()) -> 'ok'.
-notify_success(#state{fax_notify='undefined'}) ->
-    'ok';
 notify_success(#state{call=Call
                      ,owner_id=OwnerId
                      ,faxbox_id=FaxBoxId
