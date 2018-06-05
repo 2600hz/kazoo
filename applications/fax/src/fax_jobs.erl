@@ -275,8 +275,12 @@ distribute_job(ToNumber, Job, #state{jobs=#{numbers := Numbers}}=State) ->
     case ?SERIALIZE_OUTBOUND_NUMBER
         andalso maps:is_key(ToNumber, Numbers)
     of
-        'true' -> distribute_jobs(serialize_job(Job, State));
-        'false' -> distribute_jobs(start_job(JobId, ToNumber, Job, State))
+        'true' ->
+            lager:debug("going to serialize job: ~s", [JobId]),
+            distribute_jobs(serialize_job(Job, State));
+        'false' ->
+            lager:debug("not going to serialize job: ~s", [JobId]),
+            distribute_jobs(start_job(JobId, ToNumber, Job, State))
     end.
 
 -spec start_job(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), state()) -> state().
@@ -284,6 +288,7 @@ start_job(JobId, ToNumber, Job, #state{account_id=AccountId
                                       ,queue=Queue
                                       }=State) ->
     Payload = start_job_payload(AccountId, JobId, ToNumber, Queue),
+    lager:debug("starting job: ~s for account id: ~s fax destination: ~s", [JobId, AccountId, ToNumber]),
     case kz_amqp_worker:call(Payload, fun kapi_fax:publish_start_job/1, fun validate_job_started/1) of
         {'error', 'timeout'} -> serialize_job(Job, State);
         {'ok', Reply} -> set_pending_job(JobId, kz_api:node(Reply), Job, ToNumber, State)
@@ -312,6 +317,7 @@ set_pending_job(JobId, Node, Job, ToNumber, #state{jobs=#{pending := Pending
                                                          ,numbers := Numbers
                                                          }=Jobs
                                                   }=State) ->
+    lager:debug("setting job: ~s  to pending status", [JobId]),
     State#state{jobs=Jobs#{pending => Pending#{JobId => #{number => ToNumber
                                                          ,start => kz_time:now_ms()
                                                          ,job => Job
@@ -325,6 +331,7 @@ set_pending_job(JobId, Node, Job, ToNumber, #state{jobs=#{pending := Pending
 handle_start_account(JObj, _Props) ->
     'true' = kapi_fax:start_account_v(JObj),
     AccountId = kapi_fax:account_id(JObj),
+    lager:debug("starting account jobs worker for account id: ~s", [AccountId]),
     case is_running(AccountId) of
         'true' -> 'ok';
         'false' ->
