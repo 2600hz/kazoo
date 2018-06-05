@@ -275,12 +275,8 @@ distribute_job(ToNumber, Job, #state{jobs=#{numbers := Numbers}}=State) ->
     case ?SERIALIZE_OUTBOUND_NUMBER
         andalso maps:is_key(ToNumber, Numbers)
     of
-        'true' ->
-            lager:debug("going to serialize job: ~s", [JobId]),
-            distribute_jobs(serialize_job(Job, State));
-        'false' ->
-            lager:debug("not going to serialize job: ~s", [JobId]),
-            distribute_jobs(start_job(JobId, ToNumber, Job, State))
+        'true' -> distribute_jobs(serialize_job(JobId, Job, State));
+        'false' -> distribute_jobs(start_job(JobId, ToNumber, Job, State))
     end.
 
 -spec start_job(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), state()) -> state().
@@ -290,7 +286,7 @@ start_job(JobId, ToNumber, Job, #state{account_id=AccountId
     Payload = start_job_payload(AccountId, JobId, ToNumber, Queue),
     lager:debug("starting job: ~s for account id: ~s fax destination: ~s", [JobId, AccountId, ToNumber]),
     case kz_amqp_worker:call(Payload, fun kapi_fax:publish_start_job/1, fun validate_job_started/1) of
-        {'error', 'timeout'} -> serialize_job(Job, State);
+        {'error', 'timeout'} -> serialize_job(JobId, Job, State);
         {'ok', Reply} -> set_pending_job(JobId, kz_api:node(Reply), Job, ToNumber, State)
     end.
 
@@ -308,8 +304,9 @@ start_job_payload(AccountId, JobId, ToNumber, Queue) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec serialize_job(kz_json:object(), state()) -> state().
-serialize_job(Job, #state{jobs=#{serialize := Serialize}=Jobs}=State) ->
+-spec serialize_job(kz_term:ne_binary(), kz_json:object(), state()) -> state().
+serialize_job(JobId, Job, #state{jobs=#{serialize := Serialize}=Jobs}=State) ->
+    lager:debug("serializing job: ~s", [JobId]),
     State#state{jobs=Jobs#{serialize => [Job | Serialize]}}.
 
 -spec set_pending_job(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), state()) -> state().
@@ -445,8 +442,6 @@ cleanup_jobs(AccountId) ->
 handle_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
     Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
     Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
-    lager:debug_unsafe("PENDING ~p", [Pending]),
-    lager:debug_unsafe("JOB ~s", [kz_json:encode(JObj, ['pretty'])]),
     case kz_maps:get([JobId, job], Pending, 'undefined') of
         'undefined' ->
             lager:warning("received error on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
