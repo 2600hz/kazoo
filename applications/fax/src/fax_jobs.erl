@@ -320,7 +320,6 @@ start_job(JobId, ToNumber, Job, #state{account_id=AccountId
     case kz_amqp_worker:call(Payload, fun kapi_fax:publish_start_job/1, fun validate_job_started/1) of
         {'error', 'timeout'} -> serialize_job(JobId, Job, State);
         {'ok', Reply} -> set_pending_job(JobId, kz_api:node(Reply), Job, ToNumber, State)
->>>>>>> add option for global queue name
     end.
 
 -spec validate_job_started(kz_json:object()) -> boolean().
@@ -357,7 +356,7 @@ set_pending_job(JobId, Node, Job, ToNumber, #state{jobs=#{pending := Pending
                           ,numbers => Numbers#{ToNumber => JobId}
                           }}.
 
--spec handle_start_account(kz_json:object(), kz_term:proplist()) -> 'ok'.
+-spec handle_start_account(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_start_account(JObj, _Props) ->
     'true' = kapi_fax:start_account_v(JObj),
     AccountId = kapi_fax:account_id(JObj),
@@ -471,14 +470,7 @@ cleanup_jobs(AccountId) ->
     end.
 
 -spec handle_error(ne_binary(), ne_binary(), kz_json:object(), map()) -> map().
-<<<<<<< HEAD
-handle_error(JobId, AccountId, JObj, #{pending := Pending
-                                      ,numbers := Numbers
-                                      ,serialize := Serialize
-                                      } = Jobs) ->
-=======
 handle_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
->>>>>>> add option for global queue name
     Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
     Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
     case kz_maps:get([JobId, job], Pending, 'undefined') of
@@ -488,21 +480,6 @@ handle_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
         Job ->
             Number = knm_converters:normalize(number(Job), AccountId),
             lager:warning("received error for fax job ~s/~s/~s on stage ~p: ~p", [AccountId, JobId, Number, Stage, Status]),
-<<<<<<< HEAD
-            Jobs#{pending => maps:remove(JobId, Pending)
-                 ,numbers => maps:remove(Number, Numbers)
-                 ,serialize => Serialize ++ maybe_serialize(Status, Stage, JobId, AccountId, Job)
-                 }
-    end.
-
--spec maybe_serialize(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> kz_json:objects().
-maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, _Job) ->
-    lager:debug("dropping job ~s/~s from cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
-    [];
-maybe_serialize(Status, Stage, JobId, AccountId, Job) ->
-    lager:debug("serializing job ~s/~s into cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
-    [Job].
-=======
             maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs)
     end.
 
@@ -527,4 +504,3 @@ maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs) ->
          ,numbers => maps:remove(Number, Numbers)
          ,serialize => Serialize ++ [Job]
          }.
->>>>>>> add option for global queue name
