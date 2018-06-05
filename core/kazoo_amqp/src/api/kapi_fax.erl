@@ -308,7 +308,7 @@ account_id(JObj) ->
 
 -spec control_queue(kz_json:object()) -> ne_binary().
 control_queue(JObj) ->
-    case kz_amqp_util:split_routing_key(kz_api:server_id(JObj)) of
+    case amqp_util:split_routing_key(kz_api:server_id(JObj)) of
         {'undefined', _} -> kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj);
         {Pid, _} -> list_to_binary(["consumer://"
                                    ,kz_term:to_binary(Pid)
