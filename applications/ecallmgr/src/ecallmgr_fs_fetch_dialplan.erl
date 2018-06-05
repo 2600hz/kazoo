@@ -33,12 +33,13 @@ init() ->
 
 -spec dialplan(map()) -> fs_sendmsg_ret().
 dialplan(#{fetch_id := FetchId, payload := JObj}=Map) ->
-    lager:debug_unsafe("ROUTE REQ : ~s", [kz_json:encode(JObj, ['pretty'])]),
+%%    lager:debug_unsafe("ROUTE REQ : ~s", [kz_json:encode(JObj, ['pretty'])]),
     lager:debug("start dialplan fetch ~s for ~s", [FetchId, kzd_fetch:call_id(JObj)]),
     Routines = [fun call_id/1
                ,fun timeout/1
                ,{fun add_time_marker/2, start_processing}
                ,fun(M) -> M#{callback => fun process/1} end
+               ,fun(M) -> M#{options => []} end
                ],
     ecallmgr_call_control_sup:start_proc(kz_maps:exec(Routines, Map)).
 
@@ -159,10 +160,10 @@ send_reply(#{node := Node, fetch_id := FetchId, reply := #{payload := Reply}}=Ma
         orelse kz_json:get_ne_binary_value(<<"Method">>, Reply) /= <<"park">>
     of
         true -> ok;
-        false -> wait_for_route_win(Map)
+        false -> wait_for_route_winner(Map)
     end.
 
-wait_for_route_win(Map) ->
+wait_for_route_winner(Map) ->
     receive
         {'route_winner', JObj, Props} ->
             activate_call_control(Map#{winner => #{payload => JObj, props => Props}})

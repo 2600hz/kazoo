@@ -10,7 +10,7 @@
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_util).
 
--export([send_cmd/4, send_cmds/3]).
+-export([send_cmd/5, send_cmds/3]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
 -export([process_fs_kv/4, format_fs_kv/4]).
@@ -89,6 +89,8 @@
                          ,header_vars = [] :: kz_term:ne_binaries()
                          ,include_channel_vars = 'true' :: boolean()
                          ,failover
+                         ,account_id
+                         ,endpoint_id
                          }).
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
@@ -96,69 +98,71 @@
 %% @doc send the SendMsg proplist to the freeswitch node
 %% @end
 %%------------------------------------------------------------------------------
--spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
-send_cmd(Node, UUID, App, Args) when not is_list(App) ->
-    send_cmd(Node, UUID, kz_term:to_list(App), Args);
-send_cmd(Node, UUID, "xferext", Dialplan) ->
+-spec send_cmd(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
+send_cmd(Node, UUID, App, FSApp, Args) when not is_list(FSApp) ->
+    send_cmd(Node, UUID, App, kz_term:to_list(FSApp), Args);
+send_cmd(Node, UUID, App, "xferext", Dialplan) ->
     XferExt = [begin
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
-                   {App, Arg} = case binary:split(kz_term:to_binary(V), <<" ">>) of
+                   {FSApp, Arg} = case binary:split(kz_term:to_binary(V), <<" ">>) of
                                     [AppName, AppArgs] -> {AppName, AppArgs};
                                     [AppName] -> {AppName, <<>>}
                                 end,
                    [{<<"call-command">>, <<"execute">>}
-                   ,{<<"execute-app-name">>, kz_term:to_binary(App)}
+                   ,{<<"execute-app-name">>, kz_term:to_binary(FSApp)}
                    ,{<<"execute-app-arg">>, kz_term:to_binary(Arg)}
+                   ,{<<"execute-app-event-name">>, kz_term:to_binary(App)}
                    ]
                end
                || {K, V} <- Dialplan,
                   not cmd_is_empty({kz_term:to_list(K), kz_term:to_list(V)})
               ],
     freeswitch:cmds(Node, UUID, XferExt);
-send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
-    send_cmd(Node, UUID, App, kz_term:to_list(Args));
-send_cmd(_Node, _UUID, "kz_multiset", "^^") -> 'ok';
-send_cmd(Node, UUID, "playstop", _Args) ->
-    lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
+send_cmd(Node, UUID, App, FSApp, Args) when not is_list(Args) ->
+    send_cmd(Node, UUID, App, FSApp, kz_term:to_list(Args));
+send_cmd(_Node, _UUID, _App, "kz_multiset", "^^") -> 'ok';
+send_cmd(Node, UUID, App, "playstop", _Args) ->
+    lager:debug("execute on node ~s: ~s uuid_break(~s all)", [Node, App, UUID]),
     freeswitch:api(Node, 'uuid_break', <<UUID/binary, " all">>);
-send_cmd(Node, UUID, "unbridge", _) ->
-    lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
+send_cmd(Node, UUID, App, "unbridge", _) ->
+    lager:debug("execute on node ~s: ~s uuid_park(~s)", [Node, App, UUID]),
     freeswitch:api(Node, 'uuid_park', UUID);
-send_cmd(Node, _UUID, "broadcast", Args) ->
-    lager:debug("execute on node ~s: uuid_broadcast(~s)", [Node, Args]),
+send_cmd(Node, _UUID, App, "broadcast", Args) ->
+    lager:debug("execute on node ~s: ~s uuid_broadcast(~s)", [Node, App, Args]),
     Resp = freeswitch:api(Node, 'uuid_broadcast', iolist_to_binary(Args)),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
-send_cmd(Node, UUID, "call_pickup", Target) ->
+send_cmd(Node, UUID, App, "call_pickup", Target) ->
     Args = iolist_to_binary([UUID, " ", Target]),
-    lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
+    lager:debug("execute on node ~s: ~s uuid_bridge(~s)", [Node, App, Args]),
     freeswitch:api(Node, 'uuid_bridge', Args);
-send_cmd(Node, UUID, "hangup", Args) ->
-    lager:debug("terminate call on node ~s", [Node]),
+send_cmd(Node, UUID, App, "hangup", Args) ->
+    lager:debug("terminate call on node ~s ~s", [Node, App]),
     freeswitch:api(Node, 'uuid_kill', iolist_to_binary([UUID, " ", Args]));
-send_cmd(Node, UUID, "break", _) ->
-    lager:debug("break call on node ~s", [Node]),
+send_cmd(Node, UUID, App, "break", _) ->
+    lager:debug("break call on node ~s ~s", [Node, App]),
     freeswitch:api(Node, 'uuid_break', UUID);
-send_cmd(Node, _UUID, "audio_level", Args) ->
-    lager:debug("execute on node ~s: uuid_audio ~p", [Node, Args]),
+send_cmd(Node, _UUID, App, "audio_level", Args) ->
+    lager:debug("execute on node ~s: ~s uuid_audio ~p", [Node, App, Args]),
     freeswitch:api(Node, 'uuid_audio', iolist_to_binary(Args));
-send_cmd(Node, _UUID, "transfer", Args) ->
-    lager:debug("transferring on ~s: ~s", [Node, Args]),
+send_cmd(Node, _UUID, App, "transfer", Args) ->
+    lager:debug("transferring on ~s: ~s ~s", [Node, App, Args]),
     freeswitch:api(Node, 'uuid_transfer', iolist_to_binary(Args));
-send_cmd(Node, _UUID, "uuid_" ++ _ = API, Args) ->
-    lager:debug("using api for ~s command ~s: ~s", [API, Node, Args]),
+send_cmd(Node, _UUID, App, "uuid_" ++ _ = API, Args) ->
+    lager:debug("using api for ~s command ~s: ~s ~s", [API, Node, App, Args]),
     freeswitch:api(Node, kz_term:to_atom(API, 'true'), iolist_to_binary(Args));
-send_cmd(Node, _UUID, "kz_uuid_" ++ _ = API, Args) ->
-    lager:debug("using api for ~s command ~s: ~s", [API, Node, Args]),
+send_cmd(Node, _UUID, App, "kz_uuid_" ++ _ = API, Args) ->
+    lager:debug("using api for ~s command ~s: ~s ~s", [API, Node, App, Args]),
     freeswitch:api(Node, kz_term:to_atom(API, 'true'), iolist_to_binary(Args));
-send_cmd(Node, UUID, App, Args) ->
-    AppName = dialplan_application(App),
+send_cmd(Node, UUID, App, FSApp, Args) ->
+    AppName = dialplan_application(FSApp),
     Result = freeswitch:cmd(Node, UUID, [{<<"call-command">>, <<"execute">>}
                                         ,{<<"execute-app-name">>, kz_term:to_binary(AppName)}
                                         ,{<<"execute-app-arg">>, kz_term:to_binary(Args)}
+                                        ,{<<"execute-app-event-name">>, kz_term:to_binary(App)}
                                         ]),
-    lager:debug("execute result on node ~s(~s) ~s(~s): ~p"
-               ,[Node, UUID, AppName, Args, Result]
+    lager:debug("execute result on node ~s(~s)  ~s(~s)  ~s(~s): ~p"
+               ,[Node, UUID, App, FSApp, AppName, Args, Result]
                ),
     Result.
 
@@ -170,12 +174,13 @@ cmd_is_empty(_) -> 'false'.
 -spec send_cmds(atom(), kz_term:ne_binary(), [{kz_term:text(), kz_term:text()}]) -> send_cmd_ret().
 send_cmds(Node, UUID, Cmds) ->
     Commands = [begin
-                    AppName = dialplan_application(App),
+                    AppName = dialplan_application(FSApp),
                     [{<<"call-command">>, <<"execute">>}
                     ,{<<"execute-app-name">>, dialplan_application(kz_term:to_binary(AppName))}
                     ,{<<"execute-app-arg">>, kz_term:to_binary(Args)}
+                    ,{<<"execute-app-event-name">>, kz_term:to_binary(App)}
                     ]
-                end || {App, Args} <- Cmds],
+                end || {App, FSApp, Args} <- Cmds],
     Result = freeswitch:cmds(Node, UUID, Commands),
     lager:debug("execute on node ~s(~s) : ~p"
                ,[Node, UUID, Result]
@@ -848,7 +853,8 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
 
 -spec endpoint_key(kz_json:object()) -> kz_term:api_binaries().
 endpoint_key(Endpoint) ->
-    [kz_json:get_value(<<"Invite-Format">>, Endpoint)
+    [kz_json:get_value(<<"Endpoint-ID">>, Endpoint)
+    ,kz_json:get_value(<<"Invite-Format">>, Endpoint)
     ,kz_json:get_value(<<"To-User">>, Endpoint)
     ,kz_json:get_value(<<"To-Realm">>, Endpoint)
     ,kz_json:get_value(<<"To-DID">>, Endpoint)
@@ -881,6 +887,8 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
                              ,sip_interface = kz_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
                              ,include_channel_vars = IncludeVars
                              ,failover = kz_json:get_value(<<"Failover">>, Endpoint)
+                             ,account_id = kz_json:get_value(<<"Account-ID">>, Endpoint)
+                             ,endpoint_id = kz_json:get_value(<<"Endpoint-ID">>, Endpoint)
                              },
     endpoint_jobj_to_record_vars(Endpoint, Bridge).
 
@@ -1113,6 +1121,12 @@ get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
     Route;
 get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
+%% get_sip_contact(#bridge_endpoint{ip_address='undefined'
+%%                                 ,account_id=AccountId
+%%                                 ,endpoint_id=EndpointId
+%%                                 }=EP) ->
+%%     lager:debug_unsafe("SIP EP ~p", [EP]),
+%%     <<"user/", EndpointId/binary, "@", AccountId/binary>>;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                 ,realm=Realm
                                 ,username=Username
@@ -1198,6 +1212,7 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=
 maybe_format_user(Contact, _) -> Contact.
 
 -spec maybe_set_interface(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
+maybe_set_interface(<<"user/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoint) ->

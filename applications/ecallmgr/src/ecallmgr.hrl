@@ -269,6 +269,7 @@
                               ,{<<"Loopback-Export">>, <<"loopback_export">>}
                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
                               ,{<<"Loopback-From-URI">>, <<"sip_loopback_from_uri">>}
+                              ,{<<"Media-Encryption">>, <<"rtp_secure_media">>}
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
                               ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
@@ -392,6 +393,7 @@
                               ,{<<"kz_endless_playback">>, <<"hold">>}
                               ,{<<"soft_hold">>, <<"soft_hold">>}
                               ,{<<"uuid_record">>, <<"record_call">>}
+                              ,{<<"record_session">>, <<"record_call">>}
                               ,{<<"record">>, <<"record_call">>}
                               ,{<<"presence">>, <<"presence">>}
                               ,{<<"privacy">>, <<"privacy">>}

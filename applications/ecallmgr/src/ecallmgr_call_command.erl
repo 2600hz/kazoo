@@ -34,9 +34,9 @@ exec_cmd(Node, UUID, JObj, _ControlPid, UUID) ->
         {'error', Msg} -> throw({'msg', Msg});
         {'return', Result} -> Result;
         {_AppName, 'noop'} -> 'ok';
-        {AppName, AppData} -> ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
+        {AppName, AppData} -> ecallmgr_util:send_cmd(Node, UUID, App, AppName, AppData);
         %% {AppName, AppData, NewNode} -> ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
-        [_|_]=Apps -> ecallmgr_util:send_cmds(Node, UUID, Apps)
+        [_|_]=Apps -> ecallmgr_util:send_cmds(Node, UUID, [{App, FSApp, AppData} || {FSApp, AppData} <- Apps])
     end;
 exec_cmd(_Node, _UUID, JObj, _ControlPid, _DestId) ->
     lager:notice("command ~s not meant for us but for ~s", [kapi_dialplan:application_name(JObj), _DestId]),
@@ -1001,18 +1001,18 @@ play_app(UUID, JObj) ->
     %% if Leg is set, use uuid_broadcast; otherwise use playback
     case ecallmgr_fs_channel:is_bridged(UUID) of
         'false' -> {<<"playback">>, F};
-        'true' -> play_bridged(UUID, JObj, F)
+        'true' -> play_bridged(JObj, F)
     end.
 
--spec play_bridged(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> fs_app().
-play_bridged(UUID, JObj, F) ->
+-spec play_bridged(kz_json:object(), kz_term:ne_binary()) -> fs_app().
+play_bridged(JObj, F) ->
     case kz_json:get_ne_binary_value(<<"Leg">>, JObj) of
-        <<"self">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' aleg">>])};
-        <<"A">> ->     {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' aleg">>])};
-        <<"peer">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' bleg">>])};
-        <<"B">> ->     {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' bleg">>])};
-        <<"Both">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' both">>])};
-        'undefined' -> {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' both">>])}
+        <<"self">> ->  {<<"broadcast">>, list_to_binary(["'", F, <<"' aleg">>])};
+        <<"A">> ->     {<<"broadcast">>, list_to_binary(["'", F, <<"' aleg">>])};
+        <<"peer">> ->  {<<"broadcast">>, list_to_binary(["'", F, <<"' bleg">>])};
+        <<"B">> ->     {<<"broadcast">>, list_to_binary(["'", F, <<"' bleg">>])};
+        <<"Both">> ->  {<<"broadcast">>, list_to_binary(["'", F, <<"' both">>])};
+        'undefined' -> {<<"broadcast">>, list_to_binary(["'", F, <<"' both">>])}
     end.
 
 -spec play_vars(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_app().

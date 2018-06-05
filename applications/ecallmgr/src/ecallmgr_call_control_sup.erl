@@ -12,7 +12,7 @@
 %% API
 -export([start_link/0]).
 -export([start_proc/1]).
--export([start_control_process/6]).
+-export([start_control_process/7]).
 -export([init/1]).
 
 -include("ecallmgr.hrl").
@@ -37,9 +37,9 @@ start_link() ->
 start_proc(Map) ->
     supervisor:start_child(?SERVER, [control_q(Map)]).
 
--spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_pid(), kz_json:object()) ->
+-spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_pid(), kz_json:object(), kz_term:proplist()) ->
                                    kz_types:sup_startchild_ret().
-start_control_process(Node, CallId, FetchId, ControllerQ, ControllerP, CCVs) ->
+start_control_process(Node, CallId, FetchId, ControllerQ, ControllerP, CCVs, Options) ->
     lager:debug("starting call control for ~s", [CallId]),
     start_proc(#{node => Node
                 ,call_id => CallId
@@ -47,6 +47,7 @@ start_control_process(Node, CallId, FetchId, ControllerQ, ControllerP, CCVs) ->
                 ,controller_q => ControllerQ
                 ,controller_p => ControllerP
                 ,initial_ccvs => CCVs
+                ,options => Options
                 }).
 
 control_q(#{control_q := _Queue}= Map) -> Map;

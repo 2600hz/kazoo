@@ -207,7 +207,7 @@ handle_cavs(DP, Node, UUID, _Channel, JObj) ->
 -spec handle_loopback_key(boolean(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 handle_loopback_key('false', _Key, _JObj) -> [];
 handle_loopback_key('true', Key, JObj) ->
-    V = kz_term:to_binary(kz_json:is_false(Key, JObj, 'false')),
+    V = kz_term:to_binary(kz_json:is_true(Key, JObj, 'false')),
     K = ecallmgr_util:get_fs_key(Key),
     [{K, V}].
 
@@ -233,8 +233,9 @@ pre_exec(DP, _Node, _UUID, _Channel, JObj) ->
               ,{<<?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID>>, <<"${", ?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID, "}">>}
               ,{<<"Call-Control-Queue">>, <<"${Call-Control-Queue}">>}
               ,{<<"Call-Control-PID">>, <<"${Call-Control-PID}">>}
-              ,{<<"Switch-URI">>, <<"${Switch-URI}">>}
-              ,{<<"fax_enable_t38">>, <<"true">>}
+              ,{<<"Call-Control-Node">>, <<"${Call-Control-Node}">>}
+              ,{<<"ecallmgr_Ecallmgr-Node">>, <<"${ecallmgr_Ecallmgr-Node}">>}
+%              ,{<<"fax_enable_t38">>, <<"true">>}
               ] ++ loopback_exports(JObj),
     CmdExport = kz_binary:join([<<K/binary, "=", V/binary>> || {K, V} <- Exports], <<" ">>),
     [{"application", "kz_multiset continue_on_fail=true hangup_after_bridge=true"}

@@ -68,8 +68,8 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
     _ = freeswitch:api(Node, 'uuid_kill', kz_term:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     'ok'.
 
--spec is_mobile_device(kz_json:object(), atom()) -> boolean().
-is_mobile_device(Props, Node) ->
+-spec is_mobile_device(kz_json:object()) -> boolean().
+is_mobile_device(Props) ->
     <<"mobile">> =:=  kz_evt_freeswitch:authorizing_type(Props).
 
 -spec maybe_authorized_channel(kz_json:object(), atom()) -> authz_reply().
@@ -271,14 +271,15 @@ allow_call(Props, _CallId, _Node) ->
              ,{<<"Global-Resource">>, kz_evt_freeswitch:is_consuming_global_resource(Props)}
              ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
-    case kz_evt_freeswitch:is_call_setup(Props) of
-        'true' ->
-            lager:info("channel is authorized (with channel vars)"),
-            {'true', kz_json:from_list(Vars)};
-        'false' ->
-            lager:info("channel is authorized"),
-            'true'
-    end.
+%%     case kz_evt_freeswitch:is_call_setup(Props) of
+%%         'true' ->
+%%             lager:info("channel is authorized (with channel vars)"),
+%%             {'true', kz_json:from_list(Vars)};
+%%         'false' ->
+%%             lager:info("channel is authorized"),
+%%             'true'
+%%     end.
+    {'true', kz_json:from_list(Vars)}.
 
 -spec rate_channel(kz_json:object(), atom()) -> 'ok'.
 rate_channel(Props, Node) ->
@@ -384,6 +385,7 @@ maybe_update_callee_id(JObj, Acc) ->
 
 -spec authz_req(kz_json:object()) -> kz_term:proplist().
 authz_req(JObj) ->
+    lager:debug_unsafe("AUTHZ REQ : ~s", [kz_json:encode(JObj, ['pretty'])]),
     AccountId = kz_evt_freeswitch:account_id(JObj),
     props:filter_undefined(
       [{<<"Call-ID">>, kz_evt_freeswitch:call_id(JObj)}
@@ -429,5 +431,5 @@ rating_req(CallId, Props) ->
 
 -spec is_emergency_number(kzd_freeswitch:data()) -> authz_reply().
 is_emergency_number(Props) ->
-    <<"emergency">> =:= knm_converters:classify(kzd_freeswitch:to_did(Props))
-        andalso <<"outbound">> =:= kzd_freeswitch:call_direction(Props).
+    <<"emergency">> =:= knm_converters:classify(kz_evt_freeswitch:to_did(Props))
+        andalso <<"outbound">> =:= kz_evt_freeswitch:call_direction(Props).

@@ -53,7 +53,6 @@
 -export([other_legs/1
         ,update_node/2
         ,control_procs/1
-        ,publish_usurp/3
         ]).
 -export([fs_nodeup/2]).
 -export([fs_nodedown/2]).
@@ -97,6 +96,7 @@
                ,node_down_tref :: kz_term:api_reference()
                ,current_cmd_uuid :: kz_term:api_binary()
                ,channel :: kz_term:api_pid()
+               ,options :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -183,6 +183,7 @@ init_control(Pid, #{node := Node
                    ,fetch_id := FetchId
                    ,control_q := ControlQ
                    ,channel := Channel
+                   ,options := Options
                    }=Payload) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
     kz_amqp_channel:consumer_channel(Channel),
@@ -205,6 +206,7 @@ init_control(Pid, #{node := Node
                           ,initial_ccvs=CCVs
                           ,is_node_up=true
                           ,is_call_up=true
+                          ,options= Options
                           },
             call_control_ready(State),
             gen_server:enter_loop(?MODULE, [], State);
@@ -222,6 +224,7 @@ init_control(Pid, #{node := Node
                    ,controller_p := ControllerP
                    ,control_q := ControlQ
                    ,initial_ccvs := CCVs
+                   ,options := Options
                    }) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
     Name = ?CALL_CTL_NAME(CallId),
@@ -239,6 +242,7 @@ init_control(Pid, #{node := Node
                   ,initial_ccvs=CCVs
                   ,is_node_up=true
                   ,is_call_up=true
+                  ,options=Options
                   },
     call_control_ready(State),
     register(Name, self()),
@@ -292,7 +296,7 @@ handle_cast({'fs_nodeup', Node}, #state{node=Node
         {'ok', <<"true">>} ->
             {'noreply', force_queue_advance(State#state{is_node_up='true'})};
         _Else ->
-            {'noreply', handle_channel_destroyed(kz_json:new(), State)}
+            {'noreply', handle_channel_destroyed(State)}
     end;
 handle_cast(_, State) ->
     {'noreply', State}.
@@ -331,38 +335,11 @@ handle_info('sanity_check', #state{call_id=CallId}=State) ->
             {'noreply', State#state{sanity_check_tref=TRef}};
         'false' ->
             lager:debug("call uuid does not exist, executing post-hangup events and terminating"),
-            {'noreply', handle_channel_destroyed(kz_json:new(), State)}
+            {'noreply', handle_channel_destroyed(State)}
     end;
 handle_info('nodedown_restart_exceeded', #state{is_node_up='false'}=State) ->
     lager:debug("we have not received a node up in time, assuming down for good for this call", []),
-    {'noreply', handle_channel_destroyed(kz_json:new(), State)};
-handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
-                                                     ,node=Node
-                                                     }=State) ->
-    case {props:get_value(?RESIGNING_UUID, Props)
-         ,props:get_value(?ACQUIRED_UUID, Props)
-         }
-    of
-        {ResigningUUID, ResigningUUID} ->
-            lager:debug("call id after bowout remains the same"),
-            {'noreply', State};
-        {ResigningUUID, AcquiringUUID} ->
-            lager:debug("replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
-            %%            {'noreply', handle_sofia_replaced(AcquiringUUID, State)};
-            {'noreply', State#state{call_id=AcquiringUUID}};
-        {_UUID, _AcuiringUUID} ->
-            lager:debug("ignoring bowout for ~s", [_UUID]),
-            {'noreply', State}
-    end;
-handle_info({'usurp_control', CallId, FetchId, _JObj}, #state{call_id = CallId
-                                                             ,fetch_id = FetchId
-                                                             } = State) ->
-    {'noreply', State};
-handle_info({'usurp_control', CallId, _FetchId, _JObj}, #state{call_id = CallId} = State) ->
-    lager:debug("the call has been usurped by an external process"),
-    {'stop', 'normal', State};
-handle_info({'usurp_control', _CallId, _FetchId, _JObj}, State) ->
-    {'noreply', State};
+    {'noreply', handle_channel_destroyed(State)};
 handle_info({switch_reply, _}, State) ->
     {'noreply', State};
 handle_info({route_resp, _, _}, State) ->
@@ -485,30 +462,6 @@ publish_route_win(#state{call_id=CallId
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
--spec handle_channel_destroyed(kz_json:object(), state()) -> state().
-handle_channel_destroyed(JObj, State) ->
-    case kz_json:is_true(<<"Channel-Is-Loopback">>, JObj, 'false') of
-        'false' -> handle_channel_destroyed(State);
-        'true' -> handle_loopback_destroyed(JObj, State)
-    end.
-
--spec handle_loopback_destroyed(kz_json:object(), state()) -> state().
-handle_loopback_destroyed(JObj, State) ->
-    case {kz_call_event:hangup_cause(JObj)
-         ,kz_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj)
-         }
-    of
-        {<<"NORMAL_UNSPECIFIED">>, 'true'} ->
-            lager:debug("our loopback has ended but we may not have recv the bowout"),
-            State;
-        {_Cause, _Bowout} ->
-            lager:debug("our loopback has ended with ~s(bowout ~s); treating as done"
-                       ,[_Cause, _Bowout]
-                       ),
-            handle_channel_destroyed(State)
-    end.
-
 -spec handle_channel_destroyed(state()) -> state().
 handle_channel_destroyed(#state{sanity_check_tref=SCTRef
                                ,current_app=CurrentApp
@@ -643,10 +596,10 @@ handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp
             lager:warning("couldn't translate the app name ~s for ~s", [CurrApp, RawAppName]),
             State
     end;
-handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_app=CurrApp
-                                                           ,current_cmd_uuid=EventUUID
+handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_app=_CurrApp
+                                                           ,current_cmd_uuid=__EventUUID
                                                            }=State) ->
-    lager:debug_unsafe("execute complete not handled : ~s:~s ~s:~s : ~s", [_AppName, _EventUUID, CurrApp, EventUUID, kz_json:encode(_JObj, ['pretty'])]),
+%%    lager:debug_unsafe("execute complete not handled : ~s:~s ~s:~s : ~s", [_AppName, _EventUUID, CurrApp, EventUUID, kz_json:encode(_JObj, ['pretty'])]),
     State.
 
 -spec forward_queue(state()) -> state().
@@ -1204,7 +1157,7 @@ handle_event_info(CallId, JObj, #state{call_id=CallId}=State) ->
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             {'noreply', handle_execute_complete(Application, kz_call_event:application_uuid(JObj), JObj, State)};
         <<"CHANNEL_DESTROY">> ->
-            {'noreply', handle_channel_destroyed(JObj, State)};
+            {'noreply', handle_channel_destroyed(State)};
         <<"CHANNEL_TRANSFEREE">> ->
             handle_transferee(JObj, State);
         <<"CHANNEL_REPLACED">> ->
