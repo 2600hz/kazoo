@@ -10,7 +10,7 @@
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_util).
 
--export([send_cmd/5, send_cmds/3]).
+-export([send_cmd/4, send_cmd/5, send_cmds/3]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
 -export([process_fs_kv/4, format_fs_kv/4]).
@@ -98,6 +98,10 @@
 %% @doc send the SendMsg proplist to the freeswitch node
 %% @end
 %%------------------------------------------------------------------------------
+-spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
+send_cmd(Node, UUID, App, Args) ->
+    send_cmd(Node, UUID, kz_term:to_binary(App), App, Args).
+
 -spec send_cmd(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
 send_cmd(Node, UUID, App, FSApp, Args) when not is_list(FSApp) ->
     send_cmd(Node, UUID, App, kz_term:to_list(FSApp), Args);
