@@ -45,7 +45,7 @@
 -define(FAX_OUTGOING, <<"outgoing">>).
 -define(FAX_INCOMING, <<"incoming">>).
 
--define(FAX_EXCHANGE, <<"fax">>).
+-define(FAX_EXCHANGE, <<"faxes">>).
 
 -define(FAX_REQ_HEADERS, [<<"Call">>, <<"Action">>]).
 -define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>, <<"FaxBox-ID">>, <<"Fax-T38-Option">>]).
