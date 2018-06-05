@@ -380,7 +380,7 @@ use_endpoint_prefs(Call) ->
     %% only overwrite the ccvs if privacy has not been set by cf_privacy
     %% or if the call has been configured to overwrite cf_privacy settings
     not kz_privacy:has_flags(kapps_call:custom_channel_vars(Call))
-        orelse kapps_call:kvs_fetch(<<"use_endpoint_privacy">>, Call).
+        orelse kapps_call:kvs_fetch(<<"use_endpoint_privacy">>, 'false', Call).
 
 -spec check_inception(kapps_call:call()) -> kz_term:proplist().
 check_inception(Call) ->
