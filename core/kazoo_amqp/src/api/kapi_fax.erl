@@ -9,6 +9,7 @@
 -export([account_id/1
         ,job_id/1
         ,to_number/1
+        ,control_queue/1
         ,state/1
         ]).
 
@@ -44,7 +45,7 @@
 -define(FAX_OUTGOING, <<"outgoing">>).
 -define(FAX_INCOMING, <<"incoming">>).
 
--define(FAX_EXCHANGE, <<"fax">>).
+-define(FAX_EXCHANGE, <<"faxes">>).
 
 -define(FAX_REQ_HEADERS, [<<"Call">>, <<"Action">>]).
 -define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>, <<"FaxBox-ID">>, <<"Fax-T38-Option">>]).
@@ -84,7 +85,7 @@
                                   ]).
 -define(FAX_START_ACCOUNT_TYPES, []).
 
--define(FAX_START_JOB_HEADERS, [<<"Job-ID">>, <<"Account-ID">>, <<"To-Number">>]).
+-define(FAX_START_JOB_HEADERS, [<<"Job-ID">>, <<"Account-ID">>, <<"To-Number">>, <<"Control-Queue">>]).
 -define(OPTIONAL_FAX_START_JOB_HEADERS, []).
 -define(FAX_START_JOB_VALUES, [{<<"Event-Category">>,<<"start">>}
                               ,{<<"Event-Name">>, <<"job">>}
@@ -224,7 +225,7 @@ unbind_q(_, _, _, _, []) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?FAX_EXCHANGE, <<"fanout">>),
+    amqp_util:new_exchange(?FAX_EXCHANGE, <<"topic">>),
     amqp_util:targeted_exchange(),
     amqp_util:callmgr_exchange().
 
@@ -302,6 +303,17 @@ status_routing_key(AccountId, FaxId) ->
 account_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Account-ID">>, JObj).
 
+-spec control_queue(kz_json:object()) -> kz_term:ne_binary().
+control_queue(JObj) ->
+    case amqp_util:split_routing_key(kz_api:server_id(JObj)) of
+        {'undefined', _} -> kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj);
+        {Pid, _} -> list_to_binary(["consumer://"
+                                   ,kz_term:to_binary(Pid)
+                                   ,"/"
+                                   ,kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj)
+                                   ])
+    end.
+
 -spec job_id(kz_json:object()) -> kz_term:ne_binary().
 job_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Job-ID">>, JObj).
@@ -313,3 +325,4 @@ to_number(JObj) ->
 -spec state(kz_json:object()) -> kz_term:ne_binary().
 state(JObj) ->
     kz_json:get_ne_binary_value(<<"Fax-State">>, JObj).
+
