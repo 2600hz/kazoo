@@ -162,7 +162,7 @@ handle_job_status_query(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([kz_json:object() | ne_binary()]) -> {'ok', state()}.
 init([FaxJob, CallId]) ->
-    CtrlQ = kz_api:server_id(FaxJob),
+    CtrlQ = kapi_fax:control_queue(FaxJob),
     JobId = kapi_fax:job_id(FaxJob),
     kz_util:put_callid(JobId),
     {'ok', #state{callid = CallId
@@ -1136,12 +1136,24 @@ send_control_status(CtrlQ, Q, JobId, FaxState, Stage) ->
 handle_start_job(JObj, _Props) ->
     'true' = kapi_fax:start_job_v(JObj),
     case fax_worker_sup:start_fax_job(JObj) of
-        {'error', _Reason} ->
-            JobId = kapi_fax:job_id(JObj),
-            CtrlQ = kz_api:server_id(JObj),
-            send_control_error(JobId, CtrlQ, <<"start">>, <<"already running">>);
-        _ -> 'ok'
+        {'ok', _Pid} -> send_start_reply(JObj, <<"start">>, 'undefined');
+        {'error', _Reason} -> send_start_reply(JObj, <<"error">>, <<"already running">>)
     end.
+
+-spec send_start_reply(kz_json:object(), ne_binary(), api_ne_binary()) -> 'ok'.
+send_start_reply(JObj, Status, Reason) ->
+    JobId = kapi_fax:job_id(JObj),
+    CtrlQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    Payload = [{<<"Job-ID">>, JobId}
+              ,{<<"Fax-State">>, Status}
+              ,{<<"Stage">>, <<"start">>}
+              ,{<<"Status">>, Reason}
+              ,{?KEY_MSG_ID, MsgId}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
+    kz_amqp_worker:cast(Payload, Publisher).
 
 -spec send_control_error(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_control_error(JobId, CtrlQ, Stage, Reason) ->

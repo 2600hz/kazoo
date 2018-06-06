@@ -12706,6 +12706,9 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Control-Queue": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "start"

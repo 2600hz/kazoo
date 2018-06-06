@@ -145,6 +145,7 @@
 
 -export([is_json/1, is_host_available/0]).
 -export([encode/1]).
+-export([split_routing_key/1]).
 
 -ifdef(TEST).
 -export([trim/3]).
@@ -580,13 +581,13 @@ declare_exchange(Exchange, Type) ->
 declare_exchange(Exchange, Type, Options) ->
     #'exchange.declare'{
        exchange = Exchange
-                       ,type = Type
-                       ,passive = ?P_GET('passive', Options, 'false')
-                       ,durable = ?P_GET('durable', Options, 'false')
-                       ,auto_delete = ?P_GET('auto_delete', Options, 'false')
-                       ,internal = ?P_GET('internal', Options, 'false')
-                       ,nowait = ?P_GET('nowait', Options, 'false')
-                       ,arguments = ?P_GET('arguments', Options, [])
+      ,type = Type
+      ,passive = ?P_GET('passive', Options, 'false')
+      ,durable = ?P_GET('durable', Options, 'false')
+      ,auto_delete = ?P_GET('auto_delete', Options, 'false')
+      ,internal = ?P_GET('internal', Options, 'false')
+      ,nowait = ?P_GET('nowait', Options, 'false')
+      ,arguments = ?P_GET('arguments', Options, [])
       }.
 
 %%------------------------------------------------------------------------------
@@ -1163,11 +1164,11 @@ access_request() -> access_request([]).
 access_request(Options) ->
     #'access.request'{
        realm = ?P_GET('realm', Options, <<"/data">>)
-                     ,exclusive = ?P_GET('exclusive', Options, 'false')
-                     ,passive = ?P_GET('passive', Options, 'true')
-                     ,active = ?P_GET('active', Options, 'true')
-                     ,write = ?P_GET('write', Options, 'true')
-                     ,read = ?P_GET('read', Options, 'true')
+      ,exclusive = ?P_GET('exclusive', Options, 'false')
+      ,passive = ?P_GET('passive', Options, 'true')
+      ,active = ?P_GET('active', Options, 'true')
+      ,write = ?P_GET('write', Options, 'true')
+      ,read = ?P_GET('read', Options, 'true')
       }.
 
 %%------------------------------------------------------------------------------
@@ -1245,3 +1246,13 @@ encode_char(C) ->
 
 hexint(C) when C < 10 -> ($0 + C);
 hexint(C) when C < 16 -> ($A + (C - 10)).
+
+-spec split_routing_key(binary()) -> {kz_term:api_pid(), binary()}.
+split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->
+    Size = byte_size(RoutingKey),
+    {Start, _} = lists:last(binary:matches(RoutingKey, <<"/">>)),
+    {list_to_pid(kz_term:to_list(binary:part(RoutingKey, 11, Start - 11)))
+    ,binary:part(RoutingKey, Start + 1, Size - Start - 1)
+    };
+split_routing_key(RoutingKey) ->
+    {'undefined', RoutingKey}.
