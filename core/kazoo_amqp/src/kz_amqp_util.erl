@@ -144,6 +144,7 @@
 
 -export([is_json/1, is_host_available/0]).
 -export([encode/1]).
+-export([split_routing_key/1]).
 
 -ifdef(TEST).
 -export([trim/3]).
@@ -1320,3 +1321,13 @@ encode_char(C) ->
 
 hexint(C) when C < 10 -> ($0 + C);
 hexint(C) when C < 16 -> ($A + (C - 10)).
+
+-spec split_routing_key(binary()) -> {kz_term:api_pid(), binary()}.
+split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->
+    Size = byte_size(RoutingKey),
+    {Start, _} = lists:last(binary:matches(RoutingKey, <<"/">>)),
+    {list_to_pid(kz_term:to_list(binary:part(RoutingKey, 11, Start - 11)))
+    ,binary:part(RoutingKey, Start + 1, Size - Start - 1)
+    };
+split_routing_key(RoutingKey) ->
+    {'undefined', RoutingKey}.
