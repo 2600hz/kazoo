@@ -581,14 +581,14 @@ declare_exchange(Exchange, Type) ->
 declare_exchange(Exchange, Type, Options) ->
     #'exchange.declare'{
        exchange = Exchange
-       ,type = Type
-       ,passive = ?P_GET('passive', Options, 'false')
-       ,durable = ?P_GET('durable', Options, 'false')
-       ,auto_delete = ?P_GET('auto_delete', Options, 'false')
-       ,internal = ?P_GET('internal', Options, 'false')
-       ,nowait = ?P_GET('nowait', Options, 'false')
-       ,arguments = ?P_GET('arguments', Options, [])
-       }.
+      ,type = Type
+      ,passive = ?P_GET('passive', Options, 'false')
+      ,durable = ?P_GET('durable', Options, 'false')
+      ,auto_delete = ?P_GET('auto_delete', Options, 'false')
+      ,internal = ?P_GET('internal', Options, 'false')
+      ,nowait = ?P_GET('nowait', Options, 'false')
+      ,arguments = ?P_GET('arguments', Options, [])
+      }.
 
 %%------------------------------------------------------------------------------
 %% @public
