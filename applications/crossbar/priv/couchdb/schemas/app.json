@@ -80,7 +80,8 @@
             "description": "Application test phase",
             "enum": [
                 "alpha",
-                "beta"
+                "beta",
+                "gold"
             ],
             "type": "string"
         },
