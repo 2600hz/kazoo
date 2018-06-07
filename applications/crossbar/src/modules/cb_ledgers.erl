@@ -274,15 +274,15 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
 %%------------------------------------------------------------------------------
 -spec read_ledgers(cb_context:context()) -> cb_context:context().
 read_ledgers(Context) ->
-    {From, To} = case crossbar_view:time_range(Context) of
-                     {_, _}=FromTo -> FromTo;
-                     _ContextWithError -> {undefined, undefined}
-                 end,
-    case kz_ledgers:get(cb_context:account_id(Context), From, To) of
-        {'error', Reason} ->
-            crossbar_util:response('error', kz_term:to_binary(Reason), Context);
-        {'ok', Ledgers} ->
-            crossbar_util:response(summary_to_dollars(Ledgers), Context)
+    Options = [{'unchunkable', 'true'}
+              ,{'mapper', crossbar_view:map_value_fun()}
+              ],
+    Context1 = crossbar_view:load_modb(Context, <<"ledgers/list_by_timestamp_legacy">>, Options),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            crossbar_util:response(summary_to_dollars(kz_json:sum_jobjs(cb_context:doc(Context1))), Context);
+        _ ->
+            Context1
     end.
 
 -spec summary_to_dollars(kz_json:object()) -> kz_json:object().

@@ -290,6 +290,12 @@ format_error('not_found') -> 'not_found';
 format_error('db_not_found') -> 'db_not_found';
 format_error({'error', 'connect_timeout'}) -> 'connect_timeout';
 format_error({'http_error', _, Msg}) -> Msg;
+format_error({'error', {'closed', _Buffer}}) ->
+    lager:warning("socket closed unexpectedly"),
+    'tcp_closed';
+format_error({'error', 'closed'}) ->
+    lager:warning("socket closed unexpectedly"),
+    'tcp_closed';
 format_error({'error', Error}) -> Error;
 format_error(<<"400: illegal_database_name">>) -> 'illegal_database_name';
 format_error('forbidden') -> 'forbidden';

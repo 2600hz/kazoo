@@ -9,6 +9,7 @@
 -include("kzl.hrl").
 
 -export([get/1, get/3
+        ,get_ranged/1
         ,available_ledgers/1
         ]).
 
@@ -46,21 +47,34 @@ get(Account, undefined, undefined) ->
 get(Account, CreatedFrom, CreatedTo)
   when is_integer(CreatedFrom), CreatedFrom > 0,
        is_integer(CreatedTo), CreatedTo > 0 ->
-    MoDBs = kazoo_modb:get_range(Account, CreatedFrom, CreatedTo),
-    lager:debug("from:~p to:~p -> ~p", [CreatedFrom, CreatedTo, MoDBs]),
+    MODBs = kazoo_modb:get_range(Account, CreatedFrom, CreatedTo),
+    Options = [{databases, MODBs}
+              ,{startkey, CreatedFrom}
+              ,{endkey, CreatedTo}
+              ],
+    get_ranged(Options).
+
+-spec get_ranged(kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
+get_ranged(Options) ->
+    MODBs = props:get_value(databases, Options, []),
+    ViewOptions = props:filter_undefined(props:delete(databases, Options)),
+
+    lager:debug("from: ~p to: ~p in direction ~p -> ~p"
+               ,[props:get_value('startkey', ViewOptions)
+                ,props:get_value('endkey', ViewOptions)
+                ,props:get_value('direction', ViewOptions, 'ascending')
+                ,MODBs
+                ]),
+
     try
+        MODBs =:= []
+            andalso throw('no_account_db'),
         Sum = kz_json:sum_jobjs(
-                [case kazoo_modb:get_results(MoDB, ?LIST_BY_SERVICE_LEGACY, []) of
+                [case kazoo_modb:get_results(MODB, <<"ledgers/list_by_timestamp_legacy">>, Options) of
                      {error, Reason} -> throw(Reason);
-                     {ok, JObjs} ->
-                         kz_json:sum_jobjs([kz_json:get_value(<<"value">>, JObj)
-                                            || JObj <- JObjs,
-                                               [_Type, TimeStamp] <- [kz_json:get_value(<<"key">>, JObj)],
-                                               CreatedFrom =< TimeStamp,
-                                               TimeStamp =< CreatedTo
-                                           ])
+                     {ok, JObjs} -> kz_json:sum_jobjs([kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs])
                  end
-                 || MoDB <- MoDBs
+                 || MODB <- MODBs
                 ]),
         {ok, Sum}
     catch

@@ -2,6 +2,22 @@
     "_id": "_design/ledgers",
     "language": "javascript",
     "views": {
+        "list_by_timestamp_legacy": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || (doc.pvt_type !== 'ledger' && !( (doc.pvt_type === 'credit' || doc.pvt_type === 'debit') && (doc.pvt_code === 1001 || doc.pvt_code === 1002 )) ))",
+                "    return;",
+                "  var amount = doc.pvt_amount || doc.amount || 0;",
+                "  var usage = doc.pvt_usage || doc.usage || {};",
+                "  var service = doc.pvt_type === 'ledger' ? doc.source.service : 'per-minute-voip';",
+                "  if (doc.pvt_ledger_type === 'debit' || doc.pvt_type === 'debit')",
+                "    amount *= -1;",
+                "  var o = {};",
+                "  o[service] = {amount:amount, usage:usage};",
+                "  emit(doc.pvt_created, o);",
+                "}"
+            ]
+        },
         "listing_by_service": {
             "map": [
                 "function(doc) {",
