@@ -530,16 +530,21 @@ summary(Context) ->
 view_account_phone_numbers(Context) ->
     Ctx = rename_qs_filters(Context),
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Ctx, fun normalize_view_results/2),
-    IsAdmin = knm_phone_number:is_admin(cb_context:auth_account_id(Context)),
-    ListOfNumProps = [fix_available(IsAdmin, NumJObj) || NumJObj <- cb_context:resp_data(Context1)],
-    PortNumberJObj = maybe_add_port_request_numbers(Context),
-    NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
-    Service = kz_services:fetch(cb_context:account_id(Context)),
-    Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, Service),
-    NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
-                                    ,{<<"casquade_quantity">>, Quantity}
-                                    ]),
-    cb_context:set_resp_data(Context1, NewRespData).
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            IsAdmin = knm_phone_number:is_admin(cb_context:auth_account_id(Context)),
+            ListOfNumProps = [fix_available(IsAdmin, NumJObj) || NumJObj <- cb_context:resp_data(Context1)],
+            PortNumberJObj = maybe_add_port_request_numbers(Context),
+            NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
+            Service = kz_services:fetch(cb_context:account_id(Context)),
+            Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, Service),
+            NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
+                                            ,{<<"casquade_quantity">>, Quantity}
+                                            ]),
+            cb_context:set_resp_data(Context1, NewRespData);
+        _ ->
+            Context1
+    end.
 
 -spec fix_available(boolean(), kz_json:object()) -> kz_json:object().
 fix_available(IsAdmin, NumJObj) ->

@@ -18,7 +18,9 @@
 
 -include("kz_couch.hrl").
 
--type ddoc() :: 'all_docs' | kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}.
+-type ddoc() :: 'all_docs' |
+                kz_term:ne_binary() |
+                {kz_term:ne_binary(), kz_term:ne_binary()}.
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
@@ -100,11 +102,11 @@ do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
            {'ok', JObj} -> {'ok', kz_json:get_value(<<"rows">>, JObj, JObj)};
-           {'error', Error, []} -> {'error', kz_couch_util:format_error(Error)};
+           {'error', Error, []} -> {'error', Error};
            {'error', Error, Rows} ->
                lager:error("error ~p with results, ~p", [Error, Rows]),
-               {'error', kz_couch_util:format_error(Error)};
-           {'error', E} -> {'error', kz_couch_util:format_error(E)}
+               {'error', Error};
+           {'error', _}=Error -> Error
        end
       ).
 

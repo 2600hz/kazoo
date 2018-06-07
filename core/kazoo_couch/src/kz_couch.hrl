@@ -32,7 +32,7 @@
                             integer() |
                             {'EXIT', _} |
                             {'url_parsing_failed', _} |
-                            {'conn_failed', _} |
+                            {'conn_failed', _} | 'tcp_closed' |
                             {'ok', string(), _, _}.
 -type couchbeam_error() :: {'error', couchbeam_errors()}.
 
