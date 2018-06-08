@@ -528,8 +528,10 @@ load_parked_calls(JObjs) ->
 load_parked_call(JObj) ->
     Doc = kz_json:get_json_value(<<"doc">>, JObj),
     <<"parking-slot-", SlotNumber/binary>> = kz_doc:id(Doc),
-    Slot = kz_json:get_json_value(<<"slot">>, Doc),
-    {SlotNumber, kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(Doc), Slot)}.
+    case kz_json:get_json_value(<<"slot">>, Doc) of
+        'undefined' -> 'undefined';
+        Slot -> {SlotNumber, kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(Doc), Slot)}
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
