@@ -1357,6 +1357,20 @@
             },
             "type": "object"
         },
+        "callflows.acdc_wait_time": {
+            "description": "Validator for the acdc_wait_time callflow's data object",
+            "properties": {
+                "id": {
+                    "description": "Queue ID",
+                    "type": "string"
+                },
+                "window": {
+                    "description": "Window over which average wait time is calculated (in seconds)",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "callflows.action": {
             "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
             "properties": {
@@ -6684,6 +6698,9 @@
                 "Queue-ID": {
                     "minLength": 1,
                     "type": "string"
+                },
+                "Window": {
+                    "type": "integer"
                 }
             },
             "required": [
