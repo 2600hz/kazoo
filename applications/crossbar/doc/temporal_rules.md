@@ -1,8 +1,8 @@
 # Temporal Rules
 
-Temporal rules provide a flexible way to configure time base Call routing, e.g. open hours, holidays, close hours, etc...
-
 ## About Temporal Rules
+
+Temporal rules provide a flexible way to configure time-based Call routing, e.g. open hours, holidays, close hours, etc...
 
 ## Schema
 
@@ -27,6 +27,19 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
+### Notes on fields
+
+- `enabled`
+  - Unless you need to override a time of day rule (for example keep an office open longer) keep the property unset.
+
+- `start_date`:
+  - It is recommended that a start date always be set to some time in the past if this control is not required to ensure it takes effect on the next cycle.
+  - Setting this property is especially important when using an interval other than 1. For example if the rule should be applied every other year and the start date is in 2010, then it will be active on 2010, 2012, 2014, etc. However, if the start date was in 2011 then it will be active on 2011, 2013, 2015, etc.
+
+- `ordinal`:
+  - Not all months have a fifth occurrence of a weekday; the rule is ignored if that is the case.
+
+
 ## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules
@@ -36,6 +49,24 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
 ```
+```json
+{
+   "auth_token":"{AUTH_TOKEN}",
+   "status":"success",
+   "request_id":"{REQUEST_ID}",
+   "revision":"{REVISION}",
+   "data":[
+      {
+         "id":"{TEMPORAL_RULE_ID}",
+         "name":"Business Hours"
+      },
+      {
+         "id":"{TEMPORAL_RULE_ID}",
+         "name":"Holiday"
+      }
+   ]
+}
+```
 
 ## Create
 
@@ -44,7 +75,27 @@ curl -v -X GET \
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"time_window_start":0,"time_window_stop":86400,"days":[25],"name":"Christmas","cycle":"yearly","start_date":62586115200,"month":12,"ordinal":"every","interval":1}}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
+```
+```json
+{
+   "auth_token":"{AUTH_TOKEN}",
+   "status":"success",
+   "request_id":"{REQUEST_ID}",
+   "revision":"{REVISION}",
+   "data":{
+      "time_window_start":0,
+      "time_window_stop":86400,
+      "days":[25],
+      "name":"Christmas",
+      "cycle":"yearly",
+      "start_date":62586115200,
+      "month":12,
+      "ordinal":"every",
+      "interval":1
+   }
+}
 ```
 
 ## Fetch
