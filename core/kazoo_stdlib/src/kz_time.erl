@@ -53,7 +53,7 @@
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
--type ordinal() :: kz_term:ne_binary(). %% <<"every">> | <<"first">> | <<"second">> | <<"third">> | <<"fourth">> | <<"fifth">> | <<"last">>.
+-type ordinal() :: kz_term:ne_binary(). % "every" | "first" | "second" | "third" | "fourth" | "fifth" | "last".
 
 -export_type([api_seconds/0
              ,date/0
