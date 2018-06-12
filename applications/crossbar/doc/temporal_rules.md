@@ -6,7 +6,7 @@ Temporal rules provide a flexible way to configure time-based Call routing, e.g.
 
 ## Schema
 
-Schema for a temporal rules
+Schema for a temporal rules.
 
 
 

@@ -68,6 +68,7 @@ disappoint|disapoint
 disastrous|disasterous
 drunkenness|drunkeness
 dumbbell|dumbell
+etc|ect
 embarrass|embarass
 equipment|equiptment
 exceed|excede
