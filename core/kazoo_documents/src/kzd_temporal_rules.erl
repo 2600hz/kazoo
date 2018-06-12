@@ -8,14 +8,18 @@
 -export([new/0]).
 -export([cycle/1, cycle/2, set_cycle/2]).
 -export([days/1, days/2, set_days/2]).
+-export([enabled/1, enabled/2, set_enabled/2]).
 -export([interval/1, interval/2, set_interval/2]).
 -export([month/1, month/2, set_month/2]).
 -export([name/1, name/2, set_name/2]).
 -export([ordinal/1, ordinal/2, set_ordinal/2]).
 -export([start_date/1, start_date/2, set_start_date/2]).
 -export([time_window_start/1, time_window_start/2, set_time_window_start/2]).
+-export([time_window_stop/1, time_window_stop/2, set_time_window_stop/2]).
 -export([wdays/1, wdays/2, set_wdays/2]).
 
+
+-export([delete_enabled/1]).
 
 -include("kz_documents.hrl").
 
@@ -51,6 +55,22 @@ days(Doc, Default) ->
 -spec set_days(doc(), kz_term:integers()) -> doc().
 set_days(Doc, Days) ->
     kz_json:set_value([<<"days">>], Days, Doc).
+
+-spec enabled(doc()) -> kz_term:api_boolean().
+enabled(Doc) ->
+    enabled(Doc, 'undefined').
+
+-spec enabled(doc(), Default) -> boolean() | Default.
+enabled(Doc, Default) ->
+    kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
+
+-spec set_enabled(doc(), boolean()) -> doc().
+set_enabled(Doc, Enabled) ->
+    kz_json:set_value([<<"enabled">>], Enabled, Doc).
+
+-spec delete_enabled(doc()) -> doc().
+delete_enabled(Doc) ->
+    kz_json:delete_key([<<"enabled">>], Doc).
 
 -spec interval(doc()) -> integer().
 interval(Doc) ->
@@ -123,6 +143,18 @@ time_window_start(Doc, Default) ->
 -spec set_time_window_start(doc(), integer()) -> doc().
 set_time_window_start(Doc, TimeWindowStart) ->
     kz_json:set_value([<<"time_window_start">>], TimeWindowStart, Doc).
+
+-spec time_window_stop(doc()) -> kz_term:api_integer().
+time_window_stop(Doc) ->
+    time_window_stop(Doc, 'undefined').
+
+-spec time_window_stop(doc(), Default) -> integer() | Default.
+time_window_stop(Doc, Default) ->
+    kz_json:get_integer_value([<<"time_window_stop">>], Doc, Default).
+
+-spec set_time_window_stop(doc(), integer()) -> doc().
+set_time_window_stop(Doc, TimeWindowStop) ->
+    kz_json:set_value([<<"time_window_stop">>], TimeWindowStop, Doc).
 
 -spec wdays(doc()) -> kz_term:api_ne_binaries().
 wdays(Doc) ->
