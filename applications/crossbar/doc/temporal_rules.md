@@ -29,16 +29,27 @@ Key | Description | Type | Default | Required | Support Level
 
 ### Notes on fields
 
-- `enabled`
-  - Unless you need to override a time of day rule (for example keep an office open longer) keep the property unset.
+#### `enabled`
 
-- `start_date`:
-  - It is recommended that a start date always be set to some time in the past if this control is not required to ensure it takes effect on the next cycle.
-  - Setting this property is especially important when using an interval other than 1. For example if the rule should be applied every other year and the start date is in 2010, then it will be active on 2010, 2012, 2014, etc. However, if the start date was in 2011 then it will be active on 2011, 2013, 2015, etc.
+Unless you need to override a time of day rule (for example keep an office open longer) keep the property unset.
 
-- `ordinal`:
-  - Not all months have a fifth occurrence of a weekday; the rule is ignored if that is the case.
+#### `start_date`
 
+It is recommended that a start date always be set to some time in the past if this control is not required to ensure it takes effect on the next cycle.
+
+Setting this property is especially important when using an interval other than 1. For example if the rule should be applied every other year and the start date is in 2010, then it will be active on 2010, 2012, 2014, etc. However, if the start date was in 2011 then it will be active on 2011, 2013, 2015, etc.
+
+#### `ordinal`
+
+Not all months have a fifth occurrence of a weekday; the rule is ignored if that is the case.
+
+#### `cycle`
+
+When `cycle` is `date`, the rule only considers `start_date` and matches it against the current day.
+
+#### `days`
+
+The `days` array is only valid when `cycle` is `yearly` or `monthly`.
 
 ## Fetch
 
