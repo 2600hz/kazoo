@@ -144,6 +144,38 @@
         "formatters": {
             "$ref": "formatters"
         },
+        "hotdesk": {
+            "description": "Tracks the hotdesk status of the device",
+            "properties": {
+                "enabled": {
+                    "description": "Is hotdesking enabled on the device",
+                    "type": "boolean"
+                },
+                "keep_logged_in_elsewhere": {
+                    "description": "Should the caller be removed from other hotdesked devices",
+                    "type": "boolean"
+                },
+                "pin": {
+                    "description": "Require this PIN from the caller to be able to hotdesk into this device",
+                    "type": "string"
+                },
+                "require_pin": {
+                    "description": "Should a PIN be required",
+                    "type": "boolean"
+                },
+                "users": {
+                    "description": "Tracks the user IDs currently hotdesked on this device",
+                    "patternProperties": {
+                        "^[a-zA-Z0-9]{32}$": {
+                            "description": "The user ID",
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
         "language": {
             "description": "The language for the device",
             "support_level": "supported",

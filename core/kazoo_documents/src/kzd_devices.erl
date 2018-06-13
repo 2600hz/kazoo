@@ -28,6 +28,13 @@
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([exclude_from_queues/1, exclude_from_queues/2, set_exclude_from_queues/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
+-export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
+-export([hotdesk_enabled/1, hotdesk_enabled/2, set_hotdesk_enabled/2]).
+-export([hotdesk_keep_logged_in_elsewhere/1, hotdesk_keep_logged_in_elsewhere/2, set_hotdesk_keep_logged_in_elsewhere/2]).
+-export([hotdesk_pin/1, hotdesk_pin/2, set_hotdesk_pin/2]).
+-export([hotdesk_require_pin/1, hotdesk_require_pin/2, set_hotdesk_require_pin/2]).
+-export([hotdesk_users/1, hotdesk_users/2, set_hotdesk_users/2]).
+-export([hotdesk_user/2, hotdesk_user/3, set_hotdesk_user/3]).
 -export([language/1, language/2, set_language/2]).
 -export([mac_address/1, mac_address/2, set_mac_address/2]).
 -export([media/1, media/2, set_media/2]).
@@ -357,6 +364,90 @@ formatters(Doc, Default) ->
 -spec set_formatters(doc(), kz_json:object()) -> doc().
 set_formatters(Doc, Formatters) ->
     kz_json:set_value([<<"formatters">>], Formatters, Doc).
+
+-spec hotdesk(doc()) -> kz_term:api_object().
+hotdesk(Doc) ->
+    hotdesk(Doc, 'undefined').
+
+-spec hotdesk(doc(), Default) -> kz_json:object() | Default.
+hotdesk(Doc, Default) ->
+    kz_json:get_json_value([<<"hotdesk">>], Doc, Default).
+
+-spec set_hotdesk(doc(), kz_json:object()) -> doc().
+set_hotdesk(Doc, Hotdesk) ->
+    kz_json:set_value([<<"hotdesk">>], Hotdesk, Doc).
+
+-spec hotdesk_enabled(doc()) -> kz_term:api_boolean().
+hotdesk_enabled(Doc) ->
+    hotdesk_enabled(Doc, 'undefined').
+
+-spec hotdesk_enabled(doc(), Default) -> boolean() | Default.
+hotdesk_enabled(Doc, Default) ->
+    kz_json:get_boolean_value([<<"hotdesk">>, <<"enabled">>], Doc, Default).
+
+-spec set_hotdesk_enabled(doc(), boolean()) -> doc().
+set_hotdesk_enabled(Doc, HotdeskEnabled) ->
+    kz_json:set_value([<<"hotdesk">>, <<"enabled">>], HotdeskEnabled, Doc).
+
+-spec hotdesk_keep_logged_in_elsewhere(doc()) -> kz_term:api_boolean().
+hotdesk_keep_logged_in_elsewhere(Doc) ->
+    hotdesk_keep_logged_in_elsewhere(Doc, 'undefined').
+
+-spec hotdesk_keep_logged_in_elsewhere(doc(), Default) -> boolean() | Default.
+hotdesk_keep_logged_in_elsewhere(Doc, Default) ->
+    kz_json:get_boolean_value([<<"hotdesk">>, <<"keep_logged_in_elsewhere">>], Doc, Default).
+
+-spec set_hotdesk_keep_logged_in_elsewhere(doc(), boolean()) -> doc().
+set_hotdesk_keep_logged_in_elsewhere(Doc, HotdeskKeepLoggedInElsewhere) ->
+    kz_json:set_value([<<"hotdesk">>, <<"keep_logged_in_elsewhere">>], HotdeskKeepLoggedInElsewhere, Doc).
+
+-spec hotdesk_pin(doc()) -> kz_term:api_binary().
+hotdesk_pin(Doc) ->
+    hotdesk_pin(Doc, 'undefined').
+
+-spec hotdesk_pin(doc(), Default) -> binary() | Default.
+hotdesk_pin(Doc, Default) ->
+    kz_json:get_binary_value([<<"hotdesk">>, <<"pin">>], Doc, Default).
+
+-spec set_hotdesk_pin(doc(), binary()) -> doc().
+set_hotdesk_pin(Doc, HotdeskPin) ->
+    kz_json:set_value([<<"hotdesk">>, <<"pin">>], HotdeskPin, Doc).
+
+-spec hotdesk_require_pin(doc()) -> kz_term:api_boolean().
+hotdesk_require_pin(Doc) ->
+    hotdesk_require_pin(Doc, 'undefined').
+
+-spec hotdesk_require_pin(doc(), Default) -> boolean() | Default.
+hotdesk_require_pin(Doc, Default) ->
+    kz_json:get_boolean_value([<<"hotdesk">>, <<"require_pin">>], Doc, Default).
+
+-spec set_hotdesk_require_pin(doc(), boolean()) -> doc().
+set_hotdesk_require_pin(Doc, HotdeskRequirePin) ->
+    kz_json:set_value([<<"hotdesk">>, <<"require_pin">>], HotdeskRequirePin, Doc).
+
+-spec hotdesk_users(doc()) -> kz_term:api_object().
+hotdesk_users(Doc) ->
+    hotdesk_users(Doc, 'undefined').
+
+-spec hotdesk_users(doc(), Default) -> kz_json:object() | Default.
+hotdesk_users(Doc, Default) ->
+    kz_json:get_json_value([<<"hotdesk">>, <<"users">>], Doc, Default).
+
+-spec set_hotdesk_users(doc(), kz_json:object()) -> doc().
+set_hotdesk_users(Doc, HotdeskUsers) ->
+    kz_json:set_value([<<"hotdesk">>, <<"users">>], HotdeskUsers, Doc).
+
+-spec hotdesk_user(doc(), kz_json:key()) -> kz_term:api_object().
+hotdesk_user(Doc, User) ->
+    hotdesk_user(Doc, User, 'undefined').
+
+-spec hotdesk_user(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+hotdesk_user(Doc, User, Default) ->
+    kz_json:get_json_value([<<"hotdesk">>, <<"users">>, User], Doc, Default).
+
+-spec set_hotdesk_user(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_hotdesk_user(Doc, User, Value) ->
+    kz_json:set_value([<<"hotdesk">>, <<"users">>, User], Value, Doc).
 
 -spec language(doc()) -> kz_term:api_binary().
 language(Doc) ->
