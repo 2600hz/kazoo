@@ -77,6 +77,9 @@
         "Custom-SIP-Headers": {
             "type": "object"
         },
+        "Denied-Call-Restrictions": {
+            "type": "object"
+        },
         "Emergency-Caller-ID-Name": {
             "type": "string"
         },
