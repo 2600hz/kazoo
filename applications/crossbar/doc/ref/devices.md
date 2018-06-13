@@ -34,6 +34,13 @@ Key | Description | Type | Default | Required | Support Level
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false` | `supported`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |  
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |  
+`hotdesk.enabled` | Is hotdesking enabled on the device | `boolean()` |   | `false` |  
+`hotdesk.keep_logged_in_elsewhere` | Should the caller be removed from other hotdesked devices | `boolean()` |   | `false` |  
+`hotdesk.pin` | Require this PIN from the caller to be able to hotdesk into this device | `string()` |   | `false` |  
+`hotdesk.require_pin` | Should a PIN be required | `boolean()` |   | `false` |  
+`hotdesk.users./^[a-zA-Z0-9]{32}$/` | The user ID | `object()` |   | `false` |  
+`hotdesk.users` | Tracks the user IDs currently hotdesked on this device | `object()` |   | `false` |  
+`hotdesk` | Tracks the hotdesk status of the device | `object()` |   | `false` |  
 `language` | The language for the device | `string()` |   | `false` | `supported`
 `mac_address` | The MAC Address of the device (if applicable) | `string()` |   | `false` | `supported`
 `media` | Configure audio/video/etc media options for this device | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |  
