@@ -146,10 +146,26 @@ find_child_in_branch(ChildName, Call, Keys) ->
 device_owner(Call) ->
     DeviceId = kapps_call:authorizing_id(Call),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of
-        {'ok', JObj} -> kzd_devices:owner_id(JObj);
+        {'ok', JObj} ->
+            maybe_hotdesked_device(JObj);
+
         _Else ->
             lager:debug("failed to open device doc ~s in account ~s", [DeviceId, kapps_call:account_id(Call)]),
             'undefined'
+    end.
+
+-spec maybe_hotdesked_device(kz_json:object()) -> kz_term:ne_binary().
+maybe_hotdesked_device(Doc) ->
+    case kzd_devices:is_hotdesked(Doc) of
+        'true' ->
+            [UseId|_] = kzd_devices:hotdesk_ids(Doc),
+            lager:info("using hotdesked id ~p", [UseId]),
+            UseId;
+
+        'false' ->
+            Owner = kzd_devices:owner_id(Doc),
+            lager:info("using owner id ~p", [Owner]),
+            Owner
     end.
 
 %%------------------------------------------------------------------------------

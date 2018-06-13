@@ -4596,6 +4596,14 @@
                 "formatters": {
                     "$ref": "#/definitions/formatters"
                 },
+                "hotdesk": {
+                    "description": "The hotdesk status of this device",
+                    "type": "object",
+                    "users": {
+                        "description": "The user(s) currently hotdesked into the device",
+                        "type": "object"
+                    }
+                },
                 "language": {
                     "description": "The language for the device",
                     "type": "string"
