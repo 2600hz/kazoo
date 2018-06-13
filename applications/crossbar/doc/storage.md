@@ -223,7 +223,77 @@ Key | Description | Type | Default | Required | Support Level
 `attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |
 `connection` |   | `string()` |   | `false` |
 
+#### Create
 
+First, we need a 32-character UUID which will be the ID of the S3 configuration that we'll use later in the storage plan setup. Creating a UUID is easy to do with the following cURL command:
+
+```shell
+curl https://www.uuidgenerator.net/api/version4/1 | sed 's/-//g'
+e3e26e06a4b1465599e6dc9e1516fd8b
+```
+
+> PUT /v2/accounts/{ACCOUNT_ID}/storage
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \    
+ -d '{"data":{
+        "attachments": {
+            "{UUID}": {
+                "handler": "s3",
+                "name": "S3 Storage",
+                "settings": {
+                    "bucket": "{S3_BUCKET}",
+                    "key": "{AWS_ACCESS_KEY}",
+                    "secret": "{AWS_SECRET_KEY}"
+                }
+            }
+        },
+        "plan": {
+            "modb": {
+                "types": {
+                    "mailbox_message": {
+                        "attachments": {
+                            "handler": "{UUID}"
+                        }
+                    }
+                }
+            }
+        }
+        }}' \
+  http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}"
+    "data": {
+        "attachments": {
+            "{UUID}": {
+                "handler": "s3",
+                "name": "S3 Storage",
+                "settings": {
+                    "bucket": "{S3_BUCKET}",
+                    "key": "{AWS_ACCESS_KEY}",
+                    "secret": "{AWS_SECRET_KEY}"
+                }
+            }
+        },
+        "plan": {
+            "modb": {
+                "types": {
+                    "mailbox_message": {
+                        "attachments": {
+                            "handler": "{UUID}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
 
 ## Fetch
 
