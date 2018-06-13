@@ -60,6 +60,7 @@ rest_init(Req, Opts) ->
     maybe_trace(Req),
 
     Path = find_path(Req, Opts),
+    Method = cowboy_req:method(Req),
 
     Setters = [{fun cb_context:set_req_id/2, get_request_id(Req)}
               ,{fun cb_context:set_req_headers/2, cowboy_req:headers(Req)}
@@ -67,7 +68,7 @@ rest_init(Req, Opts) ->
               ,{fun cb_context:set_port/2, kz_term:to_integer(cowboy_req:port(Req))}
               ,{fun cb_context:set_raw_path/2, kz_term:to_binary(Path)}
               ,{fun cb_context:set_raw_qs/2, kz_term:to_binary(cowboy_req:qs(Req))}
-              ,{fun cb_context:set_method/2, kz_term:to_binary(cowboy_req:method(Req))}
+              ,{fun cb_context:set_method/2, kz_term:to_binary(Method)}
               ,{fun cb_context:set_resp_status/2, 'fatal'}
               ,{fun cb_context:set_resp_error_msg/2, <<"init failed">>}
               ,{fun cb_context:set_resp_error_code/2, 500}
@@ -88,19 +89,21 @@ rest_init(Req, Opts) ->
         {Context1, Req1} ->
             {Req9, Context2} = api_util:get_auth_token(Req1, Context1),
             {Req10, Context3} = api_util:get_pretty_print(Req9, Context2),
-            Event = api_util:create_event_name(Context3, <<"init">>),
-            {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
-            Context5 = maybe_decode_start_key(Context4),
+            ReqVerb = api_util:get_http_verb(Method, Context3),
+            Context4 = cb_context:set_req_verb(Context3, ReqVerb),
+            Event = api_util:create_event_name(Context4, <<"init">>),
+            {Context5, _} = crossbar_bindings:fold(Event, {Context4, Opts}),
+            Context6 = maybe_decode_start_key(Context5),
             lager:info("~s: ~s?~s from ~s"
-                      ,[cb_context:method(Context5)
+                      ,[cb_context:method(Context6)
                        ,Path
-                       ,cb_context:raw_qs(Context5)
-                       ,cb_context:client_ip(Context5)
+                       ,cb_context:raw_qs(Context6)
+                       ,cb_context:client_ip(Context6)
                        ]
                       ),
             {'cowboy_rest'
-            ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context5), Req10)
-            ,Context5
+            ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context6), Req10)
+            ,Context6
             }
     end.
 
@@ -306,136 +309,43 @@ known_methods(Req, Context) ->
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req, Context) ->
-    lager:debug("run: allowed_methods"),
-
-    case api_util:is_early_authentic(Req, Context) of
-        {'true', Req1, Context1} ->
-            authed_allowed_methods(Req1, Context1);
-        {'stop', Req1, Context1} ->
-            lager:error("request is not authorized, stopping"),
-            {'stop', Req1, Context1}
+    case api_flow:allowed_methods(Context, api_util:is_cors_request(Req)) of
+        {'stop', Context1} -> api_util:stop(maybe_add_cors_headers(Req, Context), Context1);
+        {Result, Context1} -> {Result, maybe_add_cors_headers(Req, Context), Context1}
     end.
 
--spec authed_allowed_methods(cowboy_req:req(), cb_context:context()) ->
-                                    {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
-authed_allowed_methods(Req, Context) ->
-    lager:debug("run: authed_allowed_methods"),
-
-    Methods = cb_context:allowed_methods(Context),
-    Tokens = api_util:path_tokens(Context),
-
-    case api_util:parse_path_tokens(Context, Tokens) of
-        [_|_] = Nouns ->
-            %% Because we allow tunneling of verbs through the request,
-            %% we have to check and see if we need to override the actual
-            %% HTTP method with the tunneled version
-            determine_http_verb(Req, cb_context:set_req_nouns(Context, Nouns));
-        [] ->
-            {Methods, Req, cb_context:set_allow_methods(Context, Methods)};
-        {'stop', Context1} ->
-            api_util:stop(Req, Context1)
-    end.
-
--spec determine_http_verb(cowboy_req:req(), cb_context:context()) ->
-                                 {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
-determine_http_verb(Req, Context) ->
-    Method = cowboy_req:method(Req),
-    ReqVerb = api_util:get_http_verb(Method, Context),
-    find_allowed_methods(Req, cb_context:set_req_verb(Context, ReqVerb)).
-
-find_allowed_methods(Req, Context) ->
-    [{Mod, Params}|_] = cb_context:req_nouns(Context),
-
-    Event = api_util:create_event_name(Context, <<"allowed_methods">>),
-    Responses = crossbar_bindings:map(<<Event/binary, ".", Mod/binary>>, Params),
-
-    Method = cowboy_req:method(Req),
-    AllowMethods = api_util:allow_methods(Responses
-                                         ,cb_context:req_verb(Context)
-                                         ,kz_term:to_binary(Method)
-                                         ),
-    maybe_add_cors_headers(Req, cb_context:set_allow_methods(Context, AllowMethods)).
-
--spec maybe_add_cors_headers(cowboy_req:req(), cb_context:context()) ->
-                                    {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
+-spec maybe_add_cors_headers(cowboy_req:req(), cb_context:context()) -> cowboy_req:req().
 maybe_add_cors_headers(Req, Context) ->
     case api_util:is_cors_request(Req) of
         'true' ->
             lager:debug("adding cors headers"),
-            check_preflight(api_util:add_cors_headers(Req, Context), Context);
-        'false' ->
-            maybe_allow_method(Req, Context)
-    end.
-
--spec check_preflight(cowboy_req:req(), cb_context:context()) ->
-                             {http_methods(), cowboy_req:req(), cb_context:context()}.
-check_preflight(Req, Context) ->
-    check_preflight(Req, Context, cb_context:req_verb(Context)).
-
-check_preflight(Req, Context, ?HTTP_OPTIONS) ->
-    lager:debug("allowing OPTIONS request for CORS preflight"),
-    {[?HTTP_OPTIONS], Req, Context};
-check_preflight(Req, Context, _Verb) ->
-    maybe_allow_method(Req, Context).
-
-maybe_allow_method(Req, Context) ->
-    maybe_allow_method(Req, Context, cb_context:allow_methods(Context), cb_context:req_verb(Context)).
-
-maybe_allow_method(Req, Context, [], _Verb) ->
-    lager:debug("no allow methods"),
-    api_util:stop(Req, cb_context:add_system_error('not_found', Context));
-maybe_allow_method(Req, Context, [Verb]=Methods, Verb) ->
-    {Methods, Req, Context};
-maybe_allow_method(Req, Context, Methods, Verb) ->
-    case lists:member(Verb, Methods) of
-        'true' -> {Methods, Req, Context};
-        'false' ->
-            api_util:stop(Req, cb_context:add_system_error('invalid_method', Context))
+            api_util:add_cors_headers(Req, Context);
+        'false' -> Req
     end.
 
 -spec malformed_request(cowboy_req:req(), cb_context:context()) ->
-                               {boolean(), cowboy_req:req(), cb_context:context()}.
+                               {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
 malformed_request(Req, Context) ->
-    malformed_request(Req, Context, cb_context:req_verb(Context)).
-
--spec malformed_request(cowboy_req:req(), cb_context:context(), http_method()) ->
-                               {boolean(), cowboy_req:req(), cb_context:context()}.
-malformed_request(Req, Context, ?HTTP_OPTIONS) ->
-    {'false', Req, Context};
-malformed_request(Req, Context, _ReqVerb) ->
-    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
-        'undefined' ->
-            {'false', Req, Context};
-        [] ->
-            {'false', Req, Context};
-        [?MATCH_ACCOUNT_RAW(_) | _] = AccountArgs ->
-            Context1 = cb_accounts:validate_resource(Context, AccountArgs),
-            case cb_context:resp_status(Context1) of
-                'success' -> {'false', Req, Context1};
-                _RespStatus -> api_util:stop(Req, Context1)
-            end;
-        [<<>> | _] ->
-            Error = kz_json:from_list([{<<"message">>, <<"missing account_id">>}]),
-            api_util:stop(Req, cb_context:add_system_error(404, <<"bad identifier">>, Error, Context));
-        [_Other | _] ->
-            Msg = kz_term:to_binary(io_lib:format("invalid account_id '~s'", [_Other])),
-            Error = kz_json:from_list([{<<"message">>, Msg}]),
-            api_util:stop(Req, cb_context:add_system_error(404, <<"bad identifier">>, Error, Context))
+    case api_flow:malformed_request(Context) of
+        {'stop', Context1} -> api_util:stop(Req, Context1);
+        {Result, Context1} -> {Result, Req, Context1}
     end.
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
                            {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()} |
                            api_util:stop_return().
 is_authorized(Req, Context) ->
-    api_util:is_authentic(Req, Context).
+    case api_flow:is_authorized(Context) of
+        {'stop', Context1} -> api_util:stop(Req, Context1);
+        {Result, Context1} -> {Result, Req, Context1}
+    end.
 
 -spec forbidden(cowboy_req:req(), cb_context:context()) ->
                        {'false', cowboy_req:req(), cb_context:context()}.
 forbidden(Req0, Context0) ->
-    case api_util:is_permitted(Req0, Context0) of
-        {'stop', Req1, Context1} -> {'stop', Req1, Context1};
-        {IsPermitted, Req1, Context1} ->
-            {not IsPermitted, Req1, Context1}
+    case api_flow:forbidden(Context0) of
+        {'stop', Context1} -> api_util:stop(Req0, Context1);
+        {Result, Context1} -> {Result, Req0, Context1}
     end.
 
 -spec valid_content_headers(cowboy_req:req(), cb_context:context()) ->
@@ -486,41 +396,11 @@ options(Req0, Context) ->
             {'ok', Req0, Context}
     end.
 
--type content_type_callbacks() :: [{{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()}, atom()} |
-                                   {kz_term:ne_binary(), atom()}
-                                  ].
 -spec content_types_provided(cowboy_req:req(), cb_context:context()) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_provided(Req, Context0) ->
-    lager:debug("run: content_types_provided"),
-
-    [{Mod, Params}|_] = cb_context:req_nouns(Context0),
-    Event = api_util:create_event_name(Context0, <<"content_types_provided.", Mod/binary>>),
-    Payload = [Context0 | Params],
-
-    Context1 = crossbar_bindings:fold(Event, Payload),
-
-    content_types_provided(Req, Context1, cb_context:content_types_provided(Context1)).
-
-content_types_provided(Req, Context, []) ->
-    Def = ?CONTENT_PROVIDED,
-    content_types_provided(Req, cb_context:set_content_types_provided(Context, Def), Def);
-content_types_provided(Req, Context, CTPs) ->
-    CTP =
-        lists:foldr(fun({Fun, L}, Acc) ->
-                            lists:foldr(fun({Type, SubType}, Acc1) ->
-                                                [{{Type, SubType, []}, Fun} | Acc1];
-                                           ({_,_,_}=EncType, Acc1) ->
-                                                [ {EncType, Fun} | Acc1 ];
-                                           (CT, Acc1) when is_binary(CT) ->
-                                                [{CT, Fun} | Acc1]
-                                        end, Acc, L)
-                    end
-                   ,[]
-                   ,CTPs
-                   ),
-    lager:debug("ctp: ~p", [CTP]),
-    {CTP, Req, Context}.
+    {CTP, Context1} = api_flow:content_types_provided(Context0),
+    {CTP, Req, Context1}.
 
 -spec content_types_accepted(cowboy_req:req(), cb_context:context()) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
@@ -622,20 +502,14 @@ content_type_accepted_fold({_,_,_}=EncType, Acc, Fun, _CT) ->
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
                                 {kz_term:ne_binaries(), cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
-    lager:debug("run: languages_provided"),
-
-    [{Mod, Params} | _] = cb_context:req_nouns(Context0),
-    Event = api_util:create_event_name(Context0, <<"languages_provided.", Mod/binary>>),
-    Payload = [Context0 | Params],
-    Context1 = crossbar_bindings:fold(Event, Payload),
-
-    case cowboy_req:parse_header(<<"accept-language">>, Req0) of
-        'undefined' ->
-            {cb_context:languages_provided(Context1), Req0, Context1};
-        [{A,_}|_]=_Accepted ->
-            lager:debug("adding first accept-lang header language: ~s", [A]),
-            {cb_context:languages_provided(Context1) ++ [A], Req0, Context1}
-    end.
+    FirstAccept = case cowboy_req:parse_header(<<"accept-language">>, Req0) of
+                      'undefined' -> 'undefined';
+                      [{A,_}|_]=_Accepted ->
+                          lager:debug("adding first accept-lang header language: ~s", [A]),
+                          A
+                  end,
+    {Languages, Context1} = api_flow:languages_provided(Context0, FirstAccept),
+    {Languages, Req0, Context1}.
 
 -spec charsets_provided(cowboy_req:req(), cb_context:context()) -> 'no_call'.
 charsets_provided(_Req, _Context) ->
@@ -644,48 +518,9 @@ charsets_provided(_Req, _Context) ->
 -spec resource_exists(cowboy_req:req(), cb_context:context()) ->
                              {boolean(), cowboy_req:req(), cb_context:context()}.
 resource_exists(Req, Context) ->
-    resource_exists(Req, Context, cb_context:req_nouns(Context)).
-
-resource_exists(Req, Context, [{<<"404">>,_}|_]) ->
-    lager:debug("failed to tokenize request, returning 404"),
-    {'false', Req, Context};
-resource_exists(Req, Context, _Nouns) ->
-    lager:debug("run: resource_exists"),
-    case api_util:does_resource_exist(Context) of
-        'true' ->
-            does_request_validate(Req, Context);
-        'false' ->
-            lager:debug("requested resource does not exist"),
-            {'false', Req, Context}
-    end.
-
--spec does_request_validate(cowboy_req:req(), cb_context:context()) ->
-                                   {boolean(), cowboy_req:req(), cb_context:context()}.
-does_request_validate(Req, Context0) ->
-    lager:debug("requested resource exists, validating it"),
-    Context1 = cb_context:store(Context0, 'req', Req),
-    Context2 = api_util:validate(Context1),
-    Verb = cb_context:req_verb(Context2),
-    case api_util:succeeded(Context2) of
-        'true' when Verb =/= ?HTTP_PUT ->
-            lager:debug("requested resource update validated"),
-            {'true', Req, Context2};
-        'true' ->
-            lager:debug("requested resource creation validated"),
-            {'false', Req, Context2};
-        'false' ->
-            lager:debug("failed to validate resource"),
-            Msg = case {cb_context:resp_error_msg(Context2)
-                       ,cb_context:resp_data(Context2)
-                       }
-                  of
-                      {'undefined', 'undefined'} ->
-                          <<"validation failed">>;
-                      {'undefined', Data} ->
-                          kz_json:get_value(<<"message">>, Data, <<"validation failed">>);
-                      {Message, _} -> Message
-                  end,
-            api_util:stop(Req, cb_context:set_resp_error_msg(Context2, Msg))
+    case api_flow:resource_exists(Context) of
+        {'stop', Context1} -> api_util:stop(Req, Context1);
+        {Result, Context1} -> {Result, Req, Context1}
     end.
 
 -spec moved_temporarily(cowboy_req:req(), cb_context:context()) ->

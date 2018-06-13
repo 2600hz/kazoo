@@ -18,8 +18,8 @@
         ,get_http_verb/2
         ,get_auth_token/2
         ,get_pretty_print/2
-        ,is_authentic/2, is_early_authentic/2
-        ,is_permitted/2
+        ,is_authentic/1, is_early_authentic/1
+        ,is_permitted/1
         ,is_known_content_type/2
         ,does_resource_exist/1
         ,validate/1
@@ -700,97 +700,98 @@ maybe_add_post_method(_, _, Allowed) ->
 %% provided a valid authentication token.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_early_authentic(cowboy_req:req(), cb_context:context()) ->
-                                {'true', cowboy_req:req(), cb_context:context()} |
-                                stop_return().
-is_early_authentic(Req, Context) ->
+-spec is_early_authentic(cb_context:context()) ->
+                                {'true' | 'stop', cb_context:context()}.
+is_early_authentic(Context) ->
     Event = create_event_name(Context, <<"early_authenticate">>),
     case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context)) of
         [] ->
-            {'true', Req, Context};
+            {'true', Context};
         ['true'|T] ->
-            prefer_new_context(T, Req, Context, 'true');
+            prefer_new_context(T, Context, 'true');
         [{'true', Context1}|_T] ->
             lager:debug("one true context: ~p", [_T]),
-            {'true', Req, Context1};
+            {'true', Context1};
         [{'stop', Context1}|_] ->
             lager:debug("pre-authn stopped"),
-            ?MODULE:stop(Req, Context1)
+            {'stop', Context1}
+            % ?MODULE:stop(Req, Context1)
     end.
 
--spec is_authentic(cowboy_req:req(), cb_context:context()) ->
-                          {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
-                          stop_return().
-is_authentic(Req, Context) ->
-    is_authentic(Req, Context, cb_context:req_verb(Context)).
+-spec is_authentic(cb_context:context()) ->
+                          {boolean() | 'stop', cb_context:context()} .
+is_authentic(Context) ->
+    is_authentic(Context, cb_context:req_verb(Context)).
 
--spec is_authentic(cowboy_req:req(), cb_context:context(), http_method()) ->
-                          {boolean(), cowboy_req:req(), cb_context:context()} |
-                          stop_return().
-is_authentic(Req, Context, ?HTTP_OPTIONS) ->
+-spec is_authentic(cb_context:context(), http_method()) ->
+                          {boolean() | 'stop', cb_context:context()}.
+is_authentic(Context, ?HTTP_OPTIONS) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
-    {'true', Req, Context};
-is_authentic(Req, Context0, _ReqVerb) ->
+    {'true', Context};
+is_authentic(Context0, _ReqVerb) ->
     Event = create_event_name(Context0, <<"authenticate">>),
     case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context0)) of
         [] ->
-            is_authentic(Req, Context0, _ReqVerb, cb_context:req_nouns(Context0));
+            is_authentic(Context0, _ReqVerb, cb_context:req_nouns(Context0));
         ['true'|T] ->
-            prefer_new_context(T, Req, Context0);
+            prefer_new_context(T, Context0);
         [{'true', Context1}|_] ->
-            {'true', Req, Context1};
+            {'true', Context1};
         [{'stop', Context1}|_] ->
             lager:debug("authn stopped"),
-            ?MODULE:stop(Req, Context1)
+            {'stop', Context1}
+            % ?MODULE:stop(Req, Context1)
     end.
 
--spec is_authentic(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
-                          {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
-                          stop_return().
+-spec is_authentic(cb_context:context(), http_method(), list()) ->
+                          {boolean() | 'stop', cb_context:context()}.
 
-is_authentic(Req, Context, _ReqVerb, []) ->
+is_authentic(Context, _ReqVerb, []) ->
     lager:debug("failed to authenticate"),
-    ?MODULE:stop(Req, cb_context:add_system_error('invalid_credentials', Context));
-is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
+    {'stop', cb_context:add_system_error('invalid_credentials', Context)};
+    % ?MODULE:stop(Req, cb_context:add_system_error('invalid_credentials', Context));
+is_authentic(Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = create_event_name(Context, <<"authenticate.", Mod/binary>>),
     Payload = [Context | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Payload)) of
         [] ->
             lager:debug("failed to authenticate : ~p", [Mod]),
-            ?MODULE:stop(Req, cb_context:add_system_error('invalid_credentials', Context));
+            {'stop', cb_context:add_system_error('invalid_credentials', Context)};
+            % ?MODULE:stop(Req, cb_context:add_system_error('invalid_credentials', Context));
         ['true'|T] ->
-            prefer_new_context(T, Req, Context);
+            prefer_new_context(T, Context);
         [{'true', Context2}|_] ->
-            {'true', Req, Context2};
+            {'true', Context2};
         [{'stop', Context2}|_] ->
             lager:debug("authn stopped"),
-            ?MODULE:stop(Req, Context2)
+            {'stop', Context2}
+            % ?MODULE:stop(Req, Context2)
     end.
 
--spec prefer_new_context(kz_term:proplist(), cowboy_req:req(), cb_context:context()) ->
-                                {'true', cowboy_req:req(), cb_context:context()} |
-                                stop_return().
-prefer_new_context(Results, Req, Context) ->
-    prefer_new_context(Results, Req, Context, 'undefined').
+-spec prefer_new_context(kz_term:proplist(), cb_context:context()) ->
+                                {boolean() | 'stop', cb_context:context()}.
+prefer_new_context(Results, Context) ->
+    prefer_new_context(Results, Context, 'undefined').
 
-prefer_new_context([], Req, Context, 'false') ->
-    {'false', Req, Context};
-prefer_new_context([], Req, Context, _Return) ->
-    {'true', Req, Context};
+prefer_new_context([], Context, 'false') ->
+    {'false', Context};
+prefer_new_context([], Context, _Return) ->
+    {'true', Context};
 
-prefer_new_context([{'true', Context1}|_], Req, _Context, _Return) ->
-    {'true', Req, Context1};
-prefer_new_context(['true'|T], Req, Context, _Return) ->
-    prefer_new_context(T, Req, Context, 'true');
+prefer_new_context([{'true', Context1}|_], _Context, _Return) ->
+    {'true', Context1};
+prefer_new_context(['true'|T], Context, _Return) ->
+    prefer_new_context(T, Context, 'true');
 
-prefer_new_context(['false'|T], Req, Context, 'undefined') ->
-    prefer_new_context(T, Req, Context, 'false');
-prefer_new_context(['false'|T], Req, Context, 'false') ->
-    prefer_new_context(T, Req, Context, 'false');
+prefer_new_context(['false'|T], Context, 'undefined') ->
+    prefer_new_context(T, Context, 'false');
+prefer_new_context(['false'|T], Context, 'false') ->
+    prefer_new_context(T, Context, 'false');
 
-prefer_new_context([{'stop', Context1}|_], Req, _Context, _Return) ->
+prefer_new_context([{'stop', Context1}|_], _Context, _Return) ->
     lager:debug("authn stopped"),
-    ?MODULE:stop(Req, Context1).
+    {'stop', Context1}.
+    % ?MODULE:stop(Req, Context1).
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_auth_token(Req, Context) ->
@@ -870,68 +871,68 @@ get_pretty_print(Req, Context) ->
 %% authorized for this request.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_permitted(cowboy_req:req(), cb_context:context()) ->
-                          {'true', cowboy_req:req(), cb_context:context()} |
+-spec is_permitted(cb_context:context()) ->
+                          {'true', cb_context:context()} |
                           stop_return().
-is_permitted(Req, Context) ->
-    is_permitted_verb(Req, Context, cb_context:req_verb(Context)).
+is_permitted(Context) ->
+    is_permitted_verb(Context, cb_context:req_verb(Context)).
 
--spec is_permitted_verb(cowboy_req:req(), cb_context:context(), http_method()) ->
-                               {'true', cowboy_req:req(), cb_context:context()} |
+-spec is_permitted_verb(cb_context:context(), http_method()) ->
+                               {'true', cb_context:context()} |
                                stop_return().
-is_permitted_verb(Req, Context, ?HTTP_OPTIONS) ->
+is_permitted_verb(Context, ?HTTP_OPTIONS) ->
     lager:debug("options requests are permitted by default"),
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
-    {'true', Req, Context};
-is_permitted_verb(Req, Context0, _ReqVerb) ->
+    {'true', Context};
+is_permitted_verb(Context0, _ReqVerb) ->
     Event = create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context0)) of
         [] ->
-            is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
+            is_permitted_nouns(Context0, _ReqVerb, cb_context:req_nouns(Context0));
         ['true'|_] ->
-            is_permitted_verb_on_module(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
+            is_permitted_verb_on_module(Context0, _ReqVerb, cb_context:req_nouns(Context0));
         [{'true', Context1}|_] ->
-            is_permitted_verb_on_module(Req, Context1, _ReqVerb,cb_context:req_nouns(Context1));
+            is_permitted_verb_on_module(Context1, _ReqVerb, cb_context:req_nouns(Context1));
         [{'stop', Context1}|_] ->
             lager:debug("authz stopped"),
-            ?MODULE:stop(Req, Context1)
+            {'stop', Context1}
     end.
 
--spec is_permitted_verb_on_module(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
-                                         {'true', cowboy_req:req(), cb_context:context()} |
+-spec is_permitted_verb_on_module(cb_context:context(), http_method(), list()) ->
+                                         {'true', cb_context:context()} |
                                          stop_return().
-is_permitted_verb_on_module(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
+is_permitted_verb_on_module(Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Payload)) of
         [{'stop', Context1}|_] ->
             lager:debug("authz stopped"),
-            ?MODULE:stop(Req, Context1);
-        _Other -> {'true', Req, Context0}
+            {'stop', Context1};
+        _Other -> {'true', Context0}
     end.
 
--spec is_permitted_nouns(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
-                                {'true', cowboy_req:req(), cb_context:context()} |
+-spec is_permitted_nouns(cb_context:context(), http_method(), list()) ->
+                                {'true', cb_context:context()} |
                                 stop_return().
-is_permitted_nouns(Req, Context, _ReqVerb, [{<<"404">>, []}]) ->
-    ?MODULE:stop(Req, cb_context:add_system_error('not_found', Context));
-is_permitted_nouns(Req, Context, _ReqVerb, []) ->
+is_permitted_nouns(Context, _ReqVerb, [{<<"404">>, []}]) ->
+    {'stop', cb_context:add_system_error('not_found', Context)};
+is_permitted_nouns(Context, _ReqVerb, []) ->
     lager:debug("no one authz'd the request"),
-    ?MODULE:stop(Req, cb_context:add_system_error('forbidden', Context));
-is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
+    {'stop', cb_context:add_system_error('forbidden', Context)};
+is_permitted_nouns(Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Payload)) of
         [] ->
             lager:debug("failed to authorize : ~p", [Mod]),
-            ?MODULE:stop(Req, cb_context:add_system_error('forbidden', Context0));
+            {'stop', cb_context:add_system_error('forbidden', Context0)};
         ['true'|_] ->
-            {'true', Req, Context0};
+            {'true', Context0};
         [{'true', Context1}|_] ->
-            {'true', Req, Context1};
+            {'true', Context1};
         [{'stop', Context1}|_] ->
             lager:debug("authz stopped"),
-            ?MODULE:stop(Req, Context1)
+            {'stop', Context1}
     end.
 
 -spec is_known_content_type(cowboy_req:req(), cb_context:context()) ->
