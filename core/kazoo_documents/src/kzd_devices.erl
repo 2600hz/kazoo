@@ -28,6 +28,7 @@
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([exclude_from_queues/1, exclude_from_queues/2, set_exclude_from_queues/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
+-export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
 -export([language/1, language/2, set_language/2]).
 -export([mac_address/1, mac_address/2, set_mac_address/2]).
 -export([media/1, media/2, set_media/2]).
@@ -66,6 +67,7 @@
 -export([sip_username/1, sip_username/2, set_sip_username/2]).
 -export([suppress_unregister_notifications/1, suppress_unregister_notifications/2, set_suppress_unregister_notifications/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
+-export([is_hotdesked/1, hotdesk_ids/1, hotdesk_ids/2]).
 
 -export([fetch/2
         ,type/0
@@ -358,6 +360,18 @@ formatters(Doc, Default) ->
 set_formatters(Doc, Formatters) ->
     kz_json:set_value([<<"formatters">>], Formatters, Doc).
 
+-spec hotdesk(doc()) -> kz_term:api_object().
+hotdesk(Doc) ->
+    hotdesk(Doc, 'undefined').
+
+-spec hotdesk(doc(), Default) -> kz_json:object() | Default.
+hotdesk(Doc, Default) ->
+    kz_json:get_json_value([<<"hotdesk">>], Doc, Default).
+
+-spec set_hotdesk(doc(), kz_json:object()) -> doc().
+set_hotdesk(Doc, Hotdesk) ->
+    kz_json:set_value([<<"hotdesk">>], Hotdesk, Doc).
+
 -spec language(doc()) -> kz_term:api_binary().
 language(Doc) ->
     language(Doc, 'undefined').
@@ -486,6 +500,23 @@ owner_id(Doc, Default) ->
 -spec set_owner_id(doc(), kz_term:ne_binary()) -> doc().
 set_owner_id(Doc, OwnerId) ->
     kz_json:set_value([<<"owner_id">>], OwnerId, Doc).
+
+-spec is_hotdesked(doc()) -> boolean().
+is_hotdesked(Doc) ->
+    not kz_json:is_empty(kz_json:get_value([<<"hotdesk">>, <<"users">>], Doc, kz_json:new())).
+
+-spec hotdesk_ids(doc()) -> kz_term:api_ne_binaries().
+hotdesk_ids(Doc) ->
+    hotdesk_ids(Doc, 'undefined').
+
+-spec hotdesk_ids(doc(), Default) -> kz_term:ne_binaries() | Default.
+hotdesk_ids(Doc, Default) ->
+    case kz_json:get_json_value([<<"hotdesk">>, <<"users">>], Doc) of
+        'undefined' ->
+            Default;
+        Value ->
+            kz_json:get_keys(Value)
+    end.
 
 -spec presence_id(doc()) -> kz_term:api_binary().
 presence_id(Doc) ->

@@ -37,6 +37,7 @@ Key | Description | Type | Default | Required | Support Level
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false` |  
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |  
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |  
+`hotdesk` | The hotdesk status of this device | `object()` |   | `false` |  
 `language` | The language for the device | `string()` |   | `false` |  
 `mac_address` | The MAC Address of the device (if applicable) | `string()` |   | `false` |  
 `media` | Configure audio/video/etc media options for this device | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |  
