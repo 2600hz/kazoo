@@ -20,7 +20,7 @@ prepare_contents(CT, JobId, RespContent, TmpDir) ->
         'undefined' ->
             lager:debug("Converapi secret is not defined. Cannot process JobId : ~p", [JobId]),
             {'error', <<"convertapi secret not defined">>};
-        Secret -> prepare_contents(CT, TmpDir, JobId, RespContent, Secret)
+        Secret -> prepare_contents(CT, JobId, RespContent, TmpDir, Secret)
     end.
 
 -spec prepare_contents(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
@@ -35,7 +35,7 @@ prepare_contents(<<"image/", _/binary>>=CT, JobId, RespContent, TmpDir, _Secret)
     lager:debug("For '~p' file is used genereic converter.", [Extension]),
     fax_converters_generic:prepare_contents(CT, JobId, RespContent, TmpDir);
 
-prepare_contents(CT, TmpDir, JobId, RespContent, Secret) ->
+prepare_contents(CT, JobId, RespContent, TmpDir, Secret) ->
     Extension = kz_mime:to_extension(CT),
     FileName = list_to_binary([JobId, ".", Extension]),
     RequestURL = list_to_binary([?CONVERTAPI_URL, "/", Extension, "/to/tiff?ImageResolutionH=204&ImageResolutionV=392&ScaleImage=true&ScaleProportions=true&ScaleIfLarger=true&ImageHeight=4312&ImageWidth=1728&Secret=", Secret]),
