@@ -1102,14 +1102,8 @@ get_clid(Endpoint, Properties, Call, Type) ->
         'true' -> maybe_move_privacy(Endpoint, Properties, Call, #clid{});
         'false' ->
             {Number, Name} = kz_attributes:caller_id(Type, Call),
-            CallerNumber = case kapps_call:caller_id_number(Call) of
-                               Number -> 'undefined';
-                               _Number -> Number
-                           end,
-            CallerName = case kapps_call:caller_id_name(Call) of
-                             Name -> 'undefined';
-                             _Name -> Name
-                         end,
+            CallerNumber = Number,
+            CallerName = Name,
             {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
             maybe_move_privacy(Endpoint
                               ,Properties
