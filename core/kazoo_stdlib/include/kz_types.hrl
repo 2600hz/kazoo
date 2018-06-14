@@ -55,7 +55,7 @@
 -define(SUPER_NAME_TYPE(N, I, Type), {N, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
 
 -define(CACHE(N), {N, {'kz_cache', 'start_link', [N]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kz_cache']}).
--define(CACHE_ARGS(N, Arg), {N, {'kz_cache', 'start_link', [N, Arg]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kz_cache']}).
+-define(CACHE_ARGS(N, Arg), {N, {'kz_cache', 'start_link', [N, Arg]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kz_cache_listener']}).
 
 %% Used by ecallmgr and kapi_dialplan at least
 -define(CALL_EVENTS,

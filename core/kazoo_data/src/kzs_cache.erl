@@ -268,7 +268,7 @@ flush_cache_docs(Db, Docs, Options) ->
         ],
     'ok'.
 
--spec load_test() -> 'true'.
+-spec load_test() -> 'ok'.
 load_test() ->
     load_test(100, 50).
 
@@ -279,13 +279,14 @@ load_test(NumOfAgents, MaxMsgs) when NumOfAgents > 0
     CacheProps = [{'origin_bindings', []}],
     %% Start the cache process with `origin_bindings' declared so we get a
     %% gen_listener process.
-    {'ok', CachePid} = kz_cache:start_link(binary_to_atom(DbName, 'utf8'), CacheProps),
+    {'ok', CachePid} = kz_cache:start_link(kz_term:to_atom(DbName, 'true'), CacheProps),
+    ListenerPid = whereis('cache_load_tests_listener'),
     %% Make sure the cache process has 0 queued messages.
     {'message_queue_len', 0} = process_info(CachePid, 'message_queue_len'),
     StartTime = kz_time:now_ms(), % Used to calculate the uptime.
     %% Spawn agent(s) to simulate load.
     Self = self(),
-    Fun = fun() -> load_test_agent(CachePid, DbName, MaxMsgs, Self, 0) end,
+    Fun = fun() -> load_test_agent(CachePid, ListenerPid, DbName, MaxMsgs, Self, 0) end,
     Spawns = [spawn_monitor(Fun) || _  <- lists:seq(1, NumOfAgents)],
     %% Wait for all the agents to finish, this way we know none of the agents got stuck
     %% or timed out.
@@ -293,14 +294,14 @@ load_test(NumOfAgents, MaxMsgs) when NumOfAgents > 0
     %% Calculate msg rate per agent.
     UptimeMS = kz_time:elapsed_ms(StartTime, kz_time:now_ms()),
     Loops = collect_loops(0), % All agents' loops count
-    MsgRate = (2 * Loops) / UptimeMS,
+    MsgRate = case UptimeMS of 0 -> 2.0 * Loops; _N -> (2 * Loops) / UptimeMS end,
     lager:info("Uptime: ~pms, TotalLoops: ~p", [UptimeMS, Loops]),
     lager:info("MsgRate: ~.2f", [MsgRate]),
     'ok' = kz_cache:stop_local(CachePid).
 
--spec load_test_agent(pid(), kz_term:text(), pos_integer(), pid(), non_neg_integer()) ->
-    'no_return'.
-load_test_agent(CachePid, DbName, MaxMsgs, Parent, LoopCount) ->
+-spec load_test_agent(pid(), pid(), kz_term:text(), pos_integer(), pid(), non_neg_integer()) ->
+                             'no_return'.
+load_test_agent(CachePid, ListenerPid, DbName, MaxMsgs, Parent, LoopCount) ->
     %% Check that there is some space in he queue before sending a new msg
     PInfoKey = 'message_queue_len',
     case process_info(CachePid, PInfoKey) of
@@ -316,19 +317,19 @@ load_test_agent(CachePid, DbName, MaxMsgs, Parent, LoopCount) ->
     DocId = kz_binary:rand_hex(16),
     Type = 'undefined',
     Category = <<"configuration">>,
-    AMQPPayload = load_test_build_amqp_payload(<<"doc_created">>, DbName, Type, DocId, Category),
+    Value = load_test_build_amqp_payload(<<"doc_created">>, DbName, Type, DocId, Category),
     Payload = #cache_obj{'key'=DocId
-                        ,'value'=AMQPPayload
+                        ,'value'=Value
                         ,'expires'=1000
                         ,'callback'='undefined'
                         ,'origin'={'db', DbName, DocId}
                         },
-    CachePid ! {'$gen_call', {self(), make_ref()}, Payload},
+    CachePid ! {'$gen_call', {self(), make_ref()}, {'store', Payload}},
     %% Flush the agent's mailbox (because of the '$gen_call').
     'ok' = receive after 0 -> 'ok' end,
     %% "doc edited"
-    'ok' = load_test_publish(CachePid, <<"doc_edited">>, DbName, Type, DocId, Category),
-    load_test_agent(CachePid, DbName, MaxMsgs, Parent, LoopCount + 1).
+    'ok' = load_test_publish(ListenerPid, <<"doc_edited">>, DbName, Type, DocId, Category),
+    load_test_agent(CachePid, ListenerPid, DbName, MaxMsgs, Parent, LoopCount + 1).
 
 -spec wait_for([] | [{pid(), reference()}]) -> 'ok' | 'no_return'.
 wait_for([]) ->
@@ -337,7 +338,7 @@ wait_for([{Pid, Ref} | Spawns]) ->
     receive
         {'DOWN', Ref, 'process', Pid, 'normal'} ->
             wait_for(Spawns)
-        after 1000 ->
+    after 5000 ->
             lager:error("~p failed to return, ~p workers left.", [Pid, length(Spawns)]),
             exit("Failed to return")
     end.
@@ -348,7 +349,7 @@ collect_loops(CurrentCount) ->
         {'loops', _Pid, LoopCount} ->
             collect_loops(CurrentCount + LoopCount)
     after 1000 ->
-        CurrentCount
+            CurrentCount
     end.
 
 -spec load_test_publish(pid()
@@ -357,52 +358,38 @@ collect_loops(CurrentCount) ->
                        ,kz_term:ne_binary()
                        ,kz_term:ne_binary()
                        ,kz_term:ne_binary()) -> 'ok'.
-load_test_publish(CachePid, EvName, Db, EvType, Id, Category) ->
+load_test_publish(ListenerPid, EvName, Db, EvType, Id, Category) ->
     RKey = binary:list_to_bin(lists:join(<<".">>, [EvName, Db, kz_term:to_binary(EvType), Id])),
     BD = load_test_build_bd(Category, RKey),
     PBasic = load_test_build_pbasic(),
     Payload = load_test_build_amqp_payload(EvName, Db, EvType, Id, Category),
-    CachePid ! {BD, #amqp_msg{'props'=PBasic, 'payload'=kz_json:encode(Payload)}},
+    ListenerPid ! {BD, #amqp_msg{'props'=PBasic, 'payload'=kz_json:encode(Payload)}},
     'ok'.
 
 -spec load_test_build_bd(kz_term:ne_binary(), kz_term:ne_binary()) -> #'basic.deliver'{}.
 load_test_build_bd(Category, RKey) ->
-    #'basic.deliver'
-    {'consumer_tag' = kz_binary:rand_hex(16)
-    ,'delivery_tag' = rand:uniform(1000)
-    ,'exchange' = Category
-    ,'routing_key' = RKey
-    }.
+    #'basic.deliver'{'consumer_tag' = kz_binary:rand_hex(16)
+                    ,'delivery_tag' = rand:uniform(1000)
+                    ,'exchange' = Category
+                    ,'routing_key' = RKey
+                    }.
 
 -spec load_test_build_pbasic() -> #'P_basic'{}.
 load_test_build_pbasic() ->
-    #'P_basic'
-    {'content_type' = <<"application/json">>
-    ,'content_encoding' = 'undefined'
-    ,'headers' = 'undefined'
-    ,'delivery_mode' = 'undefined'
-    ,'priority' = 'undefined'
-    ,'correlation_id' = 'undefined'
-    ,'reply_to' = 'undefined'
-    ,'expiration' = 'undefined'
-    ,'message_id' = 'undefined'
-    ,'timestamp' = kz_time:now_ms()
-    ,'type' = 'undefined'
-    ,'user_id' = 'undefined'
-    ,'app_id' = 'undefined'
-    ,'cluster_id' = 'undefined'
-    }.
+    #'P_basic'{'content_type' = <<"application/json">>
+              ,'timestamp' = kz_time:now_ms()
+              }.
 
 -spec load_test_build_amqp_payload(kz_term:ne_binary()
-                             ,kz_term:ne_binary()
-                             ,kz_term:ne_binary()
-                             ,kz_term:ne_binary()
-                             ,kz_term:ne_binary()) -> kz_json:object().
+                                  ,kz_term:ne_binary()
+                                  ,kz_term:ne_binary()
+                                  ,kz_term:ne_binary()
+                                  ,kz_term:ne_binary()) -> kz_json:object().
 load_test_build_amqp_payload(EvName, Db, Type, Id, Category) ->
     Payload = [{<<"Database">>, Db}
               ,{<<"ID">>, Id}
               ,{<<"Server-ID">>, <<>>}
-              ,{<<"Node">>, kz_term:to_binary(node())}
+              ,{<<"Node">>, <<"tests-", (kz_term:to_binary(node()))/binary>>}
               ,{<<"Msg-ID">>, kz_binary:rand_hex(8)}
               ,{<<"Event-Name">>, EvName}
               ,{<<"Event-Category">>, Category}
@@ -412,8 +399,10 @@ load_test_build_amqp_payload(EvName, Db, Type, Id, Category) ->
     %% Database events have less/different {key, value} pairs compared to document events.
     FinalPayload =
         case Type of
-            <<"database">> ->
-                [{<<"Type">>, Type} | Payload];
+            %% Uncomment the following two lines if you need to use payloads with
+            %% `Type=<<"database">>', e.g: `EventName = (db_created | db_deleted)'.
+            %%<<"database">> ->
+            %%    [{<<"Type">>, Type} | Payload];
             'undefined' ->
                 [{<<"Origin-Cache">>, <<"kazoo_data_cache">>}
                 ,{<<"Revision">>, kz_binary:rand_hex(16)}
