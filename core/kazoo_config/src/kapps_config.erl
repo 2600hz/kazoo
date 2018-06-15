@@ -1022,6 +1022,9 @@ fetch_category(Category, 'false') ->
         ,{{<<"fax">>, <<"conversion_command">>}
          ,{<<"fax">>, <<"conversion_pdf_command">>}
          }
+        ,{{<<"fax">>, <<"file_cache_path">>}
+         ,{<<"kazoo_convert">>, <<"file_cache_path">>}
+         }
 
         ,{{<<"media">>, <<"tts_cache">>}
          ,{<<"speech">>, <<"tts_cache">>}
