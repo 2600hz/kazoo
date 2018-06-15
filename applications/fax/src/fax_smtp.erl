@@ -756,7 +756,7 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                |Parts
               ], State) ->
     {_ , NewState}
-        = maybe_process_part(fax_util:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
+        = maybe_process_part(kz_mime:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
                             ,Parameters
                             ,BodyPart
                             ,State

@@ -277,7 +277,7 @@ fetch_attachment_url(JObj) ->
     case kz_http:req(Method, Url, Headers, Body) of
         {'ok', 200, Headers, Content} ->
             CT = props:get_value("content-type", Headers, <<"application/octet-stream">>),
-            ContentType = fax_util:normalize_content_type(CT),
+            ContentType = kz_mime:normalize_content_type(CT),
             {'ok', Content, ContentType, 'undefined'};
         {'ok', Status, _, _} ->
             lager:debug("failed to fetch file for job: http response ~p", [Status]),

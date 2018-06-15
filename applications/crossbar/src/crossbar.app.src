@@ -1,6 +1,6 @@
 {application,crossbar,
              [{applications,[braintree,cowboy,cowlib,crypto,ecsv,
-                             erlang_localtime,fax,inets,jesse,kazoo,
+                             erlang_localtime,inets,jesse,kazoo,
                              kazoo_amqp,kazoo_apps,kazoo_attachments,
                              kazoo_auth,kazoo_bindings,kazoo_caches,
                              kazoo_call,kazoo_config,kazoo_convert,kazoo_csv,
