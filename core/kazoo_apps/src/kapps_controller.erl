@@ -54,8 +54,8 @@ start_default_apps() ->
                        {'error', any()}.
 start_app(App) when is_atom(App) ->
     case application:ensure_all_started(App) of
-        {'ok', _}=OK ->
-            kz_nodes_bindings:bind(App),
+        {'ok', Started}=OK ->
+            _ = [kz_nodes_bindings:bind(A) || A <- [App | Started], is_kapp(A)],
             OK;
         {'error', _E}=E ->
             lager:error("~s could not start: ~p", [App, _E]),
