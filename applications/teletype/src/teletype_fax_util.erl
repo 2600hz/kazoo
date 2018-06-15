@@ -14,7 +14,6 @@
 -include("teletype.hrl").
 
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
--define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
 
 -spec add_data(kz_json:object()) -> kz_json:object().
 add_data(DataJObj) ->
@@ -221,39 +220,28 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     case kz_datamgr:fetch_attachment(Db, {kzd_fax:type(), FaxId}, AttachmentName) of
         {'ok', Bin} ->
             ContentType = kz_doc:attachment_content_type(FaxJObj, AttachmentName),
-            maybe_convert_attachment(DataJObj, Macros, ContentType, Bin);
+            convert_attachment(DataJObj, FaxId, Macros, ContentType, Bin);
         {'error', _E} ->
             lager:debug("failed to fetch attachment ~s: ~p", [AttachmentName, _E]),
             []
     end.
 
--spec maybe_convert_attachment(kz_json:object(), kz_term:proplist(), kz_term:api_binary(), binary()) -> attachments().
-maybe_convert_attachment(DataJObj, Macros, ContentType, Bin) ->
-    ToFormat = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
-    FromFormat = from_format_from_content_type(ContentType),
-
-    case convert(DataJObj, FromFormat, ToFormat, Bin) of
+-spec convert_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary(), binary()) -> attachments().
+convert_attachment(DataJObj, FaxId, Macros, FromFormat, Bin) ->
+    ToFormat = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"application/pdf">>),
+    teletype_util:send_update(DataJObj, <<"pending">>),
+    Options = [{<<"output_type">>, 'binary'}
+              ,{<<"job_id">>, FaxId}
+              ],
+    case kz_convert:fax(FromFormat, ToFormat, Bin, Options) of
         {'ok', Converted} ->
             Filename = get_file_name(Macros, ToFormat),
             lager:debug("adding attachment as ~s", [Filename]),
-            [{content_type_from_extension(Filename), Filename, Converted}];
+            [{ToFormat, Filename, Converted}];
         {'error', Reason} ->
             lager:debug("error converting attachment with reason : ~p", [Reason]),
             []
     end.
-
--spec from_format_from_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
-from_format_from_content_type(<<"application/pdf">>) -> <<"pdf">>;
-from_format_from_content_type(<<"image/tiff">>) -> <<"tif">>;
-from_format_from_content_type('undefined') -> <<"tif">>;
-from_format_from_content_type(ContentType) ->
-    [_Type, SubType] = binary:split(ContentType, <<"/">>),
-    SubType.
-
--spec content_type_from_extension(kz_term:ne_binary()) -> kz_term:ne_binary().
-content_type_from_extension(Ext) ->
-    {Type, SubType, _} = cow_mimetypes:all(Ext),
-    <<Type/binary, "/", SubType/binary>>.
 
 -spec get_file_name(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_file_name(Macros, Ext) ->
@@ -271,48 +259,3 @@ get_file_name(Macros, Ext) ->
     FName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
--spec convert(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> {ok, binary()} | {error, atom() | string()}.
-convert(_, FromFormat, FromFormat, Bin) ->
-    {'ok', Bin};
-convert(DataJObj, FromFormat0, ToFormat0, Bin) ->
-    lager:debug("converting from ~s to ~s", [FromFormat0, ToFormat0]),
-    teletype_util:send_update(DataJObj, <<"pending">>),
-
-    FromFormat = valid_format(FromFormat0),
-    ToFormat = valid_format(ToFormat0),
-
-    Filename = kz_binary:rand_hex(8),
-    FromFile = <<"/tmp/", Filename/binary, ".", FromFormat/binary>>,
-    ToFile = <<"/tmp/", Filename/binary, ".", ToFormat/binary>>,
-
-    'ok' = file:write_file(FromFile, Bin),
-
-    ConvertCmd = kapps_config:get_binary(?FAX_CONFIG_CAT, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
-    Cmd = io_lib:format(ConvertCmd, [ToFile, FromFile]),
-
-    Response = run_convert_command(Cmd, FromFile, ToFile),
-    _ = kz_util:delete_file(FromFile),
-    _ = kz_util:delete_file(ToFile),
-    Response.
-
--spec run_convert_command(string(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, atom() | string()}.
-run_convert_command(Cmd, FromFile, ToFile) ->
-    lager:debug("running conversion command: ~s", [Cmd]),
-    case os:cmd(Cmd) of
-        "success" ->
-            case file:read_file(ToFile) of
-                {'ok', PDF} ->
-                    lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
-                    {'ok', PDF};
-                {'error', _R}=E ->
-                    lager:debug("unable to read converted file ~s : ~p", [ToFile, _R]),
-                    E
-            end;
-        Else ->
-            lager:debug("could not convert file ~s : ~p", [FromFile, Else]),
-            {'error', Else}
-    end.
-
--spec valid_format(kz_term:ne_binary()) -> kz_term:ne_binary().
-valid_format(<<"tiff">>) -> <<"tif">>;
-valid_format(Format) -> Format.
