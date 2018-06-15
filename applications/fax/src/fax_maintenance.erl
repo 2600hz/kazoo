@@ -204,8 +204,11 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 %%------------------------------------------------------------------------------
 -spec migrate_pending_faxes() -> 'ok'.
 migrate_pending_faxes() ->
-    Jobs = kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>, []),
-    migrate_pending_fax_jobs(Jobs).
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>) of
+        {'ok', Jobs} ->
+            migrate_pending_fax_jobs(Jobs);
+        _ -> 'ok'
+    end.
 
 -spec migrate_pending_fax_jobs(kz_json:objects()) -> 'ok'.
 migrate_pending_fax_jobs([]) ->
