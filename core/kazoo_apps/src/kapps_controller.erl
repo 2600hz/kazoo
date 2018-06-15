@@ -19,6 +19,8 @@
         ,start_which_kapps/0
         ]).
 
+-export([binding_fetch_app/2]).
+
 -include("kazoo_apps.hrl").
 
 %%%=============================================================================
@@ -57,12 +59,25 @@ start_app(App) when is_atom(App) ->
         {'ok', Started}=OK ->
             _ = [kz_nodes_bindings:bind(A) || A <- [App | Started], is_kapp(A)],
             OK;
+        {'error', {App, {"no such file or directory", DotApp}}} ->
+            lager:info("app ~s (~s) not found, asking around", [App, DotApp]),
+            maybe_load_external_app(App);
         {'error', _E}=E ->
             lager:error("~s could not start: ~p", [App, _E]),
             E
     end;
 start_app(App) ->
     start_app(kz_term:to_atom(App, 'true')).
+
+-spec maybe_load_external_app(atom()) -> {'ok', kz_term:atoms()} |
+                                         {'error', any()}.
+maybe_load_external_app(App) ->
+    case lists:any(fun kz_term:is_true/1, kazoo_bindings:map(<<"app.fetch">>, App)) of
+        'true' -> start_app(App);
+        'false' ->
+            lager:info("failed to find app ~s in external sources", [App]),
+            {'error', 'not_found'}
+    end.
 
 -spec stop_app(atom() | nonempty_string() | kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 stop_app(App) when is_atom(App) ->
@@ -199,6 +214,10 @@ sysconf_first(_, _) -> 'true'.
 -spec list_apps() -> kz_term:atoms().
 list_apps() ->
     [App || {App, _, _} <- get_running_apps()].
+
+-spec binding_fetch_app(module(), atom()) -> kazoo_bindings:bind_result().
+binding_fetch_app(Module, Function) ->
+    kazoo_bindings:bind(<<"app.fetch">>, Module, Function).
 
 %%%=============================================================================
 %%% Internal functions
