@@ -12,7 +12,6 @@
 -export([notify_email_list/3]).
 -export([filter_numbers/1]).
 -export([is_valid_caller_id/2]).
--export([normalize_content_type/1]).
 
 -include("fax.hrl").
 
@@ -191,20 +190,3 @@ is_digit(N) when is_integer(N),
                  N >= $0,
                  N =< $9 -> true;
 is_digit(_) -> false.
-
--spec normalize_content_type(kz_term:text()) -> kz_term:ne_binary().
-normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"image/x-tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"image/tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"image/x-tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"application/tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"apppliction/x-tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"apppliction/tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"apppliction/x-tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"application/pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<"application/x-pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<_/binary>> = Else) -> Else;
-normalize_content_type(CT) ->
-    normalize_content_type(kz_term:to_binary(CT)).

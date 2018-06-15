@@ -257,17 +257,28 @@ handle_message(#state{filename=Filename
                      ,errors=[]
                      }=State) ->
     lager:debug("checking file ~s", [Filename]),
-    case file:read_file(Filename) of
-        {'ok', FileContents} ->
-            CT = kz_mime:from_filename(Filename),
-            case fax_util:save_fax_docs([Doc], FileContents, CT) of
+    FromFormat = kz_mime:from_filename(Filename),
+    Options = [{<<"output_type">>, 'binary'}
+              ,{<<"job_id">>, kz_doc:id(Doc)}
+              ,{<<"read_metadata">>, 'true'}
+              ],
+    case kz_convert:fax(FromFormat, <<"image/tiff">>, {'file', Filename}, Options) of
+        {'ok', FileContents, Props} ->
+            NewDoc = kz_json:set_values([{<<"pvt_pages">>, props:get_value(<<"page_count">>, Props, 0)}
+                                        ,{<<"pvt_size">>, props:get_value(<<"size">>, Props, 0)}
+                                        ]
+                                       ,Doc
+                                       ),
+            case fax_util:save_fax_docs([NewDoc], FileContents, <<"image/tiff">>) of
                 'ok' ->
-                    lager:debug("smtp fax document saved"),
-                    kz_util:delete_file(Filename);
-                {'error', Error} -> maybe_faxbox_log(State#state{errors=[Error]})
+                    lager:debug("smtp fax document saved");
+                {'error', Error} ->
+                    lager:error("failed saving fax document with message: ~p", [Error]),
+                    maybe_faxbox_log(State#state{errors=[Error]})
             end;
-        _Else ->
-            Error = kz_term:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
+        {'error', Error} ->
+            lager:error("failed converting attachment with error: ~p", [Error]),
+            Error = kz_term:to_binary(io_lib:format("error converting attachment ~s", [Filename])),
             maybe_faxbox_log(State#state{errors=[Error]})
     end.
 
@@ -745,7 +756,7 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                |Parts
               ], State) ->
     {_ , NewState}
-        = maybe_process_part(fax_util:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
+        = maybe_process_part(kz_mime:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
                             ,Parameters
                             ,BodyPart
                             ,State

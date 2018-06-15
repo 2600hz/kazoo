@@ -1,0 +1,16 @@
+{application, kazoo_convert,
+ [
+  {description, "Kazoo convert provides support for converting document formats to and from TIFF/PDF/OpenOffice formats"},
+  {vsn,"4.3.1"},
+  {modules, []},
+  {registered, [kz_openoffice_server_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , kazoo
+                 , kazoo_data
+                 , kazoo_config
+                 , lager
+                 ]},
+  {mod, {kazoo_convert_app, []}}
+ ]}.

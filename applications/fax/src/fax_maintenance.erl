@@ -14,6 +14,7 @@
 
 -export([migrate/0, migrate/1, migrate/2]).
 -export([migrate_outbound_faxes/0, migrate_outbound_faxes/1]).
+-export([migrate_pending_faxes/0]).
 -export([flush/0]).
 
 -export([restart_job/1 , update_job/2]).
@@ -21,7 +22,6 @@
 -export([faxbox_jobs/1, faxbox_jobs/2]).
 -export([pending_jobs/0, active_jobs/0]).
 -export([load_smtp_attachment/2]).
--export([versions_in_use/0]).
 
 -define(DEFAULT_MIGRATE_OPTIONS, [{'allow_old_modb_creation', 'true'}]).
 -define(OVERRIDE_DOCS, ['override_existing_document'
@@ -140,7 +140,6 @@ recover_private_media(AccountDb, Doc, _MediaType) ->
     {'ok', _ } = kz_datamgr:ensure_saved(AccountDb, kz_doc:set_type(Doc, <<"private_media">>)),
     'ok'.
 
-
 -spec migrate_faxes_to_modb(kz_term:ne_binary(),  kz_term:proplist()) -> 'ok'.
 migrate_faxes_to_modb(Account, Options) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
@@ -193,6 +192,129 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
     end.
+
+%%%===================================================================================================
+%%% A migration for pending faxes to ensure tiff formatted attachments with size and page count
+%%% configured are always stored in the db and provided to fax worker
+%%%===================================================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_pending_faxes() -> 'ok'.
+migrate_pending_faxes() ->
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>) of
+        {'ok', Jobs} ->
+            migrate_pending_fax_jobs(Jobs);
+        _ -> 'ok'
+    end.
+
+-spec migrate_pending_fax_jobs(kz_json:objects()) -> 'ok'.
+migrate_pending_fax_jobs([]) ->
+    'ok';
+migrate_pending_fax_jobs([Doc|Docs]) ->
+    migrate_pending_fax_job(Doc),
+    migrate_pending_fax_jobs(Docs).
+
+-spec migrate_pending_fax_job(kz_json:object()) -> 'ok'.
+migrate_pending_fax_job(Doc) ->
+    case kz_datamgr:open_doc(?KZ_FAXES_DB, kz_doc:id(Doc)) of
+        {'ok', JObj} ->
+            case fetch_pending_job_attachment(JObj) of
+                {'ok', Content, ContentType, OldName} ->
+                    update_attachment(JObj, Content, ContentType, OldName);
+                {'error', _} -> 'ok'
+            end;
+        {'error', _} -> 'ok'
+    end.
+
+-spec fetch_pending_job_attachment(kz_json:object()) ->
+                                          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()} |
+                                          {'error', any()}.
+fetch_pending_job_attachment(JObj) ->
+    case kz_doc:attachment_names(JObj) of
+        [] ->
+            fetch_attachment_url(JObj);
+        AttachmentNames ->
+            maybe_fetch_attachment(JObj, AttachmentNames)
+    end.
+
+-spec maybe_fetch_attachment(kz_json:object(), kz_term:ne_binaries()) ->
+                                    {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()} |
+                                    {'error', any()}.
+maybe_fetch_attachment(JObj, [Attachment|_]) ->
+    JobId = kz_doc:id(JObj),
+    DefaultContentType = kz_mime:from_extension(filename:extension(Attachment)),
+    ContentType = kz_doc:attachment_content_type(JObj, Attachment, DefaultContentType),
+    PageCount =  kz_json:get_integer_value(<<"pvt_pages">>, JObj),
+    case maybe_fetch_attachment(JobId, Attachment, ContentType, PageCount) of
+        {'ok', Content} ->
+            {'ok', Content, ContentType, Attachment};
+        Error -> Error
+    end.
+
+maybe_fetch_attachment(JobId, Attachment, <<"image/tiff">>, 'undefined') ->
+    kz_datamgr:fetch_attachment(?KZ_FAXES_DB, JobId, Attachment);
+maybe_fetch_attachment(_, _, <<"image/tiff">>, _PageCount) ->
+    'ok';
+maybe_fetch_attachment(JobId, Attachment, _, _) ->
+    kz_datamgr:fetch_attachment(?KZ_FAXES_DB, JobId, Attachment).
+
+-spec fetch_attachment_url(kz_json:object()) ->
+                                  {'ok', filename:file(),{integer(), non_neg_integer()}, kz_term:api_binary()}|
+                                  {'error', any()}|
+                                  {'error', atom(), any()}.
+fetch_attachment_url(JObj) ->
+    FetchRequest = kz_json:get_value(<<"document">>, JObj),
+    Url = kz_json:get_string_value(<<"url">>, FetchRequest),
+    Method = kz_term:to_atom(kz_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
+    Headers = props:filter_undefined(
+                [{"Host", kz_json:get_string_value(<<"host">>, FetchRequest)}
+                ,{"Referer", kz_json:get_string_value(<<"referer">>, FetchRequest)}
+                ,{"User-Agent", kz_json:get_string_value(<<"user_agent">>, FetchRequest, kz_term:to_list(node()))}
+                ,{"Content-Type", kz_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
+                ]),
+    Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
+    lager:debug("making ~s request to '~s'", [Method, Url]),
+    case kz_http:req(Method, Url, Headers, Body) of
+        {'ok', 200, Headers, Content} ->
+            CT = props:get_value("content-type", Headers, <<"application/octet-stream">>),
+            ContentType = kz_mime:normalize_content_type(CT),
+            {'ok', Content, ContentType, 'undefined'};
+        {'ok', Status, _, _} ->
+            lager:debug("failed to fetch file for job: http response ~p", [Status]),
+            {'error', 'fetch_failed', Status};
+        {'error', Reason} ->
+            lager:debug("failed to fetch file for job: ~p", [Reason]),
+            {'error', 'fetch_error', Reason}
+    end.
+
+-spec update_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
+update_attachment(JObj, Content, ContentType, 'undefined') ->
+    Options = [{<<"output_type">>, 'path'}
+              ,{<<"job_id">>, kz_doc:id(JObj)}
+              ,{<<"tmp_dir">>, ?TMP_DIR}
+              ,{<<"read_metadata">>, 'true'}
+              ],
+    case kz_convert:fax(ContentType, <<"image/tiff">>, Content, Options) of
+        {'ok', Content, Proplist} ->
+            Values = [{<<"pvt_pages">>, props:get_value(<<"page_count">>, Proplist, 0)}
+                     ,{<<"pvt_size">>, props:get_value(<<"size">>, Proplist, 0)}
+                     ],
+            NewDoc = kz_json:set_values(Values, JObj),
+            case fax_util:save_fax_docs([NewDoc], Content, <<"image/tiff">>) of
+                'ok' ->
+                    lager:debug("smtp fax document saved");
+                {'error', Error} ->
+                    lager:error("failed saving fax document with message: ~p", [Error])
+            end;
+        {'error', Error} ->
+            lager:error("failed to convert fax document with error: ~p", [Error])
+    end;
+update_attachment(JObj, Content, ContentType, OldName) ->
+    {'ok', NewJObj} = kz_datamgr:delete_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), OldName),
+    update_attachment(NewJObj, Content, ContentType, 'undefined').
 
 %%------------------------------------------------------------------------------
 %% @doc Flush the fax local cache
@@ -439,60 +561,4 @@ load_smtp_attachment(DocId, Filename, FileContents) ->
                 {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
             end;
         {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p~n", [DocId, Filename, E])
-    end.
-
--spec versions_in_use() -> no_return.
-versions_in_use() ->
-    AllCmds =
-        [?CONVERT_IMAGE_COMMAND
-        ,?CONVERT_OO_COMMAND
-        ,?CONVERT_PDF_COMMAND
-        ],
-    Executables = find_commands(AllCmds),
-    lists:foreach(fun print_cmd_version/1, Executables),
-    no_return.
-
-print_cmd_version(Exe) ->
-    Options = [exit_status
-              ,use_stdio
-              ,stderr_to_stdout
-              ,{args, ["--version"]}
-              ],
-    Port = open_port({spawn_executable, Exe}, Options),
-    listen_to_port(Port, Exe).
-
-listen_to_port(Port, Exe) ->
-    receive
-        {Port, {data, Str0}} ->
-            [Str|_] = string:tokens(Str0, "\n"),
-            io:format("* ~s:\n\t~s\n", [Exe, Str]),
-            lager:debug("version for ~s: ~s", [Exe, Str]);
-        {Port, {exit_status, 0}} -> ok;
-        {Port, {exit_status, _}} -> no_executable(Exe)
-    end.
-
-find_commands(Cmds) ->
-    Commands =
-        lists:usort(
-          [binary_to_list(hd(binary:split(Cmd, <<$\s>>)))
-           || Cmd <- Cmds
-          ]),
-    lists:usort(
-      [Exe
-       || Cmd <- Commands,
-          Exe <- [cmd_to_executable(Cmd)],
-          Exe =/= false
-      ]).
-
-no_executable(Exe) ->
-    io:format("* ~s:\n\tERROR! missing executable\n", [Exe]),
-    lager:error("missing executable: ~s", [Exe]).
-
-cmd_to_executable("/"++_=Exe) -> Exe;
-cmd_to_executable(Cmd) ->
-    case os:find_executable(Cmd) of
-        false ->
-            no_executable(Cmd),
-            false;
-        Exe -> Exe
     end.

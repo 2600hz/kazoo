@@ -452,7 +452,7 @@ handle_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
             maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs)
     end.
 
--spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> kz_json:objects().
+-spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
 maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, Number, _Job, Jobs) ->
     lager:debug("dropping job ~s/~s from cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
     #{pending := Pending
