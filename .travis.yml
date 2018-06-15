@@ -16,6 +16,9 @@ addons:
   apt:
     packages:
       - xsltproc
+      - libreoffice
+      - libtiff-tools
+      - ghostscript
 
 cache:
   apt: true
