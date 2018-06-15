@@ -50,8 +50,12 @@ get_attachment(UseDb, Category, Props) ->
     {'ok', AttachmentBin, ContentType} = raw_attachment_binary(UseDb, FaxId),
 
     case kapps_config:get_binary(Category, <<"attachment_format">>, <<"pdf">>) of
-        <<"pdf">> -> convert_to_pdf(AttachmentBin, Props, ContentType);
-        _Else -> convert_to_tiff(AttachmentBin, Props, ContentType)
+        <<"pdf">> ->
+            case kz_convert:fax(ContentType, <<"application/pdf">>, AttachmentBin, [{<<"output_type">>, 'binary'}]) of
+                {'ok', Content} -> {ContentType, get_file_name(Props, "pdf"), Content};
+                {'error', _ } -> 'error'
+            end;
+        _Else -> {ContentType, get_file_name(Props, "pdf"), AttachmentBin}
     end.
 
 %%------------------------------------------------------------------------------
@@ -85,46 +89,3 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
             end
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec convert_to_tiff(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
-                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
-convert_to_tiff(AttachmentBin, Props, _ContentType) ->
-    {<<"image/tiff">>, get_file_name(Props, "tiff"), AttachmentBin}.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec convert_to_pdf(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
-                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
-                            {'error', any()}.
-convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
-    {<<"application/pdf">>, get_file_name(Props, "pdf"), AttachmentBin};
-convert_to_pdf(AttachmentBin, Props, _ContentType) ->
-    TiffFile = tmp_file_name(<<"tiff">>),
-    PDFFile = tmp_file_name(<<"pdf">>),
-    kz_util:write_file(TiffFile, AttachmentBin),
-    ConvertCmd = kapps_config:get_binary(<<"notify.fax">>, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
-    Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
-    lager:debug("running command: ~s", [Cmd]),
-    _ = os:cmd(Cmd),
-    kz_util:delete_file(TiffFile),
-    case file:read_file(PDFFile) of
-        {'ok', PDFBin} ->
-            kz_util:delete_file(PDFFile),
-            {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
-        {'error', _R}=E ->
-            lager:debug("unable to convert tiff: ~p", [_R]),
-            E
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec tmp_file_name(kz_term:ne_binary()) -> string().
-tmp_file_name(Ext) ->
-    kz_term:to_list(<<"/tmp/", (kz_binary:rand_hex(10))/binary, "_notify_fax.", Ext/binary>>).
