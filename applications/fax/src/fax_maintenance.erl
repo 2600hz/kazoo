@@ -301,7 +301,7 @@ fetch_attachment_url(JObj) ->
 update_attachment(JObj, Content, ContentType, 'undefined') ->
     DocId = kz_doc:id(JObj),
     lager:debug("converting attachment for doc: ~s", [DocId]),
-    Options = [{<<"output_type">>, 'path'}
+    Options = [{<<"output_type">>, 'binary'}
               ,{<<"job_id">>, DocId}
               ,{<<"tmp_dir">>, ?TMP_DIR}
               ,{<<"read_metadata">>, 'true'}
