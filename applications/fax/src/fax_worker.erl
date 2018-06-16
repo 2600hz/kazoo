@@ -290,9 +290,10 @@ handle_cast('prepare_job', #state{job_id=JobId
     case write_document(JobId, kz_doc:attachment_names(JObj)) of
         {'ok', Filepath} ->
             send_status(State, <<"prepared document for send">>, ?FAX_PREPARE, 'undefined'),
-            State#state{file=Filepath
+            gen_server:cast(self(), 'send'),
+            {'noreply', State#state{file=Filepath
                        ,pages=kz_json:get_integer_value(<<"pvt_pages">>, JObj)
-                       };
+                       }};
         {'error', Message} ->
             send_error_status(State, Message),
             {Resp, Doc} = release_failed_job('bad_file', Message, JObj),

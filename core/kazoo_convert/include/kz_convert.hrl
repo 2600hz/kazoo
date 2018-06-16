@@ -29,9 +29,8 @@
         >>
        ).
 -define(CONVERT_IMAGE_CMD, <<"convert $FROM "
-                             "-resample 204x98 "
+                             "-density 204x98 "
                              "-units PixelsPerInch "
-                             "-compress fax "
                              "-size 1728x1078 $TO"
                            >>
        ).
@@ -60,7 +59,7 @@
 -define(CONVERT_TIFF_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, <<"convert_tiff_command">>, ?TIFF_TO_PDF_CMD)).
 -define(VALIDATE_TIFF_COMMAND
-       ,kapps_config:get_binary(?CONFIG_CAT, <<"validate_tiff_command">>, ?TIFF_TO_PDF_CMD)).
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"validate_tiff_command">>, ?VALIDATE_TIFF_CMD)).
 -define(CONVERT_OPENOFFICE_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, <<"convert_openoffice_command">>, ?CONVERT_OPENOFFICE_CMD)).
 

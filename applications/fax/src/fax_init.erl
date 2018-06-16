@@ -29,7 +29,7 @@ start_link() ->
                        ]
                       ,#{'env' => #{'dispatch' => Dispatch}}
                       ),
-    fax_maintenance:migrate_pending_faxes(),
+    _ = fax_maintenance:migrate_pending_faxes(),
     'ignore'.
 
 %%------------------------------------------------------------------------------
