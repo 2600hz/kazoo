@@ -228,7 +228,8 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
 
 -spec convert_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary(), binary()) -> attachments().
 convert_attachment(DataJObj, FaxId, Macros, FromFormat, Bin) ->
-    ToFormat = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"application/pdf">>),
+    Ext = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+    ToFormat = kz_mime:from_extension(Ext),
     teletype_util:send_update(DataJObj, <<"pending">>),
     Options = [{<<"output_type">>, 'binary'}
               ,{<<"job_id">>, FaxId}

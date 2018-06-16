@@ -222,7 +222,6 @@ run_convert_command(Command, FromPath, ToPath, TmpDir) ->
               ],
     case kz_os:cmd(Command, Args, Options) of
         {'ok', _} ->
-            lager:debug("successfully converted file ~s", [FromPath]),
             {'ok', ToPath};
         {'error', Reason, Msg} ->
             lager:debug("failed to convert file with reason: ~p, output: ~p", [Reason, Msg]),
