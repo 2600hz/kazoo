@@ -1641,6 +1641,7 @@ maybe_set_confirm_properties({Endpoint, Call, CallFwd, CCVs}=Acc) ->
                       ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
                       ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
                       ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
+                      ,{<<"Require-Fail-On-Single-Reject">>, <<"USER_BUSY,CALL_REJECTED,NORMAL_CLEARING">>}
                       ],
             {Endpoint, Call, CallFwd
             ,kz_json:merge_jobjs(kz_json:from_list(Confirm), CCVs)

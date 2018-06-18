@@ -144,6 +144,7 @@ build_offnet_request(Data, Call) ->
 get_channel_vars(Call) ->
     GetterFuns = [fun add_privacy_flags/2
                  ,fun maybe_require_ignore_early_media/2
+                 ,fun maybe_require_single_fail/2
                  ,fun maybe_set_bridge_generate_comfort_noise/2
                  ],
     CCVs = lists:foldl(fun(F, Acc) -> F(Call, Acc) end
@@ -160,6 +161,10 @@ add_privacy_flags(Call, Acc) ->
 -spec maybe_require_ignore_early_media(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
 maybe_require_ignore_early_media(Call, Acc) ->
     [{<<"Require-Ignore-Early-Media">>, kapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)} | Acc].
+
+-spec maybe_require_single_fail(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
+maybe_require_single_fail(Call, Acc) ->
+    [{<<"Require-Fail-On-Single-Reject">>, kapps_call:custom_channel_var(<<"Require-Fail-On-Single-Reject">>, Call)} | Acc].
 
 -spec get_bypass_e164(kz_json:object()) -> boolean().
 get_bypass_e164(Data) ->
