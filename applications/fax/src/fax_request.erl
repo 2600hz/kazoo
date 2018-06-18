@@ -308,8 +308,10 @@ maybe_update_fax_settings(#state{call=Call
         {'ok', JObj} ->
             lager:debug("updating fax settings from user ~s", [OwnerId]),
             update_fax_settings(Call, kzd_user:fax_settings(JObj)),
-            UserEmail = kz_json:get_value(<<"email">>, JObj),
-            Notify = kz_json:set_value([<<"email">>,<<"send_to">>], [UserEmail] , kz_json:new()),
+            Notify = case kz_json:get_value(<<"email">>, JObj) of
+                         'undefined' -> kz_json:new();
+                         UserEmail -> kz_json:set_value([<<"email">>, <<"send_to">>], [UserEmail], kz_json:new())
+                     end,
             State#state{fax_notify=Notify};
         {'error', _} ->
             maybe_update_fax_settings_from_account(State)
