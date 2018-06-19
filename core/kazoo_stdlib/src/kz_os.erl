@@ -76,6 +76,7 @@ cmd(Command, Args, Options) ->
                  ,props:set_value(<<"owner">>, Owner, Options)
                  ],
     {Pid, Ref} = erlang:spawn_monitor(?MODULE, 'run_cmd', CmdOptions),
+    ?DEV_LOG("spawned pid ~p with ref ~p", [Pid, Ref]),
     monitor_cmd(Pid, Ref, CmdTimeout, 'undefined').
 
 -spec monitor_cmd(pid(), reference(), non_neg_integer(), kz_term:api_port()) ->
@@ -85,9 +86,14 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
     receive
         {'port', NewPort, Pid} ->
             monitor_cmd(Pid, Ref, Timeout, NewPort);
-        {{'ok', _}=Ok, Pid} -> Ok;
-        {{'error', _, _}=Error,Pid} -> Error;
+        {{'ok', _}=Ok, Pid} ->
+            _ = erlang:demonitor(Ref, ['flush']),
+            Ok;
+        {{'error', _, _}=Error,Pid} ->
+            _ = erlang:demonitor(Ref, ['flush']),
+            Error;
         {'DOWN', Ref, _, Pid, Reason} ->
+            _ = erlang:demonitor(Ref, ['flush']),
             lager:debug("cmd process died unexpectedly with reason: ~p", [Reason]),
             {'error', 'died_unexpectedly', <<>>};
         Else ->
@@ -96,7 +102,7 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
     after
         Timeout ->
             maybe_kill_cmd(Port),
-            _ = erlang:demonitor(Ref),
+            _ = erlang:demonitor(Ref, ['flush']),
             _ = erlang:exit(Pid, 'timeout'),
             {'error', 'absolute_timeout', <<>>}
     end.

@@ -19,7 +19,7 @@
 
 -include("fax.hrl").
 
--record(state, {}).
+-record(state, {pending_migrate :: 'true'|'false'}).
 -type state() :: #state{}.
 
 -define(NAME, ?MODULE).
@@ -55,7 +55,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
-    {'ok', #state{}, ?POLLING_INTERVAL}.
+    {'ok', #state{pending_migrate='true'}, ?POLLING_INTERVAL}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -79,6 +79,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
+handle_info('timeout', #state{pending_migrate='true'}=State) ->
+    _ = fax_maintenance:migrate_pending_faxes(),
+    {'noreply', State#state{pending_migrate='false'}, ?POLLING_INTERVAL};
 handle_info('timeout', State) ->
     ViewOptions = ['reduce'
                   ,'group'
