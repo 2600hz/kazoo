@@ -91,7 +91,7 @@ curl -v -X GET \
 ## Execute an application against a Channel
 
 !!! note
-    This API requires Konami (or Konami Pro) to be running and metaflows to be enabled on the call
+    This API requires Konami Pro to be running and metaflows to be enabled on the call
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -125,7 +125,7 @@ Key | Description | Type | Default
 ## Put a feature (metaflow) on a channel
 
 !!! note
-    This API requires Konami (or Konami Pro) to be running and metaflows to be enabled on the call
+    This API requires Konami Pro to be running and metaflows to be enabled on the call
 
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
