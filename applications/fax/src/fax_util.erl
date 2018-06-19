@@ -73,8 +73,8 @@ maybe_attach_extension(A, CT) ->
     end.
 
 -spec save_fax_doc(kz_json:object(), binary(), kz_term:ne_binary()) ->
-                           {'ok', kz_json:object()} |
-                           {'error', any()}.
+                          {'ok', kz_json:object()} |
+                          {'error', any()}.
 save_fax_doc(Doc, FileContents, CT) ->
     case kz_datamgr:save_doc(?KZ_FAXES_DB, Doc) of
         {'ok', JObj} ->
