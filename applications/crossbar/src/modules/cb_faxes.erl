@@ -735,8 +735,9 @@ fetch_attachment_url(FetchRequest) ->
     Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
     lager:debug("making ~s request to '~s'", [Method, Url]),
     case kz_http:req(Method, Url, Headers, Body) of
-        {'ok', 200, Headers, Contents} ->
-            CT = props:get_value("content-type", Headers, <<"application/octet-stream">>),
+        {'ok', 200, RespHeaders, Contents} ->
+            DefaultCt = kz_mime:from_filename(Url),
+            CT = props:get_value("Content-Type", RespHeaders, DefaultCt),
             ContentType = kz_mime:normalize_content_type(CT),
             {'ok', Contents, ContentType};
         {'ok', Status, _, _} ->
