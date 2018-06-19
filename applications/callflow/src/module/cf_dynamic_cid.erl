@@ -195,7 +195,7 @@ maybe_strip_features_code(Call, Number) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_route_to_callflow(_, Call, _, <<"manual">>) ->
     cf_exe:continue(Call);
 maybe_route_to_callflow(_, Call, _, <<"static">>) ->
