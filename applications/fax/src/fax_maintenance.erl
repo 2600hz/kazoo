@@ -204,7 +204,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 -spec migrate_pending_faxes() -> 'ok'.
 migrate_pending_faxes() ->
     lager:debug("migrating pending fax attachments to tiff files"),
-    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>) of
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/pending_migrate_jobs">>) of
         {'ok', Jobs} ->
             migrate_pending_fax_jobs(Jobs);
         _ -> 'ok'
@@ -232,7 +232,8 @@ migrate_pending_fax_job(Doc) ->
     end.
 
 -spec fetch_pending_job_attachment(kz_json:object()) ->
-                                          'ok' | {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()}.
+                                          'ok' |
+                                          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()}.
 fetch_pending_job_attachment(JObj) ->
     case kz_doc:attachment_names(JObj) of
         [] ->
@@ -306,6 +307,8 @@ update_attachment(JObj, Content, ContentType, OldName) ->
         {'ok', Output, Proplist} ->
             Values = [{<<"pvt_pages">>, props:get_value(<<"page_count">>, Proplist, 0)}
                      ,{<<"pvt_size">>, props:get_value(<<"size">>, Proplist, 0)}
+                     ,{<<"pvt_migrated_reason">>, <<"normalize_attachment">>}
+                     ,{<<"pvt_migrated_timestamp">>, kz_time:now_s() }
                      ],
             NewDoc = kz_json:set_values(Values, JObj),
             case fax_util:save_fax_doc(NewDoc, Output, <<"image/tiff">>) of
