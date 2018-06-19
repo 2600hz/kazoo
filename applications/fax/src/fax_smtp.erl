@@ -269,8 +269,8 @@ handle_message(#state{filename=Filename
                                         ]
                                        ,Doc
                                        ),
-            case fax_util:save_fax_docs([NewDoc], FileContents, <<"image/tiff">>) of
-                'ok' ->
+            case fax_util:save_fax_doc(NewDoc, FileContents, <<"image/tiff">>) of
+                {'ok', _} ->
                     lager:debug("smtp fax document saved");
                 {'error', Error} ->
                     lager:error("failed saving fax document with message: ~p", [Error]),

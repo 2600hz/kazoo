@@ -8,7 +8,7 @@
 
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
--export([save_fax_docs/3, save_fax_attachment/3]).
+-export([save_fax_doc/3, save_fax_attachment/3]).
 -export([notify_email_list/3]).
 -export([filter_numbers/1]).
 -export([is_valid_caller_id/2]).
@@ -72,15 +72,14 @@ maybe_attach_extension(A, CT) ->
         'true' -> <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
     end.
 
--spec save_fax_docs(kz_json:objects(), binary(), kz_term:ne_binary()) ->
-                           'ok' |
+-spec save_fax_doc(kz_json:object(), binary(), kz_term:ne_binary()) ->
+                           {'ok', kz_json:object()} |
                            {'error', any()}.
-save_fax_docs([], _FileContents, _CT) -> 'ok';
-save_fax_docs([Doc|Docs], FileContents, CT) ->
+save_fax_doc(Doc, FileContents, CT) ->
     case kz_datamgr:save_doc(?KZ_FAXES_DB, Doc) of
         {'ok', JObj} ->
             case save_fax_attachment(JObj, FileContents, CT) of
-                {'ok', _} -> save_fax_docs(Docs, FileContents, CT);
+                {'ok', _}=Ok -> Ok;
                 Error -> Error
             end;
         Else -> Else

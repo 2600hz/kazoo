@@ -294,7 +294,7 @@ fetch_attachment_url(JObj) ->
     end.
 
 -spec update_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
-update_attachment(JObj, Content, ContentType, 'undefined') ->
+update_attachment(JObj, Content, ContentType, OldName) ->
     DocId = kz_doc:id(JObj),
     lager:debug("converting attachment for doc: ~s", [DocId]),
     Options = [{<<"output_type">>, 'binary'}
@@ -308,21 +308,24 @@ update_attachment(JObj, Content, ContentType, 'undefined') ->
                      ,{<<"pvt_size">>, props:get_value(<<"size">>, Proplist, 0)}
                      ],
             NewDoc = kz_json:set_values(Values, JObj),
-            case fax_util:save_fax_docs([NewDoc], Output, <<"image/tiff">>) of
-                'ok' ->
-                    lager:debug("updated document saved");
+            case fax_util:save_fax_doc(NewDoc, Output, <<"image/tiff">>) of
+                {'ok', NewJObj} ->
+                    lager:debug("updated document saved"),
+                    maybe_delete_old_attachment(NewJObj, OldName);
                 {'error', Error} ->
                     lager:error("failed saving fax document with message: ~p", [Error])
             end;
         {'error', Error} ->
             lager:error("failed to convert fax document with error: ~p", [Error])
-    end;
-update_attachment(JObj, Content, ContentType, OldName) ->
-    lager:debug("deleting attachment from ~s", [OldName]),
-    %%{'ok', NewJObj} = kz_datamgr:delete_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), OldName),
-%%    update_attachment(NewJObj, Content, ContentType, 'undefined').
+    end.
 
-    update_attachment(JObj, Content, ContentType, 'undefined').
+-spec maybe_delete_old_attachment(kz_json:object(), kz_term:api_binary()) -> 'ok'.
+maybe_delete_old_attachment(_JObj, 'undefined') ->
+    lager:debug("not deleting attachment, no attachment found");
+maybe_delete_old_attachment(JObj, OldName) ->
+    _ = kz_datamgr:delete_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), OldName),
+    lager:debug("probably deleted attachment from ~s", [OldName]).
+
 
 %%------------------------------------------------------------------------------
 %% @doc Flush the fax local cache

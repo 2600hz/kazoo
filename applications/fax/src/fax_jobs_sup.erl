@@ -29,7 +29,6 @@ start_account_jobs(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    _ = fax_maintenance:migrate_pending_faxes(),
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %%------------------------------------------------------------------------------
