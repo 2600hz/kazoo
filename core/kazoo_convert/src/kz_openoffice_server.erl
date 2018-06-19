@@ -130,7 +130,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{timer_ref=TimerRef}) ->
-    stop_timer(TimerRef),
+    _ = stop_timer(TimerRef),
     lager:debug("openoffice_server going down: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
