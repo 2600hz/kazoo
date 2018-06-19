@@ -284,10 +284,11 @@ fetch_attachment_url(JObj) ->
     Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
     lager:debug("making ~s request to '~s'", [Method, Url]),
     case kz_http:req(Method, Url, Headers, Body) of
-        {'ok', 200, Headers, Content} ->
-            CT = props:get_value("content-type", Headers, <<"application/octet-stream">>),
+        {'ok', 200, RespHeaders, Contents} ->
+            DefaultCt = kz_mime:from_filename(Url),
+            CT = props:get_value("Content-Type", RespHeaders, DefaultCt),
             ContentType = kz_mime:normalize_content_type(CT),
-            {'ok', Content, ContentType, 'undefined'};
+            {'ok', Contents, ContentType, 'undefined'};
         {'ok', Status, _, _} ->
             lager:debug("failed to fetch file for job from: ~s, http response: ~b", [Url, Status]);
         {'error', Reason} ->
