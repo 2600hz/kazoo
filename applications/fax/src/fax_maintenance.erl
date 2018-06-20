@@ -14,6 +14,7 @@
 
 -export([migrate/0, migrate/1, migrate/2]).
 -export([migrate_outbound_faxes/0, migrate_outbound_faxes/1]).
+-export([migrate_views/0]).
 -export([migrate_pending_faxes/0]).
 -export([flush/0]).
 
@@ -192,6 +193,17 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
     end.
+
+
+%%------------------------------------------------------------------------------
+%% @doc ensures that the views are updated to enforce the media format migration
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_views() -> 'ok'.
+migrate_views() ->
+    Views = kapps_util:get_views_json('fax', "views"),
+    _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc ensures that the fax attachments in queue are tiff files with page counts
