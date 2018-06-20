@@ -665,60 +665,26 @@ maybe_save_attachment(Context) ->
     DocId = kz_doc:id(JObj),
     case kz_json:get_value(<<"document">>, JObj) of
         'undefined' ->
-            maybe_save_attachment(Context, cb_context:req_files(Context));
+            save_multipart_attachment(Context, cb_context:req_files(Context));
         Doc ->
             case fetch_attachment_url(Doc) of
                 {'ok', Contents, ContentType} ->
-                    Filename = <<(kz_binary:rand_hex(16))/binary, ".", (kz_mime:to_extension(ContentType))/binary>>,
-                    prepare_attachment(Context, DocId, Filename, ContentType, Contents);
+                    prepare_attachment(Context, DocId, ContentType, Contents);
                 {'error', Error, Message} ->
                     lager:error("error fetching url fax attachment error: ~s details: ~p", [Error, Message]),
                     cb_context:add_system_error(<<"error fetching fax from URL">>, Context)
             end
     end.
 
--spec maybe_save_attachment(cb_context:context(), req_files()) -> cb_context:context().
-maybe_save_attachment(Context, []) -> Context;
-maybe_save_attachment(Context, [{Filename, FileJObj} | _Others]) ->
+-spec save_multipart_attachment(cb_context:context(), req_files()) -> cb_context:context().
+save_multipart_attachment(Context, []) -> Context;
+save_multipart_attachment(Context, [{_Filename, FileJObj} | _Others]) ->
     JObj = cb_context:doc(Context),
     DocId = kz_doc:id(JObj),
     JObj = cb_context:doc(Context),
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
     ContentType = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    prepare_attachment(Context, DocId, Filename, ContentType, Contents).
-
-prepare_attachment(Context, DocId, Filename, ContentType, Contents) ->
-    Options = [{<<"output_type">>, 'binary'}
-              ,{<<"job_id">>, DocId}
-              ,{<<"read_metadata">>, 'true'}
-              ],
-    case kz_convert:fax(ContentType, <<"image/tiff">>, Contents, Options) of
-        {'ok', Output, Props} ->
-            save_attachment(Context, DocId, Filename, Output, Props);
-        {'error', Error} ->
-            lager:error("error converting fax attachment ~s : ~p", [Filename, Error]),
-            cb_context:add_system_error(<<"error converting fax file to tiff">>, Context)
-    end.
-
--spec save_attachment(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist()) -> cb_context:context().
-save_attachment(Context, DocId, Filename, Contents, Props) ->
-    JObj = cb_context:doc(Context),
-    Opts = [{'content_type', <<"image/tiff">>}
-           ,{'rev', kz_doc:revision(JObj)}
-            | ?TYPE_CHECK_OPTION(<<"fax">>)
-           ],
-    NewJObj = kz_json:set_values([{<<"pvt_pages">>, props:get_value(<<"page_count">>, Props, 0)}
-                                 ,{<<"pvt_size">>, props:get_value(<<"size">>, Props, 0)}
-                                 ], JObj),
-    NewContext = cb_context:set_doc(Context, NewJObj),
-    set_pending(crossbar_doc:save_attachment(DocId
-                                            ,cb_modules_util:attachment_name(Filename, <<"image/tiff">>)
-                                            ,Contents
-                                            ,NewContext
-                                            ,Opts
-                                            )
-               ,DocId
-               ).
+    prepare_attachment(Context, DocId, ContentType, Contents).
 
 -spec fetch_attachment_url(kz_json:object()) ->
                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
@@ -748,13 +714,43 @@ fetch_attachment_url(FetchRequest) ->
             {'error', <<"fetch_error">>, Reason}
     end.
 
--spec set_pending(cb_context:context(), binary()) -> cb_context:context().
-set_pending(Context, DocId) ->
-    Ctx1 = crossbar_doc:load(DocId, Context),
-    KVs = [{<<"pvt_job_status">>, <<"pending">>}
+-spec prepare_attachment(cb_context:context()
+                        ,kz_term:ne_binary()
+                        ,kz_term:ne_binary()
+                        ,kz_term:ne_binary()) -> cb_context:context().
+prepare_attachment(Context, DocId, ContentType, Contents) ->
+    Options = [{<<"output_type">>, 'binary'}
+              ,{<<"job_id">>, DocId}
+              ,{<<"read_metadata">>, 'true'}
+              ],
+    case kz_convert:fax(ContentType, <<"image/tiff">>, Contents, Options) of
+        {'ok', Output, Props} ->
+            Filename = <<(kz_binary:rand_hex(16))/binary, ".tiff">>,
+            save_attachment(Context, DocId, Filename, Output, Props);
+        {'error', Error} ->
+            lager:error("error converting fax attachment: ~p", [Error]),
+            cb_context:add_system_error(<<"error converting fax file to tiff">>, Context)
+    end.
+
+-spec save_attachment(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist()) -> cb_context:context().
+save_attachment(Context, DocId, Filename, Contents, Props) ->
+    Opts = [{'content_type', <<"image/tiff">>}
+           ,{'rev', kz_doc:revision(cb_context:doc(Context))}
+            | ?TYPE_CHECK_OPTION(<<"fax">>)
+           ],
+    KVs = [{<<"pvt_pages">>, props:get_value(<<"page_count">>, Props, 0)}
+          ,{<<"pvt_size">>, props:get_value(<<"size">>, Props, 0)}
+          ,{<<"pvt_job_status">>, <<"pending">>}
           ,{<<"pvt_modified">>, kz_time:now_s()}
           ],
-    crossbar_doc:save(cb_context:set_doc(Ctx1, kz_json:set_values(KVs, cb_context:doc(Ctx1)))).
+    NewContext = crossbar_doc:save_attachment(DocId
+                                             ,cb_modules_util:attachment_name(Filename, <<"image/tiff">>)
+                                             ,Contents
+                                             ,Context
+                                             ,Opts
+                                             ),
+    Ctx = crossbar_doc:load(DocId, NewContext),
+    crossbar_doc:save(cb_context:set_doc(Ctx, kz_json:set_values(KVs, cb_context:doc(Ctx)))).
 
 -spec do_put_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
