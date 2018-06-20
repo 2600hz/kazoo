@@ -236,7 +236,7 @@ convert_attachment(DataJObj, FaxId, Macros, FromFormat, Bin) ->
               ],
     case kz_convert:fax(FromFormat, ToFormat, Bin, Options) of
         {'ok', Converted} ->
-            Filename = get_file_name(Macros, ToFormat),
+            Filename = get_file_name(Macros, Ext),
             lager:debug("adding attachment as ~s", [Filename]),
             [{ToFormat, Filename, Converted}];
         {'error', Reason} ->
