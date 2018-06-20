@@ -7,7 +7,7 @@ Three enviornment variables are provided to every command to ensure ordering of 
 
 | Variable | Description |
 | --- | --- |
-| `$From` | The source filename for the conversion |
+| `$FROM` | The source filename for the conversion |
 | `$TO` | The destination filename for the conversion |
 | `$WORKDIR` | The working directory for the conversion |
 
@@ -64,7 +64,7 @@ The default command is:
 
 ```bash
 convert $FROM \
-    -resample 204x98 \
+    -density 204x98 \
     -units PixelsPerInch \
     -compress group4 \
     -size 1728x1078 $TO
@@ -141,6 +141,16 @@ This command requires `libreoffice` via package `libreoffice-core` in centos and
 
 ## Default Validate Commands
 
+### Environment variables provided to all validate commands
+Three enviornment variables are provided to every command to ensure ordering of arguments can be provided in any order.
+
+| Variable | Description |
+| --- | --- |
+| `$FROM` | The source filename to validate |
+| `$TO` | The destination filename for the conversion if a converter is used to validate the command |
+| `$WORKDIR` | The working directory for the conversion if a conversion is used to validate the command |
+| `$FILE` | Another name for the FROM value, used when only the target file is needed for validation |
+
 ### Validate Tiff Command
 
 The configuration parameter for this command is `verify_tiff_command`. This command is invoked when a conversion from `image/tiff` to `application/pdf` is requested.
@@ -148,12 +158,12 @@ The configuration parameter for this command is `verify_tiff_command`. This comm
 The default command is:
 
 ```bash
-tiff2pdf -o $FROM $TO
+tiffinfo $FILE
 ```
 
 #### Requirements
 
-This command requires `tiff2pdf` be installed, this is installed via the package `libtifftools` in centos and `libtiff-tools` in debian.
+This command requires `tiffinfo` be installed, this is installed via the package `libtifftools` in centos and `libtiff-tools` in debian.
 
 ### Validate PDF Command
 
@@ -162,7 +172,7 @@ The configuration parameter for this command is `verify_tiff_command`. This comm
 The default command is:
 
 ```bash
-gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FROM
+gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE
 ```
 
 #### Requirements

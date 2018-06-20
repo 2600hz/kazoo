@@ -64,7 +64,7 @@
 %%   <li>`binary' and `path' formats in the requested `output_type' must be supported.</li>
 %%   <li>Input content formats `{file, FilePath}' and a binary containing the files content must be supported.</li>
 %%   <li>Any files created in the process should be stored in the specified tmp_dir or `/tmp' by default.</li>
-%%   <li>The user specified filename is respected</li>
+%%   <li>If present, the user filename is respected</li>
 %%</ul>
 %%
 %% @end
