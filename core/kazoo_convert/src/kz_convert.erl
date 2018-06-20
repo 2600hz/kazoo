@@ -17,10 +17,10 @@ fax(FromFormat, ToFormat, Content) ->
     fax(FromFormat, ToFormat, Content, []).
 
 %%------------------------------------------------------------------------------
-%% @doc This function provides a uniform interface for selecting the module for the conversion of fax related files.
+%% @doc A uniform interface for conversion of fax related files.
 %%
 %% The configured converter module is loaded from system_config/kazoo_convert via
-%% the parameter `fax_converter'. The default is the `kz_fax_converter' module. The
+%% the parameter `fax_converter'. The default fax_converter is `kz_fax_converter'. The
 %% behaviour for converter modules is defined in `gen_kz_converter'
 %%
 %% Arguments Description:
