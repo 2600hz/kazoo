@@ -64,10 +64,10 @@ The default command is:
 
 ```bash
 convert $FROM \
-    -density 204x98 \
+    -resample 204x98 \
     -units PixelsPerInch \
-    -compress group4 \
-    -size 1728x1078 $TO
+    -resize 1728x1078\! \
+    -compress group4 $TO
 ```
 
 #### Requirements
@@ -92,7 +92,7 @@ This command requires `tiff2pdf` be installed, this is installed via the package
 
 The configuration parameter for this command is `convert_pdf_command`. This command is invoked when conversion from `application/pdf` to `image/tiff` is requested.
 
-### Default command
+The default command is:
 
 ```bash
 /usr/bin/gs \
