@@ -41,6 +41,7 @@
 -define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
 -define(KEY_SAVE_AFTER_NOTIFY, <<"save_after_notify">>).
 -define(KEY_FORCE_REQUIRE_PIN, <<"force_require_pin">>).
+-define(MAX_INVALID_PIN_LOOPS, 3).
 
 -define(MAILBOX_DEFAULT_SIZE
        ,kapps_config:get_integer(?CF_CONFIG_CAT
@@ -1375,12 +1376,18 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId
 %%------------------------------------------------------------------------------
 -spec change_pin(mailbox(), kapps_call:call()) ->
                         mailbox() | {'error', any()}.
+change_pin(Box, Call) ->
+    change_pin(Box, Call, 1).
+
+-spec change_pin(mailbox(), kapps_call:call(), non_neg_integer()) ->
+                        mailbox() | {'error', any()}.
 change_pin(#mailbox{mailbox_id=Id
                    ,interdigit_timeout=Interdigit
                    }=Box
           ,Call
+          ,Loop
           ) ->
-    lager:info("requesting new mailbox pin number"),
+    lager:info("requesting new mailbox pin number (loop ~p)", [Loop]),
     try
         {'ok', Pin} = get_new_pin(Interdigit, Call),
         lager:info("collected first pin"),
@@ -1408,7 +1415,7 @@ change_pin(#mailbox{mailbox_id=Id
                 Box;
             {'error', _Reason} ->
                 lager:debug("box failed validation: ~p", [_Reason]),
-                invalid_pin(Box, Call)
+                invalid_pin(Box, Call, Loop)
         end
     catch
         'error':{'badmatch',{'error','channel_hungup'}} ->
@@ -1416,18 +1423,22 @@ change_pin(#mailbox{mailbox_id=Id
             {'error', 'channel_hungup'};
         'error':{'badmatch',{'ok',_ConfirmPin}} ->
             lager:debug("new pin was invalid, try again"),
-            invalid_pin(Box, Call);
+            invalid_pin(Box, Call, Loop);
         _E:_R ->
             lager:debug("failed to get new pin: ~s: ~p", [_E, _R]),
-            invalid_pin(Box, Call)
+            invalid_pin(Box, Call, Loop)
     end.
 
--spec invalid_pin(mailbox(), kapps_call:call()) ->
+-spec invalid_pin(mailbox(), kapps_call:call(), non_neg_integer()) ->
                          mailbox() |
                          {'error', any()}.
-invalid_pin(Box, Call) ->
+invalid_pin(_Box, Call, Loop) when Loop >= ?MAX_INVALID_PIN_LOOPS ->
+    lager:debug("channel hungup after several empty or invalid pins"),
+    _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
+    {'error', 'channel_hungup'};
+invalid_pin(Box, Call, Loop) ->
     case kapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
-        {'ok', _} -> change_pin(Box, Call);
+        {'ok', _} -> change_pin(Box, Call, Loop + 1);
         {'error', 'channel_hungup'}=E ->
             lager:debug("channel hungup after bad pin"),
             E;
