@@ -24,14 +24,15 @@
           "-dNOPAUSE "
           "-dBATCH "
           "-dSAFER "
-          "-sDEVICE=tiffg3 "
+          "-sDEVICE=tiffg4 "
           "-sOutputFile=$TO -- $FROM"
         >>
        ).
 -define(CONVERT_IMAGE_CMD, <<"convert $FROM "
-                             "-density 204x98 "
+                             "-resample 204x98 "
                              "-units PixelsPerInch "
-                             "-size 1728x1078 $TO"
+                             "-resize 1728x1078\! "
+                             "-compress group4 $TO"
                            >>
        ).
 
