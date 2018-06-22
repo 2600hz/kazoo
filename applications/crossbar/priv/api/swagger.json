@@ -29506,7 +29506,7 @@
                     "type": "integer"
                 },
                 "convert_image_command": {
-                    "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728x1078\! -compress group4 $TO",
+                    "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728x1078\\! -compress group3 $TO",
                     "description": "The command to resample a tiff file to a fax compatible format or convert a supported image/* format to a tiff",
                     "type": "string"
                 },
