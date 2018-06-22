@@ -1,6 +1,21 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc File converter behaviour.
+%%
+%%  Defines the behavior for file format converters in the kazoo_convert library.
+%%
+%% <ul>
+%%   <li>The behavior `gen_kz_converter' specifies the interface of the functions convert/4  and read_metadata/1, and define their return types.</li>
+%%   <li>Converter modules should always delete any files created in the process,
+%%   including the input file if the {'file', FilePath} `Content' format is specified. If `output_type' is `path' the file converted file will be returned and deletion of this file will be
+%%   the responsibility of the caller. </li>
+%%   <li>`binary' and `path' formats in the requested `output_type' must be supported.</li>
+%%   <li>Input content formats `{file, FilePath}' and a binary containing the files content must be supported.</li>
+%%   <li>Any files created in the process should be stored in the tmp_dir parameter, the configured `tmp_dir` or `/tmp' by default.</li>
+%%</ul>
+%%
+%% @end
+%%------------------------------------------------------------------------------
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(gen_kz_converter).
