@@ -1,9 +1,9 @@
 # Kazoo Fax Converter
 
-This module provide a consistant core interface for fax file format conversions. The module is enabled as the default fax converter, but this can be easily extended by adding other modules to the converter.
+The fax converter writes files to a configurable working directory and converts them using system commands. The commands used to convert configurations are user configurable with defaults being set to recommended commands. The module is enabled as the default fax file converter.
 
 ## Environment variables provided to all commands
-Three enviornment variables are provided to every command to ensure ordering of arguments can be provided in any order.
+Three environment variables are provided to every command to ensure ordering of arguments can be provided in any order.
 
 | Variable | Description |
 | --- | --- |
@@ -11,7 +11,7 @@ Three enviornment variables are provided to every command to ensure ordering of 
 | `$TO` | The destination filename for the conversion |
 | `$WORKDIR` | The working directory for the conversion |
 
-The `$TO` and `$FROM` environment variables are generally used in most commands, but some commands which are intended to operate in batch modes require a work dir instead of a destination file name.
+The `$TO` and `$FROM` environment variables are generally used in most commands, but some commands which are intended to operate in batch modes require a work directory instead of a destination file name.
 
 ## Fax Converter Commands
 
@@ -40,11 +40,11 @@ The equivalent `fax_converter` command would be:
      -dNOPAUSE \
      -dBATCH \
      -dSAFER \
-     -sDEVICE=tiffg3 \
+     -sDEVICE=tiffg4 \
      -sOutputFile=$TO -- $FROM
 ```
 
-Which also means, if the converter you are using for a specific purpose is a jerk and always returns exit_status `0`, you need to handle this in your convert command. Something like this could be appended to the end of the your custom command to handle this case. This example searches for matches to the patterns `parser error`  and `error`in the output and emits exit_staus 1 (error) if those matches are found, othewise emits exit_status 0 (ok).
+Which also means, if the converter you are using for a specific purpose is a `jerk` and always returns `exit_status: 0`, you need to handle this in your convert command. Something like this could be appended to the end of the your custom command to handle this case. This example searches for matches to the patterns `parser error`  and `error`in the output and emits exit_staus 1 (error) if those matches are found, otherwise emits exit_status 0 (ok).
 
 ```bash
 |egrep 'parser error|Error' && exit 1 || exit 0"
@@ -72,7 +72,7 @@ convert $FROM \
 
 #### Requirements
 
-This command requires `convert` be installed, this is installed via the package `ImageMagick` in centos and debian.
+This command requires the system support the `convert` command, this is installed via the package `ImageMagick` in Centos7 and Debian8.
 
 ## Tiff to PDF
 
@@ -86,7 +86,7 @@ tiff2pdf -o $FROM $TO
 
 #### Requirements
 
-This command requires `tiff2pdf` be installed, this is installed via the package `libtifftools` in centos and `libtiff-tools` in debian.
+This command requires `tiff2pdf` be installed, this is installed via the package `libtifftools` in Centos7 and `libtiff-tools` in Debian8.
 
 ## Pdf to Tiff
 
@@ -109,10 +109,10 @@ The default command is:
 
 #### Requirements
 
-This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in centos and debian.
+This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in Centos7 and Debian8.
 
 
-## Openoffice compatible to PDF
+## OpenOffice compatible to PDF
 
 The configuration for this command is `convert_openoffice_command`. This command is invoked when conversion from any openoffice compatible format is requested. For this feature to be used, `enable_openoffice` must be set in the `kazoo_convert` configuration. If openoffice compatible format conversions are enabled, by default openoffice conversions are serialized, this can be changed by setting `serialize_openoffice` to false. This is strongly reccomended to be enabled if using the unoconv converter for openoffice conversions, as it explicitly requires one conversion at a time. The default use of `unoconv` has been depricated as libreoffice can be invoked directly using the `--convert-to pdf` argument. `libreoffice` unlike `unoconv` provides useful output if a command fails, neither provides a correct exit status so it must be determined from the command output.
 
@@ -137,23 +137,23 @@ libreoffice \
 
 ### Requirements
 
-This command requires `libreoffice` via package `libreoffice-core` in centos and `libreoffice-common` in debian.
+This command requires `libreoffice` via package `libreoffice-core` in Centos7 and `libreoffice-common` in Debian8.
 
 ## Default Validate Commands
 
 ### Environment variables provided to all validate commands
-Three enviornment variables are provided to every command to ensure ordering of arguments can be provided in any order.
+Three environment variables are provided to every command to ensure ordering of arguments can be provided in any order.
 
 | Variable | Description |
 | --- | --- |
 | `$FROM` | The source filename to validate |
 | `$TO` | The destination filename for the conversion if a converter is used to validate the command |
 | `$WORKDIR` | The working directory for the conversion if a conversion is used to validate the command |
-| `$FILE` | Another name for the FROM value, used when only the target file is needed for validation |
+| `$FILE` | Another name for the FROM value, used for clarity when only the target file is needed for validation |
 
 ### Validate Tiff Command
 
-The configuration parameter for this command is `verify_tiff_command`. This command is invoked when a conversion from `image/tiff` to `application/pdf` is requested.
+The configuration parameter for this command is `verify_tiff_command`. This command is invoked after a files is converted to tiff.
 
 The default command is:
 
@@ -163,7 +163,7 @@ tiffinfo $FILE
 
 #### Requirements
 
-This command requires `tiffinfo` be installed, this is installed via the package `libtifftools` in centos and `libtiff-tools` in debian.
+This command requires `tiffinfo` be installed, this is installed via the package `libtifftools` in Centos7 and `libtiff-tools` in Debian8.
 
 ### Validate PDF Command
 
@@ -177,4 +177,4 @@ gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE
 
 #### Requirements
 
-This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in centos and debian.
+This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in Centos7 and Debian8.

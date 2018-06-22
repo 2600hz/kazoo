@@ -1,25 +1,18 @@
 # Kazoo File Format Converter Library
 
-The Kazoo convert provides a core library for converting file formats. This app moves functionality previously scattered throughout other applications into a single core application.
-
-This app is intended to:
-1. Provides a core consistant interface for file format conversions.
-1. Provide the capability of generating custom modules for conversion and enabling them via config.
-1. Returns a standardized result of either the file path of the conversion output file or the file content, or standardized errors for failures to convert.
+The Kazoo converter provides a core library for converting file formats.
 
 ## Modules
 
-The kazoo converter command uses modules for the converter based on the type of conversions required. This is intended to be extended to include multipe types of conversions and formats and be easily extendable by supporting selection of which modules to use via the `system_config/kazoo_convert` document.
+The converters used to execute file conversions are modular, modules can be enabled via configuration. This core library is intended to be extended to include multipe types of conversions and formats and be easily extendable by supporting selection of which modules to use via the `system_config/kazoo_convert` document. Currently only fax conversions are done via the converter. But there are many other types of file conversions going on in Kazoo. Stay tuned...
 
 #### Fax Converter
 
-The fax converter module by default uses the module `fax_converter`.
+The fax converter module by default use the module `fax_converter`. For a description of how the default fax converter `fax_converter` works, and information about the system commands used in fax file conversions, see [the fax converter documentation.](fax_converter.md)
 
-For a description of how the fax_converter works, see [the fax converter documetation.](fax_converter.md)
+###Configuration
 
-#### Schema
-
-Configuration parameters for conversions
+The `v2/system_configs/kazoo_convert` configuration parameters are used to enable features and define commands to use for conversion operations.
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
@@ -36,6 +29,8 @@ Key | Description | Type | Default | Required | Support Level
 `validate_tiff_command` | Verifies a TIFF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 
 ### Sup Commands
+
+Fax conversion commands can be tested via sup, this is useful when debugging issues where a custom conversion command is not working properly.
 
 ```
 sup kazoo_convert_maintenance convert_fax_file {path/to/file} {to file type}

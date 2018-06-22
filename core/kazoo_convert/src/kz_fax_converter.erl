@@ -47,26 +47,6 @@
 %%   be copied to the specified path, if a relative path is specified, it will be copied to the `tmp_dir' using the file name specified</li>
 %% </ul>
 %%
-%% read_metadata:
-%% <ul>
-%%   <li><strong>page_count:</strong> the count of pages in a tiff.</li>
-%%   <li><strong>size:</strong> the file size in bytes.</li>
-%%   <li><strong>mime-type:</strong> the files mime-type</li>
-%%   <li><strong>filetype:</strong> the files extension</li>
-%% </ul>
-%%
-%% Replacement Modules:
-%% <ul>
-%%   <li>The behavior `gen_kz_converter' specifies the interface of the function convert/4  and read_metadata/1, and return the existing format.</li>
-%%   <li>The converter (and any alternative modules) should always delete any files created in the process,
-%%   including the input file if the {'file', FilePath} `Content' format is specified. If `output_type' is `path' the file converted file will be returned and deletion of this file will be
-%%   the responsibility of the caller. </li>
-%%   <li>`binary' and `path' formats in the requested `output_type' must be supported.</li>
-%%   <li>Input content formats `{file, FilePath}' and a binary containing the files content must be supported.</li>
-%%   <li>Any files created in the process should be stored in the specified tmp_dir or `/tmp' by default.</li>
-%%   <li>If present, the user filename is respected</li>
-%%</ul>
-%%
 %% @end
 %%------------------------------------------------------------------------------
 -spec convert(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, kz_term:proplist()) ->
@@ -272,7 +252,7 @@ run_validate_command(Command, FromPath, ToPath, TmpDir) ->
     end.
 
 %%%=============================================================================
-%%% return handling functions
+%%% output formatting functions
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
