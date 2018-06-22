@@ -223,6 +223,7 @@
             "default": [],
             "description": "smtp permission list. accepts regular expressions",
             "items": {
+                "kazoo-validation": true,
                 "type": "string"
             },
             "support_level": "supported",

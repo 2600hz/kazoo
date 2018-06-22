@@ -98,6 +98,15 @@ extra_validation(<<"storage.attachment.onedrive.oauth_doc_id">>, Value, State) -
     validate_attachment_oauth_doc_id(Value, State);
 extra_validation(<<"storage.attachment.dropbox.oauth_doc_id">>, Value, State) ->
     validate_attachment_oauth_doc_id(Value, State);
+extra_validation(<<"faxbox">>, Value, State) ->
+    case re:compile(Value) of
+        {ok, _} ->
+            State;
+        {error, _Reason} ->
+            ErrorMsg = <<"Invalid smtp_permission regex: '", Value/binary,"'">>,
+            lager:debug("~s. Reason: ~p", [ErrorMsg, _Reason]),
+            jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
+    end;
 extra_validation(_Key, _Value, State) ->
     lager:debug("extra validation of ~s not handled for value ~p", [_Key, _Value]),
     State.
