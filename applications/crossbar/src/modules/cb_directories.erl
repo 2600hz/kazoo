@@ -198,8 +198,11 @@ get_pdf(Context) ->
         {'error', _} ->
             cb_context:set_resp_data(Context, <<>>);
         {'ok', PDF} ->
-            cb_context:set_resp_data(Context, PDF)
-
+            DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Data),
+            FileName = <<(cb_context:account_name(Context))/binary, "-", DocType/binary>>,
+            CD = <<"attachment; filename=\"", FileName/binary, ".pdf\"">>,
+            Context1 = cb_context:set_resp_header(Context, <<"content-disposition">>, CD),
+            cb_context:set_resp_data(Context1, PDF)
     end.
 
 %%------------------------------------------------------------------------------

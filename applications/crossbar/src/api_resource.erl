@@ -958,8 +958,10 @@ to_pdf(Req, Context, 'undefined') ->
 to_pdf(Req, Context, <<>>) ->
     to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, RespData) ->
+    DefaultCD = <<"attachment; filename=\"file.pdf\"">>,
+    CD = maps:get(<<"content-disposition">>, cb_context:resp_headers(Context), DefaultCD),
     RespHeaders = #{<<"content-type">> => <<"application/pdf">>
-                   ,<<"content-disposition">> => <<"attachment; filename=\"file.pdf\"">>
+                   ,<<"content-disposition">> => CD
                    },
     {RespData
     ,api_util:set_resp_headers(Req, cb_context:add_resp_headers(Context, RespHeaders))
