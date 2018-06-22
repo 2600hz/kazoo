@@ -53,25 +53,26 @@
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
+-type ordinal() :: kz_term:ne_binary(). % "every" | "first" | "second" | "third" | "fourth" | "fifth" | "last".
 
--export_type([now/0
-             ,year/0
-             ,month/0
-             ,day/0
-             ,hour/0
-             ,minute/0
-             ,second/0
-             ,daynum/0
-             ,weeknum/0
+-export_type([api_seconds/0
              ,date/0
-             ,time/0
              ,datetime/0
-             ,iso_week/0
+             ,day/0
+             ,daynum/0
              ,gregorian_seconds/0
+             ,hour/0
+             ,iso_week/0
+             ,minute/0
+             ,month/0
+             ,now/0
+             ,ordinal/0
+             ,second/0
+             ,time/0
              ,unix_seconds/0
-             ,api_seconds/0
+             ,weeknum/0
+             ,year/0
              ]).
-
 
 %% returns current seconds
 -spec current_tstamp() -> gregorian_seconds().
