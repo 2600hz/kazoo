@@ -590,7 +590,7 @@ get_channel_vars({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
      | Vars
     ];
 
-get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
+get_channel_vars({AMQPHeader, V}, Vars) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
         {_, Prefix} ->
