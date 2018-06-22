@@ -12,6 +12,7 @@
 
 -define(CACHE_NAME, 'fax_cache').
 -define(FAX_WORKER_POOL, 'fax_worker_pool').
+-define(RETRY_SAVE_ATTACHMENT_DELAY, 5000).
 
 -define(FAX_CHANNEL_DESTROY_PROPS, [<<"Ringing-Seconds">>, <<"Billing-Seconds">>
                                    ,<<"0">>, <<"Duration-Seconds">>

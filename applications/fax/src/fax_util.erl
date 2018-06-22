@@ -18,9 +18,8 @@
 
 -include("fax.hrl").
 
--define(RETRY_SAVE_ATTACHMENT_DELAY, 5000).
-
 -spec fax_properties(kz_json:object()) -> kz_proplist().
+
 fax_properties(JObj) ->
     [{kz_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- kz_json:to_proplist(JObj)].
 
