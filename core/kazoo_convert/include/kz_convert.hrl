@@ -36,11 +36,11 @@
                            >>
        ).
 -define(RESIZE_TIFF_CMD, <<"convert $FROM "
-                             "-resample 204x98 "
-                             "-units PixelsPerInch "
-                             "-resize 1728\\!x1078 "
-                             "-compress group4 $TO"
-                           >>
+                           "-resample 204x98 "
+                           "-units PixelsPerInch "
+                           "-resize 1728\\!x1078 "
+                           "-compress group4 $TO"
+                         >>
        ).
 -define(EMBIGGEN_TIFF_CMD, <<"convert $FROM "
                              "-gravity center "
