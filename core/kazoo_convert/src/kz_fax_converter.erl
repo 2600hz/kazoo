@@ -10,6 +10,7 @@
 -export([convert/4
         ,do_openoffice_to_pdf/2
         ,read_metadata/1
+        ,get_tiff_info/1
         ]).
 
 -include_lib("kazoo_convert/include/kz_convert.hrl").
@@ -153,6 +154,15 @@ run_convert([], ToFormat, FilePath, Options) ->
     end.
 
 -spec image_to_tiff(kz_term:ne_binary(), map()) -> fax_converted().
+image_to_tiff(FromPath, #{<<"from_format">> := <<"image/tiff">>}=Options) ->
+    Info = get_tiff_info(FromPath),
+    lager:debug("queried tiff for info ~p", [Info]),
+    case select_tiff_command(Info) of
+        'noop' ->
+            {'ok', FromPath};
+        {'convert', Command} ->
+            convert_file(Command, FromPath, <<".tiff">>, Options)
+    end;
 image_to_tiff(FromPath, Options) ->
     convert_file(?CONVERT_IMAGE_COMMAND, FromPath, <<".tiff">>, Options).
 
@@ -209,6 +219,60 @@ run_convert_command(Command, FromPath, ToPath, TmpDir) ->
             {'error', <<"convert command failed">>}
     end.
 
+-spec get_tiff_info(kz_term:ne_binary()) -> map()|{'error', any(), kz_term:ne_binary()}.
+get_tiff_info(FilePath) ->
+    Args = [{<<"FILE">>, FilePath}
+           ],
+    case kz_os:cmd(?TIFF_INFO_CMD, Args) of
+        {'ok', Data} ->
+            parse_tiff_info([L || L <- binary:split(Data, <<"\n">>, ['global']), L =/= <<>>], #{});
+        Error -> Error
+    end.
+
+parse_tiff_info([], Acc) ->
+    Acc;
+parse_tiff_info([Line|Rest], Acc) ->
+    case Line of
+        <<"Width: ", Width/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"width">> => kz_term:to_integer(Width)});
+        <<"Length: ", Length/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"length">> => kz_term:to_integer(Length)});
+        <<"X: ", X/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"res_x">> => kz_term:to_integer(X)});
+        <<"Y: ", Y/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"res_y">> => kz_term:to_integer(Y)});
+        <<"Compression Scheme: ", Scheme/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"scheme">> => Scheme});
+        <<"Page Number: 0-0">> ->
+            Acc#{<<"has_pages">> => 'true'};
+        _Else ->
+            parse_tiff_info(Rest, Acc)
+    end.
+
+-spec select_tiff_command(map()) ->
+                                 {'convert', kz_term:ne_binary()} |
+                                 'noop'.
+select_tiff_command(#{<<"length">> := Height}) when Height > 1078 ->
+    lager:debug("file is too long, resizing"),
+    {'convert', ?RESIZE_TIFF_COMMAND};
+select_tiff_command(#{<<"width">> := Width}) when Width > 1728 ->
+    lager:debug("file is too wide, resizing"),
+    {'convert', ?RESIZE_TIFF_COMMAND};
+select_tiff_command(#{<<"width">> := Width}) when Width < 1728 ->
+    lager:debug("file is smaller than page, centering"),
+    {'convert', ?EMBIGGEN_TIFF_COMMAND};
+select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}) when X > 204
+                                                       orelse Y > 98  ->
+    lager:debug("file is wrong dpi, resampling"),
+    {'convert', ?CONVERT_IMAGE_COMMAND};
+select_tiff_command(#{<<"scheme">> := <<"CCITT Group 3">>, <<"has_pages">> := 'true'}) ->
+    'noop';
+select_tiff_command(#{<<"scheme">> := <<"CCITT Group 4">>, <<"has_pages">> := 'true'}) ->
+    'noop';
+select_tiff_command(#{}) ->
+    lager:debug("file has no pages, resampling to fix"),
+    {'convert', ?CONVERT_IMAGE_COMMAND}.
+
 %%%=============================================================================
 %%% validate functions
 %%%=============================================================================
@@ -242,7 +306,7 @@ run_validate_command(Command, FromPath, ToPath, TmpDir) ->
               ],
     case kz_os:cmd(Command, Args, Options) of
         {'ok', _}=Ok ->
-            kz_util:delete_file(ToPath),
+            _ = file:delete(ToPath),
             Ok;
         {'error', Reason, Msg} ->
             lager:debug("failed to validate file: ~s with reason: ~s error: ~p", [FromPath, Reason, Msg]),

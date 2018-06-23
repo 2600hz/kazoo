@@ -66,7 +66,40 @@ The default command is:
 convert $FROM \
     -resample 204x98 \
     -units PixelsPerInch \
-    -resize 1728x1078\! \
+    -size 1728x1078 \
+    -compress group4 $TO
+```
+
+### Tiff Resize Command
+
+The configuration parameter for this command is `resize_tiff_command`. This command is invoked when a conversion from `image/*` to `image/tiff` is requested.
+
+This is used when a tiff is larger than 1728x1078 to resize it to fit on the page.
+
+The default command is:
+
+```bash
+convert $FROM \
+    -resample 204x98 \
+    -units PixelsPerInch \
+    -resize 1728\!x1078 \
+    -compress group4 $TO
+```
+
+### Tiff Embiggen Command
+
+The configuration parameter for this command is `embiggen_tiff_command`. This command is invoked when a conversion from `image/*` to `image/tiff` is requested.
+
+Convert command to handle case where the tiff is smaller than 1728x1078 ensure it is in the standard format for faxing.
+
+The default command is:
+
+```bash
+convert $FROM \
+    -gravity center \
+    -resample 204x98 \
+    -units PixelsPerInch \
+    -extent 1728x1078 \
     -compress group4 $TO
 ```
 

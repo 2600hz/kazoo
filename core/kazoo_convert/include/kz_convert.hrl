@@ -31,7 +31,22 @@
 -define(CONVERT_IMAGE_CMD, <<"convert $FROM "
                              "-resample 204x98 "
                              "-units PixelsPerInch "
-                             "-resize 1728x1078\! "
+                             "-size 1728x1078 "
+                             "-compress group4 $TO"
+                           >>
+       ).
+-define(RESIZE_TIFF_CMD, <<"convert $FROM "
+                             "-resample 204x98 "
+                             "-units PixelsPerInch "
+                             "-resize 1728\\!x1078 "
+                             "-compress group4 $TO"
+                           >>
+       ).
+-define(EMBIGGEN_TIFF_CMD, <<"convert $FROM "
+                             "-gravity center "
+                             "-resample 204x98 "
+                             "-units PixelsPerInch "
+                             "-extent 1728x1078 "
                              "-compress group4 $TO"
                            >>
        ).
@@ -46,6 +61,13 @@
                                 >>
        ).
 
+-define(TIFF_INFO_CMD, <<"tiffinfo $FILE "
+                         "|egrep 'Page|Width|Resolution|Compression' "
+                         "|sed 's|Image Width: \\([0-9]*\\) Image Length: \\([0-9]*\\)|Width: \\1\\nLength: \\2\\n|g' "
+                         "|sed 's|Resolution: \\([0-9]*\\), \\([0-9]*\\)|X: \\1\\nY: \\2\\n|g' "
+                         "|sed 's/^[ \\t]*//g'"
+                       >>).
+
 -define(COUNT_TIFF_PAGES_CMD, <<"echo -n `tiffinfo $FILE | grep 'Page Number' | grep -c 'P'`">>).
 
 -define(VALIDATE_PDF_CMD, <<"gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE">>).
@@ -53,6 +75,10 @@
 
 -define(CONVERT_IMAGE_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, <<"convert_image_command">>, ?CONVERT_IMAGE_CMD)).
+-define(RESIZE_TIFF_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"resize_tiff_command">>, ?RESIZE_TIFF_CMD)).
+-define(EMBIGGEN_TIFF_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"embiggen_image_command">>, ?EMBIGGEN_TIFF_CMD)).
 -define(CONVERT_PDF_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, <<"convert_pdf_command">>, ?CONVERT_PDF_CMD)).
 -define(VALIDATE_PDF_COMMAND

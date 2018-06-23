@@ -28,6 +28,11 @@
             "description": "The command to convert a tiff file to PDF",
             "type": "string"
         },
+        "embiggen_image_command": {
+            "default": "convert $FROM -gravity center -resample 204x98 -units PixelsPerInch -extent 1728x1078 -compress group4 $TO",
+            "description": "The command to handle tiffs that are small so they don't get scrunched",
+            "type": "string"
+        },
         "enable_openoffice": {
             "default": true,
             "description": "Enables the conversion of openoffice compatible documents",
@@ -41,6 +46,11 @@
         "file_cache_path": {
             "default": "/tmp/",
             "description": "The working directory to use when converting files",
+            "type": "string"
+        },
+        "resize_tiff_command": {
+            "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728\\!x1078 -compress group4 $TO",
+            "description": "The command to resize tiffs when they are bigger than 1728x1078",
             "type": "string"
         },
         "serialize_openoffice": {
