@@ -75,10 +75,10 @@
 
 -define(CONVERT_IMAGE_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, <<"convert_image_command">>, ?CONVERT_IMAGE_CMD)).
--define(RESIZE_TIFF_COMMAND
-       ,kapps_config:get_binary(?CONFIG_CAT, <<"resize_tiff_command">>, ?RESIZE_TIFF_CMD)).
--define(EMBIGGEN_TIFF_COMMAND
-       ,kapps_config:get_binary(?CONFIG_CAT, <<"embiggen_image_command">>, ?EMBIGGEN_TIFF_CMD)).
+-define(LARGE_TIFF_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"large_tiff_command">>, ?RESIZE_TIFF_CMD)).
+-define(SMALL_TIFF_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"small_tiff_command">>, ?EMBIGGEN_TIFF_CMD)).
 -define(CONVERT_PDF_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, <<"convert_pdf_command">>, ?CONVERT_PDF_CMD)).
 -define(VALIDATE_PDF_COMMAND

@@ -156,7 +156,6 @@ run_convert([], ToFormat, FilePath, Options) ->
 -spec image_to_tiff(kz_term:ne_binary(), map()) -> fax_converted().
 image_to_tiff(FromPath, #{<<"from_format">> := <<"image/tiff">>}=Options) ->
     Info = get_tiff_info(FromPath),
-    lager:debug("queried tiff for info ~p", [Info]),
     case select_tiff_command(Info) of
         'noop' ->
             {'ok', FromPath};
@@ -219,48 +218,19 @@ run_convert_command(Command, FromPath, ToPath, TmpDir) ->
             {'error', <<"convert command failed">>}
     end.
 
--spec get_tiff_info(kz_term:ne_binary()) -> map()|{'error', any(), kz_term:ne_binary()}.
-get_tiff_info(FilePath) ->
-    Args = [{<<"FILE">>, FilePath}
-           ],
-    case kz_os:cmd(?TIFF_INFO_CMD, Args) of
-        {'ok', Data} ->
-            parse_tiff_info([L || L <- binary:split(Data, <<"\n">>, ['global']), L =/= <<>>], #{});
-        Error -> Error
-    end.
-
-parse_tiff_info([], Acc) ->
-    Acc;
-parse_tiff_info([Line|Rest], Acc) ->
-    case Line of
-        <<"Width: ", Width/binary>> ->
-            parse_tiff_info(Rest, Acc#{<<"width">> => kz_term:to_integer(Width)});
-        <<"Length: ", Length/binary>> ->
-            parse_tiff_info(Rest, Acc#{<<"length">> => kz_term:to_integer(Length)});
-        <<"X: ", X/binary>> ->
-            parse_tiff_info(Rest, Acc#{<<"res_x">> => kz_term:to_integer(X)});
-        <<"Y: ", Y/binary>> ->
-            parse_tiff_info(Rest, Acc#{<<"res_y">> => kz_term:to_integer(Y)});
-        <<"Compression Scheme: ", Scheme/binary>> ->
-            parse_tiff_info(Rest, Acc#{<<"scheme">> => Scheme});
-        <<"Page Number: 0-0">> ->
-            Acc#{<<"has_pages">> => 'true'};
-        _Else ->
-            parse_tiff_info(Rest, Acc)
-    end.
 
 -spec select_tiff_command(map()) ->
                                  {'convert', kz_term:ne_binary()} |
                                  'noop'.
 select_tiff_command(#{<<"length">> := Height}) when Height > 1078 ->
     lager:debug("file is too long, resizing"),
-    {'convert', ?RESIZE_TIFF_COMMAND};
+    {'convert', ?LARGE_TIFF_COMMAND};
 select_tiff_command(#{<<"width">> := Width}) when Width > 1728 ->
     lager:debug("file is too wide, resizing"),
-    {'convert', ?RESIZE_TIFF_COMMAND};
+    {'convert', ?LARGE_TIFF_COMMAND};
 select_tiff_command(#{<<"width">> := Width}) when Width < 1728 ->
     lager:debug("file is smaller than page, centering"),
-    {'convert', ?EMBIGGEN_TIFF_COMMAND};
+    {'convert', ?SMALL_TIFF_COMMAND};
 select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}) when X > 204
                                                        orelse Y > 98  ->
     lager:debug("file is wrong dpi, resampling"),
@@ -383,7 +353,40 @@ format_output(FilePath, _Options) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc read the diff metadata to help with conversion command selection
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_tiff_info(kz_term:ne_binary()) -> map()|{'error', any(), kz_term:ne_binary()}.
+get_tiff_info(FilePath) ->
+    Args = [{<<"FILE">>, FilePath}
+           ],
+    case kz_os:cmd(?TIFF_INFO_CMD, Args) of
+        {'ok', Data} ->
+            parse_tiff_info([L || L <- binary:split(Data, <<"\n">>, ['global']), L =/= <<>>], #{<<"has_pages">> => 'false'});
+        Error -> Error
+    end.
+
+parse_tiff_info([], Acc) ->
+    Acc;
+parse_tiff_info([Line|Rest], Acc) ->
+    case Line of
+        <<"Width: ", Width/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"width">> => kz_term:to_integer(Width)});
+        <<"Length: ", Length/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"length">> => kz_term:to_integer(Length)});
+        <<"X: ", X/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"res_x">> => kz_term:to_integer(X)});
+        <<"Y: ", Y/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"res_y">> => kz_term:to_integer(Y)});
+        <<"Compression Scheme: ", Scheme/binary>> ->
+            parse_tiff_info(Rest, Acc#{<<"scheme">> => Scheme});
+        <<"Page Number: ", _/binary>> ->
+            Acc#{<<"has_pages">> => 'true'};
+        _Else ->
+            parse_tiff_info(Rest, Acc)
+    end.
+%%------------------------------------------------------------------------------
+%% @doc read metadata about a file to provide information like size and page count
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_read_metadata(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> kz_term:proplist().

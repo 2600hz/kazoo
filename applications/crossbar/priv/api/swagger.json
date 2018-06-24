@@ -29569,11 +29569,6 @@
                     "description": "The command to convert a tiff file to PDF",
                     "type": "string"
                 },
-                "embiggen_image_command": {
-                    "default": "convert $FROM -gravity center -resample 204x98 -units PixelsPerInch -extent 1728x1078 -compress group4 $TO",
-                    "description": "The command to handle tiffs that are small so they don't get scrunched",
-                    "type": "string"
-                },
                 "enable_openoffice": {
                     "default": true,
                     "description": "Enables the conversion of openoffice compatible documents",
@@ -29589,15 +29584,20 @@
                     "description": "The working directory to use when converting files",
                     "type": "string"
                 },
-                "resize_tiff_command": {
+                "large_tiff_command": {
                     "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728\\!x1078 -compress group4 $TO",
-                    "description": "The command to resize tiffs when they are bigger than 1728x1078",
+                    "description": "The command to convert large tiffs to standard dimensions",
                     "type": "string"
                 },
                 "serialize_openoffice": {
                     "default": true,
-                    "description": "Serializes openoffice compatible document conversions",
+                    "description": "Enable Serialization of openoffice compatible document conversions",
                     "type": "boolean"
+                },
+                "small_tiff_command": {
+                    "default": "convert $FROM -gravity center -resample 204x98 -units PixelsPerInch -extent 1728x1078 -compress group4 $TO",
+                    "description": "The command to convert small tiffs to a fax compatible format",
+                    "type": "string"
                 },
                 "validate_pdf_command": {
                     "default": "gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE",
