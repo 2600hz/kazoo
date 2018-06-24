@@ -29502,7 +29502,7 @@
             "properties": {
                 "convert_command_timeout": {
                     "default": 120000,
-                    "description": "timeout value in ms for how long a convert command can run before being killed",
+                    "description": "Timeout value in ms for how long a convert command can run before being killed",
                     "type": "integer"
                 },
                 "convert_image_command": {
@@ -29537,7 +29537,7 @@
                 },
                 "file_cache_path": {
                     "default": "/tmp/",
-                    "description": "The working directory to use when converting files",
+                    "description": "The default working directory to use when converting files",
                     "type": "string"
                 },
                 "large_tiff_command": {
