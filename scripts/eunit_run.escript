@@ -31,9 +31,9 @@ run_eunit(#{modules := Modules}=Opts) ->
     case eunit:test([TestMods], [verbose]) of
         ok ->
             maybe_stop_cover(Opts),
-            init:stop();
+            erlang:halt();
         _ ->
-            init:stop(1)
+            erlang:halt(1)
     end.
 
 filter_same_name_test_modules(Modules) ->
