@@ -54,7 +54,7 @@ filter_same_name_test_modules(Modules) ->
 maybe_start_cover(#{cover := true
                    ,coverdata := _
                    }=Opts) ->
-    ok = filelib:ensure_dir(maps:get(report_dir, Opts, "cover")),
+    ok = filelib:ensure_dir(maps:get(report_dir, Opts, "cover") ++ "/dummy"),
     _ = cover:start(),
     cover:compile_beam_directory("ebin");
 maybe_start_cover(#{cover := true}) ->
