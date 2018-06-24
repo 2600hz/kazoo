@@ -76,7 +76,6 @@ cmd(Command, Args, Options) ->
                  ,props:set_value(<<"owner">>, Owner, Options)
                  ],
     {Pid, Ref} = erlang:spawn_monitor(?MODULE, 'run_cmd', CmdOptions),
-    ?DEV_LOG("spawned pid ~p with ref ~p", [Pid, Ref]),
     monitor_cmd(Pid, Ref, CmdTimeout, 'undefined').
 
 -spec monitor_cmd(pid(), reference(), non_neg_integer(), kz_term:api_port()) ->

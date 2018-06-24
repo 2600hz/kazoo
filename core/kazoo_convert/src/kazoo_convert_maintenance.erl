@@ -5,11 +5,29 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_convert_maintenance).
 
+-export([read_tiff_info/1]).
 -export([read_metadata/1]).
--export([convert_fax_file/2, convert_fax_file/3]).
+-export([convert_fax_file/2, convert_fax_file/3, convert_fax_file/4]).
 -export([versions_in_use/0]).
 
 -include_lib("kazoo_convert/include/kz_convert.hrl").
+
+-spec read_tiff_info(any()) -> 'ok'.
+read_tiff_info(File) when is_binary(File) ->
+    print_tiff_info(kz_fax_converter:get_tiff_info(File));
+read_tiff_info(File) ->
+    read_tiff_info(kz_term:to_binary(File)).
+
+-spec print_tiff_info(map() | {kz_term:ne_binary(), any(), maps:iterator()}) -> 'ok'.
+print_tiff_info({'error', Reason, Message}) ->
+    io:format("Command failed with ~p error: ~s ~n", [Reason, Message]);
+print_tiff_info(Metadata) ->
+    Func = fun (Key, Value, _Acc) when is_binary(Value) ->
+                   io:format("~s: ~s ~n", [Key, Value]);
+               (Key, Value, _Acc) ->
+                   io:format("~s: ~p ~n", [Key, Value])
+           end,
+    maps:fold(Func, 0, Metadata).
 
 -spec read_metadata(any()) -> 'ok'.
 read_metadata(File) when is_binary(File) ->
@@ -19,20 +37,37 @@ read_metadata(File) ->
 
 -spec print_metadata(kz_term:proplist()) -> 'ok'.
 print_metadata(Metadata) ->
-    _ = lists:foreach(fun({Key, Value}) -> io:format("~s ~p ~n", [Key, Value]) end, Metadata).
+    _ = lists:foreach(fun({Key, Value}) -> io:format("~s: ~p ~n", [Key, Value]) end, Metadata).
+
+-spec convert_fax_file(any(), any(), any(), any()) -> 'ok'.
+convert_fax_file(FromFile, ToFormat, WorkDir, ToFilename)
+  when is_binary(FromFile),
+       is_binary(ToFormat),
+       is_binary(WorkDir),
+       is_binary(ToFilename) ->
+    Options = [{<<"tmp_dir">>, WorkDir}
+              ,{<<"to_filename">>, ToFilename}
+              ],
+    do_convert(FromFile
+              ,ToFormat
+              ,Options
+              );
+convert_fax_file(FromFile, ToFormat, WorkDir, ToFilename) ->
+    convert_fax_file(kz_term:to_binary(FromFile)
+                    ,kz_term:to_binary(ToFormat)
+                    ,kz_term:to_binary(WorkDir)
+                    ,kz_term:to_binary(ToFilename)
+                    ).
+
 
 -spec convert_fax_file(any(), any(), any()) -> 'ok'.
 convert_fax_file(FromFile, ToFormat, WorkDir)
   when is_binary(FromFile),
        is_binary(ToFormat),
        is_binary(WorkDir) ->
-    Options = [{"tmp_dir", WorkDir}],
-    {'ok', Content} = file:read_file(FromFile),
-    Type = format_to_mimetype(ToFormat),
+    Options = [{<<"tmp_dir">>, WorkDir}],
     do_convert(FromFile
-              ,kz_mime:from_filename(FromFile)
-              ,Type
-              ,Content
+              ,ToFormat
               ,Options
               );
 convert_fax_file(FromFile, ToFormat, WorkDir) ->
@@ -40,6 +75,7 @@ convert_fax_file(FromFile, ToFormat, WorkDir) ->
                     ,kz_term:to_binary(ToFormat)
                     ,kz_term:to_binary(WorkDir)
                     ).
+
 -spec convert_fax_file(any(), any()) -> 'ok'.
 convert_fax_file(FromFile, ToFormat)
   when is_binary(FromFile),
@@ -51,24 +87,18 @@ convert_fax_file(FromFile, ToFormat) ->
                     ,?TMP_DIR
                     ).
 
--spec do_convert(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+-spec do_convert(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                         'ok'|'error'.
-do_convert(FromFile, FromMime, ToMime, Content, Options) ->
+do_convert(FromFile, ToFormat, Options) ->
+    FromMime = kz_mime:from_filename(FromFile),
+    {'ok', Content} = file:read_file(FromFile),
+    ToMime = kz_mime:from_extension(ToFormat),
     case kz_convert:fax(FromMime, ToMime, Content, Options) of
         { 'ok', OutputFile } ->
-            io:format("Successfully converterd ~s to ~s~n", [FromFile, OutputFile]);
+            io:format("Successfully converted ~s to ~s~n", [FromFile, OutputFile]);
         { 'error', Msg } ->
             io:format("Failed to convert file ~s with error: ~s~n", [FromFile, Msg])
     end.
-
-
--spec format_to_mimetype(kz_term:ne_binary()) ->
-                                kz_term:ne_binary().
-format_to_mimetype(<<"TIFF">>) -> ?TIFF_MIME;
-format_to_mimetype(<<"tiff">>) -> ?TIFF_MIME;
-format_to_mimetype(<<"pdf">>) -> ?PDF_MIME;
-format_to_mimetype(Format) ->
-    Format.
 
 -spec versions_in_use() -> 'no_return'.
 versions_in_use() ->
