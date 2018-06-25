@@ -19,7 +19,7 @@
 
 -include("fax.hrl").
 
--record(state, {pending_migrate :: 'true'|'false'}).
+-record(state, {pending_migrate = 'true' :: boolean()}).
 -type state() :: #state{}.
 
 -define(NAME, ?MODULE).

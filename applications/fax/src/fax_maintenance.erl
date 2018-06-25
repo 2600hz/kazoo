@@ -196,7 +196,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc ensures that the views are updated to enforce the media format migration
+%% @doc Ensures that the views are updated to enforce the media format migration.
 %% @end
 %%------------------------------------------------------------------------------
 -spec migrate_views() -> 'ok'.
@@ -206,7 +206,7 @@ migrate_views() ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc ensures that the fax attachments in queue are tiff files with page counts
+%% @doc Ensures that the fax attachments in queue are tiff files with page counts.
 %%
 %% A migration for pending faxes to ensure tiff formatted attachments with size
 %% and page count configured are always stored in the db
@@ -219,7 +219,8 @@ migrate_pending_faxes() ->
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/pending_migrate_jobs">>) of
         {'ok', Jobs} ->
             migrate_pending_fax_jobs(Jobs);
-        _ -> 'ok'
+        {'error', Error} ->
+            ?SUP_LOG_DEBUG("failed to fetch pending_migrate_jobs view with error ~p", [Error])
     end.
 
 -spec migrate_pending_fax_jobs(kz_json:objects()) -> 'ok'.
@@ -240,7 +241,9 @@ migrate_pending_fax_job(Doc) ->
                 {'ok', Content, ContentType, OldName} ->
                     update_attachment(JObj, Content, ContentType, OldName)
             end;
-        {'error', _} -> 'ok'
+        {'error', Error} ->
+            ?SUP_LOG_DEBUG("Failed to open document ~s with error ~p", [DocId, Error]),
+            'ok'
     end.
 
 -spec fetch_pending_job_attachment(kz_json:object()) ->
@@ -249,7 +252,9 @@ migrate_pending_fax_job(Doc) ->
 fetch_pending_job_attachment(JObj) ->
     case kz_doc:attachment_names(JObj) of
         [] ->
-            fetch_attachment_url(JObj);
+            FetchRequest = kz_json:get_value(<<"document">>, JObj),
+            Url = kz_json:get_string_value(<<"url">>, FetchRequest),
+            fetch_attachment_url(Url, FetchRequest);
         AttachmentNames ->
             maybe_fetch_attachment(JObj, AttachmentNames)
     end.
@@ -280,17 +285,16 @@ maybe_fetch_attachment(_, _, <<"image/tiff">>, _PageCount) ->
 maybe_fetch_attachment(JobId, Attachment, _, _) ->
     kz_datamgr:fetch_attachment(?KZ_FAXES_DB, JobId, Attachment).
 
--spec fetch_attachment_url(kz_json:object()) ->
+-spec fetch_attachment_url(kz_term:api_binary(), kz_json:object()) ->
                                   'ok' |
                                   {'ok', filename:file(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()}.
-fetch_attachment_url(JObj) ->
-    FetchRequest = kz_json:get_value(<<"document">>, JObj),
-    Url = kz_json:get_string_value(<<"url">>, FetchRequest),
+fetch_attachment_url('undefined', _) ->
+    lager:debug("failed to fetch file for job: no URL specified");
+fetch_attachment_url(Url, FetchRequest) ->
     Method = kz_term:to_atom(kz_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
     Headers = props:filter_undefined(
                 [{"Host", kz_json:get_string_value(<<"host">>, FetchRequest)}
                 ,{"Referer", kz_json:get_string_value(<<"referer">>, FetchRequest)}
-                ,{"User-Agent", kz_json:get_string_value(<<"user_agent">>, FetchRequest, kz_term:to_list(node()))}
                 ,{"Content-Type", kz_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
                 ]),
     Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
@@ -302,9 +306,9 @@ fetch_attachment_url(JObj) ->
             ContentType = kz_mime:normalize_content_type(CT),
             {'ok', Contents, ContentType, 'undefined'};
         {'ok', Status, _, _} ->
-            lager:debug("failed to fetch file for job from: ~s, http response: ~b", [Url, Status]);
+            ?SUP_LOG_DEBUG("failed to fetch file for job from: ~s, http response: ~b", [Url, Status]);
         {'error', Reason} ->
-            lager:debug("failed to fetch file from: ~s for job: ~p", [Url, Reason])
+            ?SUP_LOG_DEBUG("failed to fetch file from: ~s for job: ~p", [Url, Reason])
     end.
 
 -spec update_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.

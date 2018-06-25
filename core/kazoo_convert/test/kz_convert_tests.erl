@@ -56,6 +56,8 @@ fax_test_() ->
              ,test_pdf_to_tiff_to_filename()
              ,test_openoffice_to_tiff_to_filename()
              ,test_tiff_to_tiff_read_metadata()
+             ,test_tiff_to_tiff_small_file_read_metadata()
+             ,test_tiff_to_tiff_legal_file_read_metadata()
              ,test_pdf_to_tiff_read_metadata()
              ,test_openoffice_to_tiff_read_metadata()
              ,test_read_metadata()
@@ -588,7 +590,49 @@ test_tiff_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 15828}
+                    ,{<<"size">>, 15906}
+                    ,{<<"mimetype">>, <<"image/tiff">>}
+                    ,{<<"filetype">>, <<"tiff">>}
+                    ]
+                   }
+                  ,kz_convert:fax(<<"image/tiff">>
+                                 ,<<"image/tiff">>
+                                 ,From
+                                 ,[{<<"job_id">>, JobId}
+                                  ,{<<"read_metadata">>, true}
+                                  ]
+                                 )
+                  )
+    ].
+
+test_tiff_to_tiff_small_file_read_metadata() ->
+    JobId = kz_binary:rand_hex(16),
+    From = read_test_file("small.tiff"),
+    Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
+    [?_assertMatch({'ok', Expected
+                   ,[{<<"page_count">>, 1}
+                    ,{<<"size">>, 157714}
+                    ,{<<"mimetype">>, <<"image/tiff">>}
+                    ,{<<"filetype">>, <<"tiff">>}
+                    ]
+                   }
+                  ,kz_convert:fax(<<"image/tiff">>
+                                 ,<<"image/tiff">>
+                                 ,From
+                                 ,[{<<"job_id">>, JobId}
+                                  ,{<<"read_metadata">>, true}
+                                  ]
+                                 )
+                  )
+    ].
+
+test_tiff_to_tiff_legal_file_read_metadata() ->
+    JobId = kz_binary:rand_hex(16),
+    From = read_test_file("legal.tiff"),
+    Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
+    [?_assertMatch({'ok', Expected
+                   ,[{<<"page_count">>, 2}
+                    ,{<<"size">>, 50262}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -610,7 +654,7 @@ test_pdf_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 15906}
+                    ,{<<"size">>, 14189}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -631,7 +675,7 @@ test_openoffice_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff">>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 16803}
+                    ,{<<"size">>, 13503}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
