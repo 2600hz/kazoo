@@ -72,12 +72,7 @@ cavs_from_context(Context) ->
     QueryString = cb_context:query_string(Context),
     cavs_from_request(ReqData, QueryString).
 
--spec cavs_from_request(kz_term:api_object(), kz_term:api_object()) -> kz_term:proplist().
-cavs_from_request('undefined', 'undefined') -> [];
-cavs_from_request('undefined', QueryString) ->
-    kapps_call_util:filter_ccvs(QueryString);
-cavs_from_request(ReqData, 'undefined') ->
-    kapps_call_util:filter_ccvs(kz_json:get_json_value(<<"custom_application_vars">>, ReqData));
+-spec cavs_from_request(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 cavs_from_request(ReqData, QueryString) ->
     CAVs = kz_json:get_json_value(<<"custom_application_vars">>, ReqData, kz_json:new()),
     kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
