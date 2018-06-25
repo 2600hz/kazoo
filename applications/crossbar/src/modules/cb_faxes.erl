@@ -745,11 +745,11 @@ save_attachment(Context, DocId, Filename, Contents, Props) ->
           ,{<<"pvt_modified">>, kz_time:now_s()}
           ],
     Ctx1 = crossbar_doc:save_attachment(DocId
-                                             ,cb_modules_util:attachment_name(Filename, <<"image/tiff">>)
-                                             ,Contents
-                                             ,Context
-                                             ,Opts
-                                             ),
+                                       ,cb_modules_util:attachment_name(Filename, <<"image/tiff">>)
+                                       ,Contents
+                                       ,Context
+                                       ,Opts
+                                       ),
     case cb_context:resp_status(Ctx1) of
         'success' ->
             Ctx2 = crossbar_doc:load(DocId, Ctx1),
