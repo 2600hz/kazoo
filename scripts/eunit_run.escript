@@ -31,9 +31,9 @@ run_eunit(#{modules := Modules}=Opts) ->
     case eunit:test([TestMods], [verbose]) of
         ok ->
             maybe_stop_cover(Opts),
-            init:stop();
+            erlang:halt();
         _ ->
-            init:stop(1)
+            erlang:halt(1)
     end.
 
 filter_same_name_test_modules(Modules) ->
@@ -54,7 +54,7 @@ filter_same_name_test_modules(Modules) ->
 maybe_start_cover(#{cover := true
                    ,coverdata := _
                    }=Opts) ->
-    ok = filelib:ensure_dir(maps:get(report_dir, Opts, "cover")),
+    ok = filelib:ensure_dir(maps:get(report_dir, Opts, "cover") ++ "/dummy"),
     _ = cover:start(),
     cover:compile_beam_directory("ebin");
 maybe_start_cover(#{cover := true}) ->
