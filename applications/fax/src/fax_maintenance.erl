@@ -289,7 +289,7 @@ maybe_fetch_attachment(JobId, Attachment, _, _) ->
                                   'ok' |
                                   {'ok', filename:file(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()}.
 fetch_attachment_url('undefined', _) ->
-    lager:debug("failed to fetch file for job: no URL specified");
+    ?SUP_LOG_DEBUG("failed to fetch file for job: no URL specified");
 fetch_attachment_url(Url, FetchRequest) ->
     Method = kz_term:to_atom(kz_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
     Headers = props:filter_undefined(

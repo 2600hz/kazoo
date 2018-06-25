@@ -1,6 +1,5 @@
 -ifndef(KZ_FAX_CONVERTER_HRL).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_convert/include/kz_convert.hrl").
 
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o $TO $FROM">>).
