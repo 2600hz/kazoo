@@ -19,30 +19,43 @@
 -define(DEFAULT_ABSOLUTE_TIMEOUT, 10000).
 -define(DEFAULT_READ_MODE, {'line', 1000}).
 
+%% @equiv cmd(Command, [])
+-spec cmd(kz_term:ne_binary()) ->
+                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+cmd(Command) ->
+    cmd(Command, []).
+
+%% @equiv cmd(Command, Args, [])
+-spec cmd(kz_term:ne_binary(), kz_term:proplist()) ->
+                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+cmd(Command, Args) ->
+    cmd(Command, Args, []).
+
 %%------------------------------------------------------------------------------
-%% @doc execute system commands safely
+%% @doc Execute system commands safely.
 %%
 %% Execute a system command safely with protection from unexpectedly large output or commands that
 %% run forever. This is implemented using erlang:open_ports.
 %%
 %% For commands which require injection of arguments, simply name the arguments in the command with
 %% bash variables, add the variable names and values to a proplist of `Args' and they will be injected into
-%% the command via enviornment variables. This decouples the ordering from the commands, which was
+%% the command via environment variables. This decouples the ordering from the commands, which was
 %% a limitation in the customizability of the old io_lib:format/os:cmd method of running/storing
 %% user customizable commands.
 %%
-%% For commands that do not require injection of arguments, simply use cmd/1 or specify an empty list
-%% in cmd/3. cmd/2 is used when default options are fine, but arguments are required.
+%% For commands that do not require injection of arguments, simply use {@link cmd/1} or specify an empty list
+%% in {@link cmd/3}. {@link cmd/2} is used when default options are fine, but arguments are required.
 %%
-%% cmd/3 permits passthrough of selected ports options as well as timeout and size thresholds.
-%% `binary', `exit_status', `use_stdio', and `stderr_to_stdout' are always set as these ports options
-%% are assumed in processing the command.
+%% cmd/3 permits read mode ports options as well as timeout and size thresholds.
+%% `binary', `exit_status', `use_stdio', and `stderr_to_stdout' are always set as ports options
+%% as their use is assumed in processing the command.
 %%
 %% Examples:
 %% ```
-%%    {'ok', 10} = kz_os:cmd(<<"echo -n 10">>).
-%%    {'ok', 10} = kz_os:cmd(<<"echo -n $ARG">>, [{<<"ARG">>, 10}]).
-%%    {'ok', 10} = kz_os:cmd(<<"echo -n $ARG">>, [{<<"ARG">>, 10}], [{<<"timeout">>, 100}]).
+%%    {'ok', <<"10\n">>} = kz_os:cmd(<<"echo 10">>).
+%%    {'ok', <<"10\n">>} = kz_os:cmd(<<"echo -n $ARG">>, [{<<"ARG">>, 10}]).
+%%    {'error', 'timeout', <<>>} = kz_os:cmd(<<"sleep 1;echo -n $ARG">>, [{<<"ARG">>, 10}], [{<<"timeout">>, 100}]).
+%%    {'ok', 10} = kz_os:cmd(<<"echo -n $ARG">>, [{<<"ARG">>, 10}], [{<<"read_mode">>, 'stream'}]).
 %% '''
 %%
 %% <ul>
@@ -55,16 +68,6 @@
 %%
 %% @end
 %%------------------------------------------------------------------------------
-
--spec cmd(kz_term:ne_binary()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
-cmd(Command) ->
-    cmd(Command, []).
-
--spec cmd(kz_term:ne_binary(), kz_term:proplist()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
-cmd(Command, Args) ->
-    cmd(Command, Args, []).
 
 -spec cmd(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) ->
                  {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.

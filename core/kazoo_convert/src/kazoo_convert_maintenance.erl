@@ -10,7 +10,7 @@
 -export([convert_fax_file/2, convert_fax_file/3, convert_fax_file/4]).
 -export([versions_in_use/0]).
 
--include_lib("kazoo_convert/include/kz_convert.hrl").
+-include("kz_fax_converter.hrl").
 
 -spec read_tiff_info(any()) -> 'ok'.
 read_tiff_info(File) when is_binary(File) ->
@@ -37,7 +37,8 @@ read_metadata(File) ->
 
 -spec print_metadata(kz_term:proplist()) -> 'ok'.
 print_metadata(Metadata) ->
-    _ = lists:foreach(fun({Key, Value}) -> io:format("~s: ~p ~n", [Key, Value]) end, Metadata).
+    _ = lists:foreach(fun({Key, Value}) -> io:format("~s: ~p ~n", [Key, Value]) end, Metadata),
+    'ok'.
 
 -spec convert_fax_file(any(), any(), any(), any()) -> 'ok'.
 convert_fax_file(FromFile, ToFormat, WorkDir, ToFilename)

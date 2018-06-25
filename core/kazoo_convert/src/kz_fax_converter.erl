@@ -13,7 +13,7 @@
         ,get_tiff_info/1
         ]).
 
--include_lib("kazoo_convert/include/kz_convert.hrl").
+-include("kz_fax_converter.hrl").
 
 -type fax_converted() :: {'ok', any()}|
                          {'error', any()}.
@@ -137,28 +137,33 @@ eval_format(FromFormat, ToFormat) ->
                  ,kz_term:ne_binary()
                  ,kz_term:ne_binary()
                  ,map()) -> gen_kz_converter:converted().
-run_convert({'error', _}=Error, _ToFormat, _FilePath, _Options) ->
+run_convert({'error', _}=Error, _ToFormat, FilePath, _Options) ->
+    _ = file:delete(FilePath),
     Error;
 run_convert([Operation|Operations], ToFormat, FilePath, Options) ->
     case Operation(FilePath, Options) of
         {'ok', OutputPath} ->
             maybe_delete_previous_file(FilePath, OutputPath),
             run_convert(Operations, ToFormat, OutputPath, Options);
-        Error -> Error
+        Error ->
+            _ = file:delete(FilePath),
+            Error
     end;
 run_convert([], ToFormat, FilePath, Options) ->
     case validate_output(ToFormat, FilePath, Options) of
         {'ok', _} ->
             format_response(ToFormat, FilePath, Options);
-        Error -> Error
+        Error ->
+            _ = file:delete(FilePath),
+            Error
     end.
 
 -spec image_to_tiff(kz_term:ne_binary(), map()) -> fax_converted().
-image_to_tiff(FromPath, #{<<"from_format">> := <<"image/tiff">>}=Options) ->
+image_to_tiff(FromPath, #{<<"from_format">> := <<"image/tiff">>, <<"tmp_dir">> := TmpDir, <<"job_id">> := JobId }=Options) ->
     Info = get_tiff_info(FromPath),
     case select_tiff_command(Info) of
         'noop' ->
-            {'ok', FromPath};
+            rename_file(FromPath, filename:join(TmpDir, <<JobId/binary, ".tiff">>));
         {'convert', Command} ->
             convert_file(Command, FromPath, <<".tiff">>, Options)
     end;
@@ -281,7 +286,6 @@ run_validate_command(Command, FromPath, ToPath, TmpDir) ->
         {'error', Reason, Msg} ->
             lager:debug("failed to validate file: ~s with reason: ~s error: ~p", [FromPath, Reason, Msg]),
             _ = file:delete(ToPath),
-            kz_util:delete_file(FromPath),
             {'error', <<"file validation failed">>}
     end.
 

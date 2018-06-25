@@ -16,17 +16,17 @@ The `v2/system_configs/kazoo_convert` configuration parameters are used to enabl
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`convert_command_timeout` | The timeout value for file conversion | `integer()` | `120000` | `false` |
-`convert_image_command` | The command to resample a tiff file to a fax compatible format or convert a supported image/* format to a tiff | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
-`convert_openoffice_command` | The command to convert open office documents to pdf | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
-`convert_pdf_command` | The command to convert pdf documents to tiff | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
-`convert_tiff_command` | The command to convert a tiff file to PDF | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
-`large_tiff_command` | The command to convert an oversized tiff file to a fax compatible format | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
-`small_tiff_command` | The command to convert an undersized tiff file to a fax compatible format | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
-`enable_openoffice` | Enables the conversion of openoffice compatible documents | `boolean()` | `true` | `false` |
+`fax.convert_command_timeout` | The timeout value for file conversion | `integer()` | `120000` | `false` |
+`fax.convert_image_command` | The command to resample a tiff file to a fax compatible format or convert a supported image/* format to a tiff | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.convert_openoffice_command` | The command to convert open office documents to pdf | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.convert_pdf_command` | The command to convert pdf documents to tiff | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.convert_tiff_command` | The command to convert a tiff file to PDF | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.large_tiff_command` | The command to convert an oversized tiff file to a fax compatible format | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.small_tiff_command` | The command to convert an undersized tiff file to a fax compatible format | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.enable_openoffice` | Enables the conversion of openoffice compatible documents | `boolean()` | `true` | `false` |
 `fax_converter` | Module to use for fax related file conversions | `string()` | `fax_converter` | `false` |
+`fax.serialize_openoffice` | Serializes openoffice compatible document conversions | `boolean()` | `true` | `false` |
+`fax.validate_pdf_command` | Verifies a PDF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.validate_tiff_command` | Verifies a TIFF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `file_cache_path` | The working directory to use when converting files | `string()` | `/tmp/` | `false` |
-`serialize_openoffice` | Serializes openoffice compatible document conversions | `boolean()` | `true` | `false` |
-`validate_pdf_command` | Verifies a PDF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
-`validate_tiff_command` | Verifies a TIFF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 

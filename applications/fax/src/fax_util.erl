@@ -92,7 +92,7 @@ save_fax_attachment(JObj, FileContents, CT) ->
     MaxStorageRetry = kapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
     ContentsMD5 = kz_term:to_hex_binary(erlang:md5(FileContents)),
     Name = attachment_name(ContentsMD5, CT),
-    lager:debug("saving fax attachment name: ~s", [ContentsMD5]),
+    lager:debug("saving fax attachment ~s to ~s", [Name, kz_doc:id(JObj)]),
     save_fax_attachment(JObj, FileContents, CT, Name, MaxStorageRetry).
 
 -spec save_fax_attachment(kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer())->

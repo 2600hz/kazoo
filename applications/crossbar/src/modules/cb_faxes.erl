@@ -667,7 +667,8 @@ maybe_save_attachment(Context) ->
         'undefined' ->
             save_multipart_attachment(Context, cb_context:req_files(Context));
         Doc ->
-            case fetch_attachment_url(Doc) of
+            Url = kz_json:get_string_value(<<"url">>, Doc),
+            case fetch_attachment_url(Url, Doc) of
                 {'ok', Contents, ContentType} ->
                     prepare_attachment(Context, DocId, ContentType, Contents);
                 {'error', Error, Message} ->
@@ -686,16 +687,16 @@ save_multipart_attachment(Context, [{_Filename, FileJObj} | _Others]) ->
     ContentType = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     prepare_attachment(Context, DocId, ContentType, Contents).
 
--spec fetch_attachment_url(kz_json:object()) ->
+-spec fetch_attachment_url(kz_term:api_binary(), kz_json:object()) ->
                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
                                   {'error', kz_term:ne_binary(), any()}.
-fetch_attachment_url(FetchRequest) ->
-    Url = kz_json:get_string_value(<<"url">>, FetchRequest),
+fetch_attachment_url('undefined', _) ->
+    {'error', <<"invalid_url">>, <<"no url specified">>};
+fetch_attachment_url(Url, FetchRequest) ->
     Method = kz_term:to_atom(kz_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
     Headers = props:filter_undefined(
                 [{"Host", kz_json:get_string_value(<<"host">>, FetchRequest)}
                 ,{"Referer", kz_json:get_string_value(<<"referer">>, FetchRequest)}
-                ,{"User-Agent", kz_json:get_string_value(<<"user_agent">>, FetchRequest, kz_term:to_list(node()))}
                 ,{"Content-Type", kz_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
                 ]),
     Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
@@ -749,8 +750,13 @@ save_attachment(Context, DocId, Filename, Contents, Props) ->
                                              ,Context
                                              ,Opts
                                              ),
-    Ctx = crossbar_doc:load(DocId, NewContext),
-    crossbar_doc:save(cb_context:set_doc(Ctx, kz_json:set_values(KVs, cb_context:doc(Ctx)))).
+    case cb_context:resp_status(NewContext) of
+        'success' ->
+            Ctx = crossbar_doc:load(DocId, NewContext),
+            crossbar_doc:save(cb_context:set_doc(Ctx, kz_json:set_values(KVs, cb_context:doc(Ctx))));
+        _ ->
+            NewContext
+    end.
 
 -spec do_put_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
