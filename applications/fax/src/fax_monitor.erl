@@ -19,7 +19,7 @@
 
 -include("fax.hrl").
 
--record(state, {pending_migrate = 'true' :: boolean()}).
+-record(state, {}).
 -type state() :: #state{}.
 
 -define(NAME, ?MODULE).
@@ -55,7 +55,8 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
-    {'ok', #state{pending_migrate='true'}, ?POLLING_INTERVAL}.
+    gen_server:cast(self(), 'migrate_pending'),
+    {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -70,6 +71,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast('migrate_pending', State) ->
+    fax_maintenance:migrate_pending_faxes(),
+    {'noreply', State, ?POLLING_INTERVAL};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -79,9 +83,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info('timeout', #state{pending_migrate='true'}=State) ->
-    _ = fax_maintenance:migrate_pending_faxes(),
-    {'noreply', State#state{pending_migrate='false'}, ?POLLING_INTERVAL};
 handle_info('timeout', State) ->
     ViewOptions = ['reduce'
                   ,'group'
