@@ -744,18 +744,24 @@ save_attachment(Context, DocId, Filename, Contents, Props) ->
           ,{<<"pvt_job_status">>, <<"pending">>}
           ,{<<"pvt_modified">>, kz_time:now_s()}
           ],
-    NewContext = crossbar_doc:save_attachment(DocId
+    Ctx1 = crossbar_doc:save_attachment(DocId
                                              ,cb_modules_util:attachment_name(Filename, <<"image/tiff">>)
                                              ,Contents
                                              ,Context
                                              ,Opts
                                              ),
-    case cb_context:resp_status(NewContext) of
+    case cb_context:resp_status(Ctx1) of
         'success' ->
-            Ctx = crossbar_doc:load(DocId, NewContext),
-            crossbar_doc:save(cb_context:set_doc(Ctx, kz_json:set_values(KVs, cb_context:doc(Ctx))));
+            Ctx2 = crossbar_doc:load(DocId, Ctx1),
+            case cb_context:resp_status(Ctx2) of
+                'success' ->
+                    crossbar_doc:save(cb_context:set_doc(Ctx2, kz_json:set_values(KVs, cb_context:doc(Ctx2))));
+                Error ->
+                    lager:debug("failed to load doc ~s with error ~p", [DocId, Error]),
+                    Ctx2
+            end;
         _ ->
-            NewContext
+            Ctx1
     end.
 
 -spec do_put_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
