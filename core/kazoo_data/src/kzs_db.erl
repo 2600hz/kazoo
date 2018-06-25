@@ -222,10 +222,7 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling
 add_views(Server, Db, Add, NewViews) ->
     Views = [props:get_value(Id, NewViews) || Id <- Add],
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
-    [kz_doc:id(JObj)
-     || JObj <- JObjs,
-        <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
-    ].
+    [Id || JObj <- JObjs, {Id, <<"conflict">>} <- [log_save_view_error(JObj)] ].
 
 -spec update_views(map(), kz_term:ne_binary(), kz_term:ne_binaries(), views_listing(), views_listing()) -> {integer(), kz_term:api_ne_binaries()}.
 update_views(Server, Db, Update, CurrentViews, NewViews) ->
@@ -237,11 +234,21 @@ update_views(Server, Db, Update, CurrentViews, NewViews) ->
                   should_update(Id, NewView, CurrentView)
               ]),
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
-    Errors = [kz_doc:id(JObj)
-              || JObj <- JObjs,
-                 <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
-             ],
+    Errors = [Id || JObj <- JObjs, {Id, <<"conflict">>} <- [log_save_view_error(JObj)] ],
     {length(Views), Errors}.
+
+-spec log_save_view_error(kz_json:object()) -> {kz_term:ne_binary(), kz_term:api_ne_binary()}.
+log_save_view_error(JObj) ->
+    log_save_view_error(kz_doc:id(JObj), kz_json:get_ne_binary_value(<<"error">>, JObj)).
+
+-spec log_save_view_error(kz_term:ne_binary(), kz_term:api_ne_binary()) -> {kz_term:ne_binary(), kz_term:api_ne_binary()}.
+log_save_view_error(Id, <<"conflict">>=Error) ->
+    {Id, Error};
+log_save_view_error(Id, 'undefined'=Error) ->
+    {Id, Error};
+log_save_view_error(Id, Error) ->
+    lager:warning("saving view ~s failed with error: ~s", [Id, Error]),
+    {Id, Error}.
 
 -spec should_update(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> boolean().
 should_update(_Id, _, undefined) ->

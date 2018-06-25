@@ -1147,6 +1147,12 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
              ],
     update_screenshots(AppId, MA, SShots).
 
+%%------------------------------------------------------------------------------
+%% @doc Validate system schemas inside `system_schemas' database.
+%%
+%% @see kapps_maintenance:validate_system_configs/0
+%% @end
+%%------------------------------------------------------------------------------
 -spec check_system_configs() -> 'ok'.
 check_system_configs() ->
     _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
@@ -1154,18 +1160,59 @@ check_system_configs() ->
         ],
     'ok'.
 
+%%------------------------------------------------------------------------------
+%% @doc Updates system schemas using files in Crossbar `priv' folder during
+%% start up.
+%%
+%% This is called by {@link db_init/0} during Crossbar start up.
+%% @end
+%%------------------------------------------------------------------------------
 -spec update_schemas() -> 'ok'.
 update_schemas() ->
-    kz_datamgr:suppress_change_notice(),
     lager:notice("starting system schemas update"),
     kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
     lager:notice("finished system schemas update").
 
+%%------------------------------------------------------------------------------
+%% @doc Updates system schemas using files in Crossbar `priv' folder during
+%% start up, and validate them.
+%%
+%% This is called by {@link db_init/0} during Crossbar start up.
+%%
+%% @see update_schemas/0
+%% @see check_system_configs/0
+%% @end
+%%------------------------------------------------------------------------------
 -spec db_init_schemas() -> 'ok'.
 db_init_schemas() ->
+    kz_datamgr:suppress_change_notice(),
     update_schemas(),
     check_system_configs().
 
+%%------------------------------------------------------------------------------
+%% @doc Updating required database views and system schemas if they has been
+%% changed using view's definitions in database.
+%%
+%% This is called as part of system/crossbar start up to update some databases
+%% views using their definitions stored in `system_data' database. The views
+%% will be updated if it is different from its own definitions.
+%%
+%% This is the same for system_schema, if any system schema is different from
+%% their counterpart in `crossbar/priv/couchdb/schemas/*' it will be updated.
+%%
+%% Keep in mind that this function is only read from view definitions from
+%% `system_data' database only
+%%
+%% If you need to update view's definitions in runtime, e.g. during developing,
+%% use {@link kapps_maintenance:register_account_views/0}.
+%%
+%% If you only need to update system schemas in runtime, e.g. during developing,
+%% use {@link update_schemas/0}.
+%%
+%% @see update_schemas/0
+%% @see check_system_configs/0
+%% @end
+%%------------------------------------------------------------------------------
 -spec db_init() -> 'ok'.
 db_init() ->
     kz_datamgr:suppress_change_notice(),
