@@ -611,7 +611,7 @@ test_tiff_to_tiff_small_file_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 157714}
+                    ,{<<"size">>, 173891}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -632,7 +632,7 @@ test_tiff_to_tiff_legal_file_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 2}
-                    ,{<<"size">>, 50262}
+                    ,{<<"size">>, 50681}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -654,7 +654,7 @@ test_pdf_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 14189}
+                    ,{<<"size">>, 11775}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -675,7 +675,7 @@ test_openoffice_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff">>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 13503}
+                    ,{<<"size">>, 13075}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
