@@ -144,7 +144,7 @@ token_cost(Context, Default) ->
 
 -spec token_cost(cb_context:context(), non_neg_integer(), kz_json:path()) -> non_neg_integer().
 token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
-    Costs = kapps_config:get_integer(?CONFIG_CAT, <<"token_costs">>, 1),
+    Costs = kapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
     find_token_cost(Costs
                    ,Default
                    ,Suffix
