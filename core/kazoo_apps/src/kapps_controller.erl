@@ -26,7 +26,40 @@
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Starts the server.
+%% @doc Starts kazoo applications, initializing databases and create or update
+%% views and all system schemas.
+%%
+%% The first step is to initializing the required databases. This done by
+%% checking if the `accounts' database is exists, if not creating required
+%% databases. Then core databases views will be updated by reading from
+%% file system, and putting or updating all account related view definitions
+%% in `system_data' database by reading them from file system.
+%%
+%% If `crossbar' is in the list of applications to start, `crossbar' will update
+%% other system databases views and will put new and updated system schemas (if any)
+%% from file system into `system_schema' database during its own start up.
+%%
+%% Multiple methods will be attempted to get a list of which application to start.
+%% If any one of them results in a list of applications, those applications are
+%% considered to start and no further method will be attempted.
+%%
+%% These methods will be attempted to get which application to start
+%% exactly in this order:
+%%
+%% <ul>
+%% <li>From environment variable `KAZOO_APPS', application list can be separated
+%% by comma or space</li>
+%% <li>Read `kapps' in `system_config/kapps_controller' for this specific Kazoo
+%% node.</li>
+%% <li>Using Erlang node name, if the it is named after one of the Kazoo
+%% applications. Newer and safer way is to read Erlang application environment
+%% variable `is_kazoo_app'. If this environment variable is not set it fall back
+%% to check the application's `.app' and read applications key, if the name of
+%% the node is member of this list. In this method only the application with
+%% bathing Erlang node's name will be started</li>
+%% <li>Read default `kapps' from `system_config/kapps_controller', this is the
+%% last method and always starts default set of application.</li>
+%% </ul>
 %% @end
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
