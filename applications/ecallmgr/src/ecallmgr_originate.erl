@@ -636,8 +636,9 @@ get_unset_vars(JObj) ->
 -spec maybe_fix_ignore_early_media(kz_term:strings()) -> string().
 maybe_fix_ignore_early_media(Export) ->
     case lists:member("ignore_early_media", Export) of
-        'true' -> "";
-        'false' -> "^unset:ignore_early_media"
+        <<"true">> -> "";
+        <<"consume">> -> "";
+        <<"false">> -> "^unset:ignore_early_media"
     end.
 
 -spec maybe_fix_group_confirm(kz_term:strings()) -> string().

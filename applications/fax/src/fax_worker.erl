@@ -961,7 +961,7 @@ send_fax(_JobId, _JObj, _Q, 'undefined') ->
 send_fax(_JobId, _JObj, _Q, <<>>) ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(empty)">>});
 send_fax(JobId, JObj, Q, ToDID) ->
-    IgnoreEarlyMedia = 'true', %kz_term:to_binary(kapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
+    IgnoreEarlyMedia = <<"true">>, %kz_term:to_binary(kapps_config:get_ne_binary_value(?CONFIG_CAT, <<"ignore_early_media">>, <<"false">>)),
     ToNumber = kz_term:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
     ToName = kz_term:to_binary(kz_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),

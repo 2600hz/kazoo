@@ -358,9 +358,9 @@ get_timeout(Context) ->
         _:_ -> ?DEFAULT_TIMEOUT_S
     end.
 
--spec get_ignore_early_media(cb_context:context()) -> boolean().
+-spec get_ignore_early_media(cb_context:context()) -> kz_term:api_binary().
 get_ignore_early_media(Context) ->
-    kz_term:is_true(cb_context:req_value(Context, <<"ignore-early-media">>, 'true')).
+    cb_context:req_value(Context, <<"ignore-early-media">>, <<"true">>).
 
 -spec get_media(cb_context:context()) -> kz_term:ne_binary().
 get_media(Context) ->

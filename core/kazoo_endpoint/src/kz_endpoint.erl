@@ -1288,14 +1288,9 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
     CallForward = kz_json:get_ne_value(<<"call_forward">>, Endpoint, kz_json:new()),
     ToDID = kz_json:get_value(<<"number">>, CallForward),
     lager:info("call forwarding endpoint to ~s", [ToDID]),
-    IgnoreEarlyMedia = case kz_json:is_true(<<"require_keypress">>, CallForward)
-                           orelse not kz_json:is_true(<<"substitute">>, CallForward)
-                       of
-                           'true' -> <<"true">>;
-                           'false' -> kz_json:get_binary_boolean(<<"ignore_early_media">>, CallForward)
-                       end,
+    IgnoreEarlyMedia = maybe_ignore_early_media(CallForward),
     Clid = case kapps_call:inception(Call) of
-               'undefined' -> get_clid(Endpoint, Properties, Call, <<"external">>);
+	       'undefined' -> get_clid(Endpoint, Properties, Call, <<"external">>);
                _Else -> #clid{}
            end,
 
@@ -1318,6 +1313,21 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
       ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"forward">>, Call)}
       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
       ]).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_ignore_early_media(kz_json:object()) -> kz_term:api_binary().
+maybe_ignore_early_media(CallForward) ->
+    Require_Keypress = kz_json:is_true(<<"require_keypress">>, CallForward),
+    Substitute = kz_json:is_true(<<"substitute">>, CallForward),
+    Ignore_Early_Media = kz_json:get_ne_binary_value(<<"ignore_early_media">>, CallForward),
+    case {Require_Keypress, Substitute, Ignore_Early_Media} of
+        {'true', _, _} -> <<"true">>;
+        {_, 'false', _} -> <<"true">>;
+        _ -> Ignore_Early_Media
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1757,9 +1767,10 @@ get_progress_timeout(JObj) ->
 
 -spec get_ignore_early_media(kz_json:object()) -> kz_term:api_binary().
 get_ignore_early_media(JObj) ->
-    case kz_json:is_true([<<"media">>, <<"ignore_early_media">>], JObj) of
-        'true' -> <<"true">>;
-        'false' -> 'undefined'
+    case kz_json:get_ne_binary_value([<<"media">>, <<"ignore_early_media">>], JObj) of
+        <<"consume">> -> <<"consume">>;
+        <<"true">> -> <<"true">>;
+        _ -> 'undefined'
     end.
 
 -spec get_bypass_media(kz_json:object()) -> kz_term:api_binary().

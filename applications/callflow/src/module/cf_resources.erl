@@ -44,7 +44,7 @@
 %%%   <dd>`{"header":"value",...}'</dd>
 %%%
 %%%   <dt>`ignore_early_media'</dt>
-%%%   <dd>`boolean()'</dd>
+%%%   <dd>`binary()'</dd>
 %%%
 %%%   <dt>`outbound_flags'</dt>
 %%%   <dd>`["flag_1","flag_2"]', used to match flags on carrier docs</dd>
@@ -303,7 +303,7 @@ maybe_emit_account_id(JObj, Data, Call) ->
 
 -spec get_ignore_early_media(kz_json:object()) -> kz_term:api_binary().
 get_ignore_early_media(Data) ->
-    kz_term:to_binary(kz_json:is_true(<<"ignore_early_media">>, Data, 'false')).
+    kz_json:get_ne_binary_value(<<"ignore_early_media">>, Data, <<"false">>).
 
 -spec get_t38_enabled(kapps_call:call()) -> kz_term:api_boolean().
 get_t38_enabled(Call) ->
