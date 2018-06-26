@@ -14,7 +14,7 @@
 
 -export([migrate/0, migrate/1, migrate/2]).
 -export([migrate_outbound_faxes/0, migrate_outbound_faxes/1]).
--export([migrate_views/0]).
+-export([refresh_views/0]).
 -export([migrate_pending_faxes/0]).
 -export([flush/0]).
 
@@ -199,8 +199,8 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 %% @doc Ensures that the views are updated to enforce the media format migration.
 %% @end
 %%------------------------------------------------------------------------------
--spec migrate_views() -> 'ok'.
-migrate_views() ->
+-spec refresh_views() -> 'ok'.
+refresh_views() ->
     Views = kapps_util:get_views_json('fax', "views"),
     _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
     'ok'.

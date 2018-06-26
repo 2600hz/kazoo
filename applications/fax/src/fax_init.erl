@@ -29,7 +29,7 @@ start_link() ->
                        ]
                       ,#{'env' => #{'dispatch' => Dispatch}}
                       ),
-    fax_maintenance:migrate_views(),
+    fax_maintenance:refresh_views(),
     'ignore'.
 
 %%------------------------------------------------------------------------------
