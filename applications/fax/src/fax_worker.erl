@@ -228,6 +228,7 @@ handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
 handle_cast({'fax_status', <<"result">>, JobId, JObj}
            ,#state{job_id=JobId
                   ,job=Job
+                  ,file=Filepath
                   }=State
            ) ->
     Data = kz_call_event:application_data(JObj),
@@ -239,6 +240,7 @@ handle_cast({'fax_status', <<"result">>, JobId, JObj}
                           send_status(State, <<"Error sending fax">>, ?FAX_ERROR, Data),
                           release_failed_job('fax_result', JObj, Job)
                   end,
+    _ = file:delete(Filepath),
     gen_server:cast(self(), 'stop'),
     {'noreply', State#state{job=Doc, resp = Resp}};
 handle_cast({'fax_status', Event, JobId, _}, State) ->
