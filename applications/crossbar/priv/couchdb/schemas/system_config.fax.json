@@ -127,9 +127,14 @@
             "type": "string"
         },
         "ignore_early_media": {
-            "default": false,
+            "default": "false",
             "description": "fax ignore early media",
-            "type": "boolean"
+            "enum": [
+                "true",
+                "consume",
+                "false"
+            ],
+            "type": "string"
         },
         "image_min_size": {
             "default": "700x10",

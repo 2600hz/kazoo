@@ -2586,9 +2586,14 @@
                     "type": "string"
                 },
                 "ignore_early_media": {
-                    "default": false,
+                    "default": "false",
                     "description": "Toggle whether to ignore early media",
-                    "type": "boolean"
+                    "enum": [
+                        "true",
+                        "consume",
+                        "false"
+                    ],
+                    "type": "string"
                 },
                 "outbound_flags": {
                     "default": [],
@@ -3101,9 +3106,14 @@
                     "type": "string"
                 },
                 "ignore_early_media": {
-                    "default": false,
+                    "default": "false",
                     "description": "Toggle whether to ignore early media",
-                    "type": "boolean"
+                    "enum": [
+                        "true",
+                        "consume",
+                        "false"
+                    ],
+                    "type": "string"
                 },
                 "outbound_flags": {
                     "default": [],
@@ -4344,7 +4354,12 @@
                                         "type": "boolean"
                                     },
                                     "ignore_early_media": {
-                                        "type": "boolean"
+                                        "enum": [
+                                            "true",
+                                            "consume",
+                                            "false"
+                                        ],
+                                        "type": "string"
                                     },
                                     "inbound_format": {
                                         "default": "npan",
@@ -4483,9 +4498,14 @@
                             "type": "boolean"
                         },
                         "ignore_early_media": {
-                            "default": true,
+                            "default": "true",
                             "description": "The option to determine if early media from the call forwarded number should ignored",
-                            "type": "boolean"
+                            "enum": [
+                                "true",
+                                "consume",
+                                "false"
+                            ],
+                            "type": "string"
                         },
                         "keep_caller_id": {
                             "default": true,
@@ -5051,7 +5071,12 @@
                 },
                 "ignore_early_media": {
                     "description": "The option to determine if early media from the endpoint should always be ignored",
-                    "type": "boolean"
+                    "enum": [
+                        "true",
+                        "consume",
+                        "false"
+                    ],
+                    "type": "string"
                 },
                 "progress_timeout": {
                     "description": "The progress timeout to apply to the endpoint (seconds)",
@@ -10944,7 +10969,12 @@
                     "type": "string"
                 },
                 "Ignore-Early-Media": {
-                    "type": "boolean"
+                    "enum": [
+                        "true",
+                        "consume",
+                        "false"
+                    ],
+                    "type": "string"
                 },
                 "Invite-Format": {
                     "enum": [
@@ -20484,7 +20514,12 @@
                     "type": "string"
                 },
                 "Ignore-Early-Media": {
-                    "type": "boolean"
+                    "enum": [
+                        "true",
+                        "consume",
+                        "false"
+                    ],
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -29109,9 +29144,14 @@
                     "type": "string"
                 },
                 "ignore_early_media": {
-                    "default": false,
+                    "default": "false",
                     "description": "fax ignore early media",
-                    "type": "boolean"
+                    "enum": [
+                        "true",
+                        "consume",
+                        "false"
+                    ],
+                    "type": "string"
                 },
                 "image_min_size": {
                     "default": "700x10",
@@ -32560,7 +32600,12 @@
                                         "type": "boolean"
                                     },
                                     "ignore_early_media": {
-                                        "type": "boolean"
+                                        "enum": [
+                                            "true",
+                                            "consume",
+                                            "false"
+                                        ],
+                                        "type": "string"
                                     },
                                     "inbound_format": {
                                         "default": "npan",
@@ -32763,9 +32808,14 @@
                             "type": "boolean"
                         },
                         "ignore_early_media": {
-                            "default": true,
+                            "default": "true",
                             "description": "The option to determine if early media from the call forwarded number should ignored",
-                            "type": "boolean"
+                            "enum": [
+                                "true",
+                                "consume",
+                                "false"
+                            ],
+                            "type": "string"
                         },
                         "keep_caller_id": {
                             "default": true,

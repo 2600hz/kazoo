@@ -26,7 +26,12 @@
             "type": "string"
         },
         "Ignore-Early-Media": {
-            "type": "boolean"
+            "enum": [
+                "true",
+                "consume",
+                "false"
+            ],
+            "type": "string"
         }
     },
     "type": "object"

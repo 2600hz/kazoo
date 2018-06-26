@@ -81,7 +81,12 @@
         },
         "ignore_early_media": {
             "description": "The option to determine if early media from the endpoint should always be ignored",
-            "type": "boolean"
+            "enum": [
+                "true",
+                "consume",
+                "false"
+            ],
+            "type": "string"
         },
         "progress_timeout": {
             "description": "The progress timeout to apply to the endpoint (seconds)",

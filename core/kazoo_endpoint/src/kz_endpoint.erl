@@ -1290,7 +1290,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
     lager:info("call forwarding endpoint to ~s", [ToDID]),
     IgnoreEarlyMedia = maybe_ignore_early_media(CallForward),
     Clid = case kapps_call:inception(Call) of
-	       'undefined' -> get_clid(Endpoint, Properties, Call, <<"external">>);
+               'undefined' -> get_clid(Endpoint, Properties, Call, <<"external">>);
                _Else -> #clid{}
            end,
 

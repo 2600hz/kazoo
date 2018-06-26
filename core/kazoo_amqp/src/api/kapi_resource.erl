@@ -115,7 +115,7 @@
                                       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                                       ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                                       ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
-                                      ,{<<"Ignore-Early-Media">>, fun kz_term:is_api_ne_binary/1}
+                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"consume">>, <<"false">>]}
                                       ,{<<"Bypass-Media">>, fun kz_term:is_boolean/1}
                                       ]).
 
