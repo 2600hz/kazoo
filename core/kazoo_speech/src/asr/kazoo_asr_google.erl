@@ -13,11 +13,6 @@
 
 -include("kazoo_speech.hrl").
 
--define(GOOGLE_ASR_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url_google">>, <<"https://speech.googleapis.com/v1/speech:recognize">>)).
--define(GOOGLE_ASR_KEY, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key_google">>, <<"">>)).
--define(GOOGLE_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"asr_profanity_filter_google">>)).
--define(GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"asr_enable_word_time_offsets_google">>)).
-
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
 commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
     {'error', 'asr_provider_failure', <<"Not implemented">>}.
