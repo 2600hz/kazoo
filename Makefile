@@ -17,7 +17,7 @@ compile: ACTION = all
 compile: deps kazoo
 
 $(KAZOODIRS):
-	@$(MAKE) -C $(@D) $(ACTION)
+	@$(MAKE) -j$(JOBS) -C $(@D) $(ACTION)
 
 clean: ACTION = clean
 clean: $(KAZOODIRS)
