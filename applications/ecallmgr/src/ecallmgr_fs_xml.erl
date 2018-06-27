@@ -274,14 +274,13 @@ route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
     LogEl = route_resp_log_winning_node(),
     RingbackEl = route_resp_ringback(JObj),
     TransferEl = route_resp_transfer_ringback(JObj),
-    ExportEl   = route_resp_export_vars(JObj),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(fun route_resp_fold/2, {1, []}, Routes),
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
     Context = hunt_context(Props),
-    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl, ExportEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
+    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
@@ -433,10 +432,6 @@ route_cavs_list(CAVs) ->
          || {K, V} <- CAVs
         ],
     <<"^^|", (kz_term:to_binary(string:join(L, "|")))/binary>>.
-
--spec route_resp_export_vars(kz_json:object()) -> kz_types:xml_el().
-route_resp_export_vars(_JObj) ->
-    action_el(<<"set">>, <<"export_vars=hold_music">>).
 
 -spec route_resp_transfer_ringback(kz_json:object()) -> kz_types:xml_el().
 route_resp_transfer_ringback(JObj) ->
@@ -595,7 +590,7 @@ get_channel_vars({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
      | Vars
     ];
 
-get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
+get_channel_vars({AMQPHeader, V}, Vars) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
         {_, Prefix} ->
