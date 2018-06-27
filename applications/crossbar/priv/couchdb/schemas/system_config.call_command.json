@@ -23,6 +23,16 @@
             "description": "call_command digit timeout",
             "type": "integer"
         },
+        "export_bridge_variables": {
+            "default": [
+                "hold_music"
+            ],
+            "description": "call_command export_bridge_variables",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "interdigit_timeout": {
             "default": 2000,
             "description": "call_command interdigit timeout",

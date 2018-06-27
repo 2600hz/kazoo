@@ -10834,6 +10834,12 @@
                     ],
                     "type": "string"
                 },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
+                "Export-Variables": {
+                    "type": "string"
+                },
                 "Fail-On-Single-Reject": {
                     "type": "string"
                 },
@@ -20132,8 +20138,14 @@
                 "Existing-Call-ID": {
                     "type": "string"
                 },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
                 "Export-Custom-Channel-Vars": {
                     "type": "object"
+                },
+                "Export-Variables": {
+                    "type": "string"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -20367,8 +20379,14 @@
                 "Existing-Call-ID": {
                     "type": "string"
                 },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
                 "Export-Custom-Channel-Vars": {
                     "type": "object"
+                },
+                "Export-Variables": {
+                    "type": "string"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -21867,6 +21885,12 @@
                     "enum": [
                         "route"
                     ],
+                    "type": "string"
+                },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
+                "Export-Variables": {
                     "type": "string"
                 },
                 "Fail-On-Single-Reject": {
@@ -26972,6 +26996,16 @@
                     "default": 3000,
                     "description": "call_command digit timeout",
                     "type": "integer"
+                },
+                "export_bridge_variables": {
+                    "default": [
+                        "hold_music"
+                    ],
+                    "description": "call_command export_bridge_variables",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "interdigit_timeout": {
                     "default": 2000,

@@ -75,6 +75,8 @@
         ,<<"Timeout">>
         ,<<"Simplify-Loopback">>
         ,<<"Loopback-Bowout">>
+        ,<<"Export-Variables">>
+        ,<<"Export-Bridge-Variables">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
