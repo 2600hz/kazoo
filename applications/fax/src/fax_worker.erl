@@ -89,6 +89,7 @@
 -define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
 -define(DEFAULT_ENSURE_CID, kapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
+-define(DOC_CONVERTER, kapps_config:get_ne_binary(?CONFIG_CAT, <<"doc_converter">>, <<"generic">>)).
 
 %%%=============================================================================
 %%% API
@@ -858,67 +859,14 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
 -spec prepare_contents(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', kz_term:ne_binary()} |
                               {'error', kz_term:ne_binary()}.
-prepare_contents(<<"image/tiff">>, JobId, RespContent, TmpDir) ->
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(OutputFile, RespContent),
-    {'ok', OutputFile};
-
-prepare_contents(<<"application/pdf">>, JobId, RespContent, TmpDir) ->
-    InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(InputFile, RespContent),
-    Cmd = io_lib:format(?CONVERT_PDF_COMMAND, [OutputFile, InputFile]),
-    lager:debug("attempting to convert pdf: ~s", [Cmd]),
-    try "success" = os:cmd(Cmd) of
-        "success" -> {'ok', OutputFile}
+prepare_contents(CT, JobId, RespContent, TmpDir) ->
+    Converter=list_to_binary(["fax_converters_", ?DOC_CONVERTER]),
+    try Result = erlang:apply(binary_to_atom(Converter,utf8), prepare_contents, [CT, JobId, RespContent, TmpDir]),
+         Result
     catch
         Type:Exception ->
             lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-            {'error', <<"can not convert file, try uploading a tiff">>}
-    end;
-
-prepare_contents(<<"image/", SubType/binary>>, JobId, RespContent, TmpDir) ->
-    InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(InputFile, RespContent),
-    Cmd = io_lib:format(?CONVERT_IMAGE_COMMAND, [InputFile, OutputFile]),
-    lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
-    try "success" = os:cmd(Cmd) of
-        "success" -> {'ok', OutputFile}
-    catch
-        Type:Exception ->
-            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-            {'error', <<"can not convert file, try uploading a tiff">>}
-    end;
-
-prepare_contents(<<?OPENXML_MIME_PREFIX, _/binary>> = CT, JobId, RespContent, TmpDir) ->
-    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-
-prepare_contents(CT, JobId, RespContent, TmpDir)
-  when ?OPENOFFICE_COMPATIBLE(CT) ->
-    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-
-prepare_contents(CT, _JobId, _RespContent, _TmpDir) ->
-    lager:debug("unsupported file type: ~p", [CT]),
-    {'error', list_to_binary(["file type '", CT, "' is unsupported"])}.
-
--spec convert_openoffice_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                         {'ok', kz_term:ne_binary()} |
-                                         {'error', kz_term:ne_binary()}.
-convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
-    Extension = kz_mime:to_extension(CT),
-    InputFile = list_to_binary([TmpDir, JobId, ".", Extension]),
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(InputFile, RespContent),
-    OpenOfficeServer = kapps_config:get_binary(?CONFIG_CAT, <<"openoffice_server">>, <<"'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'">>),
-    Cmd = io_lib:format(?CONVERT_OO_COMMAND, [OpenOfficeServer, InputFile, OutputFile]),
-    lager:debug("attemting to convert openoffice document: ~s", [Cmd]),
-    try "success" = os:cmd(Cmd) of
-        "success" -> {'ok', OutputFile}
-    catch
-        Type:Exception ->
-            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-            {'error', <<"can not convert file, try uploading a tiff">>}
+            {'error', <<"can not convert file">>}
     end.
 
 -spec get_sizes(kz_term:ne_binary()) -> {integer(), non_neg_integer()}.

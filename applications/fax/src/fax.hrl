@@ -90,9 +90,10 @@
           "-sOutputFile=~s -- ~s > /dev/null 2>&1"
           "&& echo -n success"
         >>).
--define(CONVERT_IMAGE_CMD, <<"convert -density 204x98 "
+-define(CONVERT_IMAGE_CMD, <<"convert ~s -resample 204x98 "
                              "-units PixelsPerInch "
-                             "-size 1728x1078 ~s ~s > /dev/null 2>&1"
+                             "-compress group4 "
+                             "-size 1728x1078 ~s > /dev/null 2>&1"
                              "&& echo -n success"
                            >>).
 -define(CONVERT_OO_DOC_CMD, <<"unoconv -c ~s -f pdf --stdout ~s "

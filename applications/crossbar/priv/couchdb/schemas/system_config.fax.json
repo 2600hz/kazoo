@@ -51,6 +51,15 @@
             "description": "fax conversion pdf command",
             "type": "string"
         },
+        "convertapi_secret": {
+            "description": "convertapi secret",
+            "type": "string"
+        },
+        "convertapi_url": {
+            "default": "https://v2.convertapi.com",
+            "description": "convertapi url",
+            "type": "string"
+        },
         "count_pages_command": {
             "default": "echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`",
             "description": "fax count pages command",
@@ -97,6 +106,11 @@
                 "type": "object"
             },
             "type": "array"
+        },
+        "doc_converter": {
+            "default": "generic",
+            "description": "fax doc_converter",
+            "type": "string"
         },
         "endpoint_timeout": {
             "default": 40,
