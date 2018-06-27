@@ -524,7 +524,7 @@ store_attachment(Pid, #state{call=Call
             end
     end.
 
--spec check_fax_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary())->
+-spec check_fax_attachment(ne_binary(), ne_binary(), ne_binary())->
                                   {'ok', kz_json:object()} |
                                   {'missing', kz_json:object()} |
                                   {'error', any()}.
