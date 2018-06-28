@@ -271,14 +271,6 @@ allow_call(Props, _CallId, _Node) ->
              ,{<<"Global-Resource">>, kz_evt_freeswitch:is_consuming_global_resource(Props)}
              ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
-%%     case kz_evt_freeswitch:is_call_setup(Props) of
-%%         'true' ->
-%%             lager:info("channel is authorized (with channel vars)"),
-%%             {'true', kz_json:from_list(Vars)};
-%%         'false' ->
-%%             lager:info("channel is authorized"),
-%%             'true'
-%%     end.
     {'true', kz_json:from_list(Vars)}.
 
 -spec rate_channel(kz_json:object(), atom()) -> 'ok'.

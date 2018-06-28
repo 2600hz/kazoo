@@ -599,7 +599,6 @@ handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp
 handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_app=_CurrApp
                                                            ,current_cmd_uuid=__EventUUID
                                                            }=State) ->
-%%    lager:debug_unsafe("execute complete not handled : ~s:~s ~s:~s : ~s", [_AppName, _EventUUID, CurrApp, EventUUID, kz_json:encode(_JObj, ['pretty'])]),
     State.
 
 -spec forward_queue(state()) -> state().

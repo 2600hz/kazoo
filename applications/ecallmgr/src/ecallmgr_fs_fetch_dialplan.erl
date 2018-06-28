@@ -33,7 +33,7 @@ init() ->
 
 -spec dialplan(map()) -> fs_sendmsg_ret().
 dialplan(#{fetch_id := FetchId, payload := JObj}=Map) ->
-%%    lager:debug_unsafe("ROUTE REQ : ~s", [kz_json:encode(JObj, ['pretty'])]),
+    lager:debug_unsafe("ROUTE REQ : ~s", [kz_json:encode(JObj, ['pretty'])]),
     lager:debug("start dialplan fetch ~s for ~s", [FetchId, kzd_fetch:call_id(JObj)]),
     Routines = [fun call_id/1
                ,fun timeout/1
