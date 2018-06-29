@@ -1137,10 +1137,10 @@ handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
                   ,Props
                   )
     of
-        'true' ->
+        'true' when length(Props) =:= length(ExistingProps)->
             lager:debug("binding ~s with props exists", [Binding]),
             State;
-        'false' ->
+        _ ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})
