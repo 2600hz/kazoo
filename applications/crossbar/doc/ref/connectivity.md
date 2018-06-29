@@ -47,7 +47,7 @@ Key | Description | Type | Default | Required | Support Level
 `servers.[].options.failover.sip` | A SIP URI (sip:user@host) to call for failover | `string()` |   | `false` |  
 `servers.[].options.failover` | Route inbound call to another destination if this server fails to handle the call | `object()` |   | `false` |  
 `servers.[].options.force_outbound` | If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls) | `boolean()` | `false` | `false` |  
-`servers.[].options.ignore_early_media` |   | `string('true' | 'consume' | 'false')` |   | `false` |  
+`servers.[].options.ignore_early_media` |   | `string('true' | 'consume' | 'ring_ready' | 'false')` |   | `false` |  
 `servers.[].options.inbound_format` | Determines how the INVITE is sent to the server | `string('e164' | 'npan' | '1npan' | 'username')` | `npan` | `false` |  
 `servers.[].options.ip` | IP (sip) address for this device | `string()` |   | `false` |  
 `servers.[].options.media_handling` | Determine whether the switch should be in the media path or not | `string('process' | 'bypass')` | `bypass` | `false` |  

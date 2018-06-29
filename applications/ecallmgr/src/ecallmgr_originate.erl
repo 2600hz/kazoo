@@ -638,6 +638,7 @@ maybe_fix_ignore_early_media(Export) ->
     case lists:member("ignore_early_media", Export) of
         <<"true">> -> "";
         <<"consume">> -> "";
+        <<"ring_ready">> -> "";
         <<"false">> -> "^unset:ignore_early_media"
     end.
 

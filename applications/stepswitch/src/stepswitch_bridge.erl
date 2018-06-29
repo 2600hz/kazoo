@@ -372,6 +372,8 @@ maybe_ignore_early_media(CCVs, OffnetReq) ->
         {_, <<"true">>} -> <<"true">>;
         {<<"consume">>, _} -> <<"consume">>;
         {_, <<"consume">>} -> <<"consume">>;
+        {<<"ring_ready">>, _} -> <<"ring_ready">>;
+        {_, <<"ring_ready">>} -> <<"ring_ready">>;
         _ -> <<"false">>
     end.
 

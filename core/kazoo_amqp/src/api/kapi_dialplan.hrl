@@ -151,7 +151,7 @@
                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
                                     ,{<<"Enable-T38-Gateway">>, [<<"self">>, <<"peer">>]}
                                     ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>, <<"sctp">>]}
-                                    ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"consume">>, <<"false">>]}
+                                    ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"consume">>, <<"ring_ready">>, <<"false">>]}
                                     ]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                                    ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}

@@ -1768,8 +1768,9 @@ get_progress_timeout(JObj) ->
 -spec get_ignore_early_media(kz_json:object()) -> kz_term:api_binary().
 get_ignore_early_media(JObj) ->
     case kz_json:get_ne_binary_value([<<"media">>, <<"ignore_early_media">>], JObj) of
-        <<"consume">> -> <<"consume">>;
         <<"true">> -> <<"true">>;
+        <<"consume">> -> <<"consume">>;
+        <<"ring_ready">> -> <<"ring_ready">>;
         _ -> 'undefined'
     end.
 

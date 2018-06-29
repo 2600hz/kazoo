@@ -2591,6 +2591,7 @@
                     "enum": [
                         "true",
                         "consume",
+                        "ring_ready",
                         "false"
                     ],
                     "type": "string"
@@ -3111,6 +3112,7 @@
                     "enum": [
                         "true",
                         "consume",
+                        "ring_ready",
                         "false"
                     ],
                     "type": "string"
@@ -4357,6 +4359,7 @@
                                         "enum": [
                                             "true",
                                             "consume",
+                                            "ring_ready",
                                             "false"
                                         ],
                                         "type": "string"
@@ -4503,6 +4506,7 @@
                             "enum": [
                                 "true",
                                 "consume",
+                                "ring_ready",
                                 "false"
                             ],
                             "type": "string"
@@ -5074,6 +5078,7 @@
                     "enum": [
                         "true",
                         "consume",
+                        "ring_ready",
                         "false"
                     ],
                     "type": "string"
@@ -10972,6 +10977,7 @@
                     "enum": [
                         "true",
                         "consume",
+                        "ring_ready",
                         "false"
                     ],
                     "type": "string"
@@ -20517,6 +20523,7 @@
                     "enum": [
                         "true",
                         "consume",
+                        "ring_ready",
                         "false"
                     ],
                     "type": "string"
@@ -29149,6 +29156,7 @@
                     "enum": [
                         "true",
                         "consume",
+                        "ring_ready",
                         "false"
                     ],
                     "type": "string"
@@ -32603,6 +32611,7 @@
                                         "enum": [
                                             "true",
                                             "consume",
+                                            "ring_ready",
                                             "false"
                                         ],
                                         "type": "string"
@@ -32813,6 +32822,7 @@
                             "enum": [
                                 "true",
                                 "consume",
+                                "ring_ready",
                                 "false"
                             ],
                             "type": "string"
