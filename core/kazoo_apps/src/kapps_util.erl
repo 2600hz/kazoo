@@ -51,7 +51,6 @@
         ]).
 
 -include("kazoo_apps.hrl").
--include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -define(REPLICATE_ENCODING, 'encoded').
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).

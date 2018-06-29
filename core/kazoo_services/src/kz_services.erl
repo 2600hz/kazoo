@@ -273,7 +273,6 @@ fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), _NotFromCache) ->
         {ok, _}=OK -> OK;
         {error, _} ->
             ?LOG_DEBUG("~n~n NO SERVICE DOC FOR AccountId: ~p~n~n", [AccountId]),
-            kz_util:log_stacktrace(),
             {error, wrong}
             %% Not throwing since this is needed for one of the kapps_account_config test
             %% {error, _}=Error ->
@@ -1341,7 +1340,6 @@ cascade_results(View, AccountId) ->
         {ok, _}=OK -> OK;
         {error, _}=Error ->
             ?LOG_DEBUG("~n~n NO VIEW FOR AccountId: ~p View: ~p~n~n", [AccountId, View]),
-            kz_util:log_stacktrace(),
             Error
             %% Not throwing since this is needed for one of the kapps_account_config test
             %% throw(Error)

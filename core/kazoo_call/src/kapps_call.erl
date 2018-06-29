@@ -1382,7 +1382,6 @@ cache(#kapps_call{call_id=CallId}=Call, AppName, Expires) ->
     CacheProps = [{'expires', Expires}],
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}, Call, CacheProps).
 
-
 -spec retrieve(kz_term:ne_binary()) ->
                       {'ok', call()} |
                       {'error', 'not_found'}.

@@ -61,8 +61,9 @@
 -define(TIME_BETWEEN_NUMBERS_MS
        ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
--define(PARALLEL_JOBS_COUNT,
-        kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"parallel_jobs_count">>, 1)).
+-define(PARALLEL_JOBS_COUNT
+       ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"parallel_jobs_count">>, 1)
+       ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -451,17 +452,23 @@ fix_number(Num, AuthBy, AccountDb) ->
 
 -spec migrate() -> 'ok'.
 migrate() ->
+    lager:info("ensuring admin-only features"),
     ensure_adminonly_features_are_reachable(),
+    lager:info("refreshing number dbs"),
     _ = refresh_numbers_dbs(),
+    lager:info("migrating all accounts"),
     pforeach(fun migrate/1, kapps_util:get_all_accounts()),
+    lager:info("migrating unassigned numbers"),
     migrate_unassigned_numbers().
 
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
 migrate(Account) ->
     AccountDb = kz_util:format_account_db(Account),
+    lager:info("  ~s: fixing account numbers", [Account]),
     fix_account_numbers(AccountDb),
+    lager:info("  ~s: deleting phone numbers doc", [Account]),
     _ = kz_datamgr:del_doc(AccountDb, <<"phone_numbers">>),
-    'ok'.
+    lager:info("  ~s: finished", [Account]).
 
 -spec migrate_unassigned_numbers() -> 'ok'.
 migrate_unassigned_numbers() ->
@@ -582,17 +589,17 @@ foreach_pause_in_between(Time, Fun, [Element|Elements]) ->
     timer:sleep(Time),
     foreach_pause_in_between(Time, Fun, Elements).
 
--spec pforeach(fun((A) -> any()), [A]) -> ok.
+-spec pforeach(fun((A) -> any()), [A]) -> 'ok'.
 pforeach(Fun, Arg1s)
   when is_function(Fun, 1),
        is_list(Arg1s) ->
-    Malt = [%% Each worker process gets to do only 1 item before dying
-            1
-            %% A processes count of 1 is equivalent to lists:foreach-ordering
-            %% with each Fun being applied on its own (different) process
-           ,{processes, ?PARALLEL_JOBS_COUNT}
-           ],
-    plists:foreach(Fun, Arg1s, Malt).
+    %% Malt = [%% Each worker process gets to do only 1 item before dying
+    %%         1
+    %%         %% A processes count of 1 is equivalent to lists:foreach-ordering
+    %%         %% with each Fun being applied on its own (different) process
+    %%        ,{'processes', ?PARALLEL_JOBS_COUNT}
+    %%        ],
+    lists:foreach(Fun, Arg1s).
 
 -spec fix_docs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 fix_docs(AccountDb, NumberDb, DID) ->

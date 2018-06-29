@@ -7,20 +7,13 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
--include("kazoo_config.hrl").
+-include("kazoo_apps.hrl").
+-include("kazoo_apps_test.hrl").
 
--define(TEST_CAT, <<"test_account_config">>).
-
--define(SUB_EMPTY, <<"test_account_config_sub_empty">>).
--define(RESELLER_ONLY, <<"test_account_config_reseller_only">>).
--define(RESELLER_SYSTEM, <<"test_account_config_reseller_system">>).
--define(SYSTEM_EMPTY, <<"test_account_config_system_empty">>).
--define(SYSTEM_ONLY, <<"test_account_config_system_only">>).
-
-kz_account_test_() ->
-    {setup
-    ,fun setup/0
-    ,fun cleanup/1
+kapps_accuont_config_test_() ->
+    {'setup'
+    ,fun kazoo_apps_test_util:setup/0
+    ,fun kazoo_apps_test_util:cleanup/1
     ,fun(Map) ->
              [test_get_ne_binary(Map)
              ,test_get(Map)
@@ -30,30 +23,6 @@ kz_account_test_() ->
              ]
      end
     }.
-
-setup() ->
-    ?LOG_DEBUG(":: Setting up Kazoo FixtureDB"),
-
-    {ok, _} = application:ensure_all_started(kazoo_config),
-    {ok, CachesPid} = kazoo_caches_sup:start_link(),
-    {ok, LinkPid} = kazoo_data_link_sup:start_link(),
-
-    {ok, SubConfig} = get_fixture(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT),
-    {ok, ResellerOnly} = get_fixture(?FIXTURE_RESELLER_ACCOUNT_ID, ?RESELLER_ONLY),
-
-    #{pid => LinkPid
-     ,caches_pid => CachesPid
-     ,sub_config => SubConfig
-     ,reseller_only_config => ResellerOnly
-     ,system_config => get_fixture_value(<<"default">>, ?KZ_CONFIG_DB, ?TEST_CAT)
-     ,system_only => get_fixture_value(<<"default">>, ?KZ_CONFIG_DB, ?SYSTEM_ONLY)
-     }.
-
-cleanup(#{ pid := LinkPid, caches_pid := CachesPid}) ->
-    _ = erlang:exit(LinkPid, normal),
-    _ = erlang:exit(CachesPid, normal),
-    _ = application:stop(kazoo_config),
-    ?LOG_DEBUG(":: Stopped Kazoo FixtureDB").
 
 test_get_ne_binary(_) ->
     [{"Testing get_ne_binary account config"
@@ -198,9 +167,9 @@ common_tests_for_get_from_reseller(FunToTest) ->
 test_get_with_strategy(_) ->
     [{"Testing getting account config with strategy"
      ,[get_with_strategy_general()
-      ,get_startegy_global()
-      ,get_startegy_reseller()
-      ,get_startegy_hierarchy_merge()
+      ,get_strategy_global()
+      ,get_strategy_reseller()
+      ,get_strategy_hierarchy_merge()
       ]
      }
     ].
@@ -249,7 +218,7 @@ get_with_strategy_general() ->
      }
     ].
 
-get_startegy_global() ->
+get_strategy_global() ->
     FunToTest = fun(AccountId, Category, Key) ->
                         kapps_account_config:get_with_strategy(<<"global">>, AccountId, Category, Key)
                 end,
@@ -258,7 +227,7 @@ get_startegy_global() ->
      }
     ].
 
-get_startegy_reseller() ->
+get_strategy_reseller() ->
     FunToTest = fun(Args) when length(Args) =:= 3 ->
                         apply(fun kapps_account_config:get_with_strategy/4, [<<"reseller">>|Args]);
                    (Args) when length(Args) =:= 4 ->
@@ -269,7 +238,7 @@ get_startegy_reseller() ->
      }
     ].
 
-get_startegy_hierarchy_merge() ->
+get_strategy_hierarchy_merge() ->
     SysRootObjKey = get_fixture_value([<<"default">>, <<"root_obj_key">>], ?KZ_CONFIG_DB, ?TEST_CAT),
     ResellerRootJObjKey = get_fixture_value(<<"root_obj_key">>, ?FIXTURE_RESELLER_ACCOUNT_ID, ?TEST_CAT),
     ParentRootObjKey = get_fixture_value(<<"root_obj_key">>, ?FIXTURE_PARENT_ACCOUNT_ID, ?TEST_CAT),
@@ -333,14 +302,3 @@ get_key_and_merge_configs(Key, Configs) ->
        || Conf <- Configs
       ]
      ).
-
-get_fixture_value(Key, DbName, Category) ->
-    {ok, JObj} = get_fixture(DbName, Category),
-    kz_json:get_value(Key, JObj).
-
-get_fixture(?KZ_CONFIG_DB, Category) ->
-    Path = kz_fixturedb_util:get_doc_path(?KZ_CONFIG_DB, Category),
-    kz_json:fixture(Path);
-get_fixture(AccountId, Category) ->
-    Path = kz_fixturedb_util:get_doc_path(kz_util:format_account_db(AccountId), <<"configs_", Category/binary>>),
-    kz_json:fixture(Path).

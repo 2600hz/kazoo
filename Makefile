@@ -2,6 +2,7 @@ ROOT = $(shell cd "$(dirname '.')" && pwd -P)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter/fmt.sh
+TAGS = $(ROOT)/TAGS
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -17,7 +18,7 @@ compile: ACTION = all
 compile: deps kazoo
 
 $(KAZOODIRS):
-	@$(MAKE) -j$(JOBS) -C $(@D) $(ACTION)
+	@$(MAKE) -C $(@D) $(ACTION)
 
 clean: ACTION = clean
 clean: $(KAZOODIRS)
@@ -76,7 +77,15 @@ core:
 apps: core
 	@$(MAKE) -j$(JOBS) -C applications/ all
 
-kazoo: apps
+kazoo: apps $(TAGS)
+
+tags: $(TAGS)
+
+$(TAGS):
+	ERL_LIBS=deps:core:applications ./scripts/tags.escript $(TAGS)
+
+clean-tags:
+	$(if $(wildcard $(TAGS)), rm $(TAGS))
 
 $(RELX):
 	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@

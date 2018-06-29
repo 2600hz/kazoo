@@ -31,10 +31,12 @@ kz_account_test_() ->
              ,test_account_tree()
              ,test_notification_preference()
              ,test_enabled()
+             ,test_expired()
              ,test_api_key()
              ,test_superduper_admin()
              ,test_allow_number_additions()
              ,test_reseller()
+             ,test_account_hierarchy()
              ]
      end
     }.
@@ -180,6 +182,21 @@ test_enabled() ->
     [{"validate is_enabled returns the expected value", ?_assert(kzd_accounts:is_enabled(MasterAccount))}
     ,{"validate disable returns the expected value", ?_assertNot(kzd_accounts:is_enabled(Disabled))}
     ,{"validate enable returns the expected value", ?_assert(kzd_accounts:is_enabled(ReEnabled))}
+    ,{"validate enabled is false when account is undefined", ?_assertNot(kzd_accounts:is_enabled('undefined'))}
+    ].
+
+test_expired() ->
+    [{"validate is_expired is false when account is undefined", ?_assertNot(kzd_accounts:is_expired('undefined'))}].
+
+
+test_account_hierarchy() ->
+    [?_assertNot(kzd_accounts:is_in_account_hierarchy('undefined', ?FIXTURE_MASTER_ACCOUNT_ID))
+    ,?_assertNot(kzd_accounts:is_in_account_hierarchy('undefined', ?FIXTURE_MASTER_ACCOUNT_ID))
+    ,?_assertNot(kzd_accounts:is_in_account_hierarchy('undefined', ?FIXTURE_MASTER_ACCOUNT_ID, 'true'))
+    ,?_assertNot(kzd_accounts:is_in_account_hierarchy('undefined', ?FIXTURE_MASTER_ACCOUNT_ID, 'false'))
+    ,?_assertNot(kzd_accounts:is_in_account_hierarchy(?FIXTURE_MASTER_ACCOUNT_ID, 'undefined', 'false'))
+    ,?_assertNot(kzd_accounts:is_in_account_hierarchy(?FIXTURE_MASTER_ACCOUNT_ID, 'undefined', 'true'))
+    ,?_assert(kzd_accounts:is_in_account_hierarchy(?FIXTURE_MASTER_ACCOUNT_ID, ?FIXTURE_MASTER_ACCOUNT_ID, 'true'))
     ].
 
 test_api_key() ->
@@ -198,6 +215,7 @@ test_superduper_admin() ->
     [{"validate superduper_admin returns the expected value", ?_assert(kzd_accounts:is_superduper_admin(MasterAccount))}
     ,{"validate superduper_admin returns 'false' if not found", ?_assertNot(kzd_accounts:is_superduper_admin(Missing))}
     ,{"validate set_superduper_admin changes the superduper_admin", ?_assertNot(kzd_accounts:is_superduper_admin(Updated))}
+    ,{"validate is_superduper_admin is false when account is undefined", ?_assertNot(kzd_accounts:is_superduper_admin('undefined'))}
     ].
 
 test_allow_number_additions() ->

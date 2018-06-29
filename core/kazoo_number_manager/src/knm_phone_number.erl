@@ -98,7 +98,7 @@
                           ,features_allowed :: kz_term:api_ne_binaries() %%%
                           ,features_denied :: kz_term:api_ne_binaries()  %%%
                           }).
--opaque knm_phone_number() :: #knm_phone_number{}.
+-type knm_phone_number() :: #knm_phone_number{}.
 
 -type knm_phone_numbers() :: [knm_phone_number(), ...].
 
@@ -182,8 +182,9 @@ from_number_with_options(DID, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec fetch(kz_term:ne_binary()) -> knm_phone_number_return();
-           (knm_numbers:collection()) -> knm_numbers:collection().
+-spec fetch(kz_term:ne_binary() | knm_numbers:collection()) ->
+                   knm_phone_number_return() |
+                   knm_numbers:collection().
 fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
@@ -360,7 +361,7 @@ fetch(Num, Options) ->
     end.
 
 test_fetch(?TEST_CREATE_NUM) ->
-    {'error', not_found};
+    {'error', 'not_found'};
 test_fetch(?TEST_AVAILABLE_NUM) ->
     {'ok', ?AVAILABLE_NUMBER};
 test_fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM) ->
@@ -416,7 +417,7 @@ test_fetch(?TEST_PORT_IN2_NUM) ->
     {'ok', ?PORT_IN2_NUMBER};
 test_fetch(?TEST_PORT_IN3_NUM) -> {'ok', ?PORT_IN3_NUMBER};
 test_fetch(_DID=?NE_BINARY) ->
-    {'error', not_found}.
+    {'error', 'not_found'}.
 -else.
 
 -spec fetch(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
@@ -430,6 +431,9 @@ fetch(Num=?NE_BINARY, Options) ->
             Error
     end.
 
+-spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) ->
+                   {'ok', kz_json:object()} |
+                   {'error', any()}.
 fetch(NumberDb, NormalizedNum, Options) ->
     case knm_number_options:batch_run(Options) of
         'true' -> kz_datamgr:open_doc(NumberDb, NormalizedNum);
@@ -437,7 +441,8 @@ fetch(NumberDb, NormalizedNum, Options) ->
     end.
 -endif.
 
--spec handle_fetch(kz_json:object(), knm_number_options:options()) -> {'ok', knm_phone_number()}.
+-spec handle_fetch(kz_json:object(), knm_number_options:options()) ->
+                          {'ok', knm_phone_number()}.
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
     case state(PN) =:= ?NUMBER_STATE_AVAILABLE
@@ -788,17 +793,17 @@ is_phone_number(_) -> 'false'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec setters(knm_phone_number(), set_functions()) -> knm_phone_number_return();
-             (knm_numbers:collection(), set_functions()) -> knm_numbers:collection().
-setters(T0=#{todo := PNs}, Routines) ->
-    F = fun (PN, T) ->
-                case setters(PN, Routines) of
-                    {'ok', NewPN} -> knm_numbers:ok(NewPN, T);
-                    {'error', R} -> knm_numbers:ko(number(PN), R, T)
-                end
-        end,
-    lists:foldl(F, T0, PNs);
+-spec setters(knm_phone_number() | knm_numbers:collection(), set_functions()) ->
+                     knm_phone_number_return() |
+                     knm_numbers:collection().
+
+setters(T0, Routines) when is_map(T0) ->
+    setters_collection(T0, Routines);
 setters(PN, Routines) ->
+    setters_pn(PN, Routines).
+
+-spec setters_pn(knm_phone_number(), set_functions()) -> knm_phone_number_return().
+setters_pn(PN, Routines) ->
     try lists:foldl(fun setters_fold/2, PN, Routines) of
         {'ok', _N}=Ok -> Ok;
         {'error', _R}=Error -> Error;
@@ -809,7 +814,7 @@ setters(PN, Routines) ->
             ST = erlang:get_stacktrace(),
             {FName, Arg} =
                 case ST of
-                    [{lists, foldl, [Name|_aPN], Arg2}|_] -> {Name, Arg2};
+                    [{'lists', 'foldl', [Name|_aPN], Arg2}|_] -> {Name, Arg2};
                     [{_M, Name, [_aPN,Arg2|_], _Info}|_] -> {Name, Arg2}
                 end,
             ?LOG_ERROR("~s failed, argument: ~p", [FName, Arg]),
@@ -819,6 +824,16 @@ setters(PN, Routines) ->
             kz_util:log_stacktrace(),
             {'error', Reason}
     end.
+
+-spec setters_collection(knm_numbers:collection(), set_functions()) -> knm_numbers:collection().
+setters_collection(T0=#{todo := PNs}, Routines) ->
+    F = fun (PN, T) ->
+                case setters(PN, Routines) of
+                    {'ok', NewPN} -> knm_numbers:ok(NewPN, T);
+                    {'error', R} -> knm_numbers:ko(number(PN), R, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs).
 
 -type set_function() :: fun((knm_phone_number()) -> setter_acc()) |
                         fun((knm_phone_number(), V) -> setter_acc()) |
@@ -1160,8 +1175,9 @@ push_reserve_history(T=#{todo := PNs, options := Options}) ->
     NewPNs = [add_reserve_history(AssignTo, PN) || PN <- PNs],
     knm_numbers:ok(NewPNs, T).
 
--spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number();
-                            (knm_numbers:collection()) -> knm_numbers:collection().
+-spec unwind_reserve_history(knm_numbers:collection() | knm_phone_number()) ->
+                                    knm_phone_number() |
+                                    knm_numbers:collection().
 unwind_reserve_history(T=#{todo := PNs}) ->
     NewPNs = [unwind_reserve_history(PN) || PN <- PNs],
     knm_numbers:ok(NewPNs, T);
@@ -1576,8 +1592,9 @@ sanitize_public_fields(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_authorized(knm_numbers:collection()) -> knm_numbers:collection();
-                   (knm_phone_number()) -> boolean().
+-spec is_authorized(knm_phone_number() | knm_numbers:collection()) ->
+                           knm_numbers:collection() |
+                           boolean().
 is_authorized(T) when is_map(T) -> is_authorized_collection(T);
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),
@@ -1599,8 +1616,9 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                }) ->
     is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
 
--spec is_reserved_from_parent(knm_numbers:collection()) -> knm_numbers:collection();
-                             (knm_phone_number()) -> boolean().
+-spec is_reserved_from_parent(knm_phone_number() | knm_numbers:collection()) ->
+                                     knm_numbers:collection() |
+                                     boolean().
 is_reserved_from_parent(T) when is_map(T) -> is_reserved_from_parent_collection(T);
 is_reserved_from_parent(#knm_phone_number{assigned_to = ?MATCH_ACCOUNT_RAW(AssignedTo)
                                          ,auth_by = AuthBy

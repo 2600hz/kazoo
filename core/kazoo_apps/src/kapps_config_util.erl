@@ -6,8 +6,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_config_util).
 
--include("kazoo_config.hrl").
-
 -export([get_config/2
         ,get_reseller_config/2
         ,load_config_from_account/2
@@ -19,6 +17,8 @@
 
         ,account_doc_id/1
         ]).
+
+-include("kazoo_apps.hrl").
 
 -spec account_doc_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 account_doc_id(Category) -> <<(?KZ_ACCOUNT_CONFIGS)/binary, Category/binary>>.

@@ -7,8 +7,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_account_config).
 
--include("kazoo_config.hrl").
-
 -export([get/2, get/3, get/4
 
         ,get_ne_binary/3, get_ne_binary/4
@@ -27,9 +25,10 @@
         ,migrate/1
         ]).
 
+-include("kazoo_apps.hrl").
+
 -type api_account() :: kz_term:api_ne_binary() | kz_json:object().
 -type account_or_not() :: kz_term:ne_binary() | 'no_account_id'.
-
 
 %% @equiv get_ne_binary(Account, Category, Path, undefined)
 

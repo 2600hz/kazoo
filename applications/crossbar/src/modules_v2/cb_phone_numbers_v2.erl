@@ -506,7 +506,7 @@ port_number_summary(_PhoneNumber, Context, 'false') ->
 -spec normalize_port_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    knm_phone_number_return().
 normalize_port_number(JObj, Num, AuthBy) ->
-    knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{auth_by, AuthBy}])
+    knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{'auth_by', AuthBy}])
                             ,[{fun knm_phone_number:set_assigned_to/2, kz_json:get_value(<<"assigned_to">>, JObj)}
                              ,{fun knm_phone_number:set_used_by/2, kz_json:get_value(<<"used_by">>, JObj)}
                              ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_PORT_IN}

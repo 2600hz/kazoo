@@ -13,7 +13,6 @@
 
 -export([connection/0, connection/1]).
 
-
 -spec ensure_driver_app(map()) -> any().
 ensure_driver_app(#{app := App}) ->
     application:ensure_all_started(App);
@@ -22,7 +21,7 @@ ensure_driver_app(#{driver := App}) ->
 
 -spec is_driver_app(atom()) -> boolean().
 is_driver_app(App) ->
-    Funs = kz_data:behaviour_info(callbacks),
+    Funs = kz_data:behaviour_info('callbacks'),
     lists:all(fun({Fun, Arity}) -> erlang:function_exported(App, Fun, Arity) end, Funs).
 
 -spec connection() -> data_connection().

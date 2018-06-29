@@ -98,8 +98,8 @@
 -spec new() -> knm_number().
 new() -> #knm_number{}.
 
--spec new(knm_numbers:collection()) -> knm_numbers:collection();
-         (knm_phone_number:knm_phone_number()) -> knm_number().
+-spec new(knm_phone_number:knm_phone_number() | knm_numbers:collection()) ->
+                 knm_numbers:collection() | knm_number().
 new(T=#{todo := PNs}) ->
     Numbers = [new(PN) || PN <- PNs],
     knm_numbers:ok(Numbers, T);
@@ -184,8 +184,9 @@ allowed_creation_states(Options, AuthBy) ->
         _ -> []
     end.
 
--spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
-                               (knm_numbers:collection()) -> knm_numbers:collection().
+-spec ensure_can_load_to_create(knm_numbers:collection() | knm_phone_number:knm_phone_number()) ->
+                                       'true' |
+                                       knm_numbers:collection().
 ensure_can_load_to_create(T0=#{todo := PNs}) ->
     F = fun (PN, T) ->
                 case attempt(fun ensure_can_load_to_create/1, [PN]) of
@@ -410,7 +411,7 @@ check_number(PN) ->
     end.
 
 -ifdef(TEST).
-is_account_enabled(?MATCH_ACCOUNT_RAW(_)) -> true.
+is_account_enabled(?MATCH_ACCOUNT_RAW(_)) -> 'true'.
 -else.
 is_account_enabled(AccountId) -> kzd_accounts:is_enabled(AccountId).
 -endif.
@@ -418,19 +419,19 @@ is_account_enabled(AccountId) -> kzd_accounts:is_enabled(AccountId).
 check_account(PN) ->
     AssignedTo = knm_phone_number:assigned_to(PN),
     case is_account_enabled(AssignedTo) of
-        false -> {error, {account_disabled, AssignedTo}};
-        true ->
-            Props = [{pending_port, knm_phone_number:state(PN) =:= ?NUMBER_STATE_PORT_IN}
-                    ,{local, knm_phone_number:module_name(PN) =:= ?CARRIER_LOCAL}
-                    ,{number, knm_phone_number:number(PN)}
-                    ,{account_id, AssignedTo}
-                    ,{prepend, feature_prepend(PN)}
-                    ,{inbound_cnam, feature_inbound_cname(PN)}
-                    ,{ringback_media, find_early_ringback(PN)}
-                    ,{transfer_media, find_transfer_ringback(PN)}
-                    ,{force_outbound, is_force_outbound(PN)}
+        'false' -> {'error', {'account_disabled', AssignedTo}};
+        'true' ->
+            Props = [{'pending_port', knm_phone_number:state(PN) =:= ?NUMBER_STATE_PORT_IN}
+                    ,{'local', knm_phone_number:module_name(PN) =:= ?CARRIER_LOCAL}
+                    ,{'number', knm_phone_number:number(PN)}
+                    ,{'account_id', AssignedTo}
+                    ,{'prepend', feature_prepend(PN)}
+                    ,{'inbound_cnam', feature_inbound_cname(PN)}
+                    ,{'ringback_media', find_early_ringback(PN)}
+                    ,{'transfer_media', find_transfer_ringback(PN)}
+                    ,{'force_outbound', is_force_outbound(PN)}
                     ],
-            {ok, AssignedTo, Props}
+            {'ok', AssignedTo, Props}
     end.
 
 -spec maybe_fetch_account_from_ports(kz_term:ne_binary(), {error, any()}) -> lookup_account_return().

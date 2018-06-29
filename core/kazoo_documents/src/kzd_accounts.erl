@@ -95,7 +95,6 @@
         ,set_low_balance_tstamp/1
 
         ,is_in_account_hierarchy/2, is_in_account_hierarchy/3
-
         ,normalize_name/1
         ]).
 

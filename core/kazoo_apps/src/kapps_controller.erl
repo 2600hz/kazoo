@@ -23,6 +23,8 @@
         ,unbinding_fetch_app/2, unbinding_fetch_app/3
         ]).
 
+-export([default_binding_all_ip/0]).
+
 -include("kazoo_apps.hrl").
 
 %%%=============================================================================
@@ -311,3 +313,26 @@ has_me_as_dep(App) ->
             %% Race condition sometimes prevents from reading application key
             'non_existing' =/= code:where_is_file(atom_to_list(App) ++ ".app")
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Default binding IP address (bind on all interfaces) based
+%% on supported IP family.
+%% @end
+%%------------------------------------------------------------------------------
+-spec default_binding_all_ip() -> string().
+default_binding_all_ip() ->
+    default_binding_all_ip(kz_network_utils:is_ip_family_supported('inet')
+                          ,kz_network_utils:is_ip_family_supported('inet6')
+                          ).
+
+-spec default_binding_all_ip(boolean(), boolean()) -> string().
+default_binding_all_ip('true', 'true') -> preferred_inet('inet');
+default_binding_all_ip('true', 'false') -> preferred_inet('inet');
+default_binding_all_ip('false', 'true') -> preferred_inet('inet6');
+default_binding_all_ip('false', 'false') -> preferred_inet('system').
+
+-spec preferred_inet('inet' | 'inet6' | 'system') -> string().
+preferred_inet('inet') -> "0.0.0.0";
+preferred_inet('inet6') -> "::";
+preferred_inet('system') ->
+    kapps_config:get_string(<<"kapps_controller">>, <<"default_apps_ip_address_to_bind">>, "0.0.0.0").

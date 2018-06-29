@@ -15,7 +15,7 @@
 -define(DEVICE_2_ID, <<"device00000000000000000000000002">>).
 
 kz_device_test_() ->
-    {setup
+    {'setup'
     ,fun kzd_test_fixtures:setup/0
     ,fun kzd_test_fixtures:cleanup/1
     ,fun(_) ->
@@ -36,7 +36,10 @@ kz_device_test_() ->
     }.
 
 test_invalid_parameters() ->
-    [?_assertMatch({'error', 'invalid_parameters'}, kzd_devices:fetch(?FIXTURE_MASTER_ACCOUNT_ID, 256))].
+    [?_assertMatch({'error', 'invalid_parameters'}
+                  ,kzd_devices:fetch(?FIXTURE_MASTER_ACCOUNT_ID, 256)
+                  )
+    ].
 
 test_validate_fixtures() ->
     {'ok', Schema} = kz_json_schema:fload(<<"devices">>),

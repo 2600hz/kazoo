@@ -9,6 +9,9 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP, 'kazoo_apps').
 
+-define(KAPPS_CONFIG_CACHE, 'kapps_config_cache').
+-define(KAPPS_GETBY_CACHE, 'kapps_getby_cache').
+
 -define(DEFAULT_KAPPS, ['blackhole'
                        ,'callflow'
                        ,'cdr'

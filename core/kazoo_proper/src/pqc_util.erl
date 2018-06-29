@@ -7,9 +7,8 @@
 -module(pqc_util).
 
 -export([transition_if/2
-        ,simple_counterexample/0
+        ,simple_counterexample/0, simple_counterexample/1
         ,run_counterexample/1
-
         ]).
 
 -include("kazoo_proper.hrl").
@@ -36,6 +35,7 @@ transition_if_fold({Fun, Args}, {'true', Model}) ->
 simple_counterexample() ->
     simple_counterexample(proper:counterexample()).
 
+-spec simple_counterexample('undefined' | list()) -> [{module(), function(), list()}].
 simple_counterexample('undefined') ->
     {error, no_counterexample};
 simple_counterexample([Seq]) ->

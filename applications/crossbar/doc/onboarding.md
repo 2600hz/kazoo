@@ -4,7 +4,7 @@ Used to create new accounts without being signed in.
 
 #### NOTICE
 
-This API has been deprecated and is no longer maintained by the 2600Hz core team.  The prefered method would be to code your own middleware to create accounts using an appropriate parent account API key or auth-token.  The PHP SDK is an excellent starting point or you can roll your own!
+This API has been deprecated and is no longer maintained by the 2600Hz core team.  The preferred method would be to code your own middleware to create accounts using an appropriate parent account API key or auth-token.  The PHP SDK is an excellent starting point or you can roll your own!
 
 #### An example request
 

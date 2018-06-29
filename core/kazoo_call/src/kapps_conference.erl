@@ -6,9 +6,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_conference).
 
--include("kapps_call_command.hrl").
--include("kapps_conference.hrl").
-
 -export([new/0]).
 -export([from_conference_doc/1, from_conference_doc/2]).
 -export([to_json/1, from_json/1, from_json/2]).
@@ -74,6 +71,9 @@
         ]).
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
+
+-include("kapps_call_command.hrl").
+-include("kapps_conference.hrl").
 
 -define(BRIDGE_USER, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_username">>, kz_binary:rand_hex(12))).
 -define(BRIDGE_PWD, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_password">>, kz_binary:rand_hex(12))).
@@ -360,24 +360,24 @@ set_account_id(AccountId, Conference) when is_binary(AccountId) ->
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec controls(conference(), kz_term:ne_binary()) -> kz_json:object().
+-spec controls(conference(), kz_term:ne_binary()) -> kz_json:objects().
 controls(#kapps_conference{controls=Controls}, _) when Controls =/= 'undefined' -> Controls;
 controls(#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME) ->
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
+    kapps_config:get(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
 controls(#kapps_conference{account_id=AccountId}=Conference, ?DEFAULT_PROFILE_NAME) ->
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME]) of
         'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME);
         Controls -> Controls
     end;
 controls(#kapps_conference{account_id='undefined'}, ?PAGE_PROFILE_NAME) ->
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]);
+    kapps_config:get(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]);
 controls(#kapps_conference{account_id=AccountId}=Conference, ?PAGE_PROFILE_NAME) ->
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]) of
         'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ?PAGE_PROFILE_NAME);
         Controls -> Controls
     end;
 controls(#kapps_conference{account_id='undefined'}, ControlsName) ->
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]);
+    kapps_config:get(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]);
 controls(#kapps_conference{account_id=AccountId}=Conference, ControlsName) ->
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]) of
         'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ControlsName);

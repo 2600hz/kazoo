@@ -1,15 +1,7 @@
-{application, kazoo_config,
- [ {description, "Kazoo Configuration Helper"}
- , {vsn, "4.0.0"}
- , {modules, []}
- , {registered, [kazoo_config_sup]}
- , {applications, [ kernel
-                  , stdlib
-
-                  , kazoo
-
-                  , lager
-                  , zucchini
-                  ]}
- , {mod, {kazoo_config_app, []}}
- ]}.
+{application,kazoo_config,
+             [{applications,[kazoo,kazoo_stdlib,kernel,lager,stdlib,zucchini]},
+              {description,"Kazoo Configuration Helper"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kazoo_config_sup]},
+              {mod,{kazoo_config_app,[]}}]}.

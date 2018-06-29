@@ -92,7 +92,7 @@ get_binding_ip() ->
     IsIPv6Enabled = kz_network_utils:is_ip_family_supported('inet6'),
     IsIPv4Enabled = kz_network_utils:is_ip_family_supported('inet'),
 
-    DefaultIP = kz_network_utils:default_binding_all_ip(),
+    DefaultIP = kapps_controller:default_binding_all_ip(),
 
     IP = kapps_config:get_string(?CONFIG_CAT, <<"ip">>, DefaultIP),
 

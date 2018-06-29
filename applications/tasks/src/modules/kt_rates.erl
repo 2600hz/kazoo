@@ -244,7 +244,7 @@ finish(<<"delete">>, State) ->
     kz_datamgr:enable_change_notice(),
     kzs_publish:publish_db(Db, <<"edited">>).
 
--spec import_rates_into_ratedeck(kz_term:ne_binary(), {non_neg_integer(), kz_json:objects()}) -> 'ok'.
+-spec import_rates_into_ratedeck(kz_term:ne_binary(), {non_neg_integer(), kz_json:objects()}) -> 'true'.
 import_rates_into_ratedeck(Ratedeck, {0, []}) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     kz_datamgr:enable_change_notice(),

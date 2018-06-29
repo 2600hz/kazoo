@@ -8,7 +8,7 @@
 %% Doc related
 -export([open_cache_doc/3, open_cache_doc/4
         ,open_cache_docs/3
-        ,add_to_doc_cache/3
+        ,add_to_doc_cache/3, add_to_doc_cache/4
         ,flush_cache_doc/2
         ,flush_cache_doc/3
         ,flush_cache_docs/0
@@ -17,6 +17,11 @@
         ,flush_cache_docs/3
         ]).
 
+-export([cache_strategy/0
+        ,set_cache_strategy/1
+        ]).
+
+-export_type([cache_strategy/0]).
 
 -include("kz_data.hrl").
 
@@ -41,40 +46,82 @@
                                   ,{<<"system_data">>, ?ANY_TYPE_CACHING_POLICY(<<"infinity">>)}
                                   ])).
 
+-define(STAMPEDE_WAIT_MS, 1500). % see kz_cache_stampede_tests
+-define(CACHE_KEY(DbName, DocId), {?MODULE, DbName, DocId}).
+
 -spec open_cache_doc(kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(DbName, DocId, Options) ->
-    case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
+    MitigationKey = kz_cache:mitigation_key(),
+    CacheStrategy = cache_strategy(),
+
+    case kz_cache:fetch_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
+        {MitigationKey, _Pid} when CacheStrategy =:= 'stampede' ->
+            kz_cache:wait_for_stampede_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), ?STAMPEDE_WAIT_MS);
+        {MitigationKey, _Pid} ->
+            fetch_doc(DbName, DocId, Options, CacheStrategy);
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
+        {'error', 'not_found'} when CacheStrategy =:= 'stampede' ->
+            mitigate_stampede(DbName, DocId, Options, CacheStrategy);
         {'error', 'not_found'} ->
-            R = kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)),
-            _ = maybe_cache(DbName, DocId, Options, R),
-            R
+            fetch_doc(DbName, DocId, Options, CacheStrategy)
     end.
 
--spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error() | {'ok', kz_json:object()}) ->
+-spec mitigate_stampede(kz_term:text(), kz_term:ne_binary(), kz_term:proplist(), cache_strategy()) ->
+                               {'ok', kz_json:object()} |
+                               data_error() |
+                               {'error', 'not_found'}.
+mitigate_stampede(DbName, DocId, Options, CacheStrategy) ->
+    CacheKey = ?CACHE_KEY(DbName, DocId),
+    case kz_cache:mitigate_stampede_local(?CACHE_NAME, CacheKey) of
+        'ok' ->
+            fetch_doc(DbName, DocId, Options, CacheStrategy);
+        'error' ->
+            kz_cache:wait_for_stampede_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), ?STAMPEDE_WAIT_MS)
+    end.
+
+-spec fetch_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), cache_strategy()) ->
+                       {'ok', kz_json:object()} |
+                       data_error() |
+                       {'error', 'not_found'}.
+fetch_doc(DbName, DocId, Options, CacheStrategy) ->
+    R = kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)),
+    _ = maybe_cache(DbName, DocId, Options, R, CacheStrategy),
+    R.
+
+-spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error() | {'ok', kz_json:object()}, cache_strategy()) ->
                          'ok'.
-maybe_cache(DbName, DocId, Options, {'error', _}=E) ->
-    maybe_cache_failure(DbName, DocId, Options, E);
-maybe_cache(DbName, DocId, _, {'ok', JObj}) ->
-    add_to_doc_cache(DbName, DocId, JObj).
+maybe_cache(DbName, DocId, Options, {'error', _}=E, CacheStrategy) ->
+    maybe_cache_failure(DbName, DocId, Options, E, CacheStrategy);
+maybe_cache(DbName, DocId, _, {'ok', JObj}, CacheStrategy) ->
+    add_to_doc_cache(DbName, DocId, JObj, CacheStrategy).
 
 -spec open_cache_doc(map(), kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(Server, DbName, DocId, Options) ->
-    case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
+    MitigationKey = kz_cache:mitigation_key(),
+    CacheStrategy = cache_strategy(),
+
+    case kz_cache:fetch_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
+        {MitigationKey, _Pid} when CacheStrategy =:= 'stampede' ->
+            kz_cache:wait_for_stampede_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId));
+        {MitigationKey, _Pid} ->
+            fetch_doc(Server, DbName, DocId, remove_cache_options(Options), CacheStrategy);
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            R = kzs_doc:open_doc(Server, DbName, DocId, remove_cache_options(Options)),
-            _ = maybe_cache(DbName, DocId, Options, R),
-            R
+            fetch_doc(Server, DbName, DocId, remove_cache_options(Options), CacheStrategy)
     end.
+
+fetch_doc(Server, DbName, DocId, Options, CacheStrategy) ->
+    R = kzs_doc:open_doc(Server, DbName, DocId, Options),
+    _ = maybe_cache(DbName, DocId, Options, R, CacheStrategy),
+    R.
 
 -spec open_cache_docs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist()) ->
                              {'ok', kz_json:objects()} |
@@ -100,7 +147,7 @@ prepare_jobjs(DbName, DocIds, Options, Cached, {ok, Opened}) ->
 
 fetch_locals(DbName, DocIds) ->
     F = fun (DocId, {Cached, Missed}) ->
-                case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
+                case kz_cache:fetch_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
                     {error, not_found} -> {Cached, [DocId|Missed]};
                     {ok, {error, Reason}} ->
                         {[{DocId, error, Reason}|Cached], Missed};
@@ -119,7 +166,7 @@ disassemble_jobjs(DbName, Options, JObjs) ->
          'undefined' ->
              %% Reason is not_found for when documents were deleted.
              Reason = kz_json:get_ne_binary_value(<<"error">>, JObj, <<"not_found">>),
-             _ = maybe_cache_failure(DbName, DocId, Options, {'error', kz_term:to_atom(Reason)}),
+             _ = maybe_cache_failure(DbName, DocId, Options, {'error', kz_term:to_atom(Reason)}, cache_strategy()),
              {DocId, 'error', Reason};
          Doc ->
              _ = add_to_doc_cache(DbName, DocId, Doc),
@@ -151,37 +198,56 @@ to_nonbulk_format({DocId, error, Reason}) ->
 remove_cache_options(Options) ->
     props:delete_keys(['cache_failures'], Options).
 
--spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error()) -> 'ok'.
-maybe_cache_failure(DbName, DocId, Options, {'error', _}=Error) ->
+-spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error(), cache_strategy()) -> 'ok'.
+maybe_cache_failure(DbName, DocId, Options, {'error', _}=Error, CacheStrategy) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
-            maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
+            maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes, CacheStrategy);
         'true' ->
-            maybe_cache_failure(DbName, DocId, Options, Error, ['not_found']);
-        _ -> 'ok'
+            maybe_cache_failure(DbName, DocId, Options, Error, ['not_found'], CacheStrategy);
+        _ ->
+            kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId))
     end.
 
--spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error(), kz_term:atoms()) -> 'ok'.
-maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
-    _ = lists:member(ErrorCode, ErrorCodes)
-        andalso add_to_doc_cache(DbName, DocId, Error),
-    'ok'.
+-spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error(), kz_term:atoms(), cache_strategy()) -> 'ok'.
+maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes, CacheStrategy) ->
+    case lists:member(ErrorCode, ErrorCodes) of
+        'true' -> add_to_doc_cache(DbName, DocId, Error, CacheStrategy);
+        'false' ->
+            kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId))
+    end.
 
 -spec add_to_doc_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | data_error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
-    kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId}),
+    add_to_doc_cache(DbName, DocId, CacheValue, 'none').
+
+-spec add_to_doc_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | data_error(), cache_strategy()) -> 'ok'.
+add_to_doc_cache(DbName, DocId, CacheValue, CacheStrategy) ->
     CacheProps = [{'origin', {'db', DbName, DocId}}
                  ,{'expires', expires_policy_value(DbName, CacheValue)}
                  ],
     case kz_json:is_json_object(CacheValue) of
         'true' ->
-            cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
-        'false' ->
-            kz_cache:store_local(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+            cache_if_not_media(CacheProps, DbName, DocId, CacheValue, CacheStrategy);
+        'false' when CacheStrategy =:= 'none';
+                     CacheStrategy =:= 'stampede' ->
+            kz_cache:store_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), CacheValue, CacheProps);
+        'false' when CacheStrategy =:= 'async' ->
+            kz_cache:store_local_async(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), CacheValue, CacheProps);
+        'false' when CacheStrategy =:= 'stampede_async' ->
+            maybe_cache(DbName, DocId, CacheValue, CacheProps)
     end.
 
--spec cache_if_not_media(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
+-spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | data_error(), kz_cache:store_options()) -> 'ok'.
+maybe_cache(DbName, DocId, CacheValue, CacheProps) ->
+    case kz_cache:mitigate_stampede_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
+        'ok' ->
+            kz_cache:store_local_async(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), CacheValue, CacheProps);
+        'error' -> 'ok'
+    end.
+
+-spec cache_if_not_media(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), cache_strategy()) -> 'ok'.
+cache_if_not_media(CacheProps, DbName, DocId, CacheValue, CacheStrategy) ->
     %% NOTE: this is currently necessary because when a http_put is issued to
     %%   freeswitch and the media is uploaded it goes directly to bigcouch
     %%   and therefore no doc change notice is pushed.  This results in the
@@ -192,12 +258,19 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %%   which is not currently the case...)
     case kzs_util:db_classification(DbName) =/= 'system'
         andalso lists:member(kz_doc:type(CacheValue), ?NO_CACHING_TYPES) of
-        'true' -> 'ok';
-        'false' -> kz_cache:store_local(?CACHE_NAME
-                                       ,{?MODULE, DbName, DocId}
-                                       ,CacheValue
-                                       ,CacheProps
-                                       )
+        'true' ->
+            kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId));
+        'false' when CacheStrategy =:= 'none';
+                     CacheStrategy =:= 'stampede' ->
+            kz_cache:store_local(?CACHE_NAME
+                                ,?CACHE_KEY(DbName, DocId)
+                                ,CacheValue
+                                ,CacheProps
+                                );
+        'false' when CacheStrategy =:= 'stampede_async' ->
+            maybe_cache(DbName, DocId, CacheValue, CacheProps);
+        'false' ->
+            kz_cache:store_local_async(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), CacheValue, CacheProps)
     end.
 
 -spec expires_policy_value(kz_term:ne_binary(), kz_json:object() | data_error()) -> timeout().
@@ -233,7 +306,7 @@ flush_cache_doc(Db, Doc) when is_binary(Db) ->
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
     flush_cache_doc(kz_term:to_binary(Name), Doc, Options);
 flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
-    kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId});
+    kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId));
 flush_cache_doc(DbName, Doc, Options) ->
     flush_cache_doc(DbName, kz_doc:id(Doc), Options).
 
@@ -244,8 +317,8 @@ flush_cache_docs() -> kz_cache:flush_local(?CACHE_NAME).
 flush_cache_docs(#db{name=Name}) ->
     flush_cache_docs(kz_term:to_binary(Name));
 flush_cache_docs(DbName) ->
-    Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
-                     kz_cache:erase_local(?CACHE_NAME, K),
+    Filter = fun(?CACHE_KEY(DbName1, _DocId)=Key, _) when DbName1 =:= DbName ->
+                     kz_cache:erase_local(?CACHE_NAME, Key),
                      'true';
                 (_, _) -> 'false'
              end,
@@ -262,3 +335,19 @@ flush_cache_docs(Db, Docs, Options) ->
          || Doc <- Docs
         ],
     'ok'.
+
+-type cache_strategy() :: 'none' |
+                          'stampede' |
+                          'async' |
+                          'stampede_async'.
+-spec cache_strategy() -> cache_strategy().
+cache_strategy() ->
+    application:get_env('kazoo_data', 'cache_strategy', 'none').
+
+-spec set_cache_strategy(cache_strategy()) -> 'ok'.
+set_cache_strategy(Strategy)
+  when Strategy =:= 'none';
+       Strategy =:= 'stampede';
+       Strategy =:= 'async';
+       Strategy =:= 'stampede_async' ->
+    application:set_env('kazoo_data', 'cache_strategy', Strategy).
