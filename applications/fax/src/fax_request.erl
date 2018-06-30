@@ -496,7 +496,9 @@ store_attachment(#state{}=State) ->
 
 -spec store_attachment(pid(), state()) -> 'ok'.
 store_attachment(Pid, #state{call=Call
-                            ,storage=#fax_storage{attachment_id=AttachmentId}
+                            ,storage=#fax_storage{attachment_id=AttachmentId
+                                                 ,db=FaxDb
+                                                 }
                             ,fax_doc=FaxDoc
                             ,fax_id=FaxId
                             }=State) ->
@@ -506,7 +508,34 @@ store_attachment(Pid, #state{call=Call
         'ok' ->
             lager:debug("fax attachment stored successfully into ~s / ~s / ~s", [kz_doc:account_db(FaxDoc), FaxId, AttachmentId]),
             gen_server:cast(Pid, 'success');
-        {'error', _} -> gen_server:cast(Pid, 'store_attachment')
+        {'error', _} ->
+            case check_fax_attachment(FaxDb, FaxId, AttachmentId) of
+                {'ok', _} ->
+                    lager:debug("fax attachment stored successfully despite error into ~s / ~s / ~s", [kz_doc:account_db(FaxDoc), FaxId, AttachmentId]),
+                    gen_server:cast(Pid, 'success');
+                {'missing', _} ->
+                    lager:warning("missing fax attachment on fax id ~s",[FaxId]),
+                    timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
+                    gen_server:cast(Pid, 'store_attachment');
+                {'error', _R} ->
+                    lager:debug("error '~p' saving fax attachment on fax id ~s",[_R, FaxId]),
+                    timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
+                    gen_server:cast(Pid, 'store_attachment')
+            end
+    end.
+
+-spec check_fax_attachment(ne_binary(), ne_binary(), ne_binary())->
+                                  {'ok', kz_json:object()} |
+                                  {'missing', kz_json:object()} |
+                                  {'error', any()}.
+check_fax_attachment(Modb, DocId, Name) ->
+    case kz_datamgr:open_doc(Modb, DocId) of
+        {'ok', JObj} ->
+            case kz_doc:attachment(JObj, Name) of
+                'undefined' -> {'missing', JObj};
+                _Else -> {'ok', JObj}
+            end;
+        {'error', _}=E -> E
     end.
 
 -spec get_fs_filename(state()) -> ne_binary().
