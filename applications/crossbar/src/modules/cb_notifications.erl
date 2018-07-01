@@ -768,15 +768,29 @@ read_account(Context, Id, LoadFrom) ->
     of
         {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
             maybe_read_from_parent(Context, Id, LoadFrom, cb_context:reseller_id(Context));
-        {_Code, 'success'} ->
-            lager:debug("loaded ~s from account database ~s", [Id, cb_context:account_db(Context)]),
-            Context2 = maybe_merge_ancestor_attachments(Context1, Id),
-            NewRespData = note_account_override(cb_context:resp_data(Context2)),
-            cb_context:set_resp_data(Context2, NewRespData);
+        {_Code, 'success'} -> 
+            case system_config_notification_doc(Id) of
+                {'ok', _JObj} -> prepare_account_responce(Context1, Id, 'set_account_overridden');
+                {'error', 'not_found'} -> prepare_account_responce(Context1, Id, 'set_account_defined');
+                {'error', _E} ->
+                    lager:debug("error fetching ~s from system config: ~p", [Id, _E]),
+                    crossbar_util:response_db_fatal(Context1)
+            end;
         {_Code, _Status} ->
             lager:debug("failed to load ~s: ~p", [Id, _Code]),
             Context1
     end.
+
+-spec prepare_account_responce(cb_context:context(), kz_term:ne_binary(), atom()) -> cb_context:context().
+prepare_account_responce(Context, Id, 'set_account_overridden') ->
+    lager:debug("loaded system notification ~s from account database ~s", [Id, cb_context:account_db(Context)]),
+    Context1 = maybe_merge_ancestor_attachments(Context, Id),
+    NewRespData = note_account_override(cb_context:resp_data(Context1)),
+    cb_context:set_resp_data(Context1, NewRespData);
+prepare_account_responce(Context, Id, 'set_account_defined') ->
+    lager:debug("loaded account defined notification ~s from database ~s", [Id, cb_context:account_db(Context)]),
+    NewRespData = note_account_defined(cb_context:resp_data(Context)),
+    cb_context:set_resp_data(Context, NewRespData).
 
 -spec maybe_read_from_parent(cb_context:context(), kz_term:ne_binary(), load_from(), kz_term:api_binary()) -> cb_context:context().
 maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
@@ -989,6 +1003,10 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
 -spec note_account_override(kz_json:object()) -> kz_json:object().
 note_account_override(JObj) ->
     kz_json:set_value(<<"account_overridden">>, 'true', JObj).
+
+-spec note_account_defined(kz_json:object()) -> kz_json:object().
+note_account_defined(JObj) ->
+    kz_json:set_value(<<"account_defined">>, 'true', JObj).
 
 -spec read_success(cb_context:context()) -> cb_context:context().
 read_success(Context) ->
