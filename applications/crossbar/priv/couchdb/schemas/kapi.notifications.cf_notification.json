@@ -1,0 +1,106 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.cf_notification",
+    "description": "AMQP API for notifications.cf_notification",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Call-Bridged": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Comments": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "cf_notification"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Message-Left": {
+            "type": "integer"
+        },
+        "Notification-Media": {
+            "enum": [
+                "email",
+                "sms"
+            ],
+            "type": "string"
+        },
+        "Notify": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "boolean"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Template-ID": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "Timestamp": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Template-ID"
+    ],
+    "type": "object"
+}

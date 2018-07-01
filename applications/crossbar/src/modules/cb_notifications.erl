@@ -346,7 +346,7 @@ sender_account_id(_Context, AccountId) ->
 put(Context) ->
     case cb_context:req_value(Context, <<"action">>) of
         'undefined' ->
-            Context1 = crossbar_doc:save(Context),
+            Context1 = crossbar_doc:save(set_system_macros(Context)),
             case cb_context:resp_status(Context1) of
                 'success' -> leak_doc_id(Context1);
                 _Status -> Context1
@@ -391,8 +391,18 @@ set_system_macros(Context) ->
             JObj = cb_context:doc(Context),
             cb_context:set_doc(Context, kz_json:set_value(?MACROS, Macros, JObj));
         _Status ->
-            lager:warning("fail to update macros from system_config"),
-            Context
+            SysContext2 = read_system(Context, <<"notification.customer_update">>),
+            case cb_context:resp_status(SysContext2) of
+                'success' ->
+                    lager:debug("Template ~s is not exist in `system_config` database. Setting macros from 'customer_update' template", [Id]),
+                    SysDoc2 = cb_context:doc(SysContext2),
+                    Macros2 = kz_json:get_value(?MACROS, SysDoc2, kz_json:new()),
+                    JObj2 = cb_context:doc(Context),
+                    cb_context:set_doc(Context, kz_json:set_value(?MACROS, Macros2, JObj2));
+                _ ->
+                    lager:debug("fail to update macros from system_config"),
+                    Context
+            end
     end.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -765,14 +775,29 @@ read_account(Context, Id, LoadFrom) ->
         {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
             maybe_read_from_parent(Context, Id, LoadFrom, cb_context:reseller_id(Context));
         {_Code, 'success'} ->
-            lager:debug("loaded ~s from account database ~s", [Id, cb_context:account_db(Context)]),
-            Context2 = maybe_merge_ancestor_attachments(Context1, Id),
-            NewRespData = note_account_override(cb_context:resp_data(Context2)),
-            cb_context:set_resp_data(Context2, NewRespData);
+            case system_config_notification_doc(Id) of
+                {'ok', _JObj} -> prepare_account_responce(Context1, Id, 'set_account_overridden');
+                {'error', 'not_found'} -> prepare_account_responce(Context1, Id, 'set_account_defined');
+                {'error', _E} ->
+                    lager:debug("error fetching ~s from system config: ~p", [Id, _E]),
+                    crossbar_util:response_db_fatal(Context1)
+            end;
         {_Code, _Status} ->
             lager:debug("failed to load ~s: ~p", [Id, _Code]),
             Context1
     end.
+
+-spec prepare_account_responce(cb_context:context(), kz_term:ne_binary(), atom()) -> cb_context:context().
+prepare_account_responce(Context, Id, 'set_account_overridden') ->
+    lager:debug("loaded system notification ~s from account database ~s", [Id, cb_context:account_db(Context)]),
+    Context1 = maybe_merge_ancestor_attachments(Context, Id),
+    NewRespData = note_account_override(cb_context:resp_data(Context1)),
+    cb_context:set_resp_data(Context1, NewRespData);
+prepare_account_responce(Context, Id, 'set_account_defined') ->
+    lager:debug("loaded account defined notification ~s from database ~s", [Id, cb_context:account_db(Context)]),
+    Context1 = maybe_merge_ancestor_attachments(Context, Id),
+    NewRespData = note_account_defined(cb_context:resp_data(Context)),
+    cb_context:set_resp_data(Context1, NewRespData).
 
 -spec maybe_read_from_parent(cb_context:context(), kz_term:ne_binary(), load_from(), kz_term:api_binary()) -> cb_context:context().
 maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
@@ -880,7 +905,7 @@ merge_ancestor_attachments(Context, Id, AccountId, AccountId) ->
     lager:debug("trying attachments in ~s", [?KZ_CONFIG_DB]),
     case kz_doc:attachments(cb_context:doc(read_system(Context, Id))) of
         'undefined' ->
-            lager:error("the ~s ~s template is missing", [?KZ_CONFIG_DB, Id]),
+            lager:debug("the ~s ~s template is missing", [?KZ_CONFIG_DB, Id]),
             Context;
         Attachments ->
             lager:debug("found attachments in ~s", [?KZ_CONFIG_DB]),
@@ -985,6 +1010,10 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
 -spec note_account_override(kz_json:object()) -> kz_json:object().
 note_account_override(JObj) ->
     kz_json:set_value(<<"account_overridden">>, 'true', JObj).
+
+-spec note_account_defined(kz_json:object()) -> kz_json:object().
+note_account_defined(JObj) ->
+    kz_json:set_value(<<"account_defined">>, 'true', JObj).
 
 -spec read_success(cb_context:context()) -> cb_context:context().
 read_success(Context) ->
@@ -1246,9 +1275,9 @@ merge_fold(Overridden, Acc) ->
             JObj = kz_json:set_values(Values, Overridden),
             lager:debug("noting ~s is overridden in account", [Id]),
             [note_account_override(JObj) | Filtered];
-        {[], _Filtered} ->
-            lager:warning("notification ~s exists on the account, but doesn't exist on the system. Ignoring", [Id]),
-            Acc
+        {[], Filtered} ->
+            lager:debug("notification ~s exists on the account, but doesn't exist on the system", [Id]),
+            [note_account_defined(Overridden) | Filtered]
     end.
 
 -type normalize_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
@@ -1370,23 +1399,23 @@ handle_missing_system_config_notification(Context, DocId, ReqTemplate) ->
     case cb_context:account_id(Context) of
         'undefined' ->
             lager:debug("creating system config notification for ~s", [DocId]),
-            create_new_notification(Context, DocId, ReqTemplate);
-        _AccountId ->
-            lager:debug("doc ~s does not exist in the system config, not letting ~s create it"
-                       ,[DocId, _AccountId]
+            create_new_notification(Context, ?KZ_CONFIG_DB, ?KZ_CONFIG_DB ,DocId, ReqTemplate);
+        AccountId ->
+            lager:debug("doc ~s does not exist in the system config, creating account ~s defined notification"
+                       ,[DocId, AccountId]
                        ),
-            crossbar_util:response_bad_identifier(kz_notification:resp_id(DocId), Context)
+            AccountDb = cb_context:account_db(Context),
+            create_new_notification(Context, AccountDb, AccountId ,DocId, ReqTemplate)
     end.
 
--spec create_new_notification(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+-spec create_new_notification(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                                      cb_context:context().
-create_new_notification(Context, DocId, ReqTemplate) ->
-    lager:debug("this will create a new template in the system config"),
+create_new_notification(Context, AccountDb, AccountId,  DocId, ReqTemplate) ->
     Doc = kz_notification:set_base_properties(ReqTemplate, DocId),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, Doc}
-                       ,{fun cb_context:set_account_db/2, ?KZ_CONFIG_DB}
-                       ,{fun cb_context:set_account_id/2, ?KZ_CONFIG_DB}
+                       ,{fun cb_context:set_account_db/2, AccountDb}
+                       ,{fun cb_context:set_account_id/2, AccountId}
                        ]).
 
 -spec clean_req_doc(kz_json:object()) -> kz_json:object().

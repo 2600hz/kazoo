@@ -2598,6 +2598,72 @@
             ],
             "type": "object"
         },
+        "callflows.notification": {
+            "description": "Validator for the 'notification' callflow's data object",
+            "properties": {
+                "comments": {
+                    "description": "Text message that need to include into notification",
+                    "type": "string"
+                },
+                "notification_media": {
+                    "description": "What is media need to use for notification",
+                    "items": {
+                        "enum": [
+                            "email",
+                            "sms"
+                        ],
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "recipients": {
+                    "default": [],
+                    "description": "One or more specific email addresses, Kazoo user ids or a combination of both",
+                    "items": {
+                        "properties": {
+                            "id": {
+                                "description": "The email address/user ID or the list of email addresses/user IDs based on sepecified type",
+                                "type": [
+                                    "string",
+                                    "array"
+                                ]
+                            },
+                            "type": {
+                                "description": "Controls if the ID of this object is a Kazoo user ID or an email address",
+                                "enum": [
+                                    "user",
+                                    "email"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "type"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "send_at": {
+                    "default": "channel_destroy",
+                    "description": "Defines when send customer defined notification. For `callflow_exec` value notifications is send during calllfow execution. For `channel_destroy` value notification is send after channel(bridge) is destroed",
+                    "enum": [
+                        "callflow_exec",
+                        "channel_destroy"
+                    ],
+                    "type": "string"
+                },
+                "template_id": {
+                    "description": "Template ID of account defined notification",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "recipients"
+            ],
+            "type": "object"
+        },
         "callflows.offnet": {
             "description": "Validator for the offnet callflow data object",
             "properties": {
@@ -16188,6 +16254,110 @@
             "required": [
                 "Account-ID",
                 "Zones"
+            ],
+            "type": "object"
+        },
+        "kapi.notifications.cf_notification": {
+            "description": "AMQP API for notifications.cf_notification",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Call-Bridged": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Comments": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "cf_notification"
+                    ],
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "From-Realm": {
+                    "type": "string"
+                },
+                "From-User": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Message-Left": {
+                    "type": "integer"
+                },
+                "Notification-Media": {
+                    "enum": [
+                        "email",
+                        "sms"
+                    ],
+                    "type": "string"
+                },
+                "Notify": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "boolean"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Template-ID": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "To-Realm": {
+                    "type": "string"
+                },
+                "To-User": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Template-ID"
             ],
             "type": "object"
         },
