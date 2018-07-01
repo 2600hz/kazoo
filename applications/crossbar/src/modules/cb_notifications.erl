@@ -1256,9 +1256,9 @@ merge_fold(Overridden, Acc) ->
             JObj = kz_json:set_values(Values, Overridden),
             lager:debug("noting ~s is overridden in account", [Id]),
             [note_account_override(JObj) | Filtered];
-        {[], _Filtered} ->
-            lager:warning("notification ~s exists on the account, but doesn't exist on the system. Ignoring", [Id]),
-            Acc
+        {[], Filtered} ->
+            lager:debug("notification ~s exists on the account, but doesn't exist on the system", [Id]),
+            [note_account_defined(Overridden) | Filtered]
     end.
 
 -type normalize_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
