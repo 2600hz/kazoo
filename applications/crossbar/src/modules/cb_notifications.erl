@@ -1373,23 +1373,23 @@ handle_missing_system_config_notification(Context, DocId, ReqTemplate) ->
     case cb_context:account_id(Context) of
         'undefined' ->
             lager:debug("creating system config notification for ~s", [DocId]),
-            create_new_notification(Context, DocId, ReqTemplate);
-        _AccountId ->
-            lager:debug("doc ~s does not exist in the system config, not letting ~s create it"
-                       ,[DocId, _AccountId]
+            create_new_notification(Context, ?KZ_CONFIG_DB, ?KZ_CONFIG_DB ,DocId, ReqTemplate);
+        AccountId ->
+            lager:debug("doc ~s does not exist in the system config, creating account ~s defined notification"
+                       ,[DocId, AccountId]
                        ),
-            crossbar_util:response_bad_identifier(kz_notification:resp_id(DocId), Context)
+            AccountDb = cb_context:account_db(Context),
+            create_new_notification(Context, AccountDb, AccountId ,DocId, ReqTemplate)
     end.
 
--spec create_new_notification(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+-spec create_new_notification(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                                      cb_context:context().
-create_new_notification(Context, DocId, ReqTemplate) ->
-    lager:debug("this will create a new template in the system config"),
+create_new_notification(Context, AccountDb, AccountId,  DocId, ReqTemplate) ->
     Doc = kz_notification:set_base_properties(ReqTemplate, DocId),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, Doc}
-                       ,{fun cb_context:set_account_db/2, ?KZ_CONFIG_DB}
-                       ,{fun cb_context:set_account_id/2, ?KZ_CONFIG_DB}
+                       ,{fun cb_context:set_account_db/2, AccountDb}
+                       ,{fun cb_context:set_account_id/2, AccountId}
                        ]).
 
 -spec clean_req_doc(kz_json:object()) -> kz_json:object().
