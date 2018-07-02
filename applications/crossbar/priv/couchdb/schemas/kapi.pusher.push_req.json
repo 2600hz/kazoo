@@ -6,6 +6,9 @@
         "Account-ID": {
             "type": "string"
         },
+        "Alert": {
+            "type": "string"
+        },
         "Alert-Body": {
             "type": "string"
         },
@@ -37,6 +40,9 @@
             "type": "string"
         },
         "Expires": {
+            "type": "string"
+        },
+        "Payload": {
             "type": "string"
         },
         "Queue": {
