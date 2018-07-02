@@ -939,7 +939,7 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
     of
         'true' -> {'error', 'call_forward_substitute'};
         'false' ->
-            EndpointType = get_endpoint_type(Endpoint),
+            EndpointType = get_endpoint_type(Endpoint, Call),
             maybe_create_endpoint(EndpointType, Endpoint, Properties, Call)
     end.
 
@@ -959,6 +959,9 @@ is_call_forward_enabled(Endpoint, Properties) ->
 maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
     lager:info("building a SIP endpoint"),
     create_sip_endpoint(Endpoint, Properties, Call);
+maybe_create_endpoint(<<"push">>, Endpoint, Properties, Call) ->
+    lager:info("building a push endpoint"),
+    create_push_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(<<"mobile">>, Endpoint, Properties, Call) ->
     lager:info("building a mobile endpoint"),
     maybe_create_mobile_endpoint(Endpoint, Properties, Call);
@@ -980,17 +983,33 @@ maybe_create_mobile_endpoint(Endpoint, Properties, Call) ->
             create_mobile_endpoint(Endpoint, Properties, Call)
     end.
 
--spec get_endpoint_type(kz_json:object()) -> kz_term:ne_binary().
-get_endpoint_type(Endpoint) ->
-    Type = kz_json:get_first_defined([<<"endpoint_type">>
-                                     ,<<"device_type">>
-                                     ]
-                                    ,Endpoint
-                                    ),
+-spec get_endpoint_type(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
+get_endpoint_type(Endpoint, Call) ->
+    Routines = [fun maybe_endpoint_type_is_push/2
+               ,fun get_endpoint_type_property/2
+               ],
+    Type = lists:foldl(fun(Fun, 'undefined') -> Fun(Endpoint, Call);
+                          (_Fun, T) -> T
+                       end, 'undefined', Routines),
     case convert_endpoint_type(Type) of
         'undefined' -> maybe_guess_endpoint_type(Endpoint);
         Else -> Else
     end.
+
+-spec maybe_endpoint_type_is_push(kz_json:object(), kapps_call:call()) -> kz_term:api_ne_binary().
+maybe_endpoint_type_is_push(Endpoint, Call) ->
+    case kz_json:is_empty(push_properties(Endpoint, Call)) of
+        'true' -> 'undefined';
+        'false' -> <<"push">>
+    end.
+
+-spec get_endpoint_type_property(kz_json:object(), kapps_call:call()) -> kz_term:api_ne_binary().
+get_endpoint_type_property(Endpoint, _Call) ->
+    kz_json:get_first_defined([<<"endpoint_type">>
+                              ,<<"device_type">>
+                              ]
+                             ,Endpoint
+                             ).
 
 -spec convert_endpoint_type(kz_term:ne_binary()) -> kz_term:api_binary().
 convert_endpoint_type(<<"sip_", _/binary>>) -> <<"sip">>;
@@ -1001,6 +1020,7 @@ convert_endpoint_type(<<"landline">>) -> <<"sip">>;
 convert_endpoint_type(<<"fax">>) -> <<"sip">>;
 convert_endpoint_type(<<"skype">>) -> <<"skype">>;
 convert_endpoint_type(<<"mobile">>) -> <<"mobile">>;
+convert_endpoint_type(<<"push">>) -> <<"push">>;
 convert_endpoint_type(_Else) -> 'undefined'.
 
 -spec maybe_guess_endpoint_type(kz_json:object()) -> kz_term:ne_binary().
@@ -1090,8 +1110,6 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = kz_json:get_json_value(<<"sip">>, Endpoint),
-    PushJObj = push_properties(Endpoint),
-    PushHeaders = push_headers(PushJObj),
     SIPEndpoint = kz_json:from_list(
                     props:filter_empty(
                       [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
@@ -1124,11 +1142,11 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Codecs">>, get_codecs(Endpoint)}
                       ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
                       ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"sip">>, PushHeaders, Call)}
+                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"sip">>, Call)}
                       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
                       ,{<<"Flags">>, get_outbound_flags(Endpoint)}
                       ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
-                      ,{<<"Failover">>, maybe_build_failover(Endpoint, Clid, Call)}
+                      ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
                       ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
                       ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
                        | maybe_get_t38(Endpoint, Call)
@@ -1151,34 +1169,25 @@ maybe_get_t38(Endpoint, Call) ->
                                                        )
     end.
 
--spec maybe_build_failover(kz_json:object(), clid(), kapps_call:call()) -> kz_term:api_object().
-maybe_build_failover(Endpoint, Clid, Call) ->
+-spec maybe_build_failover(kz_json:object(), kapps_call:call()) -> kz_term:api_object().
+maybe_build_failover(Endpoint, Call) ->
     CallForward = kz_json:get_value(<<"call_forward">>, Endpoint),
     Number = kz_json:get_value(<<"number">>, CallForward),
     case kz_json:is_true(<<"failover">>, CallForward)
         andalso not kz_term:is_empty(Number)
     of
-        'false' -> maybe_build_push_failover(Endpoint, Clid, Call);
+        'false' -> 'undefined';
         'true' -> create_call_fwd_endpoint(Endpoint, kz_json:new(), Call)
     end.
 
--spec maybe_build_push_failover(kz_json:object(), clid(), kapps_call:call()) -> kz_term:api_object().
-maybe_build_push_failover(Endpoint, Clid, Call) ->
-    PushJObj = push_properties(Endpoint),
-    case kz_json:is_empty(PushJObj) of
-        'true' -> 'undefined';
-        'false' -> build_push_failover(Endpoint, Clid, PushJObj, Call)
-    end.
-
--spec build_push_failover(kz_json:object(), clid(), kz_json:object(), kapps_call:call()) -> kz_term:api_object().
-build_push_failover(Endpoint, Clid, PushJObj, Call) ->
-    lager:debug("building push failover"),
+-spec create_push_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_term:api_object().
+create_push_endpoint(Endpoint, Properties, Call) ->
+    Clid = get_clid(Endpoint, Properties, Call),
     SIPJObj = kz_json:get_value(<<"sip">>, Endpoint),
     ToUsername = get_to_username(SIPJObj),
     ToRealm = get_sip_realm(Endpoint, kapps_call:account_id(Call)),
     ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
-    Proxy = kz_json:get_value(<<"Token-Proxy">>, PushJObj),
-    PushHeaders = push_headers(PushJObj),
+    Proxy = kz_json:get_value(<<"Token-Proxy">>, push_properties(Endpoint, Call)),
     kz_json:from_list(
       props:filter_empty(
         [{<<"Invite-Format">>, <<"route">>}
@@ -1198,25 +1207,30 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
         ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
         ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
         ,{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
+        ,{<<"Endpoint-Delay">>, 5}
         ,{<<"Codecs">>, get_codecs(Endpoint)}
         ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
         ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-        ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"failover">>, PushHeaders, Call)}
+        ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"push">>, Call)}
         ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
         ,{<<"Flags">>, get_outbound_flags(Endpoint)}
         ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
         ,{<<"Metaflows">>, kz_json:get_value(<<"metaflows">>, Endpoint)}
+        ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
         ])).
 
--spec push_properties(kz_json:object()) -> kz_json:object().
-push_properties(Endpoint) ->
+-spec push_properties(kz_json:object(), kapps_call:call()) -> kz_json:object().
+push_properties(Endpoint, Call) ->
     PushJObj = kz_json:get_json_value(<<"push">>, Endpoint, kz_json:new()),
     case kz_json:get_ne_binary_value(<<"Token-Type">>, PushJObj) of
         'undefined' -> PushJObj;
         TokenType ->
             TokenApp = kz_json:get_ne_binary_value(<<"Token-App">>, PushJObj),
+            Headers = [{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
+                      ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+                      ],
             ExtraHeaders = kapps_config:get_json(<<"pusher">>, [TokenType, <<"extra_headers">>], kz_json:new(), TokenApp),
-            kz_json:merge(PushJObj, ExtraHeaders)
+            kz_json:merge(PushJObj, kz_json:set_values(Headers, ExtraHeaders))
     end.
 
 -spec push_headers(kz_json:object()) -> kz_json:object().
@@ -1419,8 +1433,15 @@ generate_sip_headers(Endpoint, Type, Acc, Call) ->
                  ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_invite_format(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
+                 ,fun(J) -> maybe_add_push_headers(J, Endpoint, Type, Call) end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
+
+-spec maybe_add_push_headers(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
+maybe_add_push_headers(JObj, Endpoint, <<"push">>, Call) ->
+    PushObj = kz_json:delete_key(<<"Invite-Format">>, push_properties(Endpoint, Call)),
+    kz_json:merge(JObj, push_headers(PushObj));
+maybe_add_push_headers(JObj, _Endpoint, _Type, _Call) -> JObj.
 
 -spec maybe_add_diversion(kz_json:object(), kz_json:object(), kz_term:api_binary(), kapps_call:call()) -> kz_json:object().
 maybe_add_diversion(JObj, Endpoint, _Inception, Call) ->
@@ -1564,7 +1585,7 @@ maybe_set_endpoint_id({Endpoint, Call, CallFwd, CCVs}) ->
     ,case kz_doc:id(Endpoint) of
          'undefined' -> CCVs;
          EndpointId ->
-             AuthType = case get_endpoint_type(Endpoint) of
+             AuthType = case get_endpoint_type(Endpoint, Call) of
                             <<"mobile">> -> <<"mobile">>;
                             _ -> kz_doc:type(Endpoint)
                         end,
