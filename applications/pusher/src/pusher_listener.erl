@@ -62,42 +62,29 @@ handle_push(JObj, _Props) ->
     Token = kz_json:get_value(<<"Token-ID">>, JObj),
     TokenType = kz_json:get_value(<<"Token-Type">>, JObj),
     Module = kz_term:to_atom(<<"pm_",TokenType/binary>> , 'true'),
-
     lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
-
-    kz_cache:store_local(?CACHE_NAME
-                        ,Token
-                        ,JObj
-                        ,[{'expires', 20}]
-                        ),
     gen_server:cast(Module, {'push', JObj}).
 
 -spec handle_reg_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_reg_success(JObj, _Props) ->
     UserAgent = kz_json:get_value(<<"User-Agent">>, JObj),
     UserAgentProperties = pusher_util:user_agent_push_properties(UserAgent),
-
     maybe_process_reg_success(UserAgentProperties, JObj).
 
 -spec maybe_process_reg_success(kz_term:api_object(), kz_json:object()) -> 'ok'.
 maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->
     Contact = kz_json:get_value(<<"Contact">>, JObj),
-
     [#uri{opts=A, ext_opts=B}] = kzsip_uri:uris(Contact),
     Params = A ++ B,
-
     TokenKey = kz_json:get_value(?TOKEN_KEY, UA),
     Token = props:get_value(TokenKey, Params),
     maybe_process_reg_success(Token, kz_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA) , JObj, Params).
 
 -spec maybe_process_reg_success(kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_process_reg_success('undefined', _UA, _JObj, _Params) -> 'ok';
-maybe_process_reg_success(Token, UA, JObj, Params) ->
-    case kz_cache:fetch_local(?CACHE_NAME, Token) of
-        {'error', 'not_found'} -> maybe_update_push_token(UA, JObj, Params);
-        {'ok', TokenJObj} -> send_reply(Token, TokenJObj)
-    end.
+maybe_process_reg_success(_Token, UA, JObj, Params) ->
+    maybe_update_push_token(UA, JObj, Params).
 
 -spec maybe_update_push_token(kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_update_push_token(UA, JObj, Params) ->
@@ -107,7 +94,6 @@ maybe_update_push_token(UA, JObj, Params) ->
     AuthorizingId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
                                               ,<<"Authorizing-ID">>
                                               ], JObj),
-
     maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params).
 
 -spec maybe_update_push_token(kz_term:api_binary(), kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
@@ -145,17 +131,6 @@ build_push_fold(K, V, Acc, JObj, Params) ->
             end;
         V2 -> kz_json:set_value(K, V2, Acc)
     end.
-
--spec send_reply(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-send_reply(Token, JObj) ->
-    kz_cache:erase_local(?CACHE_NAME, Token),
-    Queue = kz_json:get_value(<<"Server-ID">>, JObj),
-    Payload = [{<<"Token-ID">>, Token}
-              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("sending pusher reply to ~s: ~p", [Queue, Payload]),
-    kz_amqp_worker:cast(Payload, fun(P) -> kapi_pusher:publish_targeted_push_resp(Queue, P) end).
 
 %%------------------------------------------------------------------------------
 %% @doc Starts the server.
