@@ -280,6 +280,7 @@ pages:
     - 'applications/ecallmgr/doc/config.md'
   - 'Fax':
     - 'applications/fax/doc/README.md'
+    - 'Virtual Fax Machine (FaxBox)': 'applications/fax/doc/faxbox.md'
     - 'Postfix Settings': 'applications/fax/doc/postfix.md'
     - 'SMTP Settings': 'applications/fax/doc/smtp.md'
     - 'HAProxy Settings': 'applications/fax/doc/haproxy.md'
