@@ -68,9 +68,9 @@ fax_test_() ->
 setup() ->
     LinkPid = kzd_test_fixtures:setup(),
     {'ok', SupPid} = kz_openoffice_server_sup:start_link(),
-    lager:set_loglevel(lager_console_backend, none),
-    lager:set_loglevel(lager_file_backend, none),
-    lager:set_loglevel(lager_syslog_backend, none),
+    lager:set_loglevel('lager_console_backend', 'none'),
+    lager:set_loglevel('lager_file_backend', 'none'),
+    lager:set_loglevel('lager_syslog_backend', 'none'),
     {LinkPid, SupPid}.
 
 cleanup({LinkPid, SupPid}) ->
@@ -590,7 +590,7 @@ test_tiff_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 15906}
+                    ,{<<"size">>, _}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -611,7 +611,7 @@ test_tiff_to_tiff_small_file_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 173891}
+                    ,{<<"size">>, _}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -632,7 +632,7 @@ test_tiff_to_tiff_legal_file_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 2}
-                    ,{<<"size">>, 50681}
+                    ,{<<"size">>, _}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -654,7 +654,7 @@ test_pdf_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 11775}
+                    ,{<<"size">>, _}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -675,7 +675,7 @@ test_openoffice_to_tiff_read_metadata() ->
     Expected = <<"/tmp/", JobId/binary, ".tiff">>,
     [?_assertMatch({'ok', Expected
                    ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, 13075}
+                    ,{<<"size">>, _}
                     ,{<<"mimetype">>, <<"image/tiff">>}
                     ,{<<"filetype">>, <<"tiff">>}
                     ]
@@ -693,7 +693,7 @@ test_openoffice_to_tiff_read_metadata() ->
 test_read_metadata() ->
     Src = copy_fixture_to_tmp("valid.tiff"),
     [?_assertMatch([{<<"page_count">>, 1}
-                   ,{<<"size">>, 15906}
+                   ,{<<"size">>, _}
                    ,{<<"mimetype">>, <<"image/tiff">>}
                    ,{<<"filetype">>, <<"tiff">>}
                    ]
