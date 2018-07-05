@@ -34,7 +34,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
           ,{<<"Timestamp">>, kz_time:now_s()}
            | Options ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapps_util:amqp_pool_send(API, fun kapi_acdc_stats:publish_status_update/1).
+    kz_amqp_worker:cast(API, fun kapi_acdc_stats:publish_status_update/1).
 
 -spec most_recent_status(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                 {'ok', kz_term:ne_binary()} |
@@ -55,7 +55,7 @@ most_recent_ets_status(AccountId, AgentId) ->
           ,{<<"Agent-ID">>, AgentId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_request(API
+    case kz_amqp_worker:call(API
                                      ,fun kapi_acdc_stats:publish_status_req/1
                                      ,fun kapi_acdc_stats:status_resp_v/1
                                      )
@@ -247,7 +247,7 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
             ,{<<"Agent-ID">>, AgentId}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
             ]),
-    case kapps_util:amqp_pool_request(API
+    case kz_amqp_worker:call(API
                                      ,fun kapi_acdc_stats:publish_status_req/1
                                      ,fun kapi_acdc_stats:status_resp_v/1
                                      )

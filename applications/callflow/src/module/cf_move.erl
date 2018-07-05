@@ -46,7 +46,7 @@ get_channels(OwnerId, Call) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Pub = fun kapi_call:publish_query_user_channels_req/1,
-    case kapps_util:amqp_pool_collect(Req, Pub, {'ecallmgr', 'true'}) of
+    case kz_amqp_worker:call_collect(Req, Pub, {'ecallmgr', 'true'}) of
         {'error', _E} ->
             lager:error("could not reach ecallmgr channels: ~p", [_E]),
             dict:new();

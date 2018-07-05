@@ -164,7 +164,7 @@ lookup_regs(Context) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    ReqResp = kapps_util:amqp_pool_collect(Req
+    ReqResp = kz_amqp_worker:call_collect(Req
                                           ,fun kapi_registration:publish_query_req/1
                                           ,{'ecallmgr', 'true'}
                                           ),
@@ -224,7 +224,7 @@ count_registrations(Context) ->
           ,{<<"Count-Only">>, 'true'}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = kapps_util:amqp_pool_request(Req
+    ReqResp = kz_amqp_worker:call(Req
                                           ,fun kapi_registration:publish_query_req/1
                                           ,fun kapi_registration:query_resp_v/1
                                           ),

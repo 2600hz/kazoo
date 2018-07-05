@@ -40,7 +40,7 @@ search(Conference) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
            | kz_api:default_headers(AppName, AppVersion)
           ],
-    ReqResp = kapps_util:amqp_pool_collect(Req
+    ReqResp = kz_amqp_worker:call_collect(Req
                                           ,fun kapi_conference:publish_search_req/1
                                           ,{'ecallmgr', fun kapi_conference:search_resp_v/1, 'true'}
                                           ),

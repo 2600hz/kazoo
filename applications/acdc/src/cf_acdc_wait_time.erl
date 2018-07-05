@@ -38,7 +38,7 @@ handle(Data, Call) ->
             ,{<<"Window">>, Window}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    case kapps_util:amqp_pool_request(Req
+    case kz_amqp_worker:call(Req
                                      ,fun kapi_acdc_stats:publish_average_wait_time_req/1
                                      ,fun kapi_acdc_stats:average_wait_time_resp_v/1
                                      )

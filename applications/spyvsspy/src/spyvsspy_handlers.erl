@@ -86,7 +86,7 @@ send_eavesdrop(JObj, EPs, AccountId) ->
 
     lager:debug("sending eavesdrop request for ~s:~s", [CallerIdName, CallerIdNumber]),
 
-    case kapps_util:amqp_pool_collect(Prop
+    case kz_amqp_worker:call_collect(Prop
                                      ,fun kapi_resource:publish_originate_req/1
                                      ,fun until_callback/1
                                      ,5 * ?MILLISECONDS_IN_SECOND

@@ -45,13 +45,6 @@
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
 
--export([amqp_pool_send/2]).
--export([amqp_pool_request/3, amqp_pool_request/4
-        ,amqp_pool_request_custom/4, amqp_pool_request_custom/5
-        ,amqp_pool_collect/2, amqp_pool_collect/3
-        ,amqp_pool_collect/4
-        ]).
-
 -export([write_tts_file/2]).
 -export([to_magic_hash/1
         ,from_magic_hash/1
@@ -578,68 +571,6 @@ rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
     end;
 rm_aggregate_device(Db, Device) ->
     rm_aggregate_device(Db, kz_doc:id(Device)).
-
--spec amqp_pool_send(kz_term:api_terms(), kz_amqp_worker:publish_fun()) ->
-                            'ok' | {'error', any()}.
-amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
-    kz_amqp_worker:cast(Api, PubFun).
-
--spec amqp_pool_request(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun()) ->
-                               kz_amqp_worker:request_return().
-amqp_pool_request(Api, PubFun, ValidateFun)
-  when is_function(PubFun, 1),
-       is_function(ValidateFun, 1) ->
-    amqp_pool_request(Api, PubFun, ValidateFun, kz_amqp_worker:default_timeout()).
-
--spec amqp_pool_request(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), timeout()) ->
-                               kz_amqp_worker:request_return().
-amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
-  when is_function(PubFun, 1),
-       is_function(ValidateFun, 1),
-       ((is_integer(Timeout)
-         andalso Timeout >= 0
-        )
-        orelse Timeout =:= 'infinity') ->
-    kz_amqp_worker:call(Api, PubFun, ValidateFun, Timeout).
-
--spec amqp_pool_request_custom(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), gen_listener:binding()) ->
-                                      kz_amqp_worker:request_return().
-amqp_pool_request_custom(Api, PubFun, ValidateFun, Bind)
-  when is_function(PubFun, 1),
-       is_function(ValidateFun, 1) ->
-    amqp_pool_request_custom(Api, PubFun, ValidateFun, kz_amqp_worker:default_timeout(), Bind).
-
--spec amqp_pool_request_custom(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), timeout(), gen_listener:binding()) ->
-                                      kz_amqp_worker:request_return().
-amqp_pool_request_custom(Api, PubFun, ValidateFun, Timeout, Bind)
-  when is_function(PubFun, 1),
-       is_function(ValidateFun, 1),
-       ((is_integer(Timeout)
-         andalso Timeout >= 0
-        )
-        orelse Timeout =:= 'infinity') ->
-    kz_amqp_worker:call_custom(Api, PubFun, ValidateFun, Timeout, Bind).
-
--spec amqp_pool_collect(kz_term:api_terms(), kz_amqp_worker:publish_fun()) ->
-                               {'ok', kz_json:objects()} |
-                               {'timeout', kz_json:objects()} |
-                               {'error', any()}.
-amqp_pool_collect(Api, PubFun) ->
-    amqp_pool_collect(Api, PubFun, kz_amqp_worker:default_timeout()).
-
--spec amqp_pool_collect(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:timeout_or_until()) ->
-                               {'ok', kz_json:objects()} |
-                               {'timeout', kz_json:objects()} |
-                               {'error', any()}.
-amqp_pool_collect(Api, PubFun, TimeoutOrUntil) ->
-    kz_amqp_worker:call_collect(Api, PubFun, TimeoutOrUntil).
-
--spec amqp_pool_collect(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:collect_until(), timeout()) ->
-                               {'ok', kz_json:objects()} |
-                               {'timeout', kz_json:objects()} |
-                               {'error', any()}.
-amqp_pool_collect(Api, PubFun, Until, Timeout) ->
-    kz_amqp_worker:call_collect(Api, PubFun, Until, Timeout).
 
 %%------------------------------------------------------------------------------
 %% @doc Extracts the User and Realm from either the Request or To field, configured

@@ -149,7 +149,7 @@ send_originate_req([], _Call) ->
     lager:debug("no origination proprs, skipping"),
     {'error', 'no_endpoints'};
 send_originate_req(OriginateProps, _Call) ->
-    kapps_util:amqp_pool_collect(OriginateProps
+    kz_amqp_worker:call_collect(OriginateProps
                                 ,fun kapi_resource:publish_originate_req/1
                                 ,fun is_resp/1
                                 ,20 * ?MILLISECONDS_IN_SECOND
@@ -170,7 +170,7 @@ is_originate_uuid(JObj, CallId) ->
 
 -spec find_device_id_for_leg(kz_term:ne_binary()) -> kz_term:api_binary().
 find_device_id_for_leg(CallId) ->
-    case kapps_util:amqp_pool_request([{<<"Fields">>, [<<"Authorizing-ID">>]}
+    case kz_amqp_worker:call([{<<"Fields">>, [<<"Authorizing-ID">>]}
                                       ,{<<"Call-ID">>, CallId}
                                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                       ]

@@ -905,7 +905,7 @@ call_id_status(CallId, Verbose) ->
     Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
            | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
-    case kapps_util:amqp_pool_request(Req
+    case kz_amqp_worker:call(Req
                                      ,fun kapi_call:publish_channel_status_req/1
                                      ,fun kapi_call:channel_status_resp_v/1
                                      )

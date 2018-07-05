@@ -308,7 +308,7 @@ flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
+    kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registrations(Context) ->
     flush_registrations(kzd_accounts:fetch_realm(cb_context:account_id(Context))).
 
@@ -321,8 +321,8 @@ flush_registration(Username, <<_/binary>> = Realm) ->
                ,{<<"Username">>, Username}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_switch:publish_notify/1),
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
+    kz_amqp_worker:cast(FlushCmd, fun kapi_switch:publish_notify/1),
+    kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
     Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     flush_registration(Username, Realm).

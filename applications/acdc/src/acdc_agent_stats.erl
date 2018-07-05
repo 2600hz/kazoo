@@ -53,7 +53,7 @@ agent_ready(AccountId, AgentId) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_ready/1
                              ).
 
@@ -67,7 +67,7 @@ agent_logged_in(AccountId, AgentId) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_logged_in/1
                              ).
 
@@ -81,7 +81,7 @@ agent_logged_out(AccountId, AgentId) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_logged_out/1
                              ).
 
@@ -96,7 +96,7 @@ agent_pending_logged_out(AccountId, AgentId) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_pending_logged_out/1
                              ).
 
@@ -119,7 +119,7 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, Queue
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_connecting/1
                              ).
 
@@ -142,7 +142,7 @@ agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueI
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_connected/1
                              ).
 
@@ -157,7 +157,7 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_wrapup/1
                              ).
 
@@ -174,7 +174,7 @@ agent_paused(AccountId, AgentId, PauseTime) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_paused/1
                              ).
 
@@ -189,7 +189,7 @@ agent_outbound(AccountId, AgentId, CallId) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
-    kapps_util:amqp_pool_send(Prop
+    kz_amqp_worker:cast(Prop
                              ,fun kapi_acdc_stats:publish_status_outbound/1
                              ).
 

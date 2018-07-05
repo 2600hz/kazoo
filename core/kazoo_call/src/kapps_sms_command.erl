@@ -84,7 +84,7 @@ send(<<"single">>, API, [Endpoint | Others]) ->
                 ,{<<"To-DID">>, kz_json:get_value(<<"To-DID">>, Endpoint)}
                  | kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
                 ], API),
-    case kapps_util:amqp_pool_send(Payload, fun kapi_sms:publish_message/1) of
+    case kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1) of
         'ok' -> 'ok';
         {'error', _R}=Err when Others =:= [] ->
             lager:info("received error while sending msg ~s: ~-800p", [CallId, _R]),
@@ -123,7 +123,7 @@ send(<<"sip">>, API, Endpoint, Timeout) ->
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
     CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
-    kapps_util:amqp_pool_send(Payload, fun kapi_sms:publish_message/1),
+    kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
 send(<<"amqp">>, API, Endpoint, _Timeout) ->
     CallId = props:get_value(<<"Call-ID">>, API),
@@ -264,7 +264,7 @@ lookup_reg(Username, Realm) ->
           ,{<<"Fields">>, [<<"Registrar-Node">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
+    case kz_amqp_worker:call_collect(Req
                                      ,fun kapi_registration:publish_query_req/1
                                      ,{'ecallmgr', 'true'}
                                      )

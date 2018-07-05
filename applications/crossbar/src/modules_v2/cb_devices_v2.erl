@@ -686,7 +686,7 @@ lookup_regs(AccountRealm) ->
           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
+    case kz_amqp_worker:call_collect(Req
                                      ,fun kapi_registration:publish_query_req/1
                                      ,{'ecallmgr', 'true'}
                                      )
@@ -770,7 +770,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
             {'ok', _} = kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(cb_context:doc(Context))),
-            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
@@ -791,7 +791,7 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false';
         {'ok', JObj} ->
             _ = kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
-            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.

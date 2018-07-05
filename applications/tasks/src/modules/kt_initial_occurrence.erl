@@ -65,7 +65,7 @@ test_for_registrations(AccountId, Realm) ->
           ,{<<"Fields">>, [<<"Account-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Reg
+    case kz_amqp_worker:call_collect(Reg
                                      ,fun kapi_registration:publish_query_req/1
                                      ,{'ecallmgr', fun kapi_registration:query_resp_v/1}
                                      )

@@ -24,7 +24,7 @@ handle(Data, Call1) ->
                'true' -> doodle_util:set_caller_id(kapps_call:from_user(Call1), Call1);
                'false' -> doodle_util:set_caller_id(Data, Call1)
            end,
-    case kapps_util:amqp_pool_request(build_offnet_request(Data, Call)
+    case kz_amqp_worker:call(build_offnet_request(Data, Call)
                                      ,fun kapi_offnet_resource:publish_req/1
                                      ,fun kapi_offnet_resource:resp_v/1
                                      ,30 * ?MILLISECONDS_IN_SECOND
