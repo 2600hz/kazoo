@@ -473,11 +473,11 @@ query_registrar(Realm, Username) ->
           ,{<<"Method">>, <<"REGISTER">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapps_util:amqp_pool_request(props:filter_undefined(Req)
-                                ,fun kapi_authn:publish_req/1
-                                ,fun kapi_authn:resp_v/1
-                                ,?AUTHN_TIMEOUT
-                                ).
+    kz_amqp_worker:call(props:filter_undefined(Req)
+                       ,fun kapi_authn:publish_req/1
+                       ,fun kapi_authn:resp_v/1
+                       ,?AUTHN_TIMEOUT
+                       ).
 
 -spec template_file(atom()) -> string().
 template_file(Module) ->

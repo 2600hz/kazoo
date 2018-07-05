@@ -303,10 +303,10 @@ get_channels(Context) ->
           ,{<<"Usernames">>, Usernames}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
-                                     ,fun kapi_call:publish_query_user_channels_req/1
-                                     ,{'ecallmgr', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_call:publish_query_user_channels_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),

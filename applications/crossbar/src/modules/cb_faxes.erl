@@ -439,10 +439,10 @@ get_execution_status(Id, JObj) ->
 -spec get_fax_running_status(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_fax_running_status(Id, Q) ->
     Api = [{<<"Job-ID">>, Id} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    case kapps_util:amqp_pool_request(Api
-                                     ,fun(A) -> kapi_fax:publish_query_status(Q, A) end
-                                     ,fun kapi_fax:status_v/1
-                                     )
+    case kz_amqp_worker:call(Api
+                            ,fun(A) -> kapi_fax:publish_query_status(Q, A) end
+                            ,fun kapi_fax:status_v/1
+                            )
     of
         {'ok', JObj } -> kz_json:get_value(<<"Status">>, JObj);
         _ -> <<"not available">>

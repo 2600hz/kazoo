@@ -866,7 +866,7 @@ request_conference_details(ConferenceId) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}) of
+    case kz_amqp_worker:call_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}) of
         {'error', _E} ->
             lager:debug("unable to lookup conference details: ~p", [_E]),
             kz_json:new();

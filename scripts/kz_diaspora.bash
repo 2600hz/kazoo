@@ -488,6 +488,13 @@ kz_type_modules() {
     removing_kz_prefix_from_types "kz_time" kz_time[@]
 }
 
+kapps_util_amqp() {
+    replace "kapps_util" "amqp_pool_send" "kz_amqp_worker" "cast"
+    replace "kapps_util" "amqp_pool_collect" "kz_amqp_worker" "call_collect"
+    replace "kapps_util" "amqp_pool_request_custom" "kz_amqp_worker" "call_custom"
+    replace "kapps_util" "amqp_pool_request" "kz_amqp_worker" "call"
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -516,7 +523,9 @@ echo "ensuring kz_types migration to module is performed"
 kz_type_modules
 echo "updating kazoo document accessors"
 kzd_accessors
-echo "updating amqp_util  to kz_amqp_util"
+echo "updating amqp_util to kz_amqp_util"
 amqp_util_to_kz_amqp_util
+echo "updating kapps_util amqp to kz_amqp_worker"
+kapps_util_amqp
 
 popd >/dev/null

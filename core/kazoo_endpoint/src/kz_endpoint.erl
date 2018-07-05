@@ -899,7 +899,7 @@ maybe_start_metaflow(Call, Endpoint) ->
             lager:debug("sending metaflow for endpoint: ~s: ~s"
                        ,[Id, kzd_metaflows:listen_on(Metaflow, <<"self">>)]
                        ),
-            kapps_util:amqp_pool_send(API, fun kapi_metaflow:publish_binding/1)
+            kz_amqp_worker:cast(API, fun kapi_metaflow:publish_binding/1)
     end.
 
 -type ep_routine() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) ->

@@ -149,11 +149,11 @@ send_originate_req([], _Call) ->
     lager:debug("no origination proprs, skipping"),
     {'error', 'no_endpoints'};
 send_originate_req(OriginateProps, _Call) ->
-    kapps_util:amqp_pool_collect(OriginateProps
-                                ,fun kapi_resource:publish_originate_req/1
-                                ,fun is_resp/1
-                                ,20 * ?MILLISECONDS_IN_SECOND
-                                ).
+    kz_amqp_worker:call_collect(OriginateProps
+                               ,fun kapi_resource:publish_originate_req/1
+                               ,fun is_resp/1
+                               ,20 * ?MILLISECONDS_IN_SECOND
+                               ).
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) ->
@@ -170,13 +170,13 @@ is_originate_uuid(JObj, CallId) ->
 
 -spec find_device_id_for_leg(kz_term:ne_binary()) -> kz_term:api_binary().
 find_device_id_for_leg(CallId) ->
-    case kapps_util:amqp_pool_request([{<<"Fields">>, [<<"Authorizing-ID">>]}
-                                      ,{<<"Call-ID">>, CallId}
-                                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                      ]
-                                     ,fun kapi_call:publish_query_channels_req/1
-                                     ,fun kapi_call:query_channels_resp_v/1
-                                     )
+    case kz_amqp_worker:call([{<<"Fields">>, [<<"Authorizing-ID">>]}
+                             ,{<<"Call-ID">>, CallId}
+                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ]
+                            ,fun kapi_call:publish_query_channels_req/1
+                            ,fun kapi_call:query_channels_resp_v/1
+                            )
     of
         {'ok', RespJObj} ->
             kz_json:get_value([<<"Channels">>, CallId, <<"Authorizing-ID">>], RespJObj);
