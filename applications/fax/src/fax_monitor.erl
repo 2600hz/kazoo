@@ -97,7 +97,6 @@ handle_info('timeout', State) ->
             _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
             {'noreply', State, ?POLLING_INTERVAL};
         {'error', _Reason} ->
-    gen_server:cast(self(), 'migrate_pending'),
             lager:debug("failed to fetch fax account jobs: ~p", [_Reason]),
             {'noreply', State, ?POLLING_INTERVAL}
     end;
