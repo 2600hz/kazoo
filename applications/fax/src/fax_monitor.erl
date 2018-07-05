@@ -55,7 +55,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
-    gen_server:cast(self(), 'migrate_pending'),
+    _ = spawn(fun run_pending_migrate/0),
     {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%------------------------------------------------------------------------------
@@ -71,9 +71,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast('migrate_pending', State) ->
-    fax_maintenance:migrate_pending_faxes(),
-    {'noreply', State, ?POLLING_INTERVAL};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -100,6 +97,7 @@ handle_info('timeout', State) ->
             _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
             {'noreply', State, ?POLLING_INTERVAL};
         {'error', _Reason} ->
+    gen_server:cast(self(), 'migrate_pending'),
             lager:debug("failed to fetch fax account jobs: ~p", [_Reason]),
             {'noreply', State, ?POLLING_INTERVAL}
     end;
@@ -130,6 +128,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+
+-spec run_pending_migrate() -> 'ok'.
+run_pending_migrate() ->
+    kz_util:put_callid('migrate_pending_fax'),
+    fax_maintenance:migrate_pending_faxes().
 
 %%------------------------------------------------------------------------------
 %% @doc
