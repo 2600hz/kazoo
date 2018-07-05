@@ -215,9 +215,10 @@ refresh_views() ->
 %%------------------------------------------------------------------------------
 -spec migrate_pending_faxes() -> 'ok'.
 migrate_pending_faxes() ->
-    lager:debug("migrating pending fax attachments to tiff files"),
+    ?SUP_LOG_INFO("started migrating pending fax attachments to tiff files"),
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/pending_migrate_jobs">>) of
         {'ok', Jobs} ->
+            ?SUP_LOG_INFO("going to migrate ~b documents", [length(Jobs)]),
             migrate_pending_fax_jobs(Jobs);
         {'error', Error} ->
             ?SUP_LOG_DEBUG("failed to fetch pending_migrate_jobs view with error ~p", [Error])
@@ -225,15 +226,16 @@ migrate_pending_faxes() ->
 
 -spec migrate_pending_fax_jobs(kz_json:objects()) -> 'ok'.
 migrate_pending_fax_jobs([]) ->
-    'ok';
+    ?SUP_LOG_INFO("completed migrating pending fax attachments");
 migrate_pending_fax_jobs([Doc|Docs]) ->
     migrate_pending_fax_job(Doc),
+    timer:sleep(500),
     migrate_pending_fax_jobs(Docs).
 
 -spec migrate_pending_fax_job(kz_json:object()) -> 'ok'.
 migrate_pending_fax_job(Doc) ->
     DocId = kz_doc:id(Doc),
-    lager:debug("migrating pending fax attachment doc: ~s", [DocId]),
+    ?SUP_LOG_DEBUG("migrating pending fax attachment doc: ~s", [DocId]),
     case kz_datamgr:open_doc(?KZ_FAXES_DB, DocId) of
         {'ok', JObj} ->
             case fetch_pending_job_attachment(JObj) of
@@ -242,8 +244,7 @@ migrate_pending_fax_job(Doc) ->
                     update_attachment(JObj, Content, ContentType, OldName)
             end;
         {'error', Error} ->
-            ?SUP_LOG_DEBUG("Failed to open document ~s with error ~p", [DocId, Error]),
-            'ok'
+            ?SUP_LOG_ERROR("Failed to open document ~s with error ~p", [DocId, Error])
     end.
 
 -spec fetch_pending_job_attachment(kz_json:object()) ->
@@ -271,7 +272,7 @@ maybe_fetch_attachment(JObj, [Attachment|_]) ->
         {'ok', Content} ->
             {'ok', Content, ContentType, Attachment};
         {'error', Error} ->
-            lager:debug("failed to fetch attachment with error: ~p", [Error])
+            ?SUP_LOG_ERROR("failed to fetch attachment with error: ~p", [Error])
     end.
 
 -spec maybe_fetch_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
