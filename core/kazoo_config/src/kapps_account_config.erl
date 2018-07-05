@@ -27,15 +27,15 @@
         ,migrate/1
         ]).
 
--type api_account() :: kz_term:api_ne_binary() | kapps_call:call() | kz_json:object().
--type account_or_not() :: kz_term:ne_binary() | no_account_id.
+-type api_account() :: kz_term:api_ne_binary() | kz_json:object().
+-type account_or_not() :: kz_term:ne_binary() | 'no_account_id'.
 
 
 %% @equiv get_ne_binary(Account, Category, Path, undefined)
 
 -spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_term:api_ne_binary().
 get_ne_binary(Account, Category, Path) ->
-    get_ne_binary(Account, Category, Path, undefined).
+    get_ne_binary(Account, Category, Path, 'undefined').
 
 %%------------------------------------------------------------------------------
 %% @doc Get a non-empty configuration key for a given category and cast
@@ -618,34 +618,28 @@ strategy_funs(<<"hierarchy_merge">>) ->
 
 -spec account_id(api_account()) -> account_or_not().
 account_id(?NE_BINARY=Account) -> kz_util:format_account_id(Account);
-account_id(undefined) -> no_account_id;
-account_id(Obj) -> account_id_from_call(Obj, kapps_call:is_call(Obj)).
+account_id('undefined') -> 'no_account_id';
+account_id(Obj) -> account_id_from_jobj(Obj, kz_json:is_json_object(Obj)).
 
--spec account_id_from_call(kapps_call:call() | kz_json:object(), boolean()) -> account_or_not().
-account_id_from_call(Call, true) -> maybe_format_account_id(kapps_call:account_id(Call));
-account_id_from_call(Obj, false) -> account_id_from_jobj(Obj, kz_json:is_json_object(Obj)).
-
--spec account_id_from_jobj(kz_json:object(), true) -> account_or_not().
-account_id_from_jobj(JObj, true) ->
+-spec account_id_from_jobj(kz_json:object(), boolean()) -> account_or_not().
+account_id_from_jobj(JObj, 'true') ->
     Paths = [<<"Account-ID">>
             ,<<"account_id">>
             ,<<"Account-DB">>
             ,<<"account_db">>
             ],
     maybe_format_account_id(kz_json:get_first_defined(Paths, JObj));
-account_id_from_jobj(_Obj, false) ->
+account_id_from_jobj(_Obj, 'false') ->
     lager:debug("unable to find account id from ~p", [_Obj]),
-    no_account_id.
-
+    'no_account_id'.
 
 -spec maybe_format_account_id(kz_term:api_ne_binary()) -> account_or_not().
-maybe_format_account_id(undefined) -> no_account_id;
+maybe_format_account_id('undefined') -> 'no_account_id';
 maybe_format_account_id(Account) -> kz_util:format_account_id(Account).
 
--spec maybe_new_doc({ok, kz_json:object()} | {error, any()}, kz_term:ne_binary()) -> kz_json:object().
-maybe_new_doc({ok, JObj}, _) -> JObj;
-maybe_new_doc({error, _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
-
+-spec maybe_new_doc({'ok', kz_json:object()} | {'error', any()}, kz_term:ne_binary()) -> kz_json:object().
+maybe_new_doc({'ok', JObj}, _) -> JObj;
+maybe_new_doc({'error', _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
 
 %%==============================================================================
 %% Migrates config settings
