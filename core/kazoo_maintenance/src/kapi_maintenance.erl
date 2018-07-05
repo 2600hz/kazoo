@@ -38,7 +38,7 @@
 -type req() :: kz_term:api_terms().
 -type resp() :: kz_term:api_terms().
 
--include_lib("kz_amqp_util.hrl").
+-include_lib("kazoo_amqp/src/kz_amqp_util.hrl").
 
 -define(EVENT_CAT, <<"maintenance">>).
 -define(KEY_ACTION, <<"Action">>).
