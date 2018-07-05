@@ -906,9 +906,9 @@ call_id_status(CallId, Verbose) ->
            | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_call:publish_channel_status_req/1
-                                     ,fun kapi_call:channel_status_resp_v/1
-                                     )
+                            ,fun kapi_call:publish_channel_status_req/1
+                            ,fun kapi_call:channel_status_resp_v/1
+                            )
     of
         {'ok', Resp} ->
             show_status(CallId, kz_term:is_true(Verbose), Resp);
@@ -1026,8 +1026,10 @@ cleanup_system_config(Id) ->
 
 -spec error_keys(kz_json_schema:validation_errors()) -> kz_json:paths().
 error_keys(Errors) ->
-    [binary:split(kz_json:get_keys(ErrorJObj), <<".">>)
-     || {_Code, _Message, ErrorJObj} <- Errors
+    io:format("errors: ~p~n", [Errors]),
+    [binary:split(ErrorKey, <<".">>)
+     || {_Code, _Message, ErrorJObj} <- Errors,
+        ErrorKey <- kz_json:get_keys(ErrorJObj)
     ].
 
 -spec cleanup_system_configs() -> [{'ok', kz_json:object() | kz_json:objects()}].

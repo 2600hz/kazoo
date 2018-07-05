@@ -483,9 +483,9 @@ lookup_regs(AccountRealm) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
-                                     ,fun kapi_registration:publish_query_req/1
-                                     ,'ecallmgr'
-                                     )
+                                    ,fun kapi_registration:publish_query_req/1
+                                    ,'ecallmgr'
+                                    )
     of
         {'error', _E} ->
             lager:debug("error getting reg: ~p", [_E]),

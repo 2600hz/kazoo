@@ -165,9 +165,9 @@ lookup_regs(Context) ->
           ],
 
     ReqResp = kz_amqp_worker:call_collect(Req
-                                          ,fun kapi_registration:publish_query_req/1
-                                          ,{'ecallmgr', 'true'}
-                                          ),
+                                         ,fun kapi_registration:publish_query_req/1
+                                         ,{'ecallmgr', 'true'}
+                                         ),
     case ReqResp of
         {'error', _} -> [];
         {_, JObjs} -> merge_responses(JObjs)
@@ -225,9 +225,9 @@ count_registrations(Context) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     ReqResp = kz_amqp_worker:call(Req
-                                          ,fun kapi_registration:publish_query_req/1
-                                          ,fun kapi_registration:query_resp_v/1
-                                          ),
+                                 ,fun kapi_registration:publish_query_req/1
+                                 ,fun kapi_registration:query_resp_v/1
+                                 ),
     case ReqResp of
         {'error', _E} -> lager:debug("no resps found: ~p", [_E]), 0;
         {'ok', JObj} -> kz_json:get_integer_value(<<"Count">>, JObj, 0);

@@ -134,9 +134,9 @@ current_calls(AccountId, Props) ->
 get_and_show(AccountId, QueueId, Req) ->
     kz_util:put_callid(<<"acdc_maint.", AccountId/binary, ".", QueueId/binary>>),
     case kz_amqp_worker:call_collect(Req
-                                     ,fun kapi_acdc_stats:publish_current_calls_req/1
-                                     ,'acdc'
-                                     )
+                                    ,fun kapi_acdc_stats:publish_current_calls_req/1
+                                    ,'acdc'
+                                    )
     of
         {_, []} ->
             io:format("no call stats returned for account ~s (queue ~s)~n", [AccountId, QueueId]);

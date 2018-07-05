@@ -165,9 +165,9 @@ get_average_wait_time(Call) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_acdc_stats:publish_average_wait_time_req/1
-                                     ,fun kapi_acdc_stats:average_wait_time_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_average_wait_time_req/1
+                            ,fun kapi_acdc_stats:average_wait_time_resp_v/1
+                            )
     of
         {'error', E} ->
             lager:error("failed to receive current calls from AMQP: ~p", [E]),

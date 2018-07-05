@@ -56,9 +56,9 @@ most_recent_ets_status(AccountId, AgentId) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call(API
-                                     ,fun kapi_acdc_stats:publish_status_req/1
-                                     ,fun kapi_acdc_stats:status_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_status_req/1
+                            ,fun kapi_acdc_stats:status_resp_v/1
+                            )
     of
         {'error', _E}=E -> E;
         {'ok', Resp} ->
@@ -248,9 +248,9 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
             ]),
     case kz_amqp_worker:call(API
-                                     ,fun kapi_acdc_stats:publish_status_req/1
-                                     ,fun kapi_acdc_stats:status_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_status_req/1
+                            ,fun kapi_acdc_stats:status_resp_v/1
+                            )
     of
         {'error', _}=E -> E;
         {'ok', Resp} ->

@@ -84,10 +84,10 @@ summary(Context) ->
           ],
     lager:debug("looking up acls from sysconf", []),
     ReqResp = kz_amqp_worker:call(Req
-                                          ,fun kapi_sysconf:publish_get_req/1
-                                          ,fun kapi_sysconf:get_resp_v/1
-                                          ,2 * ?MILLISECONDS_IN_SECOND
-                                          ),
+                                 ,fun kapi_sysconf:publish_get_req/1
+                                 ,fun kapi_sysconf:get_resp_v/1
+                                 ,2 * ?MILLISECONDS_IN_SECOND
+                                 ),
     case ReqResp of
         {'error', _R} ->
             lager:debug("unable to get acls from sysconf: ~p", [_R]),

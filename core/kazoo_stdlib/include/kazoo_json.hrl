@@ -67,7 +67,7 @@
 -type key() :: json_string().
 %% Denotes a JSON key.
 
--type keys() :: [key(),...].
+-type keys() :: [key()].
 %% Denotes a list of JSON keys.
 
 -type path() :: keys() | key() | pos_integer() | [pos_integer()].
@@ -76,7 +76,7 @@
 -type paths() :: [path()].
 %% Denotes a list of paths (or n-th element of) a value in a JSON.
 
--type json_proplist() :: [{key(), json_term()}] | [].
+-type json_proplist() :: [{key(), json_term()}].
 %% Denotes proplist of JSON object Erlang representation.
 -type json_proplists() :: [json_proplist()].
 

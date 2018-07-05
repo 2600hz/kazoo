@@ -26,10 +26,10 @@ start(MCall, AcctId, AgentCallId) ->
 eavesdrop_req(Prop) ->
     lager:debug("sending eavs ~p", [Prop]),
     case kz_amqp_worker:call(Prop
-                                     ,fun kapi_resource:publish_eavesdrop_req/1
-                                     ,fun kapi_resource:eavesdrop_resp_v/1
-                                     ,2000
-                                     )
+                            ,fun kapi_resource:publish_eavesdrop_req/1
+                            ,fun kapi_resource:eavesdrop_resp_v/1
+                            ,2000
+                            )
     of
         {'ok', Resp} -> lager:debug("ok: ~p", [Resp]);
         {'error', 'timeout'} -> lager:debug("err: timeout");

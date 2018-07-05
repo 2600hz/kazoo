@@ -160,10 +160,10 @@ send_originate_req([], _Call) ->
     {'error', 'no_endpoints'};
 send_originate_req(OriginateProps, _Call) ->
     kz_amqp_worker:call_collect(OriginateProps
-                                ,fun kapi_resource:publish_originate_req/1
-                                ,fun is_resp/1
-                                ,20 * ?MILLISECONDS_IN_SECOND
-                                ).
+                               ,fun kapi_resource:publish_originate_req/1
+                               ,fun is_resp/1
+                               ,20 * ?MILLISECONDS_IN_SECOND
+                               ).
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) ->

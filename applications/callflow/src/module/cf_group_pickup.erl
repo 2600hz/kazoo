@@ -200,9 +200,9 @@ find_channels(DeviceIds) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
-                                     ,fun kapi_call:publish_query_user_channels_req/1
-                                     ,{'ecallmgr', 'true'}
-                                     )
+                                    ,fun kapi_call:publish_query_user_channels_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _E} ->
             lager:debug("failed to get channels: ~p", [_E]),

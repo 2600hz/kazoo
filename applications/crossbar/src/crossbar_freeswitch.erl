@@ -474,10 +474,10 @@ query_registrar(Realm, Username) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:call(props:filter_undefined(Req)
-                                ,fun kapi_authn:publish_req/1
-                                ,fun kapi_authn:resp_v/1
-                                ,?AUTHN_TIMEOUT
-                                ).
+                       ,fun kapi_authn:publish_req/1
+                       ,fun kapi_authn:resp_v/1
+                       ,?AUTHN_TIMEOUT
+                       ).
 
 -spec template_file(atom()) -> string().
 template_file(Module) ->

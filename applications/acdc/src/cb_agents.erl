@@ -321,9 +321,9 @@ fetch_current_status(Context, AgentId, 'true') ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_acdc_stats:publish_status_req/1
-                                     ,fun kapi_acdc_stats:status_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_status_req/1
+                            ,fun kapi_acdc_stats:status_resp_v/1
+                            )
     of
         {'error', E} ->
             crossbar_util:response('error'

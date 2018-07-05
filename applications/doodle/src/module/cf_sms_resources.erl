@@ -25,10 +25,10 @@ handle(Data, Call1) ->
                'false' -> doodle_util:set_caller_id(Data, Call1)
            end,
     case kz_amqp_worker:call(build_offnet_request(Data, Call)
-                                     ,fun kapi_offnet_resource:publish_req/1
-                                     ,fun kapi_offnet_resource:resp_v/1
-                                     ,30 * ?MILLISECONDS_IN_SECOND
-                                     )
+                            ,fun kapi_offnet_resource:publish_req/1
+                            ,fun kapi_offnet_resource:resp_v/1
+                            ,30 * ?MILLISECONDS_IN_SECOND
+                            )
     of
         {'ok', Res} ->
             handle_result(Res, Call);

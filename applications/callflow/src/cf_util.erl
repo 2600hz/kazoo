@@ -542,9 +542,9 @@ find_channels(Usernames, Call) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_call:publish_query_user_channels_req/1
-                                     ,fun kapi_call:query_user_channels_resp_v/1
-                                     )
+                            ,fun kapi_call:publish_query_user_channels_req/1
+                            ,fun kapi_call:query_user_channels_resp_v/1
+                            )
     of
         {'ok', Resp} -> kz_json:get_value(<<"Channels">>, Resp, []);
         {'error', _E} ->

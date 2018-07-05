@@ -39,9 +39,9 @@ handle(Data, Call) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_acdc_stats:publish_average_wait_time_req/1
-                                     ,fun kapi_acdc_stats:average_wait_time_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_average_wait_time_req/1
+                            ,fun kapi_acdc_stats:average_wait_time_resp_v/1
+                            )
     of
         {'ok', Resp} ->
             AverageWaitTime = kz_json:get_integer_value(<<"Average-Wait-Time">>, Resp, 0),
