@@ -129,15 +129,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec run_pending_migrate() -> 'ok'.
 run_pending_migrate() ->
     kz_util:put_callid('migrate_pending_fax'),
     fax_maintenance:migrate_pending_faxes().
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec distribute_accounts(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 distribute_accounts([]) -> [];
 distribute_accounts([AccountId|AccountIds]) ->
