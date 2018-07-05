@@ -207,6 +207,20 @@ Value | Description
 `mute` | Participant joins muted
 `video_mute` | Participant joins with video stream muted
 
+```json
+{
+    "action":"dial"
+    ,"data":{
+        "data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212",
+            "participant_flags":["deaf", "mute"]
+        }
+    }
+}
+```
+
 ### Dialing out to a dynamic conference
 
 Sometimes you want to create ad-hoc conferences and put a participant in there. You can `PUT` a conference and the endpoints to dial out to create a temporary conference. The `{CONFERENCE_ID}` you supply will be used to name the conference and any conference schema parameters in the request will be used when creating the conference. For example:
