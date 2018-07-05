@@ -19,7 +19,7 @@
         ,publish_targeted_delivery/2, publish_targeted_delivery/3
         ,publish_resume/1, publish_resume/2
         ,publish_inbound/1, publish_inbound/2
-        ,publish_outbound/1, publish_outbound/2
+        ,publish_outbound/1, publish_outbound/3
         ]).
 
 -include_lib("kz_amqp_util.hrl").
@@ -199,16 +199,6 @@
                        ,kz_amqp_util:encode(?LOWER(RouteId)), "."
                        ,kz_amqp_util:encode(CallId)
                        ])
-       ).
-
--define(SMS_DEFAULT_OUTBOUND_OPTIONS
-       ,kz_json:from_list([{<<"delivery_mode">>, 2}
-                          ,{<<"mandatory">>, 'true'}
-                          ])
-       ).
--define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
--define(SMS_OUTBOUND_OPTIONS
-       ,kapps_config:get_json(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)
        ).
 
 -spec message(kz_term:api_terms()) -> api_formatter_return().
@@ -403,17 +393,16 @@ publish_inbound(Req, ContentType) ->
 
 -spec publish_outbound(kz_term:api_terms()) -> 'ok'.
 publish_outbound(JObj) ->
-    publish_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
+    publish_outbound(JObj, ?DEFAULT_CONTENT_TYPE, []).
 
--spec publish_outbound(kz_term:api_terms(), binary()) -> 'ok'.
-publish_outbound(Req, ContentType) ->
+-spec publish_outbound(kz_term:api_terms(), binary(), list()) -> 'ok'.
+publish_outbound(Req, ContentType, AMQPOptions) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OUTBOUND_REQ_VALUES, fun outbound/1),
     MessageId = props:get_value(<<"Message-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     RK = ?OUTBOUND_ROUTING_KEY(RouteId, MessageId),
-    Opts = amqp_options(?SMS_OUTBOUND_OPTIONS),
-    kz_amqp_util:basic_publish(Exchange, RK, Payload, ContentType, Opts).
+    kz_amqp_util:basic_publish(Exchange, RK, Payload, ContentType, AMQPOptions).
 
 -spec publish_delivery(kz_term:api_terms()) -> 'ok'.
 publish_delivery(JObj) ->
@@ -450,10 +439,3 @@ publish_resume(Req, ContentType) ->
     CallId = props:get_value(<<"Call-ID">>, Req),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     kz_amqp_util:basic_publish(Exchange, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
-
--spec amqp_options(kz_term:api_object()) -> kz_term:proplist().
-amqp_options('undefined') -> [];
-amqp_options(JObj) ->
-    [{kz_term:to_atom(K, 'true'), V}
-     || {K, V} <- kz_json:to_proplist(JObj)
-    ].

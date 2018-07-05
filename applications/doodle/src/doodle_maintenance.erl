@@ -146,7 +146,7 @@ send_outbound_sms(To, From, RouteId, Msg) ->
               ,{<<"Body">>, Msg}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1).
+    kapps_sms_command:send_amqp_sms(Payload).
 
 -spec send_outbound_sms(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) -> 'ok'.
 send_outbound_sms(To, From, RouteId, Msg, Times) ->
