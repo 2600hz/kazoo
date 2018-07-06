@@ -72,6 +72,9 @@
          %% published on completion of notification
         ,notify_update/1, notify_update_v/1
 
+         %% Customer defined notification
+        ,customer_defined_notification/1, customer_defined_notification_v/1
+
          %% skeleton notification
         ,skel/1, skel_v/1
         ]).
@@ -130,6 +133,9 @@
 
          %% published on completion of notification
         ,publish_notify_update/2, publish_notify_update/3
+
+         %% Customer defined notification
+        ,publish_customer_defined_notification/1, publish_customer_defined_notification/2
 
          %% skeleton notification
         ,publish_skel/1, publish_skel/2
@@ -1172,6 +1178,45 @@ webhook_disabled_definition() ->
                     }.
 
 %%%=============================================================================
+%%% Customer Defined Notifications Definitions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Get customer defined notification.
+%% @end
+%%------------------------------------------------------------------------------
+-spec customer_defined_notification_definition() -> kapi_definition:api().
+customer_defined_notification_definition() ->
+    #kapi_definition{name = <<"customer_defined_notification">>
+                    ,friendly_name = <<"Customer defined notification">>
+                    ,description = <<"This event is triggered when an cutomer want send own notification, as example from callflow">>
+                    ,build_fun = fun customer_defined_notification/1
+                    ,validate_fun = fun customer_defined_notification_v/1
+                    ,publish_fun = fun publish_customer_defined_notification/1
+                    ,binding = ?BINDING_STRING(<<"account">>, <<"customer_defined_notification">>)
+                    ,restrict_to = 'customer_defined_notification'
+                    ,required_headers = [<<"Account-ID">>
+                                        ,<<"Template-ID">>
+                                        ]
+                    ,optional_headers = [<<"Caller-ID-Name">>
+                                        ,<<"Caller-ID-Number">>
+                                        ,<<"Call-ID">>
+                                        ,<<"Call-Bridged">>
+                                        ,<<"Message-Left">>
+                                        ,<<"From-Realm">>
+                                        ,<<"From-User">>
+                                        ,<<"Notify">>
+                                        ,<<"To">>
+                                        ,<<"To-Realm">>
+                                        ,<<"To-User">>
+                                        ,<<"Timestamp">>
+                                             | ?DEFAULT_OPTIONAL_HEADERS
+                                        ]
+                    ,values = ?NOTIFY_VALUES(<<"customer_defined_notification">>)
+                    ,types = []
+                    }.
+
+%%%=============================================================================
 %%% API
 %%%=============================================================================
 
@@ -1217,6 +1262,7 @@ api_definitions() ->
     ,voicemail_saved_definition()
     ,webhook_definition()
     ,webhook_disabled_definition()
+    ,customer_defined_notification_definition()
     ].
 
 %%------------------------------------------------------------------------------
@@ -1300,7 +1346,9 @@ api_definition(<<"voicemail_saved">>) ->
 api_definition(<<"webhook">>) ->
     webhook_definition();
 api_definition(<<"webhook_disabled">>) ->
-    webhook_disabled_definition().
+    webhook_disabled_definition();
+api_definition(<<"customer_defined_notification">>) ->
+    customer_defined_notification_definition().
 
 %%------------------------------------------------------------------------------
 %% @doc Bind to a queue to this API exchange and events.
@@ -2430,4 +2478,32 @@ publish_webhook_disabled(API, ContentType) ->
                     ,values = Values
                     } = webhook_disabled_definition(),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun webhook_disabled/1),
+    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+
+%%%=============================================================================
+%%% Customer Defined Notifications Definitions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec customer_defined_notification(kz_term:api_terms()) -> api_formatter_return().
+customer_defined_notification(Prop) ->
+    build_message(Prop, customer_defined_notification_definition()).
+
+-spec customer_defined_notification_v(kz_term:api_terms()) -> boolean().
+customer_defined_notification_v(Prop) ->
+    validate(Prop, customer_defined_notification_definition()).
+
+-spec publish_customer_defined_notification(kz_term:api_terms()) -> 'ok'.
+publish_customer_defined_notification(JObj) ->
+    publish_customer_defined_notification(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_customer_defined_notification(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_customer_defined_notification(API, ContentType) ->
+    #kapi_definition{binding = Binding
+                    ,values = Values
+                    } = customer_defined_notification_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun customer_defined_notification/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
