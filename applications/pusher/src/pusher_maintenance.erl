@@ -31,7 +31,3 @@ add_apple_app(AppId, Certfile, Host) ->
             'ok';
         {'error', _} = Err -> Err
     end.
-
--spec flush() -> any().
-flush() ->
-    kz_cache:flush_local(?CACHE_NAME).
