@@ -6,6 +6,5 @@
               {env,[{is_kazoo_app,true}]},
               {mod,{pusher_app,[]}},
               {modules,[]},
-              {registered,[pusher_cache,pm_google,pm_apple,pusher_sup,
-                           pusher_module_sup]},
+              {registered,[pm_google,pm_apple,pusher_sup,pusher_module_sup]},
               {vsn,"4.0.0"}]}.

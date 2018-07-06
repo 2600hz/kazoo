@@ -11,7 +11,6 @@
 -export([add_google_app/2
         ,add_apple_app/2, add_apple_app/3
         ]).
--export([flush/0]).
 
 -spec add_google_app(binary(), binary()) -> 'ok'.
 add_google_app(AppId, Secret) ->
