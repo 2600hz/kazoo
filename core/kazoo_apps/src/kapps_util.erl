@@ -50,8 +50,6 @@
         ,from_magic_hash/1
         ]).
 
--export([media_local_store_url/2]).
-
 -include("kazoo_apps.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
@@ -621,13 +619,3 @@ to_magic_hash(Bin) ->
 -spec from_magic_hash(kz_term:ne_binary()) -> kz_term:ne_binary().
 from_magic_hash(Bin) ->
     zlib:unzip(kz_binary:from_hex(Bin)).
-
--spec media_local_store_url(kapps_call:call(), kz_json:object()) ->
-                                   {'ok', kz_term:ne_binary()} |
-                                   {'proxy', tuple()} |
-                                   {'error', any()}.
-media_local_store_url(Call, JObj) ->
-    AccountDb = kapps_call:account_db(Call),
-    MediaId = kz_doc:id(JObj),
-    MediaName = kz_json:get_value(<<"name">>, JObj),
-    kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).

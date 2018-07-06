@@ -638,7 +638,7 @@ get_account_dynamic_flags(_, Call, Flags) ->
             Flags
     end.
 
--spec get_config_dynamic_flags(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
+-spec get_config_dynamic_flags(kz_types:ne_binary(), kapps_call:call(), kz_term:ne_binaries()) ->
                                       kz_term:ne_binaries().
 get_config_dynamic_flags(ApplicationName, Call, Flags) ->
     DynamicFlags = kapps_account_config:get_ne_binaries(kapps_call:account_id(Call)

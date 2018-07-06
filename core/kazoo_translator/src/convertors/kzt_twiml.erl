@@ -394,7 +394,7 @@ finish_record_call(Call, Props, MediaName) ->
                 Setters;
             {'true', 'local'} ->
                 {'ok', MediaJObj} = kzt_receiver:recording_meta(Call, MediaName),
-                StoreUrl = kapps_util:media_local_store_url(Call, MediaJObj),
+                StoreUrl = media_local_store_url(Call, MediaJObj),
 
                 lager:info("storing ~s locally to ~s", [MediaName, StoreUrl]),
 
@@ -431,3 +431,12 @@ media_name(Call) ->
 %%------------------------------------------------------------------------------
 %% Helpers
 %%------------------------------------------------------------------------------
+-spec media_local_store_url(kapps_call:call(), kz_json:object()) ->
+                                   {'ok', kz_term:ne_binary()} |
+                                   {'proxy', tuple()} |
+                                   {'error', any()}.
+media_local_store_url(Call, JObj) ->
+    AccountDb = kapps_call:account_db(Call),
+    MediaId = kz_doc:id(JObj),
+    MediaName = kz_json:get_value(<<"name">>, JObj),
+    kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
