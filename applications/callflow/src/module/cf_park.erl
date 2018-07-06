@@ -618,6 +618,7 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                             {'error', _} -> 'false'
                         end,
             case ChannelUp
+                andalso kapps_call_command:break(Call) =:= 'ok'
                 andalso ringback_parker(RingbackId, SlotNumber, Slot, Data, Call)
             of
                 'false' ->
@@ -625,12 +626,22 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     cf_exe:stop(Call);
                 'intercepted' ->
-                    lager:info("parked caller ringback was intercepted"),
+                    lager:info("parked call was intercepted"),
+                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
+                    _ = publish_retrieved(Call, SlotNumber),
+                    cf_exe:transfer(Call);
+                'ringback_intercepted' ->
+                    lager:info("ringback to parker was intercepted"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     _ = publish_retrieved(Call, SlotNumber),
                     cf_exe:transfer(Call);
                 'answered' ->
-                    lager:info("parked caller ringback was answered"),
+                    lager:info("ringback to parker was answered"),
+                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
+                    _ = publish_retrieved(Call, SlotNumber),
+                    cf_exe:transfer(Call);
+                'bridged' ->
+                    lager:info("ringback to parker was sucessful"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     _ = publish_retrieved(Call, SlotNumber),
                     cf_exe:transfer(Call);
@@ -771,68 +782,45 @@ set_command(ChannelVars) ->
 
 -spec wait_for_ringback(timeout(), kapps_call:call()) -> ringback_parker_result().
 wait_for_ringback(Timeout, Call) ->
-    case wait_for_parker(Timeout, Call) of
-        {'ok', JObj} ->
-            case kz_api:event_name(JObj) of
-                <<"CHANNEL_INTERCEPTED">> ->
-                    lager:info("channel intercepted during ringback"),
-                    'intercepted';
-                _Else ->
-                    lager:info("completed successful bridge to the ringback device"),
-                    'answered'
-            end;
-        {'fail', JObj} ->
-            case kz_api:event_name(JObj) of
-                <<"CHANNEL_DESTROY">> ->
-                    lager:info("channel hungup during ringback"),
-                    'channel_hungup';
-                _Else ->
-                    lager:info("ringback failed, returning caller to parking slot: ~p", [_Else]),
-                    'failed'
-            end;
-        _Else ->
-            lager:info("ringback failed, returning caller to parking slot: ~p" , [_Else]),
-            'failed'
-    end.
-
--type wait_for_parker_result() :: {'ok' | 'fail' | 'error', kz_json:object()}.
--type receive_event_result() :: {'ok', kz_json:object()} | {'error', 'timeout'}.
-
--spec wait_for_parker(timeout(), kapps_call:call()) -> wait_for_parker_result().
-wait_for_parker(Timeout, Call) ->
     Start = os:timestamp(),
     lager:debug("waiting for parker for ~p ms", [Timeout]),
     wait_for_parker(Timeout, Call, Start, kapps_call_command:receive_event(Timeout)).
 
--spec wait_for_parker(timeout(), kapps_call:call(), kz_time:now(), receive_event_result()) -> wait_for_parker_result().
+-type receive_event_result() :: {'ok', kz_json:object()} | {'error', 'timeout'}.
+
+-spec wait_for_parker(timeout(), kapps_call:call(), kz_time:now(), receive_event_result()) -> ringback_parker_result().
 wait_for_parker(_Timeout, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
     Disposition = kz_json:get_value(<<"Disposition">>, JObj),
     Cause = kz_json:get_first_defined([<<"Application-Response">>
                                       ,<<"Hangup-Cause">>
                                       ], JObj, <<"UNSPECIFIED">>),
+    BridgeHangupCause = kz_json:get_ne_binary_value(<<"Bridge-Hangup-Cause">>, JObj),
     Result = case Disposition =:= <<"SUCCESS">>
                  orelse Cause =:= <<"SUCCESS">>
              of
-                 'true' -> 'ok';
-                 'false' -> 'fail'
+                 'true' -> 'bridged';
+                 'false' -> 'failed'
              end,
     case kapps_call_command:get_event_type(JObj) of
         {<<"error">>, _, <<"bridge">>} ->
             lager:debug("channel execution error while waiting for bridge: ~s", [kz_json:encode(JObj)]),
-            {'error', JObj};
+            'failed';
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             lager:info("bridge channel destroy completed with result ~s(~s)", [Disposition, Result]),
-            {Result, JObj};
+            'channel_hungup';
         {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
             lager:debug("ringback channel intercepted"),
-            {'ok', JObj};
+            'intercepted';
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
             lager:debug("ringback channel bridged"),
-            {'ok', JObj};
-        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+            'bridged';
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>}
+          when BridgeHangupCause =/= <<"PICKED_OFF">> ->
             lager:info("bridge execute completed with result ~s(~s)", [Disposition, Result]),
-            {Result, JObj};
+            Result;
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+            'ringback_intercepted';
         _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = os:timestamp(),
@@ -926,6 +914,7 @@ publish_event(Call, SlotNumber, Event) ->
           ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
           ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
           ,{<<"Event-Name">>, Event}
+          ,{<<"Switch-URI">>, kapps_call:switch_uri(Call)}
           ,{<<"Parking-Slot">>, kz_term:to_binary(SlotNumber)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
