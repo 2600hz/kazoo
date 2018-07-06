@@ -206,7 +206,11 @@ send(Endpoint, API) ->
 -spec send(binary(), kz_json:object(), kz_term:proplist()) -> no_return().
 send(<<"sip">>, Endpoint, API) ->
     Options = kz_json:to_proplist(kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
-    Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
+    Payload = props:set_values([{<<"Endpoints">>, [Endpoint]}
+                                | Options
+                               ]
+                              ,API
+                              ),
     CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1),
@@ -288,11 +292,7 @@ amqp_exchange_options(JObj) ->
                            'ok' |
                            {'error', kz_term:ne_binary() | 'timeout'}.
 send_amqp_sms(Payload, Pool) ->
-    case kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1, Pool) of
-        {'returned', _JObj, Deliver} ->
-            {'error', kz_json:get_value(<<"message">>, Deliver, <<"unknown">>)};
-        Else -> Else
-    end.
+    kapps_sms_command:send_amqp_sms(Payload, Pool).
 
 -spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
