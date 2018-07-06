@@ -130,22 +130,6 @@
 
 -define(FS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
--define(REPLAY_REG_MAP,
-        [{<<"Realm">>, <<"realm">>}
-        ,{<<"Username">>, <<"reg_user">>}
-        ,{<<"Network-IP">>, <<"network_ip">>}
-        ,{<<"Network-Port">>, <<"network_port">>}
-        ,{<<"FreeSWITCH-Hostname">>, <<"hostname">>}
-        ,{<<"To-Host">>, <<"realm">>}
-        ,{<<"To-User">>, <<"reg_user">>}
-        ,{<<"From-Host">>, <<"realm">>}
-        ,{<<"From-User">>, <<"reg_user">>}
-        ,{<<"Call-ID">>, <<"token">>}
-        ,{<<"Profile-Name">>, {fun replay_profile/1, <<"url">>}}
-        ,{<<"Contact">>, {fun replay_contact/1, <<"url">>}}
-        ,{<<"Expires">>, {fun replay_expires/1, <<"expires">>}}
-        ]).
-
 -type fs_node() :: atom() | kz_term:ne_binary() | pid().
 
 %%%=============================================================================
