@@ -60,11 +60,13 @@ handle_response({'http_req_id', ReqID}) ->
     {'ok', ReqID};
 handle_response({'ok', 200, _Headers, Content2}) ->
     lager:debug("ASR of media succeeded: ~s", [Content2]),
-    [Results|_] = kz_json:get_list_value(<<"results">>, kz_json:decode(Content2)),
-    [Alternatives|_] = kz_json:get_list_value(<<"alternatives">>, Results),
-    Text = kz_json:get_value(<<"transcript">>, Alternatives),
+    Results = kz_json:get_list_value(<<"results">>, kz_json:decode(Content2)),
+    Alternatives = lists:map(fun(Alternative) -> [Value|_] = kz_json:get_list_value(<<"alternatives">>, Alternative)
+                                                     ,Value
+                             end, Results),
+    Sentences = lists:map(fun(Sentence) -> kz_json:get_value(<<"transcript">>, Sentence) end, Alternatives),
     Props = [{<<"result">>, <<"success">>}
-            ,{<<"text">>, Text}
+            ,{<<"text">>, list_to_binary(Sentences)}
             ],
     {'ok', kz_json:from_list(Props)};
 handle_response({'ok', _Code, _Hdrs, Content2}) ->
