@@ -95,6 +95,8 @@
         ,set_low_balance_tstamp/1
 
         ,is_in_account_hierarchy/2, is_in_account_hierarchy/3
+
+        ,normalize_name/1
         ]).
 
 -include("kz_documents.hrl").
@@ -1088,3 +1090,29 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
             lager:debug("failed to get the ancestry of the account ~s: ~p", [AccountId, _R]),
             'false'
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Normalize the account name by converting the name to lower case
+%% and then removing all non-alphanumeric characters.
+%%
+%% This can possibly return an empty binary.
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_name(kz_term:api_binary()) -> kz_term:api_binary().
+normalize_name('undefined') -> 'undefined';
+normalize_name(AccountName) ->
+    << <<Char>>
+       || <<Char>> <= kz_term:to_lower_binary(AccountName),
+          is_alphanumeric(Char)
+    >>.
+
+is_alphanumeric(Char)
+  when Char >= $a,
+       Char =< $z ->
+    'true';
+is_alphanumeric(Char)
+  when Char >= $0,
+       Char =< $9 ->
+    'true';
+is_alphanumeric(_) ->
+    'false'.

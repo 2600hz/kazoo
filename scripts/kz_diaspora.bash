@@ -296,6 +296,7 @@ kz_util_to_kzd_accounts() {
     replace $FROM_MOD "is_account_expired" $TO_MOD "is_expired"
     replace $FROM_MOD "is_account_enabled" $TO_MOD "is_enabled"
     replace $FROM_MOD "account_update" $TO_MOD "save"
+    replace $FROM_MOD "normalize_account_name" $TO_MOD "normalize_name"
 }
 
 amqp_util_to_kz_amqp_util() {

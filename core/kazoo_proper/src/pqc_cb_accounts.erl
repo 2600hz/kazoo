@@ -94,7 +94,7 @@ cleanup_account(API, AccountName) ->
     timer:sleep(1000).% was needed to stop overwhelming the socket, at least locally
 
 check_accounts_db(Name) ->
-    AccountName = kz_util:normalize_account_name(Name),
+    AccountName = kzd_accounts:normalize_name(Name),
     ViewOptions = [{'key', AccountName}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_name">>, ViewOptions) of
         {'ok', []} -> 'ok';

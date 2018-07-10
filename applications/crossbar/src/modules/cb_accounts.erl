@@ -1422,7 +1422,7 @@ maybe_is_unique_account_name(AccountId, Name) ->
 
 -spec is_unique_account_name(kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
 is_unique_account_name(AccountId, Name) ->
-    AccountName = kz_util:normalize_account_name(Name),
+    AccountName = kzd_accounts:normalize_name(Name),
     ViewOptions = [{'key', AccountName}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
         {'ok', []} -> 'true';

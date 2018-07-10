@@ -14,7 +14,6 @@
         ,format_account_modb/1, format_account_modb/2
         ,format_resource_selectors_id/1, format_resource_selectors_id/2
         ,format_resource_selectors_db/1
-        ,normalize_account_name/1
         ]).
 
 -export([uri_encode/1
@@ -381,32 +380,6 @@ format_account_modb(AccountId, 'unencoded') ->
 format_account_modb(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalize the account name by converting the name to lower case
-%% and then removing all non-alphanumeric characters.
-%%
-%% This can possibly return an empty binary.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_account_name(kz_term:api_binary()) -> kz_term:api_binary().
-normalize_account_name('undefined') -> 'undefined';
-normalize_account_name(AccountName) ->
-    << <<Char>>
-       || <<Char>> <= kz_term:to_lower_binary(AccountName),
-          is_alphanumeric(Char)
-    >>.
-
-is_alphanumeric(Char)
-  when Char >= $a,
-       Char =< $z ->
-    true;
-is_alphanumeric(Char)
-  when Char >= $0,
-       Char =< $9 ->
-    true;
-is_alphanumeric(_) ->
-    false.
 
 %%------------------------------------------------------------------------------
 %% @doc Given an JSON Object extracts the `Call-ID' into the processes

@@ -121,8 +121,8 @@ uri_test_() ->
     ].
 
 normalize_account_name_test_() ->
-    [?_assertEqual(undefined, kz_util:normalize_account_name(undefined))
-    ,?_assertEqual(<<"blip2blop">>, kz_util:normalize_account_name(<<"Blip#2!Blop">>))
+    [?_assertEqual(undefined, kzd_accounts:normalize_name(undefined))
+    ,?_assertEqual(<<"blip2blop">>, kzd_accounts:normalize_name(<<"Blip#2!Blop">>))
     ].
 
 is_in_account_hierarchy_test_() ->
