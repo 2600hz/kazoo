@@ -235,7 +235,7 @@ is_authenticated(#cb_context{}) -> 'true'.
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
     lager:debug("checking for superduper admin: ~s", [AccountId]),
-    case kz_util:is_system_admin(AccountId) of
+    case kzd_accounts:is_superduper_admin(AccountId) of
         'true' ->
             lager:debug("the requestor is a superduper admin"),
             'true';

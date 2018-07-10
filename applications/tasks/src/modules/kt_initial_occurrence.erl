@@ -90,7 +90,7 @@ handle_initial_registration(AccountId) ->
 -spec notify_initial_registration(kzd_accounts:doc()) -> 'ok'.
 notify_initial_registration(AccountJObj) ->
     UpdatedAccountJObj = kzd_accounts:set_initial_registration_sent(AccountJObj, 'true'),
-    _ = kz_util:account_update(UpdatedAccountJObj),
+    _ = kzd_accounts:save(UpdatedAccountJObj),
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"registration">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -129,7 +129,7 @@ handle_initial_call(AccountId) ->
 -spec notify_initial_call(kzd_accounts:doc()) -> 'ok'.
 notify_initial_call(AccountJObj) ->
     UpdatedAccountJObj = kzd_accounts:set_initial_call_sent(AccountJObj, 'true'),
-    _ = kz_util:account_update(UpdatedAccountJObj),
+    _ = kzd_accounts:save(UpdatedAccountJObj),
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"call">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

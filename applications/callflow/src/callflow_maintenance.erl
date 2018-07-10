@@ -264,12 +264,12 @@ update_doc(Key, Value, Id, Db) ->
 
 -spec account_set_classifier_inherit(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 account_set_classifier_inherit(Classifier, Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
     set_account_classifier_action(<<"inherit">>, Classifier, AccountDb).
 
 -spec account_set_classifier_deny(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 account_set_classifier_deny(Classifier, Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
     set_account_classifier_action(<<"deny">>, Classifier, AccountDb).
 
 -spec all_accounts_set_classifier_inherit(kz_term:ne_binary()) -> 'ok'.
@@ -365,7 +365,7 @@ is_classifier(Classifier) ->
 %%------------------------------------------------------------------------------
 -spec list_account_restrictions(kz_term:ne_binary()) -> 'ok'.
 list_account_restrictions(Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
     DbNameEncoded = kz_util:format_account_id(AccountDb,'encoded'),
     io:format("\nAccount level classifiers:\n\n"),
     print_call_restrictions(DbNameEncoded, kz_util:format_account_id(AccountDb,'raw')),

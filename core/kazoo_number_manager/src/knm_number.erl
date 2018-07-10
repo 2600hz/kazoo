@@ -412,7 +412,7 @@ check_number(PN) ->
 -ifdef(TEST).
 is_account_enabled(?MATCH_ACCOUNT_RAW(_)) -> true.
 -else.
-is_account_enabled(AccountId) -> kz_util:is_account_enabled(AccountId).
+is_account_enabled(AccountId) -> kzd_accounts:is_enabled(AccountId).
 -endif.
 
 check_account(PN) ->

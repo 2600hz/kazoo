@@ -625,7 +625,7 @@ maybe_nest(_, []) -> [];
 maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
 import_module_name(AuthBy, Carrier) ->
-    case kz_util:is_system_admin(AuthBy)
+    case kzd_accounts:is_superduper_admin(AuthBy)
         andalso Carrier
     of
         'false' -> ?IMPORT_DEFAULTS_TO_CARRIER;
@@ -634,7 +634,7 @@ import_module_name(AuthBy, Carrier) ->
     end.
 
 import_state(AuthBy, State) ->
-    case kz_util:is_system_admin(AuthBy)
+    case kzd_accounts:is_superduper_admin(AuthBy)
         andalso 'undefined' =/= State
     of
         'false' -> [];

@@ -1333,7 +1333,7 @@ is_admin(?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),
     'true';
 is_admin(AuthBy) ->
-    kz_util:is_system_admin(AuthBy).
+    kzd_accounts:is_superduper_admin(AuthBy).
 -endif.
 
 %%------------------------------------------------------------------------------
@@ -1639,7 +1639,7 @@ is_in_account_hierarchy(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID) -> 'true';
 is_in_account_hierarchy(_, _) -> 'false'.
 -else.
 is_in_account_hierarchy(AuthBy, AccountId) ->
-    kz_util:is_in_account_hierarchy(AuthBy, AccountId, 'true').
+    kzd_accounts:is_in_account_hierarchy(AuthBy, AccountId, 'true').
 -endif.
 
 -spec is_authorized_collection(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().

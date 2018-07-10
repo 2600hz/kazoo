@@ -437,7 +437,7 @@ is_enabled(AccountId, {<<"owner">>, OwnerId}) ->
             'true'
     end;
 is_enabled(AccountId, {<<"account">>, AccountId}) ->
-    kz_util:is_account_enabled(AccountId)
+    kzd_accounts:is_enabled(AccountId)
         orelse throw({'error', {'account_disabled', AccountId}});
 is_enabled(_AccountId, {_Type, _Thing}) -> 'true'.
 

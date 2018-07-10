@@ -22,7 +22,7 @@ handle_req(Resources, _Number, OffnetJObj, _DB, _Params) ->
 
 -spec maybe_get_local_resources(kz_term:ne_binary(), kz_term:ne_binary()) -> stepswitch_resources:resources().
 maybe_get_local_resources(HuntAccount, AccountId) ->
-    case kz_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
+    case kzd_accounts:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
                       ,[AccountId, HuntAccount]

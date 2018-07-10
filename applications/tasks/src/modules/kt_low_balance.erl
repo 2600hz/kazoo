@@ -110,7 +110,7 @@ reset_low_balance_sent(AccountJObj0) ->
     lager:debug("resetting low balance sent"),
     AccountJObj1 = kzd_accounts:reset_low_balance_sent(AccountJObj0),
     AccountJObj2 = kzd_accounts:remove_low_balance_tstamp(AccountJObj1),
-    _ = kz_util:account_update(AccountJObj2),
+    _ = kzd_accounts:save(AccountJObj2),
     'ok'.
 
 -spec maybe_low_balance_notify(kzd_accounts:doc(), kz_transaction:units()) -> 'ok'.
@@ -165,5 +165,5 @@ notify_of_low_balance(AccountJObj, CurrentBalance) ->
 update_account_low_balance_sent(AccountJObj0) ->
     AccountJObj1 = kzd_accounts:set_low_balance_sent(AccountJObj0),
     AccountJObj2 = kzd_accounts:set_low_balance_tstamp(AccountJObj1),
-    _ = kz_util:account_update(AccountJObj2),
+    _ = kzd_accounts:save(AccountJObj2),
     'ok'.
