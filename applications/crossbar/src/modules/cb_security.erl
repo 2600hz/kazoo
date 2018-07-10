@@ -375,9 +375,9 @@ check_account_hierarchy(AuthModule, JObj, Context) ->
     AccountId = kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj),
 
     case cb_context:is_superduper_admin(AuthAccountId)
-        orelse kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+        orelse kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
         orelse kz_json:is_false([<<"multi_factor">>, <<"include_subaccounts">>], JObj)
-        orelse kz_util:is_in_account_hierarchy(AccountId, AuthAccountId)
+        orelse kzd_accounts:is_in_account_hierarchy(AccountId, AuthAccountId)
     of
         'true' -> Context;
         'false' ->

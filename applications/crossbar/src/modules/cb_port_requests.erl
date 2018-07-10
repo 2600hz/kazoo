@@ -372,6 +372,12 @@ date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $
                            ) ->
     Date = {kz_term:to_integer(YYYY), kz_term:to_integer(MM), kz_term:to_integer(DD)},
     Time = {kz_term:to_integer(HH), kz_term:to_integer(Mm), 0},
+
+    date_as_configured_timezone(Date, Time, FromTimezone).
+
+date_as_configured_timezone(Date, Time, 'undefined') ->
+    date_as_configured_timezone(Date, Time, kzd_accounts:default_timezone());
+date_as_configured_timezone(Date, Time, FromTimezone) ->
     kz_time:to_gregorian_seconds({Date, Time}, FromTimezone).
 
 %%------------------------------------------------------------------------------

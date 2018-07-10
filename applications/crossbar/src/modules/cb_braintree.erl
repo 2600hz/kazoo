@@ -435,7 +435,7 @@ reset_low_balance_notification(AccountId) ->
         {'ok', AccountJObj0} ->
             AccountJObj1 = kzd_accounts:reset_low_balance_sent(AccountJObj0),
             AccountJObj2 = kzd_accounts:remove_low_balance_tstamp(AccountJObj1),
-            kz_util:account_update(AccountJObj2)
+            kzd_accounts:save(AccountJObj2)
     end.
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().

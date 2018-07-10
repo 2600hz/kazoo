@@ -175,7 +175,7 @@ validate(Context, ?RECONCILIATION) ->
     end;
 validate(Context, ?OVERRIDE) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    case kz_util:is_system_admin(AuthAccountId) of
+    case kzd_accounts:is_superduper_admin(AuthAccountId) of
         'true' ->
             crossbar_doc:load(cb_context:account_id(Context)
                              ,cb_context:set_account_db(Context, ?KZ_SERVICES_DB)
@@ -381,7 +381,7 @@ is_allowed(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
 
     (AuthAccountId =:= ResellerId
-     orelse kz_util:is_system_admin(AuthAccountId)
+     orelse kzd_accounts:is_superduper_admin(AuthAccountId)
     )
         andalso {'ok', ResellerId}.
 

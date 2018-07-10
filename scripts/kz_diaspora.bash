@@ -266,6 +266,8 @@ kzd_accessors() {
     kz_device_to_kzd_devices
     echo "  * kz_account->kzd_accounts"
     kz_account_to_kzd_accounts
+    echo "  * kz_util->kzd_accounts"
+    kz_util_to_kzd_accounts
 }
 
 kz_device_to_kzd_devices() {
@@ -282,6 +284,18 @@ kz_account_to_kzd_accounts() {
     for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
         replace_call $FROM $TO '' '' "$FILE"
     done
+}
+
+kz_util_to_kzd_accounts() {
+    FROM_MOD=kz_util
+    TO_MOD=kzd_accounts
+
+    # replace FROM_MOD FROM_FUN TO_MOD TO_FUN
+    replace $FROM_MOD "is_in_account_hierarchy" $TO_MOD "is_in_account_hierarchy"
+    replace $FROM_MOD "is_system_admin" $TO_MOD "is_superduper_admin"
+    replace $FROM_MOD "is_account_expired" $TO_MOD "is_expired"
+    replace $FROM_MOD "is_account_enabled" $TO_MOD "is_enabled"
+    replace $FROM_MOD "account_update" $TO_MOD "save"
 }
 
 amqp_util_to_kz_amqp_util() {

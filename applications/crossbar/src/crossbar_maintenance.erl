@@ -293,7 +293,7 @@ find_account_by_id(Id) ->
 %%------------------------------------------------------------------------------
 -spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
-    case kz_util:set_allow_number_additions(AccountId, 'true') of
+    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_allow_number_additions(J, 'true') end) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -304,7 +304,7 @@ allow_account_number_additions(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec disallow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 disallow_account_number_additions(AccountId) ->
-    case kz_util:set_allow_number_additions(AccountId, 'false') of
+    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_allow_number_additions(J, 'false') end) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -315,7 +315,7 @@ disallow_account_number_additions(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec enable_account(input_term()) -> 'ok' | 'failed'.
 enable_account(AccountId) ->
-    case kz_util:enable_account(AccountId) of
+    case kzd_accounts:save(AccountId, fun kzd_accounts:enable/1) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -326,7 +326,7 @@ enable_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec disable_account(input_term()) -> 'ok' | 'failed'.
 disable_account(AccountId) ->
-    case kz_util:disable_account(AccountId) of
+    case kzd_accounts:save(AccountId, fun kzd_accounts:disable/1) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -337,7 +337,7 @@ disable_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
-    case kz_util:set_superduper_admin(AccountId, 'true') of
+    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_superduper_admin(J, 'true') end) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -348,7 +348,7 @@ promote_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec demote_account(input_term()) -> 'ok' | 'failed'.
 demote_account(AccountId) ->
-    case kz_util:set_superduper_admin(AccountId, 'false') of
+    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_superduper_admin(J, 'false') end) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.

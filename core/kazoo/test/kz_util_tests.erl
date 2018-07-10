@@ -126,25 +126,25 @@ normalize_account_name_test_() ->
     ].
 
 is_in_account_hierarchy_test_() ->
-    [?_assertEqual(false, kz_util:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
-    ,?_assertEqual(false, kz_util:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
-    ,?_assertEqual(false, kz_util:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, true))
-    ,?_assertEqual(false, kz_util:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, false))
-    ,?_assertEqual(false, kz_util:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, false))
-    ,?_assertEqual(false, kz_util:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, true))
-    ,?_assertEqual(true, kz_util:is_in_account_hierarchy(?AN_ACCOUNT_ID, ?AN_ACCOUNT_ID, true))
+    [?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, true))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, false))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, false))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, true))
+    ,?_assertEqual(true, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, ?AN_ACCOUNT_ID, true))
     ].
 
 is_system_admin_test_() ->
-    [?_assertEqual(false, kz_util:is_system_admin(undefined))
+    [?_assertEqual(false, kzd_accounts:is_superduper_admin(undefined))
     ].
 
 is_account_enabled_test_() ->
-    [?_assertEqual(false, kz_util:is_account_enabled(undefined))
+    [?_assertEqual(false, kzd_accounts:is_enabled(undefined))
     ].
 
 is_account_expired_test_() ->
-    [?_assertEqual(false, kz_util:is_account_expired(undefined))
+    [?_assertEqual(false, kzd_accounts:is_expired(undefined))
     ].
 
 spawns_test_() ->

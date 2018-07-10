@@ -416,7 +416,7 @@ create_apps_store_doc(AccountId) ->
 validate_move(<<"superduper_admin">>, Context, _, _) ->
     lager:debug("using superduper_admin flag to allow move account"),
     AuthId = kz_json:get_value(<<"account_id">>, cb_context:auth_doc(Context)),
-    kz_util:is_system_admin(AuthId);
+    kzd_accounts:is_superduper_admin(AuthId);
 validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
     lager:debug("using tree to allow move account"),
     AuthId = kz_doc:account_id(cb_context:auth_doc(Context)),
@@ -928,7 +928,7 @@ load_paginated_descendants(AccountId, Context) ->
 %%------------------------------------------------------------------------------
 -spec load_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
-    case kz_util:is_system_admin(cb_context:auth_account_id(Context))
+    case kzd_accounts:is_superduper_admin(cb_context:auth_account_id(Context))
         orelse
         (AccountId =/= cb_context:auth_account_id(Context)
          andalso kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_sibling_listing">>, 'true')

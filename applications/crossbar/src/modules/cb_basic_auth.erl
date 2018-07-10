@@ -133,7 +133,7 @@ get_credential_doc(AccountId, View, Key) ->
 is_expired(Context, JObj) ->
     AccountId = kz_doc:account_id(JObj),
     AccountDb = kz_util:format_account_db(AccountId),
-    case kz_util:is_account_expired(AccountId) of
+    case kzd_accounts:is_expired(AccountId) of
         'false' ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
@@ -141,7 +141,7 @@ is_expired(Context, JObj) ->
             kz_cache:store_local(?CACHE_NAME, {'basic_auth', AuthToken}, JObj, CacheProps),
             {'true', set_auth_doc(Context, JObj)};
         {'true', Expired} ->
-            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [AccountId]),
+            _ = kz_util:spawn(fun crossbar_util:maybe_disable_account/1, [AccountId]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}

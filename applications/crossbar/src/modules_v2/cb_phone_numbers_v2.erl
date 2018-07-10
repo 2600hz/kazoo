@@ -1034,7 +1034,7 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
 pick_release_or_delete(Context, Options) ->
     AuthBy = knm_number_options:auth_by(Options),
     Pick = case kz_term:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
-               andalso kz_util:is_system_admin(AuthBy)
+               andalso kzd_accounts:is_superduper_admin(AuthBy)
            of
                'false' -> 'release';
                'true' -> 'delete'
