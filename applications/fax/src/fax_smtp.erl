@@ -257,23 +257,19 @@ handle_message(#state{filename=Filename
                      ,errors=[]
                      }=State) ->
     lager:debug("checking file ~s", [Filename]),
-    FromFormat = kz_mime:from_filename(Filename),
-    Options = [{<<"output_type">>, 'binary'}
-              ,{<<"job_id">>, kz_doc:id(Doc)}
-              ,{<<"read_metadata">>, 'true'}
-              ],
-    case kz_convert:fax(FromFormat, <<"image/tiff">>, {'file', Filename}, Options) of
-        {'ok', FileContents, Props} ->
-            NewDoc = kz_json:set_values([{<<"pvt_pages">>, props:get_value(<<"page_count">>, Props, 0)}
-                                        ,{<<"pvt_size">>, props:get_value(<<"size">>, Props, 0)}
-                                        ]
-                                       ,Doc
-                                       ),
-            case fax_util:save_fax_doc(NewDoc, FileContents, <<"image/tiff">>) of
-                {'ok', _} ->
-                    lager:debug("smtp fax document saved");
+    ContentType = kz_mime:from_filename(Filename),
+    Content = file:read(Filename),
+    case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, Doc, Content, ContentType) of
+        {'ok', JObj} ->
+            Updates = [{<<"pvt_job_status">>, <<"pending">>}
+                      ,{<<"pvt_modified">>, kz_time:now_s()}
+                      ],
+            case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, JObj)) of
+                {'ok', Doc} ->
+                    lager:debug("fax jobid ~s set to pending", [kz_docs:id(Doc)]),
+                    {'ok', Doc};
                 {'error', Error} ->
-                    lager:error("failed saving fax document with message: ~p", [Error]),
+                    lager:debug("error ~p setting fax jobid ~s to pending",[Error, kz_docs:id(Doc)]),
                     maybe_faxbox_log(State#state{errors=[Error]})
             end;
         {'error', Error} ->
@@ -640,7 +636,7 @@ maybe_faxbox_by_rules([], #state{account_id=AccountId
                                 ,from=From
                                 ,errors=Errors
                                 }=State) ->
-    Error = <<"no mathing rules in account ", AccountId/binary, " for ", From/binary >>,
+    Error = <<"no matching rules in account ", AccountId/binary, " for ", From/binary >>,
     lager:debug(Error),
     State#state{errors=[Error | Errors]};
 maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->

@@ -57,6 +57,7 @@
 -define(COUNT_TIFF_PAGES_CMD, <<"echo -n `tiffinfo $FILE | grep 'Page Number' | grep -c 'P'`">>).
 
 -define(VALIDATE_PDF_CMD, <<"gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE">>).
+
 -define(VALIDATE_TIFF_CMD, <<"tiffinfo $FILE">>).
 
 -define(CONVERT_IMAGE_COMMAND
@@ -80,10 +81,10 @@
        ,kapps_config:get_is_true(?CONFIG_CAT, [<<"fax">>, <<"serialize_openoffice">>], true)).
 
 -define(ENABLE_OPENOFFICE
-       ,kapps_config:get_is_true(?CONFIG_CAT, [<<"fax">>, <<"enable_openoffice">>], true)).
+       ,kapps_config:get_is_true(?CONFIG_CAT, [<<"fax">>, <<"enable_openoffice">>], false)).
 
 -define(CONVERT_TIMEOUT
-       ,kapps_config:get_integer(?CONFIG_CAT, [<<"fax">>, <<"convert_command_timeout">>] ,120 * ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_integer(?CONFIG_CAT, [<<"fax">>, <<"convert_command_timeout">>], 120 * ?MILLISECONDS_IN_SECOND)).
 
 -define(KZ_FAX_CONVERTER_HRL, 'true').
 -endif.
