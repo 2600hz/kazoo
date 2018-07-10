@@ -289,12 +289,13 @@ handle_cast('prepare_job', #state{job_id=JobId
                                  ,job=JObj
                                  }=State) ->
     send_status(State, <<"fetching document to send">>, ?FAX_PREPARE, 'undefined'),
-    case write_document(JobId, kz_doc:attachment_names(JObj)) of
-        {'ok', Filepath} ->
+    case write_document(JObj, JobId) of
+        {'ok', Filepath, Doc} ->
             send_status(State, <<"prepared document for send">>, ?FAX_PREPARE, 'undefined'),
             gen_server:cast(self(), 'send'),
-            {'noreply', State#state{file=Filepath
-                                   ,pages=kz_json:get_integer_value(<<"pvt_pages">>, JObj)
+            {'noreply', State#state{job=Doc
+                                   ,file=Filepath
+                                   ,pages=kz_json:get_integer_value(<<"pvt_pages">>, Doc)
                                    }};
         {'error', Message} ->
             send_error_status(State, Message),
@@ -729,18 +730,17 @@ elapsed_time(JObj) ->
     Created = kz_doc:created(JObj, Now),
     Now - Created.
 
--spec write_document(kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                            {'ok', kz_term:ne_binary()} |
+-spec write_document(kz_json:object(), kz_term:ne_binary()) ->
+                            {'ok', kz_term:ne_binary(), kz_json:object()} |
                             {'error', any()}.
-write_document(JobId, [AttachmentName|_]) ->
-    case kz_datamgr:fetch_attachment(?KZ_FAXES_DB, JobId, AttachmentName) of
-        {'ok', Contents} ->
+write_document(JObj, JobId) ->
+    case kzd_fax:fetch_faxable_attachment(?KZ_FAXES_DB, JObj) of
+        {'ok', Content, _ContentType, _Name, Doc} ->
             FilePath = filename:join(?TMP_DIR, <<JobId/binary, ".tiff">>),
-            kz_util:write_file(FilePath, Contents),
-            {'ok', FilePath};
+            kz_util:write_file(FilePath, Content),
+            {'ok', FilePath, Doc};
         Error -> Error
     end.
-
 
 -spec send_fax(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->

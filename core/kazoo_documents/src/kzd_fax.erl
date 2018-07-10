@@ -28,6 +28,20 @@
         ,size/1, size/2
         ,pages/1, pages/2
         ,retry_after/1, retry_after/2
+        ]
+       ).
+
+-export([save_outbound_fax/4]).
+
+-export([fetch_faxable_attachment/2, fetch_faxable_attachment/3
+        ,fetch_pdf_attachment/2, fetch_pdf_attachment/3
+        ,fetch_original_attachment/2, fetch_original_attachment/3
+        ,fetch_legacy_attachment/2, fetch_legacy_attachment/3
+        ]).
+
+-export([save_fax_docs/3
+        ,save_fax_doc/5
+        ,save_fax_attachment/5
         ]).
 
 -include("kz_documents.hrl").
@@ -59,6 +73,14 @@
 -define(KEY_DOCUMENT_URL, [<<"document">>, <<"url">>]).
 
 -define(PVT_TYPE, <<"fax">>).
+
+-define(ORIGINAL_FILE_PREFIX, "original_file").
+-define(FAX_FILENAME, <<"fax_file.tiff">>).
+-define(PDF_FILENAME, <<"pdf_file.pdf">>).
+
+-define(RETRY_SAVE_ATTACHMENT_DELAY, 5000).
+
+-define(FAX_CONFIG_CAT, <<"fax">>).
 
 -spec new() -> doc().
 new() ->
@@ -226,3 +248,289 @@ retry_after(FaxDoc) ->
 -spec retry_after(doc(), Default) -> integer() | Default.
 retry_after(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_RETRY_AFTER, FaxDoc, Default).
+
+%%%=============================================================================
+%%% attachment handling functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc faxes pre-convert attachment documents to tiff/pdf on ingress and save
+%% all these formats to the db as attachments
+%%
+%% If configured, the fax document for outbound faxes will contain a copy of the
+%% post conversion fax tiff file and a pdf representation of this file.
+%% @end
+%%------------------------------------------------------------------------------
+-spec save_outbound_fax(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                 {'ok', kz_json:object()} |
+                                 {'error', any()}.
+save_outbound_fax(Db, Doc, Original, ContentType) ->
+    Id = kz_doc:id(Doc),
+    Name = <<?ORIGINAL_FILE_PREFIX, (kz_mime:to_extension(ContentType))/binary>>,
+    Att = [{Original, ContentType, Name}],
+    case maybe_convert_fax(ContentType, Original, Id) of
+        {'ok', Tiff, Props} ->
+            NewDoc = update_fax_props(Doc, Props),
+            Att1 = [Att|{Tiff, ContentType, ?FAX_FILENAME}],
+            save_fax_docs(Db, NewDoc, [Att1|maybe_convert_to_pdf(Tiff, kz_docs:id(NewDoc))]);
+        Error -> Error
+    end.
+
+-spec update_fax_props(kz_json:object(), kz_term:proplist()) -> kz_json:object().
+update_fax_props(Doc, Props) ->
+    kz_json:set_values([{<<"pvt_pages">>, props:get_value(<<"page_count">>, Props, 0)}
+                       ,{<<"pvt_size">>, props:get_value(<<"size">>, Props, 0)}
+                       ]
+                      ,Doc
+                      ).
+
+-spec maybe_convert_fax(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                               {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} | 'noop'.
+maybe_convert_fax(Doc, Original, ContentType) ->
+    case kz_config:is_true(?FAX_CONFIG_CAT, <<"convert_attachments_on_ingress">>, true) of
+        'true' -> convert_to_fax(Doc, Original, ContentType);
+        'false' -> 'noop'
+    end.
+
+-spec maybe_convert_to_pdf(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                               {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} | {'error', any()}.
+maybe_convert_to_pdf(Content, Id) ->
+    case kz_config:is_true(?FAX_CONFIG_CAT, <<"store_fax_pdf">>, true) of
+        'true' ->
+            case convert_fax_to_pdf(Content, Id) of
+                {'ok', Pdf} -> {Pdf, <<"application/pdf">>, ?PDF_FILENAME};
+                Error -> Error
+            end;
+        'false' -> 'noop'
+    end.
+
+-spec convert_to_fax(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+convert_to_fax(FromFormat, File, Id) ->
+    Options = [{<<"output_type">>, 'binary'}
+              ,{<<"job_id">>, Id}
+              ,{<<"read_metadata">>, 'true'}
+              ],
+    kz_convert:fax(FromFormat, <<"image/tiff">>, File, Options).
+
+-spec convert_fax_to_pdf(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+convert_fax_to_pdf(Content, Id) ->
+    Options = [{<<"output_type">>, 'binary'}
+              ,{<<"job_id">>, Id}
+              ],
+    kz_convert:fax(<<"image/tiff">>, <<"application/pdf">>, Content, Options).
+
+%%%=============================================================================
+%%% attachment getter functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc helper function for getting at attachments suitable for faxing
+%% @end
+%%------------------------------------------------------------------------------
+-spec fetch_faxable_attachment(kz_term:ne_binary(), kz_json:object()) ->
+                                      {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+                                      {'error', any()}.
+fetch_faxable_attachment(Db, Doc) ->
+    fetch_faxable_attachment(Db, Doc, kz_doc:attachment_names(Doc)).
+
+-spec fetch_faxable_attachment(kz_term:ne_binary(), kz_json:object(), list()) ->
+                                      {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                                      {'error', kz_term:ne_binary()}.
+fetch_faxable_attachment(Db, Doc, [?FAX_FILENAME|_]) ->
+    case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), ?FAX_FILENAME) of
+        {'ok', Content} -> {'ok', Content, <<"image/tiff">>};
+        Error -> Error
+    end;
+fetch_faxable_attachment(Db, Doc, [_|Attachments]) ->
+    fetch_faxable_attachment(Db, Doc, Attachments);
+fetch_faxable_attachment(Db, Doc, []) ->
+    case fetch_original_attachment(Db, Doc) of
+        {'ok', Content, ContentType} ->
+            case convert_to_fax(ContentType, Content, kz_doc:id(Doc)) of
+                {'ok', Tiff, Props} ->
+                    NewDoc = update_fax_props(Doc, Props),
+                    NewerDoc = save_fax_docs(Db, NewDoc, [{Tiff, ContentType, ?FAX_FILENAME}]),
+                    {'ok', Tiff, <<"image/tiff">>, NewerDoc};
+                Error -> Error
+            end;
+        Error -> Error
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc helper function for accessing/creating pdf attachment suitable for email/api response
+%% @end
+%%------------------------------------------------------------------------------
+-spec fetch_pdf_attachment(kz_term:ne_binary(), kz_json:object()) ->
+                                  {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                                  {'error', kz_term:ne_binary()}.
+fetch_pdf_attachment(Db, Doc) ->
+    fetch_pdf_attachment(Db, Doc, kz_doc:attachment_names(Doc)).
+
+-spec fetch_pdf_attachment(kz_term:ne_binary(), kz_json:object(), list()) ->
+                                  {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                                  {'error', kz_term:ne_binary()}.
+fetch_pdf_attachment(Db, Doc, [?PDF_FILENAME|_]) ->
+    case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), ?PDF_FILENAME) of
+        {'ok', Content} -> {'ok', Content, <<"application/pdf">>, Doc};
+        Error -> Error
+    end;
+fetch_pdf_attachment(Db, Doc, [_|Attachments]) ->
+    fetch_pdf_attachment(Db, Doc, Attachments);
+fetch_pdf_attachment(Db, Doc, []) ->
+    case fetch_faxable_attachment(Db, Doc) of
+        {'ok', Content, _, NewDoc} ->
+            case convert_fax_to_pdf(Content, kz_doc:id(NewDoc)) of
+                {'ok', Pdf} ->
+                    NewerDoc = maybe_save_pdf(Db, Pdf, NewDoc),
+                    {'ok', Pdf, <<"application/pdf">>, NewerDoc};
+                Error -> Error
+            end;
+        Error -> Error
+    end.
+
+-spec maybe_save_pdf(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                            kz_json:object().
+maybe_save_pdf(Db, Pdf, Doc) ->
+    case kz_config:is_true(?FAX_CONFIG_CAT, <<"store_fax_pdf">>, true) of
+        'true' ->
+            case save_fax_doc(Db, Doc, Pdf, <<"application/pdf">>, ?PDF_FILENAME) of
+                {'ok', J} -> J;
+                _ -> Doc
+            end;
+        'false' ->
+            Doc
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc helper function for accessing/creating original attachment
+%% @end
+%%------------------------------------------------------------------------------
+-spec fetch_original_attachment(kz_term:ne_binary(), kz_json:object()) ->
+                                       {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                                       {'error', kz_term:ne_binary()}.
+fetch_original_attachment(Db, Doc) ->
+    fetch_original_attachment(Db, Doc, kz_doc:attachment_names(Doc)).
+
+-spec fetch_original_attachment(kz_term:ne_binary(), kz_json:object(), list()) ->
+                                       {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                                       {'error', kz_term:ne_binary()}.
+fetch_original_attachment(Db, Doc, [{<<?ORIGINAL_FILE_PREFIX, _/binary>>=Name}|_]) ->
+    case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), Name) of
+        {'ok', Content} -> {'ok', Content, kz_doc:attachment_content_type(Doc, Name), Doc};
+        Error -> Error
+    end;
+fetch_original_attachment(Db, Doc, [_|Attachments]) ->
+    fetch_original_attachment(Db, Doc, Attachments);
+fetch_original_attachment(Db, Doc, []) ->
+    fetch_legacy_attachment(Db, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc helper function for accessing a legacy attachment
+%% @end
+%%------------------------------------------------------------------------------
+-spec fetch_legacy_attachment(kz_term:ne_binary(), kz_json:object()) ->
+                                       {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+                                       {'error', kz_term:ne_binary()}.
+fetch_legacy_attachment(Db, Doc) ->
+    fetch_legacy_attachment(Db, Doc, kz_doc:attachment_names(Doc)).
+
+-spec fetch_legacy_attachment(kz_term:ne_binary(), kz_json:object(), list()) ->
+                                       {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+                                       {'error', kz_term:ne_binary()}.
+fetch_legacy_attachment(Db, Doc, [Name|_]) ->
+    case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), Name) of
+        {'ok', Content} ->
+            {'ok', Content, kz_doc:attachment_content_type(Doc, Name)};
+        Error -> Error
+    end;
+fetch_legacy_attachment(_Db, _Doc, []) ->
+    {'error', <<"failed to fetch attachment">>}.
+
+%%%=============================================================================
+%%% attachment save functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc common method for the safe saving of attachments
+%% @end
+%%------------------------------------------------------------------------------
+-spec save_fax_docs(kz_term:ne_binary(), kz_json:object(), list()) ->
+                           {'ok', kz_json:object()} |
+                           {'error', any()}.
+save_fax_docs(Db, Doc, [{Content, CT, Name}|Files]) ->
+    case save_fax_doc(Db, Doc, Content, CT, Name) of
+        {'ok', NewDoc} ->
+            save_fax_docs(Db, NewDoc, Files);
+        Error -> Error
+    end;
+save_fax_docs(Db, Doc, ['noop'|Files]) ->
+    save_fax_docs(Db, Doc, Files);
+save_fax_docs(_, Doc, []) ->
+    {'ok', Doc}.
+
+-spec save_fax_doc(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                          {'ok', kz_json:object()} |
+                          {'error', any()}.
+save_fax_doc(Db, Doc, Content, CT, Name) ->
+    case kz_datamgr:save_doc(Db, Doc) of
+        {'ok', JObj} ->
+            case save_fax_attachment(Db, JObj, Content, CT, Name) of
+                {'ok', _}=Ok -> Ok;
+                Error -> Error
+            end;
+        Else -> Else
+    end.
+
+-spec save_fax_attachment(kz_term:ne_binary(), kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary())->
+                                 {'ok', kz_json:object()} |
+                                 {'error', kz_term:ne_binary()}.
+save_fax_attachment(Db, JObj, Content, CT, Name) ->
+    MaxStorageRetry = kapps_config:get_integer(?FAX_CONFIG_CAT, <<"max_storage_retry">>, 5),
+    lager:debug("saving fax attachment ~s to ~s", [Name, kz_doc:id(JObj)]),
+    save_fax_attachment(Db, JObj, Content, CT, Name, MaxStorageRetry).
+
+-spec save_fax_attachment(kz_term:ne_binary(), kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer())->
+                                 {'ok', kz_json:object()} |
+                                 {'error', kz_term:ne_binary()}.
+save_fax_attachment(_, JObj, _Content, _CT, _Name, 0) ->
+    lager:error("max retry saving attachment ~s on fax id ~s rev ~s"
+               ,[_Name, kz_doc:id(JObj), kz_doc:revision(JObj)]
+               ),
+    {'error', <<"max retry saving attachment">>};
+save_fax_attachment(Db, JObj, Content, CT, Name, Count) ->
+    DocId = kz_doc:id(JObj),
+    _ = attempt_save(Db, JObj, Content, CT, Name),
+    case check_fax_attachment(Db, DocId, Name) of
+        {'ok', _}=Ok -> Ok;
+        {'missing', J} ->
+            lager:warning("missing fax attachment on fax id ~s",[DocId]),
+            timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
+            save_fax_attachment(J, Content, CT, Name, Count-1);
+        {'error', _R} ->
+            lager:debug("error '~p' saving fax attachment on fax id ~s",[_R, DocId]),
+            timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
+            {'ok', J} = kz_datamgr:open_doc(Db, DocId),
+            save_fax_attachment(J, Content, CT, Name, Count-1)
+    end.
+
+-spec attempt_save(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                          {'ok', kz_json:objcet()} |
+                          kz_datamgr:data_error().
+attempt_save(Db, JObj, Content, CT, Name) ->
+    Opts = [{'content_type', CT}
+           ],
+    kz_datamgr:put_attachment(Db, kz_doc:id(JObj), Name, Content, Opts).
+
+-spec check_fax_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary())->
+                                  {'ok', kz_json:object()} |
+                                  {'missing', kz_json:object()} |
+                                  {'error', any()}.
+check_fax_attachment(Db, DocId, Name) ->
+    case kz_datamgr:open_doc(Db, DocId) of
+        {'ok', JObj} ->
+            case kz_doc:attachment(JObj, Name) of
+                'undefined' -> {'missing', JObj};
+                _Else -> {'ok', JObj}
+            end;
+        {'error', _}=E -> E
+    end.
