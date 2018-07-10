@@ -10,6 +10,7 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
 
+-define(AN_ACCOUNT_ID, <<"4fe69c5b61015084f1fe5684abc6e502">>).
 
 -define(ID, <<"_id">>).
 -define(TREE, <<"pvt_tree">>).
@@ -37,6 +38,33 @@ kz_account_test_() ->
              ]
      end
     }.
+
+normalize_account_name_test_() ->
+    [?_assertEqual(undefined, kzd_accounts:normalize_name(undefined))
+    ,?_assertEqual(<<"blip2blop">>, kzd_accounts:normalize_name(<<"Blip#2!Blop">>))
+    ].
+
+is_in_account_hierarchy_test_() ->
+    [?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, true))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, false))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, false))
+    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, true))
+    ,?_assertEqual(true, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, ?AN_ACCOUNT_ID, true))
+    ].
+
+is_system_admin_test_() ->
+    [?_assertEqual(false, kzd_accounts:is_superduper_admin(undefined))
+    ].
+
+is_account_enabled_test_() ->
+    [?_assertEqual(false, kzd_accounts:is_enabled(undefined))
+    ].
+
+is_account_expired_test_() ->
+    [?_assertEqual(false, kzd_accounts:is_expired(undefined))
+    ].
 
 test_account_doc_against_fixture() ->
     {'ok', Schema} = kz_json_schema:fload(<<"accounts">>),

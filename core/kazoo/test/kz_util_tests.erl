@@ -27,8 +27,6 @@
         ,format_account_modb_unencoded/1
         ]).
 
--define(AN_ACCOUNT_ID, <<"4fe69c5b61015084f1fe5684abc6e502">>).
-
 %% PROPER TESTING
 -ifdef(PROPER).
 
@@ -118,33 +116,6 @@ uri_test_() ->
     [?_assertEqual(<<"http://test.com/path1/path2">>, kz_util:uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>]))
     ,?_assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, kz_util:uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>]))
     ,?_assertEqual(<<"http://test.com/path1/path2">>, kz_util:uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>]))
-    ].
-
-normalize_account_name_test_() ->
-    [?_assertEqual(undefined, kzd_accounts:normalize_name(undefined))
-    ,?_assertEqual(<<"blip2blop">>, kzd_accounts:normalize_name(<<"Blip#2!Blop">>))
-    ].
-
-is_in_account_hierarchy_test_() ->
-    [?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
-    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID))
-    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, true))
-    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(undefined, ?AN_ACCOUNT_ID, false))
-    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, false))
-    ,?_assertEqual(false, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, undefined, true))
-    ,?_assertEqual(true, kzd_accounts:is_in_account_hierarchy(?AN_ACCOUNT_ID, ?AN_ACCOUNT_ID, true))
-    ].
-
-is_system_admin_test_() ->
-    [?_assertEqual(false, kzd_accounts:is_superduper_admin(undefined))
-    ].
-
-is_account_enabled_test_() ->
-    [?_assertEqual(false, kzd_accounts:is_enabled(undefined))
-    ].
-
-is_account_expired_test_() ->
-    [?_assertEqual(false, kzd_accounts:is_expired(undefined))
     ].
 
 spawns_test_() ->
