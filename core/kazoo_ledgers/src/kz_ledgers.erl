@@ -56,13 +56,16 @@ get(Account, CreatedFrom, CreatedTo)
 
 -spec get_ranged(kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_ranged(Options) ->
-    MODBs = props:get_value(databases, Options, []),
-    ViewOptions = props:filter_undefined(props:delete(databases, Options)),
+    MODBs = props:get_value('databases', Options, []),
+    ViewOptions = props:filter_undefined([{'group', 'true'}
+                                         ,{'group_level', 0}
+                                         ,{'reduce', 'true'}
+                                          | props:delete('databases', Options)
+                                         ]),
 
-    lager:debug("from: ~p to: ~p in direction ~p -> ~p"
+    lager:debug("getting total starting from ~p to ~p from dbs: ~p"
                ,[props:get_value('startkey', ViewOptions)
                 ,props:get_value('endkey', ViewOptions)
-                ,props:get_value('direction', ViewOptions, 'ascending')
                 ,MODBs
                 ]),
 
@@ -71,8 +74,8 @@ get_ranged(Options) ->
             andalso throw('no_account_db'),
         Sum = kz_json:sum_jobjs(
                 [case kazoo_modb:get_results(MODB, <<"ledgers/list_by_timestamp_legacy">>, Options) of
-                     {error, Reason} -> throw(Reason);
-                     {ok, JObjs} -> kz_json:sum_jobjs([kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs])
+                     {'error', Reason} -> throw(Reason);
+                     {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]
                  end
                  || MODB <- MODBs
                 ]),

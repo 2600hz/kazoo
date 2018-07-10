@@ -16,6 +16,29 @@
                 "  o[service] = {amount:amount, usage:usage};",
                 "  emit(doc.pvt_created, o);",
                 "}"
+            ],
+            "reduce": [
+                "function (keys, values, rereduce) {",
+                "  return values.reduce(function(reduceObj, obj) {",
+                "    for (var service in obj) {",
+                "      if (!obj.hasOwnProperty(service)) continue;",
+                "      var serviceObj = obj[service];",
+                "      var objUsageObj = serviceObj.usage || {};",
+                "      var reduceService = reduceObj[service] || {};",
+                "      var reduceServiceUsage = reduceService.usage || {};",
+                "      var tmp = {",
+                "        'amount': (serviceObj.amount || 0) + (reduceService.amount || 0),",
+                "        'usage': {",
+                "          'type': reduceServiceUsage.type || objUsageObj.type,",
+                "          'quantity': (reduceServiceUsage.quantity || 0) + (objUsageObj.quantity || 0),",
+                "          'unit': reduceServiceUsage.unit || objUsageObj.unit",
+                "        }",
+                "      };",
+                "      reduceObj[service] = tmp;",
+                "    }",
+                "    return reduceObj",
+                "  }, {})",
+                "}"
             ]
         },
         "listing_by_service": {

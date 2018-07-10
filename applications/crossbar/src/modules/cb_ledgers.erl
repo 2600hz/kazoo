@@ -195,7 +195,19 @@ put(Context, ?DEBIT) ->
 %%------------------------------------------------------------------------------
 -spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
 validate_ledgers(Context, ?HTTP_GET) ->
-    read_ledgers(Context).
+    Options = [{'group', 'true'}
+              ,{'group_level', 0}
+              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'reduce', 'true'}
+              ,{'unchunkable', 'true'}
+              ],
+    Context1 = crossbar_view:load_modb(Context, <<"ledgers/list_by_timestamp_legacy">>, Options),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_resp_data(Context1, summary_to_dollars(kz_json:sum_jobjs(cb_context:doc(Context1))));
+        _ ->
+            Context1
+    end.
 
 -spec validate_ledger_doc(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
@@ -266,23 +278,6 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
             Props = kz_json:recursive_to_proplist(Ledger),
             kz_notify:detailed_alert(?NOTIFY_MSG, [ResellerId, Error], Props),
             crossbar_util:response(kz_doc:public_fields(Ledger), Context)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec read_ledgers(cb_context:context()) -> cb_context:context().
-read_ledgers(Context) ->
-    Options = [{'unchunkable', 'true'}
-              ,{'mapper', crossbar_view:map_value_fun()}
-              ],
-    Context1 = crossbar_view:load_modb(Context, <<"ledgers/list_by_timestamp_legacy">>, Options),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            crossbar_util:response(summary_to_dollars(kz_json:sum_jobjs(cb_context:doc(Context1))), Context);
-        _ ->
-            Context1
     end.
 
 -spec summary_to_dollars(kz_json:object()) -> kz_json:object().
