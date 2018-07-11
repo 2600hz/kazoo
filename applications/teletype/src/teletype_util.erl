@@ -709,14 +709,21 @@ get_address_value(Key, Path, [JObj|JObjs]) ->
 -spec check_address_value(binary() | kz_term:binaries() | kz_json:object() | 'undefined') -> kz_term:api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';
-check_address_value(<<_/binary>> = Email) -> [Email];
+check_address_value(<<_/binary>> = Email) -> check_address_value([Email]);
 check_address_value(Emails) when is_list(Emails) ->
-    case [E || E <- Emails, not kz_term:is_empty(E)] of
+    case [E || E <- Emails,
+               kz_term:is_ne_binary(E),
+               length(binary:split(E, <<"@">>, ['global'])) == 2
+         ]
+    of
         [] -> 'undefined';
         Es -> Es
     end;
-check_address_value(JObj) ->
-    check_address_value(kz_json:get_value(<<"email_addresses">>, JObj)).
+check_address_value(Emails) ->
+    case kz_json:is_json_object(Emails) of
+        'true' -> check_address_value(kz_json:get_value(<<"email_addresses">>, Emails));
+        'false' -> 'undefined'
+    end.
 
 -spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_json:path()) ->
                                kz_term:api_ne_binaries().
