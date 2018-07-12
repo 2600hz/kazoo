@@ -61,6 +61,7 @@ fax_test_() ->
              ,test_pdf_to_tiff_read_metadata()
              ,test_openoffice_to_tiff_read_metadata()
              ,test_read_metadata()
+             ,test_openoffice_disable()
              ]
      end
     }.
@@ -68,6 +69,7 @@ fax_test_() ->
 setup() ->
     LinkPid = kzd_test_fixtures:setup(),
     {'ok', SupPid} = kz_openoffice_server_sup:start_link(),
+    kapps_config:set_boolean(<<"fax">>, <<"enable_openoffice_conversion">>, true),
     lager:set_loglevel('lager_console_backend', 'none'),
     lager:set_loglevel('lager_file_backend', 'none'),
     lager:set_loglevel('lager_syslog_backend', 'none'),
@@ -698,5 +700,18 @@ test_read_metadata() ->
                    ,{<<"filetype">>, <<"tiff">>}
                    ]
                   ,kz_fax_converter:read_metadata(Src)
+                  )
+    ].
+
+test_openoffice_disable() ->
+    JobId = kz_binary:rand_hex(16),
+    From = read_test_file("valid.docx"),
+    kapps_config:set_boolean(<<"fax">>, <<"enable_openoffice_conversion">>, false),
+    [?_assertMatch({'error', <<"openoffice compatible conversion", _/binary>>}
+                   ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                  ,<<"application/pdf">>
+                                  ,From
+                                  ,[{<<"job_id">>, JobId},{<<"output_type">>, 'binary'}]
+                                  )
                   )
     ].
