@@ -286,8 +286,6 @@ save_outbound_fax(Db, Doc, Original, ContentType) ->
                     NewDoc = update_fax_props(Doc, Props),
                     Att1 = Att ++ [{Tiff, ContentType, ?FAX_FILENAME}],
                     save_fax_attachments(Db, NewDoc, Att1 ++ [maybe_convert_to_pdf(Tiff, kz_doc:id(NewDoc))]);
-                'noop' ->
-                    save_fax_attachments(Db, Doc, Att);
                 Error -> Error
             end;
         'false' ->
