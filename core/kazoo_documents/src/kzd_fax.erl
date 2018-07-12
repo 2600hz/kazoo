@@ -571,8 +571,8 @@ maybe_store_url_attachment(Db, Doc, Content, ContentType) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec save_fax_attachments(kz_term:ne_binary(), kz_json:object(), list()) ->
-                           {'ok', kz_json:object()} |
-                           {'error', any()}.
+                                  {'ok', kz_json:object()} |
+                                  {'error', any()}.
 save_fax_attachments(Db, Doc, [{Content, CT, Name}|Files]) ->
     case save_fax_doc(Db, Doc, Content, CT, Name) of
         {'ok', NewDoc} ->
