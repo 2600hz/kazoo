@@ -77,13 +77,11 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
         {'error','not_found'} when Db =/= ?KZ_FAXES_DB ->
             raw_attachment_binary(?KZ_FAXES_DB, FaxId, Retries);
         {'ok', FaxJObj} ->
-            case kz_doc:attachment_names(FaxJObj) of
-                [AttachmentId | _] ->
-                    ContentType = kz_doc:attachment_content_type(FaxJObj, AttachmentId, <<"image/tiff">>),
-                    {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, FaxId, AttachmentId),
-                    {'ok', AttachmentBin, ContentType};
-                [] ->
-                    lager:debug("failed to find the attachment, retrying ~b more times", [Retries]),
+            case kzd_fax:fetch_faxable_attachment(?KZ_FAXES_DB, FaxJObj) of
+                {'ok', Content, ContentType, _Doc} ->
+                    {'ok', Content, ContentType};
+                {'error', Error} ->
+                    lager:debug("failed to find the attachment with error ~p, retrying ~b more times", [Error, Retries]),
                     timer:sleep(?MILLISECONDS_IN_MINUTE * 5),
                     raw_attachment_binary(Db, FaxId, Retries)
             end

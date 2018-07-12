@@ -212,37 +212,26 @@ maybe_fetch_attachments(_, _, _, 'true') ->
 maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     FaxId = kz_doc:id(FaxJObj),
     Db = kz_doc:account_db(FaxJObj),
-    [AttachmentName] = kz_doc:attachment_names(FaxJObj),
-
-    lager:debug("accessing fax attachment ~s at ~s / ~s", [AttachmentName, Db, FaxId]),
+    lager:debug("accessing fax attachment ~s at ~s", [Db, FaxId]),
     teletype_util:send_update(DataJObj, <<"pending">>),
-
-    case kz_datamgr:fetch_attachment(Db, {kzd_fax:type(), FaxId}, AttachmentName) of
-        {'ok', Bin} ->
-            ContentType = kz_doc:attachment_content_type(FaxJObj, AttachmentName),
-            convert_attachment(DataJObj, FaxId, Macros, ContentType, Bin);
+    Format = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+    Filename = get_file_name(Macros, <<".", Format/binary>>),
+    case fetch_attachment(Format, Db, FaxJObj) of
+        {'ok', Content, ContentType, _Doc} ->
+            [{ContentType, Filename, Content}];
         {'error', _E} ->
-            lager:debug("failed to fetch attachment ~s: ~p", [AttachmentName, _E]),
+            lager:debug("failed to fetch attachment: ~p", [_E]),
             []
     end.
 
--spec convert_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary(), binary()) -> attachments().
-convert_attachment(DataJObj, FaxId, Macros, FromFormat, Bin) ->
-    Ext = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
-    ToFormat = kz_mime:from_extension(Ext),
-    teletype_util:send_update(DataJObj, <<"pending">>),
-    Options = [{<<"output_type">>, 'binary'}
-              ,{<<"job_id">>, FaxId}
-              ],
-    case kz_convert:fax(FromFormat, ToFormat, Bin, Options) of
-        {'ok', Converted} ->
-            Filename = get_file_name(Macros, Ext),
-            lager:debug("adding attachment as ~s", [Filename]),
-            [{ToFormat, Filename, Converted}];
-        {'error', Reason} ->
-            lager:debug("error converting attachment with reason : ~p", [Reason]),
-            []
-    end.
+-spec fetch_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
+fetch_attachment(<<"tiff">>, Db, Doc) ->
+    kzd_fax:fetch_faxable_attachment(Db, Doc);
+fetch_attachment(<<"pdf">>, Db, Doc) ->
+    kzd_fax:fetch_pdf_attachment(Db, Doc);
+fetch_attachment(Format, _Db, _Doc) ->
+    lager:debug("invalid attachment format: ~p", [Format]),
+    [].
 
 -spec get_file_name(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_file_name(Macros, Ext) ->

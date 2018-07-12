@@ -81,7 +81,7 @@
 -define(KEY_EXTERNAL_ATTACHMENTS, <<"pvt_attachments">>).
 -define(KEY_DOCUMENT_HASH, <<"pvt_document_hash">>).
 
--define(ATTACHMENT_PROPERTY_REVISION, <<"revpos">>).
+-define(ATTACHMENT_PROPERTY_REVISION, <<"   case kz_doc:rev(revpos">>).
 
 %% Helper Macros
 -define(KEYS_ATTACHMENTS, [?KEY_ATTACHMENTS, ?KEY_EXTERNAL_ATTACHMENTS]).

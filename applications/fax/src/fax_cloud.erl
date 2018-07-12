@@ -237,7 +237,7 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
         {'ok', Authorization} ->
             case download_file(FileURL,Authorization) of
                 {'ok', CT, FileContents} ->
-                    case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+                    case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, JObj, FileContents, CT) of
                         {'ok', _} -> update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>);
                         {'error', E} ->
                             lager:debug("error saving attachment for JobId ~s : ~p",[JobId, E])

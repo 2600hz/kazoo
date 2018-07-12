@@ -735,10 +735,10 @@ elapsed_time(JObj) ->
                             {'error', any()}.
 write_document(JObj, JobId) ->
     case kzd_fax:fetch_faxable_attachment(?KZ_FAXES_DB, JObj) of
-        {'ok', Content, _ContentType, _Name, Doc} ->
-            FilePath = filename:join(?TMP_DIR, <<JobId/binary, ".tiff">>),
-            kz_util:write_file(FilePath, Content),
-            {'ok', FilePath, Doc};
+        {'ok', Content, _ContentType, Doc} ->
+            Filepath = filename:join(?TMP_DIR, <<JobId/binary, ".tiff">>),
+            kz_util:write_file(Filepath, Content),
+            {'ok', Filepath, Doc};
         Error -> Error
     end.
 

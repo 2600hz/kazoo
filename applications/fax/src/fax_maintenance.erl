@@ -15,7 +15,6 @@
 -export([migrate/0, migrate/1, migrate/2]).
 -export([migrate_outbound_faxes/0, migrate_outbound_faxes/1]).
 -export([refresh_views/0]).
--export([migrate_pending_faxes/0]).
 -export([flush/0]).
 
 -export([restart_job/1 , update_job/2]).
@@ -204,128 +203,6 @@ refresh_views() ->
     Views = kapps_util:get_views_json('fax', "views"),
     _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
     'ok'.
-
-%%------------------------------------------------------------------------------
-%% @doc Ensures that the fax attachments in queue are tiff files with page counts.
-%%
-%% A migration for pending faxes to ensure tiff formatted attachments with size
-%% and page count configured are always stored in the db
-%%
-%% @end
-%%------------------------------------------------------------------------------
--spec migrate_pending_faxes() -> 'ok'.
-migrate_pending_faxes() ->
-    ?SUP_LOG_INFO("started migrating pending fax attachments to tiff files"),
-    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/pending_migrate_jobs">>) of
-        {'ok', Jobs} ->
-            ?SUP_LOG_INFO("going to migrate ~b documents", [length(Jobs)]),
-            migrate_pending_fax_jobs(Jobs);
-        {'error', Error} ->
-            ?SUP_LOG_DEBUG("failed to fetch pending_migrate_jobs view with error ~p", [Error])
-    end.
-
--spec migrate_pending_fax_jobs(kz_json:objects()) -> 'ok'.
-migrate_pending_fax_jobs([]) ->
-    ?SUP_LOG_INFO("completed migrating pending fax attachments");
-migrate_pending_fax_jobs([Doc|Docs]) ->
-    migrate_pending_fax_job(Doc),
-    timer:sleep(500),
-    migrate_pending_fax_jobs(Docs).
-
--spec migrate_pending_fax_job(kz_json:object()) -> 'ok'.
-migrate_pending_fax_job(Doc) ->
-    DocId = kz_doc:id(Doc),
-    ?SUP_LOG_DEBUG("migrating pending fax attachment doc: ~s", [DocId]),
-    case kz_datamgr:open_doc(?KZ_FAXES_DB, DocId) of
-        {'ok', JObj} ->
-            case fetch_pending_job_attachment(JObj) of
-                'ok' -> 'ok';
-                {'ok', Content, ContentType, OldName} ->
-                    update_attachment(JObj, Content, ContentType, OldName)
-            end;
-        {'error', Error} ->
-            ?SUP_LOG_ERROR("Failed to open document ~s with error ~p", [DocId, Error])
-    end.
-
--spec fetch_pending_job_attachment(kz_json:object()) ->
-                                          'ok' |
-                                          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
-fetch_pending_job_attachment(JObj) ->
-    case kz_doc:attachment_names(JObj) of
-        [] ->
-            FetchRequest = kz_json:get_value(<<"document">>, JObj),
-            Url = kz_json:get_string_value(<<"url">>, FetchRequest),
-            fetch_attachment_url(Url, FetchRequest);
-        Attachments ->
-            fetch_attachment(JObj, Attachments)
-    end.
-
--spec fetch_attachment(kz_json:object(), kz_term:ne_binaries()) ->
-                                    'ok' | {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()}.
-fetch_attachment(JObj, [Attachment|_]) ->
-    JobId = kz_doc:id(JObj),
-    DefaultContentType = kz_mime:from_extension(filename:extension(Attachment)),
-    ContentType = kz_doc:attachment_content_type(JObj, Attachment, DefaultContentType),
-    case kz_datamgr:fetch_attachment(?KZ_FAXES_DB, JobId, Attachment) of
-        {'ok', Content} ->
-            {'ok', Content, ContentType, Attachment};
-        {'error', Error} ->
-            ?SUP_LOG_ERROR("failed to fetch attachment with error: ~p", [Error])
-    end.
-
--spec fetch_attachment_url(kz_term:api_binary(), kz_json:object()) ->
-                                  'ok' |
-                                  {'ok', filename:file(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()}.
-fetch_attachment_url('undefined', _) ->
-    ?SUP_LOG_DEBUG("failed to fetch file for job: no URL specified");
-fetch_attachment_url(Url, FetchRequest) ->
-    Method = kz_term:to_atom(kz_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
-    Headers = props:filter_undefined(
-                [{"Host", kz_json:get_string_value(<<"host">>, FetchRequest)}
-                ,{"Referer", kz_json:get_string_value(<<"referer">>, FetchRequest)}
-                ,{"Content-Type", kz_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
-                ]),
-    Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
-    lager:debug("making ~s request to '~s'", [Method, Url]),
-    case kz_http:req(Method, Url, Headers, Body) of
-        {'ok', 200, RespHeaders, Contents} ->
-            DefaultCt = kz_mime:from_filename(Url),
-            CT = props:get_value("Content-Type", RespHeaders, DefaultCt),
-            ContentType = kz_mime:normalize_content_type(CT),
-            {'ok', Contents, ContentType, 'undefined'};
-        {'ok', Status, _, _} ->
-            ?SUP_LOG_DEBUG("failed to fetch file for job from: ~s, http response: ~b", [Url, Status]);
-        {'error', Reason} ->
-            ?SUP_LOG_DEBUG("failed to fetch file from: ~s for job: ~p", [Url, Reason])
-    end.
-
--spec update_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
-update_attachment(JObj, Content, ContentType, OldName) ->
-    DocId = kz_doc:id(JObj),
-    lager:debug("converting attachment for doc: ~s", [DocId]),
-    case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, JObj, Content, ContentType) of
-        {'ok', Doc} ->
-            Values = [{<<"pvt_migrated_reason">>, <<"normalize_attachments">>}
-                     ,{<<"pvt_migrated_timestamp">>, kz_time:now_s() }
-                     ],
-            case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Values, Doc)) of
-                {'ok', NewJObj} ->
-                    lager:debug("updated document saved"),
-                    maybe_delete_old_attachment(NewJObj, OldName);
-                {'error', Error} ->
-                    lager:error("failed saving fax document with message: ~p", [Error])
-            end;
-        {'error', Error} ->
-            lager:error("failed to convert fax document with error: ~p", [Error])
-    end.
-
--spec maybe_delete_old_attachment(kz_json:object(), kz_term:api_binary()) -> 'ok'.
-maybe_delete_old_attachment(_JObj, 'undefined') ->
-    lager:debug("not deleting attachment, no attachment found");
-maybe_delete_old_attachment(JObj, OldName) ->
-    _ = kz_datamgr:delete_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), OldName),
-    lager:debug("probably deleted attachment from ~s", [OldName]).
-
 
 %%------------------------------------------------------------------------------
 %% @doc Flush the fax local cache
@@ -567,7 +444,7 @@ load_smtp_attachment(DocId, Filename, FileContents) ->
     CT = kz_mime:from_filename(Filename),
     case kz_datamgr:open_cache_doc(?KZ_FAXES_DB, DocId) of
         {'ok', JObj} ->
-            case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+            case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, JObj, FileContents, CT) of
                 {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
                 {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
             end;
