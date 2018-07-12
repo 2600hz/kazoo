@@ -40,7 +40,7 @@
         ,fetch_attachment_url/1
         ]).
 
--export([save_fax_docs/3
+-export([save_fax_attachments/3
         ,save_fax_doc/5
         ,save_fax_attachment/5
         ]).
@@ -269,21 +269,29 @@ retry_after(FaxDoc, Default) ->
 save_outbound_fax(Db, Doc, 'undefined', _) ->
     case fetch_attachment_url(Doc) of
         {'ok', Content, ContentType} ->
-            save_outbound_fax(Db, Doc, Content, ContentType);
+            case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_url_document">>, true) of
+                'true' -> save_outbound_fax(Db, Doc, Content, ContentType);
+                'false' -> {'ok', Doc}
+            end;
         Error -> Error
     end;
 save_outbound_fax(Db, Doc, Original, ContentType) ->
     Id = kz_doc:id(Doc),
     Name = <<?ORIGINAL_FILE_PREFIX, (kz_mime:to_extension(ContentType))/binary>>,
     Att = [{Original, ContentType, Name}],
-    case maybe_convert_fax(Id, Original, ContentType) of
-        {'ok', Tiff, Props} ->
-            NewDoc = update_fax_props(Doc, Props),
-            Att1 = Att ++ [{Tiff, ContentType, ?FAX_FILENAME}],
-            save_fax_docs(Db, NewDoc, Att1 ++ [maybe_convert_to_pdf(Tiff, kz_doc:id(NewDoc))]);
-        'noop' ->
-            save_fax_docs(Db, Doc, Att);
-        Error -> Error
+    case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_tiff">>, true) of
+        'true' ->
+            case convert_to_fax(Id, Original, ContentType) of
+                {'ok', Tiff, Props} ->
+                    NewDoc = update_fax_props(Doc, Props),
+                    Att1 = Att ++ [{Tiff, ContentType, ?FAX_FILENAME}],
+                    save_fax_attachments(Db, NewDoc, Att1 ++ [maybe_convert_to_pdf(Tiff, kz_doc:id(NewDoc))]);
+                'noop' ->
+                    save_fax_attachments(Db, Doc, Att);
+                Error -> Error
+            end;
+        'false' ->
+            save_fax_attachments(Db, Doc, Att)
     end.
 
 -spec update_fax_props(kz_json:object(), kz_term:proplist()) -> kz_json:object().
@@ -293,17 +301,6 @@ update_fax_props(Doc, Props) ->
                        ]
                       ,Doc
                       ).
-
--spec maybe_convert_fax(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-                               {'error', any()} |
-                               'noop'.
-maybe_convert_fax(Id, Original, ContentType) ->
-    case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_tiff">>, true) of
-        'true' ->
-            convert_to_fax(ContentType, Original, Id);
-        'false' -> 'noop'
-    end.
 
 -spec maybe_convert_to_pdf(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                   {kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} | 'noop'.
@@ -565,26 +562,26 @@ maybe_store_url_attachment(Db, Doc, Content, ContentType) ->
 %%------------------------------------------------------------------------------
 %% @doc common method for the safe saving of attachments
 %%
-%% bigcouch sometimes has issues where it returns a 409 when attaching files
+%% Bigcouch sometimes has issues where it returns a 409 when attaching files
 %% it then actually attaches the file. When this happens it increments the rev
-%% without indicating this in the response. To avoid this condition, if a save
+%% without indicating this in the response. To avoid this condition. If a save
 %% fails, check the doc for an attachment and return success response if the
 %% attachment is found.
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec save_fax_docs(kz_term:ne_binary(), kz_json:object(), list()) ->
+-spec save_fax_attachments(kz_term:ne_binary(), kz_json:object(), list()) ->
                            {'ok', kz_json:object()} |
                            {'error', any()}.
-save_fax_docs(Db, Doc, [{Content, CT, Name}|Files]) ->
+save_fax_attachments(Db, Doc, [{Content, CT, Name}|Files]) ->
     case save_fax_doc(Db, Doc, Content, CT, Name) of
         {'ok', NewDoc} ->
-            save_fax_docs(Db, NewDoc, Files);
+            save_fax_attachments(Db, NewDoc, Files);
         Error -> Error
     end;
-save_fax_docs(Db, Doc, ['noop'|Files]) ->
-    save_fax_docs(Db, Doc, Files);
-save_fax_docs(_, Doc, []) ->
+save_fax_attachments(Db, Doc, ['noop'|Files]) ->
+    save_fax_attachments(Db, Doc, Files);
+save_fax_attachments(_, Doc, []) ->
     {'ok', Doc}.
 
 -spec maybe_save_fax_doc(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
