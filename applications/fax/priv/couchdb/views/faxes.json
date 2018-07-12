@@ -152,21 +152,6 @@
                 "}"
             ]
         },
-        "pending_migrate_jobs": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted || (doc.pvt_job_status != 'pending' && doc.pvt_job_status != 'locked' ))",
-                "    return;",
-                "  var content_type = '';",
-                "  for (var key in doc._attachments) {",
-                "    if (key == 'fax_doc.tiff') {",
-                "        return",
-                "    }",
-                "  }",
-                "  emit(doc._id);",
-                "}"
-            ]
-        },
         "processing_by_node": {
             "map": [
                 "function(doc) {",
