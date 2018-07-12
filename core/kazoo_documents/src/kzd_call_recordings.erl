@@ -32,6 +32,8 @@
 -export([to/1, to/2, set_to/2]).
 -export([url/1, url/2, set_url/2]).
 
+-export([set_id/2, set_id/4]).
+
 -include("kz_documents.hrl").
 
 -define(PVT_TYPE, <<"call_recording">>).
@@ -338,3 +340,12 @@ url(Doc, Default) ->
 -spec set_url(doc(), binary()) -> doc().
 set_url(Doc, Url) ->
     kz_json:set_value([<<"url">>], Url, Doc).
+
+-spec set_id(doc(), kz_term:ne_binary()) -> doc().
+set_id(Doc, RecordingId) ->
+    {Year, Month, _} = erlang:date(),
+    set_id(Doc, RecordingId, Year, Month).
+
+-spec set_id(doc(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> doc().
+set_id(Doc, RecordingId, Year, Month) when is_integer(Year), is_integer(Month) ->
+    kz_doc:set_id(Doc, ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), RecordingId)).
