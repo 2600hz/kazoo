@@ -267,9 +267,9 @@ handle_message(#state{filename=Filename
                               ],
                     case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, NewDoc)) of
                         {'ok', NewerDoc} ->
-                            lager:debug("fax jobid ~s set to pending", [kz_docs:id(NewerDoc)]);
+                            lager:debug("fax jobid ~s set to pending", [kz_doc:id(NewerDoc)]);
                         {'error', Error} ->
-                            lager:debug("error ~p setting fax jobid ~s to pending",[Error, kz_docs:id(NewDoc)]),
+                            lager:debug("error ~p setting fax jobid ~s to pending",[Error, kz_doc:id(NewDoc)]),
                             maybe_faxbox_log(State#state{errors=[Error]})
                     end;
                 {'error', Error} ->
