@@ -55,7 +55,6 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
-    _ = spawn(fun run_pending_migrate/0),
     {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%------------------------------------------------------------------------------
@@ -132,11 +131,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec run_pending_migrate() -> 'ok'.
-run_pending_migrate() ->
-    kz_util:put_callid('migrate_pending_fax'),
-    fax_maintenance:migrate_pending_faxes().
-
 -spec distribute_accounts(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 distribute_accounts([]) -> [];
 distribute_accounts([AccountId|AccountIds]) ->

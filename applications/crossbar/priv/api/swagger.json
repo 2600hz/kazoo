@@ -29218,6 +29218,21 @@
                     "description": "fax smtp sessions",
                     "type": "integer"
                 },
+                "store_fax_pdf": {
+                    "default": true,
+                    "description": "store the post processed fax document",
+                    "type": "boolean"
+                },
+                "store_fax_tiff": {
+                    "default": true,
+                    "description": "store a pdf copy of the post processed fax document",
+                    "type": "boolean"
+                },
+                "store_url_document": {
+                    "default": true,
+                    "description": "store the document url result in the database",
+                    "type": "boolean"
+                },
                 "wait_for_fax_timeout_ms": {
                     "default": 3600000,
                     "description": "fax wait for fax timeout in milliseconds",

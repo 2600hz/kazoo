@@ -258,24 +258,29 @@ handle_message(#state{filename=Filename
                      }=State) ->
     lager:debug("checking file ~s", [Filename]),
     ContentType = kz_mime:from_filename(Filename),
-    Content = file:read(Filename),
-    case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, Doc, Content, ContentType) of
-        {'ok', JObj} ->
-            Updates = [{<<"pvt_job_status">>, <<"pending">>}
-                      ,{<<"pvt_modified">>, kz_time:now_s()}
-                      ],
-            case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, JObj)) of
-                {'ok', Doc} ->
-                    lager:debug("fax jobid ~s set to pending", [kz_docs:id(Doc)]),
-                    {'ok', Doc};
+    case file:read_file(Filename) of
+        {'ok', Content} ->
+            case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, Doc, Content, ContentType) of
+                {'ok', NewDoc} ->
+                    Updates = [{<<"pvt_job_status">>, <<"pending">>}
+                              ,{<<"pvt_modified">>, kz_time:now_s()}
+                              ],
+                    case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, NewDoc)) of
+                        {'ok', NewerDoc} ->
+                            lager:debug("fax jobid ~s set to pending", [kz_docs:id(NewerDoc)]);
+                        {'error', Error} ->
+                            lager:debug("error ~p setting fax jobid ~s to pending",[Error, kz_docs:id(NewDoc)]),
+                            maybe_faxbox_log(State#state{errors=[Error]})
+                    end;
                 {'error', Error} ->
-                    lager:debug("error ~p setting fax jobid ~s to pending",[Error, kz_docs:id(Doc)]),
-                    maybe_faxbox_log(State#state{errors=[Error]})
+                    lager:error("failed converting attachment with error: ~p", [Error]),
+                    Message = kz_term:to_binary(io_lib:format("error converting attachment ~s", [Filename])),
+                    maybe_faxbox_log(State#state{errors=[Message]})
             end;
         {'error', Error} ->
-            lager:error("failed converting attachment with error: ~p", [Error]),
-            Error = kz_term:to_binary(io_lib:format("error converting attachment ~s", [Filename])),
-            maybe_faxbox_log(State#state{errors=[Error]})
+            lager:error("failed to read file: ~s with error: ~p", [Filename, Error]),
+            Message = kz_term:to_binary(io_lib:format("error reading file ~s", [Filename])),
+            maybe_faxbox_log(State#state{errors=[Message]})
     end.
 
 -spec maybe_system_report(state()) -> 'ok'.

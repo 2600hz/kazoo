@@ -665,15 +665,8 @@ maybe_save_attachment(Context) ->
     case kz_json:get_value(<<"document">>, JObj) of
         'undefined' ->
             save_multipart_attachment(Context, cb_context:req_files(Context));
-        Document ->
-            Url = kz_json:get_string_value(<<"url">>, Document),
-            case fetch_attachment_url(Url, Document) of
-                {'ok', Contents, ContentType} ->
-                    prepare_attachment(Context, JObj, ContentType, Contents);
-                {'error', Error, Message} ->
-                    lager:error("error fetching url fax attachment error: ~s details: ~p", [Error, Message]),
-                    cb_context:add_system_error(<<"error fetching fax from URL">>, Context)
-            end
+        _Document ->
+            prepare_attachment(Context, JObj, 'undefined', 'undefined')
     end.
 
 -spec save_multipart_attachment(cb_context:context(), req_files()) -> cb_context:context().
@@ -683,47 +676,19 @@ save_multipart_attachment(Context, [{_Filename, FileJObj} | _Others]) ->
     ContentType = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     prepare_attachment(Context, cb_context:doc(Context), ContentType, Contents).
 
--spec fetch_attachment_url(kz_term:api_binary(), kz_json:object()) ->
-                                  {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                                  {'error', kz_term:ne_binary(), any()}.
-fetch_attachment_url('undefined', _) ->
-    {'error', <<"invalid_url">>, <<"no url specified">>};
-fetch_attachment_url(Url, FetchRequest) ->
-    Method = kz_term:to_atom(kz_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
-    Headers = props:filter_undefined(
-                [{"Host", kz_json:get_string_value(<<"host">>, FetchRequest)}
-                ,{"Referer", kz_json:get_string_value(<<"referer">>, FetchRequest)}
-                ,{"Content-Type", kz_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
-                ]),
-    Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
-    lager:debug("making ~s request to '~s'", [Method, Url]),
-    case kz_http:req(Method, Url, Headers, Body) of
-        {'ok', 200, RespHeaders, Contents} ->
-            DefaultCt = kz_mime:from_filename(Url),
-            CT = props:get_value("Content-Type", RespHeaders, DefaultCt),
-            ContentType = kz_mime:normalize_content_type(CT),
-            {'ok', Contents, ContentType};
-        {'ok', Status, _, _} ->
-            lager:debug("failed to fetch file for job: http response ~p", [Status]),
-            {'error', <<"fetch_failed">>, Status};
-        {'error', Reason} ->
-            lager:debug("failed to fetch file for job: ~p", [Reason]),
-            {'error', <<"fetch_error">>, Reason}
-    end.
-
 -spec prepare_attachment(cb_context:context()
                         ,kz_term:ne_binary()
-                        ,kz_term:ne_binary()
-                        ,kz_term:ne_binary()) -> cb_context:context().
+                        ,kz_term:api_binary()
+                        ,kz_term:api_binary()) -> cb_context:context().
 prepare_attachment(Context, Doc, ContentType, Content) ->
-    case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, cb_context:doc(Context), Content, ContentType) of
-        {'ok', Doc} ->
+    case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, Doc, Content, ContentType) of
+        {'ok', NewDoc} ->
             KVs = [{<<"pvt_job_status">>, <<"pending">>}
                   ,{<<"pvt_modified">>, kz_time:now_s()}
                   ],
-            crossbar_doc:save(cb_context:set_doc(Context, kz_json:set_values(KVs, Doc)));
+            crossbar_doc:save(cb_context:set_doc(Context, kz_json:set_values(KVs, NewDoc)));
         {'error', Error} ->
-            lager:error("failed to convert fax document with error: ~p", [Error]),
+            lager:error("failed to process fax document with error: ~p", [Error]),
             cb_context:add_system_error(<<"error processing fax file">>, Context)
     end.
 
