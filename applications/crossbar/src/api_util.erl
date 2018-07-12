@@ -1213,7 +1213,7 @@ get_encode_options(Context) ->
 -spec create_csv_resp_content(cowboy_req:req(), cb_context:context()) ->
                                      {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
 create_csv_resp_content(Req, Context) ->
-    Content = csv_body(cb_context:resp_data(Context)),
+    Content = csv_body(cb_context:resp_data(Context), 'true'),
     ContextHeaders = cb_context:resp_headers(Context),
     FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
@@ -1289,24 +1289,24 @@ create_csv_chunk_response(Req, Context) ->
         {[], IsStarted} ->
             {IsStarted, Req};
         {CSVs, 'true'} ->
-            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs), 'nofin', Req),
+            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs, 'false'), 'nofin', Req),
             {'true', Req};
         {CSVs, 'false'} ->
             FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
             Req1 = init_chunk_stream(Req, <<"to_csv">>, FileName),
-            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs), 'nofin', Req1),
+            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs, 'true'), 'nofin', Req1),
             {'true', Req1}
     end.
 
--spec maybe_convert_to_csv(kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object() | kz_json:objects()) -> iolist().
-maybe_convert_to_csv(?NE_BINARY=Body) -> Body;
-maybe_convert_to_csv([Content|_]=Body) ->
+-spec maybe_convert_to_csv(kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object() | kz_json:objects(), boolean()) -> iolist().
+maybe_convert_to_csv(?NE_BINARY=Body, _) -> Body;
+maybe_convert_to_csv([Content|_]=Body, BuildHeaders) ->
     case kz_json:is_json_object(Content) of
-        'true' -> csv_body(Body);
+        'true' -> csv_body(Body, BuildHeaders);
         'false' -> Body
     end;
-maybe_convert_to_csv(JObj) ->
-    csv_body(JObj).
+maybe_convert_to_csv(JObj, BuildHeaders) ->
+    csv_body(JObj, BuildHeaders).
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the `x-file-name' from the request header if available.
@@ -1338,18 +1338,25 @@ init_chunk_stream(Req, <<"to_csv">>, FileName) ->
     Headers = maps:merge(Headers0, cowboy_req:resp_headers(Req)),
     cowboy_req:stream_reply(200, Headers, Req).
 
--spec csv_body(kz_term:api_binary() | kz_json:object() | kz_json:objects()) -> iolist().
-csv_body('undefined') -> [];
-csv_body(<<>>) -> [];
-csv_body(Body=?NE_BINARY) -> [Body];
-csv_body(JObjs) when is_list(JObjs) ->
+-spec csv_body(kz_term:api_binary() | kz_json:object() | kz_json:objects(), boolean()) -> iolist().
+csv_body('undefined', _) -> [];
+csv_body(<<>>, _) -> [];
+csv_body(Body=?NE_BINARY, _) -> [Body];
+csv_body(JObjs, BuildHeaders) when is_list(JObjs) ->
     FlattenJObjs = [kz_json:flatten(JObj, 'binary_join') || JObj <- JObjs],
-    CsvOptions = [{'transform_fun', fun map_empty_json_value_to_binary/2}
-                 ,{'header_map', ?CSV_HEADER_MAP}
-                 ],
-    kz_csv:from_jobjs(FlattenJObjs, CsvOptions);
-csv_body(JObj) ->
-    csv_body([JObj]).
+    kz_csv:from_jobjs(FlattenJObjs, kz_csv_options(BuildHeaders));
+csv_body(JObj, BuildHeaders) ->
+    csv_body([JObj], BuildHeaders).
+
+-spec kz_csv_options(boolean()) -> kz_term:proplist().
+kz_csv_options('true') ->
+    [{'transform_fun', fun map_empty_json_value_to_binary/2}
+    ,{'header_map', ?CSV_HEADER_MAP}
+    ];
+kz_csv_options('false') ->
+    [{'transform_fun', fun map_empty_json_value_to_binary/2}
+    ,{'build_headers', 'false'}
+    ].
 
 -spec map_empty_json_value_to_binary(kz_json:key(), kz_json:term()) -> {kz_json:key(), kz_json:term()}.
 map_empty_json_value_to_binary(Key, Value) ->
