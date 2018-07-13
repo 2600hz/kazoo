@@ -63,10 +63,10 @@ convert(From, To, Content, Opts) ->
     lager:info("converting document ~s from ~s to ~s", [Filename, From, To]),
     case run_convert(eval_format(From, To), To, Filename, Options) of
         {'ok', _}=Ok ->
-            lager:info("succesfully converted file: ~s to format: ~s", [Filename, To]),
+            lager:info("successfully converted file: ~s to format: ~s", [Filename, To]),
             Ok;
         {'ok', _, _}=Ok ->
-            lager:info("succesfully converted file: ~s to format: ~s", [Filename, To]),
+            lager:info("successfully converted file: ~s to format: ~s", [Filename, To]),
             Ok;
         {'error', Message}=Error ->
             lager:error("conversion failed with error: ~p", [Message]),

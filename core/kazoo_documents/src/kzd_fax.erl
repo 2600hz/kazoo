@@ -582,16 +582,15 @@ save_fax_attachments(Db, Doc, ['noop'|Files]) ->
 save_fax_attachments(_, Doc, []) ->
     {'ok', Doc}.
 
--spec maybe_save_fax_doc(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_save_fax_doc(kz_term:ne_binary(), kz_json:object()) ->
+                                {'ok', kz_json:object()} |
+                                {'error', any()}.
 maybe_save_fax_doc(Db, Doc) ->
     case kz_doc:revision(Doc) of
         'undefined' ->
             lager:debug("saving fax doc with id ~s and rev ~s", [kz_doc:id(Doc), kz_doc:revision(Doc)]),
-            case kz_datamgr:save_doc(Db, Doc) of
-                {'ok', NewDoc} -> NewDoc;
-                Error -> Error
-            end;
-        _ -> Doc
+            kz_datamgr:save_doc(Db, Doc);
+        _ -> {'ok', Doc}
     end.
 
 -spec save_fax_doc(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
