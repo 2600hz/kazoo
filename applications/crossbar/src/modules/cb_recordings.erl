@@ -122,12 +122,30 @@ delete(Context, _RecordingId) ->
 recording_summary(Context) ->
     UserId = cb_context:user_id(Context),
     ViewName = get_view_name(UserId),
-    Options = [{'mapper', crossbar_view:map_doc_fun()}
+    Options = [{'mapper', fun summary_doc_fun/2}
               ,{'range_start_keymap', [UserId]}
               ,{'range_end_keymap', fun(Ts) -> build_end_key(Ts, UserId) end}
               ,'include_docs'
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
+
+-spec summary_doc_fun(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+summary_doc_fun(View, Acc) ->
+    Recording = kz_json:get_json_value(<<"doc">>, View),
+    Attachments = kz_doc:attachments(Recording, kz_json:new()),
+    ContentTypes = kz_json:foldl(fun attachment_content_type/3, [], Attachments),
+
+    [kz_json:set_value([<<"_read_only">>, <<"content_types">>]
+                      ,lists:usort(ContentTypes)
+                      ,Recording
+                      )
+     | Acc
+    ].
+
+-spec attachment_content_type(kz_json:key(), kz_json:object(), kz_term:ne_binaries()) ->
+                                     kz_term:ne_binaries().
+attachment_content_type(_Name, Meta, CTs) ->
+    [kz_json:get_ne_binary_value(<<"content_type">>, Meta) | CTs].
 
 -spec build_end_key(kz_time:gregorian_seconds(), kz_term:api_ne_binary()) -> kazoo_data:range_key().
 build_end_key(Timestamp, 'undefined') -> [Timestamp, kz_json:new()];
@@ -173,16 +191,22 @@ do_load_recording_binary_attachment(Context, DocId) ->
                                                         ,Context
                                                         ),
 
-            set_resp_headers(LoadedContext, AName)
+            set_resp_headers(LoadedContext
+                            ,AName
+                            ,kz_doc:attachment(cb_context:doc(Context), AName)
+                            )
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_resp_headers(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-set_resp_headers(Context, AName) ->
-    Headers = #{<<"content-disposition">> => get_disposition(AName, Context)},
+-spec set_resp_headers(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+                              cb_context:context().
+set_resp_headers(Context, AName, Attachment) ->
+    Headers = #{<<"content-disposition">> => get_disposition(AName, Context)
+               ,<<"content-type">> => kz_json:get_ne_binary_value(<<"content_type">>, Attachment)
+               },
     cb_context:add_resp_headers(Context, Headers).
 
 -spec get_disposition(kz_term:ne_binary(), cb_context:context()) -> kz_term:ne_binary().

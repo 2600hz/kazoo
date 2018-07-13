@@ -1518,7 +1518,7 @@ set_resp_headers(Req0, Context) ->
                         {binary(), binary()}.
 fix_header(<<"Location">>, Path, Req) ->
     {<<"location">>, crossbar_util:get_path(Req, Path)};
-fix_header(<<"ocation">> = H, Path, Req) ->
+fix_header(<<"location">> = H, Path, Req) ->
     {H, crossbar_util:get_path(Req, Path)};
 fix_header(H, V, _) ->
     {kz_term:to_lower_binary(H), kz_term:to_binary(V)}.

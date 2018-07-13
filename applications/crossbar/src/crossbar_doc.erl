@@ -532,6 +532,7 @@ load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
                        ),
             Context1 = load(DocId, Context, Options),
             'success' = cb_context:resp_status(Context1),
+
             cb_context:setters(Context1
                               ,[{fun cb_context:set_resp_data/2, AttachBin}
                                ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
@@ -1007,14 +1008,24 @@ handle_thing_success(Thing, Context) ->
 handle_json_success(JObj, Context) ->
     handle_json_success(JObj, Context, cb_context:req_verb(Context)).
 
+public_and_read_only(JObj) ->
+    Public = kz_doc:public_fields(JObj),
+    case kz_json:get_json_value(<<"_read_only">>, JObj) of
+        'undefined' -> Public;
+        ReadOnly -> kz_json:set_value(<<"_read_only">>, ReadOnly, Public)
+    end.
+
+add_location_header(JObj, RHs) ->
+    maps:put(<<"location">>, kz_doc:id(JObj), RHs).
+
 -spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context(), http_method()) ->
                                  cb_context:context().
 handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
-    RespData = [kz_doc:public_fields(JObj)
+    RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
-    RespHeaders = lists:foldl(fun(JObj, RHs) -> maps:put(<<"location">>, kz_doc:id(JObj), RHs) end
+    RespHeaders = lists:foldl(fun add_location_header/2
                              ,cb_context:resp_headers(Context)
                              ,JObjs
                              ),
@@ -1026,7 +1037,7 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
 handle_json_success([_|_]=JObjs, Context, _Verb) ->
-    RespData = [kz_doc:public_fields(JObj)
+    RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
@@ -1038,16 +1049,16 @@ handle_json_success([_|_]=JObjs, Context, _Verb) ->
                         | version_specific_success(JObjs, Context)
                        ]);
 handle_json_success(JObj, Context, ?HTTP_PUT) ->
-    RespHeaders = maps:put(<<"location">>, kz_doc:id(JObj), cb_context:resp_headers(Context)),
+    RespHeaders = add_location_header(JObj, cb_context:resp_headers(Context)),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
                        ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
+                       ,{fun cb_context:set_resp_data/2, public_and_read_only(JObj)}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
 handle_json_success(JObj, Context, ?HTTP_DELETE) ->
-    Public = kz_doc:public_fields(JObj),
+    Public = public_and_read_only(JObj),
     RespJObj = kz_json:set_value([<<"_read_only">>, <<"deleted">>], 'true', Public),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
@@ -1059,7 +1070,7 @@ handle_json_success(JObj, Context, _Verb) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
                        ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
+                       ,{fun cb_context:set_resp_data/2, public_and_read_only(JObj)}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ]).
 
