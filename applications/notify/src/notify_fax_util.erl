@@ -16,7 +16,7 @@
 %% @doc create a friendly file name
 %% @end
 %%------------------------------------------------------------------------------
--spec get_file_name(kz_term:proplist(), string()) -> kz_term:ne_binary().
+-spec get_file_name(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_file_name(Props, Ext) ->
     Fax = props:get_value(<<"fax">>, Props),
     CallerID = case {props:get_value(<<"caller_id_name">>, Fax), props:get_value(<<"caller_id_number">>, Fax)} of
@@ -45,11 +45,8 @@ get_attachment(Props) ->
 get_attachment(UseDb, Props) ->
     Fax   = props:get_value(<<"fax">>, Props),
     FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),
-    case raw_attachment_binary(UseDb, FaxId) of
-        {'ok', Content, ContentType} ->
-            {ContentType, get_file_name(Props, <<".", (kz_mime:to_extension(ContentType))/binary>>), Content};
-        {'error', _ } -> 'error'
-    end.
+    {'ok', Content, ContentType} = raw_attachment_binary(UseDb, FaxId),
+    {ContentType, get_file_name(Props, kz_mime:to_extension(ContentType)), Content}.
 
 %%------------------------------------------------------------------------------
 %% @doc

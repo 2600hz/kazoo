@@ -300,7 +300,7 @@ update_fax_props(Doc, Props) ->
                       ).
 
 -spec maybe_convert_to_pdf(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                  [{kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()}] | [].
+                                  [{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}] | [].
 maybe_convert_to_pdf(Content, Id) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_pdf">>, true) of
         'true' ->
@@ -615,7 +615,7 @@ maybe_save_fax_doc(Db, Doc) ->
 save_fax_doc(Db, Doc, Content, CT, Name) ->
     case maybe_save_fax_doc(Db, Doc) of
         {'error', _}=Error -> Error;
-        NewDoc -> save_fax_attachment(Db, NewDoc, Content, CT, Name)
+        {'ok', NewDoc} -> save_fax_attachment(Db, NewDoc, Content, CT, Name)
     end.
 
 -spec save_fax_attachment(kz_term:ne_binary(), kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary())->
