@@ -13,7 +13,7 @@
 
 -include("teletype.hrl").
 
--define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
+-define(CONVERT_CONFIG_CAT, <<"kazoo_convert">>).
 
 -spec add_data(kz_json:object()) -> kz_json:object().
 add_data(DataJObj) ->
@@ -214,7 +214,7 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     Db = kz_doc:account_db(FaxJObj),
     lager:debug("accessing fax attachment ~s at ~s", [Db, FaxId]),
     teletype_util:send_update(DataJObj, <<"pending">>),
-    Format = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+    Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
     Filename = get_file_name(Macros, <<".", Format/binary>>),
     case fetch_attachment(Format, Db, FaxJObj) of
         {'ok', Content, ContentType, _Doc} ->
