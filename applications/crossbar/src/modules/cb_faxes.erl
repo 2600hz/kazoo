@@ -614,26 +614,14 @@ do_load_fax_binary(FaxId, Folder, Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
-            case load_format(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
+            case kzd_fax:fetch_attachment_format(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
                 {'error', _} ->
-                    cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, FaxId}]), Context1);
+                    crossbar_doc:handle_datamgr_errors('bad_identifier', FaxId, Context1);
                 {'ok', Content, ContentType, Doc} ->
                     set_fax_binary(cb_context:set_doc(Context1, Doc), Content, ContentType, get_file_name(Doc, ContentType))
             end;
         _Status -> Context1
     end.
-
--spec load_format(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                         {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                         {'error', kz_term:ne_binary()}.
-load_format(<<"original">>, Db, Doc) ->
-    kzd_fax:fetch_original_attachment(Db, Doc);
-load_format(<<"pdf">>, Db, Doc) ->
-    kzd_fax:fetch_pdf_attachment(Db, Doc);
-load_format(<<"tiff">>, Db, Doc) ->
-    kzd_fax:fetch_faxable_attachment(Db, Doc);
-load_format(_, _, _) ->
-    {'error', <<"invalid format for attachment">>}.
 
 -spec set_fax_binary(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 set_fax_binary(Context, Content, ContentType, Filename) ->
@@ -643,8 +631,7 @@ set_fax_binary(Context, Content, ContentType, Filename) ->
                                           ,{fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(cb_context:doc(Context))}
                                           ]
                                          )
-                      ,[{fun cb_context:set_resp_etag/2, 'undefined'}
-                       ,{fun cb_context:add_resp_headers/2
+                      ,[{fun cb_context:add_resp_headers/2
                         ,#{<<"content-disposition">> => <<Disposition/binary, "; filename=", Filename/binary>>
                           ,<<"content-type">> => ContentType
                           }

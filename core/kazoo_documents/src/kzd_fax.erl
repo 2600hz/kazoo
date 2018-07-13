@@ -33,7 +33,7 @@
 
 -export([save_outbound_fax/4]).
 
--export([fetch_faxable_attachment/2, fetch_faxable_attachment/3
+-export([fetch_attachment_format/3, fetch_faxable_attachment/2, fetch_faxable_attachment/3
         ,fetch_pdf_attachment/2, fetch_pdf_attachment/3
         ,fetch_original_attachment/2, fetch_original_attachment/3
         ,fetch_legacy_attachment/2, fetch_legacy_attachment/3
@@ -255,8 +255,8 @@ retry_after(FaxDoc, Default) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc faxes pre-convert attachment documents to tiff/pdf on ingress and save
-%% all these formats to the db as attachments
+%% @doc Faxes pre-convert attachment documents to tiff/pdf on ingress and save
+%% all these formats to the db as attachments.
 %%
 %% If configured, the fax document for outbound faxes will contain a copy of the
 %% post conversion fax tiff file and a pdf representation of this file.
@@ -278,18 +278,17 @@ save_outbound_fax(Db, Doc, 'undefined', _) ->
 save_outbound_fax(Db, Doc, Original, ContentType) ->
     Id = kz_doc:id(Doc),
     Name = <<?ORIGINAL_FILE_PREFIX, ".", (kz_mime:to_extension(ContentType))/binary>>,
-    Att = [{Original, ContentType, Name}],
+    Att = {Original, ContentType, Name},
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_tiff">>, true) of
         'true' ->
             case convert_to_fax(ContentType, Original, Id) of
                 {'ok', Tiff, Props} ->
                     NewDoc = update_fax_props(Doc, Props),
-                    Att1 = Att ++ [{Tiff, ContentType, ?FAX_FILENAME}],
-                    save_fax_attachments(Db, NewDoc, Att1 ++ [maybe_convert_to_pdf(Tiff, kz_doc:id(NewDoc))]);
+                    save_fax_attachments(Db, NewDoc, [Att, {Tiff, ContentType, ?FAX_FILENAME}|maybe_convert_to_pdf(Tiff, Id)]);
                 Error -> Error
             end;
         'false' ->
-            save_fax_attachments(Db, Doc, Att)
+            save_fax_attachments(Db, Doc, [Att])
     end.
 
 -spec update_fax_props(kz_json:object(), kz_term:proplist()) -> kz_json:object().
@@ -301,15 +300,15 @@ update_fax_props(Doc, Props) ->
                       ).
 
 -spec maybe_convert_to_pdf(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                  {kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} | 'noop'.
+                                  [{kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()}] | [].
 maybe_convert_to_pdf(Content, Id) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_pdf">>, true) of
         'true' ->
             case convert_fax_to_pdf(Content, Id) of
-                {'ok', Pdf} -> {Pdf, <<"application/pdf">>, ?PDF_FILENAME};
-                _Error -> 'noop'
+                {'ok', Pdf} -> [{Pdf, <<"application/pdf">>, ?PDF_FILENAME}];
+                _Error -> []
             end;
-        'false' -> 'noop'
+        'false' -> []
     end.
 
 -spec convert_to_fax(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
@@ -334,6 +333,25 @@ convert_fax_to_pdf(Content, Id) ->
 %%%=============================================================================
 %%% attachment getter functions
 %%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Helper function for accessing attachments suitable for faxing.
+%%
+%% Saves the document if it is not present and store_fax_tiff is true.
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec fetch_attachment_format(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                     {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                                     {'error', kz_term:ne_binary()}.
+fetch_attachment_format(<<"original">>, Db, Doc) ->
+    fetch_original_attachment(Db, Doc);
+fetch_attachment_format(<<"pdf">>, Db, Doc) ->
+    fetch_pdf_attachment(Db, Doc);
+fetch_attachment_format(<<"tiff">>, Db, Doc) ->
+    fetch_faxable_attachment(Db, Doc);
+fetch_attachment_format(_, _, _) ->
+    {'error', <<"invalid format for attachment">>}.
 
 %%------------------------------------------------------------------------------
 %% @doc Helper function for accessing attachments suitable for faxing.
@@ -385,7 +403,7 @@ maybe_save_faxable(Db, Doc, Content) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc helper function for accessing/creating pdf attachment suitable for email/api response
+%% @doc Helper function for accessing/creating pdf attachment suitable for email/api response.
 %%
 %% Saves the document if it is not present and store_fax_pdf is true.
 %%
@@ -434,7 +452,7 @@ maybe_save_pdf(Db, Pdf, Doc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc helper function for accessing/creating original attachment
+%% @doc Helper function for accessing/creating original attachment.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_original_attachment(kz_term:ne_binary(), kz_json:object()) ->
@@ -461,7 +479,7 @@ fetch_original_attachment(Db, Doc, []) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc helper function for accessing a legacy attachment
+%% @doc Helper function for accessing a legacy attachment.
 %%
 %% Checks if any attachments are present on the document. If none our found
 %% attempts to fetch an attachment url if present on the doc
@@ -492,7 +510,7 @@ fetch_legacy_attachment(Db, Doc, []) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc helper function for accessing a url attachment document
+%% @doc Helper function for accessing a url attachment document.
 %%
 %% Saves the document if it is not present and store_url_doc is true.
 %%
@@ -558,7 +576,7 @@ maybe_store_url_attachment(Db, Doc, Content, ContentType) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc common method for the safe saving of attachments
+%% @doc Common method for the safe saving of attachments.
 %%
 %% Bigcouch sometimes has issues where it returns a 409 when attaching files
 %% it then actually attaches the file. When this happens it increments the rev
@@ -577,8 +595,6 @@ save_fax_attachments(Db, Doc, [{Content, CT, Name}|Files]) ->
             save_fax_attachments(Db, NewDoc, Files);
         Error -> Error
     end;
-save_fax_attachments(Db, Doc, ['noop'|Files]) ->
-    save_fax_attachments(Db, Doc, Files);
 save_fax_attachments(_, Doc, []) ->
     {'ok', Doc}.
 

@@ -6,12 +6,11 @@
 %%%-----------------------------------------------------------------------------
 -module(notify_fax_util).
 
--export([get_attachment/2, get_attachment/3]).
+-export([get_attachment/1, get_attachment/2]).
 
 -include("notify.hrl").
 
--define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
-
+-define(CONVERT_CONFIG_CAT, <<"kazoo_convert">>).
 
 %%------------------------------------------------------------------------------
 %% @doc create a friendly file name
@@ -33,29 +32,23 @@ get_file_name(Props, Ext) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec get_attachment(kz_term:proplist()) ->
+                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
+                            {'error', any()}.
+get_attachment(Props) ->
+    UseDb = props:get_value(<<"account_db">>, Props, ?KZ_FAXES_DB),
+    get_attachment(UseDb, Props).
+
 -spec get_attachment(kz_term:ne_binary(), kz_term:proplist()) ->
                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
                             {'error', any()}.
-get_attachment(Category, Props) ->
-    UseDb = props:get_value(<<"account_db">>, Props, ?KZ_FAXES_DB),
-    get_attachment(UseDb, Category, Props).
-
--spec get_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
-                            {'error', any()}.
-get_attachment(UseDb, Category, Props) ->
+get_attachment(UseDb, Props) ->
     Fax   = props:get_value(<<"fax">>, Props),
     FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),
-
-    {'ok', AttachmentBin, ContentType} = raw_attachment_binary(UseDb, FaxId),
-
-    case kapps_config:get_binary(Category, <<"attachment_format">>, <<"pdf">>) of
-        <<"pdf">> ->
-            case kz_convert:fax(ContentType, <<"application/pdf">>, AttachmentBin, [{<<"output_type">>, 'binary'}]) of
-                {'ok', Content} -> {ContentType, get_file_name(Props, "pdf"), Content};
-                {'error', _ } -> 'error'
-            end;
-        _Else -> {ContentType, get_file_name(Props, "pdf"), AttachmentBin}
+    case raw_attachment_binary(UseDb, FaxId) of
+        {'ok', Content, ContentType} ->
+            {ContentType, get_file_name(Props, <<".", (kz_mime:to_extension(ContentType))/binary>>), Content};
+        {'error', _ } -> 'error'
     end.
 
 %%------------------------------------------------------------------------------
@@ -77,7 +70,8 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
         {'error','not_found'} when Db =/= ?KZ_FAXES_DB ->
             raw_attachment_binary(?KZ_FAXES_DB, FaxId, Retries);
         {'ok', FaxJObj} ->
-            case kzd_fax:fetch_faxable_attachment(?KZ_FAXES_DB, FaxJObj) of
+            Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
+            case kzd_fax:fetch_attachment_format(Format, ?KZ_FAXES_DB, FaxJObj) of
                 {'ok', Content, ContentType, _Doc} ->
                     {'ok', Content, ContentType};
                 {'error', Error} ->

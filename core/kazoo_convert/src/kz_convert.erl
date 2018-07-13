@@ -21,7 +21,7 @@ fax(FromFormat, ToFormat, Content) ->
 %%
 %% The configured converter module is loaded from system_config/kazoo_convert via
 %% the parameter `fax_converter'. The default fax_converter is `kz_fax_converter'. The
-%% behaviour for converter modules is defined in `gen_kz_converter'
+%% behaviour for converter modules is defined in `gen_kz_converter'.
 %%
 %% Arguments Description:
 %% <ul>
@@ -29,7 +29,7 @@ fax(FromFormat, ToFormat, Content) ->
 %% the Content passed in to convert.</li>
 %% <li><strong>To:</strong> is a mimetype binary that specifies the format the
 %% Content is to be converted.</li>
-%% <li><strong>Content:</strong> content can be filepath to the source file or
+%% <li><strong>Content:</strong> content can be file path to the source file or
 %% a binary containing the contents of the file to be converted.</li>
 %% <li><strong>Options:</strong> a proplist of options for the underlying fax_converter.</li>
 %% </ul>
