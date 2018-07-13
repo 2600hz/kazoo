@@ -29517,6 +29517,11 @@
             "properties": {
                 "fax": {
                     "properties": {
+                        "attachment_format": {
+                            "default": "pdf",
+                            "description": "Format to use for receipt email messages and api responses",
+                            "type": "string"
+                        },
                         "convert_command_timeout": {
                             "default": 120000,
                             "description": "Timeout value in ms for how long a convert command can run before being killed",

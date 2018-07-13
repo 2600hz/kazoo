@@ -613,7 +613,7 @@ do_load_fax_binary(FaxId, Folder, Context) ->
     Context1 = load_fax_meta(FaxId, Folder, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+            Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
             case load_format(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
                 {'error', _} ->
                     cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, FaxId}]), Context1);
@@ -627,11 +627,11 @@ do_load_fax_binary(FaxId, Folder, Context) ->
                          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
                          {'error', kz_term:ne_binary()}.
 load_format(<<"original">>, Db, Doc) ->
-    kzd_fax:fetch_pdf_attachment(Db, Doc);
+    kzd_fax:fetch_original_attachment(Db, Doc);
 load_format(<<"pdf">>, Db, Doc) ->
     kzd_fax:fetch_pdf_attachment(Db, Doc);
 load_format(<<"tiff">>, Db, Doc) ->
-    kzd_fax:fetch_faxible_attachment(Db, Doc);
+    kzd_fax:fetch_faxable_attachment(Db, Doc);
 load_format(_, _, _) ->
     {'error', <<"invalid format for attachment">>}.
 
@@ -699,12 +699,12 @@ maybe_save_attachment(Context) ->
 -spec save_multipart_attachment(cb_context:context(), req_files()) -> cb_context:context().
 save_multipart_attachment(Context, []) -> Context;
 save_multipart_attachment(Context, [{_Filename, FileJObj} | _Others]) ->
-    Contents = kz_json:get_value(<<"contents">>, FileJObj),
+    Content = kz_json:get_value(<<"contents">>, FileJObj),
     ContentType = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    prepare_attachment(Context, cb_context:doc(Context), ContentType, Contents).
+    prepare_attachment(Context, cb_context:doc(Context), ContentType, Content).
 
 -spec prepare_attachment(cb_context:context()
-                        ,kz_term:ne_binary()
+                        ,kz_json:object()
                         ,kz_term:api_binary()
                         ,kz_term:api_binary()) -> cb_context:context().
 prepare_attachment(Context, Doc, ContentType, Content) ->

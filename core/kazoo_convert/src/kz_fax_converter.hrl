@@ -81,7 +81,7 @@
        ,kapps_config:get_is_true(?CONFIG_CAT, [<<"fax">>, <<"serialize_openoffice">>], true)).
 
 -define(ENABLE_OPENOFFICE
-       ,kapps_config:get_is_true(?CONFIG_CAT, [<<"fax">>, <<"enable_openoffice">>], false)).
+       ,kapps_config:get_is_true(?CONFIG_CAT, [<<"fax">>, <<"enable_openoffice">>], true)).
 
 -define(CONVERT_TIMEOUT
        ,kapps_config:get_integer(?CONFIG_CAT, [<<"fax">>, <<"convert_command_timeout">>], 120 * ?MILLISECONDS_IN_SECOND)).

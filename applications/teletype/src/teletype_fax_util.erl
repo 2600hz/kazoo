@@ -214,7 +214,7 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     Db = kz_doc:account_db(FaxJObj),
     lager:debug("accessing fax attachment ~s at ~s", [Db, FaxId]),
     teletype_util:send_update(DataJObj, <<"pending">>),
-    Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+    Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
     Filename = get_file_name(Macros, <<".", Format/binary>>),
     case fetch_attachment(Format, Db, FaxJObj) of
         {'ok', Content, ContentType, _Doc} ->
@@ -224,14 +224,18 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
             []
     end.
 
--spec fetch_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
+-spec fetch_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                              {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                              {'error', any()}.
+fetch_attachment(<<"original">>, Db, Doc) ->
+    kzd_fax:fetch_original_attachment(Db, Doc);
 fetch_attachment(<<"tiff">>, Db, Doc) ->
     kzd_fax:fetch_faxable_attachment(Db, Doc);
 fetch_attachment(<<"pdf">>, Db, Doc) ->
     kzd_fax:fetch_pdf_attachment(Db, Doc);
 fetch_attachment(Format, _Db, _Doc) ->
     lager:debug("invalid attachment format: ~p", [Format]),
-    [].
+    {'error', <<"invalid format configured for fax.attachment_format in kazoo_convert">>}.
 
 -spec get_file_name(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_file_name(Macros, Ext) ->
