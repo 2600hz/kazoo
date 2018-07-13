@@ -615,8 +615,8 @@ do_load_fax_binary(FaxId, Folder, Context) ->
         'success' ->
             Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
             case kzd_fax:fetch_attachment_format(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
-                {'error', _} ->
-                    crossbar_doc:handle_datamgr_errors('bad_identifier', FaxId, Context1);
+                {'error', Error} ->
+                    crossbar_doc:handle_datamgr_errors(Error, FaxId, Context1);
                 {'ok', Content, ContentType, Doc} ->
                     set_fax_binary(cb_context:set_doc(Context1, Doc), Content, ContentType, get_file_name(Doc, ContentType))
             end;
