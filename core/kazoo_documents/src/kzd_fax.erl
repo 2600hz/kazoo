@@ -277,11 +277,11 @@ save_outbound_fax(Db, Doc, 'undefined', _) ->
     end;
 save_outbound_fax(Db, Doc, Original, ContentType) ->
     Id = kz_doc:id(Doc),
-    Name = <<?ORIGINAL_FILE_PREFIX, (kz_mime:to_extension(ContentType))/binary>>,
+    Name = <<?ORIGINAL_FILE_PREFIX, ".", (kz_mime:to_extension(ContentType))/binary>>,
     Att = [{Original, ContentType, Name}],
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_tiff">>, true) of
         'true' ->
-            case convert_to_fax(Id, Original, ContentType) of
+            case convert_to_fax(ContentType, Original, Id) of
                 {'ok', Tiff, Props} ->
                     NewDoc = update_fax_props(Doc, Props),
                     Att1 = Att ++ [{Tiff, ContentType, ?FAX_FILENAME}],

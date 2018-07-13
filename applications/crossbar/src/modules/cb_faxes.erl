@@ -52,6 +52,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".fax">>).
 
 -define(FAX_TYPE, <<"fax">>).
+-define(CONVERT_CONFIG_CAT, <<"kazoo_convert">>).
 -define(SMTP_TYPE, <<"fax_smtp_log">>).
 
 -define(OUTBOX_ACTION_RESUBMIT, <<"resubmit">>).
@@ -612,26 +613,52 @@ do_load_fax_binary(FaxId, Folder, Context) ->
     Context1 = load_fax_meta(FaxId, Folder, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case kz_doc:attachment_names(cb_context:doc(Context1)) of
-                [] -> cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, FaxId}]), Context1);
-                [AttachmentId|_] ->
-                    set_fax_binary(Context1, AttachmentId)
+            Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+            case load_format(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
+                {'error', _} ->
+                    cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, FaxId}]), Context1);
+                {'ok', Content, ContentType, Doc} ->
+                    set_fax_binary(cb_context:set_doc(Context1, Doc), Content, ContentType, get_file_name(Doc, ContentType))
             end;
         _Status -> Context1
     end.
 
--spec set_fax_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-set_fax_binary(Context, AttachmentId) ->
+-spec load_format(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                         {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+                         {'error', kz_term:ne_binary()}.
+load_format(<<"original">>, Db, Doc) ->
+    kzd_fax:fetch_pdf_attachment(Db, Doc);
+load_format(<<"pdf">>, Db, Doc) ->
+    kzd_fax:fetch_pdf_attachment(Db, Doc);
+load_format(<<"tiff">>, Db, Doc) ->
+    kzd_fax:fetch_faxible_attachment(Db, Doc);
+load_format(_, _, _) ->
+    {'error', <<"invalid format for attachment">>}.
+
+-spec set_fax_binary(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
+set_fax_binary(Context, Content, ContentType, Filename) ->
     Disposition = cb_context:req_param(Context, <<"disposition">>, <<"attachment">>),
-    cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"fax">>), Context)
+    cb_context:setters(cb_context:setters(Context
+                                         ,[{fun cb_context:set_resp_data/2, Content}
+                                          ,{fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(cb_context:doc(Context))}
+                                          ]
+                                         )
                       ,[{fun cb_context:set_resp_etag/2, 'undefined'}
                        ,{fun cb_context:add_resp_headers/2
-                        ,#{<<"content-disposition">> => <<Disposition/binary, "; filename=", AttachmentId/binary>>
-                          ,<<"content-type">> => kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)
+                        ,#{<<"content-disposition">> => <<Disposition/binary, "; filename=", Filename/binary>>
+                          ,<<"content-type">> => ContentType
                           }
                         }
                        ]
                       ).
+
+-spec get_file_name(kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_file_name(Doc, ContentType) ->
+    Time = kz_json:get_integer_value(<<"pvt_created">>, Doc, 0),
+    Ext = kz_mime:to_extension(ContentType),
+    FName = list_to_binary([<<"fax_document_">>, kz_time:pretty_print_datetime(Time), ".", Ext]),
+    re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
