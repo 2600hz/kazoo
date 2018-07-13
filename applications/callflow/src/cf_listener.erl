@@ -114,7 +114,7 @@ handle_event(_JObj, _State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), any()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:info("callflow listner ~p termination", [_Reason]).
+    lager:info("callflow listener ~p termination", [_Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
