@@ -41,52 +41,26 @@ print_metadata(Metadata) ->
     'ok'.
 
 -spec convert_fax_file(any(), any(), any(), any()) -> 'ok'.
-convert_fax_file(FromFile, ToFormat, WorkDir, ToFilename)
-  when is_binary(FromFile),
-       is_binary(ToFormat),
-       is_binary(WorkDir),
-       is_binary(ToFilename) ->
+convert_fax_file(FromFile, ToFormat, WorkDir, ToFilename) ->
     Options = [{<<"tmp_dir">>, WorkDir}
               ,{<<"to_filename">>, ToFilename}
               ],
     do_convert(FromFile
               ,ToFormat
               ,Options
-              );
-convert_fax_file(FromFile, ToFormat, WorkDir, ToFilename) ->
-    convert_fax_file(kz_term:to_binary(FromFile)
-                    ,kz_term:to_binary(ToFormat)
-                    ,kz_term:to_binary(WorkDir)
-                    ,kz_term:to_binary(ToFilename)
-                    ).
-
+              ).
 
 -spec convert_fax_file(any(), any(), any()) -> 'ok'.
-convert_fax_file(FromFile, ToFormat, WorkDir)
-  when is_binary(FromFile),
-       is_binary(ToFormat),
-       is_binary(WorkDir) ->
+convert_fax_file(FromFile, ToFormat, WorkDir) ->
     Options = [{<<"tmp_dir">>, WorkDir}],
     do_convert(FromFile
               ,ToFormat
               ,Options
-              );
-convert_fax_file(FromFile, ToFormat, WorkDir) ->
-    convert_fax_file(kz_term:to_binary(FromFile)
-                    ,kz_term:to_binary(ToFormat)
-                    ,kz_term:to_binary(WorkDir)
-                    ).
+              ).
 
 -spec convert_fax_file(any(), any()) -> 'ok'.
-convert_fax_file(FromFile, ToFormat)
-  when is_binary(FromFile),
-       is_binary(ToFormat) ->
-    convert_fax_file(FromFile, ToFormat, ?TMP_DIR);
 convert_fax_file(FromFile, ToFormat) ->
-    convert_fax_file(kz_term:to_binary(FromFile)
-                    ,kz_term:to_binary(ToFormat)
-                    ,?TMP_DIR
-                    ).
+    convert_fax_file(FromFile, ToFormat, ?TMP_DIR).
 
 -spec do_convert(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                         'ok'|'error'.

@@ -298,7 +298,7 @@ handle_cast('prepare_job', #state{job_id=JobId
                                    ,pages=kz_json:get_integer_value(<<"pvt_pages">>, Doc)
                                    }};
         {'error', Message} ->
-            send_error_status(State, Message),
+            send_error_status(State, kz_term:to_binary(Message)),
             {Resp, Doc} = release_failed_job('bad_file', Message, JObj),
             gen_server:cast(self(), 'stop'),
             {'noreply', State#state{job=Doc, resp=Resp}}

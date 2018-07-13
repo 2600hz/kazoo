@@ -129,7 +129,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
 
-    {ContentType, AttachmentFileName, AttachmentBin} = notify_fax_util:get_attachment(?MOD_CONFIG_CAT, Props),
+    {ContentType, AttachmentFileName, AttachmentBin} = notify_fax_util:get_attachment(Props),
     [ContentTypeA,ContentTypeB] = binary:split(ContentType,<<"/">>),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
