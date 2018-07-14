@@ -22,6 +22,7 @@
                                      ]).
 
 -define(KAPPS_GETBY_PROPS, [{'origin_bindings', ?KAPPS_GETBY_ORIGIN_BINDINGS}]).
+
 -endif.
 -define(KZ_CACHES_HRL, 'true').
 -endif.

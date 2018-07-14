@@ -1,10 +1,12 @@
 -ifndef(KAZOO_CACHES_HRL).
 
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+
 -define(KAPPS_CONFIG_CACHE, 'kapps_config_cache').
 -define(KAPPS_CALL_CACHE, 'kapps_call_cache').
 -define(KAPPS_GETBY_CACHE, 'kapps_getby_cache').
-
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-define(KAPPS_LISTENER_CACHE, 'kapps_listener_cache').
+-define(EXPIRE_PERIOD, 10 * ?MILLISECONDS_IN_SECOND).
 
 -type callback_fun() :: fun((any(), any(), 'flush' | 'erase' | 'expire') -> any()).
 -type callback_funs() :: [callback_fun()].
