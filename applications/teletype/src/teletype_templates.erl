@@ -14,6 +14,7 @@
         ,preview/3
         ,fetch_notification/2
         ,write_templates_to_disk/2
+        ,templates_source/2
         ]).
 -export([doc_id/1]).
 -export([params/1]).
@@ -175,11 +176,16 @@ render(TemplateId, Macros, DataJObj, 'true') ->
 templates_source(_TemplateId, 'undefined') ->
     lager:warning("no account id for template ~s, no template to process", [_TemplateId]),
     'undefined';
-templates_source(_TemplateId, ?KZ_CONFIG_DB) ->
-    ?KZ_CONFIG_DB;
+templates_source(TemplateId, ?KZ_CONFIG_DB) ->
+    case fetch_notification(TemplateId, ?KZ_CONFIG_DB) of
+        {'ok', Template} ->
+            templates_source_has_attachments(TemplateId, ?KZ_CONFIG_DB, ?KZ_CONFIG_DB, Template);
+        {'error', 'not_found'} -> 'not_found';
+        {'error', _E} -> 'undefined'
+    end;
 templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     %% ?LOG_DEBUG("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
-    lager:debug("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
+    lager:debug("trying to fetch template '~s' for '~s' account", [TemplateId, AccountId]),
     ResellerId = teletype_util:find_reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
@@ -196,7 +202,7 @@ templates_source(TemplateId, AccountId, AccountId) ->
     case fetch_notification(TemplateId, AccountId) of
         {'ok', Template} ->
             templates_source_has_attachments(TemplateId, AccountId, AccountId, Template);
-        {'error', 'not_found'} -> ?KZ_CONFIG_DB;
+        {'error', 'not_found'} -> 'not_found';
         {'error', _E} -> 'undefined'
     end;
 templates_source(TemplateId, AccountId, ResellerId) ->
@@ -210,6 +216,11 @@ templates_source(TemplateId, AccountId, ResellerId) ->
 
 -spec templates_source_has_attachments(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                                               kz_term:api_binary().
+templates_source_has_attachments(_TemplateId, ?KZ_CONFIG_DB, ?KZ_CONFIG_DB, Template) ->
+    case kz_doc:attachments(Template) of
+        'undefined' -> 'not_found';
+        _ -> ?KZ_CONFIG_DB
+    end;
 templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template) ->
     case kz_doc:attachments(Template) of
         'undefined' -> parent_templates_source(TemplateId, AccountId, ResellerId);
