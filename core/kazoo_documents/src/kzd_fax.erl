@@ -472,11 +472,7 @@ fetch_original_attachment(Db, Doc, [{<<?ORIGINAL_FILE_PREFIX, _/binary>>=Name}|_
 fetch_original_attachment(Db, Doc, [_|Attachments]) ->
     fetch_original_attachment(Db, Doc, Attachments);
 fetch_original_attachment(Db, Doc, []) ->
-    case fetch_legacy_attachment(Db, Doc) of
-        {'ok', Content, ContentType, NewDoc} ->
-            {'ok', Content, ContentType, NewDoc};
-        Error -> Error
-    end.
+    fetch_legacy_attachment(Db, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc Helper function for accessing a legacy attachment.
@@ -520,13 +516,12 @@ fetch_legacy_attachment(Db, Doc, []) ->
                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
                                   {'error', kz_term:ne_binary()}.
 fetch_attachment_url(Doc) ->
-    case kz_json:get_value(<<"document">>, Doc) of
-        'undefined' ->
+    case document(Doc) of
+        [] ->
             lager:info("no attachment found on doc ~s", [kz_doc:id(Doc)]),
             {'error', <<"no attachment found">>};
         FetchRequest  ->
-            Url = kz_json:get_string_value(<<"url">>, FetchRequest),
-            fetch_attachment_url(Url, FetchRequest)
+            fetch_attachment_url(document_url(Doc), FetchRequest)
     end.
 
 -spec fetch_attachment_url(kz_term:api_binary(), kz_json:object()) ->
