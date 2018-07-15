@@ -257,6 +257,7 @@ pages:
     - 'Set': 'applications/callflow/doc/set.md'
     - 'Branch BNumber': 'applications/callflow/doc/branch_bnumber.md'
     - 'Camping': 'applications/callflow/doc/camping_feature.md'
+    - 'Account defined teletype notification': 'applications/callflow/doc/customer_defined_notification.md'
     - 'Deprecated':
         - 'Offnet': 'applications/callflow/doc/offnet.md'
   - 'Call Inspector':
@@ -350,6 +351,7 @@ pages:
   - 'Teletype':
     - 'applications/teletype/doc/README.md'
     - 'applications/teletype/doc/maintenance.md'
+    - 'applications/teletype/doc/customer_defined_notification.md'
   - 'Trunkstore':
     - 'applications/trunkstore/doc/README.md'
 - 'Core':

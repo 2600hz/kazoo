@@ -768,7 +768,7 @@ read_account(Context, Id, LoadFrom) ->
     of
         {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
             maybe_read_from_parent(Context, Id, LoadFrom, cb_context:reseller_id(Context));
-        {_Code, 'success'} -> 
+        {_Code, 'success'} ->
             case system_config_notification_doc(Id) of
                 {'ok', _JObj} -> prepare_account_responce(Context1, Id, 'set_account_overridden');
                 {'error', 'not_found'} -> prepare_account_responce(Context1, Id, 'set_account_defined');

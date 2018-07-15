@@ -5,9 +5,9 @@
 %%% <h4>Data options:</h4>
 %%% <dl>
 %%%   <dt>`send_on'</dt>
-%%%   <dd>Defines when send customer defined notification. Possible values `callflow_exec` and `channel_destroy`.
-%%%   For `callflow_exec` value notifications is send during calllfow execution.
-%%%   For `channel_destroy` value notification is send after channel(bridge) is destroed.</dd>
+%%%   <dd>Defines when send customer defined notification. Possible values `callflow_exec' and `channel_destroy'.
+%%%   For `callflow_exec' value notifications is send during calllfow execution.
+%%%   For `channel_destroy' value notification is send after channel(bridge) is destroed.</dd>
 %%%
 %%%   <dt>`template_id'</dt>
 %%%   <dd>Defines customer defined notification template name</dd>
