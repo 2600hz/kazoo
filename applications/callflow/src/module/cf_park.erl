@@ -641,7 +641,7 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                     _ = publish_retrieved(Call, SlotNumber),
                     cf_exe:transfer(Call);
                 'bridged' ->
-                    lager:info("ringback to parker was sucessful"),
+                    lager:info("ringback to parker was successful"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     _ = publish_retrieved(Call, SlotNumber),
                     cf_exe:transfer(Call);
