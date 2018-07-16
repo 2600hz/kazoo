@@ -400,7 +400,7 @@ set_notifications_outbound_sms_send_to(Doc, NotificationsOutboundSmsSendTo) ->
 
 -spec retries(doc()) -> integer().
 retries(Doc) ->
-    retries(Doc, 1).
+    retries(Doc, 3).
 
 -spec retries(doc(), Default) -> integer() | Default.
 retries(Doc, Default) ->

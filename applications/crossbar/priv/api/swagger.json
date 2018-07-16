@@ -5284,7 +5284,7 @@
                     "type": "object"
                 },
                 "retries": {
-                    "default": 1,
+                    "default": 3,
                     "description": "The number of times to retry",
                     "maximum": 4,
                     "minimum": 0,
