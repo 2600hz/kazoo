@@ -24,6 +24,7 @@
         ,worker_maybe_send_update/3
         ,get_output_header/1
         ,output_path/1
+        ,finish_task/2
         ,cleanup_task/2
         ]).
 
@@ -68,7 +69,6 @@
 -define(REPLY(State, Value), {'reply', Value, State}).
 -define(REPLY_FOUND(State, TaskJObj), {'reply', {'ok', TaskJObj}, State}).
 -define(REPLY_NOT_FOUND(State), {'reply', {'error', 'not_found'}, State}).
-
 
 %%%=============================================================================
 %%% API
@@ -124,7 +124,6 @@ restart(TaskId = ?NE_BINARY) ->
                                {'error', 'not_found' | 'task_running'}.
 remove(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'remove_task', TaskId}).
-
 
 %%%=============================================================================
 %%% Worker API
@@ -277,7 +276,24 @@ output_path(TaskId=?NE_BINARY) ->
     <<"/tmp/task_out.", TaskId/binary, ".csv">>.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Calls the task's 'finish' function, if applicable
+%%
+%% Run after all rows are processed but before the task is considered complete.
+%% @end
+%%------------------------------------------------------------------------------
+-spec finish_task(kz_json:object(), any()) -> 'ok'.
+finish_task(API, Data) ->
+    lager:debug("finishing up after task"),
+    Action = kz_json:get_value(<<"action">>, API),
+    case tasks_bindings:apply(API, <<"finish">>, [Action, Data]) of
+        [] -> lager:debug("skipped finish");
+        [{'EXIT', {_E, _Rs}}] ->
+            lager:debug("finish ~p: ~p", [_E, hd(_Rs)]);
+        _ -> lager:debug("finish completed")
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Calls the task's 'cleanup' function, once the task is consided complete
 %% @end
 %%------------------------------------------------------------------------------
 -spec cleanup_task(kz_json:object(), any()) -> 'ok'.
@@ -290,7 +306,6 @@ cleanup_task(API, Data) ->
             lager:debug("cleanup ~p: ~p", [_E, hd(_Rs)]);
         _ -> lager:debug("cleanup completed")
     end.
-
 
 %%%=============================================================================
 %%% gen_server callbacks
