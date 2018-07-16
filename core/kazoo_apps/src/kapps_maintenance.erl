@@ -1148,7 +1148,8 @@ init_system() ->
 
 -spec check_release() -> 'ok' | 'error'.
 check_release() ->
-    Checks = [fun kapps_started/0
+    Checks = [fun init_system/0
+             ,fun kapps_started/0
              ,fun master_account_created/0
              ,fun migration_4_0_ran/0
              ,fun migration_ran/0
@@ -1195,8 +1196,7 @@ master_account_created() ->
         'ok' ->
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             lager:info("created master account ~s", [MasterAccountId]),
-            lager:debug("~p", [kzd_accounts:fetch(MasterAccountId)]),
-            'true';
+            'true' = kzd_accounts:is_superduper_admin(MasterAccountId);
         'failed' -> throw({'error', 'create_account'})
     end.
 
