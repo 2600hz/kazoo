@@ -1192,7 +1192,11 @@ master_account_created() ->
                   ]
                  )
     of
-        'ok' -> 'true';
+        'ok' ->
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            lager:info("created master account ~s", [MasterAccountId]),
+            lager:debug("~p", [kzd_accounts:fetch(MasterAccountId)]),
+            'true';
         'failed' -> throw({'error', 'create_account'})
     end.
 
