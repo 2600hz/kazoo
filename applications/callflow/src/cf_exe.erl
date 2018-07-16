@@ -683,9 +683,9 @@ launch_cf_module(#state{call=Call
 
 -spec do_launch_cf_module(state()) -> state().
 do_launch_cf_module(#state{call=Call
-                       ,flow=Flow
-                       ,cf_module_pid=OldPidRef
-                       }=State) ->
+                          ,flow=Flow
+                          ,cf_module_pid=OldPidRef
+                          }=State) ->
     Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
     Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
 
