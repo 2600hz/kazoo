@@ -47,7 +47,7 @@
             "type": "integer"
         },
         "min_bucket_cost": {
-            "default": 25,
+            "default": 5,
             "description": "callflow minimum bucket cost",
             "type": "integer"
         },
