@@ -140,6 +140,7 @@ teardown(API, IterValue, #state{task_id = TaskId
                                ,total_failed = TotalFailed
                                ,columns = Columns
                                }) ->
+    _ = kz_tasks_scheduler:finish_task(API, IterValue),
     _ = kz_tasks_scheduler:worker_finished(TaskId
                                           ,TotalSucceeded
                                           ,TotalFailed

@@ -11,7 +11,7 @@
 -export([init/0
         ,help/1, help/2, help/3
         ,output_header/1
-        ,cleanup/2
+        ,finish/2
         ]).
 
 %% Verifiers
@@ -50,7 +50,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".direction">>, ?MODULE, 'direction'),
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".cleanup">>, ?MODULE, 'cleanup'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".finish">>, ?MODULE, 'finish'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 -spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
@@ -231,12 +231,12 @@ delete(_ExtraArgs, State, Args) ->
             }
     end.
 
--spec cleanup(kz_term:ne_binary(), any()) -> any().
-cleanup(<<"import">>, Dict) ->
+-spec finish(kz_term:ne_binary(), any()) -> any().
+finish(<<"import">>, Dict) ->
     _Size = dict:size(Dict),
-    lager:debug("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
+    lager:info("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
     _ = dict:map(fun import_rates_into_ratedeck/2, Dict);
-cleanup(<<"delete">>, State) ->
+finish(<<"delete">>, State) ->
     Db = props:get_value('db', State),
     Keys = props:get_value('keys', State),
     Dict = props:get_value('dict', State),
