@@ -1156,7 +1156,9 @@ check_release() ->
              ,fun kazoo_proper_maintenance:run_seq_modules/0
              ],
     try lists:foreach(fun(F) -> F() end, Checks) of
-        'ok' -> lager:info("check_release/0 succeeded"), init:stop()
+        'ok' ->
+            lager:info("check_release/0 succeeded"),
+            init:stop()
     catch
         'throw':Error ->
             lager:error("check_release/0 failed: ~p", [Error]),
