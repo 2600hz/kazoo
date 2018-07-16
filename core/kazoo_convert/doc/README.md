@@ -29,4 +29,5 @@ Key | Description | Type | Default | Required | Support Level
 `fax.validate_pdf_command` | Verifies a PDF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `fax.validate_tiff_command` | Verifies a TIFF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `file_cache_path` | The working directory to use when converting files | `string()` | `/tmp/` | `false` |
+`attachment_format` | Format to use for receipt email messages and api responses | `string()` | `pdf` | `false` |
 
