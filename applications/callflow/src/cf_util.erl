@@ -92,9 +92,9 @@ bucket_info(Call, Flow) ->
 -spec bucket_name_from_call(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
 bucket_name_from_call(Call, Flow) ->
     FlowId = case kz_doc:id(Flow) of
-        'undefined' -> <<"cf_exe_", (kz_term:to_binary(self()))/binary>>;
-        FlowIdVal   -> FlowIdVal
-    end,
+                 'undefined' -> <<"cf_exe_", (kz_term:to_binary(self()))/binary>>;
+                 FlowIdVal   -> FlowIdVal
+             end,
 
     <<(kapps_call:account_id(Call))/binary, ":", (FlowId)/binary>>.
 
