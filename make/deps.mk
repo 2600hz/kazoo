@@ -50,7 +50,7 @@ ifeq ($(USER),travis)
 endif
 
 dep_amqp_client_commit = rabbitmq_v3_6_0
-dep_apns = git https://github.com/inaka/apns4erl.git 2.2.0
+dep_apns = git https://github.com/inaka/apns4erl.git 2.2.1
 dep_certifi = hex 0.3.0
 dep_chatterbox = hex 0.7.0
 dep_cowboy = git https://github.com/ninenines/cowboy 2.2.0
