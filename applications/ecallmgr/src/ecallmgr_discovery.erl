@@ -113,7 +113,7 @@ next_timeout(Elapsed)
   when Elapsed < ?SECONDS_IN_MINUTE * 10 -> ?MILLISECONDS_IN_SECOND * 3;
 next_timeout(Elapsed)
   when Elapsed < ?SECONDS_IN_MINUTE * 20 -> ?MILLISECONDS_IN_SECOND * 5;
-next_timeout(_Elapsed) -> ?MILLISECONDS_IN_MINUTE * 5.
+next_timeout(_Elapsed) -> ?MILLISECONDS_IN_MINUTE.
 
 sbc_acl_filter({_K, V}) ->
     kz_json:get_ne_binary_value(<<"network-list-name">>, V) =:= <<"authoritative">>.
@@ -126,22 +126,27 @@ sbc_cidrs(ACLs) ->
     lists:flatten(kz_json:foldl(fun sbc_cidr/3, [], SBCs)).
 
 sbc_address_foldl(_, JObj, Acc) ->
-    [kz_json:get_ne_binary_value(<<"address">>, JObj) | Acc].
+    IP = kz_json:get_ne_binary_value(<<"address">>, JObj),
+    Port = kz_json:get_integer_value(<<"port">>, JObj, 0),
+    case props:get_value(IP, Acc, []) of
+        [] -> [{IP, [Port]} | Acc];
+        Ports -> props:set_value(IP, lists:usort([Port | Ports]), Acc)
+    end.
 
 sbc_addresses(#kz_node{roles=Roles}) ->
     Listeners = kz_json:get_json_value(<<"Listeners">>, props:get_value(<<"Proxy">>, Roles)),
-    lists:usort(kz_json:foldl(fun sbc_address_foldl/3, [], Listeners)).
+    kz_json:foldl(fun sbc_address_foldl/3, [], Listeners).
 
 sbc_node(#kz_node{node=Name}=Node) ->
     {kz_term:to_binary(Name), sbc_addresses(Node)}.
 
-sbc_verify_ip(IP, CIDRs) ->
+sbc_verify_ip({IP, _}, CIDRs) ->
     lists:any(fun(CIDR) -> kz_network_utils:verify_cidr(IP, CIDR) end, CIDRs).
 
 sbc_discover({Node, IPs}, CIDRs, Acc) ->
     case lists:filter(fun(IP) -> not sbc_verify_ip(IP, CIDRs) end, IPs) of
         [] -> Acc;
-        _ -> [{Node, IPs} | Acc]
+        Filtered -> [{Node, Filtered} | Acc]
     end.
 
 -spec filter_acls(kz_json:object()) -> kz_json:object().
@@ -155,7 +160,8 @@ filter_acls_fun({_Name, ACL}) ->
 sbc_acl(IPs) ->
     kz_json:from_list([{<<"type">>, <<"allow">>}
                       ,{<<"network-list-name">>, ?FS_SBC_ACL_LIST}
-                      ,{<<"cidr">>, [kz_network_utils:to_cidr(IP) || IP <- IPs]}
+                      ,{<<"cidr">>, [kz_network_utils:to_cidr(IP) || {IP, _} <- IPs]}
+                      ,{<<"ports">>, lists:flatten([Ports || {_, Ports} <- IPs])}
                       ]).
 
 sbc_acls(Nodes) ->
@@ -169,8 +175,11 @@ sbc_discovery() ->
     case lists:foldl(fun(A, C) -> sbc_discover(A, CIDRs, C) end, [], Nodes) of
         [] -> 'ok';
         Updates ->
-            Names = lists:map(fun({Node, _}) -> Node end, Updates),
+            Names = lists:usort(lists:map(fun({Node, _}) -> Node end, Updates)),
             lager:debug("adding authoritative acls for ~s", [kz_binary:join(Names)]),
-            ecallmgr_config:set_node(<<"acls">>, kz_json:set_values(sbc_acls(Updates), ACLs), <<"default">>),
+            ToUpdate = lists:filter(fun({Node, _IPs}) -> lists:member(Node, Names) end , Nodes),
+            SBCACLs = sbc_acls(ToUpdate),
+            NewAcls = kz_json:set_values(SBCACLs, ACLs),
+            ecallmgr_config:set_node(<<"acls">>, NewAcls, <<"default">>),
             ecallmgr_maintenance:reload_acls()
     end.
