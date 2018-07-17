@@ -338,9 +338,9 @@ disable_account(AccountId) ->
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
     case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_superduper_admin(J, 'true') end) of
-        {'ok', _A} -> lager:info("account ~s is admin: ~p", [AccountId, _A]);
+        {'ok', _A} -> io:format("  account ~s is admin-ified", [AccountId]);
         {'error', _R} ->
-            lager:info("failed to adminify account ~s: ~p", [AccountId, _R]),
+            io:format("  failed to admin-ify account ~s: ~p", [AccountId, _R]),
             'failed'
     end.
 
