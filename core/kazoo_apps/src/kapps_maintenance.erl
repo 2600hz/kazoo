@@ -1148,8 +1148,7 @@ init_system() ->
 
 -spec check_release() -> 'ok' | 'error'.
 check_release() ->
-    Checks = [fun init_system/0
-             ,fun kapps_started/0
+    Checks = [fun kapps_started/0
              ,fun master_account_created/0
              ,fun migration_4_0_ran/0
              ,fun migration_ran/0
