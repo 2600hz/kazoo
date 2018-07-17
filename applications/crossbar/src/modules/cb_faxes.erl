@@ -52,6 +52,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".fax">>).
 
 -define(FAX_TYPE, <<"fax">>).
+-define(CONVERT_CONFIG_CAT, <<"kazoo_convert">>).
 -define(SMTP_TYPE, <<"fax_smtp_log">>).
 
 -define(OUTBOX_ACTION_RESUBMIT, <<"resubmit">>).
@@ -612,26 +613,39 @@ do_load_fax_binary(FaxId, Folder, Context) ->
     Context1 = load_fax_meta(FaxId, Folder, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case kz_doc:attachment_names(cb_context:doc(Context1)) of
-                [] -> cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, FaxId}]), Context1);
-                [AttachmentId|_] ->
-                    set_fax_binary(Context1, AttachmentId)
+            Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
+            case kzd_fax:fetch_attachment_format(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
+                {'error', Error} ->
+                    crossbar_doc:handle_datamgr_errors(Error, FaxId, Context1);
+                {'ok', Content, ContentType, Doc} ->
+                    set_fax_binary(cb_context:set_doc(Context1, Doc), Content, ContentType, get_file_name(Doc, ContentType))
             end;
         _Status -> Context1
     end.
 
--spec set_fax_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-set_fax_binary(Context, AttachmentId) ->
+-spec set_fax_binary(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
+set_fax_binary(Context, Content, ContentType, Filename) ->
     Disposition = cb_context:req_param(Context, <<"disposition">>, <<"attachment">>),
-    cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"fax">>), Context)
-                      ,[{fun cb_context:set_resp_etag/2, 'undefined'}
-                       ,{fun cb_context:add_resp_headers/2
-                        ,#{<<"content-disposition">> => <<Disposition/binary, "; filename=", AttachmentId/binary>>
-                          ,<<"content-type">> => kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)
+    cb_context:setters(cb_context:setters(Context
+                                         ,[{fun cb_context:set_resp_data/2, Content}
+                                          ,{fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(cb_context:doc(Context))}
+                                          ]
+                                         )
+                      ,[{fun cb_context:add_resp_headers/2
+                        ,#{<<"content-disposition">> => <<Disposition/binary, "; filename=", Filename/binary>>
+                          ,<<"content-type">> => ContentType
                           }
                         }
                        ]
                       ).
+
+-spec get_file_name(kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_file_name(Doc, ContentType) ->
+    Time = kz_json:get_integer_value(<<"pvt_created">>, Doc, 0),
+    Ext = kz_mime:to_extension(ContentType),
+    FName = list_to_binary([<<"fax_document_">>, kz_time:pretty_print_datetime(Time), ".", Ext]),
+    re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
@@ -661,39 +675,36 @@ normalize_modb_view_results(JObj, Acc) ->
 
 -spec maybe_save_attachment(cb_context:context()) -> cb_context:context().
 maybe_save_attachment(Context) ->
-    maybe_save_attachment(Context, cb_context:req_files(Context)).
-
--spec maybe_save_attachment(cb_context:context(), req_files()) -> cb_context:context().
-maybe_save_attachment(Context, []) -> Context;
-maybe_save_attachment(Context, [{Filename, FileJObj} | _Others]) ->
-    save_attachment(Context, Filename, FileJObj).
-
--spec save_attachment(cb_context:context(), binary(), kz_json:object()) -> cb_context:context().
-save_attachment(Context, Filename, FileJObj) ->
     JObj = cb_context:doc(Context),
-    DocId = kz_doc:id(JObj),
-    Contents = kz_json:get_value(<<"contents">>, FileJObj),
-    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT}
-           ,{'rev', kz_doc:revision(JObj)}
-            | ?TYPE_CHECK_OPTION(<<"fax">>)
-           ],
-    set_pending(crossbar_doc:save_attachment(DocId
-                                            ,cb_modules_util:attachment_name(Filename, CT)
-                                            ,Contents
-                                            ,Context
-                                            ,Opts
-                                            )
-               ,DocId
-               ).
+    case kz_json:get_value(<<"document">>, JObj) of
+        'undefined' ->
+            save_multipart_attachment(Context, cb_context:req_files(Context));
+        _Document ->
+            prepare_attachment(Context, JObj, 'undefined', 'undefined')
+    end.
 
--spec set_pending(cb_context:context(), binary()) -> cb_context:context().
-set_pending(Context, DocId) ->
-    Ctx1 = crossbar_doc:load(DocId, Context),
-    KVs = [{<<"pvt_job_status">>, <<"pending">>}
-          ,{<<"pvt_modified">>, kz_time:now_s()}
-          ],
-    crossbar_doc:save(cb_context:set_doc(Ctx1, kz_json:set_values(KVs, cb_context:doc(Ctx1)))).
+-spec save_multipart_attachment(cb_context:context(), req_files()) -> cb_context:context().
+save_multipart_attachment(Context, []) -> Context;
+save_multipart_attachment(Context, [{_Filename, FileJObj} | _Others]) ->
+    Content = kz_json:get_value(<<"contents">>, FileJObj),
+    ContentType = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
+    prepare_attachment(Context, cb_context:doc(Context), ContentType, Content).
+
+-spec prepare_attachment(cb_context:context()
+                        ,kz_json:object()
+                        ,kz_term:api_binary()
+                        ,kz_term:api_binary()) -> cb_context:context().
+prepare_attachment(Context, Doc, ContentType, Content) ->
+    case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, Doc, Content, ContentType) of
+        {'ok', NewDoc} ->
+            KVs = [{<<"pvt_job_status">>, <<"pending">>}
+                  ,{<<"pvt_modified">>, kz_time:now_s()}
+                  ],
+            crossbar_doc:save(cb_context:set_doc(Context, kz_json:set_values(KVs, NewDoc)));
+        {'error', Error} ->
+            lager:error("failed to process fax document with error: ~p", [Error]),
+            cb_context:add_system_error(<<"error processing fax file">>, Context)
+    end.
 
 -spec do_put_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
