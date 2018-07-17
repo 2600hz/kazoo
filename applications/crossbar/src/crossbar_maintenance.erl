@@ -338,8 +338,10 @@ disable_account(AccountId) ->
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
     case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_superduper_admin(J, 'true') end) of
-        {'ok', _} -> 'ok';
-        {'error', _} -> 'failed'
+        {'ok', _A} -> io:format("  account ~s is admin-ified", [AccountId]);
+        {'error', _R} ->
+            io:format("  failed to admin-ify account ~s: ~p", [AccountId, _R]),
+            'failed'
     end.
 
 %%------------------------------------------------------------------------------
@@ -405,12 +407,15 @@ maybe_promote_account(Context) ->
 
     case kapps_util:get_all_accounts() of
         [AccountDb] ->
+            lager:info("account ~s is the first, promoting it to sysadmin", [AccountId]),
             'ok' = promote_account(AccountId),
             'ok' = allow_account_number_additions(AccountId),
             'ok' = whs_account_conversion:force_promote(AccountId),
             'ok' = update_system_config(AccountId),
             {'ok', Context};
-        _Else -> {'ok', Context}
+        _Else ->
+            lager:debug("account ~s is not the first account in the system", [AccountId]),
+            {'ok', Context}
     end.
 
 -spec create_account_and_user(kz_json:object(), kz_json:object()) ->

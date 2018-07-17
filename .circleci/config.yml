@@ -99,9 +99,11 @@ jobs:
     - run: make build-ci-release
     - run: ${PWD}/scripts/check-unstaged.bash
     - run: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
+    - store_artifacts:
+        path: /tmp/circleci-artifacts
     - run: |
-        if [[ $(grep -c -v -F 'exit with reason shutdown' ${PWD}/_rel/kazoo/log/error.log) -gt 0 ]]; then
-          cat ${PWD}/_rel/kazoo/log/error.log
+        if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+          cat ${CIRCLE_ARTIFACTS}/log/error.log
           exit 1
         fi
     # This is based on your 1.0 configuration file or project settings
@@ -115,7 +117,5 @@ jobs:
     - store_test_results:
         path: /tmp/circleci-test-results
     # Save artifacts
-    - store_artifacts:
-        path: /tmp/circleci-artifacts
     - store_artifacts:
         path: /tmp/circleci-test-results

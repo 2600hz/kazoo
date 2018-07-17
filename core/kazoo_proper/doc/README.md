@@ -28,3 +28,7 @@ Run a quick sequetial test: `pqc_cb_rates:seq()`
 ### [IPs](src/pqc_cb_ips.erl)
 
 Tests the dedicated IPs endpoint.
+
+### [Recordings](../src/pqc_cb_recordings.erl)
+
+Tests fetching recordings
