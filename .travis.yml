@@ -8,7 +8,7 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
-  - 19.3.6.5
+  - 19.3
   - 20.3.8
   - 21.0.3
 
