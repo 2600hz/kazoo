@@ -399,6 +399,7 @@ pages:
   - 'Kazoo Speech':
       - 'core/kazoo_speech/doc/README.md'
       - 'core/kazoo_speech/doc/ispeech.md'
+      - 'core/kazoo_speech/doc/google.md'
   - 'Kazoo MODB':
     - 'core/kazoo_modb/doc/README.md'
   - 'Kazoo CouchDB':
