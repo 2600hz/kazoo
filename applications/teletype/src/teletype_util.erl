@@ -636,8 +636,11 @@ is_notice_enabled_default(TemplateKey) ->
 get_parent_account_id(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} -> kzd_accounts:parent_account_id(JObj);
+        {'error', 'not_found'} ->
+            lager:info("account ~s no longer exists, no parent account", [AccountId]),
+            'undefined';
         {'error', _E} ->
-            lager:error("failed to find parent account for ~s", [AccountId]),
+            lager:error("failed to find parent account for ~s: ~p", [AccountId, _E]),
             'undefined'
     end.
 
