@@ -34,7 +34,13 @@
             "type": "string"
         },
         "Ignore-Early-Media": {
-            "type": "boolean"
+            "enum": [
+                "true",
+                "consume",
+                "ring_ready",
+                "false"
+            ],
+            "type": "string"
         },
         "Invite-Format": {
             "enum": [

@@ -25,7 +25,7 @@ Key | Description | Type | Default | Required | Support Level
 `format_from_uri` | If true, puts the account realm in the From header | `boolean()` |   | `false` |  
 `from_uri_realm` | Override the From realm in the SIP packets | `string()` |   | `false` |  
 `hunt_account_id` | When using local resources, use this account instead of the account making the call (useful for resellers) | `string()` |   | `false` |  
-`ignore_early_media` | Toggle whether to ignore early media | `boolean()` | `false` | `false` |  
+`ignore_early_media` | Toggle whether to ignore early media | `string('true' | 'consume' | 'ring_ready' | 'false')` | `false` | `false` |  
 `outbound_flags.[]` |   | `string()` |   | `false` |  
 `outbound_flags` | List of flags to use when matching resources to route the call | `array(string())` | `[]` | `false` |  
 `ringback` | Tone or file to play while waiting for the leg to be answered | `string()` |   | `false` |  

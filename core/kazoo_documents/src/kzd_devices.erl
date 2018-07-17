@@ -144,15 +144,15 @@ call_forward_failover(Doc, Default) ->
 set_call_forward_failover(Doc, CallForwardFailover) ->
     kz_json:set_value([<<"call_forward">>, <<"failover">>], CallForwardFailover, Doc).
 
--spec call_forward_ignore_early_media(doc()) -> boolean().
+-spec call_forward_ignore_early_media(doc()) -> kz_term:api_binary().
 call_forward_ignore_early_media(Doc) ->
-    call_forward_ignore_early_media(Doc, true).
+    call_forward_ignore_early_media(Doc, <<"true">>).
 
--spec call_forward_ignore_early_media(doc(), Default) -> boolean() | Default.
+-spec call_forward_ignore_early_media(doc(), Default) -> kz_term:api_binary() | Default.
 call_forward_ignore_early_media(Doc, Default) ->
-    kz_json:get_boolean_value([<<"call_forward">>, <<"ignore_early_media">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"call_forward">>, <<"ignore_early_media">>], Doc, Default).
 
--spec set_call_forward_ignore_early_media(doc(), boolean()) -> doc().
+-spec set_call_forward_ignore_early_media(doc(), kz_term:api_binary()) -> doc().
 set_call_forward_ignore_early_media(Doc, CallForwardIgnoreEarlyMedia) ->
     kz_json:set_value([<<"call_forward">>, <<"ignore_early_media">>], CallForwardIgnoreEarlyMedia, Doc).
 

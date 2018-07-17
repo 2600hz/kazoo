@@ -236,7 +236,13 @@
                                 "type": "boolean"
                             },
                             "ignore_early_media": {
-                                "type": "boolean"
+                                "enum": [
+                                    "true",
+                                    "consume",
+                                    "ring_ready",
+                                    "false"
+                                ],
+                                "type": "string"
                             },
                             "inbound_format": {
                                 "default": "npan",

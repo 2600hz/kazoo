@@ -507,9 +507,9 @@ build_originate_req(Contact, Context) ->
 get_caller_callee(<<"extension">>, Contact, Extension) -> {Contact, Extension};
 get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
--spec get_ignore_early_media(kz_json:object()) -> boolean().
+-spec get_ignore_early_media(kz_json:object()) -> kz_term:api_binary().
 get_ignore_early_media(JObj) ->
-    kz_term:is_true(kz_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
+    kz_json:get_ne_binary_value([<<"media">>, <<"ignore_early_media">>], JObj, <<"true">>).
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);

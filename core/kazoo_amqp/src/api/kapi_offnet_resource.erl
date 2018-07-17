@@ -442,13 +442,13 @@ timeout(Req) ->
 timeout(?REQ_TYPE(JObj), Default) ->
     kz_json:get_integer_value(?KEY_TIMEOUT, JObj, Default).
 
--spec ignore_early_media(req()) -> kz_term:api_boolean().
+-spec ignore_early_media(req()) -> kz_term:api_binary().
 ignore_early_media(Req) ->
     ignore_early_media(Req, 'undefined').
 
--spec ignore_early_media(req(), Default) -> boolean() | Default.
+-spec ignore_early_media(req(), Default) -> kz_term:api_binary() | Default.
 ignore_early_media(?REQ_TYPE(JObj), Default) ->
-    kz_json:is_true(?KEY_IGNORE_EARLY_MEDIA, JObj, Default).
+    kz_json:get_ne_binary_value(?KEY_IGNORE_EARLY_MEDIA, JObj, Default).
 
 -spec media(req()) -> kz_term:api_binary().
 media(Req) ->

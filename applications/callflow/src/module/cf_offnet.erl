@@ -44,7 +44,7 @@
 %%%   <dd>`[{"header":"value",...}]'</dd>
 %%%
 %%%   <dt>`ignore_early_media'</dt>
-%%%   <dd>`boolean()'</dd>
+%%%   <dd>`binary()'</dd>
 %%%
 %%%   <dt>`outbound_flags'</dt>
 %%%   <dd>Used to match flags on carrier docs. `["flag_1","flag_2"]'.</dd>

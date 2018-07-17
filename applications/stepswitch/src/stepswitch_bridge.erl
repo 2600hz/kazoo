@@ -336,8 +336,7 @@ build_bridge(#state{endpoints=Endpoints
                           ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())
                           ),
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
-    IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, CCVs, 'false')
-        orelse kapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),
+    IgnoreEarlyMedia = maybe_ignore_early_media(CCVs, OffnetReq),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
@@ -363,6 +362,20 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Endpoints">>, FmtEndpoints}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
+
+-spec maybe_ignore_early_media(kz_term:api_binary(), kapi_offnet_resource:req()) -> kz_term:api_binary().
+maybe_ignore_early_media(CCVs, OffnetReq) ->
+    RequireIgnoreEarlyMedia=kz_json:get_ne_binary_value(<<"Require-Ignore-Early-Media">>, CCVs, <<"false">>),
+    ResourceIgnoreEarlyMedia=kapi_offnet_resource:ignore_early_media(OffnetReq, <<"false">>),
+    case {RequireIgnoreEarlyMedia, ResourceIgnoreEarlyMedia} of
+        {<<"true">>, _} -> <<"true">>;
+        {_, <<"true">>} -> <<"true">>;
+        {<<"consume">>, _} -> <<"consume">>;
+        {_, <<"consume">>} -> <<"consume">>;
+        {<<"ring_ready">>, _} -> <<"ring_ready">>;
+        {_, <<"ring_ready">>} -> <<"ring_ready">>;
+        _ -> <<"false">>
+    end.
 
 -spec bridge_from_uri(kz_term:api_binary(), kapi_offnet_resource:req()) ->
                              kz_term:api_binary().

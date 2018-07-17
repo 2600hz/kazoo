@@ -27,10 +27,19 @@ by_owner_id(OwnerId, Data, Call) ->
 
 -spec ignore_early_media(kz_json:objects()) -> kz_term:api_binary().
 ignore_early_media(Endpoints) ->
-    case lists:any(fun(Endpoint) ->
-                           kz_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
-                   end, Endpoints)
-    of
-        'true' -> <<"true">>;
-        'false' -> 'undefined'
+    Ingore_Early_Media_Values = lists:map(fun(Endpoint) ->
+                                                  kz_json:get_ne_binary_value(<<"Ignore-Early-Media">>, Endpoint)
+                                          end, Endpoints),
+    Is_Exist_True = lists:member(<<"true">>, Ingore_Early_Media_Values),
+    Is_Exist_Consume = lists:member(<<"consume">>, Ingore_Early_Media_Values),
+    Is_Several_Consume = lists:member(<<"consume">>, lists:delete(<<"consume">>, Ingore_Early_Media_Values)),
+    Is_Exist_Ring_Ready = lists:member(<<"ring_ready">>, Ingore_Early_Media_Values),
+    Is_Several_Ring_Ready = lists:member(<<"ring_ready">>, lists:delete(<<"ring_ready">>, Ingore_Early_Media_Values)),
+    case {Is_Exist_True, Is_Exist_Consume, Is_Several_Consume, Is_Exist_Ring_Ready, Is_Several_Ring_Ready} of
+        {'true', _, _, _, _} -> <<"true">>;
+        {_, 'true', 'true', _, _} -> <<"true">>;
+        {_, 'true', _, _, _} -> <<"consume">>;
+        {_, _, _, 'true', 'true'} -> <<"true">>;
+        {_, _, _, 'true', _} -> <<"ring_ready">>;
+        _  -> 'undefined'
     end.

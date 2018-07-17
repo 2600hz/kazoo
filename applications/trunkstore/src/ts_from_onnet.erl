@@ -139,7 +139,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                          ,{<<"Flags">>, get_flags(DIDOptions, ServerOptions, AccountOptions, State)}
                          ,{<<"Media">>, MediaHandling}
                          ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, DIDOptions)}
-                         ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+                         ,{<<"Ignore-Early-Media">>, kz_json:get_ne_binary_value(<<"ignore_early_media">>, DIDOptions)}
                          ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, DIDOptions)}
                          ,{<<"Custom-SIP-Headers">>, SIPHeaders}
                          ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"hunt_account_id">>, ServerOptions)}

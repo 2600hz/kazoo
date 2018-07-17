@@ -13,7 +13,7 @@ Key | Description | Type | Default | Required | Support Level
 `call_forward.direct_calls_only` | Determines if the calls that are not directly sent to the device should be forwarded | `boolean()` | `false` | `false` |  
 `call_forward.enabled` | Determines if the call forwarding should be used | `boolean()` | `false` | `false` |  
 `call_forward.failover` | Enable the call-forwarding parameters if the device is offline | `boolean()` | `false` | `false` |  
-`call_forward.ignore_early_media` | The option to determine if early media from the call forwarded number should ignored | `boolean()` | `true` | `false` |  
+`call_forward.ignore_early_media` | The option to determine if early media from the call forwarded number should ignored | `string('true' | 'consume' | 'ring_ready' | 'false')` | `true` | `false` |  
 `call_forward.keep_caller_id` | Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used | `boolean()` | `true` | `false` | `supported`
 `call_forward.number` | The number to forward calls to | `string(0..35)` |   | `false` | `supported`
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false` |  
@@ -152,7 +152,7 @@ Key | Description | Type | Default | Required | Support Level
 `encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false` |  
 `encryption` | Encryption Parameters | `object()` | `{}` | `false` |  
 `fax_option` | Is T.38 Supported? | `boolean()` |   | `false` |  
-`ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false` |  
+`ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `string('true' | 'consume' | 'ring_ready' | 'false')` |   | `false` |  
 `progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false` |  
 `video.codecs.[]` |   | `string('H261' | 'H263' | 'H264' | 'VP8')` |   | `false` |  
 `video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false` |  

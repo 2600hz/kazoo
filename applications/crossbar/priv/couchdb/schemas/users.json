@@ -22,9 +22,15 @@
                     "type": "boolean"
                 },
                 "ignore_early_media": {
-                    "default": true,
+                    "default": "true",
                     "description": "The option to determine if early media from the call forwarded number should ignored",
-                    "type": "boolean"
+                    "enum": [
+                        "true",
+                        "consume",
+                        "ring_ready",
+                        "false"
+                    ],
+                    "type": "string"
                 },
                 "keep_caller_id": {
                     "default": true,

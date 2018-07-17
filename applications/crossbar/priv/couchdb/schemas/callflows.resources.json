@@ -61,9 +61,15 @@
             "type": "string"
         },
         "ignore_early_media": {
-            "default": false,
+            "default": "false",
             "description": "Toggle whether to ignore early media",
-            "type": "boolean"
+            "enum": [
+                "true",
+                "consume",
+                "ring_ready",
+                "false"
+            ],
+            "type": "string"
         },
         "outbound_flags": {
             "default": [],
