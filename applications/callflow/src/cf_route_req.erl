@@ -20,8 +20,10 @@
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    CallId = kapi_route:call_id(JObj),
+    kz_util:put_callid(CallId),
     'true' = kapi_route:req_v(JObj),
+    gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
                ],
@@ -201,9 +203,26 @@ send_route_response(Flow, JObj, Call) ->
     of
         {'ok', RouteWin} ->
             lager:info("callflow has received a route win, taking control of the call"),
-            cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call));
+            NewCall = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
+            wait_for_running(NewCall, 0);
         {'error', _E} ->
             lager:info("callflow didn't received a route win, exiting : ~p", [_E])
+    end.
+
+-spec wait_for_running(kapps_call:call(), 0..5) -> 'ok'.
+wait_for_running(_Call, 5) ->
+    lager:info("callflow not ready after 5 tries, exiting");
+wait_for_running(Call, N) ->
+    receive
+        'channel_destroy' ->
+            cf_exe:hard_stop(Call),
+            lager:info("received channel destroy while setting up callflow executor, exiting")
+    after 2000 ->
+            case cf_exe:status(Call) of
+                'not_running' -> lager:info("callflow not running");
+                'running' -> lager:info("callflow up & running");
+                _ -> wait_for_running(Call, N + 1)
+            end
     end.
 
 -spec get_transfer_media(kz_json:object(), kz_json:object()) -> kz_term:api_binary().
