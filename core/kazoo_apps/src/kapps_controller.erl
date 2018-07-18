@@ -19,7 +19,9 @@
         ,start_which_kapps/0
         ]).
 
--export([binding_fetch_app/2, binding_fetch_app/3]).
+-export([binding_fetch_app/2, binding_fetch_app/3
+        ,unbinding_fetch_app/2, unbinding_fetch_app/3
+        ]).
 
 -include("kazoo_apps.hrl").
 
@@ -274,6 +276,14 @@ binding_fetch_app(Module, Function) ->
 -spec binding_fetch_app(module(), atom(), any()) -> kazoo_bindings:bind_result().
 binding_fetch_app(Module, Function, Payload) ->
     kazoo_bindings:bind(<<"app.fetch">>, Module, Function, Payload).
+
+-spec unbinding_fetch_app(module(), atom()) -> kazoo_bindings:unbind_result().
+unbinding_fetch_app(Module, Function) ->
+    unbinding_fetch_app(Module, Function, 'undefined').
+
+-spec unbinding_fetch_app(module(), atom(), any()) -> kazoo_bindings:unbind_result().
+unbinding_fetch_app(Module, Function, Payload) ->
+    kazoo_bindings:unbind(<<"app.fetch">>, Module, Function, Payload).
 
 %%%=============================================================================
 %%% Internal functions
