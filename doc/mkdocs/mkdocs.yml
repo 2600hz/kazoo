@@ -446,6 +446,7 @@ pages:
 - 'Engineering':
   - 'Announcements': 'doc/announcements.md'
   - 'Install/Build Kazoo': 'doc/installation.md'
+  - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
   - 'Call Recording': 'doc/engineering/call_recording.md'
   - 'Caller ID Formatting': 'doc/reference/caller_id_formatting.md'
   - 'Documentation':
