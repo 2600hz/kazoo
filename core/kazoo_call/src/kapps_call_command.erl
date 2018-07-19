@@ -216,7 +216,7 @@
         ]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), kz_term:binaries()} |
-                              {'prompt', binary()} | {'prompt', binary(), kz_term:ne_binaries()} |
+                              {'prompt', binary()} | {'prompt', binary(), kz_term:ne_binaries()} | {'prompt', binary(), binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} |
                               {'say', binary(), binary(), binary(), binary()} |
