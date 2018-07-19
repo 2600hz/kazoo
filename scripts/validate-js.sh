@@ -45,7 +45,7 @@ def couchjs((field, js)):
     with open(TMP, 'w') as wd:
         wd.write(JS)
     try:
-        code = call(['/home/james/local/git/apache/couchdb/bin/couchjs', TMP])
+        code = call(['couchjs', TMP])
         if code != 0:
             print 'Key:', field
             print 'Code:'
