@@ -5,10 +5,15 @@ import sys
 import json
 from subprocess import call
 import os
+import shutil
 
 if len(sys.argv) < 2:
     print 'Usage: ' + sys.argv[0] + ' file.json+'
-    exit(0)
+    exit(1)
+
+if os.system('which couchjs') != 0:
+    print 'Unable to find couchjs in path'
+    exit(1)
 
 def fmap(F, data):
     if isinstance(data, dict):
@@ -40,7 +45,7 @@ def couchjs((field, js)):
     with open(TMP, 'w') as wd:
         wd.write(JS)
     try:
-        code = call(['couchjs', TMP])
+        code = call(['/home/james/local/git/apache/couchdb/bin/couchjs', TMP])
         if code != 0:
             print 'Key:', field
             print 'Code:'
@@ -52,7 +57,6 @@ def couchjs((field, js)):
             exit(1)
     finally:
         os.remove(TMP)
-
 
 def basename2(file_name):
     ## http://stackoverflow.com/a/678242/1418165
