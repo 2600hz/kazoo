@@ -134,7 +134,7 @@ OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
 $(PLT): DEPS_EBIN ?= $(shell find $(ROOT)/deps -name ebin -type d -not -path "*/.erlang.mk/*" )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
-	@$(DIALYZER) --build_plt --output_plt $(PLT) \
+	@-$(DIALYZER) --build_plt --output_plt $(PLT) \
 	    --apps $(OTP_APPS) \
 	    -r $(DEPS_EBIN)
 	@for ebin in $(CORE_EBINS); do \
