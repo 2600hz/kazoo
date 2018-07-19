@@ -39,9 +39,10 @@
 %%------------------------------------------------------------------------------
 -spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) -> kz_time:date().
 from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
-    {Date, _} = localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Seconds)
-                                      ,kz_term:to_list(TZ)
-                                      ),
+    {{_,_,_}=Date, {_,_,_}} =
+        localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Seconds)
+                              ,kz_term:to_list(TZ)
+                              ),
     Date.
 
 %%------------------------------------------------------------------------------
