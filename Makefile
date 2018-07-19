@@ -131,12 +131,12 @@ DIALYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
-$(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
+$(PLT): DEPS_EBIN ?= $(shell find $(ROOT)/deps -name ebin -type d -not -path "*/.erlang.mk/*" )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
 	@$(DIALYZER) --build_plt --output_plt $(PLT) \
 	    --apps $(OTP_APPS) \
-	    -r $(DEPS_SRCS)
+	    -r $(DEPS_EBIN)
 	@for ebin in $(CORE_EBINS); do \
 	    $(DIALYZER) --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
 	done
@@ -151,8 +151,14 @@ dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
+dialyze-hard: TO_DIALYZE = $(CHANGED)
+dialyze-hard: dialyze-it-hard
+
 dialyze-it: $(PLT)
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+
+dialyze-it-hard: $(PLT)
+	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(TO_DIALYZE)
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
