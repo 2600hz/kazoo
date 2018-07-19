@@ -9,11 +9,11 @@ import shutil
 
 if len(sys.argv) < 2:
     print 'Usage: ' + sys.argv[0] + ' file.json+'
-    exit(1)
+    exit(0)
 
 if os.system('which couchjs') != 0:
     print 'Unable to find couchjs in path'
-    exit(1)
+    exit(0)
 
 def fmap(F, data):
     if isinstance(data, dict):
