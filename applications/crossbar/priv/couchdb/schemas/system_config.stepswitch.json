@@ -44,7 +44,13 @@
             "type": "string"
         },
         "default_formatters": {
-            "description": "stepswitch default formatters"
+            "description": "stepswitch default formatters",
+            "items": {
+                "$ref": "formatters",
+                "description": "default formatter",
+                "type": "object"
+            },
+            "type": "array"
         },
         "default_prefix": {
             "default": "",
