@@ -73,7 +73,7 @@ flush_default(Key) ->
 -ifdef(TEST).
 
 -spec get(kz_json:path()) -> kz_json:api_json_term().
-get(_) -> undefined.
+get(_) -> 'undefined'.
 
 -spec get(kz_json:path(), Default) ->
                  kz_json:json_term() | Default.
@@ -253,7 +253,6 @@ get_ne_binaries(Key, Default, Node) ->
             ];
         _ -> Default
     end.
-
 
 -spec fetch(kz_json:path()) -> kz_json:api_json_term().
 fetch(Key) ->
