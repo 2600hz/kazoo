@@ -1005,28 +1005,27 @@ numbers_action(Context, ?ACTIVATE, Numbers) ->
     knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
 numbers_action(Context, ?HTTP_PUT, Numbers) ->
     ReqData = cb_context:req_data(Context),
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'auth_by', cb_context:auth_account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, ReqData)}
                | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
               ],
     knm_numbers:create(Numbers, Options);
 numbers_action(Context, ?HTTP_POST, Numbers) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
     JObj = cb_context:req_data(Context),
     knm_numbers:update(Numbers, [{fun knm_phone_number:reset_doc/2, JObj}], Options);
 numbers_action(Context, ?HTTP_PATCH, Numbers) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
     JObj = cb_context:req_data(Context),
     knm_numbers:update(Numbers, [{fun knm_phone_number:update_doc/2, JObj}], Options);
 numbers_action(Context, ?HTTP_DELETE, Numbers) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ],
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
     Releaser = pick_release_or_delete(Context, Options),
     knm_numbers:Releaser(Numbers, Options).
 
@@ -1042,9 +1041,9 @@ pick_release_or_delete(Context, Options) ->
     lager:debug("picked ~s", [Pick]),
     Pick.
 
--spec maybe_ask_for_state(kz_term:api_ne_binary()) -> [{state, kz_term:ne_binary()}].
-maybe_ask_for_state(undefined) -> [];
-maybe_ask_for_state(StateAskedFor) -> [{state, StateAskedFor}].
+-spec maybe_ask_for_state(kz_term:api_ne_binary()) -> [{'state', kz_term:ne_binary()}].
+maybe_ask_for_state('undefined') -> [];
+maybe_ask_for_state(StateAskedFor) -> [{'state', StateAskedFor}].
 
 %%------------------------------------------------------------------------------
 %% @doc

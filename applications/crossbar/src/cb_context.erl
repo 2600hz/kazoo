@@ -1152,5 +1152,5 @@ system_error(Context, Error) ->
                ,{<<"Account-ID">>, auth_account_id(Context)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
+    _ = kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
     add_system_error(Error, Context).

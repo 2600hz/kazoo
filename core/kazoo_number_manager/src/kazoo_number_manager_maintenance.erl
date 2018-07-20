@@ -216,14 +216,14 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     case MapView =:= kz_json:get_ne_binary_value(PathMap, View)
         andalso RedView =:= kz_json:get_ne_binary_value(PathRed, View)
     of
-        true -> no_return;
-        false ->
+        'true' -> no_return;
+        'false' ->
             NewView = kz_json:set_values([{PathMap, MapView}
                                          ,{PathRed, RedView}
                                          ]
                                         ,View
                                         ),
-            true = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
+            'true' = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
             ?SUP_LOG_DEBUG("View updated for ~s!", [AccountDb])
     end.
 
@@ -277,7 +277,7 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     lists:foreach(fun (_DID) -> log_alien(AccountDb, _DID) end, ToRm0),
     ToRm = [DID
             || DID <- ToRm0,
-               false =:= is_assigned_to(AccountDb, DID, AccountId),
+               'false' =:= is_assigned_to(AccountDb, DID, AccountId),
                ok =:= ?SUP_LOG_DEBUG("########## will remove [~s] doc: ~s ##########", [AccountDb, DID])
            ],
     _ = kz_datamgr:del_docs(AccountDb, ToRm),
@@ -378,7 +378,7 @@ save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
             save_to_number_dbs(AccountDb, Rest, Retries);
         {error, not_found} ->
             ?SUP_LOG_DEBUG(" [~s] creating new number db '~s'", [AccountId, Db]),
-            true = kz_datamgr:db_create(Db),
+            'true' = kz_datamgr:db_create(Db),
             {ok, _} = kz_datamgr:revise_doc_from_file(Db, ?APP, <<"views/numbers.json">>),
             save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
         {error, timeout} ->
@@ -445,8 +445,8 @@ fix_number(Num, AuthBy, AccountDb) ->
                ,fun knm_phone_number:remove_denied_features/1
                ],
     Options = [{auth_by, AuthBy}
-              ,{dry_run, false}
-              ,{batch_run, false}
+              ,{dry_run, 'false'}
+              ,{batch_run, 'false'}
               ],
     knm_number:update(Num, Routines, Options).
 
@@ -638,8 +638,8 @@ fix_docs({ok, NumDoc}, Doc, _AccountDb, NumberDb, DID) ->
         andalso UsedBy =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
         andalso have_same_pvt_values(NumDoc, Doc)
     of
-        true -> ?SUP_LOG_DEBUG("~s already synced", [DID]);
-        false ->
+        'true' -> ?SUP_LOG_DEBUG("~s already synced", [DID]);
+        'false' ->
             JObj = kz_json:merge_jobjs(kz_doc:public_fields(NumDoc)
                                       ,kz_doc:public_fields(Doc)
                                       ),
@@ -660,7 +660,7 @@ fix_docs({ok, NumDoc}, Doc, _AccountDb, NumberDb, DID) ->
 options() ->
     [{auth_by, ?KNM_DEFAULT_AUTH_BY}
      %% No caching + bulk doc writes
-    ,{batch_run, true}
+    ,{batch_run, 'true'}
     ].
 
 account_db_from_number_doc(NumDoc) ->
@@ -751,11 +751,11 @@ app_using(Num, AccountDb, CallflowNums, undefined) ->
     app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
 app_using(Num, _, CallflowNums, TrunkstoreNums) ->
     case gb_sets:is_element(Num, CallflowNums) of
-        true -> <<"callflow">>;
-        false ->
+        'true' -> <<"callflow">>;
+        'false' ->
             case gb_sets:is_element(Num, TrunkstoreNums) of
-                true -> <<"trunkstore">>;
-                false -> undefined
+                'true' -> <<"trunkstore">>;
+                'false' -> undefined
             end
     end.
 -endif.
@@ -765,7 +765,7 @@ is_assigned_to(AccountDb, DID, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, DID) of
         {error, _R} ->
             lager:debug("~s's ~s temporarily unavailable, skipping", [AccountDb, DID]),
-            true;
+            'true';
         {ok, Doc} ->
             AccountId =/= kz_json:get_ne_binary_value(?PVT_ASSIGNED_TO, Doc)
     end.
@@ -823,47 +823,46 @@ purge_number_db(NumberDb, State) ->
                              JObj <- [kz_json:get_value(<<"doc">>, Number)],
                              State =:= kz_json:get_value(?PVT_STATE, JObj)
                     ],
-            kz_datamgr:del_docs(NumberDb, JObjs),
+            _ = kz_datamgr:del_docs(NumberDb, JObjs),
             purge_number_db(NumberDb, State)
     end.
-
 
 -spec is_feature_valid(any()) -> boolean().
 is_feature_valid(Thing) ->
     lists:member(Thing, ?ALL_KNM_FEATURES).
 
--spec invalid_feature(kz_term:ne_binary()) -> no_return.
+-spec invalid_feature(kz_term:ne_binary()) -> 'no_return'.
 invalid_feature(Feature) ->
     io:format("Feature '~s' is not a known feature.\n", [Feature]),
     all_features().
 
--spec all_features() -> no_return.
+-spec all_features() -> 'no_return'.
 all_features() ->
     io:format("Known features:\n\t~s\n", [list_features(?ALL_KNM_FEATURES)]),
-    no_return.
+    'no_return'.
 
 -spec list_features(kz_term:ne_binaries()) -> iodata().
 list_features(Features) ->
     kz_util:iolist_join($\s, Features).
 
--spec error_with_number(kz_term:ne_binary(), any()) -> no_return.
+-spec error_with_number(kz_term:ne_binary(), any()) -> 'no_return'.
 error_with_number(Num, Error) ->
     Reason = case kz_json:is_json_object(Error) of
-                 false -> Error;
-                 true -> knm_errors:error(Error)
+                 'false' -> Error;
+                 'true' -> knm_errors:error(Error)
              end,
     io:format("Error with number ~s: ~s\n", [Num, Reason]),
-    no_return.
+    'no_return'.
 
--spec print_feature_permissions(kz_term:ne_binaries(), kz_term:ne_binaries()) -> no_return.
+-spec print_feature_permissions(kz_term:ne_binaries(), kz_term:ne_binaries()) -> 'no_return'.
 print_feature_permissions(Allowed, Denied) ->
     io:format("\tFeatures allowed: ~s\n"
               "\tFeatures denied: ~s\n"
              ,[list_features(Allowed), list_features(Denied)]
              ),
-    no_return.
+    'no_return'.
 
--spec list_number_feature_permissions(knm_number:knm_number()) -> no_return.
+-spec list_number_feature_permissions(knm_number:knm_number()) -> 'no_return'.
 list_number_feature_permissions(N) ->
     PN = knm_number:phone_number(N),
     Num = knm_phone_number:number(PN),
@@ -872,42 +871,42 @@ list_number_feature_permissions(N) ->
     io:format("Feature permissions on ~s:\n", [Num]),
     print_feature_permissions(Allowed, Denied).
 
--spec edit_feature_permissions_on_number(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
+-spec edit_feature_permissions_on_number(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> 'no_return'.
 edit_feature_permissions_on_number(Num, Fun, Feature) ->
     case is_feature_valid(Feature) of
-        false -> invalid_feature(Feature);
-        true ->
+        'false' -> invalid_feature(Feature);
+        'true' ->
             Updates = [{Fun, Feature}],
             case knm_number:update(Num, Updates) of
-                {ok, N} -> list_number_feature_permissions(N);
-                {error, Error} -> error_with_number(Num, Error)
+                {'ok', N} -> list_number_feature_permissions(N);
+                {'error', Error} -> error_with_number(Num, Error)
             end
     end.
 
--spec feature_permissions_on_number(kz_term:ne_binary()) -> no_return.
+-spec feature_permissions_on_number(kz_term:ne_binary()) -> 'no_return'.
 feature_permissions_on_number(Num) ->
     case knm_number:get(Num) of
-        {error, Error} -> error_with_number(Num, Error);
-        {ok, N} -> list_number_feature_permissions(N)
+        {'error', Error} -> error_with_number(Num, Error);
+        {'ok', N} -> list_number_feature_permissions(N)
     end.
 
--spec add_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec add_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 add_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:add_allowed_feature/2, Feature).
 
--spec remove_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec remove_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 remove_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_allowed_feature/2, Feature).
 
--spec add_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec add_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 add_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:add_denied_feature/2, Feature).
 
--spec remove_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec remove_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 remove_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_denied_feature/2, Feature).
 
--spec feature_permissions_on_reseller_of(kz_term:ne_binary()) -> no_return.
+-spec feature_permissions_on_reseller_of(kz_term:ne_binary()) -> 'no_return'.
 feature_permissions_on_reseller_of(?MATCH_ACCOUNT_RAW(AccountId)) ->
     Allowed = empty_list_when_undefined(?FEATURES_ALLOWED_RESELLER(AccountId)),
     Denied = empty_list_when_undefined(?FEATURES_DENIED_RESELLER(AccountId)),
@@ -916,14 +915,14 @@ feature_permissions_on_reseller_of(?MATCH_ACCOUNT_RAW(AccountId)) ->
     print_feature_permissions(Allowed, Denied).
 
 -spec empty_list_when_undefined(kz_term:api_list()) -> kz_term:ne_binaries().
-empty_list_when_undefined(undefined) -> [];
+empty_list_when_undefined('undefined') -> [];
 empty_list_when_undefined(NeBinaries) -> NeBinaries.
 
--spec edit_allowed_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
+-spec edit_allowed_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> 'no_return'.
 edit_allowed_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     case is_feature_valid(Feature) of
-        false -> invalid_feature(Feature);
-        true ->
+        'false' -> invalid_feature(Feature);
+        'true' ->
             Allowed = empty_list_when_undefined(?FEATURES_ALLOWED_RESELLER(AccountId)),
             NewFeatures = lists:usort(Fun(Feature, Allowed)),
             ResellerId = kz_services:find_reseller_id(AccountId),
@@ -931,11 +930,11 @@ edit_allowed_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
             feature_permissions_on_reseller_of(AccountId)
     end.
 
--spec edit_denied_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
+-spec edit_denied_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> 'no_return'.
 edit_denied_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     case is_feature_valid(Feature) of
-        false -> invalid_feature(Feature);
-        true ->
+        'false' -> invalid_feature(Feature);
+        'true' ->
             Denied = empty_list_when_undefined(?FEATURES_DENIED_RESELLER(AccountId)),
             NewFeatures = lists:usort(Fun(Feature, Denied)),
             ResellerId = kz_services:find_reseller_id(AccountId),
@@ -943,62 +942,62 @@ edit_denied_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
             feature_permissions_on_reseller_of(AccountId)
     end.
 
--spec add_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec add_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 add_allowed_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_allowed_feature_permissions_on_reseller_of(AccountId, Cons, Feature).
 
--spec remove_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec remove_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 remove_allowed_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     edit_allowed_feature_permissions_on_reseller_of(AccountId, fun lists:delete/2, Feature).
 
--spec add_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec add_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 add_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_denied_feature_permissions_on_reseller_of(AccountId, Cons, Feature).
 
--spec remove_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec remove_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 remove_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     edit_denied_feature_permissions_on_reseller_of(AccountId, fun lists:delete/2, Feature).
 
--spec feature_permissions_on_system_config() -> no_return.
+-spec feature_permissions_on_system_config() -> 'no_return'.
 feature_permissions_on_system_config() ->
     Allowed = knm_providers:system_allowed_features(),
     io:format("Features allowed on system config document:\n\t~s\n", [list_features(Allowed)]),
-    no_return.
+    'no_return'.
 
--spec reset_allowed_features_to_defaults_on_system_config() -> no_return.
+-spec reset_allowed_features_to_defaults_on_system_config() -> 'no_return'.
 reset_allowed_features_to_defaults_on_system_config() ->
     set_features_on_system_config(?DEFAULT_FEATURES_ALLOWED_SYSTEM).
 
--spec set_features_on_system_config(kz_term:ne_binaries()) -> no_return.
+-spec set_features_on_system_config(kz_term:ne_binaries()) -> 'no_return'.
 set_features_on_system_config(Features) ->
     _ = kapps_config:set(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, lists:usort(Features)),
     feature_permissions_on_system_config().
 
--spec edit_allowed_feature_permissions_on_system_config(fun(), kz_term:ne_binary()) -> no_return.
+-spec edit_allowed_feature_permissions_on_system_config(fun(), kz_term:ne_binary()) -> 'no_return'.
 edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
     case is_feature_valid(Feature) of
-        false -> invalid_feature(Feature);
-        true ->
+        'false' -> invalid_feature(Feature);
+        'true' ->
             Allowed = knm_providers:system_allowed_features(),
             set_features_on_system_config(Fun(Feature, Allowed))
     end.
 
--spec add_allowed_feature_on_system_config(kz_term:ne_binary()) -> no_return.
+-spec add_allowed_feature_on_system_config(kz_term:ne_binary()) -> 'no_return'.
 add_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_allowed_feature_permissions_on_system_config(Cons, Feature).
 
--spec remove_allowed_feature_on_system_config(kz_term:ne_binary()) -> no_return.
+-spec remove_allowed_feature_on_system_config(kz_term:ne_binary()) -> 'no_return'.
 remove_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
     edit_allowed_feature_permissions_on_system_config(fun lists:delete/2, Feature).
 
--spec ensure_adminonly_features_are_reachable() -> no_return.
+-spec ensure_adminonly_features_are_reachable() -> 'no_return'.
 ensure_adminonly_features_are_reachable() ->
     Configured = knm_providers:system_allowed_features(),
     case lists:usort(?ADMIN_ONLY_FEATURES) -- Configured of
-        [] -> no_return;
+        [] -> 'no_return';
         ToAdd ->
             io:format("Adding the following admin-only number features to system_config: ~s"
                      ,[list_features(ToAdd)]),

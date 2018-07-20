@@ -337,7 +337,7 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
+    _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
 
 %%%=============================================================================

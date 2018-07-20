@@ -486,7 +486,7 @@ add_routine(Module) ->
     case add_migrate_routines(Routines, Routine) of
         Routines -> 'ok';
         NewRoutines ->
-            kapps_config:set_default(?CONFIG_CAT, <<"routines">>, NewRoutines),
+            _ = kapps_config:set_default(?CONFIG_CAT, <<"routines">>, NewRoutines),
             'ok'
     end.
 

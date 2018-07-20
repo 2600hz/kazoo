@@ -42,9 +42,9 @@
 
 -type option() :: {'assign_to', kz_term:ne_binary()} |
                   {'auth_by', kz_term:ne_binary()} |
-                  {'dry_run', boolean()} |
                   {'batch_run', boolean()} |
-                  {mdn_run, boolean()} |
+                  {'dry_run', boolean()} |
+                  {'mdn_run', boolean()} |
                   {'module_name', kz_term:ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |

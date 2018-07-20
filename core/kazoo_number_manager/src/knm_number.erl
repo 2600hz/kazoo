@@ -68,28 +68,29 @@
 -type lookup_account_return() :: {'ok', kz_term:ne_binary(), knm_number_options:extra_options()} |
                                  {'error', lookup_error()}.
 
-
--define(TRY_CLAUSES(Num),
-        {false, #{ok := [Number]}} ->
+-define(TRY_CLAUSES(Num)
+       ,{false, #{ok := [Number]}} ->
                {ok, Number};
             {true, T=#{ok := [_Number], services := Services}} ->
                Charges = knm_services:phone_number_activation_charges(T),
                {dry_run, Services, Charges};
             {_, #{ko := ErrorM}} ->
-               {error, hd(maps:values(ErrorM))}).
+               {error, hd(maps:values(ErrorM))}
+                   ).
 
--define(TRY2(F, Num, Options),
-        case {knm_number_options:dry_run(Options)
+-define(TRY2(F, Num, Options)
+       ,case {knm_number_options:dry_run(Options)
              ,knm_numbers:F([Num], Options)
              }
-        of ?TRY_CLAUSES(Num) end).
+        of ?TRY_CLAUSES(Num) end
+       ).
 
--define(TRY3(F, Num, Arg2, Options),
-        case {knm_number_options:dry_run(Options)
+-define(TRY3(F, Num, Arg2, Options)
+       ,case {knm_number_options:dry_run(Options)
              ,knm_numbers:F([Num], Arg2, Options)
              }
-        of ?TRY_CLAUSES(Num) end).
-
+        of ?TRY_CLAUSES(Num) end
+       ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -297,7 +298,7 @@ move(Num, MoveTo) ->
 
 -spec move(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
 move(Num, MoveTo, Options) ->
-    ?TRY3(move, Num, MoveTo, Options).
+    ?TRY3('move', Num, MoveTo, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to update some phone_number fields.

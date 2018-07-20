@@ -88,7 +88,7 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    kz_datamgr:refresh_views(Database),
+    'true' = kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -155,7 +155,7 @@ migrate(Pause, Databases) ->
     io:format("removing depreciated databases...~n"),
     _  = remove_depreciated_databases(Databases),
 
-    kazoo_bindings:map(binding('migrate'), [Accounts]),
+    _ = kazoo_bindings:map(binding('migrate'), [Accounts]),
 
     'no_return'.
 
@@ -265,7 +265,7 @@ get_database_sort(Db1, Db2) ->
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    kz_datamgr:refresh_views(Database),
+    _ = kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -893,7 +893,7 @@ purge_doc_type(Type, Account, ChunkSize) ->
         {'ok', []} -> 'ok';
         {'ok', Ds} ->
             lager:debug("deleting up to ~p documents of type ~p", [ChunkSize, Type]),
-            kz_datamgr:del_docs(Db, [kz_json:get_value(<<"doc">>, D) || D <- Ds]),
+            _ = kz_datamgr:del_docs(Db, [kz_json:get_value(<<"doc">>, D) || D <- Ds]),
             purge_doc_type(Type, Account, ChunkSize)
     end.
 

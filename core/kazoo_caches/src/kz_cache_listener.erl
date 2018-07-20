@@ -152,15 +152,15 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> 'ignore'.
 handle_event(JObj, #state{name=Name}) ->
-    case (V=kapi_conf:doc_update_v(JObj))
-        andalso (kz_api:node(JObj) =/= kz_term:to_binary(node())
-                 orelse kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Name, 'name')
-                )
-    of
-        'true' -> handle_document_change(JObj, Name);
-        'false' when V -> 'ok';
-        'false' -> lager:error("payload invalid for kapi_conf: ~p", [JObj])
-    end,
+    _ = case (V=kapi_conf:doc_update_v(JObj))
+            andalso (kz_api:node(JObj) =/= kz_term:to_binary(node())
+                     orelse kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Name, 'name')
+                    )
+        of
+            'true' -> handle_document_change(JObj, Name);
+            'false' when V -> 'ok';
+            'false' -> lager:error("payload invalid for kapi_conf: ~p", [JObj])
+        end,
     'ignore'.
 
 -spec terminate(state(), any()) -> 'ok'.

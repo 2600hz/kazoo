@@ -72,7 +72,7 @@ get_ne_binaries(Account, Category, Path, Default) ->
 
 %% @equiv get_pos_integer(Account, Category, Path, 'undefined')
 
--spec get_pos_integer(api_account(), kz_term:ne_binary(), kz_json:path()) -> pos_integer().
+-spec get_pos_integer(api_account(), kz_term:ne_binary(), kz_json:path()) -> 'undefined' | pos_integer().
 get_pos_integer(Account, Category, Path) ->
     get_pos_integer(Account, Category, Path, 'undefined').
 

@@ -126,7 +126,7 @@ maybe_load_external_app(App) ->
 stop_app(App) when is_atom(App) ->
     case application:stop(App) of
         'ok' ->
-            kz_nodes_bindings:unbind(App),
+            _ = kz_nodes_bindings:unbind(App),
             lager:info("stopped kazoo application ~s", [App]);
         {'error', {'not_started', App}} ->
             lager:error("~s is not currently running", [App]);

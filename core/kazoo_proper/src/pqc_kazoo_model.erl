@@ -183,7 +183,7 @@ has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
     Account = maps:get(AccountId, Accounts, #{}),
     case maps:get('service_plans', Account, []) of
         [] ->
-            ?DEBUG("no service plans for account, checking ~s", [?KZ_RATES_DB]),
+            _ = ?DEBUG("no service plans for account, checking ~s", [?KZ_RATES_DB]),
             has_rate_matching(Model, ?KZ_RATES_DB, DID);
         [{SPId, SP}] ->
             case lists:member({SPId, SP}, SPs) of

@@ -329,7 +329,7 @@ move(Nums, MoveTo) ->
 
 -spec move(kz_term:ne_binaries(), kz_term:ne_binary(), knm_number_options:options()) -> ret().
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
-    Options = [{assign_to, MoveTo} | Options0],
+    Options = [{'assign_to', MoveTo} | Options0],
     {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
     Updates = knm_number_options:to_phone_number_setters(Options0),
     TUpdated = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound),
@@ -352,10 +352,10 @@ update(Nums, Routines) ->
 
 -spec update(kz_term:ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
 update([?NE_BINARY|_]=Nums, Routines, Options) ->
-    Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
+    Reason = 'not_reconcilable',  %% FIXME: unify to atom OR knm_error.
     do_update(do_get_pn(Nums, Options, Reason), Routines);
 update(Ns, Updates, Options) ->
-    Routines = [{fun knm_phone_number:set_is_dirty/2, false}
+    Routines = [{fun knm_phone_number:set_is_dirty/2, 'false'}
                 | knm_number_options:to_phone_number_setters(Options)
                 ++ Updates
                ],
@@ -366,7 +366,7 @@ update(Ns, Updates, Options) ->
 
 -spec update(kz_term:ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
 update(Nums, Routines, Options) ->
-    Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
+    Reason = 'not_reconcilable',  %% FIXME: unify to atom OR knm_error.
     do_update(do_get_pn(Nums, Options, Reason), Routines).
 -endif.
 
@@ -404,10 +404,10 @@ release(Nums, Options) ->
 -spec delete(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 delete(Nums, Options) ->
     case knm_phone_number:is_admin(knm_number_options:auth_by(Options)) of
-        false ->
-            Error = knm_errors:to_json(unauthorized),
+        'false' ->
+            Error = knm_errors:to_json('unauthorized'),
             ret(new(Options, [], Nums, Error));
-        true ->
+        'true' ->
             T0 = do_get(Nums, Options),
             F1 = fun knm_providers:delete/1,
             F2 = fun knm_phone_number:delete/1,
@@ -521,20 +521,20 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 new(Options, ToDos) -> new(Options, ToDos, []).
 
 -spec new(knm_number_options:options(), nums(), nums()) -> t().
-new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, not_reconcilable).
+new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, 'not_reconcilable').
 
 -spec new(knm_number_options:options(), nums(), nums(), reason_t()) -> t().
 new(Options, ToDos, KOs, Reason) ->
     #{todo => ToDos
      ,ok => []
      ,ko => case is_function(Reason, 1) of %%FIXME: find something better than Reason/1.
-                false -> maps:from_list([{KO, Reason} || KO <- KOs]);
-                true -> maps:from_list([{KO, Reason(KO)} || KO <- KOs])
+                'false' -> maps:from_list([{KO, Reason} || KO <- KOs]);
+                'true' -> maps:from_list([{KO, Reason(KO)} || KO <- KOs])
             end
 
      ,options => Options
-     ,plan => undefined
-     ,services => undefined
+     ,plan => 'undefined'
+     ,services => 'undefined'
      ,transactions => []
      ,charges => []
      }.
