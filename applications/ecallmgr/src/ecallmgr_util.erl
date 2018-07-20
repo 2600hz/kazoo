@@ -59,7 +59,7 @@
 
 -define(HTTP_GET_PREFIX, "http_cache://").
 
--define(FS_MULTI_VAR_SEP, ";").
+-define(FS_MULTI_VAR_SEP, ecallmgr_config:get_ne_binary(<<"multivar_separator">>, <<"|">>)).
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
@@ -505,7 +505,7 @@ is_node_up(Node, UUID) ->
 %%------------------------------------------------------------------------------
 -spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
 multi_set_args(Node, UUID, KVs) ->
-    multi_set_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
+    multi_set_args(Node, UUID, KVs, ?FS_MULTI_VAR_SEP).
 
 -spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> binary().
 multi_set_args(Node, UUID, KVs, Separator) ->
@@ -517,7 +517,7 @@ multi_set_args(Node, UUID, KVs, Separator, Prefix) ->
 
 -spec multi_unset_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
 multi_unset_args(Node, UUID, KVs) ->
-    multi_unset_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
+    multi_unset_args(Node, UUID, KVs, ?FS_MULTI_VAR_SEP).
 
 -spec multi_unset_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> binary().
 multi_unset_args(Node, UUID, KVs, Separator) ->
@@ -531,7 +531,7 @@ multi_unset_args(Node, UUID, KVs, Separator, Prefix) ->
 fs_args_to_binary([_]=Args) ->
     list_to_binary(Args);
 fs_args_to_binary(Args) ->
-    fs_args_to_binary(Args, <<?FS_MULTI_VAR_SEP>>).
+    fs_args_to_binary(Args, ?FS_MULTI_VAR_SEP).
 
 -spec fs_args_to_binary(list(), kz_term:ne_binary()) -> binary().
 fs_args_to_binary(Args, Sep) ->
