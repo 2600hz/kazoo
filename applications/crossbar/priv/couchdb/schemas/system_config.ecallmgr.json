@@ -258,6 +258,11 @@
             "description": "ecallmgr maximum timeout for node restart",
             "type": "integer"
         },
+        "multivar_separator": {
+            "default": ";",
+            "description": "ecallmgr multivar_separator",
+            "type": "string"
+        },
         "network_map": {
             "default": {},
             "description": "ecallmgr network map",
