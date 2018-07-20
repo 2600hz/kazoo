@@ -71,16 +71,14 @@
 -spec default() -> options().
 default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-    ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
-    ,{mdn_run, false}
+    ,{'dry_run', 'false'}
+    ,{'mdn_run', 'false'}
     ].
 
 -spec mdn_options() -> options().
 mdn_options() ->
-    [{mdn_run, true}
-     |default()
-    ].
+    props:set_value('mdn_run', 'true', default()).
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
 to_phone_number_setters(Options) ->

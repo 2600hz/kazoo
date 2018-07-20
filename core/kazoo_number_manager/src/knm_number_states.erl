@@ -55,7 +55,7 @@ change_state(T, ?NUMBER_STATE_PORT_IN) ->
                      ]);
 change_state(T=#{todo := Ns}, _State) ->
     lager:debug("unhandled state change to ~p", [_State]),
-    Error = knm_errors:to_json(invalid_state),
+    Error = knm_errors:to_json('invalid_state_transition'),
     knm_numbers:ko(Ns, Error, T).
 
 -spec to_port_in(t()) -> t().
