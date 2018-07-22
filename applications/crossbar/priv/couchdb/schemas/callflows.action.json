@@ -24,6 +24,10 @@
             "maxLength": 64,
             "minLength": 1,
             "type": "string"
+        },
+        "variables": {
+            "description": "A map of data object keys to custom KV keys whose values should replace the values in the data object",
+            "type": "object"
         }
     },
     "required": [

@@ -33,6 +33,7 @@ Key | Description | Type | Default | Required | Support Level
 `children` | Children callflows | `object()` |   | `false` |
 `data` | The data/arguments of the callflow module | `object()` | `{}` | `true` |
 `module` | The name of the callflow module to excute at this node | `string(1..64)` |   | `true` |
+`variables` | A map of data object keys to custom KV keys whose values should replace the values in the data object | `object()` |   | `false` |
 
 ### metaflow
 

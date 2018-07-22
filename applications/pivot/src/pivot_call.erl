@@ -136,15 +136,15 @@ init([Call, JObj]) ->
     VoiceUri = kz_json:get_value(<<"Voice-URI">>, JObj),
 
     ReqFormat = kz_json:get_value(<<"Request-Format">>, JObj, <<"twiml">>),
-    ReqBodyFormat = kz_json:get_value(<<"Request-Body-Format">>, JObj, <<"form">>),
-    BaseParams = kz_json:from_list(req_params(ReqFormat, Call)),
+    ReqBodyFormat = kz_json:get_ne_binary_value(<<"Request-Body-Format">>, JObj, <<"form">>),
+    BaseParams = kz_json:recursive_from_list(req_params(ReqFormat, Call)),
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
 
     new_request(self(), VoiceUri, Method, BaseParams),
 
     {'ok'
-    ,#state{cdr_uri=kz_json:get_value(<<"CDR-URI">>, JObj)
+    ,#state{cdr_uri=kz_json:get_ne_binary_value(<<"CDR-URI">>, JObj)
            ,call=kzt_util:increment_iteration(Call)
            ,request_format=ReqFormat
            ,request_body_format=ReqBodyFormat
@@ -560,6 +560,8 @@ debug_error(Call, Errors, RespBody) ->
                                   ])
                ).
 
+-spec debug_json_error(kapps_call:call(), kz_term:ne_binary(), binary(), binary(), binary()) ->
+                              'ok'.
 debug_json_error(Call, Msg, Before, After, RespBody) ->
     JObj = kz_json:from_list([{<<"resp_body">>, RespBody}
                              ,{<<"json_errors">>
@@ -589,7 +591,12 @@ store_debug(Call, DebugJObj) ->
                                      ,{'now', kz_time:now_s()}
                                      ]
                                     ),
-    case kazoo_modb:save_doc(AccountModDb, JObj) of
+
+    save_debug(AccountModDb, JObj).
+
+-spec save_debug(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+save_debug(AccountMODB, JObj) ->
+    case kazoo_modb:save_doc(AccountMODB, JObj) of
         {'ok', _Saved} ->
             lager:debug("saved debug doc: ~p", [_Saved]);
         {'error', _E} ->

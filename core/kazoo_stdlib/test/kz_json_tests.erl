@@ -467,6 +467,15 @@ recursive_to_proplist_test_() ->
     ,?_assertEqual(?P13, kz_json:recursive_to_proplist(?D7))
     ].
 
+recursive_from_list_test_() ->
+    [?_assertEqual(?D1, kz_json:recursive_from_list(?P8))
+    ,?_assertEqual(?D2, kz_json:recursive_from_list(?P9))
+    ,?_assertEqual(?D3, kz_json:recursive_from_list(?P10))
+    ,?_assertEqual(?D4, kz_json:recursive_from_list(?P11))
+    ,?_assertEqual(?D6, kz_json:recursive_from_list(?P12))
+    ,?_assertEqual(?D7, kz_json:recursive_from_list(?P13))
+    ].
+
 delete_key_test_() ->
     [?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT))
     ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT, 'prune'))

@@ -95,8 +95,8 @@ def check_defaults(json_file, current_key, JSON):
 def validate(json_file):
     with open(json_file) as fd:
         JSON = json.load(fd)
-    check_defaults(json_file, '', JSON)
     try:
+        check_defaults(json_file, '', JSON)
         validator = validator_for(JSON)
         validator.check_schema(JSON)
     except jsonschema.exceptions.SchemaError as e:
@@ -107,6 +107,10 @@ def validate(json_file):
         print()
         print('Run again with:')
         print(sys.argv[0], json_file)
+        sys.exit(2)
+    except TypeError as e:
+        print('Type error in schema ', json_file)
+        print(e)
         sys.exit(2)
 
 for arg in sys.argv[1:]:
