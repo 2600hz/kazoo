@@ -196,4 +196,4 @@ fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
 		erl -name '$(NODE_NAME)' -s reloader "$$@"
 
-include splchk.mk
+include $(ROOT)/make/splchk.mk
