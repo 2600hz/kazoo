@@ -1,6 +1,6 @@
 # Ping (pong)
 
-This module recieves a ping, and responds with a pong. It takes no arguments.
+This module receives a ping, and responds with a pong. It takes no arguments.
 This can be used to test a socket is up, or keep it alive by preventing it from becoming idle.
 
 ## Example Javascript

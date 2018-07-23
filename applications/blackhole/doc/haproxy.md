@@ -1,4 +1,4 @@
-# Blackhole HAproxy Configuration
+# Blackhole HAProxy Configuration
 
 ## Configuration for API and Websockets
 
