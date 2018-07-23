@@ -14,7 +14,12 @@
             "type": "integer"
         },
         "autoload_modules": {
-            "description": "crossbar autoload modules"
+            "description": "crossbar autoload modules",
+            "items": {
+                "description": "name of the crossbar module to load",
+                "type": "string"
+            },
+            "type": "array"
         },
         "check_reverse_proxies": {
             "default": true,

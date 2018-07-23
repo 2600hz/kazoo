@@ -102,9 +102,8 @@ to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
       localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")).
 -else.
 to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
-    calendar:datetime_to_gregorian_seconds(
-      localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")
-     ).
+    {{_,_,_}, {_,_,_}} = UTC = localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC"),
+    calendar:datetime_to_gregorian_seconds(UTC).
 -endif.
 
 -spec pretty_print_datetime(datetime() | integer()) -> kz_term:ne_binary().

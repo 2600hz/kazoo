@@ -255,23 +255,24 @@ load_fixtures_from_folder(DbName, App) ->
 -spec do_load_fixtures_from_folder(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 do_load_fixtures_from_folder(_, []) -> 'ok';
 do_load_fixtures_from_folder(DbName, [F|Fs]) ->
-    _ = try
-            {'ok', Bin} = file:read_file(F),
-            FixJObj = kz_json:decode(Bin),
-            FixId = kz_doc:id(FixJObj),
-            case lookup_doc_rev(DbName, FixId) of
-                {'ok', _Rev} ->
-                    lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
-                {'error', 'not_found'} ->
-                    lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
-                    save_doc(DbName, FixJObj);
-                {'error', _Reason} ->
-                    lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
-            end
-        catch
-            _C:_R ->
-                lager:debug("failed to check fixture: ~s: ~p", [_C, _R])
-        end,
+    try
+        {'ok', Bin} = file:read_file(F),
+        FixJObj = kz_json:decode(Bin),
+        FixId = kz_doc:id(FixJObj),
+        case lookup_doc_rev(DbName, FixId) of
+            {'ok', _Rev} ->
+                lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
+            {'error', 'not_found'} ->
+                lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
+                _ = save_doc(DbName, FixJObj),
+                lager:debug("saved fixture");
+            {'error', _Reason} ->
+                lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
+        end
+    catch
+        _C:_R ->
+            lager:debug("failed to check fixture: ~s: ~p", [_C, _R])
+    end,
     do_load_fixtures_from_folder(DbName, Fs).
 
 %%------------------------------------------------------------------------------
