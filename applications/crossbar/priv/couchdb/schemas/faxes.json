@@ -65,7 +65,7 @@
                     "description": "Email notifications",
                     "properties": {
                         "send_to": {
-                            "description": "A list or string of email recipent(s)",
+                            "description": "A list or string of email recipient(s)",
                             "format": "email",
                             "items": {
                                 "format": "email",
@@ -83,7 +83,7 @@
                     "description": "SMS notifications",
                     "properties": {
                         "send_to": {
-                            "description": "A list or string of sms recipent(s)",
+                            "description": "A list or string of sms recipient(s)",
                             "items": {
                                 "type": "string"
                             },

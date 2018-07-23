@@ -23,10 +23,10 @@ Key | Description | Type | Default | Required | Support Level
 `notifications.inbound.callback.url` | The URL to call back with the results | `string()` |   | `false` |  
 `notifications.inbound.callback` | A URL to send results to | `object()` |   | `false` | `beta`
 `notifications.inbound.email.send_to.[]` |   | `string()` |   | `false` |  
-`notifications.inbound.email.send_to` | A list or string of email recipent(s) | `string() | array(string())` |   | `false` |  
+`notifications.inbound.email.send_to` | A list or string of email recipient(s) | `string() | array(string())` |   | `false` |  
 `notifications.inbound.email` | Inbound Email Notifications | `object()` |   | `false` | `supported`
 `notifications.inbound.sms.send_to.[]` |   | `string()` |   | `false` |  
-`notifications.inbound.sms.send_to` | A list or string of sms recipent(s) | `string() | array(string())` |   | `false` |  
+`notifications.inbound.sms.send_to` | A list or string of sms recipient(s) | `string() | array(string())` |   | `false` |  
 `notifications.inbound.sms` | SMS notifications | `object()` |   | `false` | `beta`
 `notifications.inbound` | Inbound Status notifications | `object()` |   | `false` | `supported`
 `notifications.outbound.callback.method` | The http method to use when sending the results | `string('post' | 'put')` |   | `false` |  
@@ -34,10 +34,10 @@ Key | Description | Type | Default | Required | Support Level
 `notifications.outbound.callback.url` | The URL to call back with the results | `string()` |   | `false` |  
 `notifications.outbound.callback` | A URL to send results to | `object()` |   | `false` | `beta`
 `notifications.outbound.email.send_to.[]` |   | `string()` |   | `false` |  
-`notifications.outbound.email.send_to` | A list or string of email recipent(s) | `string() | array(string())` |   | `false` |  
+`notifications.outbound.email.send_to` | A list or string of email recipient(s) | `string() | array(string())` |   | `false` |  
 `notifications.outbound.email` | Email notifications | `object()` |   | `false` | `supported`
 `notifications.outbound.sms.send_to.[]` |   | `string()` |   | `false` |  
-`notifications.outbound.sms.send_to` | A list or string of sms recipent(s) | `string() | array(string())` |   | `false` |  
+`notifications.outbound.sms.send_to` | A list or string of sms recipient(s) | `string() | array(string())` |   | `false` |  
 `notifications.outbound.sms` | SMS notifications | `object()` |   | `false` | `beta`
 `notifications.outbound` | Outbound Status notifications | `object()` |   | `false` | `supported`
 `notifications` | Status notifications | `object()` |   | `false` | `supported`
