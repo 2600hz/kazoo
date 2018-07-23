@@ -10,5 +10,4 @@ splchk: $(KAZOO_DICT) $(addsuffix .chk,$(basename $(wildcard doc/*.md)))
 
 %.chk: %.md
 	@echo Spellchecking $< $@
-	aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --lang=en --jargon=kazoo check $<
-	@$(if $(wildcard doc/*.bak), rm doc/*.bak)
+	aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --lang=en --jargon=kazoo -x check $<
