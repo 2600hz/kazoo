@@ -1,9 +1,10 @@
-personal_ws-1.1 en 46 utf-8
+personal_ws-1.1 en 48 utf-8
 backends
 vitelity
 ui
 callflow
 lifecycle
+md
 websockets
 accessors
 edr
@@ -40,6 +41,7 @@ auth
 RabbitMQ
 Telnyx's
 Braintree
+FreeSWITCH
 knm
 mdn
 telnyx
