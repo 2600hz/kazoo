@@ -60,13 +60,13 @@ Note: the number document in the numbers DB is the source of truth, above the on
 Note: while a number document should exist in at most one account database, it is possible that a bug left some number documents in the wrong account databases.
 Use the Sync button from the owning account, to delete these number documents from the wrong account database.
 
-Run `sup kazoo_number_manager_maintenance migrate TheAccount` or a full migration to make sure these documents are all in sync on `TheAccount` or throughout your system.
+Run `sup kazoo_number_manager_maintenance migrate {ACCOUNT_ID}` or a full migration to make sure these documents are all in sync on `{ACCOUNT_ID}` or throughout your system.
 Do note though that this operation can take a long time, depending on the amount of accounts and numbers in your system.
 
 #### Options
 
 The `knm_number` API functions often take a second argument of options.
-These are encapsulated in the `knm_number_options` module, including a handy `-type` for better dialyzing.
+These are encapsulated in the `knm_number_options` module, including a handy `-type` for better type checking.
 
 
 #### Bulk operations
@@ -160,7 +160,7 @@ Some features can only be edited or used by admins of the system:
 
 #### Change feature provider modules
 
-Features such as `E911` and `CNAM` can be provisoned by different providers (Telnyx', Vitelity's, ...).
+Features such as `E911` and `CNAM` can be provisioned by different providers (Telnyx', Vitelity's, ...).
 These provider modules can be configured on the reseller document.
 
 Here are their defaults and possible values:

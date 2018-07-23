@@ -1,1 +1,1 @@
-# Kazoo Month Only DB *Manages Montly Databases*
+# Kazoo Month Only DB *Manages Monthly Databases*

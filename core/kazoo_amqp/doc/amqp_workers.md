@@ -60,7 +60,7 @@ The arity/2 invocation instructs the AMQP worker to collect valid responses unti
 kz_amqp_worker:call_collect(Req, fun kapi_module:publish_req/1).
 ```
 
-Typically, we want responses from an app inparticular and to not wait for more responses that aren't coming.
+Typically, we want responses from an app in particular and to not wait for more responses that aren't coming.
 This reduces the amount of time the calling process is blocked. Let's look at some more `call_collect` variants:
 
 * `call_collect/3`: The third parameter can be either the timeout to wait (in essence `call_collect/2` with custom timeout **OR** it can be a `collect_until()` option, described below.

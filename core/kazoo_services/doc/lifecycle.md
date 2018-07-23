@@ -53,9 +53,9 @@ When an account's service document is marked dirty (`pvt_dirty` set to `true`), 
 
 ## Reconciliation
 
-When reconciling an account, each services category module is called to reconcile their portion of the services doc's `quantities`. So `kz_service_devices:reconcile/1` is called with the account's services record as the arg. The service module will tally up all the service item quantities and update the services record appropriately. The services record should now reflect the "real" quantities. These updates are then merged onto the existing services doc and saved back to the services database.
+When reconciling an account, each services category module is called to reconcile their portion of the services doc's `quantities`. So `kz_service_devices:reconcile/1` is called with the account's services record as the argument. The service module will tally up all the service item quantities and update the services record appropriately. The services record should now reflect the "real" quantities. These updates are then merged onto the existing services doc and saved back to the services database.
 
-Once reconcilitation has finished, the services doc's `quantities` should reflect the actual quantities of the account for that service category/item.
+Once reconciliation has finished, the services doc's `quantities` should reflect the actual quantities of the account for that service category/item.
 
 ### Periodic Reconciliation
 
@@ -194,7 +194,7 @@ Now, if you were to look at **R1**'s services doc in the `services` DB, the quan
      ,"auth_token":"{AUTH_TOKEN}"
     }
 
-You can see that the quantity is now 2 for SIP devices. Now, if we reconcile the account manually (either via the UI or on the backend with `sup kazoo_services_maintenace reconcile {R1_ACCOUNT_ID}`), we see that **R1**'s services doc now reflects the `"sip_device":1` in the `quantities` for `devices`.
+You can see that the quantity is now 2 for SIP devices. Now, if we reconcile the account manually (either via the UI or on the backend with `sup kazoo_services_maintenance reconcile {R1_ACCOUNT_ID}`), we see that **R1**'s services doc now reflects the `"sip_device":1` in the `quantities` for `devices`.
 
 When **R1** adds a second device after reconciling the first on the backend, we get a 402 with a nearly identical response payload (as Kazoo reconciles the service category to generate the 402 but doesn't persist it). So, from **R1**'s perspective, all is calculated properly for service updates, whether the account has been reconciled in the `services` db.
 
