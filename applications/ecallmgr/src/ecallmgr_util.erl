@@ -59,7 +59,7 @@
 
 -define(HTTP_GET_PREFIX, "http_cache://").
 
--define(FS_MULTI_VAR_SEP, ecallmgr_config:get_ne_binary(<<"multivar_separator">>, <<";">>)).
+-define(FS_MULTI_VAR_SEP, ecallmgr_config:get_ne_binary(<<"multivar_separator">>, <<"~">>)).
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().

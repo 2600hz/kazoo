@@ -28802,7 +28802,7 @@
                     "type": "integer"
                 },
                 "multivar_separator": {
-                    "default": ";",
+                    "default": "~",
                     "description": "ecallmgr multivar_separator",
                     "type": "string"
                 },
