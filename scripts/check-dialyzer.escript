@@ -152,7 +152,7 @@ do_warn_path({'beams', Beams}, {N, PLT, 'false'}) ->
         'error':'badarg' ->
             {N + scan_and_print(PLT, Beams), PLT, 'false'}
     end;
-do_warn_path({'app', Beams}, {N, PLT}) ->
+do_warn_path({'app', Beams}, {N, PLT, 'false'}) ->
     try lists:split(5, Beams) of
         {Ten, Rest} ->
             do_warn_path({'app', Rest}
