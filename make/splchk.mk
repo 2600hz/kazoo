@@ -8,7 +8,8 @@ $(KAZOO_DICT):
 
 splchk-changed: $(KAZOO_DICT) $(addsuffix .chk,$(basename $(CHANGED)))
 splchk: $(KAZOO_DICT) $(addsuffix .chk,$(basename $(wildcard doc/*.md)))
+splchk-json: $(KAZOO_DICT)
 
 %.chk: %.md
-	@echo Spellchecking $< $@
-	aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en --jargon=kazoo -x check $<
+	@echo Spellchecking $<
+	aspell --home-dir=$(ROOT) --personal=$(basename $(KAZOO_DICT)) --repl=$(basename $(KAZOO_REPL)) --lang=en --jargon=kazoo -x check $<
