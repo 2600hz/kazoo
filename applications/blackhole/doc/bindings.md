@@ -1,5 +1,5 @@
 
-# Blackhole *Realtime HTTP Websocket Events*
+# Blackhole *Real-time HTTP Websocket Events*
 
 ### Binding to events
 

@@ -71,7 +71,7 @@ The response will be published to the `targeted` AMQP exchange, using the `Serve
 
 ## Flushing values
 
-Sometimes a change will be made to a document in `system_config` directly in the database. Because Kazoo caches the config documents when they're fetched, it may be necessary to flush a given `Category` doc from the Kazoo cache. Publish a `flish_req` to the `sysconf` AMQP exchange using "sysconf.flush" as the routing key. The payload to publish:
+Sometimes a change will be made to a document in `system_config` directly in the database. Because Kazoo caches the config documents when they're fetched, it may be necessary to flush a given `Category` doc from the Kazoo cache. Publish a `flush_req` to the `sysconf` AMQP exchange using "sysconf.flush" as the routing key. The payload to publish:
 
 * `Event-Category`: "sysconf"
 * `Event-Name`: "flush_req"

@@ -18,7 +18,7 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
 * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
 * Join our [community](https://forums.2600hz.com/forums/)
-* Read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos and [pull requests](https://help.github.com/articles/using-pull-requests/).
+* Read GitHub's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos and [pull requests](https://help.github.com/articles/using-pull-requests/).
 * [Learn you some Erlang!](http://learnyousomeerlang.com/)
 * Bookmark this awesome [Erlang reference/docs](http://erldocs.com/) site
 * Check out the [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/FreeSWITCH+Explained)
