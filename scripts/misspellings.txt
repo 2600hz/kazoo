@@ -160,6 +160,7 @@ readable|readible
 really|realy
 receive|recieve
 receipt|reciept
+recipient|recipent
 recommend|recomend reccommend
 referred|refered
 reference|referance refrence
