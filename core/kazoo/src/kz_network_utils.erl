@@ -13,7 +13,6 @@
         ,is_ip/1
         ,is_ip_family_supported/1
         ,is_cidr/1
-        ,default_binding_all_ip/0
         ]).
 -export([to_cidr/1
         ,to_cidr/2
@@ -172,29 +171,6 @@ listen_to_ping(Family, Cmd, Port, Try, Acc) ->
 ping_cmd_option('inet6') -> "ping -6 -c 1 localhost";
 ping_cmd_option('ping6') -> "ping6 -c 1 localhost";
 ping_cmd_option(_) -> "ping -c 1 localhost".
-
-%%------------------------------------------------------------------------------
-%% @doc Default binding IP address (bind on all interfaces) based
-%% on supported IP family.
-%% @end
-%%------------------------------------------------------------------------------
--spec default_binding_all_ip() -> string().
-default_binding_all_ip() ->
-    default_binding_all_ip(is_ip_family_supported('inet')
-                          ,is_ip_family_supported('inet6')
-                          ).
-
--spec default_binding_all_ip(boolean(), boolean()) -> string().
-default_binding_all_ip('true', 'true') -> prefered_inet('inet');
-default_binding_all_ip('true', 'false') -> prefered_inet('inet');
-default_binding_all_ip('false', 'true') -> prefered_inet('inet6');
-default_binding_all_ip('false', 'false') -> prefered_inet('system').
-
--spec prefered_inet('inet' | 'inet6' | 'system') -> string().
-prefered_inet('inet') -> "0.0.0.0";
-prefered_inet('inet6') -> "::";
-prefered_inet('system') ->
-    kapps_config:get_string(<<"kapps_controller">>, <<"default_apps_ip_address_to_bind">>, "0.0.0.0").
 
 %%------------------------------------------------------------------------------
 %% @doc

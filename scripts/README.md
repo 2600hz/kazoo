@@ -846,6 +846,9 @@ Useful in conjunction with `sync_to_remote`. Takes .beam files in a directory an
 -   `BEAMS`: Path to beam files, defaults to `/tmp/beams/*.beam`
 -   `DEST`: Path to the release's lib/ directory, defaults to `/opt/kazoo/lib`
 
+## tags.escript
+
+Generates a [TAGS file](https://www.emacswiki.org/emacs/EmacsTags) based on all Erlang code in the code path.
 
 ## update-the-types.sh
 

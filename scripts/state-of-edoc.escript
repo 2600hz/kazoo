@@ -53,13 +53,13 @@ state_of_edoc([Erl|Erls], ErlsLength, Includes, Acc) ->
 print_no_module_summary([]) ->
     ok;
 print_no_module_summary(NoModule) ->
-    io:format("~n~nThese files don't have documentations in module header:~n"),
+    io:format("~n~nThese files don't have module header documentation:~n"),
     io:put_chars([["-- ", F, $\n] || F <- NoModule]).
 
 print_no_functions([]) ->
     ok;
 print_no_functions(NoFunctions) ->
-    io:format("~nThese functions in files don't have any documentations:~n"),
+    io:format("~nThese functions are missing documentation:~n"),
     io:put_chars(
       [["-- ", Erl, " "
        ,"[undocumented functions: ", integer_to_binary(length(NoCommented) + 1), "/", integer_to_binary(FunsCount)

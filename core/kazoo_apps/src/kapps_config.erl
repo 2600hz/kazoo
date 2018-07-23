@@ -9,9 +9,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_config).
 
--include("kazoo_config.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
 -export([get/2, get/3, get/4
         ,get_all_kvs/1
         ,get_current/2, get_current/3, get_current/4
@@ -55,8 +52,11 @@
 -export([migrate_from_doc/2]).
 -endif.
 
--type config_category() :: kz_term:ne_binary() | nonempty_string() | atom().
--type config_key() :: kz_term:ne_binary() | nonempty_string() | atom() | kz_term:ne_binaries().
+-include("kazoo_apps.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+
+-type config_category() :: kz_json:key() | nonempty_string().
+-type config_key() :: kz_json:path() | nonempty_string().
 
 -type update_option() :: {'node_specific', boolean()} |
                          {'pvt_fields', kz_term:api_object()}.
@@ -1029,7 +1029,7 @@ fetch_category(Category, 'false') ->
         ,{{<<"media">>, <<"tts_cache">>}
          ,{<<"speech">>, <<"tts_cache">>}
          }
-        ,{{<<"speech">>, <<"asr_prefered_content_type">>}
+        ,{{<<"speech">>, <<"asr_preferred_content_type">>}
          ,{<<"speech">>, <<"asr_preferred_content_type">>}
          }
 

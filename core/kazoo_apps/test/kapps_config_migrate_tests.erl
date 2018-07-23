@@ -1,28 +1,16 @@
 -module(kapps_config_migrate_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("kazoo_config.hrl").
+-include("kazoo_apps.hrl").
 
-kz_account_test_() ->
+migrate_test_() ->
     {'setup'
-    ,fun setup/0
-    ,fun cleanup/1
-    ,fun('ok') ->
-             [test_whapps_controller_migrate()]
-     end
+    ,fun kazoo_apps_test_util:setup/0
+    ,fun kazoo_apps_test_util:cleanup/1
+    ,fun test_whapps_controller_migrate/1
     }.
 
-setup() ->
-    {'ok', _} = application:ensure_all_started('kazoo_config'),
-    {'ok', _CachesPid} = kazoo_caches_sup:start_link(),
-    {'ok', _LinkPid} = kazoo_data_link_sup:start_link(),
-
-    'ok'.
-
-cleanup('ok') ->
-    application:stop('kazoo_config').
-
-test_whapps_controller_migrate() ->
+test_whapps_controller_migrate(_Setup) ->
     WhappsPath = kz_fixturedb_util:get_doc_path(?KZ_CONFIG_DB, <<"whapps_controller">>),
     {'ok', WhappsController} = kz_json:fixture(WhappsPath),
 
@@ -30,4 +18,7 @@ test_whapps_controller_migrate() ->
     {'ok', KappsController} = kz_json:fixture(KappsPath),
 
     Migrated = kapps_config:migrate_from_doc(WhappsController, kz_json:from_list([{<<"_id">>, <<"kapps_controller">>}])),
-    [?_assert(kz_json:are_equal(KappsController, Migrated))].
+    [{"migrated whapps_controller to kapps_controller"
+     ,?_assert(kz_json:are_equal(KappsController, Migrated))
+     }
+    ].

@@ -191,7 +191,7 @@ has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
                 'true' ->
                     [RatedeckId] = kzd_service_plan:items(SP, <<"ratedeck">>),
                     Ratedeck = ratedeck(Model, RatedeckId),
-                    ?DEBUG("from service plan ~s, got ratedeck ~s: ~p", [SPId, RatedeckId, Ratedeck]),
+                    _ = ?DEBUG("from service plan ~s, got ratedeck ~s: ~p", [SPId, RatedeckId, Ratedeck]),
                     has_rate_matching(Ratedeck, DID)
             end
     end.

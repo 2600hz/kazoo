@@ -24,7 +24,7 @@
 -include("services.hrl").
 
 -record(kz_service_plans, {vendor_id :: kz_term:api_binary()
-                          ,plans = [] :: kzd_service_plan:docs()
+                          ,plans = [] :: kzd_service_plan:docs() | kzd_service_plan:doc()
                           }).
 
 -type plan() :: #kz_service_plans{}.
@@ -188,7 +188,7 @@ public_json(ServicePlans) ->
 -spec public_json(plans(), kz_json:object()) -> kzd_service_plan:doc().
 public_json([], JObj) -> kz_doc:public_fields(JObj);
 public_json([ServicesPlan|ServicesPlans], JObj) ->
-    #kz_service_plans{plans=NewJObj}=merge_plan(ServicesPlan, JObj),
+    #kz_service_plans{plans=NewJObj} = merge_plan(ServicesPlan, JObj),
     public_json(ServicesPlans, NewJObj).
 
 %%------------------------------------------------------------------------------
@@ -317,7 +317,7 @@ merge_vendors(ServicesPlans) ->
 merge_plan(ServicesPlan) ->
     merge_plan(ServicesPlan, 'false').
 
--spec merge_plan(plan(), boolean() | kz_json:object()) -> plan().
+-spec merge_plan(plan(), 'false' | kz_json:object()) -> plan().
 merge_plan(#kz_service_plans{plans=PlanJObjs}=ServicesPlan, MergeToSingle) ->
     Dict = lists:foldl(fun(PlanJObj, D) ->
                                Strategy = kzd_service_plan:merge_strategy(PlanJObj),
@@ -331,8 +331,6 @@ merge_plan(#kz_service_plans{plans=PlanJObjs}=ServicesPlan, MergeToSingle) ->
     case MergeToSingle of
         'false' ->
             ServicesPlan#kz_service_plans{plans=Merged};
-        'true' ->
-            ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, kz_json:new(), Merged)};
         Else ->
             'true' = kz_json:is_json_object(Else),
             ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, Else, Merged)}

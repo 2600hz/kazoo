@@ -61,7 +61,6 @@
 
 -export([check_release/0]).
 
--include_lib("kazoo_caches/include/kazoo_caches.hrl").
 -include("kazoo_apps.hrl").
 
 -type bind() :: 'migrate' | 'refresh' | 'refresh_account'.
@@ -89,7 +88,7 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    kz_datamgr:refresh_views(Database),
+    'true' = kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -111,13 +110,15 @@ rebuild_token_auth(Pause) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec migrate_to_4_0() -> no_return.
+-spec migrate_to_4_0() -> 'no_return'.
 migrate_to_4_0() ->
     %% Number migration
+    lager:info("migrating number manager"),
     kazoo_number_manager_maintenance:migrate(),
     %% Voicemail migration
+    lager:info("migrating voicemail"),
     kazoo_voicemail_maintenance:migrate(),
-    no_return.
+    'no_return'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -154,7 +155,7 @@ migrate(Pause, Databases) ->
     io:format("removing depreciated databases...~n"),
     _  = remove_depreciated_databases(Databases),
 
-    kazoo_bindings:map(binding('migrate'), [Accounts]),
+    _ = kazoo_bindings:map(binding('migrate'), [Accounts]),
 
     'no_return'.
 
@@ -264,7 +265,7 @@ get_database_sort(Db1, Db2) ->
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    kz_datamgr:refresh_views(Database),
+    _ = kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -892,7 +893,7 @@ purge_doc_type(Type, Account, ChunkSize) ->
         {'ok', []} -> 'ok';
         {'ok', Ds} ->
             lager:debug("deleting up to ~p documents of type ~p", [ChunkSize, Type]),
-            kz_datamgr:del_docs(Db, [kz_json:get_value(<<"doc">>, D) || D <- Ds]),
+            _ = kz_datamgr:del_docs(Db, [kz_json:get_value(<<"doc">>, D) || D <- Ds]),
             purge_doc_type(Type, Account, ChunkSize)
     end.
 
@@ -1148,6 +1149,7 @@ init_system() ->
 
 -spec check_release() -> 'ok' | 'error'.
 check_release() ->
+    kz_util:put_callid('check_release'),
     Checks = [fun kapps_started/0
              ,fun master_account_created/0
              ,fun migration_4_0_ran/0
@@ -1169,6 +1171,7 @@ check_release() ->
 
 -spec kapps_started() -> boolean().
 kapps_started() ->
+    lager:info("checking that kapps have started"),
     kapps_started(180 * ?MILLISECONDS_IN_SECOND).
 
 -spec kapps_started(integer()) -> 'true'.
@@ -1184,6 +1187,7 @@ kapps_started(_Timeout) ->
 
 -spec master_account_created() -> 'true'.
 master_account_created() ->
+    lager:info("trying to create the master account"),
     case rpc:call(node()
                  ,'crossbar_maintenance'
                  ,'create_account'
@@ -1203,8 +1207,10 @@ master_account_created() ->
 
 -spec migration_4_0_ran() -> boolean().
 migration_4_0_ran() ->
+    lager:info("migrating to 4.x"),
     'no_return' =:= migrate_to_4_0().
 
 -spec migration_ran() -> boolean().
 migration_ran() ->
+    lager:info("migrating"),
     'no_return' =:= migrate().

@@ -1,22 +1,16 @@
-{application, kazoo_data,
- [
-  {description, "Kazoo Data Access abstraction layer"}
- ,{id, "108013a5-95e7-4e18-5757-344d22bebce8"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [kazoo_data_cache, kazoo_data_plan_cache, kazoo_data_app, kazoo_data_sup]}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , public_key
-                 , lager
-                 , kazoo_config
-                 , kazoo_amqp
-                 , kazoo_attachments
-                 ]}
- ,{mod, {kazoo_data_app, []}}
- ,{env, [{'default_archive_folder', <<"/tmp">>}
-        ,{'max_bulk_insert', 2000}
-        ,{'max_bulk_read', 2000}
-        ]}
- ]}.
+{application,kazoo_data,
+ [{applications,[kazoo,kazoo_attachments,kazoo_caches,
+                 kazoo_config,kazoo_stdlib,kernel,
+                 lager,stdlib]},
+  {description,"Kazoo Data Access abstraction layer"},
+  {id,"108013a5-95e7-4e18-5757-344d22bebce8"},
+  {vsn,"4.0.0"},
+  {modules,[]},
+  {registered,[kazoo_data_cache,kazoo_data_plan_cache,
+               kazoo_data_app,kazoo_data_sup]},
+  {mod,{kazoo_data_app,[]}},
+  {env,[{default_archive_folder,<<"/tmp">>},
+        {max_bulk_insert,2000},
+        {max_bulk_read,2000},
+        {cache_strategy, none}
+       ]}]}.

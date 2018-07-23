@@ -4,14 +4,13 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
--include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").
 -define(V4_CONFIG_FILE, "/etc/kazoo/core/config.ini").
 
--define(APP, kazoo_config).
--define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP, 'kazoo_config').
+-define(APP_NAME, (atom_to_binary(?APP, 'utf8'))).
 -define(APP_VERSION, <<"4.0.0">>).
 
 -define(SETTINGS_KEY, '$_App_Settings').
@@ -43,7 +42,8 @@
                    'ecallmgr' |
                    'log' |
                    'kazoo_apps' |
-                   'zone'.
+                   'zone' |
+                   'data'.
 
 -define(KAZOO_CONFIG_HRL, 'true').
 -endif.

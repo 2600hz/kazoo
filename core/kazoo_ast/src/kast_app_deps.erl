@@ -132,7 +132,7 @@ app_src_filename(App) ->
                   ,<<AppBin/binary, ".app.src">>
                   ]).
 
--spec circles() -> [{atom(), [atom()]}].
+-spec circles() -> 'ok'.
 circles() ->
     io:format("finding circular dependencies "),
 
@@ -173,7 +173,7 @@ add_app_to_graph(App, {Graph, Verticies}) ->
 
 -spec start_cache() -> {'ok', pid()}.
 start_cache() ->
-    {'ok', _Cache} = kz_cache:start_link(?MODULE).
+    {'ok', _Cache} = kz_cache_sup:start_link(?MODULE).
 
 -spec stop_cache() -> 'ok'.
 stop_cache() ->
@@ -181,7 +181,8 @@ stop_cache() ->
 
 -spec stop_cache(kz_types:server_ref()) -> 'ok'.
 stop_cache(Cache) ->
-    kz_cache:stop_local(Cache).
+    kz_cache:stop_local(Cache),
+    'ok'.
 
 -spec circles(atom()) -> {atom(), [atom()]}.
 circles(App) ->
@@ -248,7 +249,7 @@ is_kazoo_app(Path) when is_list(Path) ->
 -type apps_deps() :: [app_deps()].
 -spec process_project() -> apps_deps().
 process_project() ->
-    {'ok', Cache} = kz_cache:start_link(?MODULE),
+    {'ok', Cache} = kz_cache_sup:start_link(?MODULE),
     io:format("processing application dependencies: "),
     Discrepencies = lists:foldl(fun process_app/2
                                ,[]

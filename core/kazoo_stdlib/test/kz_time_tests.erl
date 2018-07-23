@@ -167,7 +167,7 @@ iso8601_time_test_() ->
 
 to_gregorian_seconds_test_() ->
     Datetime = {{2017,04,01}, {12,0,0}},
-    LASeconds = kz_time:to_gregorian_seconds(Datetime, undefined),
+    LASeconds = kz_time:to_gregorian_seconds(Datetime, <<"America/Los_Angeles">>),
     NYSeconds = kz_time:to_gregorian_seconds(Datetime, <<"America/New_York">>),
     [?_assertEqual(63658292400, LASeconds)
     ,?_assertEqual(63658281600, NYSeconds)

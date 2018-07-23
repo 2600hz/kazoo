@@ -142,6 +142,7 @@ playwright|playright playwrite
 possession|posession possesion
 possible|possilbe
 potatoes|potatos
+preferred|prefered
 precede|preceed
 presence|presance
 principle|principal

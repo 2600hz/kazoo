@@ -149,9 +149,11 @@ maybe_convert_to_units(Dollars) -> dollars_to_units(Dollars).
 current_balance(Account) ->
     get_balance(Account, []).
 
--spec previous_balance(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> balance_ret().
+-spec previous_balance(kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> balance_ret().
 previous_balance(Account, Year, Month) ->
-    Options = [{'year', kz_term:to_binary(Year)}, {'month', kz_date:pad_month(Month)}],
+    Options = [{'year', kz_term:to_binary(Year)}
+              ,{'month', kz_date:pad_month(Month)}
+              ],
     get_balance(Account, Options).
 
 -spec get_balance(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().

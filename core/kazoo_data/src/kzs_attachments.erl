@@ -142,9 +142,10 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
         {'error', _Reason, _ExtendedError} = AttHandlerError ->
             case props:get_value('save_error', Options, 'true') of
                 'true' ->
-                    _ = kz_util:spawn(fun save_attachment_handler_error/3
-                                     ,[Map, DbName, AttHandlerError]
-                                     );
+                    _Pid = kz_util:spawn(fun save_attachment_handler_error/3
+                                        ,[Map, DbName, AttHandlerError]
+                                        ),
+                    lager:debug("saving attachment handler error in ~p", [_Pid]);
                 'false' ->
                     lager:debug("Skipping error save because save_error is set to false")
             end,

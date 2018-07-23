@@ -117,18 +117,15 @@ by_carrier(Carrier, E, Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec to_json(reason()) ->
-                     error().
+-spec to_json(reason()) -> error().
 to_json(Reason)->
     to_json(Reason, 'undefined').
 
--spec to_json(reason(), kz_term:api_ne_binary()) ->
-                     error().
+-spec to_json(reason(), kz_term:api_ne_binary()) -> error().
 to_json(Reason, Num)->
     to_json(Reason, Num, 'undefined').
 
--spec to_json(reason(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
-                     error().
+-spec to_json(reason(), kz_term:api_ne_binary(), atom() | kz_term:ne_binary()) -> error().
 to_json('number_is_porting', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " is porting">>,
     build_error(400, 'number_is_porting', Message, Num);
@@ -173,7 +170,7 @@ to_json(Reason, _, Cause) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec build_error(integer(), atom(), kz_term:api_binary(), kz_term:api_binary()) ->
+-spec build_error(integer(), atom(), kz_term:api_binary(), atom() | kz_term:ne_binary()) ->
                          error().
 build_error(Code, Error, Message, Cause) ->
     kz_json:from_list(

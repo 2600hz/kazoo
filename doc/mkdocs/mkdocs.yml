@@ -352,6 +352,9 @@ pages:
   - 'Trunkstore':
     - 'applications/trunkstore/doc/README.md'
 - 'Core':
+  - 'Kazoo Caches':
+      - 'core/kazoo_caches/doc/README.md'
+      - 'Caching Strategy Load Tests': 'core/kazoo_data/doc/loadtest.md'
   - 'Kazoo Endpoints':
     - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
     - 'CallerID Privacy': 'core/kazoo_endpoint/doc/privacy-cid.md'
@@ -460,6 +463,7 @@ pages:
   - 'Loopback Channels': 'doc/engineering/loopback.md'
   - 'Kazoo Scripts': 'scripts/README.md'
   - 'Running Dev Shells': 'scripts/dev/README.md'
+  - 'Testing': 'doc/engineering/testing.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
   - 'Webhooks': 'doc/engineering/webhooks.md'
   - 'Attachments': 'core/kazoo_attachments/README.md'

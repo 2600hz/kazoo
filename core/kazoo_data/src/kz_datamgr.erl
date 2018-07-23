@@ -255,23 +255,23 @@ load_fixtures_from_folder(DbName, App) ->
 -spec do_load_fixtures_from_folder(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 do_load_fixtures_from_folder(_, []) -> 'ok';
 do_load_fixtures_from_folder(DbName, [F|Fs]) ->
-    try
-        {'ok', Bin} = file:read_file(F),
-        FixJObj = kz_json:decode(Bin),
-        FixId = kz_doc:id(FixJObj),
-        case lookup_doc_rev(DbName, FixId) of
-            {'ok', _Rev} ->
-                lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
-            {'error', 'not_found'} ->
-                lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
-                save_doc(DbName, FixJObj);
-            {'error', _Reason} ->
-                lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
-        end
-    catch
-        _C:_R ->
-            lager:debug("failed to check fixture: ~s: ~p", [_C, _R])
-    end,
+    _ = try
+            {'ok', Bin} = file:read_file(F),
+            FixJObj = kz_json:decode(Bin),
+            FixId = kz_doc:id(FixJObj),
+            case lookup_doc_rev(DbName, FixId) of
+                {'ok', _Rev} ->
+                    lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
+                {'error', 'not_found'} ->
+                    lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
+                    save_doc(DbName, FixJObj);
+                {'error', _Reason} ->
+                    lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
+            end
+        catch
+            _C:_R ->
+                lager:debug("failed to check fixture: ~s: ~p", [_C, _R])
+        end,
     do_load_fixtures_from_folder(DbName, Fs).
 
 %%------------------------------------------------------------------------------
@@ -1542,17 +1542,22 @@ refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
     Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
-                  {'error', _} -> 'false';
+                  {'error', _E} ->
+                      lager:debug("failed to get docs: ~p", [_E]),
+                      'false';
                   {'ok', JObjs} ->
                       ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
                       Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],
                       Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
                       db_view_update(Database, Views)
               end,
+
     _ = case Updated of
-            'true' -> lager:debug("~s:~s views updated", [Classification, DbName]),
-                      kzs_publish:publish_db(DbName, 'edited');
-            'false' -> lager:debug("~s:~s no views needed updating", [Classification, DbName])
+            'true' ->
+                lager:debug("~s:~s views updated", [Classification, DbName]),
+                kzs_publish:publish_db(DbName, 'edited');
+            'false' ->
+                lager:debug("~s:~s no views updated", [Classification, DbName])
         end,
     enable_change_notice(),
     Updated;

@@ -22,11 +22,8 @@
 
 -else.
 
--define(ORIGIN_BINDINGS, [[]
-                         ]).
-
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                     ]).
+-define(ORIGIN_BINDINGS, [[]]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(DP_ORIGIN_BINDINGS, [[{'db', ?KZ_DATA_DB}]]).
 -define(DP_CACHE_PROPS, [{'origin_bindings', ?DP_ORIGIN_BINDINGS}]).

@@ -209,7 +209,7 @@ handle_controls_request(JObj, Conference) ->
 requested_controls_name(JObj) ->
     kz_json:get_ne_value(<<"Controls">>, JObj).
 
--spec controls(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+-spec controls(kz_term:ne_binary(), kz_json:objects()) -> kz_json:object().
 controls(ControlsName, Controls) ->
     kz_json:from_list([{ControlsName, Controls}]).
 

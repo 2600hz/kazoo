@@ -678,7 +678,7 @@ handle_info({'heartbeat', Ref}
     try create_node(Heartbeat, State) of
         Node ->
             _ = ets:insert(Tab, Node),
-            kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1),
+            _ = kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1),
             {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
         'exit' : {'timeout' , _} when Me =/= 'undefined' ->

@@ -1,6 +1,6 @@
 {application,hotornot,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_config,
-                             kazoo_data,kazoo_documents,kazoo_number_manager,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+                             kazoo_documents,kazoo_number_manager,
                              kazoo_services,kazoo_stdlib,kazoo_transactions,
                              kernel,lager,stdlib,trie]},
               {description,"HotOrNot - Rate calls based on prefix"},
