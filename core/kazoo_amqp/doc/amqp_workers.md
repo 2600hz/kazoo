@@ -1,10 +1,3 @@
-/*
-Section: Kazoo AMQP
-Title: AMQP Workers
-Language: en-US
-Version: 3.22
-*/
-
 AMQP workers provide an abstraction over the publishing/consuming of messages from the AMQP bus. Most applications have two primary needs when dealing with AMQP:
 
 1. Publish a message

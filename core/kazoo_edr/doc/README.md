@@ -1,9 +1,3 @@
-/*
-Section: Kazoo Edr
-Title: Kazoo Edr
-Language: en-US
-*/
-
 # Kazoo EDR
 
 EDR is an extension of logging and events in Kazoo, making it easy to add new events, and consume

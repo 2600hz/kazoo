@@ -1,9 +1,3 @@
-/*
-Section: Kazoo Edr
-Title: Kazoo Edr
-Language: en-US
-*/
-
 # EDR
 
 TLDR: See recipies at the bottom for ways to use EDR.

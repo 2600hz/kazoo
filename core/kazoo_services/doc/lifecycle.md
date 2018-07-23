@@ -1,10 +1,3 @@
-/*
-Section: Kazoo Services
-Title: Lifecycle of a service plan
-Language: en-us
-Version: 3.21
-*/
-
 # In the beginning
 
 There was a service\_plan doc. It defined a simple service: charge $1 per sip device. And lo, it looked like this:

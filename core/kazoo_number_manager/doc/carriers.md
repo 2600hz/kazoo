@@ -1,10 +1,3 @@
-/*
-Section: Kazoo Number Manager
-Title: Carriers
-Language: en-US
-Version: 4.0
-*/
-
 # Overview
 
 The `knm_carriers` module provides the interface to the enabled carrier modules, allowing upper-level applications a single interface to interact with carriers.

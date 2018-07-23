@@ -1,10 +1,3 @@
-/*
-Section: Kazoo Number Manager
-Title: Kazoo Number Manager
-Language: en-US
-Version: 4.0
-*/
-
 # Overview
 
 The Kazoo number manager aims for the following:
