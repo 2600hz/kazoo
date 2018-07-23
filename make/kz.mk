@@ -196,13 +196,4 @@ fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
 		erl -name '$(NODE_NAME)' -s reloader "$$@"
 
-KAZOO_DICT = $(ROOT)/.aspell.en_US-kazoo.pws
-
-$(KAZOO_DICT):
-	@$(file >$(KAZOO_DICT),personal_ws-1.1 en 0 utf-8)
-
-splchk: $(KAZOO_DICT) $(addsuffix .chk,$(basename $(wildcard doc/*.md)))
-
-%.chk: %.md
-	@echo Spellchecking $<
-	aspell -c -p $(KAZOO_DICT) --lang=en $<
+include splchk.mk
