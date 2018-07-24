@@ -351,7 +351,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
 ```
 
-Sometimes you may get a HTTP/1.1 304 Not Modified response from crossbar for simliar API calls. If you do, add a random string filter to the end of the call to ensure the request is viewed as 'unique'. For example:
+Sometimes you may get a HTTP/1.1 304 Not Modified response from crossbar for similar API calls. If you do, add a random string filter to the end of the call to ensure the request is viewed as 'unique'. For example:
 
 ```shell
 curl -v -X PUT \
@@ -381,7 +381,7 @@ Playing a media file to everyone in a conference:
 }
 ```
 
-`{MEDIA_ID}` can be a pre-uploaded media ID or a URL to fetch media from.
+`{MEDIA_ID}` can be a pare-uploaded media ID or a URL to fetch media from.
 
 ### List of conferences example
 
@@ -479,7 +479,7 @@ The last field, `play_entry_tone`, is at the root of the document: meaning this 
 * **play_entry_tone** and **play_exit_tone**: can be either a boolean or a non-empty string.
     * `true` means play the default tone when someone joins (or leaves) the conference
     * `false` disables the tone from being played
-    * A string like a *tone string* or a *URI to a media file* can be inputed.
+    * A string like a *tone string* or a *URI to a media file* can be inputted.
 
 #### Actions
 

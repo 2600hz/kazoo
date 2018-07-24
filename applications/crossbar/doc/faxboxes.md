@@ -8,7 +8,7 @@ Fax boxes are used to receive, send and store incoming or outgoing faxes, allowi
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer()` | `0` | `false` |  
+`attempts` | The number of attempts made, this will be set by the system and reset automatically on put/post | `integer()` | `0` | `false` |  
 `caller_id` | The Caller-ID-Number | `string()` |   | `false` | `supported`
 `caller_name` | The Caller-ID-Name | `string()` | `Kazoo Fax Printer` | `false` | `supported`
 `custom_smtp_email_address` | custom smtp address | `string()` |   | `false` | `supported`

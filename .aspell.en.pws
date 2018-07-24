@@ -1,4 +1,4 @@
-personal_ws-1.1 en 847 utf-8
+personal_ws-1.1 en 903 utf-8
 ccv
 cfg
 CNAME
@@ -7,8 +7,9 @@ api
 Macau
 Phnom
 blf
-AOR
+aor
 Bantry
+Whitelabeling
 CET
 libxslt
 Dar
@@ -16,6 +17,7 @@ postfix
 cid
 Inuvik
 Starke
+stdin
 yealink
 unbridge
 IsShared
@@ -34,6 +36,7 @@ ast
 cli
 stepswitch
 dev
+awk
 ecm
 etsmgr
 Kildare
@@ -49,8 +52,10 @@ CRM
 passthru
 Kaliningrad
 OpenXML
+CAVs
 crt
 Pago
+CSR
 Roscrea
 DNS
 CSS
@@ -61,6 +66,7 @@ Clifden
 libreoffice
 authn
 resample
+onnet
 Niue
 Noronha
 Atikokan
@@ -74,9 +80,12 @@ authz
 plaintext
 Thurles
 dialer
+KHTML
 quickcall
+QuickCall
 pluggable
 minProperties
+datasets
 officedocument
 takeback
 DTMFs
@@ -89,10 +98,11 @@ CCVs
 websockets
 CDRs
 cdrs
+CDR's
 Validator
 ETS
-APIs
 apis
+APIs
 hotornot
 Aran
 acceptors
@@ -101,6 +111,7 @@ PCMA
 Lyca
 rtpmap
 FSM
+CAkey
 PDFs
 roundrobin
 cronjobs
@@ -123,10 +134,12 @@ Blackhole's
 Ojinaga
 cidr
 keypress
+userportal
 img
 webseq
 Skibbereen
 JID
+pbxs
 hrl
 ini
 Misconfigured
@@ -155,6 +168,7 @@ escript
 iso
 UntilFun
 Atka
+jpg
 stdlib
 faxbox's
 McMurdo
@@ -169,20 +183,23 @@ oauth
 OAuth
 Campo
 knm
+CLEC
 mdn
 Novo
-Javascript
+LLC
+javascript
 grandstream
 jsx
 Westport
 whitelabeled
 arities
+CAfile
 loa
 BigCouch
 telecom
 deps
 Kitts
-JWT
+jwt
 zrtp
 parsers
 Petersburg
@@ -253,6 +270,7 @@ pqc
 configs
 EDRs
 otp
+stdout
 req
 proplist
 OSX
@@ -286,6 +304,7 @@ policyd
 tcp
 bitrate
 friday
+TDM
 sla
 ROK
 Clonmel
@@ -295,7 +314,7 @@ rabbitmq
 Kwajalein
 ibrowse
 tcplog
-RSA
+rsa
 Vevay
 CSeq
 Athlone
@@ -348,6 +367,7 @@ wav
 prepended
 Rica
 snmpwalk
+ttl
 ACDc's
 vlc
 sys
@@ -386,8 +406,8 @@ wnm
 params
 mochiweb
 transcode
-FixtureDB
 fixturedb
+FixtureDB
 SDKs
 OAuthId
 ubiquiti
@@ -399,6 +419,7 @@ sctp
 masqueradable
 WSS
 Sitka
+unencrypted
 Currie
 keypresses
 edocify
@@ -409,6 +430,7 @@ cd
 da
 Monaghan
 de
+Unlink
 backends
 au
 www
@@ -417,14 +439,17 @@ br
 cn
 trunkstore
 dk
+ratedeck's
 ratedecks
 Costa
+preflow
 gb
 El
 dialplans
 fi
 dtmf
 cz
+clicktocall
 fs
 Eucla
 hk
@@ -462,6 +487,7 @@ MX
 subaccount
 config
 Blanc
+runtime
 Sligo
 se
 UA
@@ -496,10 +522,12 @@ zh
 hotdesking
 Analytics
 Moncton
+unmuted
 vhost
 hdrext
 Presentity
 erlang
+CAcreateserial
 wensday
 eval
 erts
@@ -515,6 +543,7 @@ Appstore
 parker
 startkey
 uniqueItems
+howto
 callee's
 callees
 prefetch
@@ -584,6 +613,7 @@ srtp
 ssrc
 Ulan
 faxbox
+preconfigured
 Eshell
 Ceuta
 symlink
@@ -604,6 +634,7 @@ monday
 globals
 unstaged
 GUID
+zipcode
 Wicklow
 memoization
 Kiritimati
@@ -619,6 +650,7 @@ keepalive
 webm
 Santo
 dptools
+cidrs
 Hovd
 kapi
 Choibalsan
@@ -626,6 +658,7 @@ nomorobo
 NoMoRobo
 Kapp
 frontend
+SmartPBX
 Tuam
 NAPTR
 unix
@@ -649,6 +682,7 @@ missingok
 referer
 TaskName
 ringback
+genrsa
 loadtest
 unauth
 Navan
@@ -657,6 +691,7 @@ TravisCI
 CloudPBX
 Aqtau
 chmod
+Whitelabling
 smtpd
 pymdown
 dbtext
@@ -668,17 +703,22 @@ Araguaina
 formatters
 formatter's
 interaccount
+gzip
 Kralendijk
 localhost
+inum
 URIs
 callflow
 Fakaofo
+middleware
 unregisters
 crypto
 kerl
 ISAC
 iSpeech
 ispeech
+urls
+TwiML
 twiml
 dialyze
 Kolkata
@@ -694,7 +734,9 @@ Viktoria
 IncludeFederated
 hostnames
 util
+AppleWebKit
 voip
+namespace
 JObj
 requestor
 Marengo
@@ -705,6 +747,7 @@ callflows
 uuid
 relayhost
 SAVPF
+featureful
 anonymize
 EasterIsland
 Godthab
@@ -719,7 +762,7 @@ backoff
 programmatically
 CouchDB
 Aqtobe
-Customizations
+customizations
 Kuala
 reloadacl
 Mahe
@@ -734,8 +777,11 @@ automata
 LYSE's
 skypopen
 DeNoronha
+vcard
+vCard
 Portlaoise
 libexpat
+Onboarding
 thusly
 httpc
 httpd
@@ -758,6 +804,7 @@ ACDc
 acdc
 pipelining
 natively
+autostart
 plusses
 tuesday
 whitelisted
@@ -767,6 +814,8 @@ cisco
 Juba
 whereis
 dialplan
+numbermanager
+NumberManager
 symlinked
 Bator
 routable
@@ -776,6 +825,7 @@ Nodename
 ADDR
 badarg
 BEAMs
+CApath
 json
 Metlakatla
 ACLs
@@ -786,6 +836,7 @@ Rioja
 jitter
 Vodafone
 winfo
+cacert
 forwardfor
 verbosities
 Ubiquiti's
@@ -801,6 +852,7 @@ deployable
 minItems
 goldrush
 ComodRivadavia
+urandom
 voicefabric
 VoiceFabric
 Qyzylorda
@@ -824,6 +876,7 @@ Anadyr
 Minh
 Acc
 predirectional
+signkey
 dingaling
 ACK
 Uzhgorod
@@ -831,16 +884,19 @@ mins
 acl
 Galway
 Newcastlewest
+UUIDs
 Vitelity's
 codebase
 Nationaal
 bcc
 Longyearbyen
+nxdomain
 Ulaanbaatar
 Mawson
 Nera
 Manaus
 nomatch
+openssl
 async
 ALG
 Danmarkshavn

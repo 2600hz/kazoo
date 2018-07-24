@@ -5,7 +5,7 @@ Apps Store list apps allowed  by your service plan.
 
 #### Apps Structure
 
-Cannot be modified, only accesible by GET requests.
+Cannot be modified, only accessible by GET requests.
 
 Ex:
 

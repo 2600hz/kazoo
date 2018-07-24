@@ -54,7 +54,7 @@ curl -v -X GET \
 * `{CALL_ID}` is the unique string identifying a call. Call has to be under the authority of `{ACCOUNT_ID}`.
 * `{ACCOUNT_ID}` has to be a reseller's account id.
 
-Note: `{CHUNKS}` is an array of JSON-formated chunks.
+Note: `{CHUNKS}` is an array of JSON-formatted chunks.
 
 ```shell
 curl -v -X GET \

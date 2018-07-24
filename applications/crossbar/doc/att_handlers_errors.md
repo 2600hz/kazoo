@@ -1,4 +1,4 @@
-### Att Handlers Errors
+### Attachment Handlers Errors
 
 Retrieve attachment handlers errors
 

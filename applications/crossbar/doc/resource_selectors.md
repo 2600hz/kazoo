@@ -300,7 +300,7 @@ Here we see selectors for resource `RES-4` with selector name `lcr`. Resulted li
 
 Manage (import/delete) resource selectors made via kazoo tasks (CSV file).
 
-Category `resourse_selectors`, action `import` or `delete`.
+Category `resource_selectors`, action `import` or `delete`.
 
 CSV columns:
 * `mandatory`

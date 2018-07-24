@@ -93,7 +93,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('dropbox')` |   | `true` |
 `settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |
-`settings` | Settings for the DropBox account | `object()` |   | `true` |
+`settings` | Settings for the Dropbox account | `object()` |   | `true` |
 
 ### storage.attachment.google_drive
 
@@ -136,14 +136,14 @@ Keys are 32-character identifiers to be used in storage plans
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[a-z0-9]{32}$.field_list` | list of field to compose destination url | `array()` |   | `false` |
-`^[a-z0-9]{32}$.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |
+`^[a-z0-9]{32}$.field_separator` | top-level, field separator to compose destination url | `string()` |   | `false` |
 `^[a-z0-9]{32}$.folder_base_path` | base folder path | `string()` |   | `false` |
 `^[a-z0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false` |
 `^[a-z0-9]{32}$` | Configuration for the supported storage backends | `object()` |   | `false` |
 
 ### storage.connection.couchdb
 
-schema for couchdb connection entry
+schema for CouchDB connection entry
 
 
 Key | Description | Type | Default | Required | Support Level

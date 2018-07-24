@@ -2,7 +2,7 @@
 
 ## About Phone Numbers
 
-The 2600hz API for managing numbers.
+The 2600Hz API for managing numbers.
 
 ### Per-number CRUD operations
 
@@ -217,7 +217,7 @@ curl -v -X GET \
 
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "casquade_quantity": 0,
+        "cascade_quantity": 0,
         "numbers": {
             "+14152338421": {
                 "assigned_to": "{ACCOUNT_ID}",
@@ -495,7 +495,7 @@ Adds a number to the database, returning its properties.
     Set field `"create_with_state"` in payload to your desired number state (defaults to `"reserved"`).
 
 !!! note
-    Payload is facultative.
+    Payload is optional.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -1106,7 +1106,7 @@ curl -v -X POST \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "casquade_quantity": 0,
+        "cascade_quantity": 0,
         "numbers": {
             "+14152338421": {
                 "assigned_to": "{ACCOUNT_ID}",
