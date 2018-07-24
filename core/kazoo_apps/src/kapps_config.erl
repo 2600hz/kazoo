@@ -1038,6 +1038,10 @@ fetch_category(Category, 'false') ->
          }
 
         ,{<<"whapps_controller">>, <<"kapps_controller">>}
+
+        ,{{<<"callflow">>, <<"mwi_send_unsoliciated_updates">>}
+         ,{<<"callflow">>, <<"mwi_send_unsolicited_updates">>}
+         ]
         ]).
 
 -spec migrate() -> 'ok'.
