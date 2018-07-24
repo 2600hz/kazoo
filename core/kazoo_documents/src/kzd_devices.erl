@@ -450,11 +450,18 @@ mwi_unsolicited_updates(Doc) ->
 
 -spec mwi_unsolicited_updates(doc(), Default) -> boolean() | Default.
 mwi_unsolicited_updates(Doc, Default) ->
-    kz_json:get_boolean_value([<<"mwi_unsolicited_updates">>], Doc, Default).
+    case kz_json:get_first_defined([<<"mwi_unsolicited_updates">>, <<"mwi_unsolicitated_updates">>], Doc) of
+        'undefined' -> Default;
+        Bool -> kz_term:safe_cast(Bool, Default, fun kz_term:to_boolean/1)
+    end.
 
 -spec set_mwi_unsolicited_updates(doc(), boolean()) -> doc().
 set_mwi_unsolicited_updates(Doc, MwiUnsolicitedUpdates) ->
-    kz_json:set_value([<<"mwi_unsolicited_updates">>], MwiUnsolicitedUpdates, Doc).
+    kz_json:set_values([{<<"mwi_unsolicited_updates">>, MwiUnsolicitedUpdates}
+                       ,{<<"mwi_unsoliciated_updates">>, 'null'}
+                       ]
+                      ,Doc
+                      ).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->
