@@ -11,10 +11,6 @@ if len(sys.argv) < 2:
     print 'Usage: ' + sys.argv[0] + ' file.json+'
     exit(0)
 
-if os.system('which couchjs') != 0:
-    print 'Unable to find couchjs in path'
-    exit(0)
-
 def fmap(F, data):
     if isinstance(data, dict):
         for key, value in data.iteritems():
@@ -45,6 +41,7 @@ def couchjs((field, js)):
     with open(TMP, 'w') as wd:
         wd.write(JS)
     try:
+        # alias couchjs='~/local/git/apache/couchdb/bin/couchjs' if couchjs isn't in your path
         code = call(['couchjs', TMP])
         if code != 0:
             print 'Key:', field
@@ -83,7 +80,6 @@ for fn in sys.argv[1:]:
         continue
     if 'swagger.json' in exploded:
         continue
-    print 'checking ' + fn
     with open(fn) as rd:
         data = json.load(rd)
         check_name(fn, data['_id'])
