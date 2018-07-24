@@ -97,6 +97,7 @@
                ,current_cmd_uuid :: kz_term:api_binary()
                ,channel :: kz_term:api_pid()
                ,options :: kz_term:proplist()
+               ,event_uuids = [] :: kz_term:ne_binaries()
                }).
 -type state() :: #state{}.
 
@@ -318,8 +319,13 @@ handle_info({'usurp_control', FetchId, _JObj}, #state{fetch_id = FetchId} = Stat
 handle_info({'usurp_control', _FetchId, _JObj}, State) ->
     lager:debug("the call has been usurped by an external process"),
     {'stop', 'normal', State};
-handle_info({'force_queue_advance', CallId}, #state{call_id=CallId}=State) ->
+handle_info({'force_queue_advance', CallId}, #state{call_id=CallId, current_cmd_uuid='undefined'}=State) ->
     {'noreply', force_queue_advance(State)};
+handle_info({'force_queue_advance', CallId}, #state{call_id=CallId
+                                                   ,current_cmd_uuid=EventUUID
+                                                   ,event_uuids=EventUUIDs
+                                                   }=State) ->
+    {'noreply', force_queue_advance(State#state{event_uuids=[EventUUID | EventUUIDs]})};
 handle_info({'force_queue_advance', _}, State) ->
     {'noreply', State};
 handle_info({'forward_queue', CallId}, #state{call_id=CallId}=State) ->
@@ -456,7 +462,24 @@ publish_route_win(#state{call_id=CallId
            | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
+<<<<<<< Upstream, based on origin/master
     kapi_route:publish_win(ControllerQ, Win).
+=======
+    kapi_route:publish_win(ControllerQ, Win),
+    Usurp = [{<<"Call-ID">>, CallId}
+            ,{<<"Fetch-ID">>, FetchId}
+            ,{<<"Reason">>, <<"Route-Win">>}
+            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    lager:debug("sending control usurp for ~s", [FetchId]),
+    kapi_call:publish_usurp_control(CallId, Usurp),
+    ecallmgr_usurp_monitor:register(CallId, FetchId);
+call_control_ready('false', _) ->
+    lager:info("call is not in the channels cache, short lived call?"),
+    gen_listener:cast(self(), 'stop').
+
+>>>>>>> e8e0f24 usurp monitor & call control log
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -496,12 +519,13 @@ handle_channel_destroyed(#state{sanity_check_tref=SCTRef
 -spec force_queue_advance(state()) -> state().
 force_queue_advance(#state{call_id=CallId
                           ,current_app=CurrApp
+                          ,current_cmd_uuid=CurrUUID
                           ,command_q=CmdQ
                           ,is_node_up=INU
                           ,is_call_up=CallUp
                           }=State) ->
-    lager:debug("received control queue unconditional advance, skipping wait for command completion of '~s'"
-               ,[CurrApp]
+    lager:debug("received control queue unconditional advance, skipping wait for command completion of '~s : ~s'"
+               ,[CurrApp, CurrUUID]
                ),
     case INU
         andalso queue:out(CmdQ)
@@ -576,9 +600,15 @@ handle_execute_complete('undefined', _, _JObj, State) ->
 handle_execute_complete(_, 'undefined', _JObj, State) ->
     lager:debug_unsafe("call control received undefined : ~s", [kz_json:encode(_JObj, ['pretty'])]),
     State;
-handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_cmd_uuid='undefined'}=State) ->
-    lager:debug_unsafe("execute complete not handled : ~s:~s : ~s", [_AppName, _EventUUID, kz_json:encode(_JObj, ['pretty'])]),
-    State;
+handle_execute_complete(_AppName, EventUUID, _JObj, #state{current_cmd_uuid='undefined'
+                                                          ,event_uuids=EventUUIDs
+                                                          }=State) ->
+    case lists:member(EventUUID, EventUUIDs) of
+        'true' -> State#state{event_uuids=lists:delete(EventUUID, EventUUIDs)};
+        'false' ->
+            lager:debug("execute complete not handled : ~s:~s", [_AppName, EventUUID]),
+            State
+    end;
 handle_execute_complete(AppName, EventUUID, _, #state{current_app=AppName
                                                      ,current_cmd_uuid=EventUUID
                                                      }=State) ->
