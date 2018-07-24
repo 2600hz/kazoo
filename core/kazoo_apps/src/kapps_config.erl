@@ -1041,7 +1041,7 @@ fetch_category(Category, 'false') ->
 
         ,{{<<"callflow">>, <<"mwi_send_unsoliciated_updates">>}
          ,{<<"callflow">>, <<"mwi_send_unsolicited_updates">>}
-         ]
+         }
         ]).
 
 -spec migrate() -> 'ok'.
