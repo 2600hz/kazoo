@@ -136,9 +136,7 @@ migrate(Pause) ->
     Databases = get_databases(),
     _ = migrate(Pause, Databases),
 
-    %% Migrate settings for kazoo_media
-    io:format("running media migrations...~n"),
-    _ = kazoo_media_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding('migrate'), []),
 
     'no_return'.
 
