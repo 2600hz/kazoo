@@ -10,7 +10,7 @@ There are 3 SNMP tables, each reporting information grouped by
 The items collected are based on KAZOO-200, and includes:
 
 * Memory stats on each node - total, processes, system, atom, binary and code
-and erlang version. Number of AMQP requests and errors. Number of Bigcouch
+and erlang version. Number of AMQP requests and errors. Number of BigCouch
 errors (error code 504 and others).
 * Ecallmgr process count, number of reductions, number of registration
 attempts and failures, number of subscribes
@@ -31,7 +31,7 @@ and stats_handler.erl that collects the stats sent by each node, and
 aggregates the data.
 
 
-Todo:
+To-do:
 
-Update the OID number 700001 to the registered number for Kazoo/2600hz
+Update the OID number 700001 to the registered number for Kazoo/2600Hz
 Implement IP based ACLs for access to SNMP.

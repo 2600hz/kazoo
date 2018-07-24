@@ -136,7 +136,7 @@ To setup the google fax printer feature, you need a Google developer account. Go
 Go to Credentials and create a new Web Application Client ID or use an existing one. After creating the client id, note the following
 
 * CLIENT ID (OAuthId)
-* EMAIL ADDRESS (EMail)
+* EMAIL ADDRESS (Email)
 * CLIENT SECRET (Secret)
 
 You will need a reseller account or your master account id to configure this via kazoo.

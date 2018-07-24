@@ -1,7 +1,7 @@
 
 # Fax
 
-Faxing is still a critical business requirement for many industries. The faxes app provides a set of faxing related features to kazoo accounts and supports sending and receving faxes directly from email or the API. The fax entities can be tied to a callflow to terminate incoming faxes without having to use a fax machine.
+Faxing is still a critical business requirement for many industries. The faxes app provides a set of faxing related features to kazoo accounts and supports sending and receiving faxes directly from email or the API. The fax entities can be tied to a callflow to terminate incoming faxes without having to use a fax machine.
 
 ### Receive Fax Callflow Element
 
@@ -9,7 +9,7 @@ The original fax application feature added the ability to [create a call flow el
 
 ### Faxbox
 
-The faxbox acts as a virtual fax machine. The faxbox is used for both receiving and sending faxes. The faxbox is tied into the API and Email Notification systems and will send receipts or error notifications when a fax is sent or fails to send, send notifications when a fax is received and history and content of sent and received faxes can be retrieved via the faxes API. Faxboxes can be [added to kazoo call flows](https://github.com/2600hz/kazoo/blob/master/applications/callflow/doc/faxbox.md) just like receive fax, but unlike receive fax, multiple email addresses can be added to the notification list. Unlike receive fax, faxboxes can be used to send faxes, which can either be uploaded via the faxes API directly, or submitted by sending an email to the faxbox `smtp_email_address` or `custom_smtp_email_address` or the account `realm`. The faxbox supports multiple file formats for sending faxes, most commonly, `pdf`and `tiff`, but openxml and other OpenOffice compatible documents can be configured as well.
+The faxbox acts as a virtual fax machine. The faxbox is used for both receiving and sending faxes. The faxbox is tied into the API and Email Notification systems and will send receipts or error notifications when a fax is sent or fails to send, send notifications when a fax is received and history and content of sent and received faxes can be retrieved via the faxes API. Faxboxes can be [added to kazoo call flows](https://github.com/2600hz/kazoo/blob/master/applications/callflow/doc/faxbox.md) just like receive fax, but unlike receive fax, multiple email addresses can be added to the notification list. Unlike receive fax, faxboxes can be used to send faxes, which can either be uploaded via the faxes API directly, or submitted by sending an email to the faxbox `smtp_email_address` or `custom_smtp_email_address` or the account `realm`. The faxbox supports multiple file formats for sending faxes, most commonly, `pdf`and `tiff`, but OpenXML and other OpenOffice compatible documents can be configured as well.
 
 The faxes API also provide an email inbox/sent items type interface for accessing sent and received faxes and debugging failed fax transmission attempts. Checkout the [faxbox documentation](faxbox.md) for more details on how the faxbox works.
 
@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 `default_fax_extension` | fax default fax extension | `string()` | `.tiff` | `false` |
 `default_retry_count` | fax default retry count | `integer()` | `3` | `false` |
 `default_retry_period` | fax default retry period | `integer()` | `300` | `false` |
-`default_smtp_domain` | fax defaultsmtp domain | `string()` | `fax.kazoo.io` | `false` |
+`default_smtp_domain` | fax default smtp domain | `string()` | `fax.kazoo.io` | `false` |
 `delete_empty_faxes` | fax delete empty faxes | `boolean()` | `false` | `false` |
 `denied_content_types` | fax denied content types | `array(object())` | `["{"prefix":"image/"}"]` | `false` |
 `endpoint_timeout` | fax endpoint timeout | `integer()` | `40` | `false` |

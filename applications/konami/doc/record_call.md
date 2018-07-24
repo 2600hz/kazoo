@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required
 `media_name` | Name of the recording file | `string()` |   | `false`
 `method` | HTTP method if using an HTTP destination | `string('put' | 'post')` |   | `false`
 `origin` | Track how the recording was started | `string()` |   | `false`
-`record_min_sec` | Miniumum number of seconds recorded to consider it a valid recording | `integer()` |   | `false`
+`record_min_sec` | Minimum number of seconds recorded to consider it a valid recording | `integer()` |   | `false`
 `record_on_answer` | Whether to start recording when the leg is answered | `boolean()` | `false` | `false`
 `record_on_bridge` | Whether to start recording when the leg is bridged | `boolean()` | `false` | `false`
 `record_sample_rate` | Sampling rate for the recording | `integer()` | `8000` | `false`
