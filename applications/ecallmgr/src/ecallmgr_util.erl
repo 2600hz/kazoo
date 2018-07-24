@@ -683,13 +683,12 @@ build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
-build_bridge_string(Endpoints, Seperator) ->
+build_bridge_string(Endpoints, Separator) ->
     %% De-dup the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
     BridgeStrings = build_bridge_channels(Endpoints),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Seperator).
-
+    kz_binary:join(lists:reverse(BridgeStrings), Separator).
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
 endpoint_jobjs_to_records(Endpoints) ->
