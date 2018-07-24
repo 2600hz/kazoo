@@ -38,6 +38,7 @@
         ]).
 
 -export([stop_bad_destination/1]).
+-export([status/1]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -63,12 +64,15 @@
 
 -define(MAX_BRANCH_COUNT, kapps_config:get_integer(?CF_CONFIG_CAT, <<"max_branch_count">>, 50)).
 
+-type callfow_status() :: 'init' | 'running' | 'not_running'.
+-export_type([callfow_status/0]).
+
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                ,flow = kz_json:new() :: kz_json:object()
                ,flows = [] :: kz_json:objects()
                ,cf_module_pid :: kz_term:api_pid_ref()
                ,cf_module_old_pid :: kz_term:api_pid_ref()
-               ,status = <<"sane">> :: kz_term:ne_binary()
+               ,status = 'init' :: callfow_status()
                ,queue :: kz_term:api_ne_binary()
                ,self = self() :: pid()
                ,stop_on_destroy = 'true' :: boolean()
@@ -393,6 +397,8 @@ handle_call({'add_termination_handler', {_M, _F, _Args}=H},  _From, #state{termi
     {'reply', 'ok', State#state{termination_handlers=lists:usort([H | Handlers])}};
 handle_call({'remove_termination_handler', {_M, _F, _Args}=H},  _From, #state{termination_handlers=Handlers}=State) ->
     {'reply', 'ok', State#state{termination_handlers=lists:delete(H, Handlers)}};
+handle_call('status', _From, #state{status=Status}=State) ->
+    {'reply', Status, State};
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.
@@ -518,7 +524,7 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
            ,#state{cf_module_pid='undefined'}=State
            ) ->
     lager:debug("ready to recv events, launching the callflow"),
-    {'noreply', launch_cf_module(State)};
+    {'noreply', launch_cf_module(State#state{status = 'running'})};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -894,3 +900,11 @@ maybe_stop_action('undefined') -> 'ok'.
 stop_bad_destination(Call) ->
     _ = kapps_call_command:prompt(<<"fault-can_not_be_completed_as_dialed">>, Call),
     stop(Call).
+
+-spec status(kapps_call:call() | pid() | 'undefined') -> callfow_status().
+status('undefined') -> 'not_running';
+status(Srv) when is_pid(Srv) ->
+    gen_listener:call(Srv, 'status');
+status(Call) ->
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
+    status(Srv).
