@@ -15,6 +15,3 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `id` | Queue ID | `string()` |   | `false`
 `window` | Window over which average wait time is calculated (in seconds) | `integer()` |   | `false`
-
-
-

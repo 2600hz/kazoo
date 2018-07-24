@@ -14,6 +14,3 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `id` | ID of the ACDc Queue | `string()` |   | `false`
 `priority` | assign a priority to the caller | `integer()` |   | `false`
-
-
-

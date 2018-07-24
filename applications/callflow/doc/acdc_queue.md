@@ -14,6 +14,3 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `action` | What action to perform on the agent for this queue | `string('login' | 'logout')` |   | `false`
 `id` | Queue ID | `string()` |   | `false`
-
-
-
