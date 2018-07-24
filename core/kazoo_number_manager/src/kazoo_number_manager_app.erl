@@ -25,12 +25,12 @@
 start(_StartType, _StartArgs) ->
     declare_exchanges(),
     _ = kz_datamgr:register_view('numbers', ?APP, "views/numbers.json"),
-    kazoo_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
+    kapps_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
     kazoo_number_manager_sup:start_link().
 
 -spec stop(any()) -> any().
 stop(_State) ->
-    kazoo_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
+    kapps_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.
