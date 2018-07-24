@@ -23,7 +23,7 @@
         },
         "resource_flat_rate_lookup": {
             "default": false,
-            "description": "lookup flat rate regexes per resource",
+            "description": "lookup flat rate regexps per resource",
             "type": "boolean"
         }
     },

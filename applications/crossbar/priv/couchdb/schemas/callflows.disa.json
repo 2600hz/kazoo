@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.disa",
-    "description": "Validator for the disa callflow's data object",
+    "description": "Validator for the DISA callflow data object",
     "properties": {},
     "type": "object"
 }

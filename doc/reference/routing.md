@@ -1,7 +1,7 @@
 
 # Rating and Limits
 
-Topic Goal: Describe how Jonny5 and HotOrNot work. This implies also teaching people how authz and authorization work (a flowchart would be AMAZING). Things like how dry run works, etc would be extra-amazing.
+Topic Goal: Describe how Jonny5 and Hotornot work. This implies also teaching people how authz and authorization work (a flowchart would be AMAZING). Things like how dry run works, etc would be extra-amazing.
 
 -----
 
@@ -74,7 +74,7 @@ But they are not well documented so it can be easy to get lost in them.
 
 ## How Kazoo rates
 
-Rating is done by HotOrNot:
+Rating is done by Hotornot:
 
 1. Searches for rate in global rate deck matching the normalized dialed number
    * Breaks number into all possible prefixes
@@ -118,9 +118,9 @@ You can limit based on:
 * Inbound
   * Limit the number of simultaneous inbound calls that can be received
 * Outbound
-  * Limt the number of simultaneous outbound calls that can be made
+  * Limit the number of simultaneous outbound calls that can be made
 * Two-way
-  * Limt the number of simultaneous calls that can be made
+  * Limit the number of simultaneous calls that can be made
 * Resource consuming
   * Any endpoint the system operators likely pay (upstream carriers generally)
   * Limit the number of calls that can consume resources (internal calls unaffected)
@@ -204,11 +204,11 @@ SUP commands later will help you inspect that cache.
 * Enable authorization on calls
    `sup kapps_config set_default ecallmgr authz_enabled true`
    `sup kapps_config flush ecallmgr`
-   `sup -necallmgr ecallmgr_config flush`
+   `sup -n ecallmgr ecallmgr_config flush`
 * Authorize local resource usage
    `sup kapps_config set_default ecallmgr authz_local_resources true`
    `sup kapps_config flush ecallmgr`
-   `sup -necallmgr ecallmgr_config flush`
+   `sup -n ecallmgr ecallmgr_config flush`
 * Dry Run authz attempts (useful when testing authz)
    `sup kapps_config set_default ecallmgr authz_dry_run true`
    Still allows a call that would have been denied

@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the branch_variable callflow's data object
+Validator for the branch_variable callflow data object
 
 
 

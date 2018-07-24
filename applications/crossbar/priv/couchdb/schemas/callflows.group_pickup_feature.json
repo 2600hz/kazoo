@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.group_pickup_feature",
-    "description": "Validator for the group_pickup_feature callflow's data object",
+    "description": "Validator for the group_pickup_feature callflow data object",
     "properties": {
         "type": {
             "description": "The type of collection to pickup",

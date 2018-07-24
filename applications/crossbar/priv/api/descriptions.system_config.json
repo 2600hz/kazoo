@@ -77,7 +77,7 @@
     "callflow.migrate_max_worker": "Maximum number of workers when migrating voicemail messages to MODB",
     "callflow.min_bucket_cost": "callflow minimum bucket cost",
     "callflow.min_message_size": "Minimum message length in milliseconds a voicemail message must be to consider it to save in database",
-    "callflow.mwi_send_unsoliciated_updates": "callflow mwi send unsolicited updates",
+    "callflow.mwi_send_unsolicited_updates": "callflow mwi send unsolicited updates",
     "callflow.operator_key": "callflow operator key",
     "callflow.park.custom_presence_id": "use configured presence_id and fallback to request",
     "callflow.park.db_doc_name": "callflow.park db doc name",

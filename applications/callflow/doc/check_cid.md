@@ -6,7 +6,7 @@ Handles inspection of incoming caller id and branching to a child callflow node 
 
 #### Schema
 
-Validator for the check_cid callflow's data object
+Validator for the check_cid callflow data object
 
 
 

@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.webhook",
-    "description": "Validator for the webhook callflow's data object",
+    "description": "Validator for the webhook callflow data object",
     "properties": {
         "custom_data": {
             "description": "JSON object of custom data included on the HTTP request",

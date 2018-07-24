@@ -1,12 +1,6 @@
-/*
-Section: Kazoo Edr
-Title: Kazoo Edr
-Language: en-US
-*/
-
 # EDR
 
-TLDR: See recipies at the bottom for ways to use EDR.
+TLDR: See recipes at the bottom for ways to use EDR.
 
 ## Description
 
@@ -37,15 +31,15 @@ Key | Description | Type | Default | Required
 `backends.[].enabled` | Should the backend be started on edr app start? | `boolean()` | `true` | `true`
 `backends.[].name` | A unique identifier for the backend | `string(1..)` |   | `true`
 `backends.[].options.formatter.options` | Options passed on to the formatter module. These vary by module | `object()` |   | `false`
-`backends.[].options.formatter.type` | The formatter module to be used (eg. json refers to edr_fmt_json.erl) | `string('json')` |   | `false`
+`backends.[].options.formatter.type` | The formatter module to be used (e.g. json refers to edr_fmt_json.erl) | `string('json')` |   | `false`
 `backends.[].options.formatter` | Output format configuration which is used by some (but not all) backends | `object()` |   | `false`
 `backends.[].options` | Options passed on to the backend module. These vary by module | `object()` |   | `false`
-`backends.[].type` | The backend module to be used (eg. amqp refers to edr_be_amqp.erl) | `string('amqp' | 'file' | 'http')` |   | `true`
+`backends.[].type` | The backend module to be used (e.g. amqp refers to edr_be_amqp.erl) | `string('amqp' | 'file' | 'http')` |   | `true`
 `backends` | Registered edr backends | `array(object())` | `[]` | `false`
 
 ### Backend types
 
-#### amqp (edr_be_amqp)
+#### AMQP (edr_be_amqp)
 
 This module forwards each event to RabbitMQ for use across nodes. kapi_edr_amqp can be used to bind to these events.
 The routing key used is the same as that which is used by edr_bindings for consistency `edr.{SEVERITY}.{VERBOSITY}.{ACCOUNT_ID}.{APP_NAME}`.
@@ -57,9 +51,9 @@ There are configuration options yet, however a configurable routing key would be
 This module outputs each received event to a line in a log file. Each line is formatted by the specified formatter.
 The configuration options are as follows:
 - path (required): The path to the file. Ensure file (or directory, if the file does not exist) has the correct permissions
-- formatter: Configuration as to how to format each event. This defaults to json with the default options.
+- formatter: Configuration as to how to format each event. This defaults to JSON with the default options.
 
-#### http (edr_be_http)
+#### HTTP (edr_be_http)
 
 This module sends out a HTTP request for each EDR event it receives.
 The configuration options are as follows:
@@ -99,7 +93,7 @@ The configuration options are as follows:
 - `sup edr_maintenance registered_backends`
     Show the configured backends.
 
-## Recipies
+## Recipes
 
 Practical uses of EDR. It would be great if people could submit PRs with their configurations for other people to use.
 

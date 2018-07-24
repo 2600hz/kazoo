@@ -83,7 +83,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `content_length` | Length, in bytes, of the file | `integer()` |   | `false` | `supported`
 `content_type` | Used to override the automatic upload type | `string('audio/mp3' | 'audio/mpeg' | 'audio/mpeg3' | 'audio/x-wav' | 'audio/wav' | 'audio/ogg' | 'video/x-flv' | 'video/h264' | 'video/mpeg' | 'video/quicktime' | 'video/mp4' | 'video/webm')` |   | `false` | `supported`
-`description` | A breif description of the media update, usally the original file name | `string(1..128)` |   | `false` | `supported`
+`description` | A brief description of the media update, usually the original file name | `string(1..128)` |   | `false` | `supported`
 `language` | The language of the media file or text | `string()` | `en-us` | `false` | `supported`
 `media_source` | Defines the source of the media | `string('recording' | 'upload' | 'tts')` | `upload` | `true` | `supported`
 `name` | A friendly name for the media | `string(1..128)` |   | `true` | `supported`

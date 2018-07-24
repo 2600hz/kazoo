@@ -668,7 +668,7 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @doc takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
 %% and create the dial string ([origination_caller_id_name=Name
 %%                              ,origination_caller_id_number=Num]Endpoint)
-%% joined by the optional seperator.  Saves time by not spawning
+%% joined by the optional separator.  Saves time by not spawning
 %% endpoints with the invite format of "route" (about 100ms per endpoint)
 %% @end
 %%------------------------------------------------------------------------------
@@ -683,13 +683,12 @@ build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
-build_bridge_string(Endpoints, Seperator) ->
+build_bridge_string(Endpoints, Separator) ->
     %% De-dup the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
     BridgeStrings = build_bridge_channels(Endpoints),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Seperator).
-
+    kz_binary:join(lists:reverse(BridgeStrings), Separator).
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
 endpoint_jobjs_to_records(Endpoints) ->

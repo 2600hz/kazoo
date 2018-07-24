@@ -26,7 +26,7 @@ Key | Description | Type | Default | Required | Support Level
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |  
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false` | `supported`
-`contact_list` | Contect List Parameters | `object()` | `{}` | `false` |  
+`contact_list` | Contact List Parameters | `object()` | `{}` | `false` |  
 `dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |  
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object()` |   | `false` |  
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean()` |   | `false` |  

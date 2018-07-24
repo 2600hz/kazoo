@@ -57,7 +57,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('dropbox')` |   | `true` |  
 `settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |  
-`settings` | Settings for the DropBox account | `object()` |   | `true` |  
+`settings` | Settings for the Dropbox account | `object()` |   | `true` |  
 
 ### storage.attachment.google_drive
 
@@ -107,7 +107,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ### storage.connection.couchdb
 
-schema for couchdb connection entry
+schema for CouchDB connection entry
 
 
 Key | Description | Type | Default | Required | Support Level

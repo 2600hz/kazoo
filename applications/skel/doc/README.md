@@ -55,7 +55,7 @@ In the case of binding to route requests, we know to expect to receive events wi
 
 As you can see, the same callback can take more than one category/name pair. One could also create one callback module (skel\_handlers, for instance) with a handle\_\* function specific to each type of category/name pair.
 
-If you want to handle more than one type of name for a given category, you can use the <<"\*">> to match any catgeory or name. So, if we expect multiple event names for the dialplan category, and we want to use the same handler for each, we could denote that like:
+If you want to handle more than one type of name for a given category, you can use the <<"\*">> to match any category or name. So, if we expect multiple event names for the dialplan category, and we want to use the same handler for each, we could denote that like:
 
     {responders, [{{skel_handlers, handle_dialplan_req}, [{<<"dialplan">>, <<"*">>}]}]}
 
@@ -65,7 +65,7 @@ queue\_name: If you want an auto-generated, anonymous queue, you can omit the qu
 
 queue\_options: Another parameter that can be omitted from the list of configs sent to gen\_listener, use this if you need different values than in lib/kazoo\_amqp-1.0.0/src/amqp\_util.erl, the new\_queue/2 function. This list controls how the broker creates the queue.
 
-consume\_options: Ommitable as well, these options control how consupmtion from the queue will be managed (see basic\_consume/2 in amqp\_util.erl).
+consume\_options: Omittable as well, these options control how consumption from the queue will be managed (see basic\_consume/2 in amqp\_util.erl).
 
 basic\_qos: Only needed if you need to control prefetch count from the queue to multiple consumers; otherwise omit from the list.
 
@@ -83,7 +83,7 @@ Typical usage of the gen\_listener behaviour falls into two main patterns.
 
 #### One App Instance per message
 
-When you have mutliple application instances running on different servers and you want only one instance to process any given message, creating a shared listener will utilize the round-robin funtionality of the AMQP queue. Setup is easy:
+When you have multiple application instances running on different servers and you want only one instance to process any given message, creating a shared listener will utilize the round-robin functionality of the AMQP queue. Setup is easy:
 
     {'queue_name', <<"some_predefined_queue_name">>}
     ,{'queue_options', [{'exclusive', 'false'}]}

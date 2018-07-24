@@ -57,7 +57,7 @@
             "type": "string"
         },
         "proxy_hostname": {
-            "description": "media proxy hostname to be used with haproxy",
+            "description": "media proxy hostname to be used with HAProxy",
             "type": "string"
         },
         "proxy_ip": {

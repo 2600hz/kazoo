@@ -34,7 +34,7 @@
             "type": "integer"
         },
         "timestamp": {
-            "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
+            "description": "The UTC timestamp, in Gregorian seconds, that the voicemail was left on",
             "type": "integer"
         },
         "to": {

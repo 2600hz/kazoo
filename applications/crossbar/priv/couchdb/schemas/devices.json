@@ -102,7 +102,7 @@
         },
         "contact_list": {
             "default": {},
-            "description": "Contect List Parameters",
+            "description": "Contact List Parameters",
             "properties": {
                 "exclude": {
                     "description": "If set to true the device is excluded from the contact list",
@@ -188,9 +188,9 @@
             },
             "type": "object"
         },
-        "mwi_unsolicitated_updates": {
+        "mwi_unsolicited_updates": {
             "default": true,
-            "description": "When true enables unsolicitated mwi notifications",
+            "description": "When true enables unsolicited mwi notifications",
             "type": "boolean"
         },
         "name": {

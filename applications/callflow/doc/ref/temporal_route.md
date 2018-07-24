@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the temporal_route callflow's data object
+Validator for the temporal_route callflow data object
 
 
 

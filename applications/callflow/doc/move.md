@@ -6,7 +6,7 @@ Moves an existing call to the caller. Useful when you are on one of your devices
 
 #### Schema
 
-Validator for the move callflow's data object
+Validator for the move callflow data object
 
 
 

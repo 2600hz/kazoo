@@ -30,7 +30,7 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 4. Crossbar Load View
 
-    In order to reduce pagination problems, increase maintainability and standardizing Crossbar view operations on multiple databases and handling huge number of documents properly, [`crossbar_doc:load_view/3,4,5,6`](https://github.com/2600hz/kazoo/blob/873dc106c7a7330393201207eddc365837c3dbe6/applications/crossbar/src/crossbar_doc.erl#L15) has been deprecated in favor of new module `crossbar_view`. Please migrate your current Crossbar modules or write your new modules to use this new Corssbar view functionality.
+    In order to reduce pagination problems, increase maintainability and standardizing Crossbar view operations on multiple databases and handling huge number of documents properly, [`crossbar_doc:load_view/3,4,5,6`](https://github.com/2600hz/kazoo/blob/873dc106c7a7330393201207eddc365837c3dbe6/applications/crossbar/src/crossbar_doc.erl#L15) has been deprecated in favor of new module `crossbar_view`. Please migrate your current Crossbar modules or write your new modules to use this new Crossbar view functionality.
 
     Starting with Kazoo 4.2, helper functions for creating range view options in [`cb_mdule_utils`](https://github.com/2600hz/kazoo/blob/873dc106c7a7330393201207eddc365837c3dbe6/applications/crossbar/src/modules/cb_modules_util.erl#L23-L26) has been removed. Instead several options has been introduced in `crossbar_view` to generating correct range view options according to query string parameters or module's options and requested sort direction.
 
@@ -44,17 +44,17 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 2.  ACDc Crossbar endpoints moved
 
-    cb\_queues and cb\_agents have been moved to be part of ACDc's modules. Please know that you will need acdc present if you wish to use ACDc's Crossbar endpoints in a particular Erlang VM.
+    cb\_queues and cb\_agents have been moved to be part of ACDc's modules. Please know that you will need ACDc present if you wish to use ACDc's Crossbar endpoints in a particular Erlang VM.
 
 3. The configuration /etc/kazoo/core/vm.args should no longer be modified locally
 
-    Changes to vm.args is resulting in RPMnew files that will keep kazoo from starting - simply overwrite the vm.args with vm.args.rpmnew
+    Changes to vm.args is resulting in .rpmnew files that will keep kazoo from starting - simply overwrite the vm.args with vm.args.rpmnew
     
     Also, you should no longer edit vm.args all parameters are now pulled from config.ini.
 
 4. Kamailio Auto Discovery of FreeSWITCH servers
 
-    Kamilio will automatically manage the dispatcher list, drawn from the list of FreeSWITCH servers connected to eCallMgr.  To check the current status use the command: kazoo-Kamailio status
+    Kamailio will automatically manage the dispatcher list, drawn from the list of FreeSWITCH servers connected to ecallmgr.  To check the current status use the command: kazoo-Kamailio status
 
     > **Note:** Dbtext, /etc/kazoo/kamailio/dbtext, is no longer used.  You can override the automatic discovery and set the dispatcher list manually but you must use the SQL interface: KazooDB
     
@@ -90,7 +90,7 @@ This file will serve as a reference point for upcoming announcements, both of th
 
     As a consequence of this change, the auth token included in REST API responses has increased in size. If you were validating the length of the auth\_token key (or X-Auth-Token header in the response headers) you may need to remove or update that check (we recommend removing it!).
 
-7.  WebHooks
+7.  Webhooks
 
     Webhook trigger for federated messages is dropped. We now require that at least one instance of the webhooks app is running in each zone for the webhook to be triggered.
 
@@ -107,7 +107,7 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 9.  Voicemail Messages
 
-    Starting with Kazoo 4.0 all new voicemail messages goes into modb. All Kazoo Administrators need to migrate their voicemail messages from Kazoo versio 3.22 to MODB. There is maintenance command for this transition. For more information about this change please see documentation for the new kazoo\\\_voicemail core application and crossbar voicemail documentation.
+    Starting with Kazoo 4.0 all new voicemail messages goes into modb. All Kazoo Administrators need to migrate their voicemail messages from Kazoo version 3.22 to MODB. There is maintenance command for this transition. For more information about this change please see documentation for the new kazoo\\\_voicemail core application and crossbar voicemail documentation.
 
 10. Removing socket.io support from Websockets
 
@@ -130,7 +130,7 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 1.  FreeSWITCH 1.4.26+ / 1.6+
 
-    To upgrade to Kazoo-FreeSWITCH 1.4.26+ or FreeSWITCH 1.6+ you must set the system\\\_config/ecallmgr parameter `use_kazoo_dptools` to TRUE. Failure to do so may cause inconsistent channel information among eCallMgr nodes connected to the same FreeSWITCH instance. If you are using Kazoo-FreeSWITCH 1.4.x builds prior to .26 this parameter should be left as its default, FALSE.
+    To upgrade to Kazoo-FreeSWITCH 1.4.26+ or FreeSWITCH 1.6+ you must set the system\\\_config/ecallmgr parameter `use_kazoo_dptools` to TRUE. Failure to do so may cause inconsistent channel information among ecallmgr nodes connected to the same FreeSWITCH instance. If you are using Kazoo-FreeSWITCH 1.4.x builds prior to .26 this parameter should be left as its default, FALSE.
 
 2.  Monster UI Enabled Applications
 

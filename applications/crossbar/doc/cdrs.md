@@ -51,7 +51,7 @@ Key | Description | Type | Default | Required | Support Level
 `remote_sdp` | The SDP negotiated by the remote agent | `string()` |   | `false` |
 `request` | Built by Kazoo this is the processed request URI | `string()` |   | `false` |
 `ringing_seconds` | How many seconds the leg was ringing (pre-answer) | `string()` |   | `false` |
-`timestamp` | UTC timestamp, in gregorian seconds, of when the CDR was generated | `string()` |   | `false` |
+`timestamp` | UTC timestamp, in Gregorian seconds, of when the CDR was generated | `string()` |   | `false` |
 `to` | Built by Kazoo, depending on direction, to represent the To user | `string()` |   | `false` |
 `to_uri` | The To SIP URI | `string()` |   | `false` |
 `user_agent` | User agent header from SIP packet | `string()` |   | `false` |
@@ -143,7 +143,7 @@ curl -v -X GET \
 
 ## Fetch all legs related to an interaction
 
-Crossbar cdrs was extended to provide simplified interaction call detail records. It groups all CDRs that interacted with eachouther to form a list of calls.
+Crossbar cdrs was extended to provide simplified interaction call detail records. It groups all CDRs that interacted with each other to form a list of calls.
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}
 
@@ -178,7 +178,7 @@ These are properties set by Kazoo for internal purposes. These are the propertie
 
 * `account_id` - Account ID this leg belongs to
 * `authorizing_id` - Document ID used to authorize this call leg
-* `authorizing_type` - Type of ducument used to authorize call
+* `authorizing_type` - Type of document used to authorize call
   * `device` - the call leg is to/from a known Kazoo device
   * `mobile` - the call leg is to/from a known Kazoo mobile device
   * `resource` - the call leg is from a known offnet carrier
@@ -222,7 +222,7 @@ These properties may exist on a CDR for a fax request (inbound or outbound):
 
 All resource properties are set by the Stepswitch application.
 
-* `resource_type` - This property attemtps to explain the reason the resource was used.  The possible values are:
+* `resource_type` - This property attempts to explain the reason the resource was used.  The possible values are:
     * offnet-origination - Inbound call from a resource/carrier to a Kazoo account
     * offnet-termination - Outbound call from a Kazoo account to a resource/carrier
     * onnet-origination - Inbound call from a Kazoo account to another Kazoo account

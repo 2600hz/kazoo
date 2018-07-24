@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.call_waiting",
-    "description": "Validator for the call_waiting callflow's data object",
+    "description": "Validator for the call_waiting callflow data object",
     "properties": {
         "action": {
             "default": "toggle",

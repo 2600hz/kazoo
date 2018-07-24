@@ -71,7 +71,7 @@ Using the request above, you can configure the costs in the `crossbar` config in
          }
         }
 
-4. Deduct flat amount for an account for a specifc endpoint:
+4. Deduct flat amount for an account for a specific endpoint:
 
         {"_id":"crossbar"
          ,"default":{

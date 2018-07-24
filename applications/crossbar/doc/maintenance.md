@@ -49,7 +49,7 @@ sup crossbar_maintenance set_app_features AppId feature1@featureB@feat3
 sup crossbar_maintenance set_app_icon AppId PathToPNGIcon
 ```
 
-#### Update an app's screenshosts
+#### Update an app's screenshots
 
 ```shell
 sup crossbar_maintenance set_app_screenshots AppId PathToScreenshotsFolder

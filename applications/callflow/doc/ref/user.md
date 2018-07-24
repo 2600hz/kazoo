@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the user callflow's data object
+Validator for the user callflow data object
 
 
 

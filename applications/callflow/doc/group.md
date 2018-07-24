@@ -6,7 +6,7 @@ Creates a group of endpoints to be rung when a call comes in.
 
 #### Schema
 
-Validator for the group callflow's data object
+Validator for the group callflow data object
 
 
 

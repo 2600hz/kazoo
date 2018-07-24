@@ -25,7 +25,7 @@
 -export([blocking_refresh/0
         ,blocking_refresh/1
         ]).
--export([remove_depreciated_databases/0]).
+-export([remove_deprecated_databases/0]).
 -export([ensure_aggregate_devices/0
         ,ensure_aggregate_device/1
         ]).
@@ -151,9 +151,8 @@ migrate(Pause, Databases) ->
     io:format("updating dbs...~n"),
     _ = refresh(Databases, Pause),
 
-    %% Remove depreciated dbs
-    io:format("removing depreciated databases...~n"),
-    _  = remove_depreciated_databases(Databases),
+    io:format("removing deprecated databases...~n"),
+    _  = remove_deprecated_databases(Databases),
 
     _ = kazoo_bindings:map(binding('migrate'), [Accounts]),
 
@@ -272,14 +271,14 @@ refresh(Database) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec remove_depreciated_databases() -> 'ok'.
-remove_depreciated_databases() ->
+-spec remove_deprecated_databases() -> 'ok'.
+remove_deprecated_databases() ->
     Databases = get_databases(),
-    remove_depreciated_databases(Databases).
+    remove_deprecated_databases(Databases).
 
--spec remove_depreciated_databases(kz_term:ne_binaries()) -> 'ok'.
-remove_depreciated_databases([]) -> 'ok';
-remove_depreciated_databases([Database|Databases]) ->
+-spec remove_deprecated_databases(kz_term:ne_binaries()) -> 'ok'.
+remove_deprecated_databases([]) -> 'ok';
+remove_deprecated_databases([Database|Databases]) ->
     _ = case kz_datamgr:db_classification(Database) of
             'deprecated' ->
                 io:format("    archive and remove depreciated database ~s~n", [Database]),
@@ -287,7 +286,7 @@ remove_depreciated_databases([Database|Databases]) ->
                 maybe_delete_db(Database);
             _Else -> 'ok'
         end,
-    remove_depreciated_databases(Databases).
+    remove_deprecated_databases(Databases).
 
 %%------------------------------------------------------------------------------
 %% @doc

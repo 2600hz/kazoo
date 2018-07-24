@@ -32,7 +32,7 @@ Key | Description | Type | Default | Required | Support Level
 `children./.+/` |   | [#/definitions/callflows.action](#callflowsaction) |   | `false` |
 `children` | Children callflows | `object()` |   | `false` |
 `data` | The data/arguments of the callflow module | `object()` | `{}` | `true` |
-`module` | The name of the callflow module to excute at this node | `string(1..64)` |   | `true` |
+`module` | The name of the callflow module to execute at this node | `string(1..64)` |   | `true` |
 
 ### metaflow
 

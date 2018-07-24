@@ -1,10 +1,3 @@
-/*
-Section: Kazoo Number Manager
-Title: Number States
-Language: en-US
-Version: 3.20
-*/
-
 Numbers travel through a variety of states within Kazoo during their lifecycle.
 
 Let's enumerate those states and then see how they fit together!

@@ -33,9 +33,9 @@ knm_mdn: 1
 ```
 
 
-## convert_carrier_module_number Num Target
+## convert_carrier_module_number {NUM} Target
 
-* `Num`: a phone number convertible to E164 format
+* `{NUM}`: a phone number convertible to E164 format
 * `Target`: a valid carrier module name
 
 > sup kazoo_number_manager_maintenance convert_carrier_module_number 4152266659 knm_bandwid

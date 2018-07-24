@@ -6,7 +6,7 @@ Play media to the caller
 
 #### Schema
 
-Validator for the play callflow's data object
+Validator for the play callflow data object
 
 
 
@@ -30,6 +30,6 @@ If you want to play the media a number of times, include `loop_count` to do so.
 
 #### Endless Playback
 
-Endless playback is exactly that - playback of the media will not stop on the channel until the channel is hung up. The media is not interruptible.
+Endless playback is exactly that - playback of the media will not stop on the channel until the channel is hung up. The media is uninterruptible.
 
 `endless_playback=true` takes precedence over `loop_count>0` if both are included.

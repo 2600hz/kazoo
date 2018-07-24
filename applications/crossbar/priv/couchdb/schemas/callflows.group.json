@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.group",
-    "description": "Validator for the group callflow's data object",
+    "description": "Validator for the group callflow data object",
     "properties": {
         "endpoints": {
             "default": [],

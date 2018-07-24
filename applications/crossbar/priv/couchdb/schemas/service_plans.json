@@ -37,7 +37,7 @@
             "type": "array"
         },
         "merge": {
-            "description": "Optionally defines a strategy and priorty to merge multiple service plans together",
+            "description": "Optionally defines a strategy and priority to merge multiple service plans together",
             "properties": {
                 "priority": {
                     "description": "The priority among the service plans with the merge strategy",

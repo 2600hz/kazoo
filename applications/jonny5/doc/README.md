@@ -91,7 +91,7 @@ could also create one callback module (skel_handlers, for instance) with a
 handle_* function specific to each type of category/name pair.
 
 If you want to handle more than one type of name for a given category, you can
-use the <<"*">> to match any catgeory or name. So, if we expect multiple event
+use the <<"*">> to match any category or name. So, if we expect multiple event
 names for the dialplan category, and we want to use the same handler for each,
 we could denote that like:
 
@@ -111,7 +111,7 @@ sent to gen_listener, use this if you need different values than in
 lib/kazoo_amqp-1.0.0/src/amqp_util.erl, the new_queue/2 function. This list
 controls how the broker creates the queue.
 
-consume_options: Ommitable as well, these options control how consupmtion from
+consume_options: Omittable as well, these options control how consumption from
 the queue will be managed (see basic_consume/2 in amqp_util.erl).
 
 basic_qos: Only needed if you need to control prefetch count from the queue to

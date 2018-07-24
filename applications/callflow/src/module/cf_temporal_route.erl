@@ -418,7 +418,7 @@ enable_temporal_rules(Temporal, [RuleId|T]=Rules, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc determines the appropriate gregorian seconds to be used as the
+%% @doc determines the appropriate Gregorian seconds to be used as the
 %% current date/time for this temporal route selection
 %% @end
 %%------------------------------------------------------------------------------

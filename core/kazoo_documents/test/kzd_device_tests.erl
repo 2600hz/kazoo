@@ -248,7 +248,7 @@ test_device_param_setting() ->
             ,{<<"fax_machine">>, fun kzd_devices:set_device_type/2, fun kzd_devices:device_type/1}
             ,{<<"user0000000000000000000000000002">>, fun kzd_devices:set_owner_id/2, fun kzd_devices:owner_id/1}
             ,{'false', fun kzd_devices:set_enabled/2, fun kzd_devices:enabled/1}
-            ,{'false', fun kzd_devices:set_mwi_unsolicitated_updates/2, fun kzd_devices:mwi_unsolicitated_updates/1}
+            ,{'false', fun kzd_devices:set_mwi_unsolicited_updates/2, fun kzd_devices:mwi_unsolicited_updates/1}
             ],
 
     [?_assertEqual(Value, Get(Set(Device, Value))) || {Value, Set, Get} <- Setup].

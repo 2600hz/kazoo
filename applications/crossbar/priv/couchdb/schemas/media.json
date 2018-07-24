@@ -30,7 +30,7 @@
             "type": "string"
         },
         "description": {
-            "description": "A breif description of the media update, usally the original file name",
+            "description": "A brief description of the media update, usually the original file name",
             "maxLength": 128,
             "minLength": 1,
             "support_level": "supported",

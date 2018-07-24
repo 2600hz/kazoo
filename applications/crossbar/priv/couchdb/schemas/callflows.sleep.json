@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.sleep",
-    "description": "Validator for the sleep callflow's data object",
+    "description": "Validator for the sleep callflow data object",
     "properties": {
         "duration": {
             "default": 0,

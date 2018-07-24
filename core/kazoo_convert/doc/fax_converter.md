@@ -9,7 +9,7 @@ Fax machines negotiate image parameters via the `T.30` protocol (sometimes overl
 
 Ultimately, faxes are just an antiquated method to exchange tiff files, which are then printed (or otherwise handled) on the receiving side. On transmission information is exchanged like the acceptable dimensions of the tiff file and file resolution. On receipt, most fax machines will shrink a larger format document to fit on one page, or print multiple pages, but some will simply reject larger images. Generally this negotiation is based on the page sizes that are supported, we are talking about actual paper here now... yeah.
 
-### Tiff File Fomrat
+### Tiff File Format
 
 In order to ensure maximum compatibility, and a higher chance of a successful delivery of a fax, by default, the `fax_converter` will format all files received into tiff files following a standards compliant fax compatible format. All documents are converted using `CCITT Group 4 compression`, with dimensions of `1728x1078` at a resolution of `204x98` PPI. This is done on every conversion to tiff format. This behavior is configurable via the converter commands configurations.
 
@@ -123,7 +123,7 @@ convert $FROM \
 
 #### Requirements
 
-These command requires the system support the `convert` command, this is installed via the package `ImageMagick` in Centos7 and Debian8.
+These command requires the system support the `convert` command, this is installed via the package `ImageMagick` in CentOS7 and Debian8.
 
 ## Tiff to PDF
 
@@ -137,7 +137,7 @@ tiff2pdf -o $FROM $TO
 
 #### Requirements
 
-This command requires `tiff2pdf` be installed, this is installed via the package `libtifftools` in Centos7 and `libtiff-tools` in Debian8.
+This command requires `tiff2pdf` be installed, this is installed via the package `libtifftools` in CentOS7 and `libtiff-tools` in Debian8.
 
 ## Pdf to Tiff
 
@@ -160,14 +160,14 @@ The default command is:
 
 #### Requirements
 
-This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in Centos7 and Debian8.
+This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in CentOS7 and Debian8.
 
 
 ## OpenOffice compatible to PDF
 
 The configuration for this command is `fax.convert_openoffice_command`. This command is invoked when conversion from any openoffice compatible format is requested. For this feature to be used, `fax.enable_openoffice` must be set in the `kazoo_convert` configuration. If openoffice compatible format conversions are enabled, by default openoffice conversions are serialized, this can be changed by setting `fax.serialize_openoffice` to false.
 
-mimetypes that will use this converter include:
+MIME types that will use this converter include:
 
  - `application/vnd.openxmlformats-officedocument.*`
  - `application/vnd.oasis.opendocument.*`
@@ -188,7 +188,7 @@ libreoffice \
 
 ### Requirements
 
-This command requires `libreoffice` via package `libreoffice-core` in Centos7 and `libreoffice-common` in Debian8.
+This command requires `libreoffice` via package `libreoffice-core` in CentOS7 and `libreoffice-common` in Debian8.
 
 ## Default Validate Commands
 
@@ -214,7 +214,7 @@ tiffinfo $FILE
 
 #### Requirements
 
-This command requires `tiffinfo` be installed, this is installed via the package `libtifftools` in Centos7 and `libtiff-tools` in Debian8.
+This command requires `tiffinfo` be installed, this is installed via the package `libtifftools` in CentOS7 and `libtiff-tools` in Debian8.
 
 ### Validate PDF Command
 
@@ -228,7 +228,7 @@ gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE
 
 #### Requirements
 
-This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in Centos7 and Debian8.
+This command requires `ghostscript` be installed, this is installed via the package `ghostscript` in CentOS7 and Debian8.
 
 ### Sup Commands
 

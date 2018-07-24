@@ -6,7 +6,7 @@ Answers the call and switches media off. Could be useful for external calls/conf
 
 #### Schema
 
-Validator for the dead_air callflow's data object
+Validator for the dead_air callflow data object
 
 
 

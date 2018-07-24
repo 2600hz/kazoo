@@ -10,7 +10,7 @@ The Kazoo IPs library creates and manages a database called dedicated_ips.  Each
 The Kazoo IPs library can be configured on the system_config/ips document.
 
 
-The configuration parameter `zone_name_map` allows system adminstrators to map the internal zone name to a more friendly zone name that might be used on the dedidicated IPs.  For example, if a cluster was comprised of `zone_1` and `zone_2` but the dedicated IPs where using terminology such as `west` or `east` this parameter should be used to make the associations.  An example using these values would be:
+The configuration parameter `zone_name_map` allows system administrators to map the internal zone name to a more friendly zone name that might be used on the dedicated IPs.  For example, if a cluster was comprised of `zone_1` and `zone_2` but the dedicated IPs where using terminology such as `west` or `east` this parameter should be used to make the associations.  An example using these values would be:
 
 ```
    "default": {

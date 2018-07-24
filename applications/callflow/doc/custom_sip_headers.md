@@ -2,7 +2,7 @@
 
 You can control SIP headers on the `INVITE` to the device or SIP headers on the `INVITE` as a result of a call initiated by the device, by setting `custom_sip_headers` object with the new format.
 
-> **For compatibility reason**, the pervious flat object format (basic key value) is still supported by merging its contents with the contents of `in` object of the new format. The result is set for SIP headers on the `INVITE` to a device and not on other calls.
+> **For compatibility reason**, the previous flat object format (basic key value) is still supported by merging its contents with the contents of `in` object of the new format. The result is set for SIP headers on the `INVITE` to a device and not on other calls.
 
 #### Configuring custom SIP headers
 To set custom SIP headers for calls to/from a device specify desire headers in `custom_sip_headers` in the device document as follow:

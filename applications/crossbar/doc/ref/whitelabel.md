@@ -14,7 +14,7 @@ Key | Description | Type | Default | Required | Support Level
 `domain` | This is the whitelabeled domain that users will be entering to reach the UI | `string()` |   | `false` | `supported`
 `fake_api_url` | This is a whitelabeled API URL, primarily used by the developer application | `string()` |   | `false` | `beta`
 `hide_credits` | When checked this hides the credits | `boolean()` | `false` | `false` | `beta`
-`hide_powered` | When checked this hides the powered by 2600hz on the bottom right | `boolean()` | `false` | `false` | `supported`
+`hide_powered` | When checked this hides the powered by 2600Hz on the bottom right | `boolean()` | `false` | `false` | `supported`
 `hide_registration` | When checked this hides the ability to register for a new account | `boolean()` | `false` | `false` | `beta`
 `inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 `nav.help` | The URL to use when the help link is clicked | `string()` |   | `false` | `supported`
@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 `port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` | `supported`
 `port.support_email` | The support email address to display to the user | `string()` |   | `false` | `supported`
 `port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` | `supported`
-`port` | Parameters releated to whitelabeling port requests | `object()` |   | `false` |  
+`port` | Parameters related to white-labeling port requests | `object()` |   | `false` |  
 `twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 
 

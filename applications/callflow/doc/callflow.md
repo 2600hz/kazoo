@@ -6,7 +6,7 @@ Branches the current call to another callflow.
 
 #### Schema
 
-Validator for the callflow callflow's data object
+Validator for the callflow callflow data object
 
 
 

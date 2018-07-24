@@ -6,7 +6,7 @@ Attempt to bridge the caller to all of a user's devices
 
 #### Schema
 
-Validator for the user callflow's data object
+Validator for the user callflow data object
 
 
 

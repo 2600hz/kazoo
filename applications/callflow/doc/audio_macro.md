@@ -13,7 +13,7 @@ There are four types of media that can be included:
 
 #### Schema
 
-Validator for the audio_macro callflow's data object
+Validator for the audio_macro callflow data object
 
 
 
@@ -67,7 +67,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ### callflows.play
 
-Validator for the play callflow's data object
+Validator for the play callflow data object
 
 
 Key | Description | Type | Default | Required | Support Level

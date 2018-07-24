@@ -6,7 +6,7 @@ The `privacy` callflow enables set caller privacy on calls, restricting the pres
 
 #### Schema
 
-Validator for the privacy callflow's data object
+Validator for the privacy callflow data object
 
 
 

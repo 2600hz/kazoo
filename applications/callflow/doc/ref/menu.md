@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the menu callflow's data object
+Validator for the menu callflow data object
 
 
 

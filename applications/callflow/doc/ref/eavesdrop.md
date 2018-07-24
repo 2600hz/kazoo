@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the eavesdrop callflow's data object
+Validator for the eavesdrop callflow data object
 
 
 

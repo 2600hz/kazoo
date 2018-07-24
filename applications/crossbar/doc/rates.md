@@ -45,7 +45,7 @@ Key | Description | Type | Default | Required | Support Level
 `rate_version` | Rate version | `string()` |   | `false` |
 `ratedeck_id` | ID of the ratedeck this rate belongs to | `string()` |   | `false` |
 `routes.[]` |   | `string()` |   | `false` |
-`routes` | List of regexs that match valid DIDs for this rate | `array(string())` |   | `false` |
+`routes` | List of regexps that match valid DIDs for this rate | `array(string())` |   | `false` |
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer()` |   | `false` |
 
 
@@ -82,7 +82,7 @@ curl -v -X GET \
 
 Switch the `Accept` header to `text/csv` to get the page as a CSV.
 
-## Upload a RateDeck CSV
+## Upload a Ratedeck CSV
 
 Uploading CSVs has moved to using the ['tasks'](./tasks.md) API, which provides a more generic interface. See the [rates task documentation](../../tasks/doc/rates.md) for more details on uploading rates.
 

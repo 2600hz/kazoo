@@ -135,7 +135,7 @@
         },
         "use_first_dedicated_proxy_only": {
             "default": true,
-            "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usally local to the call).",
+            "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usually local to the call).",
             "type": "boolean"
         }
     },

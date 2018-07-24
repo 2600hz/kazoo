@@ -6,7 +6,7 @@ Feature code to toggle what group (group, user, device, extension) to pick up a 
 
 #### Schema
 
-Validator for the group_pickup_feature callflow's data object
+Validator for the group_pickup_feature callflow data object
 
 
 

@@ -19,7 +19,7 @@
 -define(VM_NO_NEW_MESSAGES, <<"terminated">>).
 -define(VM_HAS_NEW_MESSAGES, <<"confirmed">>).
 
--define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
+-define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsolicited_updates">>).
 
 %%------------------------------------------------------------------------------
 %% @doc Generate database name based on DocId
@@ -109,7 +109,7 @@ maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) ->
         andalso 'undefined' =/= Username
         andalso 'undefined' =/= Realm
         andalso 'undefined' =/= OwnerId
-        andalso kzd_devices:mwi_unsolicitated_updates(J)
+        andalso kzd_devices:mwi_unsolicited_updates(J)
     of
         'true' -> send_unsolicited_mwi_update(New, Saved, Username, Realm);
         'false' -> 'ok'
@@ -137,7 +137,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
 
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
-    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:mwi_unsolicitated_updates(JObj)).
+    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:mwi_unsolicited_updates(JObj)).
 
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object(), boolean()) -> 'ok'.
 maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->

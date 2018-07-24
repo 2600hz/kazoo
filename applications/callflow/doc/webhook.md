@@ -6,7 +6,7 @@ Send a custom webhook to your web server during the callflow.
 
 #### Schema
 
-Validator for the webhook callflow's data object
+Validator for the webhook callflow data object
 
 
 

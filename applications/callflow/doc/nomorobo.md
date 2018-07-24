@@ -2,7 +2,7 @@
 
 ### About Nomorobo
 
-Connect to [Nomorobo](https://www.nomorobo.com/) and get a spam score on the caller. Branch based on likelyhood of the call being spam.
+Connect to [Nomorobo](https://www.nomorobo.com/) and get a spam score on the caller. Branch based on likelihood of the call being spam.
 
 #### Schema
 

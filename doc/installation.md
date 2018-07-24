@@ -118,7 +118,7 @@ The SUP command (`sup`) is found under `core/sup/priv/sup` and should be copied 
 sudo ln -s core/sup/priv/sup /usr/bin/sup
 ```
 
-Make sure that the path to Kazoo's intallation directory is right (in `/usr/bin/sup`). Otherwise you can change it by setting the `KAZOO_ROOT` environment variable (not set by default). If one needs `KAZOO_ROOT`, an alias should be created:
+Make sure that the path to Kazoo's installation directory is right (in `/usr/bin/sup`). Otherwise you can change it by setting the `KAZOO_ROOT` environment variable (not set by default). If one needs `KAZOO_ROOT`, an alias should be created:
 
 ```shell
 alias sup='KAZOO_ROOT=/opt/kazoo sup'

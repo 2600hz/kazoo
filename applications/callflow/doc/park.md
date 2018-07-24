@@ -6,7 +6,7 @@ Parking will place a call in a numbered "slot" where it will remain until it is 
 
 ### Schema
 
-Validator for the park callflow's data object
+Validator for the park callflow data object
 
 Key | Description | Type | Default | Required | Support
 --- | ----------- | ---- | ------- | -------- | --------
@@ -26,7 +26,7 @@ Some call parking parameters can be configured in a number of ways:
 * The parameters `default_ringback_timeout`, `default_callback_timeout` and `default_presence_type` can be set for all slots accessed by a callflow in the flow data.
 * The parameters `ringback_timeout`, `callback_timeout` and `presence_type` can be set per-slot as accessed by a callflow in the flow data `slots` object.
 
-The presence type parameter has some inconsistant naming for backwards compatability but `park_presence_type` and `default_presence_type` are modifying the same behaviour.
+The presence type parameter has some inconsistent naming for backwards compatibility but `park_presence_type` and `default_presence_type` are modifying the same behaviour.
 
 If the action's data object defines the fields, they will override system- or account-specific configs.
 

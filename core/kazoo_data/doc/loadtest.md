@@ -31,7 +31,7 @@ The table below shows that for N processes accessing a nonexistent key, there wi
 Briefly:
 
 - `none`: stampedes on a non-existing cache key will result in database calls for every request until the cache is populated. It will also cause mailbox pressure on the cache process as the `stores` come in from the requests. This can backup / crash the processes requesting the data (due to `store` being a blocking operation).
-- `async`: simlilar to `none`, stampeding processes will result in database calls for every request. However, the processes won't block waiting for the `store` to complete. Mailbox pressure will still exist on the cache process.
+- `async`: similar to `none`, stampeding processes will result in database calls for every request. However, the processes won't block waiting for the `store` to complete. Mailbox pressure will still exist on the cache process.
 - `stampede`: stampedes on a non-existing cache key will result in a single database request. All other processes will block until that request is populated in the cache. A single `store` will be put in the cache's mailbox. However, the `monitor` table will see some activity as each process that blocks on the key writes an entry to the `monitor` table.
 - `stampede_async`: stampedes will result in database requests for each process, similar to `none` and `async`. However, the `store` will first try to lock the key; if successful the process will issue the an async `store`. If the process fails to get the lock, it will ignore storing the value and continue.
 

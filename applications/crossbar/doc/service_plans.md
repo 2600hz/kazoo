@@ -499,7 +499,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/current
 
-This will retreive the service plan currenlty applied on your account.
+This will retrieve the service plan currently applied on your account.
 
 ```shell
 curl -v -X GET \

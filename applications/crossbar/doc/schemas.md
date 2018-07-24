@@ -149,7 +149,7 @@ curl -v -X GET \
             }
         },
         "required": [
-            "cird",
+            "cidr",
             "network-list-name",
             "type"
         ],

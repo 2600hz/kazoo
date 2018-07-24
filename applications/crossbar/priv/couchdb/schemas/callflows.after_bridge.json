@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.after_bridge",
-    "description": "Validator for the after_bridge callflow's data object",
+    "description": "Validator for the after_bridge callflow data object",
     "properties": {
         "action": {
             "description": "What action to perform after a call is bridged",

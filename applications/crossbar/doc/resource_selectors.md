@@ -15,8 +15,8 @@ Key | Description | Type | Default | Required | Support Level
 `name` | Selector name | `string()` |   | `true` |
 `resource` | Resource ID | `string()` |   | `true` |
 `selector` | Selector data | `string()` |   | `true` |
-`start_time` | Start time (gregorian seconds) | `integer()` |   | `false` |
-`stop_time` | Stop time (gregorian seconds) | `integer()` |   | `false` |
+`start_time` | Start time (Gregorian seconds) | `integer()` |   | `false` |
+`stop_time` | Stop time (Gregorian seconds) | `integer()` |   | `false` |
 `value` | Extra selector data | `string()` |   | `false` |
 
 
@@ -300,7 +300,7 @@ Here we see selectors for resource `RES-4` with selector name `lcr`. Resulted li
 
 Manage (import/delete) resource selectors made via kazoo tasks (CSV file).
 
-Category `resourse_selectors`, action `import` or `delete`.
+Category `resource_selectors`, action `import` or `delete`.
 
 CSV columns:
 * `mandatory`

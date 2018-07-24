@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the move callflow's data object
+Validator for the move callflow data object
 
 
 

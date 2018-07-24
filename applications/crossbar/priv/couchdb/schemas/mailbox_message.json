@@ -40,7 +40,7 @@
             "type": "string"
         },
         "timestamp": {
-            "description": "The UTC timestamp, in gregorian seconds, that the message was left on",
+            "description": "The UTC timestamp, in Gregorian seconds, that the message was left on",
             "type": "integer"
         },
         "to": {

@@ -13,21 +13,21 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * Have a look at our:
   * [KAZOO developer documentation](https://docs.2600hz.com/dev/)
   * [UI developer documentation](https://docs.2600hz.com/ui/)
-  * [System adminstrator documentation](https://docs.2600hz.com/sysadmin/)
+  * [System administrator documentation](https://docs.2600hz.com/sysadmin/)
   * [User guides](https://forums.2600hz.com/forums/kazoo-platform-guides/index/)
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
 * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
 * Join our [community](https://forums.2600hz.com/forums/)
-* Read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos and [pull requests](https://help.github.com/articles/using-pull-requests/).
+* Read GitHub's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos and [pull requests](https://help.github.com/articles/using-pull-requests/).
 * [Learn you some Erlang!](http://learnyousomeerlang.com/)
 * Bookmark this awesome [Erlang reference/docs](http://erldocs.com/) site
 * Check out the [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/FreeSWITCH+Explained)
 * Take a look at the [Kamailio documentation](https://www.kamailio.org/w/documentation/)
 * Learn all about [AMQP basics](https://www.rabbitmq.com/tutorials/amqp-concepts.html)
 * Get introduced to [CouchDB/Bigcouch](http://docs.couchdb.org/)
-* Get some pointers to using [CouchDB/Bigcouch views](http://guide.couchdb.org/draft/cookbook.html)
+* Get some pointers to using [CouchDB/BigCouch views](http://guide.couchdb.org/draft/cookbook.html)
 * Learn about [GIT branching](https://learngitbranching.js.org/)
-* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
+* Check out our JavaScript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
 * Check out some existing SDKs [PHP](https://github.com/2600Hz/kazoo-php-sdk) | [PYTHON](https://github.com/2600hz/kazoo-python-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk)
 
 ## Developer
@@ -49,8 +49,8 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 
 ## Operator
 
-* [eCallMgr Configuration](/applications/ecallmgr/doc/config.md)
-* [eCallMgr Maintenance Commands](/ecallmgr/doc/maintenance.md)
+* [ecallmgr Configuration](/applications/ecallmgr/doc/config.md)
+* [ecallmgr Maintenance Commands](/ecallmgr/doc/maintenance.md)
 * [Managing ACLs](/applications/ecallmgr/doc/acls.md)
 * [Couch Compaction](/core/kazoo_couch/doc/compaction.md)
 * [Internationalization Examples](/doc/internationalization/)

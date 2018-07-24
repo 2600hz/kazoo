@@ -705,7 +705,7 @@ gateway_to_endpoint(DestinationNumber
         ])).
 
 
--spec sip_invite_parameters(gateway(), kz_json:object()) -> kz_term:ne_binaries().
+-spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
 sip_invite_parameters(Gateway, OffnetJObj) ->
     static_sip_invite_parameters(Gateway)
         ++ dynamic_sip_invite_parameters(Gateway, OffnetJObj).
@@ -715,7 +715,8 @@ static_sip_invite_parameters(#gateway{invite_parameters='undefined'}) -> [];
 static_sip_invite_parameters(#gateway{invite_parameters=Parameters}) ->
     kz_json:get_list_value(<<"static">>, Parameters, []).
 
--spec dynamic_sip_invite_parameters(gateway(), kz_json:object()) -> kz_term:ne_binaries().
+-spec dynamic_sip_invite_parameters(gateway(), kapi_offnet_resource:req()) ->
+                                           kz_term:ne_binaries().
 dynamic_sip_invite_parameters(#gateway{invite_parameters='undefined'}, _) -> [];
 dynamic_sip_invite_parameters(#gateway{invite_parameters=Parameters}, OffnetJObj) ->
     CCVs = kz_json:normalize(kapi_offnet_resource:requestor_custom_channel_vars(OffnetJObj, kz_json:new())),
@@ -740,11 +741,11 @@ dynamic_sip_invite_parameters([JObj|Keys], CCVs, CSHs, Parameters) ->
     'true' = kz_json:is_json_object(JObj),
     Key = kz_json:get_ne_value(<<"key">>, JObj),
     Tag = kz_json:get_ne_value(<<"tag">>, JObj),
-    Seperator = kz_json:get_value(<<"seperator">>, JObj, <<"=">>),
+    Separator = kz_json:get_first_defined([<<"separator">>, <<"seperator">>], JObj, <<"=">>),
     case dynamic_sip_invite_value(Key, CCVs, CSHs) of
         'undefined' -> dynamic_sip_invite_parameters(Keys, CCVs, CSHs, Parameters);
         Value ->
-            Parameter = erlang:iolist_to_binary([Tag, Seperator, Value]),
+            Parameter = erlang:iolist_to_binary([Tag, Separator, Value]),
             lager:debug("adding dynamic invite parameter ~s", [Parameter]),
             dynamic_sip_invite_parameters(Keys, CCVs, CSHs, [Parameter|Parameters])
     end.

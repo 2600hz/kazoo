@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the edr callflow's data object
+Validator for the edr callflow data object
 
 
 

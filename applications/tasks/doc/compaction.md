@@ -1,6 +1,6 @@
 # Database Compaction
 
-Because CouchDb/BigCouch uses an append-only file to write changes to, you must monitor the size of those files on disk and periodically *compact* them. Compaction is the process of taking all the current revisions in the file and writing a new file with just the *active* documents, effectively deleting all old revisions. Compaction can have dramatic results in recovered disk space and performance (as seek times are reduced on smaller files).
+Because CouchDB/BigCouch uses an append-only file to write changes to, you must monitor the size of those files on disk and periodically *compact* them. Compaction is the process of taking all the current revisions in the file and writing a new file with just the *active* documents, effectively deleting all old revisions. Compaction can have dramatic results in recovered disk space and performance (as seek times are reduced on smaller files).
 
 ## Automatic Compaction
 
@@ -28,7 +28,7 @@ Key | Description | Type | Default | Required
 `sleep_between_compaction` | kazoo_couch sleep between compaction | `integer` | `60000` | `false`
 `sleep_between_poll` | kazoo_couch sleep between poll | `integer` | `3000` | `false`
 `sleep_between_views` | kazoo_couch sleep between views | `integer` | `2000` | `false`
-`use_bigcouch_direct` | kazoo_couch use bigcouch direct | `boolean` | `true` | `false`
+`use_bigcouch_direct` | kazoo_couch use BigCouch direct | `boolean` | `true` | `false`
 
 ## Operations
 

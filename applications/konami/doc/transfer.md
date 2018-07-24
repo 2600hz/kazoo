@@ -5,11 +5,11 @@
 ### Terminology
 _2600hz:_ We are an open-source organization building large scale telecommunications software to disrupt the industry.
 
-_Kazoo:_ This is our platform which provides telecommunications services.  Available to everyone on [github](https://github.com/2600hz/kazoo), 2600hz also offers a hosted Kazoo service.
+_Kazoo:_ This is our platform which provides telecommunications services.  Available to everyone on [github](https://github.com/2600hz/kazoo), 2600Hz also offers a hosted Kazoo service.
 
 _Kazoo API:_  The Kazoo platform exposes REST HTTP interfaces for configuration, call control, maintenance, and integration.
 
-_Konami:_ A Kazoo application that listens to digits in active calls and detects pre-programed patters which are associated with actions.
+_Konami:_ A Kazoo application that listens to digits in active calls and detects pre-programmed patters which are associated with actions.
 
 ### Purpose
 The purpose is of this project is to allow callers to preform an attended transfer from their mobile device.
@@ -45,7 +45,7 @@ Alice doesn't have to speak with Carol first, of course. She could initiate the 
 
 #### What if Alice misdials
 
-In the case that Alice dials an number that doesnt answer or rings but does answer, Alice will be reconnected with Bob once the attempt fails.
+In the case that Alice dials an number that doesn't answer or rings but does answer, Alice will be reconnected with Bob once the attempt fails.
 
 #### Cancel a transfer
 
@@ -57,7 +57,7 @@ Using the current Kazoo API, a program would need to acquire an authentication t
 
 #### Initiating Transfer
 
-The POST payload will be a JSON object that determines which number to initite the transfer to and the URL will contain the call-id of the transferor's call.
+The POST payload will be a JSON object that determines which number to initiate the transfer to and the URL will contain the call-id of the transferor's call.
 
 #### Partial Transfer
 
@@ -65,11 +65,11 @@ The user can preform a partial transfer by ending the call once the transfer has
 
 #### Cancel a Transfer
 
-Canceling a transfer via the API is not supported in the scope of this work.  However, if the resume Konami code is enabled on the account, the transfor can dial the in-call feature code to cancle the transfer and reconnect to the original caller.
+Canceling a transfer via the API is not supported in the scope of this work.  However, if the resume Konami code is enabled on the account, the transferor can dial the in-call feature code to cancel the transfer and reconnect to the original caller.
 
 ### Configuration
 
-An admin will be required to enable both the resume and transfer Konami metaflows for each account via the UI inorder to support in-call transfers.
+An admin will be required to enable both the resume and transfer Konami metaflows for each account via the UI in order to support in-call transfers.
 
 The API transfer capability will be available to any authenticated API requests and has not specific configuration.
 

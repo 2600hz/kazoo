@@ -5,7 +5,7 @@
     "properties": {
         "attempts": {
             "default": 0,
-            "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+            "description": "The number of attempts made, this will be set by the system and reset automatically on put/post",
             "maximum": 4,
             "minimum": 0,
             "type": "integer"
@@ -100,7 +100,7 @@
                             "description": "Inbound Email Notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -119,7 +119,7 @@
                             "description": "SMS notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of sms recipent(s)",
+                                    "description": "A list or string of sms recipient(s)",
                                     "items": {
                                         "type": "string"
                                     },
@@ -171,7 +171,7 @@
                             "description": "Email notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -190,7 +190,7 @@
                             "description": "SMS notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of sms recipent(s)",
+                                    "description": "A list or string of sms recipient(s)",
                                     "items": {
                                         "type": "string"
                                     },

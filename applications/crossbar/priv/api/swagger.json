@@ -24,7 +24,7 @@
                     "type": "string"
                 },
                 "user_agent": {
-                    "description": "RegExp to match valid user agent strings",
+                    "description": "Regexp to match valid user agent strings",
                     "type": "string"
                 }
             },
@@ -355,7 +355,7 @@
             "properties": {
                 "dialog_subscribed_mwi_prefix": {
                     "default": "*98",
-                    "description": "prefix used when subsribing vm updates for dialog",
+                    "description": "prefix used when subscribing vm updates for dialog",
                     "type": "string"
                 }
             },
@@ -539,7 +539,7 @@
                                     "type": "boolean"
                                 },
                                 "last_notification": {
-                                    "description": "Timestamp, in gregorian seconds, of when the last low_balance alert was sent",
+                                    "description": "Timestamp, in Gregorian seconds, of when the last low_balance alert was sent",
                                     "type": "integer"
                                 },
                                 "sent_low_balance": {
@@ -1188,7 +1188,7 @@
                     "type": "string"
                 },
                 "start": {
-                    "description": "start timestamp, in gregorian seconds",
+                    "description": "start timestamp, in Gregorian seconds",
                     "name": "start",
                     "type": "integer"
                 },
@@ -1320,7 +1320,7 @@
             "type": "object"
         },
         "callflows.acdc_agent": {
-            "description": "Validator for the acdc_agent callflow's data object",
+            "description": "Validator for the acdc_agent callflow data object",
             "properties": {
                 "action": {
                     "description": "Set which action to perform",
@@ -1356,7 +1356,7 @@
             "type": "object"
         },
         "callflows.acdc_member": {
-            "description": "Validator for the acdc_member callflow's data object",
+            "description": "Validator for the acdc_member callflow data object",
             "properties": {
                 "id": {
                     "description": "ID of the ACDc Queue",
@@ -1370,7 +1370,7 @@
             "type": "object"
         },
         "callflows.acdc_queue": {
-            "description": "Validator for the acdc_queue callflow's data object",
+            "description": "Validator for the acdc_queue callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform on the agent for this queue",
@@ -1388,7 +1388,7 @@
             "type": "object"
         },
         "callflows.acdc_wait_time": {
-            "description": "Validator for the acdc_wait_time callflow's data object",
+            "description": "Validator for the acdc_wait_time callflow data object",
             "properties": {
                 "id": {
                     "description": "Queue ID",
@@ -1414,7 +1414,7 @@
                     "type": "object"
                 },
                 "module": {
-                    "description": "The name of the callflow module to excute at this node",
+                    "description": "The name of the callflow module to execute at this node",
                     "maxLength": 64,
                     "minLength": 1,
                     "type": "string"
@@ -1427,7 +1427,7 @@
             "type": "object"
         },
         "callflows.after_bridge": {
-            "description": "Validator for the after_bridge callflow's data object",
+            "description": "Validator for the after_bridge callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform after a call is bridged",
@@ -1449,7 +1449,7 @@
             "type": "object"
         },
         "callflows.audio_macro": {
-            "description": "Validator for the audio_macro callflow's data object",
+            "description": "Validator for the audio_macro callflow data object",
             "properties": {
                 "language": {
                     "description": "The language of the speaker",
@@ -1711,12 +1711,12 @@
             "type": "object"
         },
         "callflows.branch_bnumber": {
-            "description": "Validator for the branch_bnumber callflow's data object",
+            "description": "Validator for the branch_bnumber callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.branch_variable": {
-            "description": "Validator for the branch_variable callflow's data object",
+            "description": "Validator for the branch_variable callflow data object",
             "properties": {
                 "scope": {
                     "default": "custom_channel_vars",
@@ -1742,7 +1742,7 @@
             "type": "object"
         },
         "callflows.call_forward": {
-            "description": "Validator for the call_forward callflow's data object",
+            "description": "Validator for the call_forward callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform on the caller's call forwarding",
@@ -1759,7 +1759,7 @@
             "type": "object"
         },
         "callflows.call_waiting": {
-            "description": "Validator for the call_waiting callflow's data object",
+            "description": "Validator for the call_waiting callflow data object",
             "properties": {
                 "action": {
                     "default": "toggle",
@@ -1784,7 +1784,7 @@
             "type": "object"
         },
         "callflows.callflow": {
-            "description": "Validator for the callflow callflow's data object",
+            "description": "Validator for the callflow callflow data object",
             "properties": {
                 "id": {
                     "description": "The Callflow ID to branch to",
@@ -1794,12 +1794,12 @@
             "type": "object"
         },
         "callflows.camping_feature": {
-            "description": "Validator for the camping_feature callflow's data object",
+            "description": "Validator for the camping_feature callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.check_cid": {
-            "description": "Validator for the check_cid callflow's data object",
+            "description": "Validator for the check_cid callflow data object",
             "properties": {
                 "caller_id": {
                     "properties": {
@@ -1837,7 +1837,7 @@
             "type": "object"
         },
         "callflows.cidlistmatch": {
-            "description": "Validator for the cidlistmatch callflow's data object",
+            "description": "Validator for the cidlistmatch callflow data object",
             "properties": {
                 "id": {
                     "description": "CallerID List ID",
@@ -1968,7 +1968,7 @@
             "type": "object"
         },
         "callflows.dead_air": {
-            "description": "Validator for the dead_air callflow's data object",
+            "description": "Validator for the dead_air callflow data object",
             "properties": {},
             "type": "object"
         },
@@ -2017,7 +2017,7 @@
             "type": "object"
         },
         "callflows.directory": {
-            "description": "Validator for the directory callflow's data object",
+            "description": "Validator for the directory callflow data object",
             "properties": {
                 "id": {
                     "description": "Directory ID",
@@ -2027,12 +2027,12 @@
             "type": "object"
         },
         "callflows.disa": {
-            "description": "Validator for the disa callflow's data object",
+            "description": "Validator for the DISA callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.do_not_disturb": {
-            "description": "Validator for the do_not_disturb callflow's data object",
+            "description": "Validator for the do_not_disturb callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform",
@@ -2051,7 +2051,7 @@
             "type": "object"
         },
         "callflows.dynamic_cid": {
-            "description": "Validator for the dynamic_cid callflow's data object",
+            "description": "Validator for the dynamic_cid callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform",
@@ -2114,7 +2114,7 @@
             "type": "object"
         },
         "callflows.eavesdrop": {
-            "description": "Validator for the eavesdrop callflow's data object",
+            "description": "Validator for the eavesdrop callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restricts the calling device to this Device",
@@ -2140,7 +2140,7 @@
             "type": "object"
         },
         "callflows.eavesdrop_feature": {
-            "description": "Validator for the eavesdrop_feature callflow's data object",
+            "description": "Validator for the eavesdrop_feature callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restricts the calling device to this Device",
@@ -2162,12 +2162,12 @@
             "type": "object"
         },
         "callflows.edr": {
-            "description": "Validator for the edr callflow's data object",
+            "description": "Validator for the edr callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.fax_detect": {
-            "description": "Validator for the fax_detect callflow's data object",
+            "description": "Validator for the fax_detect callflow data object",
             "properties": {
                 "duration": {
                     "description": "How long, in seconds, to try detecting fax tones",
@@ -2177,7 +2177,7 @@
             "type": "object"
         },
         "callflows.faxbox": {
-            "description": "Validator for the faxbox callflow's data object",
+            "description": "Validator for the faxbox callflow data object",
             "properties": {
                 "faxbox_id": {
                     "description": "ID of the faxbox",
@@ -2208,7 +2208,7 @@
             "type": "object"
         },
         "callflows.flush_dtmf": {
-            "description": "Validator for the flush_dtmf callflow's data object",
+            "description": "Validator for the flush_dtmf callflow data object",
             "properties": {
                 "collection_name": {
                     "default": "default",
@@ -2219,7 +2219,7 @@
             "type": "object"
         },
         "callflows.group": {
-            "description": "Validator for the group callflow's data object",
+            "description": "Validator for the group callflow data object",
             "properties": {
                 "endpoints": {
                     "default": [],
@@ -2283,7 +2283,7 @@
             "type": "object"
         },
         "callflows.group_pickup": {
-            "description": "Validator for the group_pickup callflow's data object",
+            "description": "Validator for the group_pickup callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restrict calling device to Device",
@@ -2313,7 +2313,7 @@
             "type": "object"
         },
         "callflows.group_pickup_feature": {
-            "description": "Validator for the group_pickup_feature callflow's data object",
+            "description": "Validator for the group_pickup_feature callflow data object",
             "properties": {
                 "type": {
                     "description": "The type of collection to pickup",
@@ -2329,12 +2329,12 @@
             "type": "object"
         },
         "callflows.hangup": {
-            "description": "Validator for the hangup callflow's data object",
+            "description": "Validator for the hangup callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.hotdesk": {
-            "description": "Validator for the hotdesk callflow's data object",
+            "description": "Validator for the hotdesk callflow data object",
             "properties": {
                 "action": {
                     "description": "The action to take for hotdesking",
@@ -2358,7 +2358,7 @@
             "type": "object"
         },
         "callflows.intercept": {
-            "description": "Validator for the intercept callflow's data object",
+            "description": "Validator for the intercept callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restrict calling device to Device",
@@ -2388,7 +2388,7 @@
             "type": "object"
         },
         "callflows.intercept_feature": {
-            "description": "Validator for the intercept_feature callflow's data object",
+            "description": "Validator for the intercept_feature callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restricts the calling device to this Device",
@@ -2415,7 +2415,7 @@
             "type": "object"
         },
         "callflows.intercom": {
-            "description": "Validator for the intercom callflow's data object",
+            "description": "Validator for the intercom callflow data object",
             "properties": {
                 "barge_calls": {
                     "description": "Whether to barge in on the callee",
@@ -2479,7 +2479,7 @@
             "type": "object"
         },
         "callflows.menu": {
-            "description": "Validator for the menu callflow's data object",
+            "description": "Validator for the menu callflow data object",
             "properties": {
                 "id": {
                     "description": "Menu ID to use",
@@ -2493,14 +2493,14 @@
             "type": "object"
         },
         "callflows.missed_call_alert": {
-            "description": "Validator for the missed_call_alert callflow's data object",
+            "description": "Validator for the missed_call_alert callflow data object",
             "properties": {
                 "recipients": {
                     "description": "One or more specific email addresses, Kazoo user ids or a combination of both",
                     "items": {
                         "properties": {
                             "id": {
-                                "description": "The email address/user ID or the list of email addresses/user IDs based on sepecified type",
+                                "description": "The email address/user ID or the list of email addresses/user IDs based on specified type",
                                 "type": [
                                     "string",
                                     "array"
@@ -2530,7 +2530,7 @@
             "type": "object"
         },
         "callflows.move": {
-            "description": "Validator for the move callflow's data object",
+            "description": "Validator for the move callflow data object",
             "properties": {},
             "type": "object"
         },
@@ -2556,7 +2556,7 @@
             "type": "object"
         },
         "callflows.offnet": {
-            "description": "Validator for the offnet callflow's data object",
+            "description": "Validator for the offnet callflow data object",
             "properties": {
                 "bypass_e164": {
                     "description": "Use the original requested number instead of normalizing to E164",
@@ -2649,7 +2649,7 @@
             "type": "object"
         },
         "callflows.page_group": {
-            "description": "Validator for the page_group callflow's data object",
+            "description": "Validator for the page_group callflow data object",
             "properties": {
                 "audio": {
                     "default": "one-way",
@@ -2723,7 +2723,7 @@
             "type": "object"
         },
         "callflows.park": {
-            "description": "Validator for the park callflow's data object",
+            "description": "Validator for the park callflow data object",
             "properties": {
                 "action": {
                     "default": "park",
@@ -2828,7 +2828,7 @@
             "type": "object"
         },
         "callflows.play": {
-            "description": "Validator for the play callflow's data object",
+            "description": "Validator for the play callflow data object",
             "properties": {
                 "answer": {
                     "description": "Whether to answer an unanswered call",
@@ -2873,7 +2873,7 @@
             "type": "object"
         },
         "callflows.prepend_cid": {
-            "description": "Validator for the prepend_cid callflow's data object",
+            "description": "Validator for the prepend_cid callflow data object",
             "properties": {
                 "action": {
                     "default": "prepend",
@@ -2907,7 +2907,7 @@
             "type": "object"
         },
         "callflows.privacy": {
-            "description": "Validator for the privacy callflow's data object",
+            "description": "Validator for the privacy callflow data object",
             "properties": {
                 "endpoint_strategy": {
                     "default": "overwrite",
@@ -2933,7 +2933,7 @@
             "type": "object"
         },
         "callflows.receive_fax": {
-            "description": "Validator for the receive_fax callflow's data object",
+            "description": "Validator for the receive_fax callflow data object",
             "properties": {
                 "media": {
                     "properties": {
@@ -3071,7 +3071,7 @@
             "type": "object"
         },
         "callflows.resources": {
-            "description": "Validator for the resources callflow's data object",
+            "description": "Validator for the resources callflow data object",
             "properties": {
                 "bypass_e164": {
                     "description": "Use the original requested number instead of normalizing to E164",
@@ -3289,7 +3289,7 @@
             "type": "object"
         },
         "callflows.ring_group_toggle": {
-            "description": "Validator for the ring_group_toggle callflow's data object",
+            "description": "Validator for the ring_group_toggle callflow data object",
             "properties": {
                 "action": {
                     "description": "What the module should do. Options are 'login' and 'logout'",
@@ -3380,12 +3380,12 @@
             "type": "object"
         },
         "callflows.set": {
-            "description": "Validator for the set callflow's data object",
+            "description": "Validator for the set callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.set_alert_info": {
-            "description": "Validator for the set_alert_info callflow's data object",
+            "description": "Validator for the set_alert_info callflow data object",
             "properties": {
                 "alert_info": {
                     "description": "Set `Alert-Info` header inside b-leg channel. Used for distinctive ring.",
@@ -3398,7 +3398,7 @@
             "type": "object"
         },
         "callflows.set_cid": {
-            "description": "Validator for the set_cid callflow's data object",
+            "description": "Validator for the set_cid callflow data object",
             "properties": {
                 "caller_id_name": {
                     "default": "",
@@ -3414,7 +3414,7 @@
             "type": "object"
         },
         "callflows.set_variable": {
-            "description": "Validator for the set_variable callflow's data object",
+            "description": "Validator for the set_variable callflow data object",
             "properties": {
                 "channel": {
                     "default": "a",
@@ -3437,7 +3437,7 @@
             "type": "object"
         },
         "callflows.set_variables": {
-            "description": "Validator for the set_variables callflow's data object",
+            "description": "Validator for the set_variables callflow data object",
             "properties": {
                 "custom_application_vars": {
                     "default": {},
@@ -3455,12 +3455,12 @@
             "type": "object"
         },
         "callflows.skel": {
-            "description": "Validator for the skel callflow's data object",
+            "description": "Validator for the skel callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.sleep": {
-            "description": "Validator for the sleep callflow's data object",
+            "description": "Validator for the sleep callflow data object",
             "properties": {
                 "duration": {
                     "default": 0,
@@ -3484,7 +3484,7 @@
             "type": "object"
         },
         "callflows.temporal_route": {
-            "description": "Validator for the temporal_route callflow's data object",
+            "description": "Validator for the temporal_route callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform",
@@ -3579,7 +3579,7 @@
             "type": "object"
         },
         "callflows.user": {
-            "description": "Validator for the user callflow's data object",
+            "description": "Validator for the user callflow data object",
             "properties": {
                 "can_call_self": {
                     "description": "Toggle whether devices of this use can call each other",
@@ -3669,7 +3669,7 @@
             "type": "object"
         },
         "callflows.webhook": {
-            "description": "Validator for the webhook callflow's data object",
+            "description": "Validator for the webhook callflow data object",
             "properties": {
                 "custom_data": {
                     "description": "JSON object of custom data included on the HTTP request",
@@ -3902,7 +3902,7 @@
                     "type": "string"
                 },
                 "timestamp": {
-                    "description": "UTC timestamp, in gregorian seconds, of when the CDR was generated",
+                    "description": "UTC timestamp, in Gregorian seconds, of when the CDR was generated",
                     "type": "string"
                 },
                 "to": {
@@ -3936,7 +3936,7 @@
                     "type": "string"
                 },
                 "dial_first": {
-                    "description": "Determinates what will be dialed first: extension or contact",
+                    "description": "Determines what will be dialed first: extension or contact",
                     "enum": [
                         "extension",
                         "contact"
@@ -4586,7 +4586,7 @@
                 },
                 "contact_list": {
                     "default": {},
-                    "description": "Contect List Parameters",
+                    "description": "Contact List Parameters",
                     "properties": {
                         "exclude": {
                             "description": "If set to true the device is excluded from the contact list",
@@ -4662,9 +4662,9 @@
                     },
                     "type": "object"
                 },
-                "mwi_unsolicitated_updates": {
+                "mwi_unsolicited_updates": {
                     "default": true,
-                    "description": "When true enables unsolicitated mwi notifications",
+                    "description": "When true enables unsolicited mwi notifications",
                     "type": "boolean"
                 },
                 "name": {
@@ -4874,7 +4874,7 @@
             "type": "object"
         },
         "devices_notify": {
-            "description": "Schema for CrossBar devices notify API",
+            "description": "Schema for Crossbar devices notify API",
             "properties": {
                 "data": {
                     "description": "Action-specific parameters",
@@ -5125,7 +5125,7 @@
             "properties": {
                 "attempts": {
                     "default": 0,
-                    "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+                    "description": "The number of attempts made, this will be set by the system and reset automatically on put/post",
                     "maximum": 4,
                     "minimum": 0,
                     "type": "integer"
@@ -5210,7 +5210,7 @@
                                     "description": "Inbound Email Notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of email recipent(s)",
+                                            "description": "A list or string of email recipient(s)",
                                             "format": "email",
                                             "items": {
                                                 "format": "email",
@@ -5228,7 +5228,7 @@
                                     "description": "SMS notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of sms recipent(s)",
+                                            "description": "A list or string of sms recipient(s)",
                                             "items": {
                                                 "type": "string"
                                             },
@@ -5277,7 +5277,7 @@
                                     "description": "Email notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of email recipent(s)",
+                                            "description": "A list or string of email recipient(s)",
                                             "format": "email",
                                             "items": {
                                                 "format": "email",
@@ -5295,7 +5295,7 @@
                                     "description": "SMS notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of sms recipent(s)",
+                                            "description": "A list or string of sms recipient(s)",
                                             "items": {
                                                 "type": "string"
                                             },
@@ -5339,7 +5339,7 @@
             "properties": {
                 "attempts": {
                     "default": 0,
-                    "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+                    "description": "The number of attempts made, this will be set by the system and reset automatically on put/post",
                     "maximum": 4,
                     "minimum": 0,
                     "type": "integer"
@@ -5362,7 +5362,7 @@
                         },
                         "method": {
                             "default": "get",
-                            "description": "The method that should be used to reteive the document",
+                            "description": "The method that should be used to retrieve the document",
                             "enum": [
                                 "get",
                                 "post"
@@ -5399,7 +5399,7 @@
                             "description": "Email notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -5417,7 +5417,7 @@
                             "description": "SMS notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of sms recipent(s)",
+                                    "description": "A list or string of sms recipient(s)",
                                     "items": {
                                         "type": "string"
                                     },
@@ -5487,7 +5487,7 @@
                         },
                         "time_elapsed": {
                             "default": 0,
-                            "description": "The amount of time from submition to completion",
+                            "description": "The amount of time from submission to completion",
                             "type": "integer"
                         }
                     },
@@ -18521,7 +18521,7 @@
                 "Control-Queue": {
                     "type": "string"
                 },
-                "Custom-Appliction-Vars": {
+                "Custom-Application-Vars": {
                     "type": "object"
                 },
                 "Custom-Channel-Vars": {
@@ -20786,9 +20786,6 @@
                     "type": "string"
                 },
                 "Custom-Application-Vars": {
-                    "type": "object"
-                },
-                "Custom-Appliction-Vars": {
                     "type": "object"
                 },
                 "Custom-Channel-Vars": {
@@ -23282,7 +23279,7 @@
                     "type": "string"
                 },
                 "timestamp": {
-                    "description": "The UTC timestamp, in gregorian seconds, that the message was left on",
+                    "description": "The UTC timestamp, in Gregorian seconds, that the message was left on",
                     "type": "integer"
                 },
                 "to": {
@@ -23323,7 +23320,7 @@
                     "type": "string"
                 },
                 "description": {
-                    "description": "A breif description of the media update, usally the original file name",
+                    "description": "A brief description of the media update, usually the original file name",
                     "maxLength": 128,
                     "minLength": 1,
                     "type": "string"
@@ -23502,7 +23499,7 @@
                             "type": "string"
                         },
                         "invalid_media": {
-                            "description": "When the collected digits dont result in a match or hunt this media can be played",
+                            "description": "When the collected digits don't result in a match or hunt this media can be played",
                             "maxLength": 2048,
                             "minLength": 3,
                             "type": [
@@ -23547,7 +23544,7 @@
                     "type": "boolean"
                 },
                 "timeout": {
-                    "description": "The amount of time (in milliseconds) to wait for the caller to beging entering digits",
+                    "description": "The amount of time (in milliseconds) to wait for the caller to begin entering digits",
                     "maximum": 60000,
                     "minimum": 1,
                     "type": "integer"
@@ -23898,7 +23895,7 @@
                     "type": "string"
                 },
                 "record_min_sec": {
-                    "description": "Miniumum number of seconds recorded to consider it a valid recording",
+                    "description": "Minimum number of seconds recorded to consider it a valid recording",
                     "type": "integer"
                 },
                 "record_on_answer": {
@@ -24047,7 +24044,7 @@
                 },
                 "adjust_in_semitones": {
                     "default": 0,
-                    "description": "Asjust the pitch in semitones",
+                    "description": "Adjust the pitch in semitones",
                     "maximum": 14.0,
                     "minimum": -14.0,
                     "type": "number"
@@ -24590,7 +24587,7 @@
                             "description": "Inbound Email Notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -24627,7 +24624,7 @@
                     "type": "string"
                 },
                 "transfer_date": {
-                    "description": "Requested transfer date in gregorain timestamp",
+                    "description": "Requested transfer date in Gregorian timestamp",
                     "type": "integer"
                 }
             },
@@ -25589,7 +25586,7 @@
                     "type": "string"
                 },
                 "routes": {
-                    "description": "List of regexs that match valid DIDs for this rate",
+                    "description": "List of regexps that match valid DIDs for this rate",
                     "items": {
                         "type": "string"
                     },
@@ -25653,11 +25650,11 @@
                     "type": "string"
                 },
                 "start_time": {
-                    "description": "Start time (gregorian seconds)",
+                    "description": "Start time (Gregorian seconds)",
                     "type": "integer"
                 },
                 "stop_time": {
-                    "description": "Stop time (gregorian seconds)",
+                    "description": "Stop time (Gregorian seconds)",
                     "type": "integer"
                 },
                 "value": {
@@ -25715,11 +25712,11 @@
                     "type": "object"
                 },
                 "from_uri_realm": {
-                    "description": "When formating SIP From on outbound requests this can be used to override the realm",
+                    "description": "When formatting SIP From on outbound requests this can be used to override the realm",
                     "type": "string"
                 },
                 "gateways": {
-                    "description": "A list of gateways avaliable for this resource",
+                    "description": "A list of gateways available for this resource",
                     "items": {
                         "default": {},
                         "properties": {
@@ -25746,7 +25743,7 @@
                                 "type": "string"
                             },
                             "codecs": {
-                                "description": "A list of single list codecs supported by this gateway (to support backward compatibilty)",
+                                "description": "A list of single list codecs supported by this gateway (to support backward compatibility)",
                                 "items": {
                                     "enum": [
                                         "G729",
@@ -25820,7 +25817,7 @@
                                 "type": "boolean"
                             },
                             "from_uri_realm": {
-                                "description": "When formating SIP From on outbound requests this can be used to override the realm",
+                                "description": "When formatting SIP From on outbound requests this can be used to override the realm",
                                 "type": "string"
                             },
                             "invite_format": {
@@ -25877,7 +25874,7 @@
                                                                 }
                                                             ]
                                                         },
-                                                        "seperator": {
+                                                        "separator": {
                                                             "type": "string"
                                                         },
                                                         "tag": {
@@ -25943,7 +25940,7 @@
                                 "type": "string"
                             },
                             "route": {
-                                "description": "A staticly configured SIP URI to route all call to",
+                                "description": "A statically configured SIP URI to route all call to",
                                 "type": "string"
                             },
                             "server": {
@@ -26167,7 +26164,7 @@
                     "type": "array"
                 },
                 "merge": {
-                    "description": "Optionally defines a strategy and priorty to merge multiple service plans together",
+                    "description": "Optionally defines a strategy and priority to merge multiple service plans together",
                     "properties": {
                         "priority": {
                             "description": "The priority among the service plans with the merge strategy",
@@ -26411,7 +26408,7 @@
                     "type": "string"
                 },
                 "settings": {
-                    "description": "Settings for the DropBox account",
+                    "description": "Settings for the Dropbox account",
                     "properties": {
                         "oauth_doc_id": {
                             "description": "Doc ID in the system 'auth' database",
@@ -26545,7 +26542,7 @@
             "type": "object"
         },
         "storage.connection.couchdb": {
-            "description": "schema for couchdb connection entry",
+            "description": "schema for CouchDB connection entry",
             "properties": {
                 "driver": {
                     "enum": [
@@ -27152,9 +27149,9 @@
                     "description": "callflow minimum bucket cost",
                     "type": "integer"
                 },
-                "mwi_send_unsoliciated_updates": {
+                "mwi_send_unsolicited_updates": {
                     "default": true,
-                    "description": "callflow mwi send unsoliciated updates",
+                    "description": "callflow mwi send unsolicited updates",
                     "type": "boolean"
                 },
                 "operator_key": {
@@ -29084,7 +29081,7 @@
                                                 "type": "object"
                                             },
                                             "type": {
-                                                "description": "The formatter module to be used (eg. json refers to edr_fmt_json.erl)",
+                                                "description": "The formatter module to be used (e.g. json refers to edr_fmt_json.erl)",
                                                 "enum": [
                                                     "json"
                                                 ],
@@ -29097,7 +29094,7 @@
                                 "type": "object"
                             },
                             "type": {
-                                "description": "The backend module to be used (eg. amqp refers to edr_be_amqp.erl)",
+                                "description": "The backend module to be used (e.g. amqp refers to edr_be_amqp.erl)",
                                 "enum": [
                                     "amqp",
                                     "file",
@@ -29177,7 +29174,7 @@
                 },
                 "default_smtp_domain": {
                     "default": "fax.kazoo.io",
-                    "description": "fax defaultsmtp domain",
+                    "description": "fax default SMTP domain",
                     "type": "string"
                 },
                 "delete_empty_faxes": {
@@ -29533,7 +29530,7 @@
                 },
                 "resource_flat_rate_lookup": {
                     "default": false,
-                    "description": "lookup flat rate regexes per resource",
+                    "description": "lookup flat rate regexps per resource",
                     "type": "boolean"
                 }
             },
@@ -30016,7 +30013,7 @@
                     "type": "string"
                 },
                 "proxy_hostname": {
-                    "description": "media proxy hostname to be used with haproxy",
+                    "description": "media proxy hostname to be used with HAProxy",
                     "type": "string"
                 },
                 "proxy_ip": {
@@ -30734,7 +30731,7 @@
                             "regex": "^\\+1(900\\d{7})$"
                         },
                         "tollfree_us": {
-                            "friendly_name": "US TollFree",
+                            "friendly_name": "US Tollfree",
                             "pretty_print": "SS(###) ### - ####",
                             "regex": "^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})$"
                         },
@@ -31174,7 +31171,7 @@
             "properties": {
                 "dialog_subscribed_mwi_prefix": {
                     "default": "*98",
-                    "description": "prefix used when subsribing vm updates for dialog",
+                    "description": "prefix used when subscribing vm updates for dialog",
                     "type": "string"
                 },
                 "expire_check_ms": {
@@ -31707,7 +31704,7 @@
                 },
                 "use_ssl": {
                     "default": false,
-                    "description": "smtp_client use ssl",
+                    "description": "smtp_client use SSL",
                     "type": "boolean"
                 },
                 "username": {
@@ -31723,7 +31720,7 @@
             "properties": {
                 "asr_api_key": {
                     "default": "",
-                    "description": "speech asr api key",
+                    "description": "speech asr API key",
                     "type": "string"
                 },
                 "asr_locale": {
@@ -31976,7 +31973,7 @@
                 },
                 "use_first_dedicated_proxy_only": {
                     "default": true,
-                    "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usally local to the call).",
+                    "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usually local to the call).",
                     "type": "boolean"
                 }
             },
@@ -32236,7 +32233,7 @@
                 },
                 "retry_after_fudge_s": {
                     "default": 600000,
-                    "description": "Constant time in seconds which would be multipy with attemtps to set retry time",
+                    "description": "Constant time in seconds which would be multiplied with attempts to set retry time",
                     "type": "integer"
                 }
             },
@@ -33009,7 +33006,7 @@
                 },
                 "contact_list": {
                     "default": {},
-                    "description": "Contect List Parameters",
+                    "description": "Contact List Parameters",
                     "properties": {
                         "exclude": {
                             "description": "If set to true the device is excluded from the contact list",
@@ -33254,7 +33251,7 @@
                     "type": "integer"
                 },
                 "timestamp": {
-                    "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
+                    "description": "The UTC timestamp, in Gregorian seconds, that the voicemail was left on",
                     "type": "integer"
                 },
                 "to": {
@@ -33616,7 +33613,7 @@
                 },
                 "hide_powered": {
                     "default": false,
-                    "description": "When checked this hides the powered by 2600hz on the bottom right",
+                    "description": "When checked this hides the powered by 2600Hz on the bottom right",
                     "type": "boolean"
                 },
                 "hide_registration": {
@@ -33649,7 +33646,7 @@
                     "type": "string"
                 },
                 "port": {
-                    "description": "Parameters releated to whitelabeling port requests",
+                    "description": "Parameters related to white-labeling port requests",
                     "properties": {
                         "authority": {
                             "description": "The email(s) to be used for admin port requests",

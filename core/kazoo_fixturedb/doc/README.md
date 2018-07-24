@@ -111,7 +111,7 @@ You can use `kz_fixturedb_util:get_doc_path/2,3` to get document's file path.
 
 Saving a document is not really saving the JObj in a file, instead it just returned an updated JObj with bumped `_rev` and updated `pvt_document_hash`. If database (the database folder) does not exists it returns error `{'error', 'not_found'}`. If you try to save a document which exists in the `docs` without correct `_rev` then the result is `{'error', 'conflict'}` as expected.
 
-Delete document(s) is result in a bulk save in CouchBeam, so it returns a bulk save result:
+Delete document(s) is result in a bulk save in Couchbeam, so it returns a bulk save result:
 
 ```erlang
 (fixturedb@hes.2600hz.com)12> kz_datamgr:del_docs(<<"accounts">>, [<<"file_not_exists">>, <<"account0000000000000000000000002">>]).
@@ -230,7 +230,7 @@ PlanForThisDb = kzs_plan:plan(SomeDb).
 
 ### Have Database in Other Application Directory (Experimental)
 
-> **Note:** currently there is no way to have update the `kz_dataconncetion` to use this feature.
+> **Note:** currently there is no way to have update the `kz_dataconnection` to use this feature.
 
 FixtureDB has an experimental way to read database from other path than the default `core/kazoo_fixturedb/priv/dbs` path. It could be useful if you want to test an applications which maybe requires a lot of document and you want to put them in the default path.
 
