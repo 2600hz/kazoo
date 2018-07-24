@@ -2753,7 +2753,6 @@ wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     ThisCallId = kapps_call:call_id_direct(Call),
     EvtCallId = kz_call_event:call_id(JObj),
-%%    lager:debug_unsafe("WAIT FOR BRIDGE : ~s", [kz_json:encode(JObj, ['pretty'])]),
     CallFetchId = kapps_call:fetch_id(Call),
     MsgFetchId = kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>),
     Disposition = kz_json:get_value(<<"Disposition">>, JObj),
@@ -2771,7 +2770,6 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
              end,
     case ThisCallId =:= EvtCallId
         andalso get_event_type(JObj)
-%%    case get_event_type(JObj)
     of
         'false' ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
@@ -2788,18 +2786,6 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
                 'true' -> Fun(JObj)
             end,
             wait_for_bridge('infinity', Fun, Call);
-        {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
-%            lager:debug_unsafe("channel unbridged ~s", [kz_json:encode(JObj, ['pretty'])]),
-            wait_for_bridge('infinity', Fun, Call);
-%% FIND THE REASON
-%%         {<<"call_event">>, <<"CHANNEL_ANSWER">>, _} ->
-%%             CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-%%             lager:debug("channel bridged to ~s", [CallId]),
-%%             case is_function(Fun, 1) of
-%%                 'false' -> 'ok';
-%%                 'true' -> Fun(JObj)
-%%             end,
-%%             wait_for_bridge('infinity', Fun, Call);
         {<<"call_event">>, <<"CHANNEL_REPLACED">>, _} ->
             CallId = kz_json:get_value(<<"Replaced-By">>, JObj),
             _ = kz_util:put_callid(CallId),
@@ -2821,7 +2807,6 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             %%lager:info("bridge channel execute completed with result ~s(~s) ~s", [Disposition, Result, BridgeHangupCause]),
             lager:info_unsafe("bridge channel execute completed with result ~s/~s ~s(~s) : ~s", [CallFetchId, MsgFetchId, Disposition, Result, kz_json:encode(JObj, ['pretty'])]),
             {Result, JObj};
-%            wait_for_bridge('infinity', Fun, Call);
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>}
           when CallFetchId =:= MsgFetchId
                ->

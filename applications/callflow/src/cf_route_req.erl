@@ -189,7 +189,7 @@ send_route_response(Flow, RouteReq, Call) ->
             lager:info("callflow has received a route win, taking control of the call"),
             NewCall = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
             wait_for_running(NewCall, 0);
-        'channel_destroy' ->
+        {'channel_destroy', FetchId} ->
             lager:info("received channel destroy while waiting for route win, exiting")
     after ?ROUTE_WIN_TIMEOUT ->
             lager:warning("callflow didn't received a route win, exiting")
