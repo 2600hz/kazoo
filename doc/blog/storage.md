@@ -27,7 +27,7 @@ However, while CouchDB serves the majority of Kazoo's needs well, there are scen
 
 The most frequent request is to put call recordings (and voicemail) into a company's existing storage system, be it [Google Drive](https://en.wikipedia.org/wiki/Google_Drive), [Amazon S3](https://en.wikipedia.org/wiki/Amazon_S3), or what have you. This makes a lot of sense for companies with compliance requirements, service providers that want to use the media (perhaps run voicemail through an [ASR engine](https://en.wikipedia.org/wiki/Speech_recognition) and provide a transcript), or folks that just want to save a sweet voicemail from their loved one somewhere they can enjoy it at their leisure.
 
-Other requests that have come up have been having the ability to save [CDRs](https://en.wikipedia.org/wiki/Call_detail_record) directly to a provider's database or spreadsheet. This eases the provider's abililty to bill, analyze usage patterns, etc.
+Other requests that have come up have been having the ability to save [CDRs](https://en.wikipedia.org/wiki/Call_detail_record) directly to a provider's database or spreadsheet. This eases the provider's ability to bill, analyze usage patterns, etc.
 
 Other possibilities include:
 
