@@ -200,7 +200,7 @@
                                                         }
                                                     ]
                                                 },
-                                                "seperator": {
+                                                "separator": {
                                                     "type": "string"
                                                 },
                                                 "tag": {
