@@ -24,7 +24,7 @@ invite_parameters_test_() ->
     Resource = stepswitch_resources:resource_from_jobj(ResourceJObj),
 
     DynamicParameters1 = kz_json:from_list([{<<"key">>, <<"custom_sip_headers.x_auth_ip">>}, {<<"tag">>, <<"somethingelse">>}]),
-    DynamicParameters2 = kz_json:from_list([{<<"key">>, <<"custom_sip_headers.x_auth_ip">>}, {<<"tag">>, <<"somethingelse">>}, {<<"seperator">>, <<"&">>}]),
+    DynamicParameters2 = kz_json:from_list([{<<"key">>, <<"custom_sip_headers.x_auth_ip">>}, {<<"tag">>, <<"somethingelse">>}, {<<"separator">>, <<"&">>}]),
 
     GatewayJObjs = [kz_json:set_value([<<"invite_parameters">>, <<"static">>], [<<"npid">>], GatewayJObj)
                    ,kz_json:set_value([<<"invite_parameters">>, <<"static">>], [<<"npid">>], GatewayJObj)

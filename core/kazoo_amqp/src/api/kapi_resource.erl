@@ -126,7 +126,7 @@
                                ,{<<"Event-Name">>, <<"originate_resp">>}
                                ]).
 -define(ORIGINATE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                              ,{<<"Custom-Appliction-Vars">>, fun kz_json:is_json_object/1}
+                              ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                               ]).
 
 %% Originate Started

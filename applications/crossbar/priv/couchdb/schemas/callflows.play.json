@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.play",
-    "description": "Validator for the play callflow's data object",
+    "description": "Validator for the play callflow data object",
     "properties": {
         "answer": {
             "description": "Whether to answer an unanswered call",

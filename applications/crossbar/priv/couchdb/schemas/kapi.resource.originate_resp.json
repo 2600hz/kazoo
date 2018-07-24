@@ -81,7 +81,7 @@
         "Custom-Application-Vars": {
             "type": "object"
         },
-        "Custom-Appliction-Vars": {
+        "Custom-Application-Vars": {
             "type": "object"
         },
         "Custom-Channel-Vars": {

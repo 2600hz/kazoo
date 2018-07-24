@@ -19,7 +19,7 @@
 -define(VM_NO_NEW_MESSAGES, <<"terminated">>).
 -define(VM_HAS_NEW_MESSAGES, <<"confirmed">>).
 
--define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
+-define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsolicited_updates">>).
 
 %%------------------------------------------------------------------------------
 %% @doc Generate database name based on DocId

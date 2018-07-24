@@ -11,8 +11,12 @@ $(ROOT)/$(KAZOO_REPL):
 
 splchk-changed: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(CHANGED)))
 splchk: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(wildcard doc/*.md)))
-splchk-json: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL)
+splchk-json: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(shell find . -name *.json -wholename "*/schemas/*")))
 
 %.chk: %.md
+	@echo Spellchecking $<
+	aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
+%.chk: %.json
 	@echo Spellchecking $<
 	aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<

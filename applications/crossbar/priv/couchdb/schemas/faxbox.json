@@ -5,7 +5,7 @@
     "properties": {
         "attempts": {
             "default": 0,
-            "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+            "description": "The number of attempts made, this will be set by the system and reset automatically on put/post",
             "maximum": 4,
             "minimum": 0,
             "type": "integer"

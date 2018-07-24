@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.group_pickup",
-    "description": "Validator for the group_pickup callflow's data object",
+    "description": "Validator for the group_pickup callflow data object",
     "properties": {
         "approved_device_id": {
             "description": "Restrict calling device to Device",

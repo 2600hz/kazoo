@@ -50,7 +50,7 @@
                     "regex": "^\\+1(900\\d{7})$"
                 },
                 "tollfree_us": {
-                    "friendly_name": "US TollFree",
+                    "friendly_name": "US Tollfree",
                     "pretty_print": "SS(###) ### - ####",
                     "regex": "^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})$"
                 },

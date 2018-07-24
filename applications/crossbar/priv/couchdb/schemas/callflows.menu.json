@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.menu",
-    "description": "Validator for the menu callflow's data object",
+    "description": "Validator for the menu callflow data object",
     "properties": {
         "id": {
             "description": "Menu ID to use",

@@ -740,7 +740,7 @@ dynamic_sip_invite_parameters([JObj|Keys], CCVs, CSHs, Parameters) ->
     'true' = kz_json:is_json_object(JObj),
     Key = kz_json:get_ne_value(<<"key">>, JObj),
     Tag = kz_json:get_ne_value(<<"tag">>, JObj),
-    Seperator = kz_json:get_value(<<"seperator">>, JObj, <<"=">>),
+    Seperator = kz_json:get_value(<<"separator">>, JObj, <<"=">>),
     case dynamic_sip_invite_value(Key, CCVs, CSHs) of
         'undefined' -> dynamic_sip_invite_parameters(Keys, CCVs, CSHs, Parameters);
         Value ->

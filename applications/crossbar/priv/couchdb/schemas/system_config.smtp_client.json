@@ -45,7 +45,7 @@
         },
         "use_ssl": {
             "default": false,
-            "description": "smtp_client use ssl",
+            "description": "smtp_client use SSL",
             "type": "boolean"
         },
         "username": {

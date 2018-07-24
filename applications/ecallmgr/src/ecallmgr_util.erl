@@ -668,7 +668,7 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @doc takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
 %% and create the dial string ([origination_caller_id_name=Name
 %%                              ,origination_caller_id_number=Num]Endpoint)
-%% joined by the optional seperator.  Saves time by not spawning
+%% joined by the optional separator.  Saves time by not spawning
 %% endpoints with the invite format of "route" (about 100ms per endpoint)
 %% @end
 %%------------------------------------------------------------------------------

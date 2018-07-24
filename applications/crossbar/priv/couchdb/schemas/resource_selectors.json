@@ -16,11 +16,11 @@
             "type": "string"
         },
         "start_time": {
-            "description": "Start time (gregorian seconds)",
+            "description": "Start time (Gregorian seconds)",
             "type": "integer"
         },
         "stop_time": {
-            "description": "Stop time (gregorian seconds)",
+            "description": "Stop time (Gregorian seconds)",
             "type": "integer"
         },
         "value": {

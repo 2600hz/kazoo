@@ -18521,7 +18521,7 @@
                 "Control-Queue": {
                     "type": "string"
                 },
-                "Custom-Appliction-Vars": {
+                "Custom-Application-Vars": {
                     "type": "object"
                 },
                 "Custom-Channel-Vars": {
@@ -20788,7 +20788,7 @@
                 "Custom-Application-Vars": {
                     "type": "object"
                 },
-                "Custom-Appliction-Vars": {
+                "Custom-Application-Vars": {
                     "type": "object"
                 },
                 "Custom-Channel-Vars": {
@@ -25877,7 +25877,7 @@
                                                                 }
                                                             ]
                                                         },
-                                                        "seperator": {
+                                                        "separator": {
                                                             "type": "string"
                                                         },
                                                         "tag": {
@@ -27152,9 +27152,9 @@
                     "description": "callflow minimum bucket cost",
                     "type": "integer"
                 },
-                "mwi_send_unsoliciated_updates": {
+                "mwi_send_unsolicited_updates": {
                     "default": true,
-                    "description": "callflow mwi send unsoliciated updates",
+                    "description": "callflow mwi send unsolicited updates",
                     "type": "boolean"
                 },
                 "operator_key": {

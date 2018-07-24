@@ -28,7 +28,7 @@
         },
         "hide_powered": {
             "default": false,
-            "description": "When checked this hides the powered by 2600hz on the bottom right",
+            "description": "When checked this hides the powered by 2600Hz on the bottom right",
             "support_level": "supported",
             "type": "boolean"
         },
@@ -67,7 +67,7 @@
             "type": "string"
         },
         "port": {
-            "description": "Parameters releated to whitelabeling port requests",
+            "description": "Parameters related to white-labeling port requests",
             "properties": {
                 "authority": {
                     "description": "The email(s) to be used for admin port requests",

@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.receive_fax",
-    "description": "Validator for the receive_fax callflow's data object",
+    "description": "Validator for the receive_fax callflow data object",
     "properties": {
         "media": {
             "properties": {

@@ -13,7 +13,7 @@
             "type": "string"
         },
         "dial_first": {
-            "description": "Determinates what will be dialed first: extension or contact",
+            "description": "Determines what will be dialed first: extension or contact",
             "enum": [
                 "extension",
                 "contact"

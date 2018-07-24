@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.fax_detect",
-    "description": "Validator for the fax_detect callflow's data object",
+    "description": "Validator for the fax_detect callflow data object",
     "properties": {
         "duration": {
             "description": "How long, in seconds, to try detecting fax tones",

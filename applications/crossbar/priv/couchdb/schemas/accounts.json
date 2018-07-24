@@ -133,7 +133,7 @@
                             "type": "boolean"
                         },
                         "last_notification": {
-                            "description": "Timestamp, in gregorian seconds, of when the last low_balance alert was sent",
+                            "description": "Timestamp, in Gregorian seconds, of when the last low_balance alert was sent",
                             "type": "integer"
                         },
                         "sent_low_balance": {

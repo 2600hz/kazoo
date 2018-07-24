@@ -99,7 +99,7 @@
             "type": "string"
         },
         "transfer_date": {
-            "description": "Requested transfer date in gregorain timestamp",
+            "description": "Requested transfer date in Gregorian timestamp",
             "type": "integer"
         }
     },

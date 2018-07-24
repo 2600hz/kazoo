@@ -58,7 +58,7 @@
         },
         "default_smtp_domain": {
             "default": "fax.kazoo.io",
-            "description": "fax defaultsmtp domain",
+            "description": "fax default SMTP domain",
             "type": "string"
         },
         "delete_empty_faxes": {

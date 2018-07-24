@@ -11,7 +11,7 @@
             "type": "string"
         },
         "settings": {
-            "description": "Settings for the DropBox account",
+            "description": "Settings for the Dropbox account",
             "properties": {
                 "oauth_doc_id": {
                     "description": "Doc ID in the system 'auth' database",

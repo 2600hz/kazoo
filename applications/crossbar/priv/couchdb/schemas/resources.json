@@ -38,11 +38,11 @@
             "type": "object"
         },
         "from_uri_realm": {
-            "description": "When formating SIP From on outbound requests this can be used to override the realm",
+            "description": "When formatting SIP From on outbound requests this can be used to override the realm",
             "type": "string"
         },
         "gateways": {
-            "description": "A list of gateways avaliable for this resource",
+            "description": "A list of gateways available for this resource",
             "items": {
                 "default": {},
                 "properties": {
@@ -69,7 +69,7 @@
                         "type": "string"
                     },
                     "codecs": {
-                        "description": "A list of single list codecs supported by this gateway (to support backward compatibilty)",
+                        "description": "A list of single list codecs supported by this gateway (to support backward compatibility)",
                         "items": {
                             "enum": [
                                 "G729",
@@ -143,7 +143,7 @@
                         "type": "boolean"
                     },
                     "from_uri_realm": {
-                        "description": "When formating SIP From on outbound requests this can be used to override the realm",
+                        "description": "When formatting SIP From on outbound requests this can be used to override the realm",
                         "type": "string"
                     },
                     "invite_format": {
@@ -266,7 +266,7 @@
                         "type": "string"
                     },
                     "route": {
-                        "description": "A staticly configured SIP URI to route all call to",
+                        "description": "A statically configured SIP URI to route all call to",
                         "type": "string"
                     },
                     "server": {
