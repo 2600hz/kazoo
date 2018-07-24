@@ -9,7 +9,7 @@ $(ROOT)/$(KAZOO_DICT):
 $(ROOT)/$(KAZOO_REPL):
 	@$(file >$(ROOT)/$(KAZOO_REPL),personal_repl-1.1 en 0 utf-8)
 
-splchk: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(shell find doc -name "*.md" -path "doc/mkdocs*" -prune)))
+splchk: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(shell find doc -wholename "doc/mkdocs*" -prune -o -name "*.md" )))
 
 splchk-changed: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(CHANGED)))
 
