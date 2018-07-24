@@ -7,7 +7,7 @@ Branch keys are integer-convertible binaries (e.g. `<<"60">>`) that represent wa
 
 #### Schema
 
-Validator for the acdc_wait_time callflow's data object
+Validator for the acdc_wait_time callflow data object
 
 
 

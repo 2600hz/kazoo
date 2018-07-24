@@ -12,23 +12,23 @@ Moreover, if the call forwarding is configured without requiring the user to pre
 
 #### Data Schema
 
-Validator for the missed call alert callflow's data object
+Validator for the missed call alert callflow data object
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `recipients` | One or more specific email addresses, Kazoo user ids or a combination of both | `array(object)` | `[]` | `false`
-`recipients.[].id` | The email address/user ID or the list of email addresses/user IDs based on sepecified type | `string, array(string)` |  | `true`
+`recipients.[].id` | The email address/user ID or the list of email addresses/user IDs based on specified type | `string, array(string)` |  | `true`
 `recipients.[].type` | Controls if the ID of this object is a Kazoo user ID or an email address | `enum("user", "email")` |  | `true`
 
 #### Description
 
-The Kazoo callflow executor allows modules to register functions that should be executed when the call is terminated (on `CHANNEL_DESTROY` or `CHANNEL_DISCONNECTED` events). After modules registered themself, each registered module will be executed serially.
+The Kazoo callflow executor allows modules to register functions that should be executed when the call is terminated (on `CHANNEL_DESTROY` or `CHANNEL_DISCONNECTED` events). After modules registered themselves, each registered module will be executed serially.
 
 As a call is processed by the callflow executor, it will observe the event stream for the channel and set a flag on the Kazoo call object if a successful bridge is performed. The callflow voicemail module will also set a flag on the Kazoo call object when a voicemail message is successfully left.
 
 When `missed_call_alert` executed as part of a callflow or preflow, will determine if the call originated as an inbound call to the account. If the call was inbound, then it will register itself as a termination function with the callflow executor.
 
-When this function is invoked from the calllflow executor it will inspect the Kazoo call object, specifically the two said above flags. If neither are set to `true` this function will then publish a new AMQP message to the notification exchange. This message will be received by the Kazoo teletype which will process a email template for missed calls, and send the email.
+When this function is invoked from the callflow executor it will inspect the Kazoo call object, specifically the two said above flags. If neither are set to `true` this function will then publish a new AMQP message to the notification exchange. This message will be received by the Kazoo teletype which will process a email template for missed calls, and send the email.
 
 #### Configuring Recipients
 

@@ -6,7 +6,7 @@ Puts the caller into the ACDc queue.
 
 #### Schema
 
-Validator for the acdc_member callflow's data object
+Validator for the acdc_member callflow data object
 
 
 

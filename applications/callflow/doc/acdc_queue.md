@@ -6,7 +6,7 @@ Allows an agent/manager to temporarily login to a queue
 
 #### Schema
 
-Validator for the acdc_queue callflow's data object
+Validator for the acdc_queue callflow data object
 
 
 

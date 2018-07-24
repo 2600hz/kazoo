@@ -1,6 +1,6 @@
-## Set Aler-Info header
+## Set Alert-Info header
 
-Sets `alert_info` variable inside b-leg channel. Ueed for distinctive ring.
+Sets `alert_info` variable inside b-leg channel. Used for distinctive ring.
 
 #### Schema
 

@@ -44,7 +44,7 @@ An example JSON action
 
 ## Using the webhook action in a callflow
 
-To receive a webhook anytime the main company number goes to voicemail instead of being answered, for instannce:
+To receive a webhook anytime the main company number goes to voicemail instead of being answered, for instance:
 
 ```json
 {"numbers":["+10005559999"]
@@ -69,4 +69,4 @@ To receive a webhook anytime the main company number goes to voicemail instead o
 }
 ```
 
-Now your webserver will receive a webhook payload anytime the caller is sent to voicemail instead of talking to the front desk.
+Now your web server will receive a webhook payload anytime the caller is sent to voicemail instead of talking to the front desk.

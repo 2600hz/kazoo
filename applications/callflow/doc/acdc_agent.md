@@ -6,7 +6,7 @@ Toggle the ACDc agent status
 
 #### Schema
 
-Validator for the acdc_agent callflow's data object
+Validator for the acdc_agent callflow data object
 
 
 
