@@ -5,10 +5,10 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kazoo_number_manager_app).
+-module(kazoo_voicemail_app).
 -behaviour(application).
 
--include("knm.hrl").
+-include("kz_voicemail.hrl").
 
 %% Application callbacks
 -export([start/2, stop/1]).
@@ -23,17 +23,10 @@
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
-    declare_exchanges(),
-    _ = kz_datamgr:register_view('numbers', ?APP, "views/numbers.json"),
-    kazoo_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
-    kazoo_number_manager_sup:start_link().
+    kazoo_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_voicemail_maintenance', 'migrate'),
+    'ignore'.
 
 -spec stop(any()) -> any().
 stop(_State) ->
-    kazoo_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
+    kazoo_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_voicemail_maintenance', 'migrate'),
     'ok'.
-
--spec declare_exchanges() -> 'ok'.
-declare_exchanges() ->
-    _ = kapi_discovery:declare_exchanges(),
-    kapi_self:declare_exchanges().

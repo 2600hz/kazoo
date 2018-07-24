@@ -112,12 +112,7 @@ rebuild_token_auth(Pause) ->
 %%------------------------------------------------------------------------------
 -spec migrate_to_4_0() -> 'no_return'.
 migrate_to_4_0() ->
-    %% Number migration
-    lager:info("migrating number manager"),
-    kazoo_number_manager_maintenance:migrate(),
-    %% Voicemail migration
-    lager:info("migrating voicemail"),
-    kazoo_voicemail_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding({'migrate', <<"4.0">>}), []),
     'no_return'.
 
 %%------------------------------------------------------------------------------
@@ -203,9 +198,7 @@ parallel_migrate_worker(Ref, Pause, Databases, Parent) ->
 
 -spec wait_for_parallel_migrate(kz_term:references()) -> 'no_return'.
 wait_for_parallel_migrate([]) ->
-    %% Migrate settings for kazoo_media
-    io:format("running media migrations...~n"),
-    _ = kazoo_media_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding('migrate'), []),
     'no_return';
 wait_for_parallel_migrate([Ref|Refs]) ->
     receive

@@ -4,6 +4,7 @@
  ,{vsn, "4.0.0"}
  ,{modules, []}
  ,{registered, []}
+ ,{mod,{kazoo_voicemail_app,[]}}
  ,{applications, [ kernel
                  , stdlib
                  , crypto
