@@ -43,7 +43,7 @@ Key | Description | Type | Default | Required
 `voicemail.migrate_max_worker` | Maximum number of workers when migrating voicemail messages to MODB | `integer()` | `10` | `false`
 `voicemail.min_message_size` | Minimum message length in milliseconds a voicemail message must be to consider it to save in database | `integer()` | `500` | `false`
 `voicemail.save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false`
-`voicemail.vm_message_foraward_type` | Enable or disable the ability to prepend a message when forwarding a voicemail message | `string()` | `only_forward` | `false`
+`voicemail.vm_message_forward_type` | Enable or disable the ability to prepend a message when forwarding a voicemail message | `string()` | `only_forward` | `false`
 
 ## Retention Duration
 

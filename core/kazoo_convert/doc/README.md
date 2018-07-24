@@ -4,7 +4,7 @@ The Kazoo converter provides a core library for converting file formats.
 
 ## Modules
 
-The converters used to execute file conversions are modular, modules can be enabled via configuration. This core library is intended to be extended to include multipe types of conversions and formats and be easily extendable by supporting selection of which modules to use via the `system_config/kazoo_convert` document. Currently only fax conversions are done via the converter. But there are many other types of file conversions going on in Kazoo. Stay tuned...
+The converters used to execute file conversions are modular, modules can be enabled via configuration. This core library is intended to be extended to include multiple types of conversions and formats and be easily extendable by supporting selection of which modules to use via the `system_config/kazoo_convert` document. Currently only fax conversions are done via the converter. But there are many other types of file conversions going on in Kazoo. Stay tuned...
 
 #### Fax Converter
 

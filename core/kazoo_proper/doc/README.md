@@ -23,7 +23,7 @@ Cleanup deleted account docs: `kt_cleanup:cleanup_soft_deletes(<<"accounts">>).`
 
 Tests the ratedeck upload task and rating a DID against account-vs-system ratedecks.
 
-Run a quick sequetial test: `pqc_cb_rates:seq()`
+Run a quick sequential test: `pqc_cb_rates:seq()`
 
 ### [IPs](src/pqc_cb_ips.erl)
 

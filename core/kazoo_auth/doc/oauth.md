@@ -6,7 +6,7 @@ Kazoo can be configured to use third-party resources such as authentication, sto
 
 #### Kazoo as a OAuth Client
 
-1. Create the oauth consumer in the third-party system (google, microsoft, salesforce, ...).
+1. Create the oauth consumer in the third-party system (google, Microsoft, Salesforce, ...).
 2. Register the consumer in kazoo.
 3. Use `kz_auth_client` to obtain a `token` to use the third-party resources
 
