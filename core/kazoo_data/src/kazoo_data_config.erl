@@ -35,8 +35,7 @@ get_ne_binary(Key) ->
 get_ne_binary(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
-        {'ok', Value} ->
-            nonempty(kz_term:to_binary(Value), Default)
+        {'ok', Value} -> nonempty(kz_term:to_binary(Value), Default)
     end.
 
 -spec get_ne_binaries(kz_term:ne_binary()) -> kz_term:api_ne_binaries().
@@ -47,8 +46,7 @@ get_ne_binaries(Key) ->
 get_ne_binaries(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
-        {'ok', Value} ->
-            nonempty(Value, Default)
+        {'ok', Value} -> nonempty(Value, Default)
     end.
 
 -spec get_json(kz_term:ne_binary()) -> kz_term:api_object().
@@ -59,8 +57,7 @@ get_json(Key) ->
 get_json(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
-        {'ok', Value} ->
-            as_json(Value, Default)
+        {'ok', Value} -> as_json(Value, Default)
     end.
 
 -spec get_is_true(kz_term:ne_binary()) -> boolean().
@@ -71,14 +68,43 @@ get_is_true(Key) ->
 get_is_true(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
-        {'ok', Value} ->
-            as_boolean(Value, Default)
+        {'ok', Value} -> as_boolean(Value, Default)
     end.
 
 -spec get(kz_term:ne_binary()) -> 'undefined' |
                                   {'ok', any()}.
 get(<<_/binary>>=Key) ->
-    application:get_env(?APP, kz_term:to_atom(Key, 'true')).
+    case application:get_env(?APP, kz_term:to_atom(Key, 'true')) of
+        'undefined' -> get_from_db(Key);
+        Value -> Value
+    end.
+
+get_from_db(<<_/binary>>=Key) ->
+    case get_cached_doc() of
+        {'error', _} -> 'undefined';
+        {'ok', JObj} ->
+            case kz_json:get_value([<<"default">>, Key], JObj) of
+                'undefined' -> 'undefined';
+                Value -> {'ok', Value}
+            end
+    end.
+
+get_cached_doc() ->
+    case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, ?KZ_CONFIG_DB, ?CONFIG_CAT}) of
+        {'error', 'not_found'} -> cache_doc(kz_datamgr:open_doc(?KZ_CONFIG_DB, ?CONFIG_CAT));
+        {'ok', Value} -> Value
+    end.
+
+cache_doc(Result) ->
+    CacheProps = [{'origin', {'db', ?KZ_CONFIG_DB, ?CONFIG_CAT}}
+                 ,{'expires', 'infinity'}
+                 ],
+    kz_cache:store_local(?CACHE_NAME
+                        ,{?MODULE, ?KZ_CONFIG_DB, ?CONFIG_CAT}
+                        ,Result
+                        ,CacheProps
+                        ),
+    Result.
 
 -spec nonempty(any(), Default) -> any() | Default.
 nonempty(Value, Default) ->

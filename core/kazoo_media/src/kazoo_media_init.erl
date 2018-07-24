@@ -16,6 +16,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
+    _ = kz_datamgr:revise_docs_from_folder(?KZ_MEDIA_DB, 'kazoo_media', "views"),
     case kapps_config:get_is_true(?CONFIG_CAT, <<"fix_media_names">>, 'true') of
         'true' ->
             kz_datamgr:suppress_change_notice(),
