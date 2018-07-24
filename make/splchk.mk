@@ -9,8 +9,10 @@ $(ROOT)/$(KAZOO_DICT):
 $(ROOT)/$(KAZOO_REPL):
 	@$(file >$(ROOT)/$(KAZOO_REPL),personal_repl-1.1 en 0 utf-8)
 
+splchk: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(shell find doc -name "*.md" -path "doc/mkdocs*" -prune)))
+
 splchk-changed: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(CHANGED)))
-splchk: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(wildcard doc/*.md)))
+
 splchk-json: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL) $(addsuffix .chk,$(basename $(shell find . -name *.json -wholename "*/schemas/*")))
 
 %.chk: %.md
