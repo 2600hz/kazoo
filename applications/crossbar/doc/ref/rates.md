@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required | Support Level
 `rate_version` | Rate version | `string()` |   | `false` |  
 `ratedeck_id` | ID of the ratedeck this rate belongs to | `string()` |   | `false` |  
 `routes.[]` |   | `string()` |   | `false` |  
-`routes` | List of regexs that match valid DIDs for this rate | `array(string())` |   | `false` |  
+`routes` | List of regexps that match valid DIDs for this rate | `array(string())` |   | `false` |  
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer()` |   | `false` |  
 
 

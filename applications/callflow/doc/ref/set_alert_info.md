@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the set_alert_info callflow's data object
+Validator for the set_alert_info callflow data object
 
 
 

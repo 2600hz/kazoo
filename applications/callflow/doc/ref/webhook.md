@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the webhook callflow's data object
+Validator for the webhook callflow data object
 
 
 

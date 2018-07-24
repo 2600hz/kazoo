@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the intercept callflow's data object
+Validator for the intercept callflow data object
 
 
 

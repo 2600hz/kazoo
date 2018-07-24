@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the ring_group_toggle callflow's data object
+Validator for the ring_group_toggle callflow data object
 
 
 

@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the flush_dtmf callflow's data object
+Validator for the flush_dtmf callflow data object
 
 
 

@@ -6,7 +6,7 @@ Sets a variable on the current leg (useful in other callflow actions).
 
 #### Schema
 
-Validator for the set_variable callflow's data object
+Validator for the set_variable callflow data object
 
 
 

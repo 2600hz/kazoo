@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 `numbers./\+?[0-9]+/` |   | `object()` |   | `false` |  
 `numbers` | The numbers to port in | `object()` |   | `true` |  
 `port_state` | What state the port request is currently in | `string('unconfirmed' | 'pending' | 'submitted' | 'scheduled' | 'completed' | 'rejected' | 'canceled')` | `unconfirmed` | `false` |  
-`transfer_date` | Requested transfer date in gregorain timestamp | `integer()` |   | `false` |  
+`transfer_date` | Requested transfer date in Gregorian timestamp | `integer()` |   | `false` |  
 
 
 

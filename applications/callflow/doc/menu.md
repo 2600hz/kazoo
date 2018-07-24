@@ -6,7 +6,7 @@ Also known as IVR. Play a prompt and branch based on caller DTMF.
 
 #### Schema
 
-Validator for the menu callflow's data object
+Validator for the menu callflow data object
 
 
 

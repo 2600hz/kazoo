@@ -6,7 +6,7 @@ Sets parameters into the call record for later use (could be used for skill base
 
 #### Schema
 
-Validator for the set callflow's data object
+Validator for the set callflow data object
 
 
 

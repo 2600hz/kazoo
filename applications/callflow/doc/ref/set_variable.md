@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the set_variable callflow's data object
+Validator for the set_variable callflow data object
 
 
 

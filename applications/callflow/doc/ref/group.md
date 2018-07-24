@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the group callflow's data object
+Validator for the group callflow data object
 
 
 

@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the resources callflow's data object
+Validator for the resources callflow data object
 
 
 

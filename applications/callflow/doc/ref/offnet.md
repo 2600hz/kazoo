@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the offnet callflow's data object
+Validator for the offnet callflow data object
 
 
 

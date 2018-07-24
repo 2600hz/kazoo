@@ -4,7 +4,7 @@ Sets `alert_info` variable inside b-leg channel. Ueed for distinctive ring.
 
 #### Schema
 
-Validator for the set_alert_info callflow's data object
+Validator for the set_alert_info callflow data object
 
 
 

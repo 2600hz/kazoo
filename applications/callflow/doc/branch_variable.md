@@ -6,7 +6,7 @@ Branch the callflow based on the configured variable (if it exists)
 
 #### Schema
 
-Validator for the branch_variable callflow's data object
+Validator for the branch_variable callflow data object
 
 
 

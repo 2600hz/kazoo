@@ -6,7 +6,7 @@ Determines if the caller should barge in on the callee
 
 #### Schema
 
-Validator for the intercom callflow's data object
+Validator for the intercom callflow data object
 
 
 

@@ -35,7 +35,7 @@
 -export([metaflows/1, metaflows/2, set_metaflows/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
 -export([music_on_hold_media_id/1, music_on_hold_media_id/2, set_music_on_hold_media_id/2]).
--export([mwi_unsolicitated_updates/1, mwi_unsolicitated_updates/2, set_mwi_unsolicitated_updates/2]).
+-export([mwi_unsolicited_updates/1, mwi_unsolicited_updates/2, set_mwi_unsolicited_updates/2]).
 -export([name/1, name/2, set_name/2]).
 -export([outbound_flags/1, outbound_flags/2, set_outbound_flags/2]).
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
@@ -444,17 +444,17 @@ music_on_hold_media_id(Doc, Default) ->
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
     kz_json:set_value([<<"music_on_hold">>, <<"media_id">>], MusicOnHoldMediaId, Doc).
 
--spec mwi_unsolicitated_updates(doc()) -> boolean().
-mwi_unsolicitated_updates(Doc) ->
-    mwi_unsolicitated_updates(Doc, 'true').
+-spec mwi_unsolicited_updates(doc()) -> boolean().
+mwi_unsolicited_updates(Doc) ->
+    mwi_unsolicited_updates(Doc, true).
 
--spec mwi_unsolicitated_updates(doc(), Default) -> boolean() | Default.
-mwi_unsolicitated_updates(Doc, Default) ->
-    kz_json:get_boolean_value([<<"mwi_unsolicitated_updates">>], Doc, Default).
+-spec mwi_unsolicited_updates(doc(), Default) -> boolean() | Default.
+mwi_unsolicited_updates(Doc, Default) ->
+    kz_json:get_boolean_value([<<"mwi_unsolicited_updates">>], Doc, Default).
 
--spec set_mwi_unsolicitated_updates(doc(), boolean()) -> doc().
-set_mwi_unsolicitated_updates(Doc, MwiUnsolicitatedUpdates) ->
-    kz_json:set_value([<<"mwi_unsolicitated_updates">>], MwiUnsolicitatedUpdates, Doc).
+-spec set_mwi_unsolicited_updates(doc(), boolean()) -> doc().
+set_mwi_unsolicited_updates(Doc, MwiUnsolicitedUpdates) ->
+    kz_json:set_value([<<"mwi_unsolicited_updates">>], MwiUnsolicitedUpdates, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->

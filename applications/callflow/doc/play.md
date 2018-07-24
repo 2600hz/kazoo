@@ -6,7 +6,7 @@ Play media to the caller
 
 #### Schema
 
-Validator for the play callflow's data object
+Validator for the play callflow data object
 
 
 

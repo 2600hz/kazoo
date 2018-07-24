@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the group_pickup_feature callflow's data object
+Validator for the group_pickup_feature callflow data object
 
 
 

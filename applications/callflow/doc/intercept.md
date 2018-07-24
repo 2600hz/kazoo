@@ -6,7 +6,7 @@ Intercepts calls to a device/user/group.
 
 #### Schema
 
-Validator for the intercept callflow's data object
+Validator for the intercept callflow data object
 
 
 

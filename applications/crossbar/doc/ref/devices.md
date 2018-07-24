@@ -26,7 +26,7 @@ Key | Description | Type | Default | Required | Support Level
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |  
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false` | `supported`
-`contact_list` | Contect List Parameters | `object()` | `{}` | `false` |  
+`contact_list` | Contact List Parameters | `object()` | `{}` | `false` |  
 `device_type` | Arbitrary device type used by the UI and billing system | `string()` |   | `false` |  
 `dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |  
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this device? | `boolean()` |   | `false` |  
@@ -41,7 +41,7 @@ Key | Description | Type | Default | Required | Support Level
 `metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false` |  
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..2048)` |   | `false` |  
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object()` | `{}` | `false` |  
-`mwi_unsolicitated_updates` | When true enables unsolicitated mwi notifications | `boolean()` | `true` | `false` |  
+`mwi_unsolicited_updates` | When true enables unsolicited mwi notifications | `boolean()` | `true` | `false` |  
 `name` | A friendly name for the device | `string(1..128)` |   | `true` | `supported`
 `outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string()) | object()` |   | `false` |  
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false` |  

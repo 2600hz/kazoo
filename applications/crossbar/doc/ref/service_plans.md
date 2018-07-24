@@ -19,7 +19,7 @@ Key | Description | Type | Default | Required | Support Level
 `manual_recurring` | Monthly recurring items | `array(object())` |   | `false` |  
 `merge.priority` | The priority among the service plans with the merge strategy | `integer()` |   | `false` |  
 `merge.strategy` | The merge strategy, like strategies are merged together based on their priority | `string('simple' | 'cumulative')` |   | `false` |  
-`merge` | Optionally defines a strategy and priorty to merge multiple service plans together | `object()` |   | `false` |  
+`merge` | Optionally defines a strategy and priority to merge multiple service plans together | `object()` |   | `false` |  
 `name` | A friendly name for the service plan | `string(1..128)` |   | `true` |  
 `plan./.+/` | Category name | `object()` |   | `false` |  
 `plan` | Outlines the service plan for various services | `object()` |   | `true` |  

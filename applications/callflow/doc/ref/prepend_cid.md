@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the prepend_cid callflow's data object
+Validator for the prepend_cid callflow data object
 
 
 

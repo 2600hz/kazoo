@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the intercom callflow's data object
+Validator for the intercom callflow data object
 
 
 
