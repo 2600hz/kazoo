@@ -12,12 +12,12 @@
     3. Replace the `{ACCOUNT_ID}` and `{AUTH_TOKEN}` fields with your data. `{REQUEST_ID}` is optional, a self generated GUID which is present in the event message. You can just use same as `{ACCOUNT_ID}` or any random number.
 5. You're all set!
 
-Now access `kazoo_example_ws_client.html` with your favorite Web browser and open the Javascript console.
+Now access `kazoo_example_ws_client.html` with your favorite Web browser and open the JavaScript console.
 
 * You should be able to see whether your client connected to Kazoo
 * Make a call: the events your client is listening for will appear in the console!
 
-From here, you can write your own Javascript callbacks, triggered every time a registered event is sent from Kazoo.
+From here, you can write your own JavaScript callbacks, triggered every time a registered event is sent from Kazoo.
 
 ## Example Client
 
