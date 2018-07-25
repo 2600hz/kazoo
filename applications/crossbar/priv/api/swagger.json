@@ -29539,11 +29539,6 @@
         "system_config.kapps_controller": {
             "description": "Schema for kapps_controller system_config",
             "properties": {
-                "default_apps_ip_address_to_bind": {
-                    "default": "0.0.0.0",
-                    "description": "Default IP which Kazoo Applications can bind into",
-                    "type": "string"
-                },
                 "kapps": {
                     "default": [
                         "blackhole",
