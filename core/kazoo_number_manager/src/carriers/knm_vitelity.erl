@@ -96,7 +96,7 @@ disconnect_number(Number) ->
     query_vitelity(Number, release_did_options(DID)).
 
 %%------------------------------------------------------------------------------
-%% @doc Check to see if use_stepswich_cnam is defined in the couchdoc and is set 
+%% @doc Check to see if use_stepswich_cnam is defined in the couchdoc and is set
 %% to true. When set to true, incoming calls will use stepswitch to lookup cnam.
 %% @end
 %%------------------------------------------------------------------------------
