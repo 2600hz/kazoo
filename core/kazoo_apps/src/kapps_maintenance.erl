@@ -236,7 +236,8 @@ refresh(Databases, Pause) ->
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
-             ,[self(), length(Databases) + 1, Total, Database]),
+             ,[self(), length(Databases) + 1, Total, Database]
+             ),
     _ = refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
@@ -256,6 +257,7 @@ get_database_sort(Db1, Db2) ->
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
     _ = kz_datamgr:refresh_views(Database),
+    _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
     'ok'.
 
 %%------------------------------------------------------------------------------
