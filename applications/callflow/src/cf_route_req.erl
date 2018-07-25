@@ -176,11 +176,12 @@ send_route_response(Flow, JObj, Call) ->
 wait_for_running(_Call, 5) ->
     lager:info("callflow not ready after 5 tries, exiting");
 wait_for_running(Call, N) ->
+    FetchId = kapps_call:fetch_id(Call),
     receive
-        'channel_destroy' ->
+        {'channel_destroy', FetchId} ->
             cf_exe:hard_stop(Call),
             lager:info("received channel destroy while setting up callflow executor, exiting")
-    after 2000 ->
+    after 250 ->
             case cf_exe:status(Call) of
                 'not_running' -> lager:info("callflow not running");
                 'running' -> lager:info("callflow up & running");
