@@ -112,12 +112,7 @@ rebuild_token_auth(Pause) ->
 %%------------------------------------------------------------------------------
 -spec migrate_to_4_0() -> 'no_return'.
 migrate_to_4_0() ->
-    %% Number migration
-    lager:info("migrating number manager"),
-    kazoo_number_manager_maintenance:migrate(),
-    %% Voicemail migration
-    lager:info("migrating voicemail"),
-    kazoo_voicemail_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding({'migrate', <<"4.0">>}), []),
     'no_return'.
 
 %%------------------------------------------------------------------------------
@@ -136,9 +131,7 @@ migrate(Pause) ->
     Databases = get_databases(),
     _ = migrate(Pause, Databases),
 
-    %% Migrate settings for kazoo_media
-    io:format("running media migrations...~n"),
-    _ = kazoo_media_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding('migrate'), []),
 
     'no_return'.
 
@@ -205,9 +198,7 @@ parallel_migrate_worker(Ref, Pause, Databases, Parent) ->
 
 -spec wait_for_parallel_migrate(kz_term:references()) -> 'no_return'.
 wait_for_parallel_migrate([]) ->
-    %% Migrate settings for kazoo_media
-    io:format("running media migrations...~n"),
-    _ = kazoo_media_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding('migrate'), []),
     'no_return';
 wait_for_parallel_migrate([Ref|Refs]) ->
     receive
@@ -245,7 +236,8 @@ refresh(Databases, Pause) ->
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
-             ,[self(), length(Databases) + 1, Total, Database]),
+             ,[self(), length(Databases) + 1, Total, Database]
+             ),
     _ = refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
@@ -265,6 +257,7 @@ get_database_sort(Db1, Db2) ->
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
     _ = kz_datamgr:refresh_views(Database),
+    _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
     'ok'.
 
 %%------------------------------------------------------------------------------

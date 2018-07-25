@@ -205,8 +205,8 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     RedView = number_services_red(),
     ViewName = <<"_design/numbers">>,
     View = case kz_datamgr:open_doc(AccountDb, ViewName) of
-               {ok, JObj} -> JObj;
-               {error, _R} ->
+               {'ok', JObj} -> JObj;
+               {'error', _R} ->
                    lager:debug("reading account view ~s from disk (~p)", [ViewName, _R]),
                    {ViewName,JObj} = kapps_util:get_view_json('crossbar', <<"account/numbers.json">>),
                    JObj
@@ -216,7 +216,7 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     case MapView =:= kz_json:get_ne_binary_value(PathMap, View)
         andalso RedView =:= kz_json:get_ne_binary_value(PathRed, View)
     of
-        'true' -> no_return;
+        'true' -> 'no_return';
         'false' ->
             NewView = kz_json:set_values([{PathMap, MapView}
                                          ,{PathRed, RedView}

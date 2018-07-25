@@ -225,7 +225,6 @@ refresh_account_db(Database) ->
                 lists:keyreplace(?VIEW_NUMBERS_ACCOUNT, 1, kapps_maintenance:get_all_account_views(), ViewListing)
         end,
     _ = kapps_util:update_views(AccountDb, AccountViews, 'true'),
-    _ = kazoo_number_manager_maintenance:update_number_services_view(AccountDb),
     kapps_account_config:migrate(AccountDb),
     _ = kazoo_bindings:map(kapps_maintenance:binding({'refresh_account', AccountDb}), AccountId),
     'ok'.

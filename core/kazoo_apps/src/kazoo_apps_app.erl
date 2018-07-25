@@ -26,6 +26,7 @@ start() ->
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
+    kapps_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_voicemail_maintenance', 'migrate'),
     kazoo_apps_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -34,4 +35,5 @@ start(_StartType, _StartArgs) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    kapps_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_voicemail_maintenance', 'migrate'),
     'ok'.

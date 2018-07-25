@@ -163,8 +163,8 @@ handle_event(JObj, #state{name=Name}) ->
         end,
     'ignore'.
 
--spec terminate(state(), any()) -> 'ok'.
-terminate(_State, _Reason) ->
+-spec terminate(any(), state()) -> 'ok'.
+terminate(_Reason, _State) ->
     lager:info("terminating: ~p", [_Reason]).
 
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
