@@ -678,10 +678,12 @@ maybe_save_attachment(Context) ->
     JObj = cb_context:doc(Context),
     case kz_json:get_value(<<"document">>, JObj) of
         'undefined' ->
-            save_multipart_attachment(Context, cb_context:req_files(Context));
+            _ = kz_util:spawn(fun save_multipart_attachment/2, [Context, cb_context:req_files(Context)]);
         _Document ->
-            prepare_attachment(Context, JObj, 'undefined', 'undefined')
-    end.
+            _ = kz_util:spawn(fun prepare_attachment/4, [Context, JObj, 'undefined', 'undefined'])
+    end,
+    crossbar_util:response_202(<<"processing fax attachments">>, Context).
+
 
 -spec save_multipart_attachment(cb_context:context(), req_files()) -> cb_context:context().
 save_multipart_attachment(Context, []) -> Context;
