@@ -59,8 +59,13 @@ api_version_constraint('forward', NotVersion) ->
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Dispatch = cowboy_router:compile(crossbar_routes()),
-    maybe_start_plaintext(Dispatch),
-    maybe_start_ssl(Dispatch),
+
+    DefaultIP = kz_network_utils:default_binding_ip(),
+    IP = kapps_config:get_string(?CONFIG_CAT, <<"ip">>, DefaultIP),
+    IPAddress = kz_network_utils:get_supported_binding_ip(IP, DefaultIP),
+
+    maybe_start_plaintext(Dispatch, IPAddress),
+    maybe_start_ssl(Dispatch, IPAddress),
     'ignore'.
 
 %%------------------------------------------------------------------------------
@@ -159,18 +164,11 @@ stop_mod_version(Version, Mod) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Functions for `onrequest' and `onresponse' callbacks
+%% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec on_request(cowboy_req:req()) -> cowboy_req:req().
-on_request(Req) -> Req.
-
--spec on_response(cowboy:http_status(), cowboy:http_headers(), kz_term:text(), cowboy_req:req()) ->
-                         cowboy_req:req().
-on_response(_Status, _Headers, _Body, Req) -> Req.
-
--spec maybe_start_plaintext(cowboy_router:dispatch_rules()) -> 'ok'.
-maybe_start_plaintext(Dispatch) ->
+-spec maybe_start_plaintext(cowboy_router:dispatch_rules(), inet:ip_address()) -> 'ok'.
+maybe_start_plaintext(Dispatch, IP) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
         'false' -> lager:info("plaintext api support not enabled");
         'true' ->
@@ -180,7 +178,6 @@ maybe_start_plaintext(Dispatch) ->
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try
-                IP = get_binding_ip(),
                 lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
                 cowboy:start_clear('api_resource'
                                   ,[{'ip', IP}
@@ -190,9 +187,7 @@ maybe_start_plaintext(Dispatch) ->
                                   ,#{'env' => #{'dispatch' => Dispatch
                                                ,'timeout' => ReqTimeout
                                                }
-                                    ,'onrequest' => fun on_request/1
-                                    ,'onresponse' => fun on_response/4
-                                    ,'compress' => ?USE_COMPRESSION
+                                    ,'stream_handlers' => maybe_add_compression_handler()
                                     }
                                   )
             of
@@ -206,54 +201,15 @@ maybe_start_plaintext(Dispatch) ->
             end
     end.
 
--spec get_binding_ip() -> inet:ip_address().
-get_binding_ip() ->
-    IsIPv6Enabled = kz_network_utils:is_ip_family_supported('inet6'),
-    IsIPv4Enabled = kz_network_utils:is_ip_family_supported('inet'),
-
-    DefaultIP = kapps_controller:default_binding_all_ip(),
-
-    IP = kapps_config:get_string(?CONFIG_CAT, <<"ip">>, DefaultIP),
-
-    {'ok', DefaultIPAddress} = inet:parse_address(DefaultIP),
-
-    case inet:parse_ipv6strict_address(IP) of
-        {'ok', IPv6} when IsIPv6Enabled -> IPv6;
-        {'ok', _} ->
-            lager:warning("address ~s is ipv6, but ipv6 is not supported by the system, enforcing default ip ~s"
-                         ,[IP, inet:ntoa(DefaultIPAddress)]
-                         ),
-            DefaultIPAddress;
-        {'error', 'einval'} ->
-            case inet:parse_ipv4strict_address(IP) of
-                {'ok', IPv4} when IsIPv4Enabled -> IPv4;
-                {'ok', _} when IsIPv6Enabled ->
-                    lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ip ~s"
-                                 ,[IP, inet:ntoa(DefaultIPAddress)]
-                                 ),
-                    DefaultIPAddress;
-                {'ok', _} ->
-                    lager:warning("address ~s is ipv4, but system reports that ipv4 and ipv6 are not supported by the system, enforcing default ip ~s"
-                                 ,[IP, inet:ntoa(DefaultIPAddress)]
-                                 ),
-                    DefaultIPAddress;
-                {'error', 'einval'} ->
-                    lager:warning("address ~s is not a valid ipv6 or ipv4 address, enforcing default ip ~s"
-                                 ,[IP, inet:ntoa(DefaultIPAddress)]
-                                 ),
-                    DefaultIPAddress
-            end
-    end.
-
--spec maybe_start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
-maybe_start_ssl(Dispatch) ->
+-spec maybe_start_ssl(cowboy_router:dispatch_rules(), inet:ip_address()) -> 'ok'.
+maybe_start_ssl(Dispatch, IP) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
         'false' -> lager:info("ssl api support not enabled");
-        'true' -> start_ssl(Dispatch)
+        'true' -> start_ssl(Dispatch, IP)
     end.
 
--spec start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
-start_ssl(Dispatch) ->
+-spec start_ssl(cowboy_router:dispatch_rules(), inet:ip_address()) -> 'ok'.
+start_ssl(Dispatch, IP) ->
     try ssl_opts(code:lib_dir(?APP)) of
         SSLOpts ->
             lager:debug("trying to start SSL API server"),
@@ -263,7 +219,6 @@ start_ssl(Dispatch) ->
             Workers = kapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
             try
-                IP = get_binding_ip(),
                 lager:info("trying to bind SSL API server to address ~s port ~b"
                           ,[inet:ntoa(IP)
                            ,props:get_value('port', SSLOpts)
@@ -277,9 +232,7 @@ start_ssl(Dispatch) ->
                                 ,#{'env' => #{'dispatch' => Dispatch
                                              ,'timeout' => ReqTimeout
                                              }
-                                  ,'onrequest' => fun on_request/1
-                                  ,'onresponse' => fun on_response/4
-                                  ,'compress' => ?USE_COMPRESSION
+                                  ,'stream_handlers' => maybe_add_compression_handler()
                                   }
                                 )
             of
@@ -336,3 +289,11 @@ find_file(File, Root) ->
                     throw({'invalid_file', File})
             end
     end.
+
+-spec maybe_add_compression_handler() -> [atom()].
+maybe_add_compression_handler() ->
+    case ?USE_COMPRESSION of
+        'true' -> ['cowboy_compress_h', 'cowboy_stream_h'];
+        'false' -> ['cowboy_stream_h']
+    end.
+

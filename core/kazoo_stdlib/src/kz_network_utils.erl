@@ -8,6 +8,10 @@
 -module(kz_network_utils).
 
 -export([get_hostname/0]).
+-export([default_binding_ip/0
+        ,get_supported_binding_ip/0, get_supported_binding_ip/1, get_supported_binding_ip/2
+        ,detect_ip_family/1
+        ]).
 -export([is_ipv4/1
         ,is_ipv6/1
         ,is_ip/1
@@ -91,27 +95,21 @@ get_hostname() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_ipv4(kz_term:text()) -> boolean().
-is_ipv4(Address) when is_binary(Address) ->
-    is_ipv4(kz_term:to_list(Address));
-is_ipv4(Address) when is_list(Address) ->
-    case inet_parse:ipv4strict_address(Address) of
-        {'ok', _} -> 'true';
-        {'error', _} -> 'false'
-    end.
+is_ipv4(Address) ->
+    {Family, _} = detect_ip_family(Address),
+    Family =:= 'inet'.
 
 -spec is_ipv6(kz_term:text()) -> boolean().
-is_ipv6(Address) when is_binary(Address) ->
-    is_ipv6(kz_term:to_list(Address));
-is_ipv6(Address) when is_list(Address) ->
-    case inet_parse:ipv6strict_address(Address) of
-        {'ok', _} -> 'true';
-        {'error', _} -> 'false'
-    end.
+is_ipv6(Address) ->
+    {Family, _} = detect_ip_family(Address),
+    Family =:= 'inet6'.
 
 -spec is_ip(kz_term:text()) -> boolean().
 is_ip(Address) ->
-    is_ipv4(Address)
-        orelse is_ipv6(Address).
+    {Family, _} = detect_ip_family(Address),
+    Family =:= 'inet'
+        orelse Family =:= 'inet6'.
+
 
 -spec is_cidr(kz_term:text()) -> boolean().
 is_cidr(Address) ->
@@ -120,6 +118,118 @@ is_cidr(Address) ->
     catch
         'error':{'badmatch', _} -> 'false';
         'error':'invalid_cidr' -> 'false'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Returns default binding IP address (bind on all interfaces) based
+%% on supported IP family.
+%%
+%% If both IPv6 and IPv4 is available returns IPv4 by default.
+%% @throws {'error', Reason} when Reason::kz_term:ne_binary()
+%% @end
+%%------------------------------------------------------------------------------
+-spec default_binding_ip() -> string().
+default_binding_ip() ->
+    default_binding_ip(is_ip_family_supported('inet')
+                      ,is_ip_family_supported('inet6')
+                      ).
+
+-spec default_binding_ip(boolean(), boolean()) -> string().
+default_binding_ip('true', _) -> "0.0.0.0";
+default_binding_ip('false', 'true') -> "::";
+default_binding_ip('false', 'false') -> throw({'error', <<"no ipv6/4 network available">>}).
+
+%%------------------------------------------------------------------------------
+%% @doc Returns {@link inet:ip_address} of {@link default_binding_ip/0}.
+%% @throws {'error', Reason} when Reason::kz_term:ne_binary()
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_supported_binding_ip() -> inet:ip_address().
+get_supported_binding_ip() ->
+    DefaultIP = default_binding_ip(),
+    {'ok', DefaultIPAddress} = inet:parse_address(DefaultIP),
+    DefaultIPAddress.
+
+%% @equiv get_supported_binding_ip(IP, default_binding_ip())
+-spec get_supported_binding_ip(kz_term:api_string()) -> inet:ip_address().
+get_supported_binding_ip('undefined') ->
+    get_supported_binding_ip();
+get_supported_binding_ip(IP) ->
+    DefaultIP = default_binding_ip(),
+    get_supported_binding_ip(IP, DefaultIP).
+
+%%------------------------------------------------------------------------------
+%% @doc Returns {@link inet:ip_address} of binding IP address if the `IP'
+%% family is supported by underlying system, otherwise retruns the default
+%% binding address.
+%% @throws {'error', Reason} when Reason::kz_term:ne_binary()
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_supported_binding_ip(kz_term:api_string(), kz_term:api_string()) -> inet:ip_address().
+get_supported_binding_ip('undefined', 'undefined') ->
+    get_supported_binding_ip();
+get_supported_binding_ip('undefined', DefaultIP) ->
+    get_supported_binding_ip(DefaultIP, DefaultIP);
+get_supported_binding_ip(IP, 'undefined') ->
+    get_supported_binding_ip(IP, default_binding_ip());
+get_supported_binding_ip(IP, DefaultIP) ->
+    IsIPv6Enabled = is_ip_family_supported('inet6'),
+    IsIPv4Enabled = is_ip_family_supported('inet'),
+
+    {IsDefaultIPValid, DefaultIPAddress} =
+        case detect_ip_family(DefaultIP) of
+            {'inet', Default} -> {'true', Default};
+            {'inet6', Default} -> {'true', Default};
+            {'error', 'einval'} -> {'false', 'einval'}
+        end,
+
+    case detect_ip_family(IP) of
+        {'inet6', IPv6} when IsIPv6Enabled ->
+            IPv6;
+        {'inet6', _} when IsDefaultIPValid ->
+            lager:warning("address ~s is ipv6, but ipv6 is not supported by the system, enforcing default ip ~s"
+                         ,[IP, DefaultIP]
+                         ),
+            DefaultIPAddress;
+        {'inet', IPv4} when IsIPv4Enabled ->
+            IPv4;
+        {'inet', _} when IsDefaultIPValid ->
+            lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ip ~s"
+                         ,[IP, DefaultIP]
+                         ),
+            DefaultIPAddress;
+        {'error', 'einval'} when IsDefaultIPValid ->
+            lager:warning("address ~s is not a valid ipv6 or ipv4 address, enforcing default ip ~s"
+                         ,[IP, DefaultIP]
+                         ),
+            DefaultIPAddress;
+        {'error', 'einval'} ->
+            lager:warning("neither the address ~s or default binding ip ~s are a valid ipv6 or ipv4 address"
+                         ,[IP, DefaultIP]
+                         ),
+            throw({'error', <<"no ipv6/4 network available">>})
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Detects IP family of `IP' and returns its {@link inet:ip_address}.
+%% @end
+%%------------------------------------------------------------------------------
+-spec detect_ip_family(kz_term:text()) -> {inet:address_family(), inet:ip_address()} | {'error', 'einval'}.
+detect_ip_family(IP) when is_binary(IP) ->
+    detect_ip_family(kz_term:to_list(IP));
+detect_ip_family(IP) ->
+    try
+        case inet:parse_ipv6strict_address(IP) of
+            {'ok', IPv6} -> {'inet6', IPv6};
+            {'error', 'einval'} ->
+                case inet:parse_ipv4strict_address(IP) of
+                    {'ok', IPv4} -> {'inet', IPv4};
+                    {'error', 'einval'}=Error -> Error
+                end
+        end
+    catch
+        'error':'function_clause' ->
+            {'error', 'einval'}
     end.
 
 %%------------------------------------------------------------------------------
