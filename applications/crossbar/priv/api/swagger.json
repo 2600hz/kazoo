@@ -30940,6 +30940,10 @@
                 },
                 "routesip": {
                     "description": "number_manager.vitelity routesip"
+                },
+                "use_stepswitch_cnam": {
+                    "description": "number_manager.vitelity use_stepswitch_cnam",
+                    "type": "string"
                 }
             },
             "type": "object"
