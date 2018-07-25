@@ -110,7 +110,6 @@ is_ip(Address) ->
     Family =:= 'inet'
         orelse Family =:= 'inet6'.
 
-
 -spec is_cidr(kz_term:text()) -> boolean().
 is_cidr(Address) ->
     try inet_cidr:parse(Address) of
