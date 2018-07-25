@@ -106,7 +106,7 @@ handle_event(JObj, _State) ->
     case kz_api:event_name(JObj) of
         <<"CHANNEL_DESTROY">> ->
             CallId = kz_call_event:call_id(JObj),
-            gproc:send({'p', 'l', {'route_req', CallId}}, 'channel_destroy'),
+            gproc:send({'p', 'l', {'route_req', CallId}}, {'channel_destroy', kz_call_event:fetch_id(JObj)}),
             'ignore';
         _ -> {'reply', []}
     end.
