@@ -676,8 +676,22 @@ launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
     State;
 launch_cf_module(#state{call=Call
                        ,flow=Flow
-                       ,cf_module_pid=OldPidRef
                        }=State) ->
+    case cf_util:token_check(Call, Flow) of
+        'true' ->
+            do_launch_cf_module(State);
+
+        'false' ->
+            lager:debug("call does not have enough tokens to proceed, stopping execution"),
+            stop(self()),
+            State
+    end.
+
+-spec do_launch_cf_module(state()) -> state().
+do_launch_cf_module(#state{call=Call
+                          ,flow=Flow
+                          ,cf_module_pid=OldPidRef
+                          }=State) ->
     Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
     Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
 
