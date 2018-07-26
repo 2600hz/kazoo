@@ -30942,8 +30942,9 @@
                     "description": "number_manager.vitelity routesip"
                 },
                 "use_stepswitch_cnam": {
+                    "default": false,
                     "description": "number_manager.vitelity use_stepswitch_cnam",
-                    "type": "string"
+                    "type": "boolean"
                 }
             },
             "type": "object"
