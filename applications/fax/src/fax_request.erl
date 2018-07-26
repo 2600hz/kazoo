@@ -289,7 +289,7 @@ get_fax_storage(Call) ->
                            ,"-"
                            ,kz_binary:rand_hex(16)
                            ]),
-    FaxAttachmentId = <<"received_fax_", FaxId/binary, ".tiff" >>,
+    FaxAttachmentId = <<"received_file_", FaxId/binary, ".tiff" >>,
 
     #fax_storage{id=FaxId
                 ,db=FaxDb

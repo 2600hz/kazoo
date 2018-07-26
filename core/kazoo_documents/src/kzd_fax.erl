@@ -351,8 +351,12 @@ convert_to_pdf(FromFormat, Content, Id) ->
                                      {'error', kz_term:ne_binary()}.
 fetch_attachment_format(Format, Db, Doc) ->
     case kz_json:get_binary_value(<<"folder">>, Doc) of
-        <<"inbox">> -> fetch_received_attachment_format(Format, Db, Doc);
-        <<"outbox">> -> fetch_sent_attachment_format(Format, Db, Doc);
+        <<"inbox">> ->
+            lager:debug("fetching received fax attachment with format ~s", [Format]),
+            fetch_received_attachment_format(Format, Db, Doc);
+        <<"outbox">> ->
+            lager:debug("fetching sent fax attachment with format ~s", [Format]),
+            fetch_sent_attachment_format(Format, Db, Doc);
         'undefined' -> {'error', <<"no folder defined in doc">>}
     end.
 
@@ -402,6 +406,7 @@ fetch_received_attachment(Db, Doc, [_|Attachments]) ->
     fetch_received_attachment(Db, Doc, Attachments);
 fetch_received_attachment(Db, Doc, []) ->
     fetch_legacy_attachment(Db, Doc).
+
 %%------------------------------------------------------------------------------
 %% @doc Helper function for accessing attachments suitable for fax transmission.
 %%
@@ -520,6 +525,8 @@ fetch_received_pdf_attachment(Db, Doc, [?PDF_FILENAME|_]) ->
         {'ok', Content} -> {'ok', Content, <<"application/pdf">>, Doc};
         Error -> Error
     end;
+fetch_received_pdf_attachment(Db, Doc, [_|Attachments]) ->
+    fetch_received_pdf_attachment(Db, Doc, Attachments);
 fetch_received_pdf_attachment(Db, Doc, []) ->
     case fetch_received_attachment(Db, Doc) of
         {'ok', Content, ContentType, NewDoc} ->
