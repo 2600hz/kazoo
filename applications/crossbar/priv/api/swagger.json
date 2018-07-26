@@ -29112,11 +29112,6 @@
                     "description": "fax default compare field",
                     "type": "string"
                 },
-                "default_fax_extension": {
-                    "default": ".tiff",
-                    "description": "fax default fax extension",
-                    "type": "string"
-                },
                 "default_retry_count": {
                     "default": 3,
                     "description": "fax default retry count",

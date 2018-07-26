@@ -288,7 +288,7 @@ save_outbound_fax(Db, Doc, Original, ContentType) ->
             case convert_to_fax(ContentType, Original, Id) of
                 {'ok', Tiff, Props} ->
                     NewDoc = update_fax_props(Doc, Props),
-                save_fax_attachments(Db, NewDoc, [Att, {Tiff, <<"image/tiff">>, ?FAX_FILENAME}|maybe_convert_to_pdf(<<"image/tiff">>, Tiff, Id)]);
+                    save_fax_attachments(Db, NewDoc, [Att, {Tiff, <<"image/tiff">>, ?FAX_FILENAME}|maybe_convert_to_pdf(<<"image/tiff">>, Tiff, Id)]);
                 Error -> Error
             end;
         'false' ->
