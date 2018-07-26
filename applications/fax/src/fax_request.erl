@@ -420,8 +420,11 @@ overridden_fax_identity(Call, JObj) ->
 end_receive_fax(JObj, #state{call=Call}=State) ->
     kapps_call_command:hangup(Call),
     case kz_json:is_true([<<"Application-Data">>,<<"Fax-Success">>], JObj, 'false') of
-        'true' -> end_receive_fax(State#state{fax_result=JObj});
+        'true' ->
+            lager:debug("fax status - successfully received fax"),
+            end_receive_fax(State#state{fax_result=JObj});
         'false' ->
+            lager:debug("fax status - receive fax failed"),
             notify_failure(JObj, State),
             {'stop', 'normal', State}
     end.
