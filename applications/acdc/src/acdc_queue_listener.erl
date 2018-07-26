@@ -5,7 +5,7 @@
 %%%      and such
 %%%   2. a shared queue that member_call messages will be published to,
 %%%      each consumer will be round-robined. The consumers aren't going
-%%%      to auto-ack the payloads, defering that until the connection is
+%%%      to auto-ack the payloads, deferring that until the connection is
 %%%      accepted by the agent.
 %%%
 %%%

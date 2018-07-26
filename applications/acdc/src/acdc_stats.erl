@@ -442,7 +442,7 @@ handle_info(?CLEANUP_MSG, State) ->
     _ = cleanup_data(self()),
     {'noreply', State#state{cleanup_ref=start_cleanup_timer()}};
 handle_info(_Msg, State) ->
-    lager:debug("unhandling message: ~p", [_Msg]),
+    lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
