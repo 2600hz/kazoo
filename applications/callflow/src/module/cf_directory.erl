@@ -317,7 +317,7 @@ play_confirm_match(Call, User) ->
 -spec username_audio_macro(kapps_call:call(), directory_user()) -> kapps_call_command:audio_macro_prompt().
 username_audio_macro(Call, User) ->
     case media_name(User) of
-        'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ascii '
+        'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ASCII '
         MediaID     -> maybe_play_media(Call, User, MediaID)
     end.
 

@@ -9,7 +9,7 @@
 %%%
 %%%   <dt>`scope'</dt>
 %%%   <dd><strong>Optional: </strong>The scope which is `variable' is defined.
-%%%   Possible scopes are `custome_channel_vars', `device', `user', `account'
+%%%   Possible scopes are `custom_channel_vars', `device', `user', `account'
 %%%   and `merged'.
 %%%   </dd>
 %%% </dl>
@@ -52,7 +52,7 @@ maybe_branch_to_named_child(ChildName, Call) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Try to find callflow branch name out of variable's value in the Scope.
-%% If scope sets to other values than custome_channel_vars, account,
+%% If scope sets to other values than custom_channel_vars, account,
 %% user and device, it search in merged attributes in endpoint.
 %% @end
 %%------------------------------------------------------------------------------

@@ -5,7 +5,7 @@
 %%% <h4>Data options:</h4>
 %%% <dl>
 %%%   <dt>`action'</dt>
-%%%   <dd>One of: `menu', `enable', `diable', `reset'.</dd>
+%%%   <dd>One of: `menu', `enable', `disable', `reset'.</dd>
 %%%
 %%%   <dt>`rules'</dt>
 %%%   <dd>List of the rules.</dd>
@@ -511,14 +511,14 @@ next_rule_date(#rule{cycle = <<"monthly">>
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
     case [D || D <- Days, D > D1] of
-        %% The day hasn't happend on an 'active' month
+        %% The day hasn't happened on an 'active' month
         [Day|_] when Distance =:= Offset ->
             M01 = M0 + Offset,
             kz_date:normalize({Y0 + (M01 div 12), M01 rem 12, Day});
         %% Empty List:
         %%   All of the days in the list have already happened
         %% Non Empty List that failed the guard:
-        %%   The day hasn't happend on an 'inactive' month
+        %%   The day hasn't happened on an 'inactive' month
         _ ->
             M01 = M0 + Offset + I0,
             kz_date:normalize({Y0 + (M01 div 12), M01 rem 12, hd(Days)})
@@ -565,18 +565,18 @@ next_rule_date(#rule{cycle = <<"monthly">>
     case Distance =:= Offset
         andalso find_last_weekday({Y1, M1, 1}, Weekday)
     of
-        %% If today is before the occurace day on an 'active' month since
-        %%   the 'last' only happens once per month if we havent passed it
+        %% If today is before the occurrence day on an 'active' month since
+        %%   the 'last' only happens once per month if we haven't passed it
         %%   then it must be this month
         {_, _, D2}=Date when D1 < D2 ->
             Date;
         %% In an 'inactive' month or when we have already passed
-        %%   the last occurance of the DOW
+        %%   the last occurrence of the DOW
         _ ->
             find_last_weekday({Y0, M0 + Offset + I0, 1}, Weekday)
     end;
 
-%% WARNING: There is a known bug when requesting the fifth occurance
+%% WARNING: There is a known bug when requesting the fifth occurrence
 %%   of a weekday when I0 > 1 and the current month only has four instances
 %%   of the given weekday, the calculation is incorrect.  I was told not
 %%   to worry about that now...
@@ -593,26 +593,26 @@ next_rule_date(#rule{cycle = <<"monthly">>
     case Distance =:= Offset
         andalso {find_ordinal_weekday(Y1, M1, Weekday, Ordinal), I0}
     of
-        %% If today is before the occurance day on an 'active' month and
-        %%   the occurance does not cross month/year boundaries then the
+        %% If today is before the occurrence day on an 'active' month and
+        %%   the occurrence does not cross month/year boundaries then the
         %%   calculated date is accurate
         {{_, M1, D2}=Date, _} when D1 < D2, I0 > 1 ->
             Date;
-        %% If today is before the occurance day on an 'active' month and
-        %%   the iterval =:= 1 then it happens every month so it doesnt
+        %% If today is before the occurrence day on an 'active' month and
+        %%   the interval =:= 1 then it happens every month so it doesn't
         %%   matter if it crosses month/year boundaries
         {{_, M2, D2}=Date, 1} when D1 < D2; M1 < M2 ->
             Date;
         %% false:
         %%   In an 'inactive' month
         %% {kz_time:date(), integer()}:
-        %%   We have already passed the last occurance of the DOW
+        %%   We have already passed the last occurrence of the DOW
         _ ->
             find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, Ordinal)
     end;
 
 %% WARNING: This function does not ensure the provided day actually
-%%   exists in the month provided.  For temporal routes that isnt
+%%   exists in the month provided.  For temporal routes that isn't
 %%   an issue because we will 'pass' the invalid date and compute
 %%   the next
 next_rule_date(#rule{cycle = <<"yearly">>
@@ -665,11 +665,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
         andalso kz_date:find_next_weekday({Y1, Month, D1}, Weekday)
     of
         %% During an 'active' year before the target month the calculated
-        %%   occurance is accurate
+        %%   occurrence is accurate
         {Y1, Month, _}=Date when M1 < Month ->
             Date;
         %% During an 'active' year on the target month before the
-        %%   calculated occurance day it is accurate
+        %%   calculated occurrence day it is accurate
         {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
             Date;
         %% During an 'inactive' year, or after the target month
@@ -693,11 +693,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
         andalso find_last_weekday({Y1, Month, 1}, Weekday)
     of
         %% During an 'active' year before the target month the calculated
-        %%   occurance is accurate
+        %%   occurrence is accurate
         {Y1, _, _}=Date when M1 < Month ->
             Date;
         %% During an 'active' year on the target month before the
-        %%   calculated occurance day it is accurate
+        %%   calculated occurrence day it is accurate
         {Y1, _, D2}=Date when M1 =:= Month, D1 < D2 ->
             Date;
         %% During an 'inactive' year, or after the target month
@@ -721,15 +721,15 @@ next_rule_date(#rule{cycle = <<"yearly">>
         andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal)
     of
         %% During an 'active' year before the target month the calculated
-        %%   occurance is accurate
+        %%   occurrence is accurate
         {Y1, Month, _}=Date when M1 < Month ->
             Date;
         %% During an 'active' year on the target month before the
-        %%   calculated occurance day it is accurate
+        %%   calculated occurrence day it is accurate
         {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
             Date;
         %% During an 'inactive' year or after the calculated
-        %%   occurance, determine the next iteration
+        %%   occurrence, determine the next iteration
         _ ->
             find_next_yearly_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal, I0)
     end.
@@ -767,18 +767,18 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Calculates the date of the last occurance of a weekday within a
+%% @doc Calculates the date of the last occurrence of a weekday within a
 %% given month/year.  The date can be provided as an improper date.
 %%
 %% Assumption/Principle:
 %%   A DOW can never occur more than four times in a month.
 %% @end
 %%------------------------------------------------------------------------------
-%% First attempt to calulate the date of the fouth DOW
-%% occurance.  Since the function corrects an invalid
-%% date by crossing month/year boundries, cause a badmatch
+%% First attempt to calculate the date of the fourth DOW
+%% occurrence.  Since the function corrects an invalid
+%% date by crossing month/year boundaries, cause a badmatch
 %% if this happens. Therefore, during the exception the last
-%% occurance MUST be in the third week.
+%% occurrence MUST be in the third week.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_last_weekday(improper_date(), wday()) -> kz_time:date().
@@ -821,7 +821,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %%------------------------------------------------------------------------------
 %% @doc Calculates the distance, in total ISO weeks, between two dates
 %% I rather dislike this approach, but it is the best of MANY evils that I came up with...
-%% The idea here is to find the difference (in days) between the ISO 8601 mondays
+%% The idea here is to find the difference (in days) between the ISO 8601 Mondays
 %% of the start and end dates.  This takes care of all the corner cases for us such as:
 %%    - Start date in ISO week of previous year
 %%    - End date in ISO week of previous year

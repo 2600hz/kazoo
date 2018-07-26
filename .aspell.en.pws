@@ -1,6 +1,6 @@
-personal_ws-1.1 en 914 utf-8
-cfg
+personal_ws-1.1 en 930 utf-8
 ccv
+cfg
 CNAME
 cdr
 api
@@ -47,6 +47,7 @@ zlib
 Kashgar
 mpeg
 EET
+Yakov
 RESTful
 DND
 CRM
@@ -82,8 +83,8 @@ plaintext
 Thurles
 dialer
 KHTML
-QuickCall
 quickcall
+QuickCall
 pluggable
 minProperties
 datasets
@@ -108,8 +109,8 @@ hotornot
 Aran
 acceptors
 postmap
-Lyca
 PCMA
+Lyca
 rtpmap
 FSM
 CAkey
@@ -144,6 +145,7 @@ pbxs
 hrl
 ini
 Misconfigured
+Sergey
 Busingen
 assertEqual
 Makefile
@@ -234,6 +236,7 @@ OID
 kzs
 pdf
 msg
+Azedo
 Pohnpei
 Matamoros
 flite
@@ -294,8 +297,8 @@ sha
 ratedeck
 ptr
 rpmnew
-QoS
 qos
+QoS
 Buenos
 nocharge
 Longford
@@ -311,8 +314,8 @@ sla
 ROK
 Clonmel
 interdigit
-rabbitmq
 RabbitMQ
+rabbitmq
 Kwajalein
 ibrowse
 tcplog
@@ -344,6 +347,7 @@ SBCs
 Aaiun
 sox
 Tiraspol
+Swiac
 tls
 REPL
 tollfree
@@ -358,8 +362,8 @@ noreply
 wrapup
 OTP's
 SRV
-UIs
 UI's
+UIs
 telco
 httplog
 metaflow
@@ -376,6 +380,7 @@ vlc
 sys
 tts
 bowout
+Rodionov
 vnd
 uri
 USD
@@ -383,8 +388,8 @@ unregister
 urlencoded
 rebar
 url
-ecallmgr's
 ecallmgrs
+ecallmgr's
 priv
 utf
 Eirunepe
@@ -393,8 +398,8 @@ CSVs
 wdays
 responders
 usr
-txt
 Ust
+txt
 loopback
 stacktraces
 resampled
@@ -446,8 +451,8 @@ ratedeck's
 ratedecks
 Costa
 preflow
-El
 gb
+El
 dialplans
 fi
 dtmf
@@ -455,22 +460,22 @@ cz
 clicktocall
 fs
 Eucla
-ja
 hk
+ja
 Ensenada
 Marino
 syslog
 io
-hu
 ip
+hu
 enum
 sysconf
 jp
 failover
 lookups
 noinput
-md
 js
+md
 ko
 nb
 struct
@@ -489,11 +494,13 @@ mv
 MX
 subaccount
 config
+Sysoev
 Blanc
 runtime
 Sligo
 se
 UA
+Safarov
 sipinterface
 ru
 Castlebar
@@ -508,8 +515,8 @@ kapps
 foldl
 Ballina
 ecallmgr
-tw
 vm
+tw
 tx
 rpid
 Aimonetti
@@ -527,6 +534,7 @@ Analytics
 Moncton
 unmuted
 vhost
+Magnusson
 hdrext
 Presentity
 erlang
@@ -602,6 +610,7 @@ anyOf
 Chagos
 Jujuy
 whitelabel
+Kirill
 Salesforce
 verifiers
 codecs
@@ -622,6 +631,7 @@ faxbox
 preconfigured
 Eshell
 Ceuta
+Fenoll
 symlink
 Omittable
 Blanton
@@ -656,11 +666,12 @@ VFun
 backend
 keepalive
 webm
+Ashchepkov
 Santo
 dptools
 cidrs
-kapi
 Hovd
+kapi
 Choibalsan
 nomorobo
 NoMoRobo
@@ -694,6 +705,7 @@ ringback
 genrsa
 loadtest
 unauth
+Ilya
 Navan
 wget
 TravisCI
@@ -714,7 +726,9 @@ formatters
 formatter's
 interaccount
 gzip
+Kozlov
 Kralendijk
+Edouard
 localhost
 inum
 URIs
@@ -788,8 +802,8 @@ automata
 LYSE's
 skypopen
 DeNoronha
-vCard
 vcard
+vCard
 Portlaoise
 libexpat
 Onboarding
@@ -811,8 +825,8 @@ quickcheck
 loadmodule
 proto
 resporg
-acdc
 ACDc
+acdc
 pipelining
 natively
 autostart
@@ -825,8 +839,8 @@ cisco
 Juba
 whereis
 dialplan
-NumberManager
 numbermanager
+NumberManager
 symlinked
 Bator
 routable
@@ -839,8 +853,8 @@ BEAMs
 CApath
 json
 Metlakatla
-acls
 ACLs
+acls
 modparam
 Banderas
 Rioja
@@ -859,13 +873,14 @@ Saipan
 thursday
 reqadd
 tstamp
+Krzhemenevskiy
 deployable
 minItems
 goldrush
 ComodRivadavia
 urandom
-VoiceFabric
 voicefabric
+VoiceFabric
 Qyzylorda
 xmpp
 boolean
@@ -881,8 +896,8 @@ webhook
 superduper
 BajaSur
 siptrace
-freeswitch
 FreeSWITCH
+freeswitch
 Anadyr
 Minh
 Acc
@@ -909,6 +924,7 @@ Manaus
 nomatch
 openssl
 async
+Maksim
 ALG
 Danmarkshavn
 Merida
