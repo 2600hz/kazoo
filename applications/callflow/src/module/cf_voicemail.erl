@@ -565,17 +565,23 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
     {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
 
     lager:info("prompting caller to set a pin"),
-    #mailbox{} = change_pin(Box, Call),
+    case change_pin(Box, Call) of
+        #mailbox{} ->
+            {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
+            lager:info("prompting caller to record an unavailable greeting"),
 
-    {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
-    lager:info("prompting caller to record an unavailable greeting"),
+            #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(Ext), Box, Call),
+            'ok' = update_doc(<<"is_setup">>, 'true', Box1, Call),
+            lager:info("voicemail configuration wizard is complete"),
 
-    #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(Ext), Box, Call),
-    'ok' = update_doc(<<"is_setup">>, 'true', Box1, Call),
-    lager:info("voicemail configuration wizard is complete"),
+            {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
+            Box1#mailbox{is_setup='true'};
+        {'error', 'max_retry'} ->
+            lager:debug("Hanging up channel after several empty or invalid pins"),
+            _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
+            {'error', 'channel_hungup'}
+    end.
 
-    {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
-    Box1#mailbox{is_setup='true'}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -586,7 +592,8 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
                        'ok' | {'error', 'channel_hungup'}.
 main_menu(#mailbox{is_setup='false'}=Box, Call) ->
     try setup_mailbox(Box, Call) of
-        #mailbox{}=Box1 -> main_menu(Box1, Call, 1)
+        #mailbox{}=Box1 -> main_menu(Box1, Call, 1);
+        {'error', 'channel_hungup'} = Err -> Err
     catch
         'error':{'badmatch',{'error','channel_hungup'}} ->
             lager:debug("channel has hungup while setting up mailbox"),
@@ -1432,10 +1439,9 @@ change_pin(#mailbox{mailbox_id=Id
 -spec invalid_pin(mailbox(), kapps_call:call(), non_neg_integer()) ->
                          mailbox() |
                          {'error', any()}.
-invalid_pin(_Box, Call, Loop) when Loop >= ?MAX_INVALID_PIN_LOOPS ->
-    lager:debug("channel hungup after several empty or invalid pins"),
-    _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
-    {'error', 'channel_hungup'};
+invalid_pin(_Box, _Call, Loop) when Loop >= ?MAX_INVALID_PIN_LOOPS ->
+    lager:debug("Several empty or invalid pins"),
+    {'error', 'max_retry'};
 invalid_pin(Box, Call, Loop) ->
     case kapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
         {'ok', _} -> change_pin(Box, Call, Loop + 1);
