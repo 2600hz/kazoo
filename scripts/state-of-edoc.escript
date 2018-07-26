@@ -10,13 +10,13 @@
 
 -include_lib("xmerl/include/xmerl.hrl").
 
-main(_) ->
+main(Args) ->
     _ = io:setopts(user, [{encoding, unicode}]),
     io:format("State of EDoc~n"),
     ScriptsDir = filename:dirname(escript:script_name()),
     ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
 
-    Erls = lists:sort(filelib:wildcard("{core,applications}/*/src/**/*.erl")),
+    Erls = get_erls(Args, []),
     Includes = lists:usort(
                  ["core/"]
                  ++ ["applications/tasks"]
@@ -25,6 +25,13 @@ main(_) ->
                  ++ [filename:dirname(Path) || Path <- filelib:wildcard("applications/*/{src,include}/**/*.hrl")]
                  ++ ["deps"]),
     state_of_edoc(Erls, length(Erls), Includes, {[], []}).
+
+get_erls([], []) ->
+    lists:sort(filelib:wildcard("{core,applications}/*/src/**/*.erl"));
+get_erls([], Acc) ->
+    Acc;
+get_erls([File|Files], Acc) ->
+    get_erls(Files, [File | Acc]).
 
 state_of_edoc([], ErlsLength, _, {NoModule, NoFunctions}) ->
     print_no_module_summary(lists:reverse(NoModule)),

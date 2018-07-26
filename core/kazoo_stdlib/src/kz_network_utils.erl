@@ -124,7 +124,7 @@ is_cidr(Address) ->
 %% on supported IP family.
 %%
 %% If both IPv6 and IPv4 is available returns IPv4 by default.
-%% @throws {'error', Reason} when Reason::kz_term:ne_binary()
+%% @throws {error, Reason::kz_term:ne_binary()}
 %% @end
 %%------------------------------------------------------------------------------
 -spec default_binding_ip() -> string().
@@ -139,8 +139,8 @@ default_binding_ip('false', 'true') -> "::";
 default_binding_ip('false', 'false') -> throw({'error', <<"no ipv6/4 network available">>}).
 
 %%------------------------------------------------------------------------------
-%% @doc Returns {@link inet:ip_address} of {@link default_binding_ip/0}.
-%% @throws {'error', Reason} when Reason::kz_term:ne_binary()
+%% @doc Returns {@link inet:ip_address()} of {@link default_binding_ip/0}.
+%% @throws {error, Reason::kz_term:ne_binary()}
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_supported_binding_ip() -> inet:ip_address().
@@ -158,10 +158,10 @@ get_supported_binding_ip(IP) ->
     get_supported_binding_ip(IP, DefaultIP).
 
 %%------------------------------------------------------------------------------
-%% @doc Returns {@link inet:ip_address} of binding IP address if the `IP'
+%% @doc Returns {@link inet:ip_address()} of binding IP address if the `IP'
 %% family is supported by underlying system, otherwise retruns the default
 %% binding address.
-%% @throws {'error', Reason} when Reason::kz_term:ne_binary()
+%% @throws {error, Reason::kz_term:ne_binary()}
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_supported_binding_ip(kz_term:api_string(), kz_term:api_string()) -> inet:ip_address().
@@ -210,7 +210,7 @@ get_supported_binding_ip(IP, DefaultIP) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Detects IP family of `IP' and returns its {@link inet:ip_address}.
+%% @doc Detects IP family of `IP' and returns its {@link inet:ip_address()}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec detect_ip_family(kz_term:text()) -> {inet:address_family(), inet:ip_address()} | {'error', 'einval'}.
