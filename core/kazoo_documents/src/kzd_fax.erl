@@ -393,7 +393,7 @@ fetch_received_attachment(Db, Doc) ->
 -spec fetch_received_attachment(kz_term:ne_binary(), kz_json:object(), list()) ->
                                        {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
                                        {'error', kz_term:ne_binary()}.
-fetch_received_attachment(Db, Doc, [?RECEIVED_FILE_PREFIX=Name|_]) ->
+fetch_received_attachment(Db, Doc, [<<?RECEIVED_FILE_PREFIX, _/binary>>=Name|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), Name) of
         {'ok', Content} -> {'ok', Content, <<"image/tiff">>, Doc};
         Error -> Error
