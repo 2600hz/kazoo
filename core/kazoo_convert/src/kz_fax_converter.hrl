@@ -7,6 +7,7 @@
        ,<<"/usr/bin/gs -q "
           "-r204x98 "
           "-g1728x1078 "
+          "-dPDFFitPage "
           "-dNOPAUSE "
           "-dBATCH "
           "-dSAFER "
