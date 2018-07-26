@@ -96,11 +96,13 @@ disconnect_number(Number) ->
     query_vitelity(Number, release_did_options(DID)).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Check to see if use_stepswitch_cnam is defined in the couchdoc. If it is
+%% set to true, then incoming calls will use stepswitch for cnam
 %% @end
 %%------------------------------------------------------------------------------
 -spec should_lookup_cnam() -> boolean().
-should_lookup_cnam() -> 'false'.
+should_lookup_cnam() ->
+    kapps_config:get_is_true(?KNM_VITELITY_CONFIG_CAT, <<"use_stepswitch_cnam">>, false).
 
 %%------------------------------------------------------------------------------
 %% @doc
