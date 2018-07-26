@@ -11,10 +11,11 @@ $(ROOT)/$(KAZOO_REPL):
 
 splchk-init: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL)
 
-ifeq ($(wildcard doc),)
+ifeq ($(wildcard $(CURDIR)/doc/*.md),)
 splchk: splchk-init
 else
-splchk: splchk-init $(addsuffix .chk,$(basename $(shell find doc -wholename "doc/mkdocs*" -prune -o -name "*.md" )))
+DOCS := $(shell find $(CURDIR)/doc -type f -not -path "doc/mkdocs/*" -name "*.md")
+splchk: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
 endif
 
 JSON := $(wildcard "priv/couchdb/schemas/*.json")
@@ -27,8 +28,8 @@ splchk-json: splchk-init $(addsuffix .chk,$(basename $(wildcard "priv/couchdb/sc
 	@echo $(wildcard "priv/couchdb/schemas/*.json")
 endif
 
-ESCRIPTS := $(shell find scripts -name *.escript)
-SRC := $(shell find src -name *.*rl)
+ESCRIPTS := $(wildcard "scripts/*.escript")
+SRC := $(wildcard "src/*.*rl")
 CODE := $(SRC) $(ESCRIPTS)
 ifeq ($(CODE),)
 splchk-code: splchk-init
