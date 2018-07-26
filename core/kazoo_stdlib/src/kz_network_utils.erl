@@ -177,9 +177,9 @@ get_supported_binding_ip(IP, DefaultIP) ->
 
     {IsDefaultIPValid, DefaultIPAddress} =
         case detect_ip_family(DefaultIP) of
-            {'inet', Default} -> {'true', Default};
-            {'inet6', Default} -> {'true', Default};
-            {'error', 'einval'} -> {'false', 'einval'}
+            {'inet', Default} when IsIPv4Enabled -> {'true', Default};
+            {'inet6', Default} when IsIPv6Enabled -> {'true', Default};
+            _ -> {'false', 'einval'}
         end,
 
     case detect_ip_family(IP) of
