@@ -1,4 +1,4 @@
-personal_ws-1.1 en 903 utf-8
+personal_ws-1.1 en 905 utf-8
 ccv
 cfg
 CNAME
@@ -580,6 +580,7 @@ sandboxing
 Vostok
 offnet
 KazooDB
+ignorable
 konami
 Vincennes
 Drogheda
@@ -612,6 +613,7 @@ Kerguelen
 srtp
 ssrc
 Ulan
+whitespace
 faxbox
 preconfigured
 Eshell

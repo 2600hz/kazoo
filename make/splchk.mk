@@ -18,18 +18,15 @@ DOCS := $(shell find $(CURDIR)/doc -type f -not -path "doc/mkdocs/*" -name "*.md
 splchk: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
 endif
 
-JSON := $(wildcard "priv/couchdb/schemas/*.json")
+JSON := $(wildcard $(CURDIR)/priv/couchdb/schemas/*.json)
 ifeq ($(JSON),)
 splchk-json: splchk-init
-	@echo nothing doing
-	@echo $(wildcard "priv/couchdb/schemas/*.json")
 else
-splchk-json: splchk-init $(addsuffix .chk,$(basename $(wildcard "priv/couchdb/schemas/*.json")))
-	@echo $(wildcard "priv/couchdb/schemas/*.json")
+splchk-json: splchk-init $(addsuffix .chk,$(basename $(JSON)))
 endif
 
-ESCRIPTS := $(wildcard "scripts/*.escript")
-SRC := $(wildcard "src/*.*rl")
+ESCRIPTS := $(wildcard $(CURDIR)/scripts/*.escript)
+SRC := $(wildcard $(CURDIR)/src/*.*rl) $(wildcard $(CURDIR)/src/*/*.erl) $(wildcard $(CURDIR)/include/*.hrl)
 CODE := $(SRC) $(ESCRIPTS)
 ifeq ($(CODE),)
 splchk-code: splchk-init

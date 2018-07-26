@@ -222,7 +222,7 @@ do_scan(PLT, Paths) ->
                                 %% ,no_match          %% suppress warnings for patterns that are unused
                                 %% ,'no_missing_calls'  %% suppress warnings about calls to missing functions
                                 %% ,no_opaque         %% suppress warnings for violating opaque data structures
-                                %% ,no_return         %% suppress warnins for functions that never return a value
+                                %% ,no_return         %% suppress warnings for functions that never return a value
                                 %% ,no_undefined_callbacks %% suppress warnings about behaviours with no -callback
                                 %% ,no_unused         %% suppress warnings for unused functions
                                ,'race_conditions'   %% include warnings for possible race conditions
