@@ -475,12 +475,12 @@ fetch_pdf_attachment(Db, Doc, [?PDF_FILENAME|_]) ->
 fetch_pdf_attachment(Db, Doc, [_|Attachments]) ->
     fetch_pdf_attachment(Db, Doc, Attachments);
 fetch_pdf_attachment(Db, Doc, []) ->
-    case fetch_original_attachment(Db, Doc) of
-        {'ok', Content, ContentType, _} ->
-            case convert_to_pdf(ContentType, Content, kz_doc:id(Doc)) of
+    case fetch_faxable_attachment(Db, Doc) of
+        {'ok', Content, ContentType, NewDoc} ->
+            case convert_to_pdf(ContentType, Content, kz_doc:id(NewDoc)) of
                 {'ok', Pdf} ->
-                    NewDoc = maybe_save_pdf(Db, Pdf, Doc),
-                    {'ok', Pdf, <<"application/pdf">>, NewDoc};
+                    NewerDoc = maybe_save_pdf(Db, Pdf, Doc),
+                    {'ok', Pdf, <<"application/pdf">>, NewerDoc};
                 Error -> Error
             end;
         Error -> Error
