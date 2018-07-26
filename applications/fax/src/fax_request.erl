@@ -289,9 +289,7 @@ get_fax_storage(Call) ->
                            ,"-"
                            ,kz_binary:rand_hex(16)
                            ]),
-    AttachmentId = kz_binary:rand_hex(16),
-    Ext = kapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
-    FaxAttachmentId = <<AttachmentId/binary, Ext/binary>>,
+    FaxAttachmentId = <<"received_fax_", FaxId/binary, ".tiff" >>,
 
     #fax_storage{id=FaxId
                 ,db=FaxDb
