@@ -427,12 +427,12 @@ fetch_faxable_attachment(Db, Doc, [_|Attachments]) ->
     fetch_faxable_attachment(Db, Doc, Attachments);
 fetch_faxable_attachment(Db, Doc, []) ->
     case fetch_original_attachment(Db, Doc) of
-        {'ok', Content, ContentType, Doc} ->
-            case convert_to_fax(ContentType, Content, kz_doc:id(Doc)) of
+        {'ok', Content, ContentType, NewDoc} ->
+            case convert_to_fax(ContentType, Content, kz_doc:id(NewDoc)) of
                 {'ok', Tiff, Props} ->
-                    NewDoc = update_fax_props(Doc, Props),
-                    NewerDoc = maybe_save_faxable(Db, NewDoc, Content),
-                    {'ok', Tiff, <<"image/tiff">>, NewerDoc};
+                    NewerDoc = update_fax_props(NewDoc, Props),
+                    NewestDoc = maybe_save_faxable(Db, NewerDoc, Content),
+                    {'ok', Tiff, <<"image/tiff">>, NewestDoc};
                 Error -> Error
             end;
         Error -> Error
@@ -525,8 +525,8 @@ fetch_received_pdf_attachment(Db, Doc, []) ->
         {'ok', Content, ContentType, NewDoc} ->
             case convert_to_pdf(ContentType, Content, kz_doc:id(NewDoc)) of
                 {'ok', Pdf} ->
-                    NewDoc = maybe_save_pdf(Db, Pdf, Doc),
-                    {'ok', Pdf, <<"application/pdf">>, NewDoc};
+                    NewerDoc = maybe_save_pdf(Db, Pdf, NewDoc),
+                    {'ok', Pdf, <<"application/pdf">>, NewerDoc};
                 Error -> Error
             end;
         Error -> Error
