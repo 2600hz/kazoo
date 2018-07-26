@@ -179,7 +179,9 @@ get_supported_binding_ip(IP, DefaultIP) ->
         case detect_ip_family(DefaultIP) of
             {'inet', Default} when IsIPv4Enabled -> {'true', Default};
             {'inet6', Default} when IsIPv6Enabled -> {'true', Default};
-            _ -> {'false', 'einval'}
+            {'inet', _} -> {'false', 'inet'};
+            {'inet6', _} -> {'false', 'inet6'};
+            {'error', 'einval'} -> {'false', 'einval'}
         end,
 
     case detect_ip_family(IP) of
@@ -205,6 +207,11 @@ get_supported_binding_ip(IP, DefaultIP) ->
         {'error', 'einval'} ->
             lager:warning("neither the address ~s or default binding ip ~s are a valid ipv6 or ipv4 address"
                          ,[IP, DefaultIP]
+                         ),
+            throw({'error', <<"no ipv6/4 network available">>});
+        {_Family, _} ->
+            lager:warning("address ~s(~s) and default binding ip ~s(~s) family are not supported by the system"
+                         ,[IP, _Family, DefaultIP, DefaultIPAddress]
                          ),
             throw({'error', <<"no ipv6/4 network available">>})
     end.
