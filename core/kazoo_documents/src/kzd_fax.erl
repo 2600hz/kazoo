@@ -479,7 +479,7 @@ fetch_pdf_attachment(Db, Doc, []) ->
         {'ok', Content, ContentType, NewDoc} ->
             case convert_to_pdf(ContentType, Content, kz_doc:id(NewDoc)) of
                 {'ok', Pdf} ->
-                    NewerDoc = maybe_save_pdf(Db, Pdf, Doc),
+                    NewerDoc = maybe_save_pdf(Db, Pdf, NewDoc),
                     {'ok', Pdf, <<"application/pdf">>, NewerDoc};
                 Error -> Error
             end;
