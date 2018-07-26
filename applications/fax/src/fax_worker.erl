@@ -234,9 +234,11 @@ handle_cast({'fax_status', <<"result">>, JobId, JObj}
     Data = kz_call_event:application_data(JObj),
     {Resp, Doc} = case kz_json:is_true([<<"Fax-Success">>], Data) of
                       'true' ->
+                          lager:debug("fax status - successfully transmitted fax ~s", [JobId]),
                           send_status(State, <<"Fax Successfuly sent">>, ?FAX_END, Data),
                           release_successful_job(JObj, Job);
                       'false' ->
+                          lager:debug("fax status - error transmitting fax ~s", [JobId]),
                           send_status(State, <<"Error sending fax">>, ?FAX_ERROR, Data),
                           release_failed_job('fax_result', JObj, Job)
                   end,

@@ -313,11 +313,15 @@ validate_inbox_fax_action(Action, Id, Context) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    maybe_save_attachment(crossbar_doc:save(Context)).
+    NewContext = crossbar_doc:save(Context),
+    _ = kz_util:spawn(fun maybe_save_attachment/1, [NewContext]),
+    crossbar_util:response_202(<<"processing fax attachments">>, cb_context:doc(NewContext), NewContext).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?OUTGOING) ->
-    maybe_save_attachment(crossbar_doc:save(Context)).
+    NewContext = crossbar_doc:save(Context),
+    _ = kz_util:spawn(fun maybe_save_attachment/1, [NewContext]),
+    crossbar_util:response_202(<<"processing fax attachments">>, cb_context:doc(NewContext), NewContext).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?OUTBOX, Id) ->
@@ -676,12 +680,14 @@ normalize_modb_view_results(JObj, Acc) ->
 -spec maybe_save_attachment(cb_context:context()) -> cb_context:context().
 maybe_save_attachment(Context) ->
     JObj = cb_context:doc(Context),
+    lager:debug("background saving attachments for doc id ~s", [kz_doc:id(JObj)]),
     case kz_json:get_value(<<"document">>, JObj) of
         'undefined' ->
             save_multipart_attachment(Context, cb_context:req_files(Context));
         _Document ->
             prepare_attachment(Context, JObj, 'undefined', 'undefined')
     end.
+
 
 -spec save_multipart_attachment(cb_context:context(), req_files()) -> cb_context:context().
 save_multipart_attachment(Context, []) -> Context;
