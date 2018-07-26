@@ -1,6 +1,6 @@
-personal_ws-1.1 en 909 utf-8
-ccv
+personal_ws-1.1 en 914 utf-8
 cfg
+ccv
 CNAME
 cdr
 api
@@ -82,8 +82,8 @@ plaintext
 Thurles
 dialer
 KHTML
-quickcall
 QuickCall
+quickcall
 pluggable
 minProperties
 datasets
@@ -108,8 +108,8 @@ hotornot
 Aran
 acceptors
 postmap
-PCMA
 Lyca
+PCMA
 rtpmap
 FSM
 CAkey
@@ -158,6 +158,7 @@ freetdm
 IPs
 ips
 chargebacks
+IPv
 Belmullet
 NOOP
 inband
@@ -293,8 +294,8 @@ sha
 ratedeck
 ptr
 rpmnew
-qos
 QoS
+qos
 Buenos
 nocharge
 Longford
@@ -310,8 +311,8 @@ sla
 ROK
 Clonmel
 interdigit
-RabbitMQ
 rabbitmq
+RabbitMQ
 Kwajalein
 ibrowse
 tcplog
@@ -357,8 +358,8 @@ noreply
 wrapup
 OTP's
 SRV
-UI's
 UIs
+UI's
 telco
 httplog
 metaflow
@@ -382,8 +383,8 @@ unregister
 urlencoded
 rebar
 url
-ecallmgrs
 ecallmgr's
+ecallmgrs
 priv
 utf
 Eirunepe
@@ -392,8 +393,8 @@ CSVs
 wdays
 responders
 usr
-Ust
 txt
+Ust
 loopback
 stacktraces
 resampled
@@ -445,8 +446,8 @@ ratedeck's
 ratedecks
 Costa
 preflow
-gb
 El
+gb
 dialplans
 fi
 dtmf
@@ -454,22 +455,22 @@ cz
 clicktocall
 fs
 Eucla
-hk
 ja
+hk
 Ensenada
 Marino
 syslog
 io
-ip
 hu
+ip
 enum
 sysconf
 jp
 failover
 lookups
 noinput
-js
 md
+js
 ko
 nb
 struct
@@ -507,8 +508,8 @@ kapps
 foldl
 Ballina
 ecallmgr
-vm
 tw
+vm
 tx
 rpid
 Aimonetti
@@ -623,6 +624,7 @@ Eshell
 Ceuta
 symlink
 Omittable
+Blanton
 logrotate
 Salta
 outdir
@@ -635,6 +637,7 @@ INVITEs
 Barthelemy
 CentOS
 skype
+Wann
 monday
 globals
 unstaged
@@ -656,8 +659,8 @@ webm
 Santo
 dptools
 cidrs
-Hovd
 kapi
+Hovd
 Choibalsan
 nomorobo
 NoMoRobo
@@ -670,6 +673,7 @@ unix
 unmute
 arity
 apache
+Galeev
 callee
 Branco
 inet
@@ -702,6 +706,7 @@ pymdown
 dbtext
 WORKDIR
 Listowel
+Defebvre
 html
 Bandon
 Araguaina
@@ -783,8 +788,8 @@ automata
 LYSE's
 skypopen
 DeNoronha
-vcard
 vCard
+vcard
 Portlaoise
 libexpat
 Onboarding
@@ -806,8 +811,8 @@ quickcheck
 loadmodule
 proto
 resporg
-ACDc
 acdc
+ACDc
 pipelining
 natively
 autostart
@@ -820,8 +825,8 @@ cisco
 Juba
 whereis
 dialplan
-numbermanager
 NumberManager
+numbermanager
 symlinked
 Bator
 routable
@@ -834,8 +839,8 @@ BEAMs
 CApath
 json
 Metlakatla
-ACLs
 acls
+ACLs
 modparam
 Banderas
 Rioja
@@ -859,8 +864,8 @@ minItems
 goldrush
 ComodRivadavia
 urandom
-voicefabric
 VoiceFabric
+voicefabric
 Qyzylorda
 xmpp
 boolean
@@ -876,8 +881,8 @@ webhook
 superduper
 BajaSur
 siptrace
-FreeSWITCH
 freeswitch
+FreeSWITCH
 Anadyr
 Minh
 Acc
