@@ -363,7 +363,7 @@ bump_copyright(Module, [<<"@copyright", Rest/binary>>|T], _, Header, Year) ->
 bump_copyright(Module, [H|T], Copyright, Header, Year) ->
     Striped = strip_right_spaces(strip_left_spaces(H)),
     case Striped =/= <<"@end">>
-        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+        andalso is_separator_chars(Striped, [<<$=>>, <<$->>])
     of
         false ->
             %% removing end tag to add it later
@@ -432,8 +432,8 @@ edocify_header(Module, [<<"@contributors", _/binary>>|T], Header) ->
                       Author <- [strip_right_spaces(strip_left_spaces(A))],
                       Author =/= <<>>,
                       <<"@end">> =/= Author,
-                      not is_seprator_char(Author, <<$->>),
-                      not is_seprator_char(Author, <<$=>>)
+                      not is_separator_char(Author, <<$->>),
+                      not is_separator_char(Author, <<$=>>)
               ],
     edocify_header(Module, [], Header ++ [<<"%%%">>] ++ Authors);
 edocify_header(Module, [<<"Contributors", Rest/binary>>|T], Header) ->
@@ -448,7 +448,7 @@ edocify_header(Module, [<<"@Contributions", Rest/binary>>|T], Header) ->
 edocify_header(Module, [H|T], Header) ->
     Striped = strip_right_spaces(strip_left_spaces(H)),
     case Striped =/= <<"@end">>
-        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+        andalso is_separator_chars(Striped, [<<$=>>, <<$->>])
     of
         false ->
             %% removing end tag to add it later
