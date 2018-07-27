@@ -787,12 +787,12 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
             %% remove empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
         <<"@doc">> ->
-            PerCount = count_precent(Line),
+            PerCount = count_percent(Line),
             %% add doc tag in case there is no non-empty comment lines so we don't loose the doc tag
             do_move_to_doc_line(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>]);
         Rest ->
             %% this clause should only match once for the first non empty comment line
-            PerCount = count_precent(Line),
+            PerCount = count_percent(Line),
             DocTagLine = <<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>,
             NewForm = case lists:last(Formatted) of
                           DocTagLine -> lists:droplast(Formatted);
