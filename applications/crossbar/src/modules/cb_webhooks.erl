@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Handle CRUD operations for WebHooks
+%%% @doc Handle CRUD operations for Webhooks
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------

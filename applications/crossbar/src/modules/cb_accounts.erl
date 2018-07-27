@@ -666,7 +666,7 @@ validate_delete_request(AccountId, Context) ->
             case knm_port_request:account_has_active_port(AccountId) of
                 'false' -> cb_context:set_resp_status(Context, 'success');
                 'true' ->
-                    lager:debug("pervent deleting account ~s due to has active port request", [AccountId]),
+                    lager:debug("prevent deleting account ~s due to has active port request", [AccountId]),
                     Msg = kz_json:from_list(
                             [{<<"message">>, <<"Account has active port request">>}
                             ]),
@@ -923,7 +923,7 @@ load_paginated_descendants(AccountId, Context) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @doc Load a summary of the siblngs of this account
+%% @doc Load a summary of the siblings of this account
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -1524,7 +1524,7 @@ delete_remove_db(Context) ->
                       delete_mod_dbs(Context);
                   {'error', 'not_found'} -> 'true';
                   {'error', _R} ->
-                      lager:debug("failed to open account defintion ~s: ~p", [cb_context:account_id(Context), _R]),
+                      lager:debug("failed to open account definition ~s: ~p", [cb_context:account_id(Context), _R]),
                       'false'
               end,
     case Removed of

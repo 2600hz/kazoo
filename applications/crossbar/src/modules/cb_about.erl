@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Display various informations
+%%% @doc Display various information
 %%% @author Edouard Swiac
 %%% @author James Aimonetti
 %%% @end

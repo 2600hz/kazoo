@@ -393,7 +393,7 @@ process_device(Number, AccountId, JObj) ->
             render_templates(Number, AccountId, Username, Realm, Props),
             lager:debug("rendered templates");
         {'error', _R} ->
-            lager:debug("unable to query registrar for credentails of ~s@~s in account ~s: ~p"
+            lager:debug("unable to query registrar for credentials of ~s@~s in account ~s: ~p"
                        ,[Username, Realm, AccountId, _R])
     end.
 

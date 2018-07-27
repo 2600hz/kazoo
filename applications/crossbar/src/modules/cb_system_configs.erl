@@ -108,7 +108,7 @@ resource_exists(_Id, _Node) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /system_configs mights load a list of system_config objects
+%% /system_configs might load a list of system_config objects
 %% /system_configs/123 might load the system_config object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

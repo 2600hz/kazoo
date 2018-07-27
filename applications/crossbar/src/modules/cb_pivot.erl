@@ -69,7 +69,7 @@ resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /pivot mights load a list of pivot objects
+%% /pivot might load a list of pivot objects
 %% /pivot/123 might load the pivot object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -85,7 +85,7 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
 %% Proper pagination is merely impossible for this API since we debugs
-%% are in two documents, setting limit to 2 * PagSize is a bad choice.
+%% are in two documents, setting limit to 2 * PageSize is a bad choice.
 %% What if the response or even the request debug document is not exists?
 %% @end
 %%------------------------------------------------------------------------------

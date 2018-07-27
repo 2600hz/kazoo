@@ -450,7 +450,7 @@ error_mdn_taken(MDN, Context) ->
 check_mdn_registered(DeviceId, Context) ->
     %%TODO: issue API request to TOP (if configured with URL) and validate
     %%   that the number is present in that system, if not stop the request
-    %%   and don't set handle_modible_mdn
+    %%   and don't set handle_mobile_mdn
     Context1 = cb_context:store(Context, 'add_mobile_mdn', 'true'),
     case DeviceId == 'undefined' of
         'true' -> check_mac_address(DeviceId, Context1);

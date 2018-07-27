@@ -816,10 +816,10 @@ to_json(Req0, Context0, 'undefined') ->
             api_util:create_pull_response(Req1, Context1)
     end;
 to_json(Req, Context, <<"csv">>) ->
-    lager:debug("overridding json with csv builder"),
+    lager:debug("overriding json with csv builder"),
     to_csv(Req, Context);
 to_json(Req, Context, <<"pdf">>) ->
-    lager:debug("overridding json with pdf builder"),
+    lager:debug("overriding json with pdf builder"),
     to_pdf(Req, Context);
 to_json(Req, Context, Accept) ->
     case to_fun(Context, Accept, 'to_json') of
@@ -1010,7 +1010,7 @@ next_chunk_fold(#{chunking_started := StartedChunk
             lager:debug("(chunked) getting next chunk was unsuccessful"),
             finish_chunked_response(ChunkMap1#{context => reset_context_between_chunks(Context2, StartedChunk)});
         {Req1, Context3} ->
-            lager:debug("(chunked) runned '~s'", [_ToFun]),
+            lager:debug("(chunked) ran '~s'", [_ToFun]),
             case api_util:succeeded(Context3) of
                 'true' ->
                     process_chunk(ChunkMap1#{cowboy_req := Req1, context := Context3});

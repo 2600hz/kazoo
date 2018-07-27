@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Token auth module
-%%% This is a simple auth mechanism, once the user has aquired an
+%%% This is a simple auth mechanism, once the user has acquired an
 %%% auth token this module will allow access.  This module should be
 %%% updated to be FAR more robust.
 %%%

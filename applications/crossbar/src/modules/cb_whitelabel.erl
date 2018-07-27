@@ -132,7 +132,7 @@ authorize(Context) ->
 
 -spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
 authorize(Context, [{<<"whitelabel">>, [?DOMAINS_REQ]}], ?HTTP_POST) ->
-    %% /{VERSION}/whitelabel/domains retricted to sys-admin account
+    %% /{VERSION}/whitelabel/domains restricted to sys-admin account
     cb_context:is_superduper_admin(Context);
 authorize(_Context, [{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
     'true';

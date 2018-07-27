@@ -137,7 +137,7 @@
                     ,content_types_accepted = [] :: crossbar_content_handlers()
                     ,allowed_methods = ?ALLOWED_METHODS :: http_methods()
                     ,allow_methods = ?ALLOWED_METHODS :: http_methods()
-                    ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: kz_term:ne_binaries() %% english by default
+                    ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: kz_term:ne_binaries() %% English by default
                     ,charsets_provided = [<<"iso-8859-1">>] :: kz_term:ne_binaries() %% all charsets provided
                     ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: kz_term:ne_binaries() %% gzip and identity
                     ,auth_token = 'undefined' :: kz_term:api_ne_binary()

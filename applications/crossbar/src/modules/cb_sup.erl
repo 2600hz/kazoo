@@ -10,7 +10,7 @@
 %%%     account stats
 %%% /sup/compactor - stats about the compactor
 %%%
-%%% Eventaully support the idea of RPC-like AMQP requests to drill down per-node
+%%% Eventually support the idea of RPC-like AMQP requests to drill down per-node
 %%% or per-application for these stats
 %%%
 %%%
@@ -207,7 +207,7 @@ does_resource_exist(ModuleBin, FunctionBin, Args) ->
 
 -spec maintenance_module_name(kz_term:ne_binary()) -> module().
 maintenance_module_name(ModuleBin) ->
-    %% NOTE: the unsafe convertion to an atom is not an issue
+    %% NOTE: the unsafe conversion to an atom is not an issue
     %%   in this module, despite coming from a user, because
     %%   only the system admin has access...
     kz_term:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true').
@@ -215,7 +215,7 @@ maintenance_module_name(ModuleBin) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /sup mights load a list of system_stat objects
+%% /sup might load a list of system_stat objects
 %% /sup/123 might load the system_stat object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

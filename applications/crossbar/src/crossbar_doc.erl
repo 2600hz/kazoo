@@ -702,7 +702,7 @@ delete(Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function will attempt to remove a document from the database.
-%% If th second argument is `true' this is preformed as a soft-delete and enforced
+%% If the second argument is `true' this is preformed as a soft-delete and enforced
 %% by the views. Clean up process remove old data based on the delete
 %% flag and last modified date.
 %% If the second argument is `false', the document is hard delete from database.

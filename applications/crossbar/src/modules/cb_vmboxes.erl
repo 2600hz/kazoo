@@ -1106,7 +1106,7 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
         {'ok', [VMBox]} ->
             VMBoxId =:= kz_doc:id(VMBox);
         {'ok', _} ->
-            lager:warning("found multiple mailboxs for '~p'", [Mailbox]),
+            lager:warning("found multiple mailboxes for '~p'", [Mailbox]),
             'false';
         {'error', _E} ->
             lager:debug("failed to load listing_by_mailbox view: ~p", [_E]),

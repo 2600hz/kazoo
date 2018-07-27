@@ -539,7 +539,7 @@ view_account_phone_numbers(Context) ->
             Service = kz_services:fetch(cb_context:account_id(Context)),
             Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, Service),
             NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
-                                            ,{<<"casquade_quantity">>, Quantity}
+                                            ,{<<"cascade_quantity">>, Quantity}
                                             ]),
             cb_context:set_resp_data(Context1, NewRespData);
         _ ->
