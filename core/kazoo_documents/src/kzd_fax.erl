@@ -271,13 +271,14 @@ retry_after(FaxDoc, Default) ->
                                {'ok', kz_json:object()} |
                                {'error', any()}.
 save_outbound_fax(Db, Doc, 'undefined', _) ->
-    case fetch_attachment_url(Doc) of
-        {'ok', Content, ContentType} ->
-            case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_url_document">>, true) of
-                'true' -> save_outbound_fax(Db, Doc, Content, ContentType);
-                'false' -> {'ok', Doc}
+    case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_url_document">>, true) of
+        'true' ->
+            case fetch_attachment_url(Doc) of
+                {'ok', Content, ContentType} ->
+                    save_outbound_fax(Db, Doc, Content, ContentType);
+                Error -> Error
             end;
-        Error -> Error
+        'false' -> {'ok', Doc}
     end;
 save_outbound_fax(Db, Doc, Original, ContentType) ->
     Id = kz_doc:id(Doc),
@@ -405,6 +406,7 @@ fetch_received_attachment(Db, Doc, [<<?RECEIVED_FILE_PREFIX, _/binary>>=Name|_])
 fetch_received_attachment(Db, Doc, [_|Attachments]) ->
     fetch_received_attachment(Db, Doc, Attachments);
 fetch_received_attachment(Db, Doc, []) ->
+    lager:debug("no received attachments found, fetching legacy attachment"),
     fetch_legacy_attachment(Db, Doc).
 
 %%------------------------------------------------------------------------------
@@ -431,6 +433,7 @@ fetch_faxable_attachment(Db, Doc, [?FAX_FILENAME|_]) ->
 fetch_faxable_attachment(Db, Doc, [_|Attachments]) ->
     fetch_faxable_attachment(Db, Doc, Attachments);
 fetch_faxable_attachment(Db, Doc, []) ->
+    lager:debug("no faxable tiff attachments found, fetching original attachment"),
     case fetch_original_attachment(Db, Doc) of
         {'ok', Content, ContentType, NewDoc} ->
             case convert_to_fax(ContentType, Content, kz_doc:id(NewDoc)) of
@@ -480,6 +483,7 @@ fetch_pdf_attachment(Db, Doc, [?PDF_FILENAME|_]) ->
 fetch_pdf_attachment(Db, Doc, [_|Attachments]) ->
     fetch_pdf_attachment(Db, Doc, Attachments);
 fetch_pdf_attachment(Db, Doc, []) ->
+    lager:debug("no fax pdf attachments found, fetching faxable attachment"),
     case fetch_faxable_attachment(Db, Doc) of
         {'ok', Content, ContentType, NewDoc} ->
             case convert_to_pdf(ContentType, Content, kz_doc:id(NewDoc)) of
@@ -528,6 +532,7 @@ fetch_received_pdf_attachment(Db, Doc, [?PDF_FILENAME|_]) ->
 fetch_received_pdf_attachment(Db, Doc, [_|Attachments]) ->
     fetch_received_pdf_attachment(Db, Doc, Attachments);
 fetch_received_pdf_attachment(Db, Doc, []) ->
+    lager:debug("no fax pdf attachments found, fetching received attachment"),
     case fetch_received_attachment(Db, Doc) of
         {'ok', Content, ContentType, NewDoc} ->
             case convert_to_pdf(ContentType, Content, kz_doc:id(NewDoc)) of
@@ -553,7 +558,7 @@ fetch_original_attachment(Db, Doc) ->
 -spec fetch_original_attachment(kz_term:ne_binary(), kz_json:object(), list()) ->
                                        {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
                                        {'error', kz_term:ne_binary()}.
-fetch_original_attachment(Db, Doc, [{<<?ORIGINAL_FILE_PREFIX, _/binary>>=Name}|_]) ->
+fetch_original_attachment(Db, Doc, [<<?ORIGINAL_FILE_PREFIX, _/binary>>=Name|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), Name) of
         {'ok', Content} -> {'ok', Content, kz_doc:attachment_content_type(Doc, Name), Doc};
         Error -> Error
@@ -561,13 +566,14 @@ fetch_original_attachment(Db, Doc, [{<<?ORIGINAL_FILE_PREFIX, _/binary>>=Name}|_
 fetch_original_attachment(Db, Doc, [_|Attachments]) ->
     fetch_original_attachment(Db, Doc, Attachments);
 fetch_original_attachment(Db, Doc, []) ->
+    lager:debug("no original attachments found, fetching received attachment"),
     fetch_legacy_attachment(Db, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc Helper function for accessing a legacy attachment.
 %%
-%% Checks if any attachments are present on the document. If none are found,
-%% attempts to fetch an attachment url if document present in the doc
+%% Checks if any attachments are present on the document that are not reserved
+%% filenames. If none are found, attempts to fetch an attachment url if document present in the doc
 %%
 %% @end
 %%------------------------------------------------------------------------------
@@ -580,6 +586,14 @@ fetch_legacy_attachment(Db, Doc) ->
 -spec fetch_legacy_attachment(kz_term:ne_binary(), kz_json:object(), list()) ->
                                      {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
                                      {'error', kz_term:ne_binary()}.
+fetch_legacy_attachment(Db, Doc, [?FAX_FILENAME|Attachments]) ->
+    fetch_legacy_attachment(Db, Doc, Attachments);
+fetch_legacy_attachment(Db, Doc, [?PDF_FILENAME|Attachments]) ->
+    fetch_legacy_attachment(Db, Doc, Attachments);
+fetch_legacy_attachment(Db, Doc, [<<?ORIGINAL_FILE_PREFIX, _/binary>>|Attachments]) ->
+    fetch_legacy_attachment(Db, Doc, Attachments);
+fetch_legacy_attachment(Db, Doc, [<<?RECEIVED_FILE_PREFIX, _/binary>>|Attachments]) ->
+    fetch_legacy_attachment(Db, Doc, Attachments);
 fetch_legacy_attachment(Db, Doc, [Name|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), Name) of
         {'ok', Content} ->
@@ -587,6 +601,7 @@ fetch_legacy_attachment(Db, Doc, [Name|_]) ->
         Error -> Error
     end;
 fetch_legacy_attachment(Db, Doc, []) ->
+    lager:debug("no legacy attachments found, fetching url attachment"),
     case fetch_attachment_url(Doc) of
         {'ok', Content, ContentType} ->
             NewDoc = maybe_store_url_attachment(Db, Doc, Content, ContentType),
@@ -644,7 +659,8 @@ fetch_attachment_url(Url, FetchRequest) ->
 maybe_store_url_attachment(Db, Doc, Content, ContentType) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_url_document">>, true) of
         true ->
-            case save_outbound_fax(Db, Doc, Content, ContentType) of
+            Name = <<?ORIGINAL_FILE_PREFIX, ".", (kz_mime:to_extension(ContentType))/binary>>,
+            case save_fax_doc(Db, Doc, Content, ContentType, Name) of
                 {'ok', NewDoc} ->
                     NewDoc;
                 {'error', Msg} ->
@@ -665,7 +681,7 @@ maybe_store_url_attachment(Db, Doc, Content, ContentType) ->
 %% Bigcouch sometimes has issues where it returns a 409 when attaching files
 %% it then actually attaches to the document. When this happens it increments the rev
 %% without indicating this change in the response. Subsequent saves seem to experience
-%% the same issue which can result in looping. To avoid this condition. If a save
+%% the same issue which can result in looping. To avoid this condition, if a save attempt
 %% fails, check the doc for an attachment and return success response if the
 %% attachment is found.
 %%
