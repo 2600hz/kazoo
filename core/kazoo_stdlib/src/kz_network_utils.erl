@@ -288,7 +288,7 @@ detect_ip_is_bindable({Family, IPAdress}) ->
         end
     catch
         _E:_T ->
-            {'error', io_lib:format("exception occurred when detecting ip family supportability/bindability")}
+            {'error', io_lib:format("exception occurred when detecting ip family supportability/bindability: ~p:~p", [_E, _T])}
     end.
 
 %%------------------------------------------------------------------------------
