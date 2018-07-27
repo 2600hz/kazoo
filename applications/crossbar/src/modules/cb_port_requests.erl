@@ -365,7 +365,7 @@ maybe_set_scheduled_date_from_schedule_on(Doc) ->
             kz_json:set_value(<<"scheduled_date">>, Scheduled, Doc)
     end.
 
--spec date_as_configured_timezone(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_time:gregorian_seconds().
+-spec date_as_configured_timezone(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_time:gregorian_seconds().
 date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $\s,
                               HH:2/binary, $:, Mm:2/binary>>
                            ,FromTimezone
