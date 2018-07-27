@@ -409,7 +409,7 @@ malformed_request(Req, Context, _ReqVerb) ->
         [] ->
             {'false', Req, Context};
         [?MATCH_ACCOUNT_RAW(_) | _] = AccountArgs ->
-            Context1 = cb_accounts:validate_resource(Context, AccountArgs),
+            Context1 = validate_account_resource(Context, AccountArgs),
             case cb_context:resp_status(Context1) of
                 'success' -> {'false', Req, Context1};
                 _RespStatus -> api_util:stop(Req, Context1)
@@ -422,6 +422,15 @@ malformed_request(Req, Context, _ReqVerb) ->
             Error = kz_json:from_list([{<<"message">>, Msg}]),
             api_util:stop(Req, cb_context:add_system_error(404, <<"bad identifier">>, Error, Context))
     end.
+
+-spec validate_account_resource(cb_context:context(), path_tokens()) ->
+                                       cb_context:context().
+validate_account_resource(Context, [AccountId]) ->
+    cb_accounts:validate_resource(Context, AccountId);
+validate_account_resource(Context, [AccountId, PathToken]) ->
+    cb_accounts:validate_resource(Context, AccountId, PathToken);
+validate_account_resource(Context, AccountArgs) ->
+    apply('cb_accounts', 'validate_resource', [Context | AccountArgs]).
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
                            {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()} |
