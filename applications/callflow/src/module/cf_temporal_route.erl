@@ -734,7 +734,7 @@ next_rule_date(#rule{cycle = <<"yearly">>
             find_next_yearly_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal, I0)
     end.
 
--spec find_next_yearly_ordinal_weekday(kz_time:year(), kz_time:month(), kz_time:daynum(), kz_time:ordinal(), interval()) -> kz_time:date().
+-spec find_next_yearly_ordinal_weekday(kz_time:year(), kz_time:month(), wday(), kz_time:ordinal(), interval()) -> kz_time:date().
 find_next_yearly_ordinal_weekday(Y0, M0, Weekday, Ordinal, Interval) ->
     case find_ordinal_weekday(Y0, M0, Weekday, Ordinal) of
         {_Y1, M0, _D1}=Date ->
@@ -754,7 +754,7 @@ find_next_yearly_ordinal_weekday(Y0, M0, Weekday, Ordinal, Interval) ->
 %% <div class="notice">It is possible for this function to cross month/year boundaries.</div>
 %% @end
 %%------------------------------------------------------------------------------
--spec find_ordinal_weekday(kz_time:year(), improper_month(), wday(), strict_ordinal()) -> kz_time:date().
+-spec find_ordinal_weekday(kz_time:year(), improper_month(), wday(), kz_time:ordinal()) -> kz_time:date().
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 =:= 13 ->
     find_ordinal_weekday(Y1 + 1, 1, Weekday, Ordinal);
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 > 12 ->
