@@ -517,12 +517,27 @@ zone(TargetCallId) ->
             kz_config:zone('binary')
     end.
 
+-record(build_acc, {endpoints = [] :: kz_json:objects()
+                   ,call :: kapps_call:call()
+                   ,context :: cb_context:context()
+                   ,element = 1 :: pos_integer()
+                   }).
+-type build_acc() :: #build_acc{}.
+
+-define(BUILD_ACC(Es, Call, Context, El)
+       ,#build_acc{endpoints=Es
+                  ,call=Call
+                  ,context=Context
+                  ,element=El
+                  }
+       ).
+
 -spec build_endpoints_to_dial(cb_context:context(), path_token(), kz_term:ne_binaries()) ->
                                      {cb_context:context(), kz_json:objects()}.
 build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
-    {ToDial, _Call, Context1, _Element} =
+    ?BUILD_ACC(ToDial, _Call, Context1, _Element) =
         lists:foldl(fun build_endpoint/2
-                   ,{[], create_call(Context, ConferenceId), Context, 1}
+                   ,?BUILD_ACC([], create_call(Context, ConferenceId), Context, 1)
                    ,Endpoints
                    ),
     {Context1, ToDial}.
@@ -551,35 +566,35 @@ create_call(Context, ConferenceId) ->
         ],
     kapps_call:exec(Routines, kapps_call:new()).
 
--type build_acc() :: {kz_json:objects(), kapps_call:call(), cb_context:context(), pos_integer()}.
 -spec build_endpoint(kz_term:ne_binary(), build_acc()) -> build_acc().
-build_endpoint(<<"sip:", _/binary>>=URI, Acc) ->
+build_endpoint(<<"sip:", _/binary>>=URI, ?BUILD_ACC(_, _, _, _)=Acc) ->
     lager:info("building SIP endpoint ~s", [URI]),
     build_sip_endpoint(URI, Acc);
-build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call, Context, Element}) ->
+build_endpoint(<<_:32/binary>>=EndpointId, ?BUILD_ACC(Endpoints, Call, Context, Element)=Acc) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), EndpointId) of
-        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call, Context, Element});
+        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, Acc);
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
-            {Endpoints, Call, Context, Element+1}
+            ?BUILD_ACC(Endpoints, Call, Context, Element+1)
     end;
-build_endpoint(?NE_BINARY=Number, {Endpoints, Call, Context, Element}=Acc) ->
+build_endpoint(?NE_BINARY=Number, ?BUILD_ACC(Endpoints, Call, Context, Element)=Acc) ->
     case knm_converters:is_reconcilable(Number)
         orelse byte_size(Number) < ?MIN_DIGITS_FOR_DID
     of
         'true' -> build_number_endpoint(Number, Acc);
         'false' ->
-            {Endpoints, Call
-            ,add_not_endpoint_error(Context, Element)
-            ,Element+1
-            }
+            ?BUILD_ACC(Endpoints
+                      ,Call
+                      ,add_not_endpoint_error(Context, Element)
+                      ,Element+1
+                      )
     end;
-build_endpoint(Device, {Endpoints, Call, Context, Element}) ->
+build_endpoint(Device, ?BUILD_ACC(_, _, _, _)=Acc) ->
     DeviceWithId = kz_json:insert_value(<<"id">>, kz_binary:rand_hex(16), Device),
-    build_endpoint_from_doc(DeviceWithId, {Endpoints, Call, Context, Element}, <<"device">>).
+    build_endpoint_from_doc(DeviceWithId, Acc, <<"device">>).
 
 -spec add_not_endpoint_error(cb_context:context(), pos_integer()) -> cb_context:context().
-add_not_endpoint_error(Context, Element) ->
+add_not_endpoint_error(Context, Element) when is_integer(Element) ->
     cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Element]
                                    ,<<"enum">>
                                    ,kz_json:from_list([{<<"message">>, <<"Value not a number, device or user ID, or SIP endpoint">>}])
@@ -587,7 +602,7 @@ add_not_endpoint_error(Context, Element) ->
                                    ).
 
 -spec build_number_endpoint(kz_term:ne_binary(), build_acc()) -> build_acc().
-build_number_endpoint(Number, {Endpoints, Call, Context, Element}) ->
+build_number_endpoint(Number, ?BUILD_ACC(Endpoints, Call, Context, Element)) ->
     AccountRealm = kapps_call:account_realm(Call),
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Number}
@@ -606,11 +621,11 @@ build_number_endpoint(Number, {Endpoints, Call, Context, Element}) ->
                ],
 
     lager:info("adding number ~s endpoint", [Number]),
-    {[kz_json:from_list(Endpoint) | Endpoints], Call, Context, Element+1}.
+    ?BUILD_ACC([kz_json:from_list(Endpoint) | Endpoints], Call, Context, Element+1).
 
 -spec build_sip_endpoint(kz_term:ne_binary(), build_acc()) ->
                                 build_acc().
-build_sip_endpoint(URI, {Endpoints, Call, Context, Element}) ->
+build_sip_endpoint(URI, ?BUILD_ACC(Endpoints, Call, Context, Element)) ->
     [#uri{user=SipUsername
          ,domain=SipRealm
          }
@@ -626,14 +641,14 @@ build_sip_endpoint(URI, {Endpoints, Call, Context, Element}) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     case kz_endpoint:build(Device, Properties, Call) of
         {'ok', SIPEndpoints} ->
-            {SIPEndpoints ++ Endpoints, Call, Context, Element+1};
+            ?BUILD_ACC(SIPEndpoints ++ Endpoints, Call, Context, Element+1);
         {'error', _E} ->
             lager:info("failed to build SIP URI: ~p", [_E]),
-            {Endpoints, Call, add_not_found_error(Context, URI, Element), Element+1}
+            ?BUILD_ACC(Endpoints, Call, add_not_found_error(Context, URI, Element), Element+1)
     end.
 
 -spec build_endpoint_from_doc(kz_json:object(), build_acc()) -> build_acc().
-build_endpoint_from_doc(Endpoint, Acc) ->
+build_endpoint_from_doc(Endpoint, ?BUILD_ACC(_, _, _, _)=Acc) ->
     case kz_doc:is_soft_deleted(Endpoint)
         orelse kz_doc:is_deleted(Endpoint)
     of
@@ -645,38 +660,41 @@ build_endpoint_from_doc(Endpoint, Acc) ->
     end.
 
 -spec build_endpoint_from_doc(kz_json:object(), build_acc(), kz_term:ne_binary()) -> build_acc().
-build_endpoint_from_doc(Device, {Endpoints, Call, Context, Element}, <<"device">>) ->
+build_endpoint_from_doc(Device, ?BUILD_ACC(Endpoints, Call, Context, Element), <<"device">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     case kz_endpoint:build(Device, Properties, Call) of
-        {'ok', Legs} -> {Endpoints ++ Legs, Call, Context, Element+1};
+        {'ok', Legs} -> ?BUILD_ACC(Endpoints ++ Legs, Call, Context, Element+1);
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Device), _E]),
-            {Endpoints, Call, add_not_found_error(Context, kz_doc:id(Device), Element), Element+1}
+            ?BUILD_ACC(Endpoints, Call, add_not_found_error(Context, kz_doc:id(Device), Element), Element+1)
     end;
-build_endpoint_from_doc(User, {Endpoints, Call, Context, Element}, <<"user">>) ->
-    Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
-    case lists:foldr(fun(EndpointId, Acc) ->
-                             case kz_endpoint:build(EndpointId, Properties, Call) of
-                                 {'ok', Endpoint} -> Endpoint ++ Acc;
-                                 {'error', _E} -> Acc
-                             end
-                     end
-                    ,[]
-                    ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
-                    )
-    of
+build_endpoint_from_doc(User, ?BUILD_ACC(Endpoints, Call, Context, Element), <<"user">>) ->
+    case maybe_add_user_endpoints(User, Call) of
         [] ->
             lager:info("no endpoints found for user ~s", [kz_doc:id(User)]),
-            {Endpoints, Call, add_no_devices_error(Context, kz_doc:id(User), Element), Element+1};
+            ?BUILD_ACC(Endpoints, Call, add_no_devices_error(Context, kz_doc:id(User), Element), Element+1);
         Legs ->
-            {Legs++Endpoints, Call, Context, Element+1}
+            ?BUILD_ACC(Legs++Endpoints, Call, Context, Element+1)
     end;
-build_endpoint_from_doc(Endpoint, {Endpoints, Call, Context, Element}, _Type) ->
+build_endpoint_from_doc(Endpoint, ?BUILD_ACC(Endpoints, Call, Context, Element), _Type) ->
     lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(Endpoint)]),
-    {Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1}.
+    ?BUILD_ACC(Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1).
+
+-spec maybe_add_user_endpoints(kz_json:ne_binary(), kapps_call:call()) -> kz_json:objects().
+maybe_add_user_endpoints(User, Call) ->
+    Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
+    lists:foldr(fun(EndpointId, Acc) ->
+                        case kz_endpoint:build(EndpointId, Properties, Call) of
+                            {'ok', Endpoint} -> Endpoint ++ Acc;
+                            {'error', _E} -> Acc
+                        end
+                end
+               ,[]
+               ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
+               ).
 
 -spec add_no_devices_error(cb_context:context(), kz_term:ne_binary(), pos_integer()) -> cb_context:context().
-add_no_devices_error(Context, UserId, Element) ->
+add_no_devices_error(Context, UserId, Element) when is_integer(Element) ->
     cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Element]
                                    ,<<"minItems">>
                                    ,kz_json:from_list([{<<"message">>, <<"user ", UserId/binary, " failed to resolve to route-able destinations">>}
@@ -687,8 +705,8 @@ add_no_devices_error(Context, UserId, Element) ->
 
 
 -spec add_not_found_error(cb_context:context(), kz_term:ne_binary(), pos_integer()) -> cb_context:context().
-add_not_found_error(Context, Id, Index) ->
-    cb_context:add_validation_error([<<"data">>, <<"participants">>, Index]
+add_not_found_error(Context, Id, Index) when is_integer(Index) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Index]
                                    ,<<"not_found">>
                                    ,kz_json:from_list([{<<"message">>, <<"ID ", Id/binary, " not found">>}])
                                    ,Context
