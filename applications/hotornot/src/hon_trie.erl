@@ -295,7 +295,7 @@ fetch_rates(Database, StartKey) ->
     kz_datamgr:get_results(Database, <<"rates/lookup">>, Options).
 
 -spec match_did_in_trie(string(), trie:trie()) -> match_return().
-match_did_in_trie(DID, Trrie) ->
+match_did_in_trie(DID, Trie) ->
     case trie:find_prefix_longest(DID, Trie) of
         'error' -> {'error', 'not_found'};
         {'ok', Prefix, RateIds} -> {'ok', {Prefix, RateIds}}
