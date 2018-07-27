@@ -154,7 +154,7 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
+%% @doc Make a background API call to FreeSWITCH. The asynchronous reply is
 %% sent to calling process after it is received. This function
 %% returns the result of the initial `bgapi' call or `timeout' if FreeSWITCH fails
 %% to respond.

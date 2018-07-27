@@ -471,13 +471,13 @@ emergency_cid_number(OffnetReq) ->
 
 -spec emergency_cid_number(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 %% if there are no emergency enabled numbers then either use the global system default
-%% or the requested (if there isnt one)
+%% or the requested (if there isn't one)
 emergency_cid_number(Requested, _, []) ->
     case ?DEFAULT_EMERGENCY_CID_NUMBER of
         'undefined' -> Requested;
         DefaultEmergencyCID -> DefaultEmergencyCID
     end;
-%% If neither their emergency cid or outgoung cid is emergency enabled but their account
+%% If neither their emergency cid or outgoing cid is emergency enabled but their account
 %% has other numbers with emergency then use the first...
 emergency_cid_number(_, [], [EmergencyEnabled|_]) -> EmergencyEnabled;
 %% due to the way we built the candidates list it can contain the atom 'undefined'

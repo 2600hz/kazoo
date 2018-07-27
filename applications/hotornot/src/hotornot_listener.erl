@@ -34,7 +34,7 @@
 -define(TRIE_RESPONDERS, [{{'hon_trie', 'handle_db_update'}
                           ,[{<<"configuration">>, <<"*">>}]
                           }]).
--define(QUEUE_NAME, <<"hotornot_listerner">>).
+-define(QUEUE_NAME, <<"hotornot_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 

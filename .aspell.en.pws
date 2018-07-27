@@ -1,10 +1,12 @@
-personal_ws-1.1 en 935 utf-8
+personal_ws-1.1 en 1000 utf-8
+PrivateKeyInfo
 cfg
 ccv
 CNAME
 cdr
 api
 Macau
+ToDID
 Phnom
 blf
 aor
@@ -12,6 +14,7 @@ Bantry
 Whitelabeling
 CET
 libxslt
+OldVsn
 Dar
 postfix
 cid
@@ -26,6 +29,7 @@ DBs
 Marigot
 fsync
 deskphone
+foreach
 Hairpinning
 asn
 Finke
@@ -35,8 +39,10 @@ asr
 htmldoc
 ast
 cli
+DES
 stepswitch
 dev
+OwnerId
 awk
 ecm
 etsmgr
@@ -61,6 +67,7 @@ CSR
 Roscrea
 DNS
 CSS
+hungup
 CTO
 libncurses
 csv
@@ -75,6 +82,8 @@ Atikokan
 misdials
 ananke
 gcm
+TemplateId
+eof
 amqp
 Mariehamn
 dth
@@ -102,7 +111,7 @@ CDRs
 cdrs
 CDR's
 Validator
-ETS
+ets
 apis
 APIs
 hotornot
@@ -115,11 +124,12 @@ rtpmap
 FSM
 CAkey
 PDFs
+DHParameter
 roundrobin
 cronjobs
 APNs
 apns
-Verifier
+verifier
 codec
 PCMU
 datamgr
@@ -144,7 +154,7 @@ JID
 pbxs
 hrl
 ini
-Misconfigured
+misconfigured
 Sergey
 Busingen
 assertEqual
@@ -162,18 +172,22 @@ ips
 chargebacks
 IPv
 Belmullet
-NOOP
+noop
 inband
 Simferopol
 WebRTC
 jonny
 httpchk
 escript
+postpay
 iso
+DSAPublicKey
 UntilFun
 Atka
 jpg
 stdlib
+RSAPublicKey
+CertificationRequest
 faxbox's
 McMurdo
 unhold
@@ -202,10 +216,12 @@ loa
 BigCouch
 telecom
 deps
+federators
 Kitts
 jwt
 zrtp
 parsers
+SubjectPublicKeyInfo
 Petersburg
 Ababa
 ebin
@@ -217,6 +233,7 @@ Mullingar
 Efate
 Aviv
 cnam
+Ralev
 forceclose
 moh
 mms
@@ -257,6 +274,7 @@ DumontDUrville
 sunday
 mux
 php
+ContentType
 accessors
 EDoc
 subaccounts
@@ -281,6 +299,7 @@ req
 proplist
 OSX
 Sao
+DSAPrivateKey
 Winamac
 responder
 Shiprock
@@ -290,6 +309,7 @@ SDK
 Cowlib
 Pandang
 PRs
+RSAPrivateKey
 Enderbury
 hotdesked
 sdp
@@ -326,6 +346,7 @@ CSeq
 Athlone
 SKU
 customizable
+Unassign
 CPUs
 postgrey
 smp
@@ -353,6 +374,7 @@ tls
 REPL
 tollfree
 tmp
+SessionId
 ssl
 repo
 srs
@@ -370,11 +392,13 @@ httplog
 metaflow
 svg
 Lokaal
+undef
 Sablon
 wav
 prepended
 Rica
 snmpwalk
+const
 ttl
 ACDc's
 vlc
@@ -382,9 +406,9 @@ sys
 tts
 bowout
 Rodionov
+USD
 vnd
 uri
-USD
 unregister
 urlencoded
 rebar
@@ -409,6 +433,7 @@ deregister
 endkey
 Kilkenny
 Dacca
+orelse
 Cuiaba
 cURL
 wnm
@@ -427,6 +452,8 @@ Mayen
 sctp
 masqueradable
 WSS
+Michal
+Gibberd
 Sitka
 unencrypted
 Currie
@@ -465,6 +492,7 @@ ja
 hk
 Ensenada
 Marino
+UNALLOCATED
 syslog
 io
 hu
@@ -481,6 +509,7 @@ ko
 nb
 struct
 provisioner
+Tesar
 kr
 ln
 Freenode
@@ -510,6 +539,7 @@ Faroe
 twoway
 skel
 ui
+rx
 SU
 sv
 wednesday
@@ -532,6 +562,7 @@ HAProxy
 haproxy
 zh
 hotdesking
+queryable
 Analytics
 Moncton
 unmuted
@@ -540,10 +571,12 @@ Magnusson
 hdrext
 Presentity
 erlang
+Henao
 CAcreateserial
 wensday
 eval
 erts
+MatchSpec
 Arklow
 transferee
 OneDrive
@@ -567,8 +600,10 @@ maxLength
 egrep
 deserialize
 libssl
+DocId
 rtcp
 patternProperties
+renderer
 libexec
 transferor
 Scoresbysund
@@ -584,12 +619,14 @@ hostname
 Macquarie
 Paulo
 polycom
+ServerId
 Mayotte
 distro's
 distros
 unhandled
 hipe
-Datastore
+commenter
+datastore
 sandboxing
 Vostok
 ignorable
@@ -617,6 +654,7 @@ Kirill
 Salesforce
 verifiers
 codecs
+andalso
 BajaNorte
 repos
 featurecode
@@ -625,11 +663,13 @@ sudo
 blackhole
 undeliverable
 BindOptions
+RateId
 Kerguelen
 srtp
 ssrc
 Ulan
 whitespace
+FaxBox
 faxbox
 preconfigured
 Eshell
@@ -637,6 +677,7 @@ Ceuta
 Fenoll
 symlink
 Omittable
+filelib
 Blanton
 logrotate
 Salta
@@ -650,6 +691,7 @@ INVITEs
 Barthelemy
 CentOS
 skype
+posix
 Wann
 monday
 globals
@@ -669,7 +711,9 @@ VFun
 backend
 keepalive
 webm
+keypos
 Ashchepkov
+QueueId
 Santo
 dptools
 cidrs
@@ -680,6 +724,7 @@ nomorobo
 NoMoRobo
 Kapp
 frontend
+TaskId
 SmartPBX
 Tuam
 NAPTR
@@ -690,16 +735,21 @@ apache
 Galeev
 callee
 Branco
+booleans
 inet
 Rothera
 Truk
 transferor's
 Wexford
 speex
+poolboy
 Makassar
+CallId
+callid
 whitelist
 vmboxes
 Ponape
+PidRef
 init
 missingok
 referer
@@ -717,6 +767,7 @@ Aqtau
 chmod
 Whitelabling
 smtpd
+demonitor
 pymdown
 dbtext
 WORKDIR
@@ -725,8 +776,8 @@ Defebvre
 html
 Bandon
 Araguaina
-formatters
 formatter's
+formatters
 interaccount
 gzip
 Kozlov
@@ -798,6 +849,7 @@ Mahe
 ifdef
 Grande
 faxable
+unencoded
 proxied
 Magadan
 Hesaam
@@ -828,11 +880,13 @@ mynetworks
 quickcheck
 loadmodule
 proto
+endif
 resporg
 acdc
 ACDc
 pipelining
 natively
+stacktrace
 autostart
 plusses
 tuesday
@@ -852,7 +906,7 @@ routable
 Chuuk
 ExtraArgs
 Nodename
-ADDR
+Addr
 badarg
 BEAMs
 CApath
@@ -878,6 +932,7 @@ Saipan
 thursday
 reqadd
 tstamp
+AccountDb
 Krzhemenevskiy
 deployable
 minItems
@@ -886,14 +941,18 @@ ComodRivadavia
 urandom
 VoiceFabric
 voicefabric
+JobId
 Qyzylorda
 xmpp
 boolean
+AccountId
+econnrefused
 Fermoy
 Creston
 charset
 lifecycle
 Asmera
+JObjs
 supertype
 oneOf
 Farhang
@@ -919,6 +978,8 @@ UUIDs
 Vitelity's
 codebase
 Nationaal
+SubType
+Harenson
 bcc
 Longyearbyen
 nxdomain
@@ -926,11 +987,15 @@ Ulaanbaatar
 Mawson
 Nera
 Manaus
+RatedeckDb
 nomatch
 openssl
 async
 Maksim
+badmatch
 ALG
 Danmarkshavn
 Merida
 Katmandu
+hostent
+RatedeckId

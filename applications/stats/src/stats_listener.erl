@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Master process to gather information send by all kazoo nodes.
-%%% It listens to targeted/statistics AMPQ messages, and is accessed by
+%%% It listens to targeted/statistics AMQP messages, and is accessed by
 %%% kazoo_snmp for SNMP queries.
 %%%
 %%%

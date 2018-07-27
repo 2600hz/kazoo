@@ -228,7 +228,7 @@ process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_CREATED) ->
     maybe_start_trie_server(RatedeckDb);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_EDITED) ->
     {'ok', Pid} = gen_server:call(trie_proc_name(RatedeckDb), 'rebuild'),
-    lager:info("ratedeck ~s changed, rebuiding trie in ~p", [RatedeckDb, Pid]);
+    lager:info("ratedeck ~s changed, rebuilding trie in ~p", [RatedeckDb, Pid]);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_DELETED) ->
     Pid = trie_proc_name(RatedeckDb),
     _ = hon_tries_sup:stop_trie(Pid),
@@ -295,7 +295,7 @@ fetch_rates(Database, StartKey) ->
     kz_datamgr:get_results(Database, <<"rates/lookup">>, Options).
 
 -spec match_did_in_trie(string(), trie:trie()) -> match_return().
-match_did_in_trie(DID, Trie) ->
+match_did_in_trie(DID, Trrie) ->
     case trie:find_prefix_longest(DID, Trie) of
         'error' -> {'error', 'not_found'};
         {'ok', Prefix, RateIds} -> {'ok', {Prefix, RateIds}}

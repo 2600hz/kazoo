@@ -159,7 +159,7 @@
         ,?MACRO_VALUE(<<"transaction.add_ons">>, <<"add_ons">>, <<"Add-Ons">>, <<"Total Add-Ons Cost Amount">>)
         ,?MACRO_VALUE(<<"transaction.discounts">>, <<"discounts">>, <<"Discounts">>, <<"Total Discounts Amount">>)
         ,?MACRO_VALUE(<<"transaction.address.first_name">>, <<"address_first_name">>, <<"Billing Address First Name">>, <<"Billing Address First Name">>)
-        ,?MACRO_VALUE(<<"transaction.address.last_name">>, <<"address_last_name">>, <<"Billing Address Last Name">>, <<"Billing Address Last_ Nme">>)
+        ,?MACRO_VALUE(<<"transaction.address.last_name">>, <<"address_last_name">>, <<"Billing Address Last Name">>, <<"Billing Address Last_ Name">>)
         ,?MACRO_VALUE(<<"transaction.address.company">>, <<"address_company">>, <<"Billing Address Company">>, <<"Billing Address Company">>)
         ,?MACRO_VALUE(<<"transaction.address.street_address">>, <<"address_street_address">>, <<"Billing Address Street Address">>, <<"Billing Address Street Address">>)
         ,?MACRO_VALUE(<<"transaction.address.extended_address">>, <<"address_extended_address">>, <<"Billing Address Extended Address">>, <<"Billing Address Extended Address">>)

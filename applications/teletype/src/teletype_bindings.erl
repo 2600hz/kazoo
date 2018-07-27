@@ -30,7 +30,7 @@ bind(EventName, Module, Fun) ->
 bind(EventCategory, EventName, Module, Fun) ->
     Binding = ?ROUTING_KEY(EventCategory, EventName),
     case kazoo_bindings:bind(Binding, Module, Fun) of
-        'ok' -> lager:debug("~s has been binded", [Binding]);
+        'ok' -> lager:debug("~s has been bound", [Binding]);
         {'error', 'exists'} -> lager:debug("bind for ~s exists", [Binding])
     end.
 

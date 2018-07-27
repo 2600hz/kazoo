@@ -632,7 +632,7 @@ notify_success(#state{call=Call
                      ,storage=#fax_storage{id=FaxId, db=FaxDb}
                      }=State) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
-    Status = <<"Fax Successfuly received">>,
+    Status = <<"Fax Successfully received">>,
     send_status(State, Status, ?FAX_END, Data),
 
     Message = props:filter_undefined(

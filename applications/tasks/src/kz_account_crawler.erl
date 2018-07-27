@@ -180,7 +180,7 @@ cleanup_cycle_timer() ->
 crawl_account(AccountId) ->
     lager:debug("crawling account ~s", [AccountId]),
     %% do not open the account def in the account db or we will
-    %% be wasting bigcouch's file descriptors
+    %% be wasting BigCouch file descriptors
     OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
     check_then_process_account(AccountId, OpenResult).
 

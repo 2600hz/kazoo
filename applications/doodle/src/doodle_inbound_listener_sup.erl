@@ -56,7 +56,7 @@ start_link() ->
     R = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     case R of
         {'ok', _} -> start_listeners();
-        _Other -> lager:error("error starting inbound_listeneres sup : ~p", [_Other])
+        _Other -> lager:error("error starting inbound_listeners sup : ~p", [_Other])
     end,
     R.
 

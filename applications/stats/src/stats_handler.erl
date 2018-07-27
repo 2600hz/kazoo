@@ -69,7 +69,7 @@ store_items(NodeName, [{TableName,TableField} | Rest], Items) ->
             store_items(NodeName, Rest, Items)
     end.
 
-%%% Store information ordered by node name so table row order is consistant
+%%% Store information ordered by node name so table row order is consistent
 store_item2(NewItems, [], _) ->
     [NewItems];
 store_item2(NewItems, [ Table | Rest ], NodeName ) ->

@@ -15,7 +15,7 @@
 %%% and append the default headers to the application-specific portions, and
 %%% insert these commands into the CmdQ. We then check whether the old CmdQ is
 %%% empty AND the new CmdQ is not, and that the current App is the empty
-%%% binary. If so, we dequeue the next command, execute it, and loop; otherwise
+%%% binary. If so, we de-queue the next command, execute it, and loop; otherwise
 %%% we loop with the CmdQ.
 %%% If just a single application is sent in the message, we check the CmdQ's
 %%% size and the current App's status; if both are empty, we fire the command
@@ -118,7 +118,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% because the call_events process might have been spun up with A->B
     %% then transferred to A->D, but the route landed in a different
     %% ecallmgr.  Since our call_events will get a bad session if we
-    %% try to handlecall more than once on a UUID we had to leave the
+    %% try to handle call more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
     Bindings = [{'call', [{'callid', CallId}
                          ,{'restrict_to', [<<"usurp_control">>]}
@@ -478,7 +478,7 @@ handle_channel_destroyed(#state{sanity_check_tref=SCTRef
     catch (erlang:cancel_timer(SCTRef)),
 
     %% if the current application can not be run without a channel and we have received the
-    %% channel_destory (the last event we will ever receive from freeswitch for this call)
+    %% channel_destroy (the last event we will ever receive from freeswitch for this call)
     %% then create an error and force advance. This will happen with dialplan actions that
     %% have not been executed on freeswitch but were already queued (for example in xferext).
     %% Commonly events like masquerade, noop, etc
@@ -510,7 +510,7 @@ force_queue_advance(#state{call_id=CallId
     of
         'false' ->
             %% if the node is down, don't inject the next FS event
-            lager:debug("not continuing until the media node becomes avaliable"),
+            lager:debug("not continuing until the media node becomes available"),
             State#state{current_app='undefined'};
         {'empty', _} ->
             lager:debug("no call commands remain queued, hibernating"),
@@ -624,7 +624,7 @@ forward_queue(#state{call_id = CallId
     of
         'false' ->
             %% if the node is down, don't inject the next FS event
-            lager:debug("not continuing until the media node becomes avaliable"),
+            lager:debug("not continuing until the media node becomes available"),
             State#state{current_app='undefined', msg_id='undefined'};
         {'empty', _} ->
             lager:debug("no call commands remain queued, hibernating"),
@@ -869,7 +869,7 @@ insert_command(#state{node=Node
         andalso AName
     of
         'false' ->
-            lager:debug("node ~s is not avaliable", [Node]),
+            lager:debug("node ~s is not available", [Node]),
             lager:debug("sending execution error for command ~s", [AName]),
             {Mega,Sec,Micro} = os:timestamp(),
             Props = [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}

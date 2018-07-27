@@ -644,7 +644,7 @@ process_specific_event(_EventName, _UUID, _Props, _Node) -> 'ok'.
 -spec maybe_publish_channel_state(kz_term:proplist(), atom()) -> 'ok'.
 maybe_publish_channel_state(Props, Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
-    %%   becomes disconnected any calls it previsouly controlled will not produce
+    %%   becomes disconnected any calls it previously controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
     Event = ecallmgr_call_events:get_event_name(Props),
     case props:is_true(<<"Publish-Channel-State">>, Props, 'true')
