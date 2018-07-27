@@ -215,14 +215,18 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     lager:debug("accessing fax attachment ~s at ~s", [Db, FaxId]),
     teletype_util:send_update(DataJObj, <<"pending">>),
     Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
-    Filename = get_file_name(Macros, <<".", Format/binary>>),
     case kzd_fax:fetch_attachment_format(Format, Db, FaxJObj) of
         {'ok', Content, ContentType, _Doc} ->
+            Filename = get_file_name(Macros, get_extension(Format, ContentType)),
             [{ContentType, Filename, Content}];
         {'error', _E} ->
             lager:debug("failed to fetch attachment: ~p", [_E]),
             []
     end.
+
+-spec get_extension(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_extension(<<"original">>, ContentType) -> kz_mime:to_extension(ContentType);
+get_extension(Format, _) -> Format.
 
 -spec get_file_name(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_file_name(Macros, Ext) ->
