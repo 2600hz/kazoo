@@ -145,7 +145,7 @@ get_supported_binding_ip(IP) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Returns {@link inet:ip_address()} of binding IP address if the `IP'
-%% can be binded by underlying system, otherwise retruns the default binding
+%% can be bound by underlying system, otherwise returns the default binding
 %% address.
 %%
 %% This is useful to check for example the IPv6 or IPv4 protocol is supported
@@ -234,7 +234,7 @@ default_binding_ip() ->
 default_binding_ip('true', _) -> ?BIND_ALL_INTERFACE_4;
 default_binding_ip('false', 'true') -> ?BIND_ALL_INTERFACE_6;
 default_binding_ip('false', 'false') ->
-    throw({'error', <<"no network available for protocol family ipv6 or ipv4">>}).
+    throw({'error', <<"no network available for protocol family IPv6 or IPv4">>}).
 
 %%------------------------------------------------------------------------------
 %% @doc Detects if specified network protocol family is supported by system.
