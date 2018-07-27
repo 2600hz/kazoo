@@ -132,7 +132,7 @@ subscriptions(AccountId) ->
             ]
     catch
         'throw':{'not_found', _} -> 'not_found';
-        _:_ -> 'unknow_error'
+        _:_ -> 'unknown_error'
     end.
 
 %%------------------------------------------------------------------------------

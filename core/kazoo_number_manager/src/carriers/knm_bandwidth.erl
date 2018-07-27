@@ -101,22 +101,22 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
-find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
-    find_numbers(Rest, Quanity, Options);
-find_numbers(<<"1", Rest/binary>>, Quanity, Options) ->
-    find_numbers(Rest, Quanity, Options);
-find_numbers(<<NPA:3/binary>>, Quanity, Options) ->
+find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
+    find_numbers(Rest, Quantity, Options);
+find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
+    find_numbers(Rest, Quantity, Options);
+find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Props = [{'areaCode', [kz_term:to_list(NPA)]}
-            ,{'maxQuantity', [kz_term:to_list(Quanity)]}
+            ,{'maxQuantity', [kz_term:to_list(Quantity)]}
             ],
     case make_numbers_request('areaCodeNumberSearch', Props) of
         {'error', _}=E -> E;
         {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end;
-find_numbers(Search, Quanity, Options) ->
+find_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_binary:truncate_right(Search, 6),
     Props = [{'npaNxx', [kz_term:to_list(NpaNxx)]}
-            ,{'maxQuantity', [kz_term:to_list(Quanity)]}
+            ,{'maxQuantity', [kz_term:to_list(Quantity)]}
             ],
     case make_numbers_request('npaNxxNumberSearch', Props) of
         {'error', _}=E -> E;

@@ -66,7 +66,7 @@ resource_exists() -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /metaflows mights load a list of metaflow objects
+%% /metaflows might load a list of metaflow objects
 %% /metaflows/123 might load the metaflow object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

@@ -253,7 +253,7 @@ conference_event(Action, Conference, Props) ->
     CAVs = ecallmgr_util:custom_application_vars(Props),
     ConfVars = ecallmgr_util:conference_channel_vars(Props),
 
-    lager:debug("publising conference event action ~s", [Action]),
+    lager:debug("publishing conference event action ~s", [Action]),
 
     props:filter_undefined(
       [{<<"Account-ID">>, Conference#conference.account_id}

@@ -72,9 +72,9 @@ maybe_start_plaintext(Dispatch, IP) ->
                                   )
             of
                 {'ok', _} ->
-                    lager:info("started plaintext WebSocket server");
+                    lager:info("started plaintext Websocket server");
                 {'error', {'already_started', _P}} ->
-                    lager:info("already started plaintext WebSocket server at ~p", [_P])
+                    lager:info("already started plaintext Websocket server at ~p", [_P])
             catch
                 _E:_R ->
                     lager:warning("crashed starting WEBSOCKET server: ~s: ~p", [_E, _R])
@@ -176,4 +176,3 @@ maybe_add_compression_handler() ->
         'true' -> ['cowboy_compress_h', 'cowboy_stream_h'];
         'false' -> ['cowboy_stream_h']
     end.
-

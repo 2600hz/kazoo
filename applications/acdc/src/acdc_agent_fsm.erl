@@ -69,7 +69,7 @@
 -define(SYNC_RESPONSE_TIMEOUT, 5000).
 -define(SYNC_RESPONSE_MESSAGE, 'sync_response_timeout').
 
-%% We weren't able to join our brethern, how long to wait to check again
+%% We weren't able to join our brethren, how long to wait to check again
 -define(RESYNC_RESPONSE_TIMEOUT, 15000).
 -define(RESYNC_RESPONSE_MESSAGE, 'resync_response_timeout').
 
@@ -491,7 +491,7 @@ sync('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
                                        }=State) ->
     case kz_json:get_value(<<"Process-ID">>, JObj) of
         AProcId ->
-            lager:debug("recv sync req from ourself"),
+            lager:debug("recv sync req from ourselves"),
             {'next_state', 'sync', State};
         _OtherProcId ->
             lager:debug("recv sync_req from ~s (we are ~s)", [_OtherProcId, AProcId]),

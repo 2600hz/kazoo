@@ -424,7 +424,7 @@ maybe_add_slot_doc_rev(JObj, AccountDb) ->
 %%------------------------------------------------------------------------------
 %% @doc After an attended transfer we need to find the callid that we stored
 %% because it was the "C-Leg" of a transfer and now we have the
-%% actuall "A-Leg".  Find the old callid and update it with the new one.
+%% actual "A-Leg".  Find the old callid and update it with the new one.
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_call_id(kz_term:ne_binary(), kapps_call:call()) ->

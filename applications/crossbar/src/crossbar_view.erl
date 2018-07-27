@@ -62,7 +62,7 @@
 %% See also {@link start_end_keys/3}.
 
 -type range_keymap_fun() :: fun((kz_time:gregorian_seconds()) -> api_range_key()).
-%% A function of arity 1. The timestamp from `create_ftom' or `created_to' will pass to this function
+%% A function of arity 1. The timestamp from `create_from' or `created_to' will pass to this function
 %% to construct the start or end key.
 -type range_keymap() :: 'nil' | api_range_key() | range_keymap_fun().
 %% Creates a start/key key for ranged queries. A binary or integer or a list of binary or integer
@@ -920,7 +920,7 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Generates general corssbar_view options map for querying view.
+%% @doc Generates general crossbar_view options map for querying view.
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_general_load_params(cb_context:context(), kz_term:ne_binary(), options()) -> load_params() | cb_context:context().

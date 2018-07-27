@@ -158,7 +158,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function loads the response vars in Context, soon it will
-%% make smarter choices about formating resp_data and filtering
+%% make smarter choices about formatting resp_data and filtering
 %% other parameters.
 %% @end
 %%------------------------------------------------------------------------------

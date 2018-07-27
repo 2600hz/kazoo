@@ -482,7 +482,7 @@ outbound_flags(Doc) ->
 -spec outbound_flags(doc(), Default) -> kz_json:object() | Default.
 outbound_flags(Doc, Default) ->
     OutboundFlags = kz_json:get_ne_value([<<"outbound_flags">>], Doc, Default),
-    %% Backward compatibilty with an array of static flags
+    %% Backward compatibility with an array of static flags
     case kz_json:is_json_object(OutboundFlags) of
         'false' -> kz_json:from_list([{?STATIC_FLAGS, OutboundFlags}]);
         'true' -> OutboundFlags

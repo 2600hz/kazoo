@@ -338,7 +338,7 @@ update_vmbox_message(Message, MODbFailed, Failed, _, Id, Timestamp) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Get messages from mailbox arrays and generate lagecy_msg listing view
+%% @doc Get messages from mailbox arrays and generate legacy_msg listing view
 %% fake message_doc result for manual migration
 %% @end
 %%------------------------------------------------------------------------------

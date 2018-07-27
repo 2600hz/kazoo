@@ -238,7 +238,7 @@ bindings(Routing) ->
 %% @doc Match routing patterns. `*' matches one slot, `#' matches zero or more.
 %% For example pattern `<<"#.6.*.1.4.*">>'  can match `<<"6.a.a.6.a.1.4.a">>'.
 %%
-%% <div class="notice">Matching only accepts wilcards on first argument (asymetric).</div>
+%% <div class="notice">Matching only accepts wildcards on first argument (asymetric).</div>
 %%
 %% This is a copy from {@link kazoo_bindings} with extra
 %% checks for `bh_matches([_ | Bs], [<<"*">>|Rs]) ->'
@@ -255,7 +255,7 @@ bh_matches([<<"#">>, <<"*">>], [<<>>]) -> 'false';
 bh_matches([<<"#">>, <<"*">>], [_]) -> 'true'; % match one item:  #.* matches foo
 
 bh_matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
-    bh_matches(Bs, []);           % so keep checking by stipping of the first #
+    bh_matches(Bs, []);           % so keep checking by stripping of the first #
 
 %% if one runs out without a wildcard, no matchy
 bh_matches([], [_|_]) -> 'false'; % foo.*   foo

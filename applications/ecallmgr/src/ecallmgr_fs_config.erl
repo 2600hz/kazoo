@@ -250,7 +250,7 @@ default_sip_settings() ->
     ,{<<"sip-ip">>, <<"$${local_ip_v4}">>}
     ,{<<"ext-sip-ip">>, <<"auto">>}
     ,{<<"sip-port">>, <<"5060">>}
-    ,{<<"user-agent-string">>, <<"2600hz">>}
+    ,{<<"user-agent-string">>, <<"2600Hz">>}
     ,{<<"enable-100rel">>, <<"false">>}
     ,{<<"max-proceeding">>, <<"1000">>}
     ,{<<"inbound-use-callid-as-uuid">>, <<"true">>}

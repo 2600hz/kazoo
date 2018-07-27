@@ -877,7 +877,7 @@ fix_path(Path) ->
     [fix_el(El) || El <- Path].
 
 %% JSON array indicies are 0-indexed, Erlang's are 1-indexed
-%% If an indicie is found, convert (incr) from JSON- to Erlang-based indicie
+%% If an index is found, convert (incr) from JSON- to Erlang-based index
 -spec fix_el(kz_json:key() | non_neg_integer()) -> kz_json:key() | non_neg_integer().
 fix_el(I) when is_integer(I) -> I+1;
 fix_el(El) -> El.

@@ -548,7 +548,7 @@ init([Args]) ->
 handle_call(Call, From, #state{queue='undefined'}=State)
   when is_tuple(Call) ->
     kz_util:put_callid(element(2, Call)),
-    lager:debug("unable to publish message prior to queue creation - defering"),
+    lager:debug("unable to publish message prior to queue creation - deferring"),
     {'noreply', State#state{defer={Call,From}}};
 handle_call(_, _, #state{flow='false'}=State) ->
     lager:debug("flow control is active and server put us in waiting"),
@@ -674,7 +674,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer='undefined'}=St
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer={Call,From}}=State) ->
     kz_util:put_callid(element(2, Call)),
-    lager:debug("resuming defered call"),
+    lager:debug("resuming deferred call"),
     case handle_call(Call, From, State#state{queue=Q}) of
         {'reply', Reply, NewState} ->
             gen_server:reply(From, Reply),
@@ -857,7 +857,7 @@ handle_info('timeout'
             lager:debug("negative response threshold reached, returning last negative message to ~p", [_Pid]),
             gen_server:reply(From, {'error', ErrorJObj});
         'false' ->
-            lager:debug("negative response threshold reached, returning defered response to ~p", [_Pid]),
+            lager:debug("negative response threshold reached, returning deferred response to ~p", [_Pid]),
             gen_server:reply(From, {'ok', ReservedJObj})
     end,
     {'noreply', reset(State), 'hibernate'};
@@ -884,7 +884,7 @@ handle_info({'timeout', ReqRef, 'req_timeout'}
             lager:debug("request timeout exceeded for msg id: ~s and client: ~p", [_MsgId, _Pid]),
             gen_server:reply(From, {'error', 'timeout'});
         'false' ->
-            lager:debug("only received defered response for msg id: ~s and client: ~p", [_MsgId, _Pid]),
+            lager:debug("only received deferred response for msg id: ~s and client: ~p", [_MsgId, _Pid]),
             gen_server:reply(From, {'ok', ReservedJObj})
     end,
     {'noreply', reset(State), 'hibernate'};

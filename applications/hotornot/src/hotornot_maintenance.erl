@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Helper functions for users to inspect how HotOrNot is running
+%%% @doc Helper functions for users to inspect how Hotornot is running
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------

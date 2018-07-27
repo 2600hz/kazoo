@@ -465,7 +465,7 @@ resources_to_endpoints(Resources, Number, OffnetJObj) ->
             RuleResources = maps:get('no_classification', ResourceMap, []),
             build_endpoints_from_resources(RuleResources, Number, OffnetJObj);
         ClassifiedResources ->
-            lager:debug("found resources to satisy classifier ~s (number ~s), building against classification rules..."
+            lager:debug("found resources to satisfy classifier ~s (number ~s), building against classification rules..."
                        ,[Classification, Number]
                        ),
             FilteredClassifiedResources = [Resource || Resource <- ClassifiedResources,

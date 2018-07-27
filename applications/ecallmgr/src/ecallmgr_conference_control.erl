@@ -150,8 +150,8 @@ handle_event(_JObj, #state{node=Node
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, #state{conference_id=ConfereceId}) ->
-    lager:debug("ecallmgr conference control for ~s terminating: ~p", [ConfereceId, _Reason]).
+terminate(_Reason, #state{conference_id=ConferenceId}) ->
+    lager:debug("ecallmgr conference control for ~s terminating: ~p", [ConferenceId, _Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.

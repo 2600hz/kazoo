@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc Receive call events from freeSWITCH, publish to the call's event queue
+%%% @doc Receive call events from FreeSWITCH, publish to the call's event queue
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
@@ -417,7 +417,7 @@ handle_info('timeout', #state{node=Node
                              ,failed_node_checks=FNC
                              }=State) ->
     erlang:monitor_node(Node, 'true'),
-    %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
+    %% TODO: die if there is already a event producer on the AMQP queue... ping/pong?
     case freeswitch:api(Node, 'uuid_exists', CallId) of
         {'error', 'timeout'} ->
             lager:warning("timeout trying to find call on node ~s, trying again", [Node]),

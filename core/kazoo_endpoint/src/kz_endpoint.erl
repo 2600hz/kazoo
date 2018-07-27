@@ -87,7 +87,7 @@
                           kz_datamgr:data_error().
 
 %%------------------------------------------------------------------------------
-%% @doc Fetches a endpoint defintion from the database or cache
+%% @doc Fetches a endpoint definition from the database or cache
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -630,7 +630,7 @@ flush(Db, Id) ->
 %% @doc Creates one or more kazoo API endpoints for use in a bridge string.
 %% Takes into account settings on the callflow, the endpoint, call
 %% forwarding, and ringtones.  More functionality to come, but as it is
-%% added it will be implicit in all functions that 'ring an endpoing'
+%% added it will be implicit in all functions that 'ring an endpoint'
 %% like devices, ring groups, and resources.
 %% @end
 %%------------------------------------------------------------------------------
@@ -821,7 +821,7 @@ maybe_do_not_disturb(Endpoint, _Properties, _Call) ->
     case kz_json:is_true(<<"enabled">>, DND) of
         'false' -> 'ok';
         'true' ->
-            lager:info("do not distrub endpoint ~s", [kz_doc:id(Endpoint)]),
+            lager:info("do not disturb endpoint ~s", [kz_doc:id(Endpoint)]),
             {'error', 'do_not_disturb'}
     end.
 
@@ -1028,7 +1028,7 @@ maybe_guess_endpoint_type(Endpoint) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"restrict_to_known_types">>, 'false') of
         'false' -> guess_endpoint_type(Endpoint);
         'true' ->
-            lager:info("unknown endpoint type and callflows restrictued to known types", []),
+            lager:info("unknown endpoint type and callflows restricted to known types", []),
             <<"unknown">>
     end.
 

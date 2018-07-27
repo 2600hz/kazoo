@@ -54,7 +54,7 @@ resource_exists() -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /contact_list mights load a list of skel objects
+%% /contact_list might load a list of skel objects
 %% /contact_list/123 might load the skel object 123
 %% @end
 %%------------------------------------------------------------------------------

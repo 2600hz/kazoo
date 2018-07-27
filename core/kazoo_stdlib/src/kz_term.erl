@@ -493,7 +493,7 @@ to_upper_char(C) -> C.
 
 -spec to_lower_char(char()) -> char().
 to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
-%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
+%% Converts Latin capital letters to lowercase, skipping 16#D7 (extended ASCII 215) "multiplication sign: x"
 to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.

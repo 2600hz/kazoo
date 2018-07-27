@@ -506,7 +506,7 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
             timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
             migrate_unassigned_numbers(NumberDb, Offset + Length);
         {error, _R} ->
-            ?SUP_LOG_DEBUG("failed to get unassign DIDs from ~s: ~p", [NumberDb, _R])
+            ?SUP_LOG_DEBUG("failed to get unassigned DIDs from ~s: ~p", [NumberDb, _R])
     end.
 
 %%%=============================================================================

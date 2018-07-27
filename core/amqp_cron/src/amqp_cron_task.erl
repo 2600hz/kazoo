@@ -19,7 +19,7 @@
 %%% a task to be executed periodically in the future. The supported methods
 %%% are one shot, sleeper, and cron mode.
 %%%
-%%% A oneshot schedule executes a task once after sleeping a specified
+%%% A one-shot schedule executes a task once after sleeping a specified
 %%% number of milliseconds or at a given datetime.
 %%%
 %%% <code>

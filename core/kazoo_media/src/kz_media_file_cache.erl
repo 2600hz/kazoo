@@ -121,12 +121,12 @@ handle_call('single', _From, #state{meta=Meta
 handle_call('single', From, #state{reqs=Reqs
                                   ,status='streaming'
                                   }=State) ->
-    lager:debug("file not ready for ~p, queueing", [From]),
+    lager:debug("file not ready for ~p, queuing", [From]),
     {'noreply', State#state{reqs=[From | Reqs]}};
 handle_call('continuous', From, #state{reqs=Reqs
                                       ,status='streaming'
                                       }=State) ->
-    lager:debug("file not ready for ~p, queueing", [From]),
+    lager:debug("file not ready for ~p, queuing", [From]),
     {'noreply', State#state{reqs=[From | Reqs]}};
 handle_call('continuous', _From, #state{meta=Meta
                                        ,contents=Contents

@@ -228,7 +228,7 @@ process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_CREATED) ->
     maybe_start_trie_server(RatedeckDb);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_EDITED) ->
     {'ok', Pid} = gen_server:call(trie_proc_name(RatedeckDb), 'rebuild'),
-    lager:info("ratedeck ~s changed, rebuiding trie in ~p", [RatedeckDb, Pid]);
+    lager:info("ratedeck ~s changed, rebuilding trie in ~p", [RatedeckDb, Pid]);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_DELETED) ->
     Pid = trie_proc_name(RatedeckDb),
     _ = hon_tries_sup:stop_trie(Pid),

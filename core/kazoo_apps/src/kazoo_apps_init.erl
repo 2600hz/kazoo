@@ -126,7 +126,7 @@ is_system_clock_on_utc() ->
     case {calendar:local_time(), calendar:universal_time()} of
         {UTC, UTC} -> 'true';
         {_Local, _UTC} ->
-            lager:warning("local: ~p utc: ~p", [_Local, _UTC]),
+            lager:warning("local: ~p UTC: ~p", [_Local, _UTC]),
             lager:critical("system is not running in UTC and Kazoo expects it"),
             'false'
     end.

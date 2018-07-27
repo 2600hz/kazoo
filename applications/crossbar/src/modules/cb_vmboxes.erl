@@ -994,7 +994,7 @@ save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
     end.
 
 -spec save_attachment_to_file(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), string()) ->
-                                     'ok' | {atom(), any()}.
+                                     'ok' | {'error', any()}.
 save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
     case kvm_message:fetch(cb_context:account_id(Context), MsgId, BoxId) of
         {'ok', Doc} ->
@@ -1066,14 +1066,18 @@ del_all_files(Dir) ->
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%------------------------------------------------------------------------------
--spec generate_media_name(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec generate_media_name(kz_term:api_ne_binary(), kz_time:gregorian_seconds() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(GregorianSeconds)),
     LocalTime = case localtime:utc_to_local(UTCDateTime, kz_term:to_list(Timezone)) of
-                    {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
-                    _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
+                    {{_,_,_},{_,_,_}}=LT ->
+                        lager:debug("converted to TZ: ~s", [Timezone]),
+                        LT;
+                    _ ->
+                        lager:debug("bad TZ: ~p", [Timezone]),
+                        UTCDateTime
                 end,
     Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
@@ -1106,7 +1110,7 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
         {'ok', [VMBox]} ->
             VMBoxId =:= kz_doc:id(VMBox);
         {'ok', _} ->
-            lager:warning("found multiple mailboxs for '~p'", [Mailbox]),
+            lager:warning("found multiple mailboxes for '~p'", [Mailbox]),
             'false';
         {'error', _E} ->
             lager:debug("failed to load listing_by_mailbox view: ~p", [_E]),

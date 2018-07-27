@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Switch events messages.
-%%% @author Eduoard Swiac
+%%% @author Edouard Swiac
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_switch).
@@ -94,7 +94,7 @@
 -define(FSREPLY_COMMAND_TYPES, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Request reload of FreeSwitch ACLs.
+%% @doc Request reload of FreeSWITCH ACLs.
 %% @end
 %%------------------------------------------------------------------------------
 -spec reload_acls(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -113,7 +113,7 @@ reload_acls_v(JObj) ->
     reload_acls_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Request reload of FreeSwitch gateways.
+%% @doc Request reload of FreeSWITCH gateways.
 %% @end
 %%------------------------------------------------------------------------------
 -spec reload_gateways(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -132,7 +132,7 @@ reload_gateways_v(JObj) ->
     reload_gateways_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Request flush of FreeSwitch `fs_xml_flush'.
+%% @doc Request flush of FreeSWITCH `fs_xml_flush'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fs_xml_flush(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -151,7 +151,7 @@ fs_xml_flush_v(JObj) ->
     fs_xml_flush_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Request that FreeSwitch send a `NOTIFY' message.
+%% @doc Request that FreeSWITCH send a `NOTIFY' message.
 %% @end
 %%------------------------------------------------------------------------------
 -spec notify(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -170,7 +170,7 @@ notify_v(JObj) ->
     notify_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Request a FreeSwitch command.
+%% @doc Request a FreeSWITCH command.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fs_command(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -189,7 +189,7 @@ fs_command_v(JObj) ->
     fs_command_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Reply to a FreeSwitch command.
+%% @doc Reply to a FreeSWITCH command.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fs_reply(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.

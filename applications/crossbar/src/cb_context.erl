@@ -858,7 +858,7 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
             lager:debug("validation errors when strictly validating"),
             validate_failed(SchemaJObj, Context, Errors, OnFailure);
         {'error', Errors} ->
-            lager:debug("validation errors but not stricly validating, trying to fix request"),
+            lager:debug("validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
         'error':'function_clause' ->

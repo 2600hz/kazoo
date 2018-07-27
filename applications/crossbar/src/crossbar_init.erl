@@ -296,4 +296,3 @@ maybe_add_compression_handler() ->
         'true' -> ['cowboy_compress_h', 'cowboy_stream_h'];
         'false' -> ['cowboy_stream_h']
     end.
-

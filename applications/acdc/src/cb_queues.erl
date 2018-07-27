@@ -371,7 +371,7 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -439,7 +439,7 @@ filter_response_fields(JObj) ->
                      ).
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%------------------------------------------------------------------------------
@@ -462,7 +462,7 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
 patch(Context, Id) ->
     post(Context, Id).
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -737,7 +737,7 @@ summary(Context) ->
                           ).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the resuts of a view
+%% @doc Normalizes the results of a view
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

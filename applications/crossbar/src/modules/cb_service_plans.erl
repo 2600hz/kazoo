@@ -135,7 +135,7 @@ resource_exists(_, _) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /service_plans mights load a list of service_plan objects
+%% /service_plans might load a list of service_plan objects
 %% /service_plans/123 might load the service_plan object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -288,7 +288,7 @@ post(Context, PlanId, ?OVERRIDE) ->
     end.
 
 %%----------------------------------- ---------------------------------
-%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().

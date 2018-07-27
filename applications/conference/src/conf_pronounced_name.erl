@@ -172,7 +172,7 @@ maybe_remove_attachments(Call, JObj) ->
 -spec review(kz_term:ne_binary(), kapps_call:call()) -> kapps_call_command:collect_digits_return().
 review(RecordName, Call) ->
     lager:debug("review record"),
-    NoopId = kapps_call_command:audio_macro([{'prompt', <<"conf-your_announcment">>}
+    NoopId = kapps_call_command:audio_macro([{'prompt', <<"conf-your_announcement">>}
                                             ,{'play', RecordName}
                                             ,{'prompt', <<"conf-review">>}
                                             ], Call),

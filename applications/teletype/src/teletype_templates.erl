@@ -130,7 +130,7 @@ fetch_attachment(AttachmentName, AttachmentProps, Acc, AccountDb, DocId) ->
         {'ok', AttachmentBinary} ->
             [{ContentType, AttachmentBinary} | Acc];
         {'error', _E} ->
-            lager:error("failed to fetch attachemt ~s:~s:~s: ~p"
+            lager:error("failed to fetch attachment ~s:~s:~s: ~p"
                        ,[AccountDb, DocId, AttachmentName, _E]
                        ),
             Acc

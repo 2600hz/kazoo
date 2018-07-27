@@ -559,7 +559,7 @@ conference_to_props(#conference{name=Name
       ,{<<"Lost-Floor">>, LostFloor}
       ,{<<"Running">>, Running}
       ,{<<"Answered">>, Answered}
-      ,{<<"Enforce-Minium">>, EnforceMin}
+      ,{<<"Enforce-Minimum">>, EnforceMin}
       ,{<<"Dynamic">>, Dynamic}
       ,{<<"Exit-Sound">>, ExitSound}
       ,{<<"Enter-Sound">>, EnterSound}

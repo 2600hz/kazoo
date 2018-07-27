@@ -135,7 +135,7 @@ send_cmd(Node, UUID, "conference", Args) ->
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
     freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args1));
 send_cmd(Node, _UUID, "transfer", Args) ->
-    lager:debug("transfering on ~s: ~s", [Node, Args]),
+    lager:debug("transferring on ~s: ~s", [Node, Args]),
     freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args));
 send_cmd(Node, _UUID, "uuid_" ++ _ = API, Args) ->
     lager:debug("using api for ~s command ~s: ~s", [API, Node, Args]),
@@ -684,10 +684,10 @@ build_bridge_string(Endpoints) ->
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints, Separator) ->
-    %% De-dup the bridge strings by matching those with the same
+    %% De-dupe the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
     BridgeStrings = build_bridge_channels(Endpoints),
-    %% NOTE: dont use binary_join here as it will crash on an empty list...
+    %% NOTE: don't use binary_join here as it will crash on an empty list...
     kz_binary:join(lists:reverse(BridgeStrings), Separator).
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
@@ -833,7 +833,7 @@ build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint
         {'error', _} -> build_bridge_channels(Endpoints, Channels);
         {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
     end;
-%% If this does not have an explicted sip route and we have no ip address, lookup the registration
+%% If this does not have an explicit sip route and we have no ip address, lookup the registration
 build_bridge_channels([#bridge_endpoint{ip_address='undefined'}=Endpoint|Endpoints], Channels) ->
     S = self(),
     Pid = kz_util:spawn(fun() -> S ! {self(), build_channel(Endpoint)} end),

@@ -38,7 +38,7 @@ maybe_route_respond(ReqJObj, Call, AccountId, AgentId, <<"user">> = T) ->
 maybe_route_respond(_ReqJObj, _Call, _AccountId, _Id, _) -> 'ok'.
 
 send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
-    lager:debug("sendig route response to park the call for ~s(~s)", [Id, AccountId]),
+    lager:debug("sending route response to park the call for ~s(~s)", [Id, AccountId]),
     CCVs = [{<<"ACDc-ID">>, Id}
            ,{<<"ACDc-Type">>, Type}
            ],

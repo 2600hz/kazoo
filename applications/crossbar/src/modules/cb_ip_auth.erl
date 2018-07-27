@@ -81,7 +81,7 @@ authenticate_nouns(Context, _Nouns) ->
                              {'true', cb_context:context()}.
 authenticate_ip(Context, IpKey) ->
     ViewOptions = [{'key', IpKey}],
-    lager:debug("attemping to authenticate ip ~s", [IpKey]),
+    lager:debug("attempting to authenticate ip ~s", [IpKey]),
     case kz_json:is_empty(IpKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_IP
                                      ,ViewOptions

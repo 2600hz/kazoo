@@ -238,7 +238,7 @@ update_mailboxes(AccountId, Map) ->
                     io:format("[~s] failed to update mailbox message arrays: ~p~n", [AccountId, _Reason])
             end;
         {'error', _Reason} ->
-            io:format("[~s] failed to open mailboxs for updating message arrays: ~p~n", [AccountId, _Reason])
+            io:format("[~s] failed to open mailboxes for updating message arrays: ~p~n", [AccountId, _Reason])
     end.
 
 -spec update_mailbox_jobjs(kz_json:objects(), map()) -> kz_json:objects().

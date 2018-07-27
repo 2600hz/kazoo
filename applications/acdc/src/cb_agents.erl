@@ -135,7 +135,7 @@ content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /agents mights load a list of agent objects
+%% /agents might load a list of agent objects
 %% /agents/123 might load the agent object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -536,7 +536,7 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the resuts of a view
+%% @doc Normalizes the results of a view
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->

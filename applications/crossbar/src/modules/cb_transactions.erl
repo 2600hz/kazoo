@@ -147,7 +147,7 @@ maybe_credit_billing_id(Context) ->
             lager:debug("master's child wants to credit himself. invoking a bookkeeper to add credit"),
             normal_credit(Context);
         AuthAccountId when AuthAccountId =/= CreditAccountId ->
-            lager:debug("allowing non mster reseller to credit its child (but not himself) without invoking a bookkeeper"),
+            lager:debug("allowing non master reseller to credit its child (but not himself) without invoking a bookkeeper"),
             free_credit(Context);
         ResellerId ->
             lager:debug("sub-resellers must contact resellers to add credit to themselves"),
@@ -469,7 +469,7 @@ filter_subscriptions(Context) ->
     case kz_service_transactions:current_billing_period(AccountId, 'subscriptions') of
         'not_found' ->
             send_resp({'error', <<"no data found in braintree">>}, Context);
-        'unknow_error' ->
+        'unknown_error' ->
             send_resp({'error', <<"unknown braintree error">>}, Context);
         BSubscriptions ->
             JObjs = [filter_subscription(BSub) || BSub <- BSubscriptions],

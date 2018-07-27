@@ -1228,7 +1228,7 @@ create_resp_file(Req, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Encodes the `JObj' and send it as a chunk. Starts chunk response if is
-%% not started yet. This is usually called by `api_resource:to_chnuk/3'.
+%% not started yet. This is usually called by `api_resource:to_chunk/3'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_json_chunk_response(cowboy_req:req(), cb_context:context()) ->

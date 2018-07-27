@@ -223,7 +223,7 @@ download_filename(_Context, Name) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /tasks mights load a list of task objects
+%% /tasks might load a list of task objects
 %% /tasks/123 might load the task object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

@@ -135,7 +135,7 @@ maybe_update_doc(Enabled
         {'error', 'conflict'} ->
             retry_update_doc(Enabled, CW, Retries);
         {'error', _R} ->
-            lager:debug("unabled to update call_waiting.enabled on ~s ~s: ~p"
+            lager:debug("unable to update call_waiting.enabled on ~s ~s: ~p"
                        ,[kz_doc:type(JObj), kz_doc:id(JObj), _R]
                        ),
             'error'

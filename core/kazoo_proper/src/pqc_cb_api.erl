@@ -201,7 +201,7 @@ handle_response(_Expectations, {'error','socket_closed_remotely'}=E) ->
     ?ERROR("~nwe broke crossbar!"),
     throw(E);
 handle_response(_ExpectedCode, {'error', _}=E) ->
-    ?ERROR("broked req: ~p", [E]),
+    ?ERROR("broken req: ~p", [E]),
     E.
 
 expectations_met(Expectations, RespCode, RespHeaders) ->

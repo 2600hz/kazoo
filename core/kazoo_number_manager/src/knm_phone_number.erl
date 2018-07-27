@@ -68,9 +68,9 @@
 -define(DEFAULT_FEATURES_ALLOWED, []).
 -define(DEFAULT_FEATURES_DENIED, []).
 
-%% The '%%%' suffixes show what Dialyzer requires for that one record instanciation in from_json/1.
+%% The '%%%' suffixes show what Dialyzer requires for that one record instantiation in from_json/1.
 %% Without 'undefined' there, Dialyzer outputs 'false' positives.
-%% It has trouble infering what is happening in from_json/1's setters.
+%% It has trouble inferring what is happening in from_json/1's setters.
 %% And all this is because we need to set is_dirty reliably.
 -record(knm_phone_number, {number :: kz_term:api_ne_binary()             %%%
                           ,number_db :: kz_term:api_ne_binary()          %%%
@@ -749,7 +749,7 @@ features_fold(?LEGACY_TELNYX_E911=Feature, Acc, JObj) ->
 features_fold(FeatureKey, Acc, JObj) ->
     %% Encompasses at least: ?FEATURE_PORT
     Data = kz_json:get_ne_value(FeatureKey, JObj, kz_json:new()),
-    ?LOG_DEBUG("emcompassed ~p ~s", [FeatureKey, kz_json:encode(Data)]),
+    ?LOG_DEBUG("encompassed ~p ~s", [FeatureKey, kz_json:encode(Data)]),
     kz_json:set_value(FeatureKey, Data, Acc).
 
 %%------------------------------------------------------------------------------
@@ -1760,7 +1760,7 @@ save_to(SplitBy, ErrorF, T0) ->
                         handle_bulk_change(Db, JObjs, PNs, T, ErrorF);
                     {'error', 'not_found'} when IsNumberDb ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:debug("creating new numberdb '~s' for numbers ~p", [Db, Nums]),
+                        lager:debug("creating new number db '~s' for numbers ~p", [Db, Nums]),
                         'true' = kz_datamgr:db_create(Db),
                         {'ok', _} = kz_datamgr:revise_doc_from_file(Db, ?APP, <<"views/numbers.json">>),
                         FF(Db, PNs, T);
@@ -1808,7 +1808,7 @@ delete_docs(?NE_BINARY, Ids) ->
                          {'ok', kz_json:objects()} |
                          {'error', kz_data:data_errors()}.
 delete_docs(Db, Ids) ->
-    %% Note: deleting unexisting docs returns ok.
+    %% Note: deleting nonexistent docs returns ok.
     kz_datamgr:del_docs(Db, Ids).
 
 -spec save_docs(kz_term:ne_binary(), kz_json:objects()) ->

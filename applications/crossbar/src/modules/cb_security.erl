@@ -125,7 +125,7 @@ resource_exists(?ATTEMPTS, _AttemptId) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /security mights load a list of auth objects
+%% /security might load a list of auth objects
 %% /security/123 might load the auth object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

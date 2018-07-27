@@ -500,7 +500,7 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
             {<<"redirect">>, kz_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
-%% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....dont think anything is using it.
+%% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....don't think anything is using it.
 get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
     _ = kz_util:spawn(fun send_fetch_call_event/3, [Node, UUID, JObj]),
     {<<"fetch">>, 'noop'};

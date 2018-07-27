@@ -275,11 +275,11 @@ int_pow_test_() ->
     ].
 
 digits_test_() ->
-    %% small denormalized number
+    %% small de-normalized number
     %% 4.94065645841246544177e-324 =:= 5.0e-324
     <<SmallDenorm/float>> = <<0,0,0,0,0,0,0,1>>,
 
-    %% large denormalized number
+    %% large de-normalized number
     %% 2.22507385850720088902e-308
     <<BigDenorm/float>> = <<0,15,255,255,255,255,255,255>>,
 
@@ -333,11 +333,11 @@ digits_test_() ->
     ].
 
 frexp_test_() ->
-    %% small denormalized number
+    %% small de-normalized number
     %% 4.94065645841246544177e-324
     <<SmallDenorm/float>> = <<0,0,0,0,0,0,0,1>>,
 
-    %% large denormalized number
+    %% large de-normalized number
     %% 2.22507385850720088902e-308
     <<BigDenorm/float>> = <<0,15,255,255,255,255,255,255>>,
 

@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Hotdesks module
-%%% Handle client requests for hotdesks management
+%%% @doc Hotdesk module
+%%% Handle client requests for hotdesk management
 %%%
 %%%
 %%% @author Edouard Swiac

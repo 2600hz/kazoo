@@ -125,7 +125,7 @@
               ,del_temporary_unavailable = <<"5">> :: kz_term:ne_binary()
               ,return_main = <<"0">> :: kz_term:ne_binary()
 
-                                        %% Post playbak
+                                        %% Post playback
               ,keep = <<"1">> :: kz_term:ne_binary()
               ,replay = <<"2">> :: kz_term:ne_binary()
               ,forward = <<"3">> :: kz_term:ne_binary()
@@ -214,7 +214,7 @@ handle(Data, Call) ->
 -spec check_mailbox(mailbox(), kapps_call:call()) ->
                            'ok' | {'error', 'channel_hungup'}.
 check_mailbox(Box, Call) ->
-    %% Wrapper to initalize the attempt counter
+    %% Wrapper to initialize the attempt counter
     Resp = check_mailbox(Box, Call, 1),
     _ = send_mwi_update(Box),
     Resp.
@@ -434,7 +434,7 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
     _ = play_greeting(Box, Call),
     _ = play_instructions(Box, Call),
     _NoopId = kapps_call_command:noop(Call),
-    %% timeout after 5 min for saftey, so this process cant hang around forever
+    %% timeout after 5 min for safety, so this process cant hang around forever
     case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {'ok', _} ->
             lager:info("played greeting and instructions to caller, recording new message"),
@@ -599,7 +599,7 @@ main_menu(Box, Call) -> main_menu(Box, Call, 1).
                        'ok' | {'error', 'channel_hungup'}.
 main_menu(Box, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
-    %% is likely a abandonded channel, terminate
+    %% is likely a abandoned channel, terminate
     lager:info("entered main menu with too many invalid entries"),
     _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     send_mwi_update(Box);
@@ -799,7 +799,7 @@ message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Plays back a message then the menu, and continues to loop over the
-%% menu utill
+%% menu util
 %% @end
 %%------------------------------------------------------------------------------
 -spec play_messages(kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
@@ -1978,7 +1978,8 @@ tmp_file(Ext) ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%------------------------------------------------------------------------------
--spec get_unix_epoch(integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec get_unix_epoch(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
+                            kz_term:ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),

@@ -293,7 +293,7 @@ finish_task(API, Data) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Calls the task's 'cleanup' function, once the task is consided complete
+%% @doc Calls the task's 'cleanup' function, once the task is considered complete
 %% @end
 %%------------------------------------------------------------------------------
 -spec cleanup_task(kz_json:object(), any()) -> 'ok'.

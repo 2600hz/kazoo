@@ -205,7 +205,7 @@ maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('rewrite_cid_number', Call) of
         'undefined' -> maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call);
         NewNumber ->
-            lager:debug("reformating caller id number from ~s to ~s", [Number, NewNumber]),
+            lager:debug("reformatting caller id number from ~s to ~s", [Number, NewNumber]),
             maybe_rewrite_cid_name(NewNumber, Name, Validate, Attribute, Call)
     end.
 
@@ -214,7 +214,7 @@ maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('rewrite_cid_name', Call) of
         'undefined' -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
         NewName ->
-            lager:debug("reformating caller id name from ~s to ~s", [Name, NewName]),
+            lager:debug("reformatting caller id name from ~s to ~s", [Name, NewName]),
             maybe_ensure_cid_valid(Number, NewName, Validate, Attribute, Call)
     end.
 
@@ -456,7 +456,7 @@ owner_ids(ObjectId, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc This function will return the precense id for the endpoint
+%% @doc This function will return the presence id for the endpoint
 %% @end
 %%------------------------------------------------------------------------------
 -spec presence_id(kapps_call:call()) -> kz_term:api_binary().

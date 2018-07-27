@@ -596,7 +596,7 @@ maybe_validate_username(UserId, Context) ->
     of
         %% username is unchanged
         'true' -> maybe_rehash_creds(UserId, NewUsername, Context);
-        %% updated username that doesnt exist
+        %% updated username that doesn't exist
         'undefined' ->
             manditory_rehash_creds(UserId, NewUsername, Context);
         %% updated username to existing, collect any further errors...

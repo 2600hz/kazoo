@@ -333,7 +333,7 @@ build_request(Method, Url, Headers, Body) when Method =:= 'post';
 ensure_string_headers(Headers) ->
     [{kz_term:to_list(K), kz_term:to_list(V)} || {K,V} <- Headers].
 %%------------------------------------------------------------------------------
-%% @doc Get options out of a propslist based on options type
+%% @doc Get options out of a proplist based on options type
 %% Two <code>HTTP_OPTIONS</code> and <code>OPTIONS</code> macros are specify
 %% which type of options should be returned.
 %% @end

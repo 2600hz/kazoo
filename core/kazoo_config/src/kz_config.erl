@@ -125,7 +125,7 @@ get_node_section_name() ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Set or unset enviroment variables
+%% @doc Set or unset environment variables
 %% @end
 %%------------------------------------------------------------------------------
 

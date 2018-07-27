@@ -472,7 +472,7 @@ handle_cast({'flush_node', Node}, State) ->
             lager:debug("no locally handled channels");
         LocalChannels ->
             _P = kz_util:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
-            lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
+            lager:debug("sending channel disconnects for local channels: ~p", [LocalChannels])
     end,
 
     MatchSpec = [{#channel{node = '$1', _ = '_'}

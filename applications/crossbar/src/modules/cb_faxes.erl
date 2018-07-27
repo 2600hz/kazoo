@@ -211,14 +211,14 @@ content_types_provided_for_fax(Context) ->
         [AttachmentId|_] ->
             CT = kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId),
             [Type, SubType] = binary:split(CT, <<"/">>),
-            lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
+            lager:debug("found attachment of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /faxes mights load a list of fax objects
+%% /faxes might load a list of fax objects
 %% /faxes/123 might load the fax object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
