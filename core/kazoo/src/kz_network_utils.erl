@@ -50,6 +50,8 @@
         ,set_option_usevc/2
         ]).
 
+-export([get_local_ip/0]).
+
 -include_lib("kernel/include/inet.hrl").
 -include_lib("kernel/src/inet_dns.hrl").
 
@@ -122,6 +124,25 @@ is_cidr(Address) ->
         'error':'invalid_cidr' -> 'false'
     end.
 
+-spec get_local_ip() -> [].
+get_local_ip() ->
+{ok, Descriptions} = inet:getifaddrs(),
+IPs = lists:map(fun(Description) ->
+case is_iface_up(Description) of
+    true -> iface_ips(Description);
+    false -> []
+end
+            end , Descriptions),
+lists:merge(IPs).
+
+is_iface_up({_IfName, Description}) ->
+{flags, Flags} = lists:keyfind('flags', 1, Description),
+lists:member('up', Flags).
+
+iface_ips({_IfName, Description}) ->
+IPs = lists:filter(fun(Tuple) -> element(1,Tuple) == 'addr' end, Description),
+lists:map(fun({'addr', Addr}) -> inet:ntoa(Addr) end, IPs).
+
 %%------------------------------------------------------------------------------
 %% @doc Detects if specified IP family is supported by system.
 %% Needs `ping' command installed on the system.
@@ -130,7 +151,16 @@ is_cidr(Address) ->
 %%------------------------------------------------------------------------------
 -spec is_ip_family_supported(inet:address_family()) -> boolean().
 is_ip_family_supported(Family) ->
-    listen_to_ping(Family, ping_cmd_option(Family), 1).
+    IPs = get_local_ip(),
+    FamilyIPs = case Family of
+                    'inet' -> lists:filter(fun(IP) -> is_ipv4(IP) end, IPs);
+                    'inet6' -> lists:filter(fun(IP) -> is_ipv6(IP) end, IPs);
+                    _ -> [] %% Protocol is unsupported
+                end,
+    case FamilyIPs of
+        [] -> false;
+        _ -> listen_to_ping(Family, ping_cmd_option(Family), 1)
+    end.
 
 -spec listen_to_ping(inet:address_family(), string(), integer()) -> boolean().
 listen_to_ping(_Family, _Cmd, Try) when Try < 0 ->
