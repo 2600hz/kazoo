@@ -294,7 +294,7 @@ should_strip_from_payload(_) -> 'false'.
 %%------------------------------------------------------------------------------
 -spec extract_defaults(kz_term:api_terms()) -> kz_term:proplist().
 extract_defaults(Prop) when is_list(Prop) ->
-    %% not measurable faster over the foldl, but cleaner (imo)
+    %% not measurable faster over the foldl, but cleaner (IMO)
     [ {H, V} || H <- ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS,
                 (V = props:get_value(H, Prop)) =/= 'undefined'
     ];

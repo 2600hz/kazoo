@@ -84,20 +84,20 @@ server_info(_Server) ->
 %%------------------------------------------------------------------------------
 -spec get_app_connection(server_map()) -> server_map().
 get_app_connection(#{options := Options}=Server) ->
-    case maps:get(test_app, Options, 'unedfined') of
-        'unedfined' -> Server;
+    case maps:get(test_app, Options, 'undefined') of
+        'undefined' -> Server;
         AppName ->
             set_app_connection(Server, AppName)
     end.
 
 -spec maybe_use_app_connection(server_map(), kz_term:ne_binary()) -> server_map().
 maybe_use_app_connection(#{options := Options}=Server, DbName) ->
-    case {maps:get(test_app, Options, 'unedfined')
-         ,maps:get(test_db, Options, 'unedfined')
+    case {maps:get(test_app, Options, 'undefined')
+         ,maps:get(test_db, Options, 'undefined')
          }
     of
-        {'unedfined', _} -> Server;
-        {_AppName, 'unedfined'} ->
+        {'undefined', _} -> Server;
+        {_AppName, 'undefined'} ->
             ?LOG_DEBUG("test_db is not set, using kazoo_fixturedb database..."),
             Server;
         {AppName, DbName} ->
@@ -124,8 +124,8 @@ get_dummy_plan() ->
 %%------------------------------------------------------------------------------
 -spec set_app_connection(server_map(), atom()) -> server_map().
 set_app_connection(#{options := Options}=Server, AppName) ->
-    Path = case maps:get(test_db_subdir, Options, 'unedfined') of
-               'unedfined' -> code:priv_dir(AppName);
+    Path = case maps:get(test_db_subdir, Options, 'undefined') of
+               'undefined' -> code:priv_dir(AppName);
                P -> code:lib_dir(AppName, kz_term:to_atom(P, 'true'))
            end,
     case Path of

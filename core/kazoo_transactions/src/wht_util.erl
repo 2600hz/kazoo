@@ -203,7 +203,7 @@ maybe_rollup(Account, ViewOptions, Balance) ->
             %%   but is negative make sure the rollup exists
             verify_monthly_rollup_exists(Account, Balance);
         'undefined' ->
-            %% NOTE: if the balance is positive the rollup likey
+            %% NOTE: if the balance is positive the rollup likely
             %%   occurred without issue
             {'ok', Balance};
         _Else ->

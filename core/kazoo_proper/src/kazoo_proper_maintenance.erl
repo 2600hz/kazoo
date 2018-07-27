@@ -37,7 +37,7 @@ quickcheck_exports(Module) ->
 
 -spec quickcheck_export(module(), atom()) -> 'true'.
 quickcheck_export(Module, Function) ->
-    io:format("quickchecking ~s:~s/0~n", [Module, Function]),
+    io:format("quick-checking ~s:~s/0~n", [Module, Function]),
     'true' = proper:quickcheck(Module:Function()).
 
 -spec run_seq_modules() -> 'no_return'.

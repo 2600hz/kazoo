@@ -90,7 +90,7 @@ cascade_reseller_id(Reseller, Account) ->
                   ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'error', _R}=Error ->
-            lager:debug("unable to determin descendants of ~s: ~p", [AccountId, _R]),
+            lager:debug("unable to determine descendants of ~s: ~p", [AccountId, _R]),
             Error;
         {'ok', JObjs} ->
             _ = [set_reseller_id(ResellerId, SubAccountId)
@@ -101,7 +101,7 @@ cascade_reseller_id(Reseller, Account) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Set teh reseller_id to the provided value on the provided account
+%% @doc Set the reseller_id to the provided value on the provided account
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.

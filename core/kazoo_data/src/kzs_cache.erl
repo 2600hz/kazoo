@@ -251,7 +251,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue, CacheStrategy) ->
     %% NOTE: this is currently necessary because when a http_put is issued to
     %%   freeswitch and the media is uploaded it goes directly to bigcouch
     %%   and therefore no doc change notice is pushed.  This results in the
-    %%   doc cache containing a document that has no attachements (or the wrong
+    %%   doc cache containing a document that has no attachments (or the wrong
     %%   attachments). What needs to happen is a change notice get sent on the
     %%   message bus anytime a http_put is issued (or maybe if the store
     %%   url is built in media IF everything uses that helper function,

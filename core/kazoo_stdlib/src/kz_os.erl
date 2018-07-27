@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc Functions for interacting with the underlying system (assumes linux).
+%%% @doc Functions for interacting with the underlying system (assumes Linux).
 %%% @author Sean Wysor
 %%% @end
 %%%-----------------------------------------------------------------------------

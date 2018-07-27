@@ -1978,7 +1978,8 @@ tmp_file(Ext) ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%------------------------------------------------------------------------------
--spec get_unix_epoch(integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec get_unix_epoch(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
+                            kz_term:ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),

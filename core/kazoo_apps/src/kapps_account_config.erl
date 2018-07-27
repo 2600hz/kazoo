@@ -219,7 +219,7 @@ get_with_strategy(Strategy, Account, Category, Key) ->
 %% For example in `global_merge', it returns merge result of the account config
 %% (if any) and `system_config' (if any).
 %%
-%% Merge is recursive from right to left, meaning settings in account supersets
+%% Merge is recursive from right to left, meaning settings in account supersedes
 %% settings from parents, reseller and system_config.
 %% @end
 %%------------------------------------------------------------------------------

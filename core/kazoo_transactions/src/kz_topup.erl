@@ -147,13 +147,13 @@ top_up(AccountId, Amount) ->
     Transaction = kz_transaction:debit(AccountId, wht_util:dollars_to_units(Amount)),
     Transaction1 = kz_transaction:set_reason(wht_util:topup(), Transaction),
 
-    lager:info("attemptting to top up account ~s for ~p", [AccountId, Amount]),
+    lager:info("attempting to top up account ~s for ~p", [AccountId, Amount]),
     case kz_services:charge_transactions(Services, [Transaction1]) of
         [] ->
             lager:info("account ~s top up successfully for ~p", [AccountId, Amount]),
             case kz_transaction:save(kz_transaction:set_type(<<"credit">>, Transaction1)) of
                 {'ok', _} ->
-                    lager:info("auto top up transaction for account ~s saved succesfully", [AccountId]);
+                    lager:info("auto top up transaction for account ~s saved successfully", [AccountId]);
                 {'error', 'conflict'} ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [AccountId]);
                 {'error', _Reason} ->

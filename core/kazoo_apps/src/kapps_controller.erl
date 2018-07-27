@@ -129,7 +129,7 @@ stop_app(App) when is_atom(App) ->
         {'error', {'not_started', App}} ->
             lager:error("~s is not currently running", [App]);
         {'error', _E}=Err ->
-            lager:error("error stopping applicaiton ~s: ~p", [App, _E]),
+            lager:error("error stopping application ~s: ~p", [App, _E]),
             Err
     end;
 stop_app(App) ->
@@ -157,7 +157,7 @@ running_apps(Verbose) ->
 -spec running_apps_verbose() -> kz_term:atoms() | string().
 running_apps_verbose() ->
     case get_running_apps() of
-        [] -> "kapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
+        [] -> "kapps have not started yet, check that rabbitmq and BigCouch/haproxy are running at the configured addresses";
         Resp ->
             lists:sort(
               [kz_term:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
@@ -176,7 +176,7 @@ get_running_apps() ->
 -spec running_apps_list() -> kz_term:atoms() | string().
 running_apps_list() ->
     case get_running_apps() of
-        [] -> "kapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
+        [] -> "kapps have not started yet, check that rabbitmq and BigCouch/haproxy are running at the configured addresses";
         Resp -> lists:sort([App || {App, _Desc, _Vsn} <- Resp])
     end.
 

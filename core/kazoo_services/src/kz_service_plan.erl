@@ -228,7 +228,7 @@ get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc If tiered flate rates are provided, find the value to use given the
+%% @doc If tiered flat rates are provided, find the value to use given the
 %% current quantity.
 %% @end
 %%------------------------------------------------------------------------------
@@ -245,7 +245,7 @@ get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc If tiered flate rates are provided, find the value to use given the
+%% @doc If tiered flat rates are provided, find the value to use given the
 %% current quantity.
 %% @end
 %%------------------------------------------------------------------------------
@@ -277,7 +277,7 @@ get_quantity_rate(Quantity, ItemPlan) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Get the item quantity, drawing solely from the provided account or
-%% (when the service plan dictates) the summed (cascaded) decendants.
+%% (when the service plan dictates) the summed (cascaded) descendants.
 %% Also handle the special case were we should sum all items in a
 %% given category, except a list of item names to ignore during
 %% summation.

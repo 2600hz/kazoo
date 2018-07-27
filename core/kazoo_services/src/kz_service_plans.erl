@@ -151,7 +151,7 @@ fetch_plan(PlanId, ResellerId, ResellerId,  Overrides) ->
         ServicePlan -> ServicePlan
     end;
 fetch_plan(PlanId, _, ResellerId, _) ->
-    lager:debug("service plan ~s doesnt belong to reseller ~s", [PlanId, ResellerId]),
+    lager:debug("service plan ~s doesn't belong to reseller ~s", [PlanId, ResellerId]),
     'undefined'.
 
 -spec append_vendor_plan(kz_json:object(), kz_term:ne_binary(), plans()) -> plans().
@@ -260,7 +260,7 @@ activation_charges(Category, Item, ServicePlans) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Given a the services on an account (and descedants) as well as the
+%% @doc Given a the services on an account (and descendants) as well as the
 %% service plans the account is subscribed to create a list of items
 %% suitable for use with the bookkeepers.
 %% @end

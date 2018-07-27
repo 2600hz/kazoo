@@ -105,7 +105,7 @@
 %%  conference_doc           the complete conference doc used to create the record (when and if)
 %%  app_name                 The application name used during kapps_conference_command
 %%  app_version              The application version used during kapps_conference_command
-%%  kvs                      allows conferences to set values that propogate to children
+%%  kvs                      allows conferences to set values that propagate to children
 %%  call                     kapps_call object
 %%  account_id               %% account id
 %%  moderator_controls       moderator controls (config settings)

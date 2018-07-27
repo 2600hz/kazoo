@@ -59,7 +59,7 @@
 %% Denotes a flatten version of JSON proplist, `[{full_path, value}]'.
 
 -type flat_object() :: ?JSON_WRAPPER(flat_proplist()).
-%% Denotes a JSON of flatten version of JSON proplist, same as {@link flat_prolist()} but wrapped in `{}'.
+%% Denotes a JSON of flatten version of JSON proplist, same as {@link flat_proplist()} but wrapped in `{}'.
 
 -type flat_objects() :: [flat_object()].
 %% A list of flatten JSON objects.

@@ -1462,7 +1462,7 @@ get_reseller_id([]) ->
 get_reseller_id([Parent|Ancestors]) ->
     case fetch_services_doc(Parent, cache_failures) of
         {'error', _R} ->
-            lager:debug("failed to open services doc ~s durning reseller search: ~p", [Parent, _R]),
+            lager:debug("failed to open services doc ~s during reseller search: ~p", [Parent, _R]),
             get_reseller_id(Ancestors);
         {'ok', ServicesJObj} ->
             get_reseller_id(Parent, Ancestors, ServicesJObj)
@@ -1552,7 +1552,7 @@ any_changed(KeyNotSameFun, Quantities) ->
 get_account_definition(?MATCH_ACCOUNT_RAW(AccountId)) ->
     case fetch_account(AccountId) of
         {'error', _R} ->
-            lager:debug("unable to get account defintion for ~s: ~p", [AccountId, _R]),
+            lager:debug("unable to get account definition for ~s: ~p", [AccountId, _R]),
             kz_json:new();
         {'ok', JObj} -> JObj
     end.

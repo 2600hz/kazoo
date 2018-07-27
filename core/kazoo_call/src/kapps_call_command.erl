@@ -1288,7 +1288,7 @@ soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
 
 -spec build_moh_keys(kz_term:api_binary(), kz_term:api_binary()) ->
                             kz_term:proplist_kv(kz_term:ne_binary(), kz_term:api_binary()).
-build_moh_keys('undefiend', _) -> [];
+build_moh_keys('undefined', _) -> [];
 build_moh_keys(AMOH, BMOH) ->
     [{<<"A-MOH">>, AMOH}
     ,{<<"B-MOH">>, BMOH}

@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc FreeSwitch `passthrough' API.
+%%% @doc FreeSWITCH `pass-through' API.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_fs).
@@ -11,7 +11,7 @@
 
 -include_lib("kz_amqp_util.hrl").
 
-%% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
+%% The AMQP pass-through of FS commands - whitelist commands allowed (excluding any prefixed by uuid_ which are auto-allowed)
 -define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).
 
 -define(FS_REQ_HEADERS, [<<"Application-Name">>, <<"Args">>]).
@@ -24,7 +24,7 @@
                                                 end}]).
 
 %%------------------------------------------------------------------------------
-%% @doc FreeSwitch Request, Pass-through of FreeSwitch dialplan commands.
+%% @doc FreeSWITCH Request, Pass-through of FreeSWITCH dialplan commands.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------

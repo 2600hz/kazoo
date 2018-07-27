@@ -95,7 +95,7 @@ req_v(JObj) ->
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESP_HEADERS, ?OPTIONAL_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for maintenance respuest"}
+        'false' -> {'error', "Proplist failed validation for maintenance request"}
     end;
 resp(JObj) ->
     resp(kz_json:to_proplist(JObj)).

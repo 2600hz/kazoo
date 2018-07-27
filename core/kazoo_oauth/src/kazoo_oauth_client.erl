@@ -115,7 +115,7 @@ load_profile(#oauth_app{provider=#oauth_provider{profile_url=ProfileURL}}, JObj,
     Headers = [{"Authorization",kz_term:to_list(Authorization)}],
     case kz_http:get(kz_term:to_list(ProfileURL), Headers) of
         {'ok', 200, _RespHeaders, RespXML} ->
-            lager:info("loaded outh profile: ~p",[RespXML]),
+            lager:info("loaded oauth profile: ~p",[RespXML]),
             ProfileJObj = kz_json:decode(RespXML),
             Doc = kz_json:from_list([{<<"Token">>, JObj}
                                     ,{<<"VerifiedToken">>, TokenObj}

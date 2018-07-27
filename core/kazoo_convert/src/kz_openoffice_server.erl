@@ -54,7 +54,7 @@ start_link() ->
 %% @doc convert an openoffice document, respecting the one document at a time
 %% constraint.
 %%
-%% Openoffice does not permit simultanious conversions, so this gen_server is a
+%% Openoffice does not permit simultaneous conversions, so this gen_server is a
 %% serialization mechanism for conversions from openoffice formats.
 %% @end
 %%------------------------------------------------------------------------------

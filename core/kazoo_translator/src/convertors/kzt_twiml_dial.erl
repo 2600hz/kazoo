@@ -35,13 +35,13 @@ exec(Call
     lager:info("single <Number>"),
     case cleanup_dial_me(kz_xml:texts_to_binary(Number)) of
         <<>> ->
-            lager:debug("no dialable Number in tag, continuing"),
+            lager:debug("no dial-able Number in tag, continuing"),
             {'ok', Call};
         NumberText ->
             DialMe = knm_converters:normalize(NumberText),
             NumberProps = kz_xml:attributes_to_proplist(NumberAttrs),
 
-            SendDigits = props:get_value('sendDigis', NumberProps),
+            SendDigits = props:get_value('sendDigits', NumberProps),
             _Url = props:get_value('url', NumberProps),
             _Method = props:get_value('method', NumberProps),
 
@@ -265,7 +265,7 @@ xml_elements_to_endpoints(Call
                          ) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
 
-    SendDigits = props:get_value('sendDigis', Props),
+    SendDigits = props:get_value('sendDigits', Props),
     _Url = props:get_value('url', Props),
     _Method = props:get_value('method', Props),
 
@@ -275,7 +275,7 @@ xml_elements_to_endpoints(Call
 
     CallFwd = kz_json:from_list([{<<"number">>, DialMe}
                                 ,{<<"require_keypress">>, 'false'}
-                                ,{<<"substribute">>, 'true'}
+                                ,{<<"substitute">>, 'true'}
                                 ]),
     Endpoint = kz_json:from_list([{<<"call_forward">>, CallFwd}]),
     EP = kz_endpoint:create_call_fwd_endpoint(Endpoint, kz_json:new(), Call),
@@ -416,7 +416,7 @@ add_conference_profile(Call, ConfProps) ->
     Profile = kz_json:from_list(
                 [{<<"rate">>, props:get_integer_value('rate', ConfProps, 8000)}
                 ,{<<"caller-controls">>, props:get_integer_value('callerControls', ConfProps, 8000)}
-                ,{<<"interval">>, props:get_integer_value('inteval', ConfProps, 20)}
+                ,{<<"interval">>, props:get_integer_value('interval', ConfProps, 20)}
                 ,{<<"energy-level">>, props:get_integer_value('energyLevel', ConfProps, 20)}
                 ,{<<"member-flags">>, conference_member_flags(ConfProps)}
                 ,{<<"conference-flags">>, conference_flags(ConfProps)}
@@ -424,7 +424,7 @@ add_conference_profile(Call, ConfProps) ->
                 ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
                 ,{<<"max-members">>, get_max_participants(ConfProps)}
                 ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
-                ,{<<"annouce-count">>, props:get_integer_value('announceCount', ConfProps)}
+                ,{<<"announce-count">>, props:get_integer_value('announceCount', ConfProps)}
                 ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
                 ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
                 ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_privacy:anonymous_caller_id_name(AccountId))}

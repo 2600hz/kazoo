@@ -126,7 +126,7 @@ count_by_owner(AccountId, OwnerId) ->
             {0, 0};
         {'ok', Boxes} ->
             BoxIds = [kz_json:get_value(<<"value">>, Box) || Box <- Boxes],
-            lager:debug("found ~p vociemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
+            lager:debug("found ~p voicemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
             sum_owner_mailboxes(AccountId, BoxIds, {0, 0});
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),

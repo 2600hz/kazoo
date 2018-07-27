@@ -266,7 +266,7 @@ handle_info({'DOWN', _, 'process', Pid, _Reason}
             {'noreply', State#state{connections=sets:del_element(Pid, Connections)}};
         'false' ->
             %% Allow kz_amqp_assignments time to get the history so it
-            %% can cleanly remove queues/consumers/ect
+            %% can cleanly remove queues/consumers/etc
             lager:debug("removing AMQP history for consumer ~p in 2.5s: ~p"
                        ,[Pid, _Reason]),
             erlang:send_after(2500, self(), {'remove_history', Pid}),

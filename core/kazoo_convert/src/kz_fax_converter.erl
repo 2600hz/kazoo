@@ -238,14 +238,14 @@ select_tiff_command(#{<<"width">> := Width}) when Width < 1728 ->
     {'convert', ?SMALL_TIFF_COMMAND};
 select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}) when X > 204
                                                        orelse Y > 98  ->
-    lager:debug("file is wrong dpi, resampling"),
+    lager:debug("file is wrong dpi, re-sampling"),
     {'convert', ?CONVERT_IMAGE_COMMAND};
 select_tiff_command(#{<<"scheme">> := <<"CCITT Group 3">>, <<"has_pages">> := 'true'}) ->
     'noop';
 select_tiff_command(#{<<"scheme">> := <<"CCITT Group 4">>, <<"has_pages">> := 'true'}) ->
     'noop';
 select_tiff_command(#{}) ->
-    lager:debug("file has no pages, resampling to fix"),
+    lager:debug("file has no pages, re-sampling to fix"),
     {'convert', ?CONVERT_IMAGE_COMMAND}.
 
 %%%=============================================================================

@@ -298,7 +298,7 @@ cleanup_aggregated_accounts([JObj|JObjs]) ->
     _ = case kz_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
             AccountId ->
-                io:format("    verifing ~s doc ~s~n", [?KZ_ACCOUNTS_DB, AccountId]),
+                io:format("    verifying ~s doc ~s~n", [?KZ_ACCOUNTS_DB, AccountId]),
                 cleanup_aggregated_account(AccountId)
         end,
     cleanup_aggregated_accounts(JObjs).
@@ -337,7 +337,7 @@ cleanup_aggregated_devices([JObj|JObjs]) ->
     _ = case kz_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
             DocId ->
-                io:format("    verifing ~s doc ~s~n", [?KZ_SIP_DB, DocId]),
+                io:format("    verifying ~s doc ~s~n", [?KZ_SIP_DB, DocId]),
                 cleanup_aggregated_device(DocId)
         end,
     cleanup_aggregated_devices(JObjs).
@@ -403,7 +403,7 @@ get_messages(Account) ->
         {'ok', ViewRes} ->
             lists:foldl(fun extract_messages/2, [], ViewRes);
         {'error', _E} ->
-            lager:error("coumd not load view ~p: ~p", [?VMBOX_VIEW, _E]),
+            lager:error("could not load view ~p: ~p", [?VMBOX_VIEW, _E]),
             []
     end.
 
@@ -495,7 +495,7 @@ clean_trunkstore_docs(_, [], Trunks, InboundTrunks) ->
     {Trunks, InboundTrunks};
 clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    %% if there are no servers and it was created by jonny5 softdelete the doc
+    %% if there are no servers and it was created by jonny5 soft-delete the doc
     _ = case kz_json:get_ne_value(<<"servers">>, Doc) =:= 'undefined'
             andalso kz_json:get_ne_value(<<"pvt_created_by">>, Doc) =:= <<"jonny5">>
         of
@@ -729,8 +729,8 @@ maybe_update_attachment(AccountDb, Id, {OrigAttach, _CT1}, {NewAttach, CT}) ->
     %% 1. Get the current attachment
     %% 2. Fix the name and content type then put the new attachment on the doc
     %% 3. Save the old attachment content (I am paranoid) to disk
-    %% 4. Remove the original (erronous) attachment
-    %% However, if it failes at any of those stages it will leave the media doc with multiple
+    %% 4. Remove the original (erroneous) attachment
+    %% However, if it fails at any of those stages it will leave the media doc with multiple
     %%    attachments and require manual intervention
     Updaters = [fun(_) -> try_load_attachment(AccountDb, Id, OrigAttach) end
                ,fun(Content1) ->
@@ -759,7 +759,7 @@ maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
     Options = [{'content_type', CT}
               ,{'rev', Rev}
               ],
-    %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
+    %% BigCouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
     %%   so rather than check the put return fetch the new attachment and compare it to the old
     Result = kz_datamgr:put_attachment(AccountDb, Id, NewAttach, Content1, Options),
     {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
