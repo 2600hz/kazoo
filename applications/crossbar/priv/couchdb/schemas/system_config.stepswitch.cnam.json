@@ -48,6 +48,11 @@
             "description": "stepswitch.cnam http method",
             "type": "string"
         },
+        "http_token_auth_token": {
+            "default": "",
+            "description": "stepswitch cnam http_token_auth_token",
+            "type": "string"
+        },
         "http_url": {
             "default": "https://api.opencnam.com/v2/phone/{{phone_number}}",
             "description": "stepswitch.cnam http url",

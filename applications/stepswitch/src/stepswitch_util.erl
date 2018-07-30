@@ -14,6 +14,7 @@
 -export([default_realm/1]).
 -export([route_by/0]).
 -export([resources_to_endpoints/3]).
+-export([json_to_template_props/1]).
 
 -include("stepswitch.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -84,7 +85,7 @@ correct_shortdial(Number, OffnetReq) ->
     DeniedCallRestrictions = kapi_offnet_resource:denied_call_restrictions(OffnetReq),
     correct_shortdial(Number, CIDNum, DeniedCallRestrictions).
 
--spec correct_shortdial(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:api_object()) -> kz_term:api_ne_binary().
+-spec correct_shortdial(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_ne_binary().
 correct_shortdial(<<"+", Number/binary>>, CIDNum, DeniedCallRestrictions) ->
     correct_shortdial(Number, CIDNum, DeniedCallRestrictions);
 correct_shortdial(Number, <<"+", CIDNum/binary>>, DeniedCallRestrictions) ->
@@ -100,7 +101,7 @@ correct_shortdial(Number, CIDNum, DeniedCallRestrictions) when is_binary(CIDNum)
             try_to_correct(Number, CIDNum, DeniedCallRestrictions, Length)
     end.
 
--spec try_to_correct(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:api_object(), non_neg_integer()) -> kz_term:api_ne_binary().
+-spec try_to_correct(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), non_neg_integer()) -> kz_term:api_ne_binary().
 try_to_correct(Number, CIDNum, DeniedCallRestrictions, Length) ->
     Correction = kz_binary:truncate_right(CIDNum, Length),
     CorrectedNumber = knm_converters:normalize(<<Correction/binary, Number/binary>>),
@@ -117,8 +118,7 @@ try_to_correct(Number, CIDNum, DeniedCallRestrictions, Length) ->
             CorrectedNumber
     end.
 
--spec should_deny_reclassified_number(kz_term:ne_binary(), kz_json:api_object()) -> boolean().
-should_deny_reclassified_number(_CorrectedNumber, 'undefined') -> 'false';
+-spec should_deny_reclassified_number(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_deny_reclassified_number(CorrectedNumber, DeniedCallRestrictions) ->
     Classification = knm_converters:classify(CorrectedNumber),
     lager:debug("re-classified corrected number ~s as ~s, testing for call restrictions"
@@ -399,3 +399,35 @@ update_ccvs(Endpoint, Updates) ->
 %%maybe_update_number(Resource, Number) ->
 %%    SelectorsResult = stepswitch_resources:get_resrc_selector_marks(Resource),
 %%    props:get_value('regex_number_match', SelectorsResult, Number).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec json_to_template_props(kz_term:api_object()) -> 'undefined' | kz_term:proplist().
+json_to_template_props('undefined') -> 'undefined';
+json_to_template_props(JObj) ->
+    normalize_proplist(kz_json:recursive_to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_proplist(kz_term:proplist()) -> kz_term:proplist().
+normalize_proplist(Props) ->
+    [normalize_proplist_element(Elem) || Elem <- Props].
+
+-spec normalize_proplist_element({kz_term:proplist_key(), kz_term:proplist_value()}) ->
+                                        {kz_term:proplist_key(), kz_term:proplist_value()}.
+normalize_proplist_element({K, V}) when is_list(V) ->
+    {normalize_value(K), normalize_proplist(V)};
+normalize_proplist_element({K, V}) when is_binary(V) ->
+    {normalize_value(K), kz_html:escape(V)};
+normalize_proplist_element({K, V}) ->
+    {normalize_value(K), V};
+normalize_proplist_element(Else) ->
+    Else.
+
+-spec normalize_value(binary()) -> binary().
+normalize_value(Value) ->
+    binary:replace(kz_term:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
