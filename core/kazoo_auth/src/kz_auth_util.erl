@@ -21,7 +21,7 @@ get_json_from_url(Url) ->
 
 -spec get_json_from_url(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
-    case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{ssl, [{versions, ['tlsv1.2']}]}]) of
+    case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{'ssl', [{'versions', ['tlsv1.2']}]}]) of
         {'ok', 200, _RespHeaders, Body} ->
             JObj = kz_json:decode(Body),
             case kz_term:is_empty(JObj) of
@@ -67,7 +67,7 @@ fetch_access_code(#{auth_app := #{name := ClientId
              ,{"code", AuthorizationCode}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_term:to_list(V)], "=") ] end, Fields)),"&"),
-    case kz_http:post(kz_term:to_list(URL), Headers, Body, [{ssl, [{versions, ['tlsv1.2']}]}]) of
+    case kz_http:post(kz_term:to_list(URL), Headers, Body, [{'ssl', [{'versions', ['tlsv1.2']}]}]) of
         {'ok', 200, _RespHeaders, RespXML} -> {'ok', kz_json:decode(RespXML)};
         Else ->
             lager:error("~p", [Else]),
@@ -83,17 +83,18 @@ fetch_access_code(#{auth_app := #{name := ClientId
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec run(map(), list()) -> {ok | error, map()}.
-run(Token, []) -> {ok, Token};
+-spec run(map(), list()) -> {'ok' | 'error', map()}.
+run(Token, []) -> {'ok', Token};
 run(Token, [Fun | Routines]) ->
     try Fun(Token) of
-        #{error := _Err}=Error -> {error, Error};
-        {ok, NewToken} -> run(NewToken, Routines);
-        {error, Error} -> {error, Token#{error => Error}};
+        #{error := _Err}=Error -> {'error', Error};
+        {'ok', NewToken} -> run(NewToken, Routines);
+        {'done', NewToken} -> {'ok', NewToken};
+        {'error', Error} -> {'error', Token#{error => Error}};
         NewToken -> run(NewToken, Routines)
     catch
         _E:_R ->
             lager:debug("exception executing ~p : ~p , ~p, ~p", [Fun, _E, _R, Token]),
             kz_util:log_stacktrace(),
-            {error, Token}
+            {'error', Token}
     end.
