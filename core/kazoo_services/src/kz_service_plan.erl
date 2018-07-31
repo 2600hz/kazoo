@@ -122,13 +122,14 @@ get_generic_item_plan(ServicePlan, CategoryId) ->
     end.
 -spec get_plan_items(kzd_service_plan:doc(), kz_services:services()) -> kz_term:proplist().
 get_plan_items(ServicePlan, Services) ->
-    case kz_services:select_bookkeeper(Services) of
-        'kz_bookkeeper_http' ->
+    Default = kz_services:select_bookkeeper(Services) =:= 'kz_bookkeeper_http',
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"get_items_from_quantities">>, Default) of
+        'true' ->
             [{CategoryId, ItemId}
              || CategoryId <- kz_services:list_categories(Services),
                 ItemId <- kz_services:list_items(Services, CategoryId)
             ];
-        _Else ->
+        'false' ->
             [{CategoryId, ItemId}
              || CategoryId <- kzd_service_plan:categories(ServicePlan),
                 ItemId <- kzd_service_plan:items(ServicePlan, CategoryId)
