@@ -236,9 +236,10 @@ handle_failed_multipart(Context, Req0, QS) ->
     case get_request_body(Req0) of
         {'ok', ReqBody, Req1} ->
             try handle_url_encoded_body(Context, Req1, QS, ReqBody, get_url_encoded_body(ReqBody))
-            catch _E:_R ->
-                lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
-                try_json(ReqBody, QS, Context, Req1)
+            catch
+                _E:_R ->
+                    lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
+                    try_json(ReqBody, QS, Context, Req1)
             end;
         {'error', Error, Req1} ->
             handle_get_req_data_failure(Context, Req1, Error)
