@@ -99,10 +99,11 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
             Ok;
         {{'error', _, _}=Error,Pid} ->
             _ = erlang:demonitor(Ref, ['flush']),
+            lager:info("cmd errored: ~p", [Error]),
             Error;
         {'DOWN', Ref, _, Pid, Reason} ->
             _ = erlang:demonitor(Ref, ['flush']),
-            lager:debug("cmd process died unexpectedly with reason: ~p", [Reason]),
+            lager:info("cmd process died unexpectedly with reason: ~p", [Reason]),
             {'error', 'died_unexpectedly', <<>>};
         Else ->
             lager:debug("unexpected message ~p", [Else]),
@@ -112,6 +113,7 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
             maybe_kill_cmd(Port),
             _ = erlang:demonitor(Ref, ['flush']),
             _ = erlang:exit(Pid, 'timeout'),
+            lager:info("command timed out after ~pms", [Timeout]),
             {'error', 'absolute_timeout', <<>>}
     end.
 
