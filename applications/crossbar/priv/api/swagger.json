@@ -31455,6 +31455,10 @@
                     "description": "services default allow updates",
                     "type": "boolean"
                 },
+                "get_items_from_quantities": {
+                    "description": "services get_items_from_quantities",
+                    "type": "boolean"
+                },
                 "master_account_bookkeeper": {
                     "default": "kz_bookkeeper_local",
                     "description": "services master account bookkeeper",
