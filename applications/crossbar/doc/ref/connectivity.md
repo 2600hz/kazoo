@@ -42,11 +42,20 @@ Key | Description | Type | Default | Required | Support Level
 `servers.[].options.caller_id.cid_number` |   | `string(1..35)` |   | `false` |  
 `servers.[].options.caller_id` |   | `object()` |   | `false` |  
 `servers.[].options.delay` | The time, in seconds, to wait before attempting to call the server | `integer()` | `0` | `false` |  
+`servers.[].options.dynamic_flags.[]` |   | `string()` |   | `false` |  
+`servers.[].options.dynamic_flags` | List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching | `array(string())` |   | `false` |  
+`servers.[].options.emergency_caller_id.cid_name` |   | `string(0..35)` |   | `false` |  
+`servers.[].options.emergency_caller_id.cid_number` |   | `string(0..35)` |   | `false` |  
+`servers.[].options.emergency_caller_id` |   | `object()` |   | `false` |  
 `servers.[].options.enabled` | Is the server ready for sending and receiving calls | `boolean()` | `true` | `false` |  
 `servers.[].options.failover.e164` | An E.164 formatted DID to dial for failover | `string()` |   | `false` |  
 `servers.[].options.failover.sip` | A SIP URI (sip:user@host) to call for failover | `string()` |   | `false` |  
 `servers.[].options.failover` | Route inbound call to another destination if this server fails to handle the call | `object()` |   | `false` |  
+`servers.[].options.flags.[]` |   | `string()` |   | `false` |  
+`servers.[].options.flags` | List of flags to use when matching resources to route the call | `array(string())` |   | `false` |  
 `servers.[].options.force_outbound` | If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls) | `boolean()` | `false` | `false` |  
+`servers.[].options.hunt_account_id` | When using local resources, use this account instead of the account making the call (useful for resellers) | `string()` |   | `false` |  
+`servers.[].options.hunt_non_reconcilable` | Whether to allow routing to continue on a non-reconcilable TO number | `boolean()` | `false` | `false` |  
 `servers.[].options.ignore_early_media` |   | `boolean()` |   | `false` |  
 `servers.[].options.inbound_format` | Determines how the INVITE is sent to the server | `string('e164' | 'npan' | '1npan' | 'username')` | `npan` | `false` |  
 `servers.[].options.ip` | IP (sip) address for this device | `string()` |   | `false` |  
