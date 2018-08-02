@@ -33,7 +33,7 @@
         ]).
 
 -export([with_role/1, with_role/2]).
-
+-export([print_role/1]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -338,24 +338,19 @@ print_node_status(#kz_node{zone=NodeZone
                  ,Zone
                  ) ->
     MemoryUsage = kz_network_utils:pretty_print_bytes(UsedMemory),
-    io:format(?SIMPLE_ROW_STR, [<<"Node">>, N]),
+    print_simple_row_str([<<"Node">>, N]),
     _ = maybe_print_md5(MD5),
-    io:format(?SIMPLE_ROW_STR, [<<"Version">>, Version]),
-    io:format(?SIMPLE_ROW_STR, [<<"Memory Usage">>, MemoryUsage]),
-    if Processes > 0 ->
-            io:format(?SIMPLE_ROW_NUM, [<<"Processes">>, Processes]);
-       true -> true
-    end,
-    if Ports > 0 ->
-            io:format(?SIMPLE_ROW_NUM, [<<"Ports">>, Ports]);
-       true -> true
-    end,
+    print_simple_row_str([<<"Version">>, Version]),
+    print_simple_row_str([<<"Memory Usage">>, MemoryUsage]),
+
+    maybe_print_row(Processes > 0, [<<"Processes">>, Processes]),
+    maybe_print_row(Ports > 0, [<<"Ports">>, Ports]),
 
     _ = maybe_print_zone(kz_term:to_binary(NodeZone)
                         ,kz_term:to_binary(Zone)
                         ),
 
-    io:format(?SIMPLE_ROW_STR, [<<"Broker">>, Broker]),
+    print_simple_row_str([<<"Broker">>, Broker]),
 
     _ = maybe_print_globals(Globals),
     _ = maybe_print_node_info(NodeInfo),
@@ -366,23 +361,39 @@ print_node_status(#kz_node{zone=NodeZone
 
     io:format("~n").
 
+-spec maybe_print_row(boolean(), list()) -> 'ok'.
+maybe_print_row('false', _Args) -> 'ok';
+maybe_print_row('true', Args) ->
+    print_simple_row(Args).
+
+-spec print_simple_row(list()) -> 'ok'.
+print_simple_row(Args) ->
+    io:format(?SIMPLE_ROW_NUM, Args).
+
+-spec print_simple_row_str(list()) -> 'ok'.
+print_simple_row_str(Args) ->
+    io:format(?SIMPLE_ROW_STR, Args).
+
 -spec maybe_print_md5(kz_term:api_binary()) -> 'ok'.
 maybe_print_md5('undefined') -> 'ok';
 maybe_print_md5(MD5) ->
-    io:format(?SIMPLE_ROW_STR, [<<"md5">>, MD5]).
+    print_simple_row_str([<<"md5">>, MD5]).
 
 -spec maybe_print_zone(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_print_zone(Zone, Zone) when Zone =/= <<"local">> ->
-    io:format(?SIMPLE_ROW_STR, [<<"Zone">>, <<Zone/binary, " (local)">>]);
+    print_simple_row_str([<<"Zone">>, <<Zone/binary, " (local)">>]);
 maybe_print_zone(NodeZone, _Zone) ->
-    io:format(?SIMPLE_ROW_STR, [<<"Zone">>, NodeZone]).
+    print_simple_row_str([<<"Zone">>, NodeZone]).
 
 -spec maybe_print_globals(kz_term:proplist()) -> 'ok'.
 maybe_print_globals([]) -> 'ok';
 maybe_print_globals(Globals) ->
     io:format(?HEADER_COL ++ ":", [<<"Globals">>]),
-    lists:foreach(fun({K,V}) -> io:format(" ~s (~B)",[K, V]) end, Globals),
+    lists:foreach(fun print_global/1, Globals),
     io:format("~n").
+
+-spec print_global({kz_json:key(), integer()}) -> 'ok'.
+print_global({K,V}) -> io:format(" ~s (~B)",[K, V]).
 
 -spec maybe_print_kapps(kz_term:proplist()) -> 'ok'.
 maybe_print_kapps(Whapps) ->
@@ -413,12 +424,55 @@ print_role({<<"Dispatcher">>, Data}) ->
     lists:foreach(fun(Group) ->
                           GData = kz_json:get_json_value(Group, Groups),
                           print_dispatcher({Group, GData})
-                  end, Keys);
+                  end
+                 ,Keys
+                 );
 print_role({<<"Presence">>, Data}) ->
     kz_json:foreach(fun print_presence/1, Data);
 print_role({<<"Registrar">>, Data}) ->
-    io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, kz_json:get_integer_value(<<"Registrations">>, Data, 0)]);
+    print_simple_row([<<"Registrations">>, kz_json:get_integer_value(<<"Registrations">>, Data, 0)]);
+print_role({<<"Proxy">>, Data}) ->
+    kz_json:foreach(fun print_proxy/1, Data);
 print_role(_) -> 'ok'.
+
+-spec print_proxy({kz_json:key(), kz_json:object()}) -> 'ok'.
+print_proxy({<<"Listeners">>, Data}) ->
+    Listeners = kz_json:foldl(fun collect_listeners/3, #{}, Data),
+
+    case maps:to_list(Listeners) of
+        [] -> 'ok';
+        Addrs ->
+            [{Address, Info} | Addresses] = lists:keysort(1, Addrs),
+            io:format(?HEADER_COL ++ ": ", [<<"Listening on">>]),
+            print_address_info(Address, Info),
+            _ = lists:foreach(fun print_address/1, Addresses),
+            'ok'
+    end.
+
+-spec print_address({kz_term:ne_binary(), map()}) -> 'ok'.
+print_address({Address, Info}) ->
+    io:format(?HEADER_COL ++ "  ", [""]),
+    print_address_info(Address, Info).
+
+print_address_info(Address, Info) ->
+    io:format("~15s ", [Address]),
+    _ = lists:foreach(fun print_proto/1, lists:keysort(1, maps:to_list(Info))),
+    io:format("~n").
+
+-spec print_proto({kz_term:ne_binary(), kz_term:integers()}) -> 'ok'.
+print_proto({Proto, Ports}) ->
+    io:format("~s (~s) ", [Proto, kz_binary:join(lists:usort(Ports), <<" ">>)]).
+
+-spec collect_listeners(kz_json:key(), kz_json:object(), map()) -> map().
+collect_listeners(_FullAddress, Info, Acc) ->
+    Address = kz_json:get_first_defined([<<"advertise">>, <<"address">>], Info),
+    Proto = kz_json:get_ne_binary_value(<<"proto">>, Info),
+    Port = kz_json:get_integer_value(<<"port">>, Info),
+
+    AccAddress = maps:get(Address, Acc, #{}),
+    AccProto = [Port | maps:get(Proto, AccAddress, [])],
+
+    Acc#{Address => AccAddress#{Proto => AccProto}}.
 
 -spec print_dispatcher({kz_term:ne_binary(), kz_json:object()}) -> 'ok'.
 print_dispatcher({Group, Data})->
@@ -428,7 +482,9 @@ print_dispatcher({Group, Data})->
                           URI = kz_json:get_ne_binary_value([S, <<"destination">>], Data),
                           Flags = kz_json:get_ne_binary_value([S, <<"flags">>], Data),
                           <<URI/binary," (", Flags/binary, ")  ">>
-                  end, Sets),
+                  end
+                 ,Sets
+                 ),
     simple_list(M, 0).
 
 -spec print_presence({kz_term:ne_binary(), kz_json:object()}) -> 'ok'.
@@ -453,11 +509,11 @@ maybe_print_media_servers(#kz_node{media_servers=MediaServers
     case lists:sort(MediaServers) of
         [] when Registrations =:= 0 -> 'ok';
         [] when Registrations > 0 ->
-            io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, Registrations]);
+            print_simple_row([<<"Registrations">>, Registrations]);
         [Server|Servers] ->
-            io:format(?SIMPLE_ROW_NUM, [<<"Channels">>, Channels]),
-            io:format(?SIMPLE_ROW_NUM, [<<"Conferences">>, Conferences]),
-            io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, Registrations]),
+            print_simple_row([<<"Channels">>, Channels]),
+            print_simple_row([<<"Conferences">>, Conferences]),
+            print_simple_row([<<"Registrations">>, Registrations]),
             print_media_server(Server, ?MEDIA_SERVERS_HEADER),
             lists:foreach(fun print_media_server/1, Servers)
     end.
