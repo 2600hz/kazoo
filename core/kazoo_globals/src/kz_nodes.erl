@@ -442,20 +442,28 @@ print_proxy({<<"Listeners">>, Data}) ->
     case maps:to_list(Listeners) of
         [] -> 'ok';
         Addrs ->
+            S = lists:max([byte_size(A) || {A, _} <- Addrs]),
+            Fmt = print_address_format(S),
             [{Address, Info} | Addresses] = lists:keysort(1, Addrs),
             io:format(?HEADER_COL ++ ": ", [<<"Listening on">>]),
-            print_address_info(Address, Info),
-            _ = lists:foreach(fun print_address/1, Addresses),
+            print_address_info(Address, Info, Fmt),
+            _ = lists:foreach(fun(A) -> print_address(A, Fmt) end, Addresses),
             'ok'
     end.
 
--spec print_address({kz_term:ne_binary(), map()}) -> 'ok'.
-print_address({Address, Info}) ->
+-spec print_address_format(pos_integer()) -> kz_term:ne_binary().
+print_address_format(S) ->
+    Size = 15 - (15 - S),
+    list_to_binary(["~-",io_lib:format("~B", [Size]),"s "]).
+    
+-spec print_address({kz_term:ne_binary(), map()}, kz_term:ne_binary()) -> 'ok'.
+print_address({Address, Info}, Fmt) ->
     io:format(?HEADER_COL ++ "  ", [""]),
-    print_address_info(Address, Info).
+    print_address_info(Address, Info, Fmt).
 
-print_address_info(Address, Info) ->
-    io:format("~15s ", [Address]),
+-spec print_address_info(kz_term:ne_binary(), map(), kz_term:ne_binary()) -> 'ok'.
+print_address_info(Address, Info, Fmt) ->
+    io:format(Fmt, [Address]),
     _ = lists:foreach(fun print_proto/1, lists:keysort(1, maps:to_list(Info))),
     io:format("~n").
 
