@@ -8,6 +8,15 @@
 -define(TTS_API_KEY, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)).
 -define(TMP_PATH, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"temporary_storage_path">>, <<"/tmp">>)).
 
+-record(voice_desc, {voice_name :: kz_term:ne_binary()
+                    ,language_code :: kz_term:ne_binary()
+                    ,gender :: voice_gender()}).
+
+-type voice_desc() :: #voice_desc{}.
+-type voice_gender() :: 'male'   |
+                        'female' |
+                        'neutral'.
+
 -type conversion_return() :: {binary(), kz_term:ne_binary()} |
                              {'error', 'unsupported_content_type'}.
 
