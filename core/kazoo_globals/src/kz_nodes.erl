@@ -33,7 +33,7 @@
         ]).
 
 -export([with_role/1, with_role/2]).
-
+-export([print_role/1]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -455,7 +455,7 @@ print_address({Address, Info}) ->
     print_address_info(Address, Info).
 
 print_address_info(Address, Info) ->
-    io:format("~s ", [Address]),
+    io:format("~15s ", [Address]),
     _ = lists:foreach(fun print_proto/1, lists:keysort(1, maps:to_list(Info))),
     io:format("~n").
 
@@ -465,7 +465,7 @@ print_proto({Proto, Ports}) ->
 
 -spec collect_listeners(kz_json:key(), kz_json:object(), map()) -> map().
 collect_listeners(_FullAddress, Info, Acc) ->
-    Address = kz_json:get_ne_binary_value(<<"address">>, Info),
+    Address = kz_json:get_first_defined([<<"advertise">>, <<"address">>], Info),
     Proto = kz_json:get_ne_binary_value(<<"proto">>, Info),
     Port = kz_json:get_integer_value(<<"port">>, Info),
 
