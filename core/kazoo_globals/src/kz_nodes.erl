@@ -455,7 +455,7 @@ print_proxy({<<"Listeners">>, Data}) ->
 print_address_format(S) ->
     Size = 15 - (15 - S),
     list_to_binary(["~-",io_lib:format("~B", [Size]),"s "]).
-    
+
 -spec print_address({kz_term:ne_binary(), map()}, kz_term:ne_binary()) -> 'ok'.
 print_address({Address, Info}, Fmt) ->
     io:format(?HEADER_COL ++ "  ", [""]),
