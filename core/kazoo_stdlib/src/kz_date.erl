@@ -61,7 +61,7 @@ from_iso_week({Year, Week}) ->
         (Week - 1) * 7,
     calendar:gregorian_days_to_date(Days).
 
--spec weekday_distance(1..7, 1..7) -> 1..7.
+-spec weekday_distance(kz_time:daynum(), kz_time:daynum()) -> kz_time:daynum().
 weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
     case D0 - D1 of
         Days when Days =< 7 -> Days;

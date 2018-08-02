@@ -156,7 +156,7 @@ iso8601(Timestamp) when is_integer(Timestamp) ->
     iso8601(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
 %% borrowed from cow_date.erl
--spec weekday(1..7) -> <<_:24>>.
+-spec weekday(daynum()) -> <<_:24>>.
 weekday(1) -> <<"Mon">>;
 weekday(2) -> <<"Tue">>;
 weekday(3) -> <<"Wed">>;
@@ -165,7 +165,7 @@ weekday(5) -> <<"Fri">>;
 weekday(6) -> <<"Sat">>;
 weekday(7) -> <<"Sun">>.
 
--spec month(1..12) -> <<_:24>>.
+-spec month(month()) -> <<_:24>>.
 month( 1) -> <<"Jan">>;
 month( 2) -> <<"Feb">>;
 month( 3) -> <<"Mar">>;
