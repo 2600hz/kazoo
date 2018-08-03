@@ -85,6 +85,7 @@
                    [{'databases', kz_term:ne_binaries()} |
                     {'mapper', user_mapper_fun()} |
                     {'max_range', pos_integer()} |
+                    {'no_filter', boolean()} |
 
                     %% for non-ranged query
                     {'end_keymap', keymap()} |
@@ -188,7 +189,10 @@ load_modb(Context, View, Options) ->
 build_load_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
         #{direction := Direction}=LoadMap ->
-            HasQSFilter = crossbar_filter:is_defined(Context),
+            HasQSFilter = not props:get_is_true('no_filter', Options, 'false')
+                andalso crossbar_filter:is_defined(Context),
+
+            lager:debug("has qs filter: ~s", [HasQSFilter]),
 
             UserMapper = props:get_value('mapper', Options),
 
@@ -223,8 +227,10 @@ build_load_range_params(Context, View, Options) ->
             TimeFilterKey = props:get_ne_binary_value('range_key_name', Options, <<"created">>),
             UserMapper = props:get_value('mapper', Options),
 
-            HasQSFilter = crossbar_filter:is_defined(Context)
+            HasQSFilter = not props:get_is_true('no_filter', Options, 'false')
+                andalso crossbar_filter:is_defined(Context)
                 andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+
             lager:debug("has qs filter: ~s", [HasQSFilter]),
 
             case time_range(Context, Options, TimeFilterKey) of
@@ -553,6 +559,7 @@ load_view(#{is_chunked := 'true'
            ,has_qs_filter := HasQSFilter
            }=LoadMap, Context) ->
     Setters = [{fun cb_context:set_doc/2, []}
+              ,{fun cb_context:set_resp_data/2, []}
               ,{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:store/3, 'is_chunked', 'true'}
               ,{fun cb_context:store/3, 'next_chunk_fun', fun next_chunk/1}
@@ -566,6 +573,7 @@ load_view(#{direction := Direction
            ,has_qs_filter := HasQSFilter
            }=LoadMap, Context) ->
     Setters = [{fun cb_context:set_doc/2, []}
+              ,{fun cb_context:set_resp_data/2, []}
               ,{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:store/3, 'view_direction', Direction}
               ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
