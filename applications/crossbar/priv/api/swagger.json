@@ -31986,6 +31986,11 @@
                     "description": "stepswitch ensure valid emergency cid",
                     "type": "boolean"
                 },
+                "fixed_length_shortdial_correction": {
+                    "description": "stepswitch fixed_length_shortdial_correction",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "format_from_uri": {
                     "default": false,
                     "description": "stepswitch format from uri",
@@ -31994,11 +31999,13 @@
                 "max_shortdial_correction": {
                     "default": 5,
                     "description": "stepswitch maximum shortdial correction",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "min_shortdial_correction": {
                     "default": 2,
                     "description": "stepswitch minimum shortdial correction",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "route_by": {
