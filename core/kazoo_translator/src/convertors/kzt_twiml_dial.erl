@@ -76,7 +76,6 @@ exec(Call, [#xmlElement{name='Conference'
               ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    lager:info("publising discovery ~p", [ConfReq]),
     kapi_conference:publish_discovery_req(ConfReq),
 
     lager:debug("published conference request"),
@@ -90,8 +89,6 @@ exec(Call, [#xmlElement{name='Conference'
     AnsweredCall = kzt_util:update_call_status(?STATUS_ANSWERED, SetupCall),
 
     {'ok', Call1} = kzt_receiver:wait_for_conference(AnsweredCall),
-
-    lager:debug("waited for conference, maybe ending dial"),
 
     _ = maybe_end_dial(Call1, DialProps),
     {'stop', Call1};

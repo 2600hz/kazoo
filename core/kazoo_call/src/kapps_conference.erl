@@ -178,7 +178,7 @@ do_from_json(JObj, Conference) ->
             Id -> Id
         end,
 
-    lager:debug("building conference ~s(~s) from JSON", [ConferenceName, ConferenceId]),
+    lager:debug("building conference ~s(id:~s) from JSON", [ConferenceName, ConferenceId]),
 
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Conference#kapps_conference{id = ConferenceId
@@ -290,7 +290,7 @@ from_conference_doc(JObj, Conference) ->
     ConferenceName = kzd_conferences:name(JObj, name(Conference)),
     ConferenceId = kz_doc:id(JObj, ConferenceName),
 
-    lager:debug("building conference ~s(~s) from config", [ConferenceName, ConferenceId]),
+    lager:debug("building conference ~s(id:~s) from config", [ConferenceName, ConferenceId]),
 
     Conference#kapps_conference{id = ConferenceId
                                ,name = ConferenceName
@@ -498,7 +498,6 @@ build_account_profile(Conference) ->
         {'undefined', Profile} -> {ProfileName, Profile};
         {LanguageProfile, 'undefined'} -> {ProfileName, LanguageProfile};
         {LanguageProfile, Profile} ->
-            lager:debug("merging profiles"),
             {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
@@ -518,7 +517,6 @@ build_system_profile(Conference) ->
     of
         'undefined' -> {ProfileName, LanguageProfile};
         Profile ->
-            lager:debug("merging profiles"),
             {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
