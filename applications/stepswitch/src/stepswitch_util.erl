@@ -81,19 +81,17 @@ correct_shortdial(<<"+", Number/binary>>, CIDNum) ->
 correct_shortdial(Number, <<"+", CIDNum/binary>>) ->
     correct_shortdial(Number, CIDNum);
 correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
-    MaxCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"max_shortdial_correction">>, 5),
-    MinCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
-    case byte_size(CIDNum) - byte_size(Number) of
-        Length when Length =< MaxCorrection, Length >= MinCorrection ->
+    case shortdial_correction_length(Number, CIDNum) of
+        0 ->
+            lager:debug("unable to correct shortdial ~s via CID ~s"
+                       ,[Number, CIDNum]),
+            'undefined';
+        Length ->
             Correction = kz_binary:truncate_right(CIDNum, Length),
             CorrectedNumber = knm_converters:normalize(<<Correction/binary, Number/binary>>),
             lager:debug("corrected shortdial ~s via CID ~s to ~s"
                        ,[Number, CIDNum, CorrectedNumber]),
-            CorrectedNumber;
-        _ ->
-            lager:debug("unable to correct shortdial ~s via CID ~s"
-                       ,[Number, CIDNum]),
-            'undefined'
+            CorrectedNumber
     end;
 correct_shortdial(Number, OffnetReq) ->
     CIDNum = case stepswitch_bridge:bridge_outbound_cid_number(OffnetReq) of
@@ -101,6 +99,26 @@ correct_shortdial(Number, OffnetReq) ->
                  N -> N
              end,
     correct_shortdial(Number, CIDNum).
+
+-spec shortdial_correction_length(kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
+shortdial_correction_length(Number, CIDNum) ->
+    case kapps_config:get_integer(?SS_CONFIG_CAT, <<"fixed_length_shortdial_correction">>) of
+        'undefined' ->
+            Length = byte_size(CIDNum) - byte_size(Number),
+            maybe_constrain_shortdial_correction(Length);
+        FixedLength -> FixedLength
+    end.
+
+-spec maybe_constrain_shortdial_correction(integer()) -> integer().
+maybe_constrain_shortdial_correction(Length) ->
+    MaxCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"max_shortdial_correction">>, 5),
+    MinCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
+    case Length =< MaxCorrection
+        andalso Length >= MinCorrection
+    of
+        'true' -> Length;
+        'false' -> 0
+    end.
 
 -spec get_sip_headers(kapi_offnet_resource:req()) -> kz_json:object().
 get_sip_headers(OffnetReq) ->
