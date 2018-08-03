@@ -70,6 +70,7 @@ start_link(Call, JObj) ->
                             ]},
     Responders = {'responders', [{{?MODULE, 'maybe_relay_event'}
                                  ,[{<<"conference">>, <<"config_req">>}
+                                  ,{<<"conference">>, <<"event">>}
                                   ,{<<"resource">>, <<"offnet_resp">>}
                                   ,{<<"call_event">>, <<"*">>}
                                   ]
