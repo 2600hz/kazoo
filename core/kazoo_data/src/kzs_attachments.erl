@@ -202,9 +202,20 @@ delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
--spec attachment_url(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_atom(), kz_term:proplist()) ->
+-spec attachment_url(map()
+                    ,DbName
+                    ,DocId
+                    ,AttachmentId
+                    ,Handler
+                    ,Options
+                    ) ->
                             kz_term:ne_binary() |
-                            {'proxy', tuple()}.
+                            {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler}] | Options}}
+                                when DbName :: kz_term:ne_binary()
+                                     ,DocId :: kz_term:ne_binary()
+                                     ,AttachmentId :: kz_term:ne_binary()
+                                     ,Handler :: kz_term:api_atom()
+                                     ,Options :: kz_term:proplist().
 attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined', Options) ->
     {'proxy', {DbName, DocId, AttachmentId, Options}};
 attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined', Options) ->
@@ -229,7 +240,7 @@ save_attachment_handler_error(Map
                 ],
     ErrorJSON = kz_json:set_values(NewValues, kz_att_error:to_json(ExtendedError)),
     UpdatedErrorJSON = kz_doc:update_pvt_parameters(ErrorJSON, DbName),
-    {ok, SavedJObj} = kazoo_modb:save_doc(DbName, UpdatedErrorJSON),
+    {'ok', SavedJObj} = kazoo_modb:save_doc(DbName, UpdatedErrorJSON),
     lager:debug("Attachment handler error stored with id: ~p", [kz_doc:id(SavedJObj)]).
 
 -spec handle_attachment_handler_error(kz_att_error:error(), kz_data:options()) ->
