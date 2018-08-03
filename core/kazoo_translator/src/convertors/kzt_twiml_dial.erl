@@ -74,6 +74,7 @@ exec(Call, [#xmlElement{name='Conference'
               ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
+    lager:info("publising discovery ~p", [ConfReq]),
     kapi_conference:publish_discovery_req(ConfReq),
 
     lager:debug("published conference request"),
