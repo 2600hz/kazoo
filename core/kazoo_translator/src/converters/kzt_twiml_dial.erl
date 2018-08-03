@@ -68,6 +68,7 @@ exec(Call, [#xmlElement{name='Conference'
                              ]),
 
     ConfDoc = build_conference_doc(Call, ConfId, ConfProps),
+
     ConfReq = [{<<"Call">>, kapps_call:to_json(Call)}
               ,{<<"Conference-ID">>, ConfId}
               ,{<<"Conference-Doc">>, ConfDoc}
@@ -89,7 +90,7 @@ exec(Call, [#xmlElement{name='Conference'
 
     {'ok', Call1} = kzt_receiver:wait_for_conference(AnsweredCall),
 
-    lager:debug("waited for offnet, maybe ending dial"),
+    lager:debug("waited for conference, maybe ending dial"),
 
     _ = maybe_end_dial(Call1, DialProps),
     {'stop', Call1};
