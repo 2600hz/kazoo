@@ -587,27 +587,29 @@ process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
         {<<"call_event">>, <<"CHANNEL_EXECUTE">>} ->
             case kz_call_event:application_name(JObj) of
                 <<"conference">> ->
-                    lager:debug("conferencing has started to execute"),
+                    lager:info("conferencing has started to execute"),
                     wait_for_conference_events(
                       update_offnet_timers(
                         OffnetReq#dial_req{call_timeout='undefined'}
                        ));
                 _App ->
+                    lager:debug("ignoring app ~s", [_App]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))
             end;
 
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case kz_call_event:application_name(JObj) of
                 <<"conference">> ->
-                    lager:debug("conferencing has ended"),
+                    lager:info("conferencing has ended"),
                     kapps_call_command:park(Call),
                     {'ok', Call};
                 _App ->
+                    lager:debug("app ~s has ended", [_App]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))
             end;
 
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("call has ended"),
+            lager:info("our call has ended"),
             {'ok', Call};
 
         {<<"conference">>, <<"config_req">>} ->
