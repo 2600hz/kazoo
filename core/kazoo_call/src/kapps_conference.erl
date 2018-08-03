@@ -357,6 +357,14 @@ set_account_id(AccountId, Conference) when is_binary(AccountId) ->
     Conference#kapps_conference{account_id=AccountId}.
 
 -spec account_id(conference()) -> kz_term:api_ne_binary().
+account_id(#kapps_conference{account_id='undefined'
+                            ,call='undefined'
+                            }) ->
+    'undefined';
+account_id(#kapps_conference{account_id='undefined'
+                             ,call=Call
+                             }) ->
+    kapps_call:account_id(Call);
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
