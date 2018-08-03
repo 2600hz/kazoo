@@ -56,7 +56,7 @@ cleanup_conference_doc(DiscoveryReq, ConferenceDoc) ->
 
 -spec maybe_welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
 maybe_welcome_to_conference(Srv, Conference) ->
-    lager:debug("starting discovery process for conference ~s(~s)"
+    lager:debug("starting discovery process for conference ~s(id:~s)"
                ,[kapps_conference:name(Conference)
                 ,kapps_conference:id(Conference)
                 ]
@@ -129,7 +129,7 @@ validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
     case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
-            Doc = kz_json:get_value(<<"doc">>, JObj),
+            Doc = kz_json:get_json_value(<<"doc">>, JObj),
             valid_conference_id(Srv, kapps_conference:from_conference_doc(Doc, Conference), Digits);
         _Else ->
             lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
@@ -274,7 +274,7 @@ handle_search_error(Conference, Call, Srv) ->
     _ = kz_amqp_util:new_queue(Queue),
     try kz_amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
-            lager:debug("initial participant creating conference on switch nodename '~p'", [kapps_call:switch_hostname(Call)]),
+            lager:debug("initial participant creating conference on switch nodename '~s'", [kapps_call:switch_hostname(Call)]),
             conf_participant:set_conference(Conference, Srv),
             maybe_play_name(Conference, Call, Srv),
             conf_participant:join_local(Srv),
@@ -352,7 +352,7 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
     _ = maybe_play_name(Conference, Call, Srv),
 
     SwitchHostname = kapps_call:switch_hostname(Call),
-    lager:debug("participant switch nodename ~p", [SwitchHostname]),
+    lager:debug("participant switch nodename ~s", [SwitchHostname]),
 
     case kz_json:get_first_defined([<<"Switch-Hostname">>, <<"Media-Server">>], JObj) of
         SwitchHostname ->
