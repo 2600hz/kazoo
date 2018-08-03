@@ -22,7 +22,7 @@
 -export([moderator_controls/1, set_moderator_controls/2]).
 -export([caller_controls/1, set_caller_controls/2]).
 -export([controls/2, set_controls/2]).
--export([profile_name/1, set_profile_name/2]).
+-export([profile_name/1, profile_name/2, set_profile_name/2]).
 -export([profile/1, set_profile/2]).
 -export([focus/1, set_focus/2]).
 -export([language/1, set_language/2]).
@@ -408,8 +408,11 @@ caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
 -spec profile_name(conference()) -> kz_term:ne_binary().
-profile_name(#kapps_conference{profile_name='undefined'}) -> ?DEFAULT_PROFILE_NAME;
-profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
+profile_name(Conference) -> profile_name(Conference, ?DEFAULT_PROFILE_NAME).
+
+-spec profile_name(conference(), Default) -> kz_term:ne_binary() | Default.
+profile_name(#kapps_conference{profile_name='undefined'}, Default) -> Default;
+profile_name(#kapps_conference{profile_name=Profile}, _Default) -> Profile.
 
 -spec set_profile_name(kz_term:api_ne_binary(), conference()) -> conference().
 set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
