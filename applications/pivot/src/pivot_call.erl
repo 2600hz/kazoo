@@ -586,11 +586,12 @@ store_debug(Call, DebugJObj) ->
     end.
 
 debug_doc(Call, DebugJObj, AccountModDb) ->
-    kz_doc:update_pvt_parameters(kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
-                                                    ,{<<"iteration">>, kzt_util:iteration(Call)}
-                                                    ]
-                                                   ,DebugJObj
-                                                   )
+    WithCallJObj = kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
+                                      ,{<<"iteration">>, kzt_util:iteration(Call)}
+                                      ]
+                                     ,DebugJObj
+                                     ),
+    kz_doc:update_pvt_parameters(WithCallJObj
                                 ,AccountModDb
                                 ,[{'account_id', kapps_call:account_id(Call)}
                                  ,{'account_db', AccountModDb}
