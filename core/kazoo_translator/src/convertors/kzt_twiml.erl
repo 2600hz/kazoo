@@ -394,7 +394,7 @@ finish_record_call(Call, Props, MediaName) ->
                 Setters;
             {'true', 'local'} ->
                 {'ok', MediaJObj} = kzt_receiver:recording_meta(Call, MediaName),
-                StoreUrl = kapps_util:media_local_store_url(Call, MediaJObj),
+                StoreUrl = media_local_store_url(Call, MediaJObj),
 
                 lager:info("storing ~s locally to ~s", [MediaName, StoreUrl]),
 
@@ -402,7 +402,7 @@ finish_record_call(Call, Props, MediaName) ->
                 [{fun kzt_util:set_recording_url/2, StoreUrl}
                  | Setters
                 ];
-            {'true', Url} ->
+            {'true', 'other', Url} ->
                 StoreUrl = kapi_dialplan:offsite_store_url(Url, MediaName),
 
                 lager:info("storing ~s offsite to ~s", [MediaName, StoreUrl]),
@@ -431,3 +431,11 @@ media_name(Call) ->
 %%------------------------------------------------------------------------------
 %% Helpers
 %%------------------------------------------------------------------------------
+-spec media_local_store_url(kapps_call:call(), kz_json:object()) ->
+                                   kz_term:ne_binary().
+media_local_store_url(Call, JObj) ->
+    AccountDb = kapps_call:account_db(Call),
+    MediaId = kz_doc:id(JObj),
+    MediaName = kz_json:get_value(<<"name">>, JObj),
+    {'ok', URL} = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName),
+    URL.
