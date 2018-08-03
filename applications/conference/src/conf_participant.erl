@@ -377,7 +377,7 @@ handle_channel_pivot(JObj, Call) ->
                   ,{<<"Call">>, kapps_call:to_json(Call)}
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ],
-            kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1),
+            _ = kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1),
             lager:info("stopping the conf participant"),
             gen_listener:cast(self(), 'pivoted')
     end.
@@ -399,7 +399,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     lager:debug("deleting doc: ~s/~s", [AccountDb, MediaId]),
-    kz_datamgr:del_doc(AccountDb, MediaId),
+    _ = kz_datamgr:del_doc(AccountDb, MediaId),
     'ok';
 maybe_clear(_) -> 'ok'.
 
