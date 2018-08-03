@@ -61,13 +61,11 @@ exec(Call, [#xmlElement{name='Conference'
     ConfProps = kz_xml:attributes_to_proplist(ConfAttrs),
     DialProps = kz_xml:attributes_to_proplist(DialAttrs),
 
-    GenListener = kzt_util:get_amqp_listener(Call),
-    lager:info("binding for conference events in ~p", [GenListener]),
-    gen_listener:add_binding(GenListener
+    gen_listener:add_binding(kzt_util:get_amqp_listener(Call)
                             ,'conference'
-                            ,[{'restrict_to', [{'config', ConfId}
-                                              ,{'event', {ConfId, kapps_call:call_id_direct(Call)}}
-                                              ]}
+                            ,[{'restrict_to'
+                              ,[{'event', {ConfId, kapps_call:call_id_direct(Call)}}]
+                              }
                              ]),
 
     ConfDoc = build_conference_doc(Call, ConfId, ConfProps),

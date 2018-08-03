@@ -613,12 +613,23 @@ process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
             lager:info("our call has ended"),
             {'ok', Call};
 
-        {<<"conference">>, <<"config_req">>} ->
-            wait_for_conference_events(
-              update_offnet_timers(
-                OffnetReq#dial_req{call_timeout='undefined'}
-               )
-             );
+        {<<"conference">>, <<"event">>} ->
+            case kz_json:get_ne_binary_value(<<"Event">>, JObj) of
+                <<"conference-create">> ->
+                    lager:info("conference has been created"),
+                    wait_for_conference_events(
+                      update_offnet_timers(
+                        OffnetReq#dial_req{call_timeout='undefined'}
+                       )
+                     );
+                <<"conference-destroy">> ->
+                    lager:info("conference has been destroyed"),
+                    kapps_call_command:park(Call),
+                    {'ok', Call};
+                _Event ->
+                    lager:debug("ignoring conference event ~s", [_Event]),
+                    wait_for_conference_events(update_offnet_timers(OffnetReq))
+            end;
         {_Cat, _Name} ->
             lager:debug("unhandled event for ~s: ~s: ~s"
                        ,[_Cat, _Name, kz_call_event:application_name(JObj)]
