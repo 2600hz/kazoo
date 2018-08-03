@@ -170,6 +170,7 @@ build_filter_map_fun(Context, FilterFun, UserMapper) when is_function(UserMapper
 %%------------------------------------------------------------------------------
 -spec is_filter_key({binary(), any()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> 'true';
+is_filter_key({<<"filter_not_", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_key", _/binary>>, _}) -> 'true';
 is_filter_key({<<"key_missing", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_value", _/binary>>, _}) -> 'true';
