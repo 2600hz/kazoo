@@ -402,7 +402,7 @@ finish_record_call(Call, Props, MediaName) ->
                 [{fun kzt_util:set_recording_url/2, StoreUrl}
                  | Setters
                 ];
-            {'true', Url} ->
+            {'true', 'other', Url} ->
                 StoreUrl = kapi_dialplan:offsite_store_url(Url, MediaName),
 
                 lager:info("storing ~s offsite to ~s", [MediaName, StoreUrl]),
@@ -432,11 +432,10 @@ media_name(Call) ->
 %% Helpers
 %%------------------------------------------------------------------------------
 -spec media_local_store_url(kapps_call:call(), kz_json:object()) ->
-                                   {'ok', kz_term:ne_binary()} |
-                                   {'proxy', tuple()} |
-                                   {'error', any()}.
+                                   kz_term:ne_binary().
 media_local_store_url(Call, JObj) ->
     AccountDb = kapps_call:account_db(Call),
     MediaId = kz_doc:id(JObj),
     MediaName = kz_json:get_value(<<"name">>, JObj),
-    kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
+    {'ok', URL} = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName),
+    URL.

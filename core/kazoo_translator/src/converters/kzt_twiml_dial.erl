@@ -67,8 +67,9 @@ exec(Call, [#xmlElement{name='Conference'
                              ,{'profile', ConfId}
                              ]),
 
-    ConfDoc = build_conference_doc(ConfId, ConfProps),
+    ConfDoc = build_conference_doc(Call, ConfId, ConfProps),
     ConfReq = [{<<"Call">>, kapps_call:to_json(Call)}
+              ,{<<"Conference-ID">>, ConfId}
               ,{<<"Conference-Doc">>, ConfDoc}
               ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -306,13 +307,13 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
 
--spec sip_uri(kapps_call:call(), kzsip_uri:uri()) -> kz_json:object().
+-spec sip_uri(kapps_call:call(), kzsip_uri:sip_uri()) -> kz_json:object().
 sip_uri(Call, URI) ->
     lager:debug("maybe adding SIP endpoint: ~s", [kzsip_uri:encode(URI)]),
     SIPDevice = sip_device(URI),
     kz_endpoint:create_sip_endpoint(SIPDevice, kz_json:new(), Call).
 
--spec sip_device(kzsip_uri:uri()) -> kzd_devices:doc().
+-spec sip_device(kzsip_uri:sip_uri()) -> kzd_devices:doc().
 sip_device(URI) ->
     lists:foldl(fun({F, V}, D) -> F(D, V) end
                ,kzd_devices:new()
@@ -365,22 +366,26 @@ hangup_dtmf(DTMF) ->
     end.
 
 should_record_call(Props) -> kz_term:is_true(props:get_value('record', Props, 'false')).
+
 timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
 
-
--spec build_conference_doc(kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
-build_conference_doc(ConfId, ConfProps) ->
+-spec build_conference_doc(kapps_call:call(), kz_term:ne_binary(), kz_term:proplist()) ->
+                                  kz_json:object().
+build_conference_doc(Call, ConfId, ConfProps) ->
     StartOnEnter = props:is_true('startConferenceOnEnter', ConfProps),
 
     kz_json:from_list([{<<"name">>, ConfId}
+                      ,{<<"id">>, ConfId}
                       ,{<<"play_welcome">>, 'false'}
                       ,{<<"play_entry_tone">>, props:is_true('beep', ConfProps, 'true')}
                       ,{<<"member">>, member_flags(ConfProps, StartOnEnter)}
                       ,{<<"moderator">>, moderator_flags(ConfProps, StartOnEnter)}
                       ,{<<"require_moderator">>, require_moderator(StartOnEnter)}
                       ,{<<"wait_for_moderator">>, 'true'}
-                      ,{<<"max_members">>, get_max_participants(ConfProps)}
-                      ,{<<"profile">>, ConfId}
+                      ,{<<"max_participants">>, get_max_participants(ConfProps)}
+                      ,{<<"profile_name">>, ConfId}
+                      ,{<<"profile">>, conference_profile(kapps_call:account_id(Call), ConfProps)}
+                      ,{<<"pvt_account_id">>, kapps_call:account_id(Call)}
                       ]).
 
 require_moderator('undefined') -> 'false';
@@ -409,30 +414,33 @@ conference_id(Txts) ->
     lager:debug("conf name: ~s (~s)", [Id, MD5]),
     MD5.
 
-
 -spec add_conference_profile(kapps_call:call(), kz_term:proplist()) -> kapps_call:call().
 add_conference_profile(Call, ConfProps) ->
     AccountId = kapps_call:account_id(Call),
-    Profile = kz_json:from_list(
-                [{<<"rate">>, props:get_integer_value('rate', ConfProps, 8000)}
-                ,{<<"caller-controls">>, props:get_integer_value('callerControls', ConfProps, 8000)}
-                ,{<<"interval">>, props:get_integer_value('interval', ConfProps, 20)}
-                ,{<<"energy-level">>, props:get_integer_value('energyLevel', ConfProps, 20)}
-                ,{<<"member-flags">>, conference_member_flags(ConfProps)}
-                ,{<<"conference-flags">>, conference_flags(ConfProps)}
-                ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
-                ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
-                ,{<<"max-members">>, get_max_participants(ConfProps)}
-                ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
-                ,{<<"announce-count">>, props:get_integer_value('announceCount', ConfProps)}
-                ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
-                ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
-                ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_privacy:anonymous_caller_id_name(AccountId))}
-                ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, kz_privacy:anonymous_caller_id_number(AccountId))}
-                 %% ,{<<"suppress-events">>, <<>>} %% add events to make FS less chatty
-                ,{<<"moh-sound">>, props:get_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
-                ]),
+    Profile = conference_profile(AccountId, ConfProps),
     kzt_util:set_conference_profile(Profile, Call).
+
+-spec conference_profile(kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
+conference_profile(AccountId, ConfProps) ->
+    kz_json:from_list(
+      [{<<"rate">>, props:get_integer_value('rate', ConfProps, 8000)}
+      ,{<<"caller-controls">>, props:get_integer_value('callerControls', ConfProps, 8000)}
+      ,{<<"interval">>, props:get_integer_value('interval', ConfProps, 20)}
+      ,{<<"energy-level">>, props:get_integer_value('energyLevel', ConfProps, 20)}
+      ,{<<"member-flags">>, conference_member_flags(ConfProps)}
+      ,{<<"conference-flags">>, conference_flags(ConfProps)}
+      ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
+      ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
+      ,{<<"max-members">>, get_max_participants(ConfProps)}
+      ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
+      ,{<<"announce-count">>, props:get_integer_value('announceCount', ConfProps)}
+      ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
+      ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
+      ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_privacy:anonymous_caller_id_name(AccountId))}
+      ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, kz_privacy:anonymous_caller_id_number(AccountId))}
+       %% ,{<<"suppress-events">>, <<>>} %% add events to make FS less chatty
+      ,{<<"moh-sound">>, props:get_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
+      ]).
 
 conference_flags(ConfProps) ->
     case props:get_is_true('startConferenceOnEnter', ConfProps, 'true') of
