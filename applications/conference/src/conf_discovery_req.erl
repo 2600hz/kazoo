@@ -31,16 +31,18 @@ create_conference(DiscoveryReq, Call) ->
 -spec create_conference(kapi_conference:discovery_req(), kapps_call:call(), kz_term:api_ne_binary()) -> kapps_conference:conference().
 create_conference(DiscoveryReq, Call, 'undefined') ->
     lager:debug("using discovery to build conference"),
-    kapps_conference:set_call(Call, kapps_conference:from_json(DiscoveryReq));
+    Conference = kapps_conference:set_call(Call, kapps_conference:new()),
+    kapps_conference:from_json(DiscoveryReq, Conference);
 create_conference(DiscoveryReq, Call, ConferenceId) ->
+    Conference = kapps_conference:set_call(Call, kapps_conference:new()),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), ConferenceId) of
         {'ok', Doc} ->
             lager:debug("discovery request contained a valid conference id, building object"),
             WithConferenceDoc = kz_json:set_value(<<"Conference-Doc">>, Doc, DiscoveryReq),
-            kapps_conference:set_call(Call, kapps_conference:from_json(WithConferenceDoc));
+            kapps_conference:from_json(WithConferenceDoc, Conference);
         _Else ->
             lager:debug("could not find specified conference id ~s: ~p", [ConferenceId, _Else]),
-            kapps_conference:set_call(Call, kapps_conference:from_json(cleanup_conference_doc(DiscoveryReq)))
+            kapps_conference:from_json(cleanup_conference_doc(DiscoveryReq), Conference)
     end.
 
 -spec cleanup_conference_doc(kapi_conference:discovery_req()) -> kapi_conference:discovery_req().
