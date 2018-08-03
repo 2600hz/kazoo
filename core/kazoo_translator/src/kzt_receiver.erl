@@ -591,7 +591,8 @@ process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
                     wait_for_conference_events(
                       update_offnet_timers(
                         OffnetReq#dial_req{call_timeout='undefined'}
-                       ));
+                       )
+                     );
                 _App ->
                     lager:debug("ignoring app ~s", [_App]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))
@@ -613,21 +614,11 @@ process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
             {'ok', Call};
 
         {<<"conference">>, <<"config_req">>} ->
-            ConfigName = kz_json:get_value(<<"Profile">>, JObj),
-            lager:debug("conference profile ~s requested", [ConfigName]),
-
-            Profile = kzt_util:get_conference_profile(Call),
-            Resp = [{<<"Profiles">>, kz_json:from_list([{ConfigName, Profile}])}
-                   ,{<<"Caller-Controls">>, kzt_util:get_caller_controls(Call)}
-                   ,{<<"Advertise">>, kzt_util:get_advertise(Call)}
-                   ,{<<"Chat-Permissions">>, kzt_util:get_chat_permissions(Call)}
-                   ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            kapi_conference:publish_config_resp(kz_api:server_id(JObj)
-                                               ,Resp
-                                               ),
-            wait_for_conference_events(update_offnet_timers(OffnetReq));
+            wait_for_conference_events(
+              update_offnet_timers(
+                OffnetReq#dial_req{call_timeout='undefined'}
+               )
+             );
         {_Cat, _Name} ->
             lager:debug("unhandled event for ~s: ~s: ~s"
                        ,[_Cat, _Name, kz_call_event:application_name(JObj)]
