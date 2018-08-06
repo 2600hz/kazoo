@@ -67,7 +67,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.conferences">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.conferences">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.conferences">>, ?MODULE, 'delete'),
-    ok.
+    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.*.conferences">>
+                              ,'crossbar_services'
+                              ,'reconcile'
+                              ),
+    'ok'.
 
 %%%=============================================================================
 %%% REST API Callbacks

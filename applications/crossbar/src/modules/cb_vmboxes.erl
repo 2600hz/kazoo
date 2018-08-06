@@ -68,7 +68,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    ok.
+    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.*.vmboxes">>
+                              ,'crossbar_services'
+                              ,'reconcile'
+                              ),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the

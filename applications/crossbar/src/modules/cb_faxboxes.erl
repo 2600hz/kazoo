@@ -73,7 +73,12 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.faxboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.faxboxes">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.faxboxes">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.faxboxes">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.*.faxboxes">>
+                              ,'crossbar_services'
+                              ,'reconcile'
+                              ),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
