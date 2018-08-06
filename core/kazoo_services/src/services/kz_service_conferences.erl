@@ -39,7 +39,7 @@ reconcile(Services) ->
 
 -spec reconcile(kz_services:services(), kz_json:object()) -> kz_services:services().
 reconcile(Services, JObj) ->
-    Routines = [fun reconcile_faxbox/2],
+    Routines = [fun reconcile_conference/2],
     lists:foldl(fun(F, S) ->
                         F(S, JObj)
                 end
@@ -47,8 +47,8 @@ reconcile(Services, JObj) ->
                ,Routines
                ).
 
--spec reconcile_faxbox(kz_services:services(), kz_json:object()) -> kz_services:services().
-reconcile_faxbox(Services, JObj) ->
+-spec reconcile_conference(kz_services:services(), kz_json:object()) -> kz_services:services().
+reconcile_conference(Services, JObj) ->
     case kz_doc:type(JObj) =:= <<"conference">> of
         'false' -> Services;
         'true' ->
