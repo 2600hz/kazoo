@@ -60,9 +60,9 @@ endpoint recording settings
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`any` | settings for any calls to/from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`inbound` | settings for inbound calls to the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`outbound` | settings for outbound calls from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
 
 ### call_recording.parameters
 
@@ -83,9 +83,9 @@ Key | Description | Type | Default | Required | Support Level
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`any` | settings for calls from any network | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`offnet` | settings for calls from offnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`onnet` | settings for calls from onnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
 
 ### call_waiting
 
