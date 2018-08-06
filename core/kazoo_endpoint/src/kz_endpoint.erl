@@ -395,7 +395,6 @@ merge_call_recording(K, JObj, Acc, List) ->
     Fun = fun(K1, V1) -> merge_call_recording(K1, V1, Any) end,
     kz_json:set_value(K, lists:foldl(Fun, kz_json:delete_key(<<"any">>, JObj), List), Acc).
 
-
 -spec get_account_record_call_properties(kz_term:api_object()) -> kz_json:object().
 get_account_record_call_properties(JObj) ->
     kz_json:foldl(fun(K, V, Acc) ->
