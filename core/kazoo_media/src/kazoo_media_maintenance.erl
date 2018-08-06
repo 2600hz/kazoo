@@ -279,8 +279,12 @@ migrate_system_config(ConfigJObj) ->
                                     ,ConfigJObj
                                     ),
     io:format("saving updated media config~n", []),
-    {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedMediaJObj),
-    'ok'.
+    case kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedMediaJObj) of
+        {'ok', _} -> 'ok';
+        {'error', 'conflict'} ->
+            io:format(" conflict saving media config, trying again"),
+            migrate_system_config(ConfigJObj)
+    end.
 
 -spec get_media_config_doc() -> {'ok', kz_json:object()}.
 get_media_config_doc() ->

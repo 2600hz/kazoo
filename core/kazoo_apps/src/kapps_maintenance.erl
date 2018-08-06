@@ -131,6 +131,7 @@ migrate() ->
 migrate(Pause) ->
     _ = migrate_system(),
     _ = kapps_config:migrate(),
+    io:format("migrated system_config"),
 
     Databases = get_databases(),
     _ = migrate(Pause, Databases),
