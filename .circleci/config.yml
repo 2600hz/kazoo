@@ -58,7 +58,7 @@ jobs:
         # This branch if available
         - v1-dep-{{ .Branch }}-
         # Default branch if not
-        - v1-dep-master-
+        - v1-dep-4.2-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1-dep-
     # This is based on your 1.0 configuration file or project settings
@@ -79,7 +79,7 @@ jobs:
     # Test
     #   This would typically be a build job when using workflows, possibly combined with build
     # This is based on your 1.0 configuration file or project settings
-    - run: echo -e "\nexport CHANGED=\$(git --no-pager diff --name-only HEAD origin/master -- applications core | xargs readlink -e)\nexport CHANGED_SWAGGER=`[[ ! -z $(git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json) ]] && echo $(readlink -e applications/crossbar/priv/api/swagger.json)`\n" >> $BASH_ENV
+    - run: echo -e "\nexport CHANGED=\$(git --no-pager diff --name-only HEAD origin/4.2 -- applications core | xargs readlink -e)\nexport CHANGED_SWAGGER=`[[ ! -z $(git --no-pager diff --name-only HEAD origin/4.2 -- applications/crossbar/priv/api/swagger.json) ]] && echo $(readlink -e applications/crossbar/priv/api/swagger.json)`\n" >> $BASH_ENV
     - run: echo $CHANGED
     - run: ./scripts/state-of-docs.sh || true
     - run: ./scripts/code_checks.bash $CHANGED
