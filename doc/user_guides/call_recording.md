@@ -50,7 +50,7 @@ Effectively this gives you a matrix on the endpoint to control how call recordin
 1. `inbound` + `offnet`: Calls originating from offnet (upstream carriers typically) to the endpoint
 2. `inbound` + `onnet`: Calls originating from onnet (typically another endpoint in the account) to the endpoint
 3. `outbound` + `offnet`: Calls originating from the endpoint destined for the upstream carriers
-4. `outbound` + `onnet`: Calls originating from the endpoint destined for another endpoint on the accuont
+4. `outbound` + `onnet`: Calls originating from the endpoint destined for another endpoint on the account
 
 Using `any` for either setting will invoke recording for both options of that setting.
 
