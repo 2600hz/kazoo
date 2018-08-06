@@ -1,4 +1,26 @@
 {
+    "conferences": {
+        "_all": {
+            "activation_charge": {},
+            "as": {},
+            "discounts": {
+                "maximum": {},
+                "rate": {}
+            },
+            "exceptions": {},
+            "minimum": {},
+            "rate": {}
+        },
+        "conference": {
+            "activation_charge": {},
+            "discounts": {
+                "maximum": {},
+                "rate": {}
+            },
+            "minimum": {},
+            "rate": {}
+        }
+    },
     "devices": {
         "_all": {
             "activation_charge": {},
@@ -84,6 +106,28 @@
             "rate": {}
         },
         "softphone": {
+            "activation_charge": {},
+            "discounts": {
+                "maximum": {},
+                "rate": {}
+            },
+            "minimum": {},
+            "rate": {}
+        }
+    },
+    "faxes": {
+        "_all": {
+            "activation_charge": {},
+            "as": {},
+            "discounts": {
+                "maximum": {},
+                "rate": {}
+            },
+            "exceptions": {},
+            "minimum": {},
+            "rate": {}
+        },
+        "faxbox": {
             "activation_charge": {},
             "discounts": {
                 "maximum": {},
@@ -271,6 +315,28 @@
             "rate": {}
         },
         "user": {
+            "activation_charge": {},
+            "discounts": {
+                "maximum": {},
+                "rate": {}
+            },
+            "minimum": {},
+            "rate": {}
+        }
+    },
+    "voicemails": {
+        "_all": {
+            "activation_charge": {},
+            "as": {},
+            "discounts": {
+                "maximum": {},
+                "rate": {}
+            },
+            "exceptions": {},
+            "minimum": {},
+            "rate": {}
+        },
+        "vmbox": {
             "activation_charge": {},
             "discounts": {
                 "maximum": {},

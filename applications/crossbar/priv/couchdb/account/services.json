@@ -26,7 +26,7 @@
             "reduce": "_sum"
         },
         "voicemails": {
-            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted || doc.enabled == false) return; emit('mailbox', 1); }",
+            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted || doc.enabled == false) return; emit('vmbox', 1); }",
             "reduce": "_sum"
         }
     }

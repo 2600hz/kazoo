@@ -49,5 +49,5 @@ reconcile(Services, JObj) ->
 
 -spec reconcile_mailbox(kz_services:services(), kz_json:object()) -> kz_services:services().
 reconcile_mailbox(Services, _JObj) ->
-    Quantity = kz_services:updated_quantity(?SERVICE_CATEGORY, <<"mailbox">>, Services),
-    kz_services:update(?SERVICE_CATEGORY, <<"mailbox">>, Quantity+1, Services).
+    Quantity = kz_services:updated_quantity(?SERVICE_CATEGORY, <<"vmbox">>, Services),
+    kz_services:update(?SERVICE_CATEGORY, <<"vmbox">>, Quantity+1, Services).
