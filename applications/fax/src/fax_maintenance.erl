@@ -444,7 +444,7 @@ load_smtp_attachment(DocId, Filename, FileContents) ->
     CT = kz_mime:from_filename(Filename),
     case kz_datamgr:open_cache_doc(?KZ_FAXES_DB, DocId) of
         {'ok', JObj} ->
-            case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, JObj, FileContents, CT) of
+            case kz_outbound_fax:save(?KZ_FAXES_DB, JObj, FileContents, CT) of
                 {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
                 {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
             end;
