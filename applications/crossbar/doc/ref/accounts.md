@@ -60,9 +60,9 @@ endpoint recording settings
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`any` | settings for any calls to/from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`inbound` | settings for inbound calls to the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`outbound` | settings for outbound calls from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
 
 ### call_recording.parameters
 

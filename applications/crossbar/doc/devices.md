@@ -37,7 +37,7 @@ Key | Description | Type | Default | Required | Support Level
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false` | `supported`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |
-`hotdesk` | The hotdesk status of this device | `object()` |   | `false` |  
+`hotdesk` | The hotdesk status of this device | `object()` |   | `false` |
 `language` | The language for the device | `string()` |   | `false` | `supported`
 `mac_address` | The MAC Address of the device (if applicable) | `string()` |   | `false` | `supported`
 `media` | Configure audio/video/etc media options for this device | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |
@@ -91,9 +91,9 @@ endpoint recording settings
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
-`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
-`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
+`any` | settings for any calls to/from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
+`inbound` | settings for inbound calls to the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
+`outbound` | settings for outbound calls from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
 
 ### call_recording.parameters
 

@@ -1008,13 +1008,16 @@
             "description": "endpoint recording settings",
             "properties": {
                 "any": {
-                    "$ref": "#/definitions/call_recording.source"
+                    "$ref": "#/definitions/call_recording.source",
+                    "description": "settings for any calls to/from the endpoint"
                 },
                 "inbound": {
-                    "$ref": "#/definitions/call_recording.source"
+                    "$ref": "#/definitions/call_recording.source",
+                    "description": "settings for inbound calls to the endpoint"
                 },
                 "outbound": {
-                    "$ref": "#/definitions/call_recording.source"
+                    "$ref": "#/definitions/call_recording.source",
+                    "description": "settings for outbound calls from the endpoint"
                 }
             },
             "type": "object"
