@@ -83,9 +83,9 @@ Key | Description | Type | Default | Required | Support Level
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`any` | settings for calls from any network | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`offnet` | settings for calls from offnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`onnet` | settings for calls from onnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
 
 ### call_waiting
 
