@@ -143,7 +143,7 @@ If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and
 
 Users can dial local numbers, just as they do with the PSTN, by providing Kazoo with `dial_plan` regular expressions. These regexes will be used on the dialed numbers to correct them to properly routable numbers.
 
-It is possible to set these regexes on an account, user, or device basis. All that needs doing is adding a `dial_plan` key at the root level of the account, user, or device document. Kazoo will then apply the regexes in order, preferring the calling device's, then user's (if the calling device has an `owner_id` set), and finally the account's dialplan. Failing any of those, the system `e164_convertors` will be employed.
+It is possible to set these regexes on an account, user, or device basis. All that needs doing is adding a `dial_plan` key at the root level of the account, user, or device document. Kazoo will then apply the regexes in order, preferring the calling device's, then user's (if the calling device has an `owner_id` set), and finally the account's dialplan. Failing any of those, the system `e164_converters` will be employed.
 
 !!! warning
     It is possible that these `dial_plan` rules will interfere with extension dialing within an account. Please take common extension length into consideration when creating these `dial_plan` rules.
