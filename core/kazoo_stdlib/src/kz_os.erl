@@ -20,14 +20,16 @@
 -define(DEFAULT_READ_MODE, {'line', 1000}).
 
 %% @equiv cmd(Command, [])
--spec cmd(kz_term:ne_binary()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+-spec cmd(iodata()) ->
+                 {'ok', kz_term:ne_binary()} |
+                 {'error', any(), binary()}.
 cmd(Command) ->
     cmd(Command, []).
 
 %% @equiv cmd(Command, Args, [])
--spec cmd(kz_term:ne_binary(), kz_term:proplist()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+-spec cmd(iodata(), kz_term:proplist()) ->
+                 {'ok', kz_term:ne_binary()} |
+                 {'error', any(), binary()}.
 cmd(Command, Args) ->
     cmd(Command, Args, []).
 
@@ -75,8 +77,9 @@ cmd(Command, Args) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec cmd(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+-spec cmd(iodata(), kz_term:proplist(), kz_term:proplist()) ->
+                 {'ok', kz_term:ne_binary()} |
+                 {'error', any(), binary()}.
 cmd(Command, Args, Options) ->
     Owner = props:get_value(<<"owner">>, Options, self()),
     CmdTimeout = props:get_value(<<"absolute_timeout">>, Options, ?DEFAULT_ABSOLUTE_TIMEOUT),
@@ -117,8 +120,11 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
             {'error', 'absolute_timeout', <<>>}
     end.
 
--spec run_cmd(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) ->
-                     any().
+-spec run_cmd(iodata(), kz_term:proplist(), kz_term:proplist()) ->
+                     {{'ok', kz_term:ne_binary()} |
+                      {'error', atom(), kz_term:ne_binary()}
+                     ,pid()
+                     }.
 run_cmd(Command, Args, Options) ->
     OwnerPid = props:get_value(<<"owner">>, Options),
     OwnerRef = erlang:monitor('process', OwnerPid),
@@ -138,7 +144,7 @@ run_cmd(Command, Args, Options) ->
     OwnerPid ! {Out, self()}.
 
 -spec cmd_read({port(), integer(), integer(), reference()}, kz_term:binary()) ->
-                      {'ok', kz_term:ne_binary()}|
+                      {'ok', kz_term:ne_binary()} |
                       {'error', atom(), kz_term:ne_binary()}.
 cmd_read({Port, _MaxSize, Timeout, OwnerRef}=LoopParams, Acc) ->
     receive
