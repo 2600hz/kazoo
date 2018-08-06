@@ -261,7 +261,7 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                             %% timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
                             gb_sets:subtract(Leftovers, AuthoritativePNs)
                     end
-                   ,fun (Set1, Set2) -> gb_sets:union(Set1, Set2) end
+                   ,fun (Set1, Set2) -> gb_sets:intersection(Set1, Set2) end
                    ,DisplayPNs
                    ,knm_util:get_all_number_dbs()
                    ,Malt
