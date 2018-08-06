@@ -59,6 +59,8 @@
 
 -export([init_system/0, init_dbs/0, register_account_views/0]).
 
+-export([check_release/0]).
+
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 -include("kazoo_apps.hrl").
 
@@ -1133,3 +1135,71 @@ init_system() ->
     init_dbs(),
     register_account_views(),
     lager:notice("system initialized").
+
+-spec check_release() -> 'ok' | 'error'.
+check_release() ->
+    kz_util:put_callid('check_release'),
+    Checks = [fun kapps_started/0
+             ,fun master_account_created/0
+             ,fun migration_4_0_ran/0
+             ,fun migration_ran/0
+             ,fun kazoo_proper_maintenance:run_seq_modules/0
+             ],
+    try lists:foreach(fun(F) -> F() end, Checks) of
+        'ok' ->
+            lager:info("check_release/0 succeeded"),
+            init:stop()
+    catch
+        'throw':Error ->
+            lager:error("check_release/0 failed: ~p", [Error]),
+            halt(1);
+        _E:_R ->
+            lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
+            halt(1)
+    end.
+
+-spec kapps_started() -> boolean().
+kapps_started() ->
+    lager:info("checking that kapps have started"),
+    kapps_started(180 * ?MILLISECONDS_IN_SECOND).
+
+-spec kapps_started(integer()) -> 'true'.
+kapps_started(Timeout) when Timeout > 0 ->
+    kapps_controller:ready()
+        orelse begin
+                   timer:sleep(100),
+                   kapps_started(Timeout - 100)
+               end;
+kapps_started(_Timeout) ->
+    lager:error("timed out waiting for kapps to start"),
+    throw({'error', 'timeout'}).
+
+-spec master_account_created() -> 'true'.
+master_account_created() ->
+    lager:info("trying to create the master account"),
+    case rpc:call(node()
+                 ,'crossbar_maintenance'
+                 ,'create_account'
+                 ,[<<"compte_maitre">>
+                  ,<<"royaume">>
+                  ,<<"superduperuser">>
+                  ,<<"pwd!">>
+                  ]
+                 )
+    of
+        'ok' ->
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            lager:info("created master account ~s", [MasterAccountId]),
+            'true' = kzd_accounts:is_superduper_admin(MasterAccountId);
+        'failed' -> throw({'error', 'create_account'})
+    end.
+
+-spec migration_4_0_ran() -> boolean().
+migration_4_0_ran() ->
+    lager:info("migrating to 4.x"),
+    'no_return' =:= migrate_to_4_0().
+
+-spec migration_ran() -> boolean().
+migration_ran() ->
+    lager:info("migrating"),
+    'no_return' =:= migrate().
