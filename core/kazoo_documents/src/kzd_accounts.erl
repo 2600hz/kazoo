@@ -745,6 +745,11 @@ set_allow_number_additions(JObj, IsAllowed) ->
     kz_json:set_value([<<"pvt_wnm_allow_additions">>], kz_term:is_true(IsAllowed), JObj).
 
 -spec is_superduper_admin(doc()) -> boolean().
+is_superduper_admin(?NE_BINARY=AccountId) ->
+    case fetch(AccountId) of
+        {'ok', AccountJObj} -> is_superduper_admin(AccountJObj);
+        {'error', _} -> 'false'
+    end;
 is_superduper_admin(JObj) ->
     kz_json:is_true([<<"pvt_superduper_admin">>], JObj).
 
