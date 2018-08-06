@@ -1069,13 +1069,16 @@
         "call_recording.source": {
             "properties": {
                 "any": {
-                    "$ref": "#/definitions/call_recording.parameters"
+                    "$ref": "#/definitions/call_recording.parameters",
+                    "description": "settings for calls from any network"
                 },
                 "offnet": {
-                    "$ref": "#/definitions/call_recording.parameters"
+                    "$ref": "#/definitions/call_recording.parameters",
+                    "description": "settings for calls from offnet networks"
                 },
                 "onnet": {
-                    "$ref": "#/definitions/call_recording.parameters"
+                    "$ref": "#/definitions/call_recording.parameters",
+                    "description": "settings for calls from onnet networks"
                 }
             },
             "type": "object"
