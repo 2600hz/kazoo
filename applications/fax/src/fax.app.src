@@ -1,7 +1,7 @@
 {application,fax,
              [{applications,[cowboy,escalus,exml,gen_smtp,kazoo,kazoo_amqp,
                              kazoo_apps,kazoo_caches,kazoo_call,kazoo_config,
-                             kazoo_convert,kazoo_data,kazoo_documents,
+                             kazoo_data,kazoo_documents,kazoo_fax,
                              kazoo_globals,kazoo_media,kazoo_modb,
                              kazoo_number_manager,kazoo_oauth,kazoo_schemas,
                              kazoo_services,kazoo_stdlib,kazoo_web,kernel,
