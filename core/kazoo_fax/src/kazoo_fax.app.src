@@ -12,6 +12,5 @@
                  , kazoo_data
                  , kazoo_config
                  , lager
-                 ]},
-  {mod, {kazoo_fax_app, []}}
+                 ]}
  ]}.
