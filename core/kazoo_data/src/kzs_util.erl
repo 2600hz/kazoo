@@ -7,6 +7,7 @@
 
 -export([db_classification/1
         ,db_priority/1
+        ,bind_db_classify/3, unbind_db_classify/3
         ]).
 
 -export([get_view_json/1, get_view_json/2, get_views_json/2]).
@@ -79,11 +80,33 @@ db_classification(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 'account';
 db_classification(?MATCH_PROVISIONER_RAW(_AccountId)) -> 'provisioner';
 db_classification(?MATCH_PROVISIONER_ENCODED(_AccountId)) -> 'provisioner';
 db_classification(?MATCH_PROVISIONER_encoded(_AccountId)) -> 'provisioner';
-db_classification(_Database) ->
+db_classification(Database) ->
+    case kazoo_bindings:map(binding_db_classify(Database), []) of
+        [] -> unknown_db_classification(Database);
+        Classifications -> find_first(Database, Classifications)
+    end.
+
+find_first(Database, []) -> unknown_db_classification(Database);
+find_first(Database, ['undefined' | Cs]) -> find_first(Database, Cs);
+find_first(_Database, [Classification | _]) -> Classification.
+
+unknown_db_classification(_Database) ->
     lager:warning("unknown type for database ~s", [_Database]),
     {current_stacktrace, ST} = erlang:process_info(self(),current_stacktrace),
     kz_util:log_stacktrace(ST),
     'undefined'.
+
+binding_db_classify(Database) ->
+    Encoded = kz_amqp_util:encode(Database),
+    <<"db.classify.", Encoded/binary>>.
+
+-spec bind_db_classify(kz_term:ne_binary(), module(), atom()) -> any().
+bind_db_classify(Database, M, F) ->
+    kazoo_bindings:bind(binding_db_classify(Database), M, F).
+
+-spec unbind_db_classify(kz_term:ne_binary(), module(), atom()) -> any().
+unbind_db_classify(Database, M, F) ->
+    kazoo_bindings:unbind(binding_db_classify(Database), M, F).
 
 %%------------------------------------------------------------------------------
 %% @doc
