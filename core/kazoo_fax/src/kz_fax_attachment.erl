@@ -88,7 +88,7 @@ update_fax_props(Doc, Props) ->
                                   [{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}] | [].
 maybe_store_fax_tiff(Content) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_tiff">>, true) of
-        'true' -> [Content, <<"image/tiff">>, ?FAX_FILENAME];
+        'true' -> [{Content, <<"image/tiff">>, ?FAX_FILENAME}];
         'false' -> []
     end.
 
