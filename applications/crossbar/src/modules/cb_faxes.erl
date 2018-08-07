@@ -618,7 +618,7 @@ do_load_fax_binary(FaxId, Folder, Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
-            case kzd_fax:fetch_attachment_format(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
+            case kz_fax_attachment:fetch(Format, cb_context:account_db(Context1), cb_context:doc(Context1)) of
                 {'error', Error} ->
                     crossbar_doc:handle_datamgr_errors(Error, FaxId, Context1);
                 {'ok', Content, ContentType, Doc} ->
@@ -701,7 +701,7 @@ save_multipart_attachment(Context, [{_Filename, FileJObj} | _Others]) ->
                         ,kz_term:api_binary()
                         ,kz_term:api_binary()) -> cb_context:context().
 prepare_attachment(Context, Doc, ContentType, Content) ->
-    case kz_outbound_fax:save(?KZ_FAXES_DB, Doc, Content, ContentType) of
+    case kz_fax_attachment:save(?KZ_FAXES_DB, Doc, Content, ContentType) of
         {'ok', NewDoc} ->
             KVs = [{<<"pvt_job_status">>, <<"pending">>}
                   ,{<<"pvt_modified">>, kz_time:now_s()}

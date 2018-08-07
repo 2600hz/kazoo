@@ -215,7 +215,7 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     lager:debug("accessing fax attachment ~s at ~s", [Db, FaxId]),
     teletype_util:send_update(DataJObj, <<"pending">>),
     Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
-    case kzd_fax:fetch_attachment_format(Format, Db, FaxJObj) of
+    case kz_fax_attachment:fetch(Format, Db, FaxJObj) of
         {'ok', Content, ContentType, _Doc} ->
             Filename = get_file_name(Macros, get_extension(Format, ContentType)),
             [{ContentType, Filename, Content}];
