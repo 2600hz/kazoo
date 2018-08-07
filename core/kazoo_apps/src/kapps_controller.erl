@@ -69,9 +69,18 @@ start_link() ->
 
 -spec ready() -> boolean().
 ready() ->
-    Configured = start_which_kapps(),
-    Running = [kz_term:to_binary(App) || App <- running_apps()],
-    lists:subtract(Configured, Running) =:= [].
+    ready('false').
+
+-spec ready(boolean()) -> boolean().
+ready(Verbose) ->
+    Configured = [kz_term:to_binary(App) || App <- start_which_kapps(Verbose)],
+    Running = [kz_term:to_binary(App) || App <- running_apps(), is_atom(App)],
+
+    0 =:= sets:size(
+            sets:subtract(sets:from_list(Configured)
+                         ,sets:from_list(Running)
+                         )
+           ).
 
 -spec start_default_apps() -> [{atom(), 'ok' | {'error', any()}}].
 start_default_apps() ->
@@ -166,52 +175,66 @@ initialize_kapps() ->
 
 -spec start_which_kapps() -> [kz_term:ne_binary() | atom() | nonempty_string()].
 start_which_kapps() ->
-    Routines = [fun maybe_start_from_env/0
-               ,fun maybe_start_from_node_config/0
-               ,fun maybe_start_from_node_name/0
-               ,fun start_from_default_config/0
+    start_which_kapps('true').
+
+start_which_kapps(Verbose) ->
+    Routines = [fun maybe_start_from_env/1
+               ,fun maybe_start_from_node_config/1
+               ,fun maybe_start_from_node_name/1
+               ,fun start_from_default_config/1
                ],
-    lists:foldl(fun(F, 'false') -> F();
+    lists:foldl(fun(F, 'false') -> F(Verbose);
                    (_, Apps) -> Apps
                 end
                ,'false'
                ,Routines
                ).
 
--spec maybe_start_from_env() -> 'false' | [nonempty_string()].
-maybe_start_from_env() ->
+-spec maybe_start_from_env(boolean()) -> 'false' | [nonempty_string()].
+maybe_start_from_env(Verbose) ->
     case os:getenv("KAZOO_APPS", "noenv") of
         "noenv" -> 'false';
         KazooApps ->
-            lager:info("starting applications specified in environment variable KAZOO_APPS: ~s"
-                      ,[KazooApps]),
+            log_verbose(Verbose
+                       ,"starting applications specified in environment variable KAZOO_APPS: ~s"
+                       ,[KazooApps]
+                       ),
             string:tokens(KazooApps, ", ")
     end.
 
--spec maybe_start_from_node_name() -> 'false' | kz_term:atoms().
-maybe_start_from_node_name() ->
+log_verbose('false', _Fmt) -> 'ok';
+log_verbose('true', Fmt) ->
+    lager:info(Fmt).
+
+log_verbose('false', _Fmt, _Args) -> 'ok';
+log_verbose('true', Fmt, Args) ->
+    lager:info(Fmt, Args).
+
+-spec maybe_start_from_node_name(boolean()) -> 'false' | kz_term:atoms().
+maybe_start_from_node_name(Verbose) ->
     KApp = kapp_from_node_name(),
     case is_kapp(KApp) of
         'false' -> 'false';
         _Else ->
-            lager:info("starting application based on node name: ~s", [KApp]),
+            log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
             [KApp]
     end.
 
--spec maybe_start_from_node_config() -> 'false' | [kz_term:ne_binary() | atom()].
-maybe_start_from_node_config() ->
+-spec maybe_start_from_node_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
+maybe_start_from_node_config(Verbose) ->
     case kapps_config:get_node_value(?MODULE, <<"kapps">>) of
         'undefined' -> 'false';
         KazooApps ->
-            lager:info("starting applications configured specifically for this node: ~s"
-                      ,[kz_binary:join(KazooApps, <<", ">>)]
-                      ),
+            log_verbose(Verbose
+                       ,"starting applications configured specifically for this node: ~s"
+                       ,[kz_binary:join(KazooApps, <<", ">>)]
+                       ),
             KazooApps
     end.
 
--spec start_from_default_config() -> 'false' | [kz_term:ne_binary() | atom()].
-start_from_default_config() ->
-    lager:info("starting applications from default configuration"),
+-spec start_from_default_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
+start_from_default_config(Verbose) ->
+    log_verbose(Verbose, "starting applications from default configuration"),
     kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS).
 
 -spec kapp_from_node_name() -> atom().

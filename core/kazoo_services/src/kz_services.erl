@@ -448,7 +448,8 @@ save_doc(JObj) ->
 delete(Account) ->
     AccountId = kz_util:format_account_id(Account),
     %% TODO: support other bookkeepers, and just cancel subscriptions....
-    _ = (catch braintree_customer:delete(AccountId)),
+    _ = braintree:is_configured()
+        andalso (catch braintree_customer:delete(AccountId)),
     case fetch_services_doc(AccountId, true) of
         {'ok', JObj} ->
             lager:debug("marking services for account ~s as deleted", [AccountId]),
