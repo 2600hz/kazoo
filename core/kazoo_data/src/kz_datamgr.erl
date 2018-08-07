@@ -391,7 +391,8 @@ db_view_update(DbName, Views) ->
 db_view_update(DbName, Views0, Remove) when ?VALID_DBNAME(DbName) ->
     case lists:keymap(fun maybe_adapt_multilines/1, 2, Views0) of
         [] -> 'false';
-        Views ->  kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
+        Views ->
+            kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
     end;
 db_view_update(DbName, Views, Remove) ->
     case maybe_convert_dbname(DbName) of

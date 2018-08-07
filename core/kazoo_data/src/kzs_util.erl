@@ -81,7 +81,7 @@ db_classification(?MATCH_PROVISIONER_RAW(_AccountId)) -> 'provisioner';
 db_classification(?MATCH_PROVISIONER_ENCODED(_AccountId)) -> 'provisioner';
 db_classification(?MATCH_PROVISIONER_encoded(_AccountId)) -> 'provisioner';
 db_classification(Database) ->
-    case kazoo_bindings:map(binding_db_classify(Database), []) of
+    case kazoo_bindings:map(binding_db_classify(Database), [Database]) of
         [] -> unknown_db_classification(Database);
         Classifications -> find_first(Database, Classifications)
     end.
