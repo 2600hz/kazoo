@@ -211,6 +211,18 @@ calc_service_updates(Context, <<"branding">>) ->
 calc_service_updates(Context, <<"support">>) ->
     Services = fetch_service(Context),
     kz_service_ledgers:reconcile(Services, <<"support">>);
+calc_service_updates(Context, <<"conference">>) ->
+    JObj = cb_context:doc(Context),
+    Services = fetch_service(Context),
+    kz_service_conferences:reconcile(Services, JObj);
+calc_service_updates(Context, <<"faxbox">>) ->
+    JObj = cb_context:doc(Context),
+    Services = fetch_service(Context),
+    kz_service_faxes:reconcile(Services, JObj);
+calc_service_updates(Context, <<"vmbox">>) ->
+    JObj = cb_context:doc(Context),
+    Services = fetch_service(Context),
+    kz_service_voicemails:reconcile(Services, JObj);
 calc_service_updates(_Context, _Type) ->
     lager:warning("unknown type ~p, cannot calculate service updates", [_Type]),
     'undefined'.
