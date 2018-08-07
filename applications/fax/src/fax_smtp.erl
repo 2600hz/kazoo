@@ -260,7 +260,7 @@ handle_message(#state{filename=Filename
     ContentType = kz_mime:from_filename(Filename),
     case file:read_file(Filename) of
         {'ok', Content} ->
-            case kz_fax_attachment:save(?KZ_FAXES_DB, Doc, Content, ContentType) of
+            case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, Doc, Content, ContentType) of
                 {'ok', NewDoc} ->
                     Updates = [{<<"pvt_job_status">>, <<"pending">>}
                               ,{<<"pvt_modified">>, kz_time:now_s()}

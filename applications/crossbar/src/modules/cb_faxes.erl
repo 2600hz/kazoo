@@ -701,7 +701,7 @@ save_multipart_attachment(Context, [{_Filename, FileJObj} | _Others]) ->
                         ,kz_term:api_binary()
                         ,kz_term:api_binary()) -> cb_context:context().
 prepare_attachment(Context, Doc, ContentType, Content) ->
-    case kz_fax_attachment:save(?KZ_FAXES_DB, Doc, Content, ContentType) of
+    case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, Doc, Content, ContentType) of
         {'ok', NewDoc} ->
             KVs = [{<<"pvt_job_status">>, <<"pending">>}
                   ,{<<"pvt_modified">>, kz_time:now_s()}
