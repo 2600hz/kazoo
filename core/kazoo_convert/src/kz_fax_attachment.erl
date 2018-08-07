@@ -28,4 +28,4 @@ save(Db, Doc, Original, ContentType) ->
                    {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
                    {'error', kz_term:ne_binary()}.
 fetch(Format, Db, Doc) ->
-    kzd_fax:fetch(Format, Db, Doc).
+    kzd_fax:fetch_attachment_format(Format, Db, Doc).
