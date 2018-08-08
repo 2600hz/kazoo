@@ -1079,7 +1079,7 @@ delete_attachment(DbName, DocId, AName, Options) ->
     end.
 
 -spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
+                            kz_term:ne_binary() |
                             {'proxy', tuple()} |
                             {'error', any()}.
 attachment_url(DbName, DocId, AttachmentId) ->
