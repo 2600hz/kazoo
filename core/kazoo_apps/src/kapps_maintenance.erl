@@ -1153,12 +1153,12 @@ check_release() ->
     catch
         'throw':Error ->
             lager:error("check_release/0 failed: ~p", [Error]),
-            halt(1);
+            init:stop(1);
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
-            halt(1)
+            init:stop(1)
     end.
 
 -spec kapps_started() -> boolean().
