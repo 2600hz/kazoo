@@ -2006,7 +2006,7 @@
                     },
                     "type": "array"
                 },
-                "send_on": {
+                "send_at": {
                     "default": "channel_destroy",
                     "description": "Defines when send customer defined notification. For `callflow_exec` value notifications is send during calllfow execution. For `channel_destroy` value notification is send after channel(bridge) is destroed",
                     "enum": [

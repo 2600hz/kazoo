@@ -4,7 +4,7 @@
 %%%
 %%% <h4>Data options:</h4>
 %%% <dl>
-%%%   <dt>`send_on'</dt>
+%%%   <dt>`send_at'</dt>
 %%%   <dd>Defines when send customer defined notification. Possible values `callflow_exec' and `channel_destroy'.
 %%%   For `callflow_exec' value notifications is send during calllfow execution.
 %%%   For `channel_destroy' value notification is send after channel(bridge) is destroed.</dd>
@@ -41,10 +41,10 @@
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    case kz_json:get_ne_binary_value(<<"send_on">>, Data, <<"channel_destroy">>) of
+    case kz_json:get_ne_binary_value(<<"send_at">>, Data, <<"channel_destroy">>) of
         <<"channel_destroy">> -> add_handler(Data, Call);
         <<"callflow_exec">> -> send_notification(Call, [], Data);
-        Value -> lager:warning("Bad value of \"send_on\": \"~s\"", [Value])
+        Value -> lager:warning("Bad value of \"send_at\": \"~s\"", [Value])
     end,
     cf_exe:continue(Call).
 
