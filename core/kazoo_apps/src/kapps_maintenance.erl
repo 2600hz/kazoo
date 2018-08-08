@@ -1155,10 +1155,10 @@ check_release() ->
     catch
         'throw':Error ->
             lager:error("check_release/0 failed: ~p", [Error]),
-            halt(1);
+            init:stop(1);
         _E:_R ->
             lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
-            halt(1)
+            init:stop(1)
     end.
 
 -spec kapps_started() -> boolean().
