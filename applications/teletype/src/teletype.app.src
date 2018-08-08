@@ -1,7 +1,7 @@
 {application,teletype,
              [{applications,[cowlib,gen_smtp,kazoo,kazoo_amqp,kazoo_apps,
                              kazoo_bindings,kazoo_caches,kazoo_config,
-                             kazoo_data,kazoo_documents,kazoo_modb,
+                             kazoo_data,kazoo_documents,kazoo_fax,kazoo_modb,
                              kazoo_number_manager,kazoo_services,kazoo_stdlib,
                              kazoo_templates,kazoo_transactions,
                              kazoo_voicemail,kazoo_web,kernel,lager,poolboy,

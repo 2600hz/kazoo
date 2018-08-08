@@ -40,15 +40,9 @@ fax_test_() ->
              ,test_tiff_to_tiff_tuple_invalid()
              ,test_pdf_to_tiff_binary_invalid()
              ,test_pdf_to_tiff_tuple_invalid()
-             ,test_openoffice_to_pdf_binary_invalid()
-             ,test_openoffice_to_pdf_tuple_invalid()
-             ,test_openoffice_to_tiff_binary_invalid()
-             ,test_openoffice_to_tiff_tuple_invalid()
              ,test_tiff_to_pdf_nonexistent_file()
              ,test_tiff_to_tiff_nonexistent_file()
              ,test_pdf_to_tiff_nonexistent_file()
-             ,test_openoffice_to_pdf_nonexistent_file()
-             ,test_openoffice_to_tiff_nonexistent_file()
              ,test_invalid_conversion()
              ,test_empty_content()
              ,test_empty_filename()
@@ -401,53 +395,6 @@ test_pdf_to_tiff_tuple_invalid() ->
                   )
     ].
 
-test_openoffice_to_pdf_binary_invalid() ->
-    JobId = kz_binary:rand_hex(16),
-    From = read_test_file("invalid.docx"),
-    [?_assertMatch({'error', <<"convert command failed">>}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"application/pdf">>
-                                 ,From
-                                 ,[{<<"job_id">>, JobId}]
-                                 )
-                  )
-    ].
-
-test_openoffice_to_pdf_tuple_invalid() ->
-    JobId = kz_binary:rand_hex(16),
-    Src = copy_fixture_to_tmp("invalid.docx"),
-    [?_assertMatch({'error', <<"convert command failed">>}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"application/pdf">>
-                                 ,{'file', Src}
-                                 ,[{<<"job_id">>, JobId}]
-                                 )
-                  )
-    ].
-
-test_openoffice_to_tiff_binary_invalid() ->
-    JobId = kz_binary:rand_hex(16),
-    From = read_test_file("invalid.docx"),
-    [?_assertMatch({'error', <<"convert command failed">>}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"image/tiff">>
-                                 ,From
-                                 ,[{<<"job_id">>, JobId}]
-                                 )
-                  )].
-
-test_openoffice_to_tiff_tuple_invalid() ->
-    JobId = kz_binary:rand_hex(16),
-    Src = copy_fixture_to_tmp("invalid.docx"),
-    [?_assertMatch({'error', <<"convert command failed">>}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"image/tiff">>
-                                 ,{'file', Src}
-                                 ,[{<<"job_id">>, JobId}]
-                                 )
-                  )
-    ].
-
 test_tiff_to_pdf_nonexistent_file() ->
     JobId = kz_binary:rand_hex(16),
     [?_assertMatch({'error', <<"convert command failed">>}
@@ -480,29 +427,6 @@ test_pdf_to_tiff_nonexistent_file() ->
                                  )
                   )
     ].
-
-test_openoffice_to_pdf_nonexistent_file() ->
-    JobId = kz_binary:rand_hex(16),
-    [?_assertMatch({'error', <<"cannot rename from file: ", _/binary >>}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"application/pdf">>
-                                 ,{'file', <<"/tmp/no_a_file.docx">>}
-                                 ,[{<<"job_id">>, JobId}]
-                                 )
-                  )
-    ].
-
-test_openoffice_to_tiff_nonexistent_file() ->
-    JobId = kz_binary:rand_hex(16),
-    [?_assertMatch({'error', <<"cannot rename from file: ", _/binary >>}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"image/tiff">>
-                                 ,{'file', <<"/tmp/not_a_file.docx">>}
-                                 ,[{<<"job_id">>, JobId}]
-                                 )
-                  )
-    ].
-
 
 test_invalid_conversion() ->
     JobId = kz_binary:rand_hex(16),

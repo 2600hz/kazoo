@@ -68,7 +68,7 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
             raw_attachment_binary(?KZ_FAXES_DB, FaxId, Retries);
         {'ok', FaxJObj} ->
             Format = kapps_config:get_ne_binary(?CONVERT_CONFIG_CAT, [<<"fax">>, <<"attachment_format">>], <<"pdf">>),
-            case kzd_fax:fetch_attachment_format(Format, ?KZ_FAXES_DB, FaxJObj) of
+            case kz_fax_attachment:fetch(Format, ?KZ_FAXES_DB, FaxJObj) of
                 {'ok', Content, ContentType, _Doc} ->
                     {'ok', Content, ContentType};
                 {'error', Error} ->
