@@ -65,11 +65,11 @@ loop_count(Props) -> props:get_integer_value('loop', Props, 1).
 -spec finish_dtmf(kz_term:proplist()) -> kz_term:ne_binary().
 finish_dtmf(Props) -> finish_dtmf(Props, <<"#">>).
 
--spec finish_dtmf(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec finish_dtmf(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 finish_dtmf(Props, Default) when is_list(Props) ->
     case props:get_binary_value('finishOnKey', Props) of
         'undefined' -> Default;
-        <<>> -> Default;
+        <<>> -> 'undefined';
         DTMF ->
             'true' = lists:member(DTMF, ?ANY_DIGIT),
             DTMF
