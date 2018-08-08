@@ -42,8 +42,7 @@
 -spec default_on_first_fun(any()) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.
 
-
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call, FinishKey, Timeout, N) ->
     collect_dtmfs(Call
@@ -54,7 +53,7 @@ collect_dtmfs(Call, FinishKey, Timeout, N) ->
                  ,kzt_util:get_digits_collected(Call)
                  ).
 
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call
              ,FinishKey
@@ -70,7 +69,7 @@ collect_dtmfs(Call
                  ,kzt_util:get_digits_collected(Call)
                  ).
 
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function(), binary()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function(), binary()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call
              ,_FinishKey
@@ -111,7 +110,7 @@ collect_dtmfs(Call
             collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected)
     end.
 
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function(), binary(), kz_json:object()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function(), binary(), kz_json:object()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
     case kz_util:get_event_type(JObj) of
@@ -130,9 +129,9 @@ collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
             collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected)
     end.
 
--spec handle_dtmf(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function(), binary(), kz_term:api_binary()) ->
+-spec handle_dtmf(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function(), binary(), kz_term:api_ne_binary()) ->
                          collect_dtmfs_return().
-handle_dtmf(Call, FinishKey, _Timeout, _N, _OnFirstFun, _Collected, FinishKey) ->
+handle_dtmf(Call, FinishKey, _Timeout, _N, _OnFirstFun, _Collected, FinishKey) when is_binary(FinishKey) ->
     lager:info("finish key '~s' pressed", [FinishKey]),
     {'ok', 'dtmf_finish', Call};
 handle_dtmf(Call, _FinishKey, _Timeout, _N, _OnFirstFun, _Collected, <<>>) ->
