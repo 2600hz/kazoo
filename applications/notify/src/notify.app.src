@@ -1,6 +1,6 @@
 {application,notify,
              [{applications,[gen_smtp,inets,kazoo,kazoo_amqp,kazoo_apps,
-                             kazoo_data,kazoo_documents,kazoo_modb,
+                             kazoo_data,kazoo_documents,kazoo_fax,kazoo_modb,
                              kazoo_number_manager,kazoo_services,kazoo_stdlib,
                              kazoo_templates,kazoo_voicemail,kazoo_web,kernel,
                              lager,stdlib]},

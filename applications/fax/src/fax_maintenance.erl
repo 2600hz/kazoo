@@ -21,6 +21,7 @@
 -export([account_jobs/1, account_jobs/2]).
 -export([faxbox_jobs/1, faxbox_jobs/2]).
 -export([pending_jobs/0, active_jobs/0]).
+
 -export([load_smtp_attachment/2]).
 
 -define(DEFAULT_MIGRATE_OPTIONS, [{'allow_old_modb_creation', 'true'}]).
@@ -444,7 +445,7 @@ load_smtp_attachment(DocId, Filename, FileContents) ->
     CT = kz_mime:from_filename(Filename),
     case kz_datamgr:open_cache_doc(?KZ_FAXES_DB, DocId) of
         {'ok', JObj} ->
-            case kzd_fax:save_outbound_fax(?KZ_FAXES_DB, JObj, FileContents, CT) of
+            case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, JObj, FileContents, CT) of
                 {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
                 {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
             end;
