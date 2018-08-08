@@ -132,7 +132,7 @@ log_stacktrace_mfa(M, F, Args, Info) ->
 -spec change_console_log_level(log_level()) -> 'ok'.
 change_console_log_level(L) when is_atom(L) ->
     lager:info("updated console_log to level ~s", [L]),
-    lager:set_loglevel({'lager_file_backend', "log/console.log"}, L);
+    lager:set_loglevel('lager_console_backend', L);
 change_console_log_level(L) ->
     change_console_log_level(kz_term:to_atom(L)).
 
