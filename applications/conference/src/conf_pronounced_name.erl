@@ -97,7 +97,7 @@ record_name(RecordName, Call) ->
     _ = kapps_call_command:audio_macro([{'prompt', <<"conf-announce_your_name">>}
                                        ,{'tones', [Tone]}
                                        ], Call),
-    kapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
+    _ = kapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
     Force = kapps_config:get_is_true(?CONFIG_CAT, <<"review_name">>, 'false'),
     case Force of
         'true' ->
@@ -130,12 +130,12 @@ save_recording(RecordName, MediaDocId, Call) ->
     UserId = get_user_id(Call),
     AccountDb = kapps_call:account_db(Call),
     AccountId = kapps_call:account_id(Call),
-    kapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
+    _ = kapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} ->
             lager:debug("Updating user's doc"),
             JObj1 = kz_json:set_value(?PRONOUNCED_NAME_KEY, MediaDocId, UserJObj),
-            kz_datamgr:save_doc(AccountDb, JObj1),
+            _ = kz_datamgr:save_doc(AccountDb, JObj1),
             {'media_doc_id', AccountId, MediaDocId};
         {'error', _Err} ->
             lager:info("Can't update user's doc due to error ~p", [_Err]),

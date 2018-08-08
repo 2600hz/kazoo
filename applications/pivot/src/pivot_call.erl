@@ -69,7 +69,7 @@ start_link(Call, JObj) ->
                             ,{'self', []}
                             ]},
     Responders = {'responders', [{{?MODULE, 'maybe_relay_event'}
-                                 ,[{<<"conference">>, <<"config_req">>}
+                                 ,[{<<"conference">>, <<"event">>}
                                   ,{<<"resource">>, <<"offnet_resp">>}
                                   ,{<<"call_event">>, <<"*">>}
                                   ]
@@ -576,25 +576,29 @@ store_debug(Call, Doc) when is_list(Doc) ->
     store_debug(Call, kz_json:from_list(Doc));
 store_debug(Call, DebugJObj) ->
     AccountModDb = kz_util:format_account_mod_id(kapps_call:account_id(Call)),
-    JObj =
-        kz_doc:update_pvt_parameters(kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
-                                                        ,{<<"iteration">>, kzt_util:iteration(Call)}
-                                                        ]
-                                                       ,DebugJObj
-                                                       )
-                                    ,AccountModDb
-                                    ,[{'account_id', kapps_call:account_id(Call)}
-                                     ,{'account_db', AccountModDb}
-                                     ,{'type', <<"pivot_debug">>}
-                                     ,{'now', kz_time:now_s()}
-                                     ]
-                                    ),
+    JObj = debug_doc(Call, DebugJObj, AccountModDb),
+
     case kazoo_modb:save_doc(AccountModDb, JObj) of
         {'ok', _Saved} ->
             lager:debug("saved debug doc: ~p", [_Saved]);
         {'error', _E} ->
             lager:debug("failed to save debug doc: ~p", [_E])
     end.
+
+debug_doc(Call, DebugJObj, AccountModDb) ->
+    WithCallJObj = kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
+                                      ,{<<"iteration">>, kzt_util:iteration(Call)}
+                                      ]
+                                     ,DebugJObj
+                                     ),
+    kz_doc:update_pvt_parameters(WithCallJObj
+                                ,AccountModDb
+                                ,[{'account_id', kapps_call:account_id(Call)}
+                                 ,{'account_db', AccountModDb}
+                                 ,{'type', <<"pivot_debug">>}
+                                 ,{'now', kz_time:now_s()}
+                                 ]
+                                ).
 
 -spec fix_value(number() | list()) -> number() | kz_term:ne_binary().
 fix_value(N) when is_number(N) -> N;
