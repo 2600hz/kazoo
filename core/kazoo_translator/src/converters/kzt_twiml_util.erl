@@ -69,6 +69,7 @@ finish_dtmf(Props) -> finish_dtmf(Props, <<"#">>).
 finish_dtmf(Props, Default) when is_list(Props) ->
     case props:get_binary_value('finishOnKey', Props) of
         'undefined' -> Default;
+        <<>> -> Default;
         DTMF ->
             'true' = lists:member(DTMF, ?ANY_DIGIT),
             DTMF
