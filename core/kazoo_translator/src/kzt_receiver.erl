@@ -587,45 +587,49 @@ process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
         {<<"call_event">>, <<"CHANNEL_EXECUTE">>} ->
             case kz_call_event:application_name(JObj) of
                 <<"conference">> ->
-                    lager:debug("conferencing has started to execute"),
+                    lager:info("conferencing has started to execute"),
                     wait_for_conference_events(
                       update_offnet_timers(
                         OffnetReq#dial_req{call_timeout='undefined'}
-                       ));
+                       )
+                     );
                 _App ->
+                    lager:debug("ignoring app ~s", [_App]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))
             end;
 
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case kz_call_event:application_name(JObj) of
                 <<"conference">> ->
-                    lager:debug("conferencing has ended"),
+                    lager:info("conferencing has ended"),
                     kapps_call_command:park(Call),
                     {'ok', Call};
                 _App ->
+                    lager:debug("app ~s has ended", [_App]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))
             end;
 
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("call has ended"),
+            lager:info("our call has ended"),
             {'ok', Call};
 
-        {<<"conference">>, <<"config_req">>} ->
-            ConfigName = kz_json:get_value(<<"Profile">>, JObj),
-            lager:debug("conference profile ~s requested", [ConfigName]),
-
-            Profile = kzt_util:get_conference_profile(Call),
-            Resp = [{<<"Profiles">>, kz_json:from_list([{ConfigName, Profile}])}
-                   ,{<<"Caller-Controls">>, kzt_util:get_caller_controls(Call)}
-                   ,{<<"Advertise">>, kzt_util:get_advertise(Call)}
-                   ,{<<"Chat-Permissions">>, kzt_util:get_chat_permissions(Call)}
-                   ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            kapi_conference:publish_config_resp(kz_api:server_id(JObj)
-                                               ,Resp
-                                               ),
-            wait_for_conference_events(update_offnet_timers(OffnetReq));
+        {<<"conference">>, <<"event">>} ->
+            case kz_json:get_ne_binary_value(<<"Event">>, JObj) of
+                <<"conference-create">> ->
+                    lager:info("conference has been created"),
+                    wait_for_conference_events(
+                      update_offnet_timers(
+                        OffnetReq#dial_req{call_timeout='undefined'}
+                       )
+                     );
+                <<"conference-destroy">> ->
+                    lager:info("conference has been destroyed"),
+                    kapps_call_command:park(Call),
+                    {'ok', Call};
+                _Event ->
+                    lager:debug("ignoring conference event ~s", [_Event]),
+                    wait_for_conference_events(update_offnet_timers(OffnetReq))
+            end;
         {_Cat, _Name} ->
             lager:debug("unhandled event for ~s: ~s: ~s"
                        ,[_Cat, _Name, kz_call_event:application_name(JObj)]

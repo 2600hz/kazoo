@@ -604,7 +604,8 @@ play_entry_tone_media(Tone, Conference) ->
 
 -spec get_profile_name(kapps_conference:conference()) -> kz_term:ne_binary().
 get_profile_name(Conference) ->
-    list_to_binary([kapps_conference:id(Conference)
-                   ,"_"
-                   ,kapps_conference:account_id(Conference)
-                   ]).
+    Default = list_to_binary([kapps_conference:id(Conference)
+                             ,"_"
+                             ,kapps_conference:account_id(Conference)
+                             ]),
+    kapps_conference:profile_name(Conference, Default).

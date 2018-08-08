@@ -22,7 +22,7 @@
 -export([moderator_controls/1, set_moderator_controls/2]).
 -export([caller_controls/1, set_caller_controls/2]).
 -export([controls/2, set_controls/2]).
--export([profile_name/1, set_profile_name/2]).
+-export([profile_name/1, profile_name/2, set_profile_name/2]).
 -export([profile/1, set_profile/2]).
 -export([focus/1, set_focus/2]).
 -export([language/1, set_language/2]).
@@ -178,7 +178,7 @@ do_from_json(JObj, Conference) ->
             Id -> Id
         end,
 
-    lager:debug("building conference ~s(~s) from JSON", [ConferenceName, ConferenceId]),
+    lager:debug("building conference ~s(id:~s) from JSON", [ConferenceName, ConferenceId]),
 
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Conference#kapps_conference{id = ConferenceId
@@ -290,7 +290,7 @@ from_conference_doc(JObj, Conference) ->
     ConferenceName = kzd_conferences:name(JObj, name(Conference)),
     ConferenceId = kz_doc:id(JObj, ConferenceName),
 
-    lager:debug("building conference ~s(~s) from config", [ConferenceName, ConferenceId]),
+    lager:debug("building conference ~s(id:~s) from config", [ConferenceName, ConferenceId]),
 
     Conference#kapps_conference{id = ConferenceId
                                ,name = ConferenceName
@@ -357,6 +357,14 @@ set_account_id(AccountId, Conference) when is_binary(AccountId) ->
     Conference#kapps_conference{account_id=AccountId}.
 
 -spec account_id(conference()) -> kz_term:api_ne_binary().
+account_id(#kapps_conference{account_id='undefined'
+                            ,call='undefined'
+                            }) ->
+    'undefined';
+account_id(#kapps_conference{account_id='undefined'
+                             ,call=Call
+                             }) ->
+    kapps_call:account_id(Call);
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
@@ -408,8 +416,11 @@ caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
 -spec profile_name(conference()) -> kz_term:ne_binary().
-profile_name(#kapps_conference{profile_name='undefined'}) -> ?DEFAULT_PROFILE_NAME;
-profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
+profile_name(Conference) -> profile_name(Conference, ?DEFAULT_PROFILE_NAME).
+
+-spec profile_name(conference(), Default) -> kz_term:ne_binary() | Default.
+profile_name(#kapps_conference{profile_name='undefined'}, Default) -> Default;
+profile_name(#kapps_conference{profile_name=Profile}, _Default) -> Profile.
 
 -spec set_profile_name(kz_term:api_ne_binary(), conference()) -> conference().
 set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
@@ -487,7 +498,6 @@ build_account_profile(Conference) ->
         {'undefined', Profile} -> {ProfileName, Profile};
         {LanguageProfile, 'undefined'} -> {ProfileName, LanguageProfile};
         {LanguageProfile, Profile} ->
-            lager:debug("merging profiles"),
             {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
@@ -507,7 +517,6 @@ build_system_profile(Conference) ->
     of
         'undefined' -> {ProfileName, LanguageProfile};
         Profile ->
-            lager:debug("merging profiles"),
             {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
