@@ -1079,14 +1079,14 @@ delete_attachment(DbName, DocId, AName, Options) ->
     end.
 
 -spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
+                            kz_term:ne_binary() |
                             {'proxy', tuple()} |
                             {'error', any()}.
 attachment_url(DbName, DocId, AttachmentId) ->
     attachment_url(DbName, DocId, AttachmentId, []).
 
 -spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_term:ne_binary()} |
+                            kz_term:ne_binary() |
                             {'proxy', tuple()} |
                             {'error', any()}.
 attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNAME(DbName) ->
