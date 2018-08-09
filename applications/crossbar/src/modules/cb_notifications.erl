@@ -789,8 +789,9 @@ prepare_account_responce(Context, Id, 'set_account_overridden') ->
     cb_context:set_resp_data(Context1, NewRespData);
 prepare_account_responce(Context, Id, 'set_account_defined') ->
     lager:debug("loaded account defined notification ~s from database ~s", [Id, cb_context:account_db(Context)]),
+    Context1 = maybe_merge_ancestor_attachments(Context, Id),
     NewRespData = note_account_defined(cb_context:resp_data(Context)),
-    cb_context:set_resp_data(Context, NewRespData).
+    cb_context:set_resp_data(Context1, NewRespData).
 
 -spec maybe_read_from_parent(cb_context:context(), kz_term:ne_binary(), load_from(), kz_term:api_binary()) -> cb_context:context().
 maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
