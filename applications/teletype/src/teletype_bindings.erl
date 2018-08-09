@@ -53,7 +53,14 @@ start_modules([]) ->
 notification(JObj) ->
     kz_util:put_callid(JObj),
     {EventCategory, EventName} = kz_util:get_event_type(JObj),
+    ShouldHandle = teletype_util:should_handle_notification(JObj),
     RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
+    maybe_handle_notification(JObj, RoutingKey, ShouldHandle).
+
+-spec maybe_handle_notification(kz_json:object(), kz_term:ne_binary(), boolean()) -> 'ok'.
+maybe_handle_notification(_, _, 'false') ->
+    'ok';
+maybe_handle_notification(JObj, RoutingKey, 'true') ->
     lager:debug("dispatching notification ~s", [RoutingKey]),
     case kazoo_bindings:map(RoutingKey, JObj) of
         [] ->

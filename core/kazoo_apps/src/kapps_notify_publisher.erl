@@ -303,13 +303,12 @@ find_reason_from_jsons(Reason, JObjs, Map) ->
         Val -> maps:update_with(Reason, fun(List) -> [Val|List] end, [Val], Map)
     end.
 
--spec cast_to_binary(any()) -> kz_term:api_ne_binary().
+-spec cast_to_binary(any()) -> kz_term:ne_binary().
 cast_to_binary(Error) ->
     try kz_term:to_binary(Error)
     catch
         _:_ ->
-            lager:debug("failed to convert notification failure reason to binary: ~p", [Error]),
-            'undefined'
+            kz_term:to_binary(io_lib:format("~p", [Error]))
     end.
 
 %%------------------------------------------------------------------------------
