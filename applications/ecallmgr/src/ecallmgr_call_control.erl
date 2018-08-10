@@ -706,7 +706,7 @@ add_leg(Props, LegId, #state{other_legs=Legs
             _ = kz_util:spawn(
                   fun() ->
                           kz_util:put_callid(CallId),
-                          kz_amqp_channel:consumer_pid(ConsumerPid),
+                          _ = kz_amqp_channel:consumer_pid(ConsumerPid),
                           publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
                   end),
             _ = case ecallmgr_fs_channel:fetch(CallId) of
@@ -746,7 +746,7 @@ add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
             _ = kz_util:spawn(
                   fun() ->
                           kz_util:put_callid(CallId),
-                          kz_amqp_channel:consumer_pid(ConsumerPid),
+                          _ = kz_amqp_channel:consumer_pid(ConsumerPid),
                           publish_cleg_addition(Props, OtherLeg, CallId)
                   end),
             State#state{other_legs=[LegId|Legs]}
@@ -793,7 +793,7 @@ remove_leg(Props, #state{other_legs=Legs
             _ = kz_util:spawn(
                   fun() ->
                           kz_util:put_callid(CallId),
-                          kz_amqp_channel:consumer_pid(ConsumerPid),
+                          _ = kz_amqp_channel:consumer_pid(ConsumerPid),
                           publish_leg_removal(Props)
                   end),
             State#state{other_legs=lists:delete(LegId, Legs)
