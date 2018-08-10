@@ -227,7 +227,14 @@ verify_cidr(IP, CIDR) when is_binary(IP) ->
 verify_cidr(IP, CIDR) when is_binary(CIDR) ->
     verify_cidr(IP, kz_term:to_list(CIDR));
 verify_cidr(IP, CIDR) ->
-    Block = inet_cidr:parse(CIDR),
+    try inet_cidr:parse(CIDR) of
+        Block -> verify_block(IP, Block)
+    catch
+        'error':'invalid_cidr' -> 'false'
+    end.
+
+-spec verify_block(string(), string()) -> boolean().
+verify_block(IP, Block) ->
     case inet:parse_address(IP) of
         {'ok', IPTuple} -> inet_cidr:contains(Block, IPTuple);
         {'error', _} -> 'false'
@@ -291,7 +298,7 @@ find_nameservers(Domain, Options) ->
         [] ->
             find_nameservers_parent(
               binary:split(Domain, <<".">>, ['global'])
-                                   ,Options
+             ,Options
              );
         Nameservers -> Nameservers
     end.
@@ -382,9 +389,9 @@ resolve_a_record_fold(IPTuple, I) ->
 -spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(kz_term:to_binary(A))/binary, "."
-      ,(kz_term:to_binary(B))/binary, "."
-      ,(kz_term:to_binary(C))/binary, "."
-      ,(kz_term:to_binary(D))/binary
+     ,(kz_term:to_binary(B))/binary, "."
+     ,(kz_term:to_binary(C))/binary, "."
+     ,(kz_term:to_binary(D))/binary
     >>;
 
 %% IPv4 mapped to IPv6
@@ -403,19 +410,19 @@ to_hex(I) ->
 -spec srvtuple_to_binary(srvtuple()) -> ne_binary().
 srvtuple_to_binary({Priority, Weight, Port, Domain}) ->
     <<(kz_term:to_binary(Priority))/binary, " "
-      ,(kz_term:to_binary(Weight))/binary, " "
-      ,(kz_term:to_binary(Port))/binary, " "
-      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
+     ,(kz_term:to_binary(Weight))/binary, " "
+     ,(kz_term:to_binary(Port))/binary, " "
+     ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
 
 -spec naptrtuple_to_binary(naptrtuple()) -> ne_binary().
 naptrtuple_to_binary({Order, Preference, Flags, Services, Regexp, Domain}) ->
     <<(kz_term:to_binary(Order))/binary, " "
-      ,(kz_term:to_binary(Preference))/binary, " "
-      ,"\"", (kz_term:to_upper_binary(Flags))/binary, "\" "
-      ,"\"", (kz_term:to_upper_binary(Services))/binary, "\" "
-      ,"\"", (kz_term:to_binary(Regexp))/binary, "\" "
-      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
+     ,(kz_term:to_binary(Preference))/binary, " "
+     ,"\"", (kz_term:to_upper_binary(Flags))/binary, "\" "
+     ,"\"", (kz_term:to_upper_binary(Services))/binary, "\" "
+     ,"\"", (kz_term:to_binary(Regexp))/binary, "\" "
+     ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
 
 -spec mxtuple_to_binary(mxtuple()) -> ne_binary().
@@ -519,6 +526,6 @@ maybe_resolve_nameservers([Domain|Values], Nameservers) ->
         Addresses ->
             maybe_resolve_nameservers(
               Values
-                                     ,[{Address, 53} || Address <- Addresses] ++ Nameservers
+             ,[{Address, 53} || Address <- Addresses] ++ Nameservers
              )
     end.
