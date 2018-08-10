@@ -73,11 +73,12 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%------------------------------------------------------------------------------
--spec authorize(cb_context:context(), path_token()) -> boolean().
-authorize(Context, _) -> is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
+authorize(Context, _Path) ->
+    is_authorized(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec is_authorize(cb_context:context(), req_verb(), req_nouns()) -> boolean() | {'halt', cb_context:context()}.
-is_authorize(_Context, ?HTTP_GET, [{<<"service_plans">>, ?EDITABLE}]) ->
+-spec is_authorized(cb_context:context(), req_verb(), req_nouns()) -> 'true'.
+is_authorized(_Context, ?HTTP_GET, [{<<"service_plans">>, [?EDITABLE]}]) ->
     'true'.
 
 %%------------------------------------------------------------------------------
