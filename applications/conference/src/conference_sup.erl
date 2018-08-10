@@ -14,7 +14,12 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?SUPER('conf_participant_sup')
+-define(ORIGIN_BINDINGS, [[{'type', <<"conference">>}]]).
+
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?SUPER('conf_participant_sup')
                   ,?WORKER('conference_shared_listener')
                   ,?WORKER('conference_listener')
                   ]).
