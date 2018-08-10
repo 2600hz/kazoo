@@ -225,7 +225,14 @@ verify_cidr(IP, CIDR) when is_binary(IP) ->
 verify_cidr(IP, CIDR) when is_binary(CIDR) ->
     verify_cidr(IP, kz_term:to_list(CIDR));
 verify_cidr(IP, CIDR) ->
-    Block = inet_cidr:parse(CIDR),
+    try inet_cidr:parse(CIDR) of
+        Block -> verify_block(IP, Block)
+    catch
+        'error':'invalid_cidr' -> 'false'
+    end.
+
+-spec verify_block(string(), string()) -> boolean().
+verify_block(IP, Block) ->
     case inet:parse_address(IP) of
         {'ok', IPTuple} -> inet_cidr:contains(Block, IPTuple);
         {'error', _} -> 'false'
