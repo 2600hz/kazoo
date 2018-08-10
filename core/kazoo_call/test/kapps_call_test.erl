@@ -12,7 +12,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--define(APP, kazoo_call).
+-define(APP, 'kazoo_call').
 
 -define(UPDATERS, [fun(C) -> kapps_call:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
                   ,fun(C) -> kapps_call:set_custom_channel_var(<<"key2">>, 2600, C) end
@@ -23,9 +23,9 @@
                   ]).
 
 route_test_() ->
-    {setup
-    ,fun setup_db/0
-    ,fun terminate_db/1
+    {'setup'
+    ,fun kazoo_call_test_util:setup_db/0
+    ,fun kazoo_call_test_util:terminate_db/1
     ,fun(_ReturnOfSetup) ->
              [{"Testing Callflow route request"
               ,test_callflow_route_request()
@@ -87,32 +87,14 @@ updateable_test_() ->
      || {ToSend, Existing, New} <- Tests
     ].
 
-setup_db() ->
-    ?LOG_DEBUG(":: Starting Kazoo FixtureDB"),
-    {ok, _} = application:ensure_all_started(kazoo_config),
-    {ok, Pid} = kazoo_data_link_sup:start_link(),
-    Pid.
-
-terminate_db(Pid) ->
-    _DataLink = erlang:exit(Pid, normal),
-    Ref = monitor(process, Pid),
-    receive
-        {'DOWN', Ref, process, Pid, _Reason} ->
-            _KConfig = application:stop(kazoo_config),
-            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: ~p kazoo_config: ~p", [_DataLink, _KConfig])
-    after 1000 ->
-            _KConfig = application:stop(kazoo_config),
-            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: timeout kazoo_config: ~p", [_KConfig])
-    end.
-
 test_callflow_route_request() ->
-    {ok,RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-callflow.json"),
+    {'ok', RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-callflow.json"),
     'true' = kapi_route:req_v(RouteReq),
     Call = kapps_call:from_route_req(RouteReq),
     validate_kapps_call_basic(Call) ++ validate_kapps_call_callflow_req(Call).
 
 test_trunkstore_route_request() ->
-    {ok,RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-trunkstore.json"),
+    {'ok', RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-trunkstore.json"),
     'true' = kapi_route:req_v(RouteReq),
     Call = kapps_call:from_route_req(RouteReq),
     validate_kapps_call_basic(Call) ++ validate_kapps_call_trunkstore_req(Call).

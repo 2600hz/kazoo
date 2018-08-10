@@ -5,10 +5,18 @@
 %%%-----------------------------------------------------------------------------
 -module(conf_config_req).
 
--export([handle_req/2]).
+-export([handle_req/2
+        ,cache_profile/1
+        ]).
 
 -include("conference.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
+
+-spec cache_profile(kapps_conference:conference()) -> 'ok'.
+cache_profile(Conference) ->
+    {ProfileName, Profile} = kapps_conference:profile(Conference),
+    lager:debug("caching profile ~s: ~p", [ProfileName, Profile]),
+    kz_cache:store_local(?CACHE_NAME, {'profile', ProfileName}, fix_profile(Conference, Profile)).
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
@@ -42,11 +50,11 @@ handle_request(<<"Controls">>, JObj, Conference) ->
 
 -spec handle_profile_request(kz_json:object(), kapps_conference:conference()) -> 'ok'.
 handle_profile_request(JObj, Conference) ->
-    {Name, Profile} = kapps_conference:profile(Conference),
-    ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj, Name),
+    ProfileName = requested_profile_name(JObj),
+    Profile = lookup_profile(ProfileName, Conference),
 
     ServerId = kz_api:server_id(JObj),
-    Resp = [{<<"Profiles">>, kz_json:from_list([{ProfileName, fix_profile(Conference, Profile)}])}
+    Resp = [{<<"Profiles">>, kz_json:from_list([{ProfileName, Profile}])}
            ,{<<"Advertise">>, advertise(ProfileName)}
            ,{<<"Chat-Permissions">>, chat_permissions(ProfileName)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
@@ -54,6 +62,24 @@ handle_profile_request(JObj, Conference) ->
            ],
     lager:debug("returning conference profile ~s", [ProfileName]),
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
+
+-spec lookup_profile(kz_term:ne_binary(), kapps_conference:conferece()) -> kz_json:object().
+lookup_profile(ProfileName, Conference) ->
+    lager:info("looking up profile ~s", [ProfileName]),
+    case kz_cache:peek_local(?CACHE_NAME, {'profile', ProfileName}) of
+        {'error', 'not_found'} ->
+            lager:info("cached version not found, building"),
+            build_profile(Conference);
+        {'ok', Profile} ->
+            lager:info("using cached version ~p", [Profile]),
+            Profile
+    end.
+
+-spec build_profile(kapps_conference:conferece()) -> kz_json:object().
+build_profile(Conference) ->
+    {_Name, Profile} = kapps_conference:profile(Conference),
+    lager:info("built profile ~s: ~p", [_Name, Profile]),
+    fix_profile(Conference, Profile).
 
 -spec requested_profile_name(kz_json:object()) -> kz_term:ne_binary().
 requested_profile_name(JObj) ->

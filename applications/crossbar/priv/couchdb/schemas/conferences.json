@@ -166,6 +166,7 @@
             "type": "boolean"
         },
         "profile": {
+            "$ref": "conferences.profile",
             "description": "Profile configuration",
             "type": "object"
         },

@@ -20,7 +20,9 @@ handle_req(DiscoveryReq, _Options) ->
             conf_participant:set_discovery_event(DiscoveryReq, Srv),
             conf_participant:consume_call_events(Srv),
             kapps_call_command:answer(Call),
-            maybe_welcome_to_conference(Srv, create_conference(DiscoveryReq, Call));
+            Conference = create_conference(DiscoveryReq, Call),
+            conf_config_req:cache_profile(Conference),
+            maybe_welcome_to_conference(Srv, Conference);
         _Else -> discovery_failed(Call, 'undefined')
     end.
 
