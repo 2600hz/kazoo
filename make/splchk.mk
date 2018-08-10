@@ -50,3 +50,6 @@ splchk-changed: splchk-init $(addsuffix .chk,$(basename $(CHANGED)))
 
 %.chk: %.hrl
 	@aspell --add-filter-path=$(ROOT) --mode=erlang --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
+%.chk: Makefile
+	@aspell --add-filter-path=$(ROOT) --mode=erlang --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<

@@ -43991,7 +43991,7 @@
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw": {
             "post": {
-                "description": "Fetch raw aduio of a list message id",
+                "description": "Fetch raw audio of a list message id",
                 "parameters": [
                     {
                         "in": "body",

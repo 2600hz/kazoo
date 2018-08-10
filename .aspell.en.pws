@@ -1,4 +1,4 @@
-personal_ws-1.1 en 1113 utf-8
+personal_ws-1.1 en 1119 utf-8
 PrivateKeyInfo
 cfg
 ccv
@@ -159,6 +159,7 @@ cidr
 keypress
 userportal
 unbridged
+baduuid
 img
 webseq
 Skibbereen
@@ -653,6 +654,7 @@ Appstore
 parker
 startkey
 uniqueItems
+PromptId
 howto
 callee's
 callees
@@ -910,6 +912,7 @@ AppleWebKit
 voip
 namespace
 JObj
+PromptUrl
 requestor
 Marengo
 webhooks
@@ -920,12 +923,14 @@ uuid
 relayhost
 SAVPF
 featureful
+noconnection
 anonymize
 EasterIsland
 Godthab
 Macroom
 ejson
 Internationaal
+nosession
 rollup
 caribbean
 Santarem
@@ -1108,6 +1113,7 @@ badmatch
 ALG
 Danmarkshavn
 Merida
+xferext
 Katmandu
 Sensu
 hostent
