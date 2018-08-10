@@ -70,6 +70,9 @@
 -type naptrtuple() :: {integer(), integer(), string(), string(), string(), string()}.
 -type mxtuple() :: {integer(), string()}.
 -type options() :: [inet_res:req_option()].
+
+-type cidr_block() :: {inet:ip_address(), inet:ip_address(), pos_integer()}.
+
 -export_type([srvtuple/0
              ,naptrtuple/0
              ,mxtuple/0
@@ -320,7 +323,14 @@ verify_cidr(IP, CIDR) when is_binary(IP) ->
 verify_cidr(IP, CIDR) when is_binary(CIDR) ->
     verify_cidr(IP, kz_term:to_list(CIDR));
 verify_cidr(IP, CIDR) ->
-    Block = inet_cidr:parse(CIDR),
+    try inet_cidr:parse(CIDR) of
+        Block -> verify_block(IP, Block)
+    catch
+        'error':'invalid_cidr' -> 'false'
+    end.
+
+-spec verify_block(string(), cidr_block()) -> boolean().
+verify_block(IP, Block) ->
     case inet:parse_address(IP) of
         {'ok', IPTuple} -> inet_cidr:contains(Block, IPTuple);
         {'error', _} -> 'false'
