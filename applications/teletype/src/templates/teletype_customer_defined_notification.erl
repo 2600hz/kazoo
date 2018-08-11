@@ -87,6 +87,7 @@ process_req(DataJObj, TemplateId) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
              ,{<<"call">>, kz_json:to_proplist(kz_api:remove_defaults(DataJObj))}
+              | teletype_util:build_call_data(DataJObj, 'undefined')
              ],
 
     %% Load templates
