@@ -235,7 +235,7 @@ has_capability(Node, Capability) when is_binary(Capability) ->
         [Loaded] -> Loaded
     end;
 has_capability(Node, Capability) ->
-    has_capability(Node, kz_json:get_value(<<"capability">>, Capability)).
+    has_capability(Node, kz_json:get_ne_binary_value(<<"capability">>, Capability)).
 
 -spec remove_capabilities(atom()) -> non_neg_integer().
 remove_capabilities(Node) ->

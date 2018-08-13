@@ -96,10 +96,10 @@
                                                  ])
                               ]).
 
--record(state, {node :: atom()
-               ,options = []             :: kz_term:proplist()
-               ,interfaces = []          :: interfaces()
-               ,start_cmds_pid_ref       :: kz_term:pid_ref() | 'undefined'
+-record(state, {node               :: atom()
+               ,options = []       :: kz_term:proplist()
+               ,interfaces = []    :: interfaces()
+               ,start_cmds_pid_ref :: kz_term:api_pid_ref()
                }).
 -type state() :: #state{}.
 
@@ -593,7 +593,7 @@ probe_capabilities(Node, PossibleCapabilities) ->
     kz_util:put_callid(Node),
     F = fun(Capability) -> maybe_add_capability(Node, Capability) end,
     lists:foreach(F, PossibleCapabilities),
-    lager:notice("fs sync complete").
+    lager:notice("capabilities sync complete").
 
 -spec maybe_add_capability(atom(), kz_json:object()) -> any().
 maybe_add_capability(Node, Capability) ->

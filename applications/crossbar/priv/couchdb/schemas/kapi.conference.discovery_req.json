@@ -12,6 +12,9 @@
         "Conference-ID": {
             "type": "string"
         },
+        "Conference-Name": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "conference"
