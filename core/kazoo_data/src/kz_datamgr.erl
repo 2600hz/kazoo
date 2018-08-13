@@ -208,14 +208,14 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
                               data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
-        true -> ensure_saved(DbName, JObj);
-        false -> {'ok', JObj}
+        'true' -> ensure_saved(DbName, JObj);
+        'false' -> {'ok', JObj}
     end.
 
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
         {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
-        _ -> true
+        _ -> 'true'
     end.
 
 %%------------------------------------------------------------------------------

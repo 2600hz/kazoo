@@ -1,6 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES) splchk
+.PHONY: compile compile-lean json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES) splchk
 
 ## Platform detection.
 ifeq ($(PLATFORM),)
