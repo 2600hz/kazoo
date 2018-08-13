@@ -17,7 +17,7 @@
 -spec request(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 request(Number, JObj) ->
     Url = kz_term:to_list(get_http_url(JObj)),
-    case kz_http:get(Url, get_http_headers(), get_http_options(Url)) of
+    case kz_http:get(Url, get_http_headers(), get_http_options()) of
         {'ok', 404, _, _} ->
             lager:debug("cnam lookup for ~s returned 404", [Number]),
             'undefined';
@@ -49,17 +49,11 @@ get_http_headers() ->
               ],
     maybe_enable_auth(Headers).
 
--spec get_http_options(nonempty_string()) -> kz_term:proplist().
-get_http_options(Url) ->
-    Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
-               ,{'timeout', 1500}
-               ],
-    maybe_enable_ssl(Url, Defaults).
-
--spec maybe_enable_ssl(nonempty_string(), kz_term:proplist()) -> kz_term:proplist().
-maybe_enable_ssl("https://" ++ _, Props) ->
-    [{'ssl', [{'verify', 'verify_none'}]}|Props];
-maybe_enable_ssl(_Url, Props) -> Props.
+-spec get_http_options() -> kz_term:proplist().
+get_http_options() ->
+    [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
+    ,{'timeout', 1500}
+    ].
 
 -spec maybe_enable_auth([{nonempty_string(), nonempty_string()}]) ->
                                [{nonempty_string(), nonempty_string()}].
