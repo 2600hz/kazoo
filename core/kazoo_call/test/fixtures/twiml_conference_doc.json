@@ -1,0 +1,33 @@
+{
+    "id": "1a8dbba6c6237d7442404069a655f12c",
+    "max_participants": 40,
+    "member": {},
+    "moderator": {
+        "join_deaf": false,
+        "join_muted": false,
+        "play_entry_prompt": true,
+        "play_name": false
+    },
+    "name": "1a8dbba6c6237d7442404069a655f12c",
+    "play_entry_tone": false,
+    "play_welcome": false,
+    "profile": {
+        "caller-controls": "default",
+        "caller-id-name": "anonymous",
+        "caller-id-number": "0000000000",
+        "comfort-noise": 1000,
+        "energy-level": 20,
+        "interval": 20,
+        "max-members": 40,
+        "member-flags": "endconf",
+        "moderator-controls": "default",
+        "moh-sound": "http://com.twilio.music.soft-rock.s3.amazonaws.com/Fireproof_Babies_-_Melancholy_4_a_Sun-lit_day.mp3",
+        "rate": 8000,
+        "tts-engine": "flite",
+        "tts-voice": "male"
+    },
+    "profile_name": "1a8dbba6c6237d7442404069a655f12c",
+    "pvt_account_id": "a8e11608508ba9212dab6023638d597c",
+    "require_moderator": false,
+    "wait_for_moderator": true
+}

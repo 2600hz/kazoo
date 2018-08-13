@@ -25,7 +25,6 @@
 
 -define(BINDINGS, [{'conference', [{'restrict_to', ['discovery'
                                                    ,{'command', kz_config:zone('binary')}
-                                                   ,{'config', <<"*">>} % get all conference config requests
                                                    ]
                                    }
                                   ]
@@ -36,7 +35,6 @@
 -define(RESPONDERS, [{'conf_discovery_req', [{<<"conference">>, <<"discovery_req">>}]}
                     ,{'conf_authn_req', [{<<"directory">>, <<"authn_req">>}]}
                     ,{'conf_participant_req', [{<<"conference">>, <<"add_participant">>}]}
-                    ,{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}
                     ]).
 -define(QUEUE_NAME, <<"conference_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).

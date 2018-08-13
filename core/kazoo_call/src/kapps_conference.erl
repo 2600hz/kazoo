@@ -166,7 +166,9 @@ from_json(JObj) -> from_json(JObj, #kapps_conference{}).
 from_json(JObj, Conference) ->
     case kz_json:get_json_value(<<"Conference-Doc">>, JObj) of
         'undefined' -> do_from_json(JObj, Conference);
-        Doc -> from_conference_doc(Doc, do_from_json(JObj, Conference))
+        Doc ->
+            FromJObj = do_from_json(JObj, Conference),
+            from_conference_doc(Doc, FromJObj)
     end.
 
 -spec do_from_json(kz_json:object(), conference()) -> conference().
@@ -241,40 +243,40 @@ to_json(#kapps_conference{}=Conference) ->
 
 -spec to_proplist(conference()) -> kz_term:proplist().
 to_proplist(#kapps_conference{}=Conference) ->
-    [{<<"Conference-ID">>, id(Conference)}
-    ,{<<"Conference-Name">>, name(Conference)}
-    ,{<<"Profile-Name">>, profile_name(Conference)}
-    ,{<<"Profile">>, profile(Conference)}
-    ,{<<"Focus">>, focus(Conference)}
-    ,{<<"Language">>, language(Conference)}
-    ,{<<"Domain">>, domain(Conference)}
-    ,{<<"Controller-Queue">>, controller_queue(Conference)}
-    ,{<<"Bridge-Username">>, bridge_username(Conference)}
+    [{<<"Account-ID">>, account_id(Conference)}
     ,{<<"Bridge-Password">>, bridge_password(Conference)}
-    ,{<<"Member-Pins">>, member_pins(Conference)}
-    ,{<<"Moderator-Pins">>, moderator_pins(Conference)}
-    ,{<<"Moderator">>, moderator(Conference)}
-    ,{<<"Member-Join-Muted">>, member_join_muted(Conference)}
-    ,{<<"Member-Join-Deaf">>, member_join_deaf(Conference)}
-    ,{<<"Moderator-Join-Muted">>, moderator_join_muted(Conference)}
-    ,{<<"Moderator-Join-Deaf">>, moderator_join_deaf(Conference)}
-    ,{<<"Max-Participants">>, max_participants(Conference)}
+    ,{<<"Bridge-Username">>, bridge_username(Conference)}
+    ,{<<"Call">>, kapps_call:to_json(call(Conference))}
+    ,{<<"Caller-Controls">>, caller_controls(Conference)}
+    ,{<<"Conference-Doc">>, conference_doc(Conference)}
+    ,{<<"Conference-ID">>, id(Conference)}
+    ,{<<"Conference-Name">>, name(Conference)}
+    ,{<<"Controller-Queue">>, controller_queue(Conference)}
+    ,{<<"Controls">>, raw_controls(Conference)}
+    ,{<<"Discovery-Request">>, discovery_request(Conference)}
+    ,{<<"Domain">>, domain(Conference)}
+    ,{<<"Focus">>, focus(Conference)}
+    ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
+    ,{<<"Language">>, language(Conference)}
     ,{<<"Max-Members-Media">>, max_members_media(Conference)}
+    ,{<<"Max-Participants">>, max_participants(Conference)}
+    ,{<<"Member-Join-Deaf">>, member_join_deaf(Conference)}
+    ,{<<"Member-Join-Muted">>, member_join_muted(Conference)}
+    ,{<<"Member-Pins">>, member_pins(Conference)}
+    ,{<<"Moderator">>, moderator(Conference)}
+    ,{<<"Moderator-Controls">>, moderator_controls(Conference)}
+    ,{<<"Moderator-Join-Deaf">>, moderator_join_deaf(Conference)}
+    ,{<<"Moderator-Join-Muted">>, moderator_join_muted(Conference)}
+    ,{<<"Moderator-Pins">>, moderator_pins(Conference)}
+    ,{<<"Play-Entry-Prompt">>, play_entry_prompt(Conference)}
+    ,{<<"Play-Entry-Tone">>, play_entry_tone(Conference)}
+    ,{<<"Play-Exit-Tone">>, play_exit_tone(Conference)}
+    ,{<<"Play-Name-On-Join">>, play_name_on_join(Conference)}
+    ,{<<"Play-Welcome">>, play_welcome(Conference)}
+    ,{<<"Profile">>, profile(Conference)}
+    ,{<<"Profile-Name">>, profile_name(Conference)}
     ,{<<"Require-Moderator">>, require_moderator(Conference)}
     ,{<<"Wait-For-Moderator">>, wait_for_moderator(Conference)}
-    ,{<<"Play-Name-On-Join">>, play_name_on_join(Conference)}
-    ,{<<"Play-Entry-Prompt">>, play_entry_prompt(Conference)}
-    ,{<<"Play-Exit-Tone">>, play_exit_tone(Conference)}
-    ,{<<"Play-Entry-Tone">>, play_entry_tone(Conference)}
-    ,{<<"Play-Welcome">>, play_welcome(Conference)}
-    ,{<<"Conference-Doc">>, conference_doc(Conference)}
-    ,{<<"Discovery-Request">>, discovery_request(Conference)}
-    ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
-    ,{<<"Call">>, kapps_call:to_json(call(Conference))}
-    ,{<<"Account-ID">>, account_id(Conference)}
-    ,{<<"Controls">>, raw_controls(Conference)}
-    ,{<<"Moderator-Controls">>, moderator_controls(Conference)}
-    ,{<<"Caller-Controls">>, caller_controls(Conference)}
     ].
 
 -spec is_conference(any()) -> boolean().

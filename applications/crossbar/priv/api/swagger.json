@@ -4103,6 +4103,7 @@
                     "type": "boolean"
                 },
                 "profile": {
+                    "$ref": "#/definitions/conferences.profile",
                     "description": "Profile configuration",
                     "type": "object"
                 },
@@ -4184,6 +4185,92 @@
             "required": [
                 "endpoints"
             ]
+        },
+        "conferences.profile": {
+            "description": "Schema for conference profiles",
+            "properties": {
+                "alone-sound": {
+                    "description": "Audio that plays while you are alone in the conference",
+                    "type": "string"
+                },
+                "announce-count": {
+                    "description": "Play member count to conference when above this threshold",
+                    "type": "integer"
+                },
+                "caller-controls": {
+                    "description": "Name of the caller control group",
+                    "type": "string"
+                },
+                "comfort-noise": {
+                    "description": "The volume level of background white noise",
+                    "maximum": 10000,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "energy-level": {
+                    "description": "Energy level required for audio to be sent to other users",
+                    "maximum": 1800,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "enter-sound": {
+                    "description": "Audio to play when entering a conference",
+                    "type": "string"
+                },
+                "exit-sound": {
+                    "description": "Audio to play when exiting a conference",
+                    "type": "string"
+                },
+                "interval": {
+                    "description": "Milliseconds per frame",
+                    "maximum": 120,
+                    "minimum": 10,
+                    "type": "integer"
+                },
+                "locked-sound": {
+                    "description": "Audio to play when the conference is locked",
+                    "type": "string"
+                },
+                "max-members": {
+                    "description": "Set the maximum number of members in the conference",
+                    "minimum": 2,
+                    "type": "integer"
+                },
+                "max-members-sound": {
+                    "description": "If max-members has been reached, audio to play to caller instead of joining the conference",
+                    "type": "string"
+                },
+                "moderator-controls": {
+                    "description": "Name of the moderator control group to use",
+                    "type": "string"
+                },
+                "moh-sound": {
+                    "description": "Audio to play, on a loop, while participant count is 1",
+                    "type": "string"
+                },
+                "muted-sound": {
+                    "description": "Audio to play when muted",
+                    "type": "string"
+                },
+                "rate": {
+                    "description": "Audio sample rate",
+                    "enum": [
+                        8000,
+                        12000,
+                        16000,
+                        24000,
+                        32000,
+                        44100,
+                        48000
+                    ],
+                    "type": "integer"
+                },
+                "unmuted-sound": {
+                    "description": "Audio to play when unmuted",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
         "connectivity": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
@@ -9432,6 +9519,9 @@
                     "type": "string"
                 },
                 "Conference-ID": {
+                    "type": "string"
+                },
+                "Conference-Name": {
                     "type": "string"
                 },
                 "Event-Category": {

@@ -51,6 +51,30 @@ Key | Description | Type | Default | Required | Support Level
 `require_moderator` | does the conference require a moderator | `boolean()` |   | `false` |  
 `wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false` |  
 
+##### conferences.profile
+
+Schema for conference profiles
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`alone-sound` | Audio that plays while you are alone in the conference | `string()` |   | `false` |  
+`announce-count` | Play member count to conference when above this threshold | `integer()` |   | `false` |  
+`caller-controls` | Name of the caller control group | `string()` |   | `false` |  
+`comfort-noise` | The volume level of background white noise | `integer()` |   | `false` |  
+`energy-level` | Energy level required for audio to be sent to other users | `integer()` |   | `false` |  
+`enter-sound` | Audio to play when entering a conference | `string()` |   | `false` |  
+`exit-sound` | Audio to play when exiting a conference | `string()` |   | `false` |  
+`interval` | Milliseconds per frame | `integer()` |   | `false` |  
+`locked-sound` | Audio to play when the conference is locked | `string()` |   | `false` |  
+`max-members` | Set the maximum number of members in the conference | `integer()` |   | `false` |  
+`max-members-sound` | If max-members has been reached, audio to play to caller instead of joining the conference | `string()` |   | `false` |  
+`moderator-controls` | Name of the moderator control group to use | `string()` |   | `false` |  
+`moh-sound` | Audio to play, on a loop, while participant count is 1 | `string()` |   | `false` |  
+`muted-sound` | Audio to play when muted | `string()` |   | `false` |  
+`rate` | Audio sample rate | `integer()` |   | `false` |  
+`unmuted-sound` | Audio to play when unmuted | `string()` |   | `false` |  
+
 
 
 ##### Keys under development
