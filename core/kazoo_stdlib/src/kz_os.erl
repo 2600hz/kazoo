@@ -20,35 +20,43 @@
 -define(DEFAULT_READ_MODE, {'line', 1000}).
 
 %% @equiv cmd(Command, [])
--spec cmd(kz_term:ne_binary()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+-spec cmd(iodata()) ->
+                 {'ok', kz_term:ne_binary()} |
+                 {'error', any(), binary()}.
 cmd(Command) ->
     cmd(Command, []).
 
 %% @equiv cmd(Command, Args, [])
--spec cmd(kz_term:ne_binary(), kz_term:proplist()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+-spec cmd(iodata(), kz_term:proplist()) ->
+                 {'ok', kz_term:ne_binary()} |
+                 {'error', any(), binary()}.
 cmd(Command, Args) ->
     cmd(Command, Args, []).
 
 %%------------------------------------------------------------------------------
 %% @doc Execute system commands safely.
 %%
-%% Execute a system command safely with protection from unexpectedly large output or commands that
-%% run forever. This is implemented using erlang:open_ports.
+%% Execute a system command safely with protection from unexpectedly
+%% large output or commands that run forever. This is implemented
+%% using erlang:open_ports.
 %%
-%% For commands which require injection of arguments, simply name the arguments in the command with
-%% bash variables, add the variable names and values to a proplist of `Args' and they will be injected into
-%% the command via environment variables. This decouples the ordering from the commands, which was
-%% a limitation in the customizability of the old io_lib:format/os:cmd method of running/storing
-%% user customizable commands.
+%% For commands which require injection of arguments, simply name the
+%% arguments in the command with bash variables, add the variable
+%% names and values to a proplist of `Args' and they will be injected
+%% into the command via environment variables. This decouples the
+%% ordering from the commands, which was a limitation in the
+%% customizability of the old io_lib:format/os:cmd method of
+%% running/storing user customizable commands.
 %%
-%% For commands that do not require injection of arguments, simply use {@link cmd/1} or specify an empty list
-%% in {@link cmd/3}. {@link cmd/2} is used when default options are fine, but arguments are required.
+%% For commands that do not require injection of arguments, simply use
+%% {@link cmd/1} or specify an empty list in {@link cmd/3}. {@link
+%% cmd/2} is used when default options are fine, but arguments are
+%% required.
 %%
-%% cmd/3 permits read mode ports options as well as timeout and size thresholds.
-%% `binary', `exit_status', `use_stdio', and `stderr_to_stdout' are always set as ports options
-%% as their use is assumed in processing the command.
+%% cmd/3 permits read mode ports options as well as timeout and size
+%% thresholds.  `binary', `exit_status', `use_stdio', and
+%% `stderr_to_stdout' are always set as ports options as their use is
+%% assumed in processing the command.
 %%
 %% Examples:
 %% ```
@@ -69,8 +77,9 @@ cmd(Command, Args) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec cmd(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) ->
-                 {'ok', kz_term:ne_binary()}|{'error', any(), binary()}.
+-spec cmd(iodata(), kz_term:proplist(), kz_term:proplist()) ->
+                 {'ok', kz_term:ne_binary()} |
+                 {'error', any(), binary()}.
 cmd(Command, Args, Options) ->
     Owner = props:get_value(<<"owner">>, Options, self()),
     CmdTimeout = props:get_value(<<"absolute_timeout">>, Options, ?DEFAULT_ABSOLUTE_TIMEOUT),
@@ -93,10 +102,11 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
             Ok;
         {{'error', _, _}=Error,Pid} ->
             _ = erlang:demonitor(Ref, ['flush']),
+            lager:info("cmd errored: ~p", [Error]),
             Error;
         {'DOWN', Ref, _, Pid, Reason} ->
             _ = erlang:demonitor(Ref, ['flush']),
-            lager:debug("cmd process died unexpectedly with reason: ~p", [Reason]),
+            lager:info("cmd process died unexpectedly with reason: ~p", [Reason]),
             {'error', 'died_unexpectedly', <<>>};
         Else ->
             lager:debug("unexpected message ~p", [Else]),
@@ -106,11 +116,15 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
             maybe_kill_cmd(Port),
             _ = erlang:demonitor(Ref, ['flush']),
             _ = erlang:exit(Pid, 'timeout'),
+            lager:info("command timed out after ~pms", [Timeout]),
             {'error', 'absolute_timeout', <<>>}
     end.
 
--spec run_cmd(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) ->
-                     any().
+-spec run_cmd(iodata(), kz_term:proplist(), kz_term:proplist()) ->
+                     {{'ok', kz_term:ne_binary()} |
+                      {'error', atom(), kz_term:ne_binary()}
+                     ,pid()
+                     }.
 run_cmd(Command, Args, Options) ->
     OwnerPid = props:get_value(<<"owner">>, Options),
     OwnerRef = erlang:monitor('process', OwnerPid),
@@ -130,7 +144,7 @@ run_cmd(Command, Args, Options) ->
     OwnerPid ! {Out, self()}.
 
 -spec cmd_read({port(), integer(), integer(), reference()}, kz_term:binary()) ->
-                      {'ok', kz_term:ne_binary()}|
+                      {'ok', kz_term:ne_binary()} |
                       {'error', atom(), kz_term:ne_binary()}.
 cmd_read({Port, _MaxSize, Timeout, OwnerRef}=LoopParams, Acc) ->
     receive

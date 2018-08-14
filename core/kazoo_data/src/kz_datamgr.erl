@@ -208,14 +208,14 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
                               data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
-        true -> ensure_saved(DbName, JObj);
-        false -> {'ok', JObj}
+        'true' -> ensure_saved(DbName, JObj);
+        'false' -> {'ok', JObj}
     end.
 
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
         {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
-        _ -> true
+        _ -> 'true'
     end.
 
 %%------------------------------------------------------------------------------
@@ -391,7 +391,8 @@ db_view_update(DbName, Views) ->
 db_view_update(DbName, Views0, Remove) when ?VALID_DBNAME(DbName) ->
     case lists:keymap(fun maybe_adapt_multilines/1, 2, Views0) of
         [] -> 'false';
-        Views ->  kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
+        Views ->
+            kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
     end;
 db_view_update(DbName, Views, Remove) ->
     case maybe_convert_dbname(DbName) of
