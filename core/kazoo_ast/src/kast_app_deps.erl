@@ -84,7 +84,12 @@ fix_app_deps(App) ->
 
 -spec configured_dep_apps(atom()) -> [atom()].
 configured_dep_apps(App) ->
-    {'application', App, Properties} = read_app_src(App),
+    configured_dep_apps(App, read_app_src(App)).
+
+configured_dep_apps(_App, 'undefined') ->
+    ?DEBUG("failed to find configured dep apps, no .app for ~s", [_App]),
+    [];
+configured_dep_apps(App, {'application', App, Properties}) ->
     lists:usort(props:get_value('applications', Properties)).
 
 fix_app_deps(App, Missing, Unneeded) ->
@@ -105,22 +110,36 @@ fix_app_deps(App, Missing, Unneeded) ->
             io:format(".");
         UpdatedApps ->
             ?DEBUG("updated ~s apps to ~p~n", [App, UpdatedApps]),
-            {'application', App, Properties} = read_app_src(App),
-
-            write_app_src(App
-                         ,{'application'
-                          ,App
-                          ,props:set_value('applications', UpdatedApps, Properties)
-                          }
-                         ),
-            io:format("x")
+            update_app_src(App, UpdatedApps)
     end.
+
+update_app_src(App, UpdatedApps) ->
+    update_app_src(App, UpdatedApps, read_app_src(App)).
+
+update_app_src(_App, _UpdatedApps, 'undefined') ->
+    ?DEBUG("error reading .app file ~s", [_App]),
+    io:format("!");
+update_app_src(App, UpdatedApps, {'application', App, Properties}) ->
+    write_app_src(App
+                 ,{'application'
+                  ,App
+                  ,props:set_value('applications', UpdatedApps, Properties)
+                  }
+                 ),
+    io:format("x").
 
 read_app_src(App) ->
     File = app_src_filename(App),
     ?DEBUG("reading app file ~s~n", [File]),
-    {'ok', [Config]} = file:consult(kz_term:to_list(File)),
-    Config.
+    read_app_file(File).
+
+read_app_file(File) ->
+    read_app_file(File, file:consult(kz_term:to_list(File))).
+
+read_app_file(_File, {'ok', [Config]}) -> Config;
+read_app_file(_File, _Error) ->
+    ?DEBUG("error reading ~s: ~p", [_File, _Error]),
+    'undefined'.
 
 write_app_src(App, Config) ->
     File = app_src_filename(App),
@@ -308,9 +327,15 @@ remote_calls_from_module(Module) ->
     remote_calls_from_module(Module, []).
 
 remote_calls_from_module(Module, Acc) ->
+    remote_calls_from_module(Module, Acc, kz_ast_util:module_ast(Module)).
+
+remote_calls_from_module(_Module, Acc, 'undefined') ->
+    io:format("!"),
+    ?DEBUG("failed to get AST for ~s", [_Module]),
+    Acc;
+remote_calls_from_module(Module, Acc, {M, AST}) ->
     io:format("."),
     ?DEBUG("remote calls from ~s~n", [Module]),
-    {M, AST} = kz_ast_util:module_ast(Module),
     #module_ast{functions=Fs} = kz_ast_util:add_module_ast(#module_ast{}, M, AST),
     try remote_calls_from_functions(Fs, Acc) of
         Modules -> ?DEBUG("  ~p~n", [Module]), lists:delete(M, Modules)

@@ -47,8 +47,25 @@ module_ast(M) ->
         'non_existing' -> 'undefined';
         'preloaded' -> 'undefined';
         Beam ->
-            {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(Beam, ['abstract_code']),
-            {Module, AST}
+            beam_ast(Beam)
+    end.
+
+beam_ast(Beam) ->
+    case beam_lib:chunks(Beam, ['abstract_code']) of
+        {'ok', {Module, [{'abstract_code', AST}]}} ->
+            {Module, AST};
+        {'error', 'beam_lib', {{'unknown_chunk', File, _}}} ->
+            lager:info("unknown chunk in ~s, no ast", [File]),
+            'undefined';
+        {'error', 'beam_lib', {{'key_missing_or_invalid', File, _Key}}} ->
+            lager:info("key ~s missing or invalid in ~s", [_Key, File]),
+            'undefined';
+        {'error', 'beam_lib', {{'file_error', File, Posix}}} ->
+            lager:info("file error ~p on ~s", [Posix, File]),
+            'undefined';
+        {'error', 'beam_lib', Error} ->
+            lager:info("error getting chunks for ~s: ~p", [Error]),
+            'undefined'
     end.
 
 -spec add_module_ast(module_ast(), module(), abstract_code()) -> module_ast().
