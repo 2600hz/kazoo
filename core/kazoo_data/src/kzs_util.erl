@@ -86,16 +86,19 @@ db_classification(Database) ->
         Classifications -> find_first(Database, Classifications)
     end.
 
+-spec find_first(kz_term:ne_binary(), kz_term:atoms()) -> atom().
 find_first(Database, []) -> unknown_db_classification(Database);
 find_first(Database, ['undefined' | Cs]) -> find_first(Database, Cs);
 find_first(_Database, [Classification | _]) -> Classification.
 
+-spec unknown_db_classification(kz_term:ne_binary()) -> 'undefined'.
 unknown_db_classification(_Database) ->
     lager:warning("unknown type for database ~s", [_Database]),
-    {current_stacktrace, ST} = erlang:process_info(self(),current_stacktrace),
+    {'current_stacktrace', ST} = erlang:process_info(self(), 'current_stacktrace'),
     kz_util:log_stacktrace(ST),
     'undefined'.
 
+-spec binding_db_classify(kz_term:ne_binary()) -> kz_term:ne_binary().
 binding_db_classify(Database) ->
     Encoded = kz_amqp_util:encode(Database),
     <<"db.classify.", Encoded/binary>>.
