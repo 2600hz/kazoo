@@ -235,7 +235,7 @@ is_authenticated(#cb_context{}) -> 'true'.
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
     lager:debug("checking for superduper admin: ~s", [AccountId]),
-    case kz_util:is_system_admin(AccountId) of
+    case kzd_accounts:is_superduper_admin(AccountId) of
         'true' ->
             lager:debug("the requestor is a superduper admin"),
             'true';
@@ -848,7 +848,9 @@ validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, Schema
     end;
 validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired) ->
     Strict = fetch(Context, 'schema_strict_validation', ?SHOULD_FAIL_ON_INVALID_DATA),
-    try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context))) of
+    SystemSL = kapps_config:get_binary(<<"crossbar">>, <<"stability_level">>),
+    Options = [{'extra_validator_options', [{'stability_level', SystemSL}]}],
+    try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context)), Options) of
         {'ok', JObj} ->
             lager:debug("validation passed"),
             validate_passed(set_req_data(Context, JObj), OnSuccess);
@@ -856,7 +858,7 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
             lager:debug("validation errors when strictly validating"),
             validate_failed(SchemaJObj, Context, Errors, OnFailure);
         {'error', Errors} ->
-            lager:debug("validation errors but not stricly validating, trying to fix request"),
+            lager:debug("validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
         'error':'function_clause' ->
@@ -1150,5 +1152,5 @@ system_error(Context, Error) ->
                ,{<<"Account-ID">>, auth_account_id(Context)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
+    _ = kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
     add_system_error(Error, Context).

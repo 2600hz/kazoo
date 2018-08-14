@@ -489,7 +489,7 @@ exec(Number, Action, [Provider|Providers]) ->
 -spec apply_action(knm_number:knm_number(), exec_action(), kz_term:ne_binary()) ->
                           {'true', any()} | 'false'.
 apply_action(Number, Action, Provider) ->
-    case kz_util:try_load_module(Provider) of
+    case kz_module:ensure_loaded(Provider) of
         'false' ->
             ?LOG_DEBUG("provider ~s is unknown, skipping", [Provider]),
             'false';

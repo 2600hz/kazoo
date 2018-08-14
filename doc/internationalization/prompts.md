@@ -1,4 +1,4 @@
-
+# System Prompts
 
 Kazoo provides many prompts, such as during voicemail, to instruct callers on things to do. The default prompts that ship with Kazoo are provided in English, but as is often the case, supporting callers who don't speak English requires alternative language prompts.
 
@@ -12,9 +12,9 @@ Feature enhancements to support multi-lingual media prompts have been proudly sp
 
 L'amélioration des différents messages vocaux multilingues a été rendu possible par [CloudPBX Inc.](http://cloudpbx.ca), qui ont fièrement commandité le développement nécessaire.
 
-#### Prompt Installation
+## Prompt Installation
 
-The first step, on a new installation or existing installtions prior to v3.14, is to import the existing system prompts that come with Kazoo. They are the default English prompts and can be imported via SUP:
+The first step, on a new installation or existing installations prior to v3.14, is to import the existing system prompts that come with Kazoo. They are the default English prompts and can be imported via SUP:
 
     sup kazoo_media_maintenance import_prompts /path/to/kazoo/system_media/en-us/
 
@@ -22,13 +22,13 @@ This will take a while to run and be a bit taxing on the BigCouch nodes, so it i
 
 The default language associated with these prompts will be "en-us".
 
-##### Additional Prompts
+## Additional Prompts
 
 As new prompts enter the system, you can selectively add them (to minimize load on the system):
 
     sup kazoo_media_maintenance import_prompt /path/to/kazoo/system_media/en-us/prompt_id.mp3
 
-##### Alternative Languages
+## Alternative Languages
 
 For those that need translated versions of the prompts, there are a few steps required.
 
@@ -43,13 +43,13 @@ This will add the French version of the prompt to the system_media database. If 
 
 Now, when the `menu-transferring_call` prompt is played, if the call's or account's language is set to `fr-fr`, that version of the prompt will be played for the caller.
 
-##### Cluster Default Language
+## Cluster Default Language
 
 To set your cluster's default language to something other than "en-us":
 
     sup kapps_config set_default media default_language ab-cd
 
-##### Per-Account Prompts
+## Per-Account Prompts
 
 It is possible to create per-account prompts to be used in place of the system prompts. This is done via the Crossbar /media API.
 
@@ -62,7 +62,7 @@ curl -v -X PUT \
     -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pin", "language":"x-pig-latin"}}'
 ```
 
-##### Configure system to allow account overrides
+### Configure system to allow account overrides
 
 Make sure the system is allowing accounts to override prompts
 
@@ -70,7 +70,7 @@ Make sure the system is allowing accounts to override prompts
 sup kapps_config set_default "media" "support_account_overrides" true
 ```
 
-###### Set the account's language
+### Set the account's language
 
 Currently, a SUP command is required to set the account's language: `sup kapps_account_config set {ACCOUNT_ID} media default_language fr-ca`
 
@@ -85,15 +85,15 @@ curl -X PATCH \
 
 You can test what language will be selected for an account (barring a callflow language action changing it) thusly: `sup kz_media_util prompt_language {ACCOUNT_ID}`
 
-##### System Prompts via Crossbar
+### System Prompts via Crossbar
 
 If you are a superduper admin, you can also manipulate the system_media prompts via Crossbar. Simply remove the `/accounts/{ACCOUNT_ID}` from the URL to operate against the system's prompts.
 
-##### Languages supported
+## Languages supported
 
 While we encourage you to use proper RFC [language tags](http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.10) for identifying prompts, there is no system limitation. If the language to be used is "en-US", the system will first try to find "en-US" then fall back to "en" prompts. If the language is "fr-FR", the system will try "fr-fr" and then "fr". However, nothing stops you from doing dual-language prompts (where both languages are in one media file) and using "fr-fr_en-us". In this case, "fr-fr_en-us" will be tried, then "fr-fr", and finally "fr".
 
-##### Existing Prompts
+## Existing Prompts
 
 If you've imported media from the `$KAZOO/system_media` folder, you should have a listing of all the prompts the system uses. Access this via Crossbar:
 
@@ -105,7 +105,7 @@ To see what translations exist in the system for a given prompt, the listing can
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts/vm-enter_pass'
 
-##### Setting the Language Per-Callflow
+## Setting the Language Per-Callflow
 
 Add the `language` callflow action before a branch to set what language will be used when playing prompts:
 

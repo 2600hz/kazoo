@@ -19,7 +19,10 @@
 -endif.
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("crossbar/src/crossbar.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_web/include/kazoo_web.hrl").
+-include_lib("kazoo_documents/include/kazoo_documents.hrl").
+
 -include_lib("kazoo_ast/src/kz_ast.hrl").
 
 -define(REF_PATH
@@ -55,14 +58,14 @@ to_ref_doc(CBModule) ->
        ,[kz_binary:join([Filter, OperatesOn, Description], <<" | ">>), $\n]
        ).
 -define(FILTER_HEADER
-       ,["#### Available Filters\n\n"
+       ,["## Available Filters\n\n"
         ,?FILTER_ROW(<<"Filter">>, <<"Operates On">>, <<"Description">>)
         ,?FILTER_ROW(<<"------">>, <<"-----------">>, <<"-----------">>)
         ]
        ).
 -define(FILTER_DOC
-       ,["### Query String Filters\n\n"
-         "#### About Filters\n\n"
+       ,["# Query String Filters\n\n"
+         "## About Filters\n\n"
         ]).
 
 -spec filters_to_ref_doc(kz_json:object()) -> 'ok'.
@@ -103,7 +106,7 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 %%------------------------------------------------------------------------------
 %% @doc Creates a Markdown section for each API methods.
 %% ```
-%% #### Fetch/Create/Change
+%% ## Fetch/Create/Change
 %% > Verb Path
 %% ```shell
 %% curl -v http://{SERVER}:8000/Path
@@ -142,7 +145,7 @@ sort_methods(Methods, [Method | Ordering], Acc) ->
     end.
 
 method_to_section(Method, Acc, APIPath) ->
-    [[ "#### ", method_as_action(Method), "\n\n"
+    [[ "## ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
      , "```shell\ncurl -v -X ", Method, " \\\n"
        "    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n"
@@ -163,8 +166,8 @@ method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 ref_doc_header(BaseName) ->
     CleanedUpName = kz_ast_util:smash_snake(BaseName),
     [[maybe_add_schema(BaseName)]
-    ,["#### About ", CleanedUpName, "\n\n"]
-    ,["### ", CleanedUpName, "\n\n"]
+    ,["## About ", CleanedUpName, "\n\n"]
+    ,["# ", CleanedUpName, "\n\n"]
     ].
 
 -spec maybe_add_schema(kz_term:ne_binary()) -> iolist().
@@ -175,7 +178,7 @@ maybe_add_schema(BaseName) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc This looks for `#### Schema' in the doc file and adds the JSON schema
+%% @doc This looks for `## Schema' in the doc file and adds the JSON schema
 %% formatted as the markdown table.
 %% ```
 %% Schema = "vmboxes" or "devices"
@@ -185,10 +188,12 @@ maybe_add_schema(BaseName) ->
 %%------------------------------------------------------------------------------
 -spec schema_to_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 schema_to_doc(Schema, Doc) ->
-    {'ok', SchemaJObj} = kz_json_schema:load(Schema),
+    SchemaJObj = kz_ast_util:load_ref_schema(Schema),
     DocFile = filename:join([code:lib_dir('crossbar'), "doc", Doc]),
     {'ok', DocContents} = file:read_file(DocFile),
-    case binary:split(DocContents, <<?SCHEMA_SECTION/binary, "\n">>) of
+    case SchemaJObj =/= 'undefined'
+        andalso binary:split(DocContents, <<?SCHEMA_SECTION/binary, "\n">>)
+    of
         [Before, After] ->
             Data = [Before, kz_ast_util:schema_to_table(SchemaJObj), After],
             ok = file:write_file(DocFile, Data);
@@ -377,8 +382,8 @@ swagger_params(PathMeta) ->
 auth_token_param(Path, _Method) ->
     case is_authtoken_required(Path) of
         'undefined' -> 'undefined';
-        true -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
-        false -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
+        'true' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
+        'false' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
     end.
 
 -spec is_authtoken_required(kz_term:ne_binary()) -> kz_term:api_boolean().
@@ -460,16 +465,16 @@ format_path_token(<<"_", Rest/binary>>) -> format_path_token(Rest);
 format_path_token(Token = <<Prefix:1/binary, _/binary>>)
   when byte_size(Token) >= 3 ->
     case is_all_upper(Token) of
-        true -> brace_token(Token);
-        false ->
+        'true' -> brace_token(Token);
+        'false' ->
             case is_all_upper(Prefix) of
-                true -> brace_token(camel_to_snake(Token));
-                false -> Token
+                'true' -> brace_token(camel_to_snake(Token));
+                'false' -> Token
             end
     end;
 format_path_token(BadToken) ->
     Fmt = "Please pick a good allowed_methods/N variable name: '~s' is too short.\n",
-    io:format(standard_error, Fmt, [BadToken]),
+    io:format('standard_error', Fmt, [BadToken]),
     halt(1).
 
 camel_to_snake(Bin) ->
@@ -600,6 +605,7 @@ process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
                    ],
     process_api_ast_functions(Module, APIFunctions).
 
+-type http_methods() :: kz_term:ne_binaries().
 -type path_with_methods() :: {iodata(), http_methods()}.
 -type paths_with_methods() :: [path_with_methods()].
 -type allowed_methods() :: {'allowed_methods', paths_with_methods()}.
@@ -927,6 +933,8 @@ def_path_param(<<"{TRANSACTION_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{USERNAME}">>=P) -> base_path_param(P);
 def_path_param(<<"{VM_MSG_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
+def_path_param(<<"{ERROR_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{HANDLER_ID}">>=P) -> base_path_param(P);
 
 %% For all the edge cases out there:
 def_path_param(<<"report-{REPORT_ID}">>) ->

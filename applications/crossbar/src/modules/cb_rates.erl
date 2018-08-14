@@ -254,9 +254,9 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Doc = lists:foldl(fun doc_updates/2
-                     ,cb_context:doc(Context)
-                     ,[{fun kz_doc:set_type/2, <<"rate">>}
+    Doc = lists:foldl(fun(F, R) -> F(R) end
+                     ,kzd_rates:from_json(cb_context:doc(Context))
+                     ,[fun kzd_rates:set_type/1
                       ,fun ensure_routes_set/1
                       ]
                      ),
@@ -264,28 +264,17 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
 
--spec doc_updates({fun(), kz_term:ne_binary()} | fun(), kz_json:object()) ->
-                         kz_json:object().
-doc_updates({Fun, Value}, Doc) when is_function(Fun, 2) ->
-    Fun(Doc, Value);
-doc_updates(Fun, Doc) when is_function(Fun, 1) ->
-    Fun(Doc).
-
 -spec ensure_routes_set(kz_json:object()) -> kz_json:object().
-ensure_routes_set(Doc) ->
-    ensure_routes_set(Doc, kz_json:get_value(<<"routes">>, Doc)).
+ensure_routes_set(Rate) ->
+    ensure_routes_set(Rate, kzd_rates:routes(Rate)).
 
--spec ensure_routes_set(kz_json:object(), kz_term:api_binaries()) -> kz_json:object().
-ensure_routes_set(Doc, 'undefined') ->
-    add_default_route(Doc, kz_json:get_value(<<"prefix">>, Doc));
-ensure_routes_set(Doc, []) ->
-    add_default_route(Doc, kz_json:get_value(<<"prefix">>, Doc));
-ensure_routes_set(Doc, _) ->
-    Doc.
-
--spec add_default_route(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
-add_default_route(Doc, Prefix) ->
-    kz_json:set_value(<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>], Doc).
+-spec ensure_routes_set(kzd_rates:doc(), kz_term:api_ne_binaries()) -> kz_json:object().
+ensure_routes_set(Rate, 'undefined') ->
+    kzd_rates:set_default_route(Rate);
+ensure_routes_set(Rate, []) ->
+    kzd_rates:set_default_route(Rate);
+ensure_routes_set(Rate, _Routes) ->
+    Rate.
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
@@ -344,7 +333,7 @@ upload_csv(Context) ->
     {'ok', {Count, Rates}} = process_upload_file(Context),
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_time:elapsed_ms(Now)]),
     _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
-    lager:debug("it took ~b milli to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
+    lager:debug("it took ~b ms to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
                                  {'ok', {non_neg_integer(), kz_json:objects()}}.
@@ -417,29 +406,29 @@ process_row(Row, {Count, JObjs}=Acc) ->
             %% The idea here is the more expensive rate will have a higher CostF
             %% and decrement it from the weight so it has a lower weight #
             %% meaning it should be more likely used
-            Weight = kzd_rate:constrain_weight(byte_size(kz_term:to_binary(Prefix)) * 10
-                                               - trunc(InternalRate * 100)
-                                              ),
+            Weight = kzd_rates:constrain_weight(byte_size(kz_term:to_binary(Prefix)) * 10
+                                                - trunc(InternalRate * 100)
+                                               ),
             Id = <<ISO/binary, "-", (kz_term:to_binary(Prefix))/binary>>,
             Setters = props:filter_undefined(
                         [{fun kz_doc:set_id/2, Id}
-                        ,{fun kzd_rate:set_prefix/2, kz_term:to_binary(Prefix)}
-                        ,{fun kzd_rate:set_weight/2, Weight}
-                        ,{fun kzd_rate:set_description/2, Description}
-                        ,{fun kzd_rate:set_name/2, Id}
-                        ,{fun kzd_rate:set_iso_country_code/2, ISO}
-                        ,{fun kzd_rate:set_private_cost/2, InternalRate}
-                        ,{fun kzd_rate:set_carrier/2, <<"default">>}
-                        ,fun kzd_rate:set_type/1
-                        ,{fun kzd_rate:set_routes/2, get_row_routes(Row)}
-                        ,{fun kzd_rate:set_increment/2, get_row_increment(Row)}
-                        ,{fun kzd_rate:set_minimum/2, get_row_minimum(Row)}
-                        ,{fun kzd_rate:set_surcharge/2, get_row_surcharge(Row)}
-                        ,{fun kzd_rate:set_rate_cost/2, get_row_rate(Row)}
-                        ,{fun kzd_rate:set_direction/2, get_row_direction(Row)}
-                        ,{fun kzd_rate:set_private_surcharge/2, get_row_internal_surcharge(Row)}
-                        ,{fun kzd_rate:set_routes/2, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)\$">>]}
-                        ,{fun kzd_rate:set_options/2, []}
+                        ,{fun kzd_rates:set_prefix/2, kz_term:to_binary(Prefix)}
+                        ,{fun kzd_rates:set_weight/2, Weight}
+                        ,{fun kzd_rates:set_description/2, Description}
+                        ,{fun kzd_rates:set_rate_name/2, Id}
+                        ,{fun kzd_rates:set_iso_country_code/2, ISO}
+                        ,{fun kzd_rates:set_private_cost/2, InternalRate}
+                        ,{fun kzd_rates:set_carrier/2, <<"default">>}
+                        ,fun kzd_rates:set_type/1
+                        ,{fun kzd_rates:set_routes/2, get_row_routes(Row)}
+                        ,{fun kzd_rates:set_rate_increment/2, get_row_increment(Row)}
+                        ,{fun kzd_rates:set_rate_minimum/2, get_row_minimum(Row)}
+                        ,{fun kzd_rates:set_rate_surcharge/2, get_row_surcharge(Row)}
+                        ,{fun kzd_rates:set_rate_cost/2, get_row_rate(Row)}
+                        ,{fun kzd_rates:set_direction/2, get_row_direction(Row)}
+                        ,{fun kzd_rates:set_private_surcharge/2, get_row_internal_surcharge(Row)}
+                        ,{fun kzd_rates:set_routes/2, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)\$">>]}
+                        ,{fun kzd_rates:set_options/2, []}
                         ]),
 
             {Count + 1, [kz_json:set_values(Setters, kz_json:new()) | JObjs]}
@@ -606,9 +595,5 @@ normalize_fields(Rate) ->
                              {kz_json:path(), kz_json:json_term()}.
 normalize_field(<<"Base-Cost">> = K, BaseCost) ->
     {K, wht_util:units_to_dollars(BaseCost)};
-normalize_field(<<"Rate">> = K, Rate) ->
-    {K, wht_util:units_to_dollars(Rate)};
-normalize_field(<<"Surcharge">> = K, Surcharge) ->
-    {K, wht_util:units_to_dollars(Surcharge)};
 normalize_field(K, V) ->
     {K, V}.

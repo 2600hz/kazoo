@@ -63,7 +63,7 @@ stop(<<_/binary>>=RatedeckId) ->
         Pid -> catch gen_server:call(Pid, 'stop')
     end.
 
--spec cache_rates(kz_term:ne_binary(), kzd_rate:docs()) -> 'ok'.
+-spec cache_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 cache_rates(RatedeckId, Rates) ->
     ProcName = hon_trie:trie_proc_name(RatedeckId),
     gen_server:call(ProcName, {'cache_rates', Rates}).
@@ -166,14 +166,14 @@ bump_prefix_timestamp(Trie, Prefix, RateIds) ->
                     ],
     trie:store(Prefix, BumpedRateIds, Trie).
 
--spec handle_caching_of_rates(trie:trie(), kzd_rate:docs()) -> trie:trie().
+-spec handle_caching_of_rates(trie:trie(), kzd_rates:docs()) -> trie:trie().
 handle_caching_of_rates(Trie, Rates) ->
     lists:foldl(fun cache_rate/2, Trie, Rates).
 
--spec cache_rate(kzd_rate:doc(), trie:trie()) -> trie:trie().
+-spec cache_rate(kzd_rates:doc(), trie:trie()) -> trie:trie().
 cache_rate(Rate, Trie) ->
     Id = kz_doc:id(Rate),
-    Prefix = kz_term:to_list(kzd_rate:prefix(Rate)),
+    Prefix = kz_term:to_list(kzd_rates:prefix(Rate)),
     NowMs = kz_time:now_ms(),
     lager:debug("caching ~s for prefix ~s at ~p into ~p~n", [Id, Prefix, NowMs, Trie]),
     trie:update(Prefix

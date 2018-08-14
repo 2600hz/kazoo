@@ -1,5 +1,5 @@
 {application,cdr,
-             [{applications,[kazoo,kazoo_amqp,kazoo_config,kazoo_data,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
                              kazoo_documents,kazoo_modb,kazoo_stdlib,kernel,
                              lager,stdlib]},
               {description,"Listen and record CDR events into CouchDB"},

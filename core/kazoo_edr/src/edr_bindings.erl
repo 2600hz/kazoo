@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-, 2600Hz
+%%% @copyright (C) 2017, Conversant Ltd
 %%% @doc EDR event distribution bindings
 %%% @author Conversant Ltd (Max Lay)
 %%% @end
@@ -81,10 +81,12 @@ levels(Level, AllLevels) ->
 
 -spec binding_key(edr_severity(), edr_verbosity(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 binding_key(Severity, Verbosity, AccountId, AppName) ->
-    <<"edr.", (kz_term:to_binary(Severity))/binary, "."
-      ,(kz_term:to_binary(Verbosity))/binary, "."
-      ,(kz_term:to_binary(AccountId))/binary, "."
-      ,(kz_term:to_binary(AppName))/binary>>.
+    list_to_binary(["edr."
+                   ,kz_term:to_binary(Severity), "."
+                   ,kz_term:to_binary(Verbosity), "."
+                   ,kz_term:to_binary(AccountId), "."
+                   ,kz_term:to_binary(AppName)
+                   ]).
 
 -spec event_binding_key(edr_event()) -> kz_term:ne_binary().
 event_binding_key(#edr_event{account_id=AccountId
@@ -100,7 +102,12 @@ distribute(#edr_event{}=Event) ->
     'ok'.
 
 -spec push(binding_payload(), edr_event()) -> any().
-push(#binding_payload{module=Module, function=Fun, binding=Binding, payload=Payload}, #edr_event{}=Event) ->
+push(#binding_payload{module=Module
+                     ,function=Fun
+                     ,binding=Binding
+                     ,payload=Payload
+                     }
+    ,#edr_event{}=Event) ->
     case should_push(Binding, Event) of
         'true' when Payload =:= 'undefined' -> erlang:apply(Module, Fun, [Event]);
         'true' -> erlang:apply(Module, Fun, [Payload, Event]);

@@ -33,6 +33,7 @@
 -include("crossbar.hrl").
 
 -define(CB_LIST, <<"users/crossbar_listing">>).
+-define(LIST_BY_HOTDESK_ID, <<"users/list_by_hotdesk_id">>).
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 
 -define(VCARD, <<"vcard">>).
@@ -197,11 +198,10 @@ validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, UserId}])
                                        ,Context
-             );
+                                       );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
@@ -459,7 +459,8 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPT
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(UserId, Context) ->
-    prepare_username(UserId, Context).
+    Context1 = prepare_username(UserId, Context),
+    check_hotdesk_id(UserId, Context1).
 
 -spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(UserId, Context) ->
@@ -519,6 +520,40 @@ check_user_schema(UserId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
     cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
 
+-spec check_hotdesk_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_hotdesk_id(UserId, Context) ->
+    JObj = cb_context:req_data(Context),
+    HotdeskId = kz_json:get_ne_value([<<"hotdesk">>, <<"id">>], JObj),
+    AccountDb = cb_context:account_db(Context),
+    case is_hotdesk_id_unique(AccountDb, UserId, HotdeskId) of
+        'true' ->
+            Context;
+        'false' ->
+            lager:debug("Hotdesk.id ~p is already used", [HotdeskId]),
+            non_unique_hotdesk_id_error(Context, HotdeskId);
+        {'error', DatamgrError} ->
+            crossbar_doc:handle_datamgr_errors(DatamgrError, HotdeskId, Context)
+    end.
+
+-spec is_hotdesk_id_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean() | kz_datamgr:data_error().
+is_hotdesk_id_unique(AccountDb, UserId, HotdeskId) ->
+    ViewOptions = [{'key', HotdeskId}],
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_HOTDESK_ID, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= UserId;
+        Else ->
+            lager:debug("error ~p checking view ~p in ~p", [Else, ?LIST_BY_HOTDESK_ID, AccountDb]),
+            Else
+    end.
+
+-spec non_unique_hotdesk_id_error(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+non_unique_hotdesk_id_error(Context, HotdeskId) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Hotdesk.id is not unique for this account">>}
+            ,{<<"cause">>, HotdeskId}
+            ]),
+    cb_context:add_validation_error([<<"hotdesk">>, <<"id">>], <<"unique">>, Msg, Context).
+
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_user:type()}],
@@ -561,7 +596,7 @@ maybe_validate_username(UserId, Context) ->
     of
         %% username is unchanged
         'true' -> maybe_rehash_creds(UserId, NewUsername, Context);
-        %% updated username that doesnt exist
+        %% updated username that doesn't exist
         'undefined' ->
             manditory_rehash_creds(UserId, NewUsername, Context);
         %% updated username to existing, collect any further errors...

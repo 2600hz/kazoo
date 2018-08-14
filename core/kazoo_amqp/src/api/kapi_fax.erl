@@ -9,6 +9,7 @@
 -export([account_id/1
         ,job_id/1
         ,to_number/1
+        ,control_queue/1
         ,state/1
         ]).
 
@@ -27,7 +28,7 @@
         ,publish_start_job/1, publish_start_job/2
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(FAX_START, <<"start">>).
 -define(FAX_ACQUIRE, <<"acquire">>).
@@ -44,7 +45,7 @@
 -define(FAX_OUTGOING, <<"outgoing">>).
 -define(FAX_INCOMING, <<"incoming">>).
 
--define(FAX_EXCHANGE, <<"fax">>).
+-define(FAX_EXCHANGE, <<"faxes">>).
 
 -define(FAX_REQ_HEADERS, [<<"Call">>, <<"Action">>]).
 -define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>, <<"FaxBox-ID">>, <<"Fax-T38-Option">>]).
@@ -66,6 +67,7 @@
                                      ,<<"Account-ID">>, <<"Fax-Info">>
                                      ,<<"Cloud-Job-ID">>, <<"Cloud-Printer-ID">>
                                      ,<<"Fax-State">>, <<"Direction">>, <<"Page">>
+                                     ,<<"Stage">>
                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
                                      ,<<"Callee-ID-Number">>, <<"Callee-ID-Name">>
                                      ]).
@@ -83,7 +85,7 @@
                                   ]).
 -define(FAX_START_ACCOUNT_TYPES, []).
 
--define(FAX_START_JOB_HEADERS, [<<"Job-ID">>, <<"Account-ID">>, <<"To-Number">>]).
+-define(FAX_START_JOB_HEADERS, [<<"Job-ID">>, <<"Account-ID">>, <<"To-Number">>, <<"Control-Queue">>]).
 -define(OPTIONAL_FAX_START_JOB_HEADERS, []).
 -define(FAX_START_JOB_VALUES, [{<<"Event-Category">>,<<"start">>}
                               ,{<<"Event-Name">>, <<"job">>}
@@ -174,20 +176,20 @@ bind_q(Queue, Props) ->
 
 -spec bind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, AccountId, FaxId, StartId, 'undefined') ->
-    amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
-    amqp_util:bind_q_to_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
-    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
+    kz_amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
+    kz_amqp_util:bind_q_to_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
+    kz_amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
 bind_q(Queue, AccountId, FaxId, StartId, ['status'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
+    kz_amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
     bind_q(Queue, AccountId, FaxId, StartId, Restrict);
 bind_q(Queue, AccountId, FaxId, StartId, ['query_status'|Restrict]) ->
-    amqp_util:bind_q_to_targeted(Queue),
+    kz_amqp_util:bind_q_to_targeted(Queue),
     bind_q(Queue, AccountId, FaxId, StartId, Restrict);
 bind_q(Queue, AccountId, FaxId, StartId, ['req'|Restrict]) ->
-    amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
+    kz_amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
     bind_q(Queue, AccountId, FaxId, StartId, Restrict);
 bind_q(Queue, AccountId, FaxId, StartId, ['start'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
+    kz_amqp_util:bind_q_to_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
     bind_q(Queue, AccountId, FaxId, StartId, Restrict);
 bind_q(_, _, _, _, []) -> 'ok'.
 
@@ -200,20 +202,20 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, AccountId, FaxId, StartId, 'undefined') ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
-    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
+    kz_amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
 unbind_q(Queue, AccountId,  FaxId, StartId, ['status'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(Queue, AccountId, FaxId, StartId, ['query_status'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_targeted(Queue),
+    'ok' = kz_amqp_util:unbind_q_from_targeted(Queue),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(Queue, AccountId, FaxId, StartId, ['req'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(Queue, AccountId, FaxId, StartId, ['start'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(_, _, _, _, []) -> 'ok'.
 
@@ -223,9 +225,9 @@ unbind_q(_, _, _, _, []) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?FAX_EXCHANGE, <<"fanout">>),
-    amqp_util:targeted_exchange(),
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:new_exchange(?FAX_EXCHANGE, <<"topic">>),
+    kz_amqp_util:targeted_exchange(),
+    kz_amqp_util:callmgr_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
@@ -234,7 +236,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?FAX_REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, fax_routing_key()).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, fax_routing_key()).
 
 -spec publish_query_status(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_query_status(Q, JObj) ->
@@ -243,7 +245,7 @@ publish_query_status(Q, JObj) ->
 -spec publish_query_status(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_status(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun query_status/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_status(kz_term:api_terms()) -> 'ok'.
 publish_status(API) ->
@@ -254,7 +256,7 @@ publish_status(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_STATUS_VALUES, fun status/1),
     FaxId = props:get_first_defined([<<"Fax-ID">>,<<"Job-ID">>], API,<<"*">>),
     AccountId = props:get_value(<<"Account-ID">>, API, <<"*">>),
-    amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(AccountId, FaxId), Payload, ContentType).
+    kz_amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(AccountId, FaxId), Payload, ContentType).
 
 -spec publish_targeted_status(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_targeted_status(Q, JObj) ->
@@ -263,7 +265,7 @@ publish_targeted_status(Q, JObj) ->
 -spec publish_targeted_status(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_status(Q, Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?FAX_STATUS_VALUES, fun status/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_start_account(kz_term:api_terms()) -> 'ok'.
 publish_start_account(API) ->
@@ -273,7 +275,7 @@ publish_start_account(API) ->
 publish_start_account(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_START_ACCOUNT_VALUES, fun start_account/1),
     AccountId = props:get_value(<<"Account-ID">>, API,<<"*">>),
-    amqp_util:basic_publish(?FAX_EXCHANGE, fax_start_key(<<"account">>, AccountId), Payload, ContentType).
+    kz_amqp_util:basic_publish(?FAX_EXCHANGE, fax_start_key(<<"account">>, AccountId), Payload, ContentType).
 
 -spec publish_start_job(kz_term:api_terms()) -> 'ok'.
 publish_start_job(API) ->
@@ -283,7 +285,7 @@ publish_start_job(API) ->
 publish_start_job(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_START_JOB_VALUES, fun start_job/1),
     JobId = props:get_value(<<"Job-ID">>, API,<<"*">>),
-    amqp_util:basic_publish(?FAX_EXCHANGE, fax_start_key(<<"job">>, JobId), Payload, ContentType).
+    kz_amqp_util:basic_publish(?FAX_EXCHANGE, fax_start_key(<<"job">>, JobId), Payload, ContentType).
 
 fax_routing_key() ->
     <<"fax.req">>.
@@ -292,14 +294,25 @@ fax_start_key(Id) ->
     fax_start_key(<<"*">>, Id).
 
 fax_start_key(Type, Id) ->
-    list_to_binary(["fax.start.", Type, ".", amqp_util:encode(Id)]).
+    list_to_binary(["fax.start.", Type, ".", kz_amqp_util:encode(Id)]).
 
 status_routing_key(AccountId, FaxId) ->
-    list_to_binary(["fax.status.", AccountId, ".", amqp_util:encode(FaxId)]).
+    list_to_binary(["fax.status.", AccountId, ".", kz_amqp_util:encode(FaxId)]).
 
 -spec account_id(kz_json:object()) -> kz_term:ne_binary().
 account_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Account-ID">>, JObj).
+
+-spec control_queue(kz_json:object()) -> kz_term:ne_binary().
+control_queue(JObj) ->
+    case kz_amqp_util:split_routing_key(kz_api:server_id(JObj)) of
+        {'undefined', _} -> kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj);
+        {Pid, _} -> list_to_binary(["consumer://"
+                                   ,kz_term:to_binary(Pid)
+                                   ,"/"
+                                   ,kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj)
+                                   ])
+    end.
 
 -spec job_id(kz_json:object()) -> kz_term:ne_binary().
 job_id(JObj) ->
@@ -312,3 +325,4 @@ to_number(JObj) ->
 -spec state(kz_json:object()) -> kz_term:ne_binary().
 state(JObj) ->
     kz_json:get_ne_binary_value(<<"Fax-State">>, JObj).
+

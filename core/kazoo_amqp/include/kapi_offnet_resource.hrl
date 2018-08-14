@@ -9,7 +9,7 @@
 -define(KEY_B_LEG_EVENTS, <<"B-Leg-Events">>).
 -define(KEY_CALL_ID, <<"Call-ID">>).
 -define(KEY_CCVS, <<"Custom-Channel-Vars">>).
--define(KEY_CAVS, <<"Custom-Appliction-Vars">>).
+-define(KEY_CAVS, <<"Custom-Application-Vars">>).
 -define(KEY_REQUESTOR_CCVS, <<"Requestor-Custom-Channel-Vars">>).
 -define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
 -define(KEY_CSHS, <<"Custom-SIP-Headers">>).
@@ -48,6 +48,7 @@
 -define(KEY_T38_ENABLED, <<"Fax-T38-Enabled">>).
 -define(KEY_TIMEOUT, <<"Timeout">>).
 -define(KEY_TO_DID, <<"To-DID">>).
+-define(KEY_DENIED_CALL_RESTRICTIONS, <<"Denied-Call-Restrictions">>).
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 -define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).

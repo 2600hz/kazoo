@@ -1,22 +1,10 @@
-{application, kazoo_number_manager,
- [
-  {description, "Kazoo Number Management"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [kazoo_number_manager_sup]},
-  {applications, [ kernel
-                 , stdlib
-
-                 , kazoo_data
-                 , kazoo_documents
-                 , kazoo_web
-                 , kazoo_xml
-                 , kazoo
-                 , kazoo_services
-                 , kazoo_transactions
-
-                 , lager
-                 , cowlib
-                 ]},
-  {mod, {kazoo_number_manager_app, []}}
- ]}.
+{application,kazoo_number_manager,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_data,kazoo_documents,kazoo_services,
+                             kazoo_stdlib,kazoo_transactions,kazoo_web,
+                             kazoo_xml,kernel,lager,plists,stdlib,xmerl]},
+              {description,"Kazoo Number Management"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kazoo_number_manager_sup]},
+              {mod,{kazoo_number_manager_app,[]}}]}.

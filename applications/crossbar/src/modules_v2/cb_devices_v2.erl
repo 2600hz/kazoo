@@ -450,7 +450,7 @@ error_mdn_taken(MDN, Context) ->
 check_mdn_registered(DeviceId, Context) ->
     %%TODO: issue API request to TOP (if configured with URL) and validate
     %%   that the number is present in that system, if not stop the request
-    %%   and don't set handle_modible_mdn
+    %%   and don't set handle_mobile_mdn
     Context1 = cb_context:store(Context, 'add_mobile_mdn', 'true'),
     case DeviceId == 'undefined' of
         'true' -> check_mac_address(DeviceId, Context1);
@@ -686,10 +686,10 @@ lookup_regs(AccountRealm) ->
           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
-                                     ,fun kapi_registration:publish_query_req/1
-                                     ,{'ecallmgr', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_registration:publish_query_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _E} ->
             lager:debug("error getting reg: ~p", [_E]),
@@ -743,7 +743,8 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
     ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
                            ,kz_term:to_lower_binary(Username)
                            ]
-                   }],
+                   }
+                  ],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
@@ -769,7 +770,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
             {'ok', _} = kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(cb_context:doc(Context))),
-            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
@@ -790,7 +791,7 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false';
         {'ok', JObj} ->
             _ = kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
-            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
@@ -863,7 +864,8 @@ add_mobile_mdn(Context) ->
             cb_phone_numbers_v2:set_response(Error, Context);
         {ok, _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
-                       ,[Normalized, kz_json:encode(PublicFields)]),
+                       ,[Normalized, kz_json:encode(PublicFields)]
+                       ),
             maybe_remove_mobile_mdn(Context)
     end.
 

@@ -42,9 +42,9 @@
 
 -type option() :: {'assign_to', kz_term:ne_binary()} |
                   {'auth_by', kz_term:ne_binary()} |
-                  {'dry_run', boolean()} |
                   {'batch_run', boolean()} |
-                  {mdn_run, boolean()} |
+                  {'dry_run', boolean()} |
+                  {'mdn_run', boolean()} |
                   {'module_name', kz_term:ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
@@ -71,16 +71,14 @@
 -spec default() -> options().
 default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-    ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
-    ,{mdn_run, false}
+    ,{'dry_run', 'false'}
+    ,{'mdn_run', 'false'}
     ].
 
 -spec mdn_options() -> options().
 mdn_options() ->
-    [{mdn_run, true}
-     |default()
-    ].
+    props:set_value('mdn_run', 'true', default()).
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
 to_phone_number_setters(Options) ->

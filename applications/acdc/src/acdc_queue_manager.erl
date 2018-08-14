@@ -932,11 +932,10 @@ maybe_start_queue_workers(QueueSup, AgentCount) ->
 
 -spec update_properties(kz_json:object(), mgr_state()) -> mgr_state().
 update_properties(QueueJObj, State) ->
-    State#state{
-      enter_when_empty=kz_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
+    State#state{enter_when_empty=kz_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
                ,moh=kz_json:get_ne_value(<<"moh">>, QueueJObj)
                ,announcements_config=announcements_config(QueueJObj)
-     }.
+               }.
 
 -spec announcements_config(kz_json:object()) -> kz_term:proplist().
 announcements_config(Config) ->

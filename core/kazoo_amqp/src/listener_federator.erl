@@ -113,15 +113,17 @@ handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
     lager:debug("relaying federated ~s event (~p) ~s from ~s to ~p with consumer pid ~p",
                 [kz_api:event_category(JObj), kz_api:msg_id(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
                ),
-    RemoteServerId = <<"consumer://"
-                       ,(Self)/binary, "/"
-                       ,(kz_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary
-                     >>,
+    RemoteServerId = list_to_binary(["consumer://"
+                                    ,Self, "/"
+                                    ,kz_json:get_ne_binary_value(<<"Server-ID">>, JObj, <<>>)
+                                    ]),
     gen_listener:federated_event(Parent
                                 ,kz_json:set_values([{<<"Server-ID">>, RemoteServerId}
                                                     ,{<<"AMQP-Broker">>, Broker}
                                                     ,{<<"AMQP-Broker-Zone">>, Zone}
-                                                    ], JObj)
+                                                    ]
+                                                   ,JObj
+                                                   )
                                 ,BasicDeliver
                                 ,BasicData
                                 ),

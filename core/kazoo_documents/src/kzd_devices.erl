@@ -28,13 +28,14 @@
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([exclude_from_queues/1, exclude_from_queues/2, set_exclude_from_queues/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
+-export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
 -export([language/1, language/2, set_language/2]).
 -export([mac_address/1, mac_address/2, set_mac_address/2]).
 -export([media/1, media/2, set_media/2]).
 -export([metaflows/1, metaflows/2, set_metaflows/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
 -export([music_on_hold_media_id/1, music_on_hold_media_id/2, set_music_on_hold_media_id/2]).
--export([mwi_unsolicitated_updates/1, mwi_unsolicitated_updates/2, set_mwi_unsolicitated_updates/2]).
+-export([mwi_unsolicited_updates/1, mwi_unsolicited_updates/2, set_mwi_unsolicited_updates/2]).
 -export([name/1, name/2, set_name/2]).
 -export([outbound_flags/1, outbound_flags/2, set_outbound_flags/2]).
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
@@ -66,6 +67,7 @@
 -export([sip_username/1, sip_username/2, set_sip_username/2]).
 -export([suppress_unregister_notifications/1, suppress_unregister_notifications/2, set_suppress_unregister_notifications/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
+-export([is_hotdesked/1, hotdesk_ids/1, hotdesk_ids/2]).
 
 -export([fetch/2
         ,type/0
@@ -358,6 +360,18 @@ formatters(Doc, Default) ->
 set_formatters(Doc, Formatters) ->
     kz_json:set_value([<<"formatters">>], Formatters, Doc).
 
+-spec hotdesk(doc()) -> kz_term:api_object().
+hotdesk(Doc) ->
+    hotdesk(Doc, 'undefined').
+
+-spec hotdesk(doc(), Default) -> kz_json:object() | Default.
+hotdesk(Doc, Default) ->
+    kz_json:get_json_value([<<"hotdesk">>], Doc, Default).
+
+-spec set_hotdesk(doc(), kz_json:object()) -> doc().
+set_hotdesk(Doc, Hotdesk) ->
+    kz_json:set_value([<<"hotdesk">>], Hotdesk, Doc).
+
 -spec language(doc()) -> kz_term:api_binary().
 language(Doc) ->
     language(Doc, 'undefined').
@@ -430,17 +444,24 @@ music_on_hold_media_id(Doc, Default) ->
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
     kz_json:set_value([<<"music_on_hold">>, <<"media_id">>], MusicOnHoldMediaId, Doc).
 
--spec mwi_unsolicitated_updates(doc()) -> boolean().
-mwi_unsolicitated_updates(Doc) ->
-    mwi_unsolicitated_updates(Doc, 'true').
+-spec mwi_unsolicited_updates(doc()) -> boolean().
+mwi_unsolicited_updates(Doc) ->
+    mwi_unsolicited_updates(Doc, true).
 
--spec mwi_unsolicitated_updates(doc(), Default) -> boolean() | Default.
-mwi_unsolicitated_updates(Doc, Default) ->
-    kz_json:get_boolean_value([<<"mwi_unsolicitated_updates">>], Doc, Default).
+-spec mwi_unsolicited_updates(doc(), Default) -> boolean() | Default.
+mwi_unsolicited_updates(Doc, Default) ->
+    case kz_json:get_first_defined([<<"mwi_unsolicited_updates">>, <<"mwi_unsolicitated_updates">>], Doc) of
+        'undefined' -> Default;
+        Bool -> kz_term:safe_cast(Bool, Default, fun kz_term:to_boolean/1)
+    end.
 
--spec set_mwi_unsolicitated_updates(doc(), boolean()) -> doc().
-set_mwi_unsolicitated_updates(Doc, MwiUnsolicitatedUpdates) ->
-    kz_json:set_value([<<"mwi_unsolicitated_updates">>], MwiUnsolicitatedUpdates, Doc).
+-spec set_mwi_unsolicited_updates(doc(), boolean()) -> doc().
+set_mwi_unsolicited_updates(Doc, MwiUnsolicitedUpdates) ->
+    kz_json:set_values([{<<"mwi_unsolicited_updates">>, MwiUnsolicitedUpdates}
+                       ,{<<"mwi_unsoliciated_updates">>, 'null'}
+                       ]
+                      ,Doc
+                      ).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->
@@ -461,7 +482,7 @@ outbound_flags(Doc) ->
 -spec outbound_flags(doc(), Default) -> kz_json:object() | Default.
 outbound_flags(Doc, Default) ->
     OutboundFlags = kz_json:get_ne_value([<<"outbound_flags">>], Doc, Default),
-    %% Backward compatibilty with an array of static flags
+    %% Backward compatibility with an array of static flags
     case kz_json:is_json_object(OutboundFlags) of
         'false' -> kz_json:from_list([{?STATIC_FLAGS, OutboundFlags}]);
         'true' -> OutboundFlags
@@ -486,6 +507,23 @@ owner_id(Doc, Default) ->
 -spec set_owner_id(doc(), kz_term:ne_binary()) -> doc().
 set_owner_id(Doc, OwnerId) ->
     kz_json:set_value([<<"owner_id">>], OwnerId, Doc).
+
+-spec is_hotdesked(doc()) -> boolean().
+is_hotdesked(Doc) ->
+    not kz_json:is_empty(kz_json:get_value([<<"hotdesk">>, <<"users">>], Doc, kz_json:new())).
+
+-spec hotdesk_ids(doc()) -> kz_term:api_ne_binaries().
+hotdesk_ids(Doc) ->
+    hotdesk_ids(Doc, 'undefined').
+
+-spec hotdesk_ids(doc(), Default) -> kz_term:ne_binaries() | Default.
+hotdesk_ids(Doc, Default) ->
+    case kz_json:get_json_value([<<"hotdesk">>, <<"users">>], Doc) of
+        'undefined' ->
+            Default;
+        Value ->
+            kz_json:get_keys(Value)
+    end.
 
 -spec presence_id(doc()) -> kz_term:api_binary().
 presence_id(Doc) ->

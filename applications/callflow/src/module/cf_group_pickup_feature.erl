@@ -71,8 +71,9 @@ handle(Data, Call) ->
         {'ok', Params} ->
             cf_group_pickup:handle(kz_json:from_list(Params), Call);
         {'error', _E} ->
-            lager:info("Error <<~s>> processing pickup '~s' for number ~s"
-                      ,[_E, PickupType, Number]),
+            lager:info("error <<~s>> processing pickup '~s' for number ~s"
+                      ,[_E, PickupType, Number]
+                      ),
             _ = kapps_call_command:b_play(<<"park-no_caller">>, Call),
             cf_exe:stop(Call)
     end.
@@ -118,12 +119,10 @@ params_from_data(<<"device">>, Data, _Call) ->
 params_from_data(<<"ring_group">>, Data, _Call) ->
     [Endpoint |_Endpoints] = kz_json:get_list_value(<<"endpoints">>, Data, []),
     EndpointType = kz_json:get_ne_binary_value(<<"endpoint_type">>, Endpoint),
-    {'ok', [{<<EndpointType/binary,"_id">>
-            ,kz_doc:id(Endpoint)}
-           ]};
+    {'ok', [{<<EndpointType/binary, "_id">>, kz_doc:id(Endpoint)}]};
 params_from_data(<<"page_group">>, Data, _Call) ->
     params_from_data(<<"ring_group">>, Data, _Call);
 params_from_data('undefined', _, _) ->
     {'error',<<"module not defined in callflow">>};
 params_from_data(Other, _, _) ->
-    {'error',<<"module ",Other/binary," not implemented">>}.
+    {'error',<<"module ", Other/binary, " not implemented">>}.

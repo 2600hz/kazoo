@@ -96,10 +96,10 @@
                                                  ])
                               ]).
 
--record(state, {node :: atom()
-               ,options = []             :: kz_term:proplist()
-               ,interfaces = []          :: interfaces()
-               ,start_cmds_pid_ref       :: kz_term:pid_ref() | 'undefined'
+-record(state, {node               :: atom()
+               ,options = []       :: kz_term:proplist()
+               ,interfaces = []    :: interfaces()
+               ,start_cmds_pid_ref :: kz_term:api_pid_ref()
                }).
 -type state() :: #state{}.
 
@@ -160,10 +160,11 @@ start_link(Node) -> start_link(Node, []).
 
 -spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) when is_atom(Node) ->
-    QueueName = <<(kz_term:to_binary(Node))/binary
-                  ,"-"
-                  ,(kz_term:to_binary(?MODULE))/binary
-                >>,
+    QueueName = list_to_binary([kz_term:to_binary(Node)
+                               ,"-"
+                               ,kz_term:to_binary(?MODULE)
+                               ]),
+
     gen_listener:start_link(?SERVER
                            ,[{'responders', ?RESPONDERS}
                             ,{'bindings', ?BINDINGS(Node)}
@@ -460,7 +461,10 @@ run_start_cmds(Node, Options, Parent, Cmds) ->
     case is_list(Res)
         andalso [R || R <- Res, was_not_successful_cmd(R)]
     of
-        [] -> sync(Parent);
+        [] ->
+            lager:debug("ask freeswitch ~s to get latest config", [Node]),
+            freeswitch:config(Node),
+            sync(Parent);
         'false' ->
             lager:debug("failed to run start commands, retrying"),
             run_start_cmds(Node, Options, Parent);
@@ -589,7 +593,7 @@ probe_capabilities(Node, PossibleCapabilities) ->
     kz_util:put_callid(Node),
     F = fun(Capability) -> maybe_add_capability(Node, Capability) end,
     lists:foreach(F, PossibleCapabilities),
-    lager:notice("fs sync complete").
+    lager:notice("capabilities sync complete").
 
 -spec maybe_add_capability(atom(), kz_json:object()) -> any().
 maybe_add_capability(Node, Capability) ->

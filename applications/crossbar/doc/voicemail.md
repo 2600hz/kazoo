@@ -1,10 +1,10 @@
-### Voicemail Boxes
+# Voicemail
 
-#### About Voicemail Boxes
+## About Voicemail
 
 Voicemail boxes store messages, recorded from the caller, for the voicemail box owner to listen to at a later time.
 
-#### Differences between Kazoo version 3.x and 4.x
+### Differences between Kazoo version 3.x and 4.x
 
 As of Kazoo 4.0 all new voicemail messages will be stored in the account MODbs.
 
@@ -13,7 +13,7 @@ The existing `/messages` API _should be_ used to manage messages in a voicemail 
 
 For more information about voicemail changes see documentation for kazoo_voicemail.
 
-#### Schema
+## Schema
 
 Schema for a voicemail box
 
@@ -21,45 +21,45 @@ Schema for a voicemail box
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false` |  
-`delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` |  
-`is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false` |  
-`mailbox` | The voicemail box number | `string(1..30)` |   | `true` |  
-`media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false` |  
-`media` | The media (prompt) parameters | `object()` | `{}` | `false` |  
-`media_extension` | Voicemail audio format | `string('mp3' | 'mp4' | 'wav')` | `mp3` | `false` |  
-`name` | A friendly name for the voicemail box | `string(1..128)` |   | `true` |  
-`not_configurable` | Determines if the user can configure this voicemail. | `boolean()` | `false` | `false` |  
-`notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
-`notify` |   | `object()` |   | `false` |  
-`notify_email_addresses.[]` |   | `string()` |   | `false` |  
-`notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` |  
-`owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false` |  
-`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` |  
-`require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` |  
-`save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` |  
-`skip_envelope` | Determines if the envelope should be skipped | `boolean()` | `false` | `false` |  
-`skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` |  
-`skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` |  
-`timezone` | The default timezone | `string(5..32)` |   | `false` |  
+`check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false` | `supported`
+`delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` | `supported`
+`is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false` | `supported`
+`mailbox` | The voicemail box number | `string(1..30)` |   | `true` | `supported`
+`media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false` | `supported`
+`media` | The media (prompt) parameters | `object()` | `{}` | `false` | `supported`
+`media_extension` | Voicemail audio format | `string('mp3' | 'mp4' | 'wav')` | `mp3` | `false` | `supported`
+`name` | A friendly name for the voicemail box | `string(1..128)` |   | `true` | `supported`
+`not_configurable` | Determines if the user can configure this voicemail. | `boolean()` | `false` | `false` | `supported`
+`notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |
+`notify` |   | `object()` |   | `false` | `supported`
+`notify_email_addresses.[]` |   | `string()` |   | `false` | `supported`
+`notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` | `supported`
+`owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false` | `supported`
+`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` | `supported`
+`require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` | `supported`
+`save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` | `supported`
+`skip_envelope` | Determines if the envelope should be skipped | `boolean()` | `false` | `false` | `beta`
+`skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` | `supported`
+`skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` | `supported`
+`timezone` | The default timezone | `string(5..32)` |   | `false` | `supported`
 
-##### notify.callback
+### notify.callback
 
 Schema for a callback options
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`attempts` | How many attempts without answer will system do | `integer()` |   | `false` |  
-`disabled` | Determines if the system will call to callback number | `boolean()` |   | `false` |  
-`interval_s` | How long will system wait between call back notification attempts | `integer()` |   | `false` |  
-`number` | Number for callback notifications about new messages | `string()` |   | `false` |  
-`schedule` | Schedules interval between callbacks | `array(integer())` |   | `false` |  
-`timeout_s` | How long will system wait for answer to callback | `integer()` |   | `false` |  
+`attempts` | How many attempts without answer will system do | `integer()` |   | `false` |
+`disabled` | Determines if the system will call to callback number | `boolean()` |   | `false` |
+`interval_s` | How long will system wait between call back notification attempts | `integer()` |   | `false` |
+`number` | Number for callback notifications about new messages | `string()` |   | `false` |
+`schedule` | Schedules interval between callbacks | `array(integer())` |   | `false` |
+`timeout_s` | How long will system wait for answer to callback | `integer()` |   | `false` |
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes
 
@@ -69,7 +69,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -89,7 +89,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create a new voicemail box
+## Create a new voicemail box
 
 > PUT /v2/accounts/{ACCOUNT_ID}/vmboxes
 
@@ -101,7 +101,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -130,9 +130,9 @@ curl -v -X PUT \
 }
 ```
 
-#### list all voicemail messages on an account
+## list all voicemail messages on an account
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/messages
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
 ```shell
 curl -v -X GET \
@@ -140,7 +140,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages?paginate=true
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -181,7 +181,7 @@ curl -v -X GET \
 }
 ```
 
-#### Remove a voicemail box
+## Remove a voicemail box
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -191,7 +191,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -220,7 +220,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch a voicemail box
+## Fetch a voicemail box
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -230,7 +230,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -259,7 +259,7 @@ curl -v -X GET \
 }
 ```
 
-#### Patch a voicemail box
+## Patch a voicemail box
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -270,7 +270,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -300,7 +300,7 @@ curl -v -X PATCH \
 }
 ```
 
-#### Change a voicemail box's settings
+## Change a voicemail box's settings
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -312,7 +312,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes \
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -341,7 +341,7 @@ curl -v -X POST \
 }
 ```
 
-#### Create a new voicemail message
+## Create a new voicemail message
 
 There are two methods for creating a new voicemail message - they differ in how you attach the media file.
 
@@ -356,7 +356,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -393,7 +393,7 @@ curl -v -X PUT \
 
 The response is same as above.
 
-#### Remove all or a list of messages from a voicemail box
+## Remove all or a list of messages from a voicemail box
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -404,7 +404,8 @@ Optional payload for deleting a group of messages:
 * One can apply a filter to delete all messages in a particular folder(e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`
 * Or providing an array of message ids, e.g `{"data": {"messages": [MSG_ID1, MSG_ID2, ...]}}`.
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
+!!! note
+    If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl -v -X DELETE \
@@ -412,13 +413,13 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-##### Response
+**Response**
 
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "suceeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
+        "succeeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
         "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
     },
     "revision": "{REVISION}",
@@ -427,7 +428,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch all messages for a voicemail box
+## Fetch all messages for a voicemail box
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -437,7 +438,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -472,7 +473,7 @@ curl -v -X GET \
 }
 ```
 
-#### Change a list of messages
+## Change a list of messages
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -484,7 +485,8 @@ Provide an array of message ids, e.g `{"data": {"messages": ["MSG_ID1", "MSG_ID2
 
 * **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VM_BOX_ID}"]}}`
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
+!!! note
+    If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl -v -X POST \
@@ -494,13 +496,13 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-##### Response
+**Response**
 
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "suceeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
+        "succeeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
         "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
     },
     "revision": "{REVISION}",
@@ -510,11 +512,11 @@ curl -v -X POST \
 ```
 
 
-#### Fetch the raw audio of a list of messages as a ZIP file
+## Fetch the raw audio of a list of messages as a ZIP file
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
 
-You can provide a list of voicemail message ID in the playload and get raw audio of them in a single ZIP file.
+You can provide a list of voicemail message ID in the payload and get raw audio of them in a single ZIP file.
 
 ```shell
 curl -v -X POST \
@@ -525,11 +527,12 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
 ```
 
-#### Remove a message from the voicemail box
+## Remove a message from the voicemail box
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
+!!! note
+    If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl -v -X DELETE \
@@ -537,7 +540,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -559,7 +562,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch a message from the voicemail box
+## Fetch a message from the voicemail box
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
@@ -569,9 +572,10 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
 
-**Note:** If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
+!!! note
+    If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
 
-##### Response
+**Response**
 
 ```json
 {
@@ -593,7 +597,7 @@ curl -v -X GET \
 }
 ```
 
-#### Change a message
+## Change a message
 
 * **Change the folder of a message:** set the folder that message should move to (e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`.
 
@@ -603,7 +607,8 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
+!!! note
+    If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl -v -X POST \
@@ -612,7 +617,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -634,11 +639,12 @@ curl -v -X POST \
 }
 ```
 
-#### Fetch the raw audio of the message
+## Fetch the raw audio of the message
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 
-**Note:** If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
+!!! note
+    If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
 
 ```shell
 curl -v -X GET \
@@ -646,11 +652,12 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba/raw
 ```
 
-#### Add a new voicemail media file to a message
+## Add a new voicemail media file to a message
 
 If you added a message based on the first method mentioned above (using PUT method on `/messages`), you can use this to upload the media file for the created message.
 
-**Note:** If there's already a media file attachment inside the message document it will be removed and replaced with the new media file!
+!!! note
+    If there's already a media file attachment inside the message document it will be removed and replaced with the new media file!
 
 > PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 
@@ -662,7 +669,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq/raw
 ```
 
-##### Response
+**Response**
 
 ```json
 {

@@ -21,7 +21,12 @@ handle(Data, Call) ->
 -spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 handle(_Data, Call, <<"reset">>) ->
     lager:info("reset prepend cid"),
-    set_values('undefined', 'undefined', Call);
+    Updates = [fun(C) -> kapps_call:kvs_erase('prepend_cid_number', C) end
+              ,fun(C) -> kapps_call:kvs_erase('prepend_cid_name', C) end
+              ],
+    Call1 = kapps_call:exec(Updates, Call),
+    cf_exe:set_call(Call1),
+    cf_exe:continue(Call1);
 
 handle(Data, Call, <<"prepend">>) ->
     NamePre = kz_json:get_ne_binary_value(<<"caller_id_name_prefix">>, Data, <<>>),
@@ -40,10 +45,6 @@ handle(Data, Call, <<"prepend">>) ->
                   }
           end,
     lager:info("update prepend cid to <~s> ~s", [Name, Number]),
-    set_values(Name, Number, Call).
-
--spec set_values(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> 'ok'.
-set_values(Name, Number, Call) ->
     Updates = [fun(C) -> kapps_call:kvs_store('prepend_cid_number', Number, C) end
               ,fun(C) -> kapps_call:kvs_store('prepend_cid_name', Name, C) end
               ],

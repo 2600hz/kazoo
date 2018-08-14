@@ -36,7 +36,7 @@
 -export([publish_remove_resp/2, publish_remove_resp/3]).
 
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 
 -define(LOOKUP_REQ_HEADERS, []).
@@ -125,7 +125,7 @@ bind_q(Q, Props) ->
 
 -spec bind_to_q(kz_term:ne_binary(), kz_term:atoms()) -> 'ok'.
 bind_to_q(Q, 'undefined') ->
-    'ok' = amqp_util:bind_q_to_tasks(Q, ?TASKS_AMQP_KEY("*"));
+    'ok' = kz_amqp_util:bind_q_to_tasks(Q, ?TASKS_AMQP_KEY("*"));
 bind_to_q(_Q, []) ->
     'ok'.
 
@@ -135,13 +135,13 @@ unbind_q(Q, Props) ->
 
 -spec unbind_from_q(kz_term:ne_binary(), kz_term:atoms()) -> 'ok'.
 unbind_from_q(Q, 'undefined') ->
-    'ok' = amqp_util:unbind_q_from_tasks(Q, ?TASKS_AMQP_KEY("*"));
+    'ok' = kz_amqp_util:unbind_q_from_tasks(Q, ?TASKS_AMQP_KEY("*"));
 unbind_from_q(_Q, []) ->
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:tasks_exchange().
+    kz_amqp_util:tasks_exchange().
 
 
 -spec lookup_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -181,7 +181,7 @@ publish_lookup_req(JObj) ->
 -spec publish_lookup_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_lookup_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?LOOKUP_REQ_VALUES, fun lookup_req/1),
-    amqp_util:tasks_publish(?TASKS_AMQP_KEY("lookup"), Payload, ContentType).
+    kz_amqp_util:tasks_publish(?TASKS_AMQP_KEY("lookup"), Payload, ContentType).
 
 -spec publish_lookup_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_lookup_resp(RespQ, JObj) ->
@@ -190,7 +190,7 @@ publish_lookup_resp(RespQ, JObj) ->
 -spec publish_lookup_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_lookup_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?LOOKUP_RESP_VALUES, fun lookup_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 
 -spec start_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -230,7 +230,7 @@ publish_start_req(JObj) ->
 -spec publish_start_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_start_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?START_REQ_VALUES, fun start_req/1),
-    amqp_util:tasks_publish(?TASKS_AMQP_KEY("start"), Payload, ContentType).
+    kz_amqp_util:tasks_publish(?TASKS_AMQP_KEY("start"), Payload, ContentType).
 
 -spec publish_start_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_start_resp(RespQ, JObj) ->
@@ -239,7 +239,7 @@ publish_start_resp(RespQ, JObj) ->
 -spec publish_start_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_start_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?START_RESP_VALUES, fun start_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 
 -spec stop_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -279,7 +279,7 @@ publish_stop_req(JObj) ->
 -spec publish_stop_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_stop_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?STOP_REQ_VALUES, fun stop_req/1),
-    amqp_util:tasks_publish(?TASKS_AMQP_KEY("stop"), Payload, ContentType).
+    kz_amqp_util:tasks_publish(?TASKS_AMQP_KEY("stop"), Payload, ContentType).
 
 -spec publish_stop_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_stop_resp(RespQ, JObj) ->
@@ -288,7 +288,7 @@ publish_stop_resp(RespQ, JObj) ->
 -spec publish_stop_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_stop_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?STOP_RESP_VALUES, fun stop_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 
 -spec remove_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -328,7 +328,7 @@ publish_remove_req(JObj) ->
 -spec publish_remove_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_remove_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REMOVE_REQ_VALUES, fun remove_req/1),
-    amqp_util:tasks_publish(?TASKS_AMQP_KEY("remove"), Payload, ContentType).
+    kz_amqp_util:tasks_publish(?TASKS_AMQP_KEY("remove"), Payload, ContentType).
 
 -spec publish_remove_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_remove_resp(RespQ, JObj) ->
@@ -337,4 +337,4 @@ publish_remove_resp(RespQ, JObj) ->
 -spec publish_remove_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_remove_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?REMOVE_RESP_VALUES, fun remove_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).

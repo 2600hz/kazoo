@@ -14,7 +14,12 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?SUPER('conf_participant_sup')
+-define(ORIGIN_BINDINGS, [[{'type', <<"conference">>}]]).
+
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?SUPER('conf_participant_sup')
                   ,?WORKER('conference_shared_listener')
                   ,?WORKER('conference_listener')
                   ]).
@@ -49,7 +54,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_util:set_startup(),
+    _ = kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

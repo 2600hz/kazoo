@@ -56,11 +56,13 @@
                 "join_deaf": {
                     "default": false,
                     "description": "Determines if a member will join deaf",
+                    "support_level": "supported",
                     "type": "boolean"
                 },
                 "join_muted": {
                     "default": true,
                     "description": "Determines if a member will join muted",
+                    "support_level": "supported",
                     "type": "boolean"
                 },
                 "numbers": {
@@ -134,16 +136,19 @@
             "description": "A friendly name for the conference",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "owner_id": {
             "description": "The user ID who manages this conference",
             "maxLength": 32,
             "minLength": 32,
+            "support_level": "supported",
             "type": "string"
         },
         "play_entry_tone": {
             "description": "Whether to play an entry tone, or the entry tone to play",
+            "support_level": "supported",
             "type": [
                 "boolean",
                 "string"
@@ -151,6 +156,7 @@
         },
         "play_exit_tone": {
             "description": "Whether to play an exit tone, or the exit tone to play",
+            "support_level": "supported",
             "type": [
                 "boolean",
                 "string"
@@ -166,6 +172,7 @@
             "type": "boolean"
         },
         "profile": {
+            "$ref": "conferences.profile",
             "description": "Profile configuration",
             "type": "object"
         },

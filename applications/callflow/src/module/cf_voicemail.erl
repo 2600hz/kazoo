@@ -41,6 +41,7 @@
 -define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
 -define(KEY_SAVE_AFTER_NOTIFY, <<"save_after_notify">>).
 -define(KEY_FORCE_REQUIRE_PIN, <<"force_require_pin">>).
+-define(MAX_INVALID_PIN_LOOPS, 3).
 
 -define(MAILBOX_DEFAULT_SIZE
        ,kapps_config:get_integer(?CF_CONFIG_CAT
@@ -125,7 +126,7 @@
               ,del_temporary_unavailable = <<"5">> :: kz_term:ne_binary()
               ,return_main = <<"0">> :: kz_term:ne_binary()
 
-                                        %% Post playbak
+                                        %% Post playback
               ,keep = <<"1">> :: kz_term:ne_binary()
               ,replay = <<"2">> :: kz_term:ne_binary()
               ,forward = <<"3">> :: kz_term:ne_binary()
@@ -214,7 +215,7 @@ handle(Data, Call) ->
 -spec check_mailbox(mailbox(), kapps_call:call()) ->
                            'ok' | {'error', 'channel_hungup'}.
 check_mailbox(Box, Call) ->
-    %% Wrapper to initalize the attempt counter
+    %% Wrapper to initialize the attempt counter
     Resp = check_mailbox(Box, Call, 1),
     _ = send_mwi_update(Box),
     Resp.
@@ -434,7 +435,7 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
     _ = play_greeting(Box, Call),
     _ = play_instructions(Box, Call),
     _NoopId = kapps_call_command:noop(Call),
-    %% timeout after 5 min for saftey, so this process cant hang around forever
+    %% timeout after 5 min for safety, so this process cant hang around forever
     case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {'ok', _} ->
             lager:info("played greeting and instructions to caller, recording new message"),
@@ -564,17 +565,23 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
     {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
 
     lager:info("prompting caller to set a pin"),
-    #mailbox{} = change_pin(Box, Call),
+    case change_pin(Box, Call) of
+        #mailbox{} ->
+            {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
+            lager:info("prompting caller to record an unavailable greeting"),
 
-    {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
-    lager:info("prompting caller to record an unavailable greeting"),
+            #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(Ext), Box, Call),
+            'ok' = update_doc(<<"is_setup">>, 'true', Box1, Call),
+            lager:info("voicemail configuration wizard is complete"),
 
-    #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(Ext), Box, Call),
-    'ok' = update_doc(<<"is_setup">>, 'true', Box1, Call),
-    lager:info("voicemail configuration wizard is complete"),
+            {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
+            Box1#mailbox{is_setup='true'};
+        {'error', 'max_retry'} ->
+            lager:debug("Hanging up channel after several empty or invalid pins"),
+            _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
+            {'error', 'channel_hungup'}
+    end.
 
-    {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
-    Box1#mailbox{is_setup='true'}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -585,7 +592,8 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
                        'ok' | {'error', 'channel_hungup'}.
 main_menu(#mailbox{is_setup='false'}=Box, Call) ->
     try setup_mailbox(Box, Call) of
-        #mailbox{}=Box1 -> main_menu(Box1, Call, 1)
+        #mailbox{}=Box1 -> main_menu(Box1, Call, 1);
+        {'error', 'channel_hungup'} = Err -> Err
     catch
         'error':{'badmatch',{'error','channel_hungup'}} ->
             lager:debug("channel has hungup while setting up mailbox"),
@@ -599,7 +607,7 @@ main_menu(Box, Call) -> main_menu(Box, Call, 1).
                        'ok' | {'error', 'channel_hungup'}.
 main_menu(Box, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
-    %% is likely a abandonded channel, terminate
+    %% is likely a abandoned channel, terminate
     lager:info("entered main menu with too many invalid entries"),
     _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     send_mwi_update(Box);
@@ -799,7 +807,7 @@ message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Plays back a message then the menu, and continues to loop over the
-%% menu utill
+%% menu util
 %% @end
 %%------------------------------------------------------------------------------
 -spec play_messages(kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
@@ -1201,12 +1209,11 @@ overwrite_temporary_unavailable_greeting(AttachmentName
                              ,{<<"Duration-ON">>, <<"500">>}
                              ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _NoopId = kapps_call_command:audio_macro(
-                [{'prompt', <<"vm-record_temp_greeting">>}
-                ,{'tones', [Tone]}
-                ]
+    _NoopId = kapps_call_command:audio_macro([{'prompt', <<"vm-record_temp_greeting">>}
+                                             ,{'tones', [Tone]}
+                                             ]
                                             ,Call
-               ),
+                                            ),
     case kapps_call_command:b_record(AttachmentName, Call) of
         {'ok', Msg} ->
             case review_recording(AttachmentName, 'false', Box, Call) of
@@ -1241,7 +1248,8 @@ overwrite_temporary_unavailable_greeting(AttachmentName
 delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=_Box, _Call) ->
     'ok';
 delete_temporary_unavailable_greeting(Box, Call) ->
-    'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'undefined', Box, Call),
+    'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'null', Box, Call),
+    _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
     Box#mailbox{temporary_unavailable_media_id='undefined'}.
 
 -spec record_unavailable_greeting(kz_term:ne_binary(), mailbox(), kapps_call:call()) ->
@@ -1375,12 +1383,18 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId
 %%------------------------------------------------------------------------------
 -spec change_pin(mailbox(), kapps_call:call()) ->
                         mailbox() | {'error', any()}.
+change_pin(Box, Call) ->
+    change_pin(Box, Call, 1).
+
+-spec change_pin(mailbox(), kapps_call:call(), non_neg_integer()) ->
+                        mailbox() | {'error', any()}.
 change_pin(#mailbox{mailbox_id=Id
                    ,interdigit_timeout=Interdigit
                    }=Box
           ,Call
+          ,Loop
           ) ->
-    lager:info("requesting new mailbox pin number"),
+    lager:info("requesting new mailbox pin number (loop ~p)", [Loop]),
     try
         {'ok', Pin} = get_new_pin(Interdigit, Call),
         lager:info("collected first pin"),
@@ -1408,7 +1422,7 @@ change_pin(#mailbox{mailbox_id=Id
                 Box;
             {'error', _Reason} ->
                 lager:debug("box failed validation: ~p", [_Reason]),
-                invalid_pin(Box, Call)
+                invalid_pin(Box, Call, Loop)
         end
     catch
         'error':{'badmatch',{'error','channel_hungup'}} ->
@@ -1416,18 +1430,21 @@ change_pin(#mailbox{mailbox_id=Id
             {'error', 'channel_hungup'};
         'error':{'badmatch',{'ok',_ConfirmPin}} ->
             lager:debug("new pin was invalid, try again"),
-            invalid_pin(Box, Call);
+            invalid_pin(Box, Call, Loop);
         _E:_R ->
             lager:debug("failed to get new pin: ~s: ~p", [_E, _R]),
-            invalid_pin(Box, Call)
+            invalid_pin(Box, Call, Loop)
     end.
 
--spec invalid_pin(mailbox(), kapps_call:call()) ->
+-spec invalid_pin(mailbox(), kapps_call:call(), non_neg_integer()) ->
                          mailbox() |
                          {'error', any()}.
-invalid_pin(Box, Call) ->
+invalid_pin(_Box, _Call, Loop) when Loop >= ?MAX_INVALID_PIN_LOOPS ->
+    lager:debug("Several empty or invalid pins"),
+    {'error', 'max_retry'};
+invalid_pin(Box, Call, Loop) ->
     case kapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
-        {'ok', _} -> change_pin(Box, Call);
+        {'ok', _} -> change_pin(Box, Call, Loop + 1);
         {'error', 'channel_hungup'}=E ->
             lager:debug("channel hungup after bad pin"),
             E;
@@ -1978,7 +1995,8 @@ tmp_file(Ext) ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%------------------------------------------------------------------------------
--spec get_unix_epoch(integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec get_unix_epoch(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
+                            kz_term:ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),

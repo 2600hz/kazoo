@@ -45,7 +45,7 @@ dot_file(App) ->
 create_dot_file(Name, Markup) ->
     Filename = <<"/tmp/", (kz_term:to_binary(Name))/binary, ".dot">>,
     'ok' = file:write_file(Filename
-                          ,["digraph kast_app_deps {\n"
+                          ,["strict digraph kast_app_deps {\n"
                            ,Markup
                            ,"}\n"
                            ]
@@ -53,17 +53,16 @@ create_dot_file(Name, Markup) ->
     io:format("wrote DOT file to ~s~n", [Filename]).
 
 create_dot_markup(App, AppDeps) ->
-    RemoteApps = lists:usort([A || {_Module, A} <- AppDeps]),
+    RemoteApps = lists:usort([A || {_Module, A} <- AppDeps, is_kazoo_app(A)]),
     app_markup(App, RemoteApps).
 
 app_markup(App, RemoteApps) ->
-    M = [ [$", kz_term:to_binary(App), $"
-          ," -> "
-          ,$", kz_term:to_binary(RemoteApp), $"
-          ," [weight=1];\n"
-          ]
-          || RemoteApp <- RemoteApps
+    M = [$", kz_term:to_binary(App), $"
+        ," -> {"
+        ,$", kz_binary:join(RemoteApps, <<"\" \"">>), $"
+        ,"} [weight=1];\n"
         ],
+
     ?DEBUG("adding '~s'~n", [M]),
     M.
 
@@ -133,18 +132,48 @@ app_src_filename(App) ->
                   ,<<AppBin/binary, ".app.src">>
                   ]).
 
--spec circles() -> [{atom(), [atom()]}].
+-spec circles() -> 'ok'.
 circles() ->
     io:format("finding circular dependencies "),
-    Circles = [circles(App)
-               || App <- kz_ast_util:project_apps()
-              ],
+
+    {Graph, Verticies} = lists:foldl(fun add_app_to_graph/2
+                                    ,{digraph:new(), []}
+                                    ,kz_ast_util:project_apps()
+                                    ),
     io:format(" done~n"),
-    Circles.
+    lists:foreach(fun(App) -> print_cycle(App, Graph) end
+                 ,lists:usort(Verticies)
+                 ).
+
+print_cycle(App, Graph) ->
+    case digraph:get_short_cycle(Graph, App) of
+        'false' -> 'ok';
+        Vs ->
+            io:format("cycle through ~p: ~p~n", [App, Vs])
+    end.
+
+add_app_to_graph(App, {Graph, Verticies}) ->
+    AppVertex = digraph:add_vertex(Graph, App, App),
+    {Graph
+    ,lists:foldl(fun(Remote, Vs) ->
+                         RemoteVertex = digraph:add_vertex(Graph, Remote, Remote),
+                         digraph:add_edge(Graph, AppVertex, RemoteVertex),
+                         [Remote | Vs]
+                 end
+                ,[App | Verticies]
+                ,remote_app_list(App)
+                )
+    }.
+
+%% Circles = [circles(App)
+%%            || App <- kz_ast_util:project_apps()
+%%           ],
+%% io:format(" done~n"),
+%% Circles.
 
 -spec start_cache() -> {'ok', pid()}.
 start_cache() ->
-    {'ok', _Cache} = kz_cache:start_link(?MODULE).
+    {'ok', _Cache} = kz_cache_sup:start_link(?MODULE).
 
 -spec stop_cache() -> 'ok'.
 stop_cache() ->
@@ -152,7 +181,8 @@ stop_cache() ->
 
 -spec stop_cache(kz_types:server_ref()) -> 'ok'.
 stop_cache(Cache) ->
-    kz_cache:stop_local(Cache).
+    kz_cache:stop_local(Cache),
+    'ok'.
 
 -spec circles(atom()) -> {atom(), [atom()]}.
 circles(App) ->
@@ -219,7 +249,7 @@ is_kazoo_app(Path) when is_list(Path) ->
 -type apps_deps() :: [app_deps()].
 -spec process_project() -> apps_deps().
 process_project() ->
-    {'ok', Cache} = kz_cache:start_link(?MODULE),
+    {'ok', Cache} = kz_cache_sup:start_link(?MODULE),
     io:format("processing application dependencies: "),
     Discrepencies = lists:foldl(fun process_app/2
                                ,[]

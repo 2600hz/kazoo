@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the cidlistmatch callflow's data object
+Validator for the cidlistmatch callflow data object
 
 
 

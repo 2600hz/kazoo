@@ -1,10 +1,10 @@
-### User Authentication
+# User Authentication
 
-#### About User Authentication
+## About User Authentication
 
-Using your username and password, along with an account identifier, will instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.
+Using your user name and password, along with an account identifier, will instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.
 
-#### Schema
+## Schema
 
 Provides an auth-token via user credentials
 
@@ -12,24 +12,35 @@ Provides an auth-token via user credentials
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`account_name` | The account name of the user | `string(1..128)` |   | `false` |  
-`account_realm` | The account realm of the user | `string(4..253)` |   | `false` |  
-`credentials` | A hash of the uses credentials | `string(1..64)` |   | `true` |  
-`method` | The hash method | `string('md5' | 'sha')` | `md5` | `false` |  
-`phone_number` | A phone number assigned to the users account | `string(1..64)` |   | `false` |  
+`account_name` | The account name of the user | `string(1..128)` |   | `false` |
+`account_realm` | The account realm of the user | `string(4..253)` |   | `false` |
+`credentials` | A hash of the uses credentials | `string(1..64)` |   | `true` |
+`method` | The hash method | `string('md5' | 'sha')` | `md5` | `false` |
+`phone_number` | A phone number assigned to the users account | `string(1..64)` |   | `false` |
 
 
 
-#### Create
+## Create
 
 > PUT /v2/user_auth
 
 ```shell
 curl -v -X PUT \
     -H "Content-Type: application/json" \
-    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME"}, "method":[md5|sha1]}' \
+    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME"}, "method":[md5|sha]}}' \
     http://{SERVER}:8000/v2/user_auth
 ```
+
+Where `{CREDENTIALS_HASH}` is MD5 or SHA1 hash of `{username}:{password}`.
+
+#### Creating MD5 User/Pass credentials hash
+
+```shell
+$ echo -n 'john@example.com:m32c6NfqYEt' | md5sum
+82a2dc91686ec828a67152d45a5c5ef7  -
+```
+
+**Responses**
 
 ```json
 {
@@ -48,7 +59,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Fetch Token auth information
+## Fetch Token Auth Information
 
 > GET /v2/user_auth/{AUTH_TOKEN}
 
@@ -91,9 +102,13 @@ curl -v -X GET \
 }
 ```
 
-#### Password Recovery
+## Password Recovery
 
-##### Schema
+Sometimes it is necessary to recover a password.
+Similar to user authentication, you can supply the account realm, the account name, or a phone number associated with the account to send a password reset to the user's email.
+This email will contain a link that one then click to verify identity & proceed with recovery.
+
+### Schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -101,10 +116,6 @@ Key | Description | Type | Default | Required
 `account_realm` | The account realm of the user | `string(1..64)` |   | `false`
 `phone_number` | A phone number assigned to the user's account | `string(1..64)` |   | `false`
 `username` | The user's API username | `string(1..254)` |   | `true`
-
-Sometimes it is necessary to recover a password.
-Similar to user authentication, you can supply the account realm, the account name, or a phone number associated with the account to send a password reset to the user's email.
-This email will contain a link that one then click to verify identity & proceed with recovery.
 
 > PUT /v2/user_auth/recovery
 
@@ -125,8 +136,7 @@ curl -v -X PUT \
 }
 ```
 
-
-#### Execute link from email account recovery
+## Execute link from email account recovery
 
 Send the `{RESET_ID}` collected in the recovery-email.
 
@@ -139,9 +149,9 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/user_auth/recovery
 ```
 
-##### Responses
+**Responses**
 
-###### Success
+#### Success
 
 ```json
 {
@@ -153,7 +163,7 @@ curl -v -X POST \
 }
 ```
 
-###### Unknown `{RESET_ID}`
+#### Unknown `{RESET_ID}`
 
 ```json
 {
@@ -173,7 +183,7 @@ curl -v -X POST \
 }
 ```
 
-#### Impersonate a User
+## Impersonate a User
 
 You can impersonate as another user in your sub account if you're already is logged in as an admin in your master account. This features a useful way to login as your customer to debug/test issues with the user system's point of view.
 
@@ -186,7 +196,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/user_auth
 ```
 
-##### Response
+**Responses**
 
 A standard Crossbar authentication token.
 

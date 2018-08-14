@@ -19,7 +19,7 @@
 %%%
 %%% `group_id' defines a list of eavesdrop targets. If `group_id' is
 %%% `undefined' then anybody can be eavesdropped.
-%%% One of the `approved_device_id', `appoved_user_id' or `approved_group_id'
+%%% One of the `approved_device_id', `approved_user_id' or `approved_group_id'
 %%% must be defined to access feature code.
 %%%
 %%%

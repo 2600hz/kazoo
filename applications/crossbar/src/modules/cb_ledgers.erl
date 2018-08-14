@@ -137,7 +137,7 @@ authorize_create(Context) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /ledgers mights load a list of ledgers objects
+%% /ledgers might load a list of ledgers objects
 %% /ledgers/123 might load the ledgers object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -195,7 +195,19 @@ put(Context, ?DEBIT) ->
 %%------------------------------------------------------------------------------
 -spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
 validate_ledgers(Context, ?HTTP_GET) ->
-    read_ledgers(Context).
+    Options = [{'group', 'true'}
+              ,{'group_level', 0}
+              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'reduce', 'true'}
+              ,{'unchunkable', 'true'}
+              ],
+    Context1 = crossbar_view:load_modb(Context, <<"ledgers/list_by_timestamp_legacy">>, Options),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_resp_data(Context1, summary_to_dollars(kz_json:sum_jobjs(cb_context:doc(Context1))));
+        _ ->
+            Context1
+    end.
 
 -spec validate_ledger_doc(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
@@ -266,23 +278,6 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
             Props = kz_json:recursive_to_proplist(Ledger),
             kz_notify:detailed_alert(?NOTIFY_MSG, [ResellerId, Error], Props),
             crossbar_util:response(kz_doc:public_fields(Ledger), Context)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec read_ledgers(cb_context:context()) -> cb_context:context().
-read_ledgers(Context) ->
-    {From, To} = case crossbar_view:time_range(Context) of
-                     {_, _}=FromTo -> FromTo;
-                     _ContextWithError -> {undefined, undefined}
-                 end,
-    case kz_ledgers:get(cb_context:account_id(Context), From, To) of
-        {'error', Reason} ->
-            crossbar_util:response('error', kz_term:to_binary(Reason), Context);
-        {'ok', Ledgers} ->
-            crossbar_util:response(summary_to_dollars(Ledgers), Context)
     end.
 
 -spec summary_to_dollars(kz_json:object()) -> kz_json:object().

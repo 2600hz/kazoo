@@ -94,7 +94,7 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /comments mights load a list of skel objects
+%% /comments might load a list of skel objects
 %% /comments/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

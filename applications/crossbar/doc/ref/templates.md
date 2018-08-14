@@ -1,12 +1,12 @@
-### Templates
+# Templates
 
-#### About Templates
+## About Templates
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/templates
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/templates
 ```
 
-#### Create
+## Create
 
 > PUT /v2/templates/{TEMPLATE_NAME}
 
@@ -26,7 +26,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/templates/{TEMPLATE_NAME}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/templates/{TEMPLATE_NAME}
 

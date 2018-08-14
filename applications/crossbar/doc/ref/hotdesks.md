@@ -1,12 +1,12 @@
-### Hotdesks
+# Hotdesks
 
-#### About Hotdesks
+## About Hotdesks
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/hotdesks
 

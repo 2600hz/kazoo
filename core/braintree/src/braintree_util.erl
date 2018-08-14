@@ -222,11 +222,13 @@ error_io_fault() ->
 %% @end
 %%------------------------------------------------------------------------------
 
+-define(DOLLAR_SIGN, 36).
+
 -spec error_min_amount(number() | kz_term:ne_binary()) -> no_return().
 error_min_amount(Amount) ->
-    Error = <<"Unable to process a transaction for less than $", (kz_term:to_binary(Amount))/binary>>,
+    Error = <<"Unable to process a transaction for less than ", ?DOLLAR_SIGN, (kz_term:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
-              throw({'min_amount', kz_json:from_list([{<<"min_amount">>, Error}])}).
+    throw({'min_amount', kz_json:from_list([{<<"min_amount">>, Error}])}).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -235,6 +237,6 @@ error_min_amount(Amount) ->
 
 -spec error_max_amount(number() | kz_term:ne_binary()) -> no_return().
 error_max_amount(Amount) ->
-    Error = <<"Unable to process a transaction for more than $", (kz_term:to_binary(Amount))/binary>>,
+    Error = <<"Unable to process a transaction for more than ", ?DOLLAR_SIGN, (kz_term:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
-              throw({'max_amount', kz_json:from_list([{<<"max_amount">>, Error}])}).
+    throw({'max_amount', kz_json:from_list([{<<"max_amount">>, Error}])}).

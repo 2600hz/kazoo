@@ -181,7 +181,7 @@
                     ,ccvs = kz_json:new() :: kz_json:object()           %% Any custom channel vars that where provided with the route request
                     ,cavs = kz_json:new() :: kz_json:object()           %% Any custom application vars that where provided with the route request
                     ,sip_headers = kz_json:new() :: kz_json:object()    %% Custom SIP Headers
-                    ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
+                    ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propagate to children
                     ,other_leg_call_id :: kz_term:api_binary()
                     ,resource_type :: kz_term:api_binary()                      %% from route_req
                     ,to_tag :: kz_term:api_binary()
@@ -633,7 +633,7 @@ maybe_format_caller_id(Call, Format) ->
 maybe_format_caller_id_str(Cid, 'undefined') -> Cid;
 maybe_format_caller_id_str(Cid, Format) ->
     Class = knm_converters:classify(Cid),
-    lager:debug("checking for caller id reformating rules for ~s numbers", [Class]),
+    lager:debug("checking for caller id reformatting rules for ~s numbers", [Class]),
     case kz_json:get_ne_value(Class, Format) of
         'undefined' -> maybe_reformat_caller_id(Cid, kz_json:get_ne_value(<<"all">>, Format));
         UseFormat   -> maybe_reformat_caller_id(Cid, UseFormat)
@@ -1381,7 +1381,6 @@ cache(Call, AppName) ->
 cache(#kapps_call{call_id=CallId}=Call, AppName, Expires) ->
     CacheProps = [{'expires', Expires}],
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}, Call, CacheProps).
-
 
 -spec retrieve(kz_term:ne_binary()) ->
                       {'ok', call()} |

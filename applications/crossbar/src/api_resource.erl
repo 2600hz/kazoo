@@ -9,7 +9,7 @@
 -module(api_resource).
 
 -export([init/2, rest_init/2
-        ,terminate/2, rest_terminate/2
+        ,terminate/3
         ,known_methods/2
         ,allowed_methods/2
         ,malformed_request/2
@@ -241,17 +241,16 @@ find_path(Req, Opts) ->
             Magic
     end.
 
--spec terminate(cowboy_req:req(), cb_context:context()) -> 'ok'.
-terminate(_Req, _Context) ->
-    lager:debug("session finished").
-
--spec rest_terminate(cowboy_req:req(), cb_context:context()) -> 'ok'.
-rest_terminate(Req, Context) ->
+-spec terminate(any(), cowboy_req:req(), cb_context:context()) -> 'ok'.
+terminate(_Reason, Req, Context) ->
+    lager:debug("session finished: ~p", [_Reason]),
     rest_terminate(Req, Context, cb_context:method(Context)).
 
+-spec rest_terminate(cowboy_req:req(), cb_context:context(), http_method()) -> 'ok'.
 rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
     lager:info("OPTIONS request fulfilled in ~p ms"
-              ,[kz_time:elapsed_ms(cb_context:start(Context))]),
+              ,[kz_time:elapsed_ms(cb_context:start(Context))]
+              ),
     _ = api_util:finish_request(Req, Context),
     'ok';
 rest_terminate(Req, Context, Verb) ->
@@ -405,15 +404,33 @@ malformed_request(Req, Context, ?HTTP_OPTIONS) ->
     {'false', Req, Context};
 malformed_request(Req, Context, _ReqVerb) ->
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
-        [AccountId] ->
-            Context1 = cb_accounts:validate_resource(Context, AccountId),
+        'undefined' ->
+            {'false', Req, Context};
+        [] ->
+            {'false', Req, Context};
+        [?MATCH_ACCOUNT_RAW(_) | _] = AccountArgs ->
+            Context1 = validate_account_resource(Context, AccountArgs),
             case cb_context:resp_status(Context1) of
                 'success' -> {'false', Req, Context1};
                 _RespStatus -> api_util:stop(Req, Context1)
             end;
-        _Other ->
-            {'false', Req, Context}
+        [<<>> | _] ->
+            Error = kz_json:from_list([{<<"message">>, <<"missing account_id">>}]),
+            api_util:stop(Req, cb_context:add_system_error(404, <<"bad identifier">>, Error, Context));
+        [_Other | _] ->
+            Msg = kz_term:to_binary(io_lib:format("invalid account_id '~s'", [_Other])),
+            Error = kz_json:from_list([{<<"message">>, Msg}]),
+            api_util:stop(Req, cb_context:add_system_error(404, <<"bad identifier">>, Error, Context))
     end.
+
+-spec validate_account_resource(cb_context:context(), path_tokens()) ->
+                                       cb_context:context().
+validate_account_resource(Context, [AccountId]) ->
+    cb_accounts:validate_resource(Context, AccountId);
+validate_account_resource(Context, [AccountId, PathToken]) ->
+    cb_accounts:validate_resource(Context, AccountId, PathToken);
+validate_account_resource(Context, AccountArgs) ->
+    apply('cb_accounts', 'validate_resource', [Context | AccountArgs]).
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
                            {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()} |
@@ -667,11 +684,15 @@ does_request_validate(Req, Context0) ->
             {'false', Req, Context2};
         'false' ->
             lager:debug("failed to validate resource"),
-            Msg = case cb_context:resp_error_msg(Context2) of
-                      'undefined' ->
-                          Data = cb_context:resp_data(Context2),
+            Msg = case {cb_context:resp_error_msg(Context2)
+                       ,cb_context:resp_data(Context2)
+                       }
+                  of
+                      {'undefined', 'undefined'} ->
+                          <<"validation failed">>;
+                      {'undefined', Data} ->
                           kz_json:get_value(<<"message">>, Data, <<"validation failed">>);
-                      Message -> Message
+                      {Message, _} -> Message
                   end,
             api_util:stop(Req, cb_context:set_resp_error_msg(Context2, Msg))
     end.
@@ -804,10 +825,10 @@ to_json(Req0, Context0, 'undefined') ->
             api_util:create_pull_response(Req1, Context1)
     end;
 to_json(Req, Context, <<"csv">>) ->
-    lager:debug("overridding json with csv builder"),
+    lager:debug("overriding json with csv builder"),
     to_csv(Req, Context);
 to_json(Req, Context, <<"pdf">>) ->
-    lager:debug("overridding json with pdf builder"),
+    lager:debug("overriding json with pdf builder"),
     to_pdf(Req, Context);
 to_json(Req, Context, Accept) ->
     case to_fun(Context, Accept, 'to_json') of
@@ -830,7 +851,11 @@ to_binary(Req, Context, 'undefined') ->
     Event = api_util:create_event_name(Context, <<"to_binary">>),
     _ = crossbar_bindings:map(Event, {Req, Context}),
     %% Handle HTTP range header
-    case cb_context:req_header(Context, <<"range">>) of
+    case kz_term:is_ne_binary(RespData)
+        andalso cb_context:req_header(Context, <<"range">>)
+    of
+        'false' ->
+            {<<>>, api_util:set_resp_headers(Req, Context), Context};
         'undefined' ->
             {RespData, api_util:set_resp_headers(Req, Context), Context};
         RangeHeader ->
@@ -935,13 +960,17 @@ to_pdf(Req, Context) ->
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
     to_pdf(Req1, Context1, cb_context:resp_data(Context1)).
 
--spec to_pdf(cowboy_req:req(), cb_context:context(), binary()) ->
+-spec to_pdf(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
                     {binary(), cowboy_req:req(), cb_context:context()}.
+to_pdf(Req, Context, 'undefined') ->
+    to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, <<>>) ->
     to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, RespData) ->
+    DefaultCD = <<"attachment; filename=\"file.pdf\"">>,
+    CD = maps:get(<<"content-disposition">>, cb_context:resp_headers(Context), DefaultCD),
     RespHeaders = #{<<"content-type">> => <<"application/pdf">>
-                   ,<<"content-disposition">> => <<"attachment; filename=\"file.pdf\"">>
+                   ,<<"content-disposition">> => CD
                    },
     {RespData
     ,api_util:set_resp_headers(Req, cb_context:add_resp_headers(Context, RespHeaders))
@@ -951,6 +980,7 @@ to_pdf(Req, Context, RespData) ->
 -spec to_chunk(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
                       {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_chunk(ToFun, Req, Context) ->
+    lager:debug("(chunked) starting '~s' chunked query", [ToFun]),
     EventName = to_fun_event_name(ToFun, Context),
     next_chunk_fold(#{start_key => 'undefined'
                      ,last_key => 'undefined'
@@ -969,10 +999,13 @@ next_chunk_fold(#{chunking_finished := 'true'
                  ,chunking_started := StartedChunk
                  ,context := Context
                  }=ChunkMap) ->
+    lager:debug("(chunked) chunked query finished"),
     finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, StartedChunk)});
 next_chunk_fold(#{chunking_started := StartedChunk
                  ,context := Context0
+                 ,chunk_response_type := _ToFun
                  }=ChunkMap0) ->
+    lager:debug("(chunked) calling next chunk"),
     Context1 = cb_context:store(Context0, 'chunking_started', StartedChunk),
     ChunkMap1 = #{context := Context2
                  ,cowboy_req := Req0
@@ -983,12 +1016,15 @@ next_chunk_fold(#{chunking_started := StartedChunk
         andalso crossbar_bindings:fold(Event, {Req0, Context2})
     of
         'false' ->
+            lager:debug("(chunked) getting next chunk was unsuccessful"),
             finish_chunked_response(ChunkMap1#{context => reset_context_between_chunks(Context2, StartedChunk)});
         {Req1, Context3} ->
+            lager:debug("(chunked) ran '~s'", [_ToFun]),
             case api_util:succeeded(Context3) of
                 'true' ->
                     process_chunk(ChunkMap1#{cowboy_req := Req1, context := Context3});
                 'false' ->
+                    lager:debug("(chunked) '~s' was unsuccessful", [_ToFun]),
                     finish_chunked_response(ChunkMap1#{context => reset_context_between_chunks(Context3, StartedChunk)})
             end
     end.
@@ -1033,15 +1069,22 @@ process_chunk(#{context := Context
                ,event_name := EventName
                ,chunking_started := IsStarted
                }=ChunkMap) ->
-    case api_util:succeeded(Context)
-        andalso cb_context:resp_data(Context)
-    of
-        'false' ->
-            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)});
+    case cb_context:resp_data(Context) of
+        0 ->
+            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
+                                     ,chunking_started => IsStarted
+                                     }
+                           );
         SentLength when is_integer(SentLength) ->
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, 'true')
                                      ,chunking_started => 'true'
                                      ,previous_chunk_length => SentLength
+                                     }
+                           );
+        [] ->
+            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
+                                     ,chunking_started => IsStarted
+                                     ,previous_chunk_length => 0 %% the module filtered all queried result
                                      }
                            );
         Resp when is_list(Resp) ->
@@ -1054,7 +1097,7 @@ process_chunk(#{context := Context
                            );
         _Other ->
             lager:debug("event ~s returned unsupported chunk response, stopping here", [EventName]),
-            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)}) %% TOFU: stop
+            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)})
     end.
 
 -spec reset_context_between_chunks(cb_context:context(), boolean()) -> cb_context:context().
@@ -1081,11 +1124,19 @@ send_chunk_response(<<"to_csv">>, Req, Context) ->
 %%------------------------------------------------------------------------------
 -spec finish_chunked_response(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 finish_chunked_response(#{chunking_started := 'false'
+                         ,chunk_response_type := <<"to_json">>
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
     %% chunk is not started, return whatever error's or response data in Context
     api_util:create_pull_response(Req, Context);
+finish_chunked_response(#{chunking_started := 'false'
+                         ,chunk_response_type := <<"to_csv">>
+                         ,context := Context
+                         ,cowboy_req := Req
+                         }) ->
+    %% chunk is not started, return empty CSV
+    api_util:create_pull_response(Req, Context, fun api_util:create_csv_resp_content/2);
 finish_chunked_response(#{chunk_response_type := <<"to_csv">>
                          ,context := Context
                          ,cowboy_req := Req

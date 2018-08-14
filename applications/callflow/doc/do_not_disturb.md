@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the do_not_disturb callflow's data object
+Validator for the do_not_disturb callflow data object
 
 
 

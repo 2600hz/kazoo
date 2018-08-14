@@ -1,6 +1,7 @@
 DEPS = amqp_client \
 	apns \
 	certifi \
+	chatterbox \
 	couchbeam \
 	cowboy \
 	detergent \
@@ -48,9 +49,10 @@ ifeq ($(USER),travis)
     DEPS += proper
 endif
 
-dep_amqp_client_commit = rabbitmq_v3_6_0
-dep_apns = git https://github.com/inaka/apns4erl.git 2.2.0
+dep_amqp_client = hex 3.7.3
+dep_apns = git https://github.com/inaka/apns4erl.git 2.2.1
 dep_certifi = hex 0.3.0
+dep_chatterbox = hex 0.7.0
 dep_cowboy = git https://github.com/ninenines/cowboy 2.2.0
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
@@ -67,7 +69,7 @@ dep_erlcloud = git https://github.com/lazedo/erlcloud 54fe6b96eb0bc591b80161fc55
 
 dep_erlazure = git https://github.com/lazedo/erlazure.git add-start-link
 
-dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1b
+dep_couchbeam = git https://github.com/2600hz/couchbeam 2600hz 
 ###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.4.1
 ### waiting for pull requests
 ### https://github.com/benoitc/couchbeam/pull/158
@@ -98,3 +100,5 @@ dep_reloader = git https://github.com/lazedo/reloader v0.1
 dep_parse_trans = git https://github.com/lazedo/parse_trans
 
 dep_horse = git https://github.com/ninenines/horse
+
+dep_proper = git https://github.com/manopapad/proper v1.2

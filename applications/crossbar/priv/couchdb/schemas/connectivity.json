@@ -167,6 +167,26 @@
                                 "description": "The time, in seconds, to wait before attempting to call the server",
                                 "type": "integer"
                             },
+                            "dynamic_flags": {
+                                "description": "List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "emergency_caller_id": {
+                                "properties": {
+                                    "cid_name": {
+                                        "maxLength": 35,
+                                        "type": "string"
+                                    },
+                                    "cid_number": {
+                                        "maxLength": 35,
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
                             "enabled": {
                                 "default": true,
                                 "description": "Is the server ready for sending and receiving calls",
@@ -186,9 +206,25 @@
                                 },
                                 "type": "object"
                             },
+                            "flags": {
+                                "description": "List of flags to use when matching resources to route the call",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
                             "force_outbound": {
                                 "default": false,
                                 "description": "If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)",
+                                "type": "boolean"
+                            },
+                            "hunt_account_id": {
+                                "description": "When using local resources, use this account instead of the account making the call (useful for resellers)",
+                                "type": "string"
+                            },
+                            "hunt_non_reconcilable": {
+                                "default": false,
+                                "description": "Whether to allow routing to continue on a non-reconcilable TO number",
                                 "type": "boolean"
                             },
                             "ignore_early_media": {

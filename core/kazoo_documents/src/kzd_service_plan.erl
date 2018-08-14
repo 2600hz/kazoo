@@ -122,7 +122,11 @@ items(Plan, Category) ->
 
 -spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 item(Plan, CategoryId, ItemId) ->
-    kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan).
+    item(Plan, CategoryId, ItemId, 'undefined').
+
+-spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
+item(Plan, CategoryId, ItemId, Default) ->
+    kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, Default).
 
 -spec bookkeepers(doc()) -> kz_json:object().
 bookkeepers(Plan) ->
@@ -142,23 +146,13 @@ item_minimum(Plan, CategoryId, ItemId) ->
 
 -spec item_minimum(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> integer() | Default.
 item_minimum(Plan, CategoryId, ItemId, Default) ->
-    kzd_item_plan:minimum(
-      kz_json:get_json_value([?PLAN, CategoryId, ItemId]
-                            ,Plan
-                            ,kz_json:new()
-                            )
+    kzd_item_plan:minimum(item(Plan, CategoryId, ItemId, kz_json:new())
                          ,Default
-     ).
+                         ).
 
 -spec item_name(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 item_name(Plan, CategoryId, ItemId) ->
-    kzd_item_plan:name(
-      kz_json:get_json_value(
-        [?PLAN, CategoryId, ItemId]
-                            ,Plan
-                            ,kz_json:new()
-       )
-     ).
+    kzd_item_plan:name(item(Plan, CategoryId, ItemId, kz_json:new())).
 
 -spec item_exceptions(doc(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                              kz_term:ne_binaries().
@@ -168,10 +162,7 @@ item_exceptions(Plan, CategoryId, ItemId) ->
 -spec item_exceptions(doc(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                              kz_term:ne_binaries().
 item_exceptions(Plan, CategoryId, ItemId, Default) ->
-    Item = kz_json:get_json_value([?PLAN, CategoryId, ItemId]
-                                 ,Plan
-                                 ,kz_json:new()
-                                 ),
+    Item = item(Plan, CategoryId, ItemId, kz_json:new()),
     kzd_item_plan:exceptions(Item, Default).
 
 -spec item_plan(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().

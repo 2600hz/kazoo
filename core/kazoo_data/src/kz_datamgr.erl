@@ -264,7 +264,8 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
                 lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
             {'error', 'not_found'} ->
                 lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
-                save_doc(DbName, FixJObj);
+                _ = save_doc(DbName, FixJObj),
+                lager:debug("saved fixture");
             {'error', _Reason} ->
                 lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
         end
@@ -1086,7 +1087,7 @@ attachment_url(DbName, DocId, AttachmentId) ->
     attachment_url(DbName, DocId, AttachmentId, []).
 
 -spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_term:ne_binary()} |
+                            kz_term:ne_binary() |
                             {'proxy', tuple()} |
                             {'error', any()}.
 attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNAME(DbName) ->
@@ -1542,17 +1543,22 @@ refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
     Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
-                  {'error', _} -> 'false';
+                  {'error', _E} ->
+                      lager:debug("failed to get docs: ~p", [_E]),
+                      'false';
                   {'ok', JObjs} ->
                       ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
                       Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],
                       Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
                       db_view_update(Database, Views)
               end,
+
     _ = case Updated of
-            'true' -> lager:debug("~s:~s views updated", [Classification, DbName]),
-                      kzs_publish:publish_db(DbName, 'edited');
-            'false' -> lager:debug("~s:~s no views needed updating", [Classification, DbName])
+            'true' ->
+                lager:debug("~s:~s views updated", [Classification, DbName]),
+                kzs_publish:publish_db(DbName, 'edited');
+            'false' ->
+                lager:debug("~s:~s no views updated", [Classification, DbName])
         end,
     enable_change_notice(),
     Updated;

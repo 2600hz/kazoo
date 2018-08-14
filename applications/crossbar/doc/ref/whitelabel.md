@@ -1,6 +1,6 @@
-### Whitelabel
+# Whitelabel
 
-#### About Whitelabel
+## About Whitelabel
 
 #### Schema
 
@@ -10,29 +10,29 @@ Whitelabel settings
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`company_name` | The company name to display to users | `string()` |   | `false` |  
-`domain` | This is the whitelabeled domain that users will be entering to reach the UI | `string()` |   | `false` |  
-`fake_api_url` | This is a whitelabeled API URL, primarily used by the developer application | `string()` |   | `false` |  
-`hide_credits` | When checkef this hides the credits | `boolean()` | `false` | `false` |  
-`hide_powered` | When checked this hides the powered by 2600hz on the bottom right | `boolean()` | `false` | `false` |  
-`hide_registration` | When checked this hides the ability to register for a new account | `boolean()` | `false` | `false` |  
-`inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false` |  
-`nav.help` | The URL to use when the help link is clicked | `string()` |   | `false` |  
-`nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false` |  
+`company_name` | The company name to display to users | `string()` |   | `false` | `supported`
+`domain` | This is the whitelabeled domain that users will be entering to reach the UI | `string()` |   | `false` | `supported`
+`fake_api_url` | This is a whitelabeled API URL, primarily used by the developer application | `string()` |   | `false` | `beta`
+`hide_credits` | When checked this hides the credits | `boolean()` | `false` | `false` | `beta`
+`hide_powered` | When checked this hides the powered by 2600Hz on the bottom right | `boolean()` | `false` | `false` | `supported`
+`hide_registration` | When checked this hides the ability to register for a new account | `boolean()` | `false` | `false` | `beta`
+`inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
+`nav.help` | The URL to use when the help link is clicked | `string()` |   | `false` | `supported`
+`nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false` | `supported`
 `nav` | Properties related to navigation in the UI | `object()` |   | `false` |  
-`outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false` |  
-`port.authority` | The email(s) to be used for admin port requests | `string() | array(string())` |   | `false` |  
-`port.features` | The URL to use when the features link is clicked | `string()` |   | `false` |  
-`port.loa` | The URL to use when the LOA link is clicked | `string()` |   | `false` |  
-`port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` |  
-`port.support_email` | The support email address to display to the user | `string()` |   | `false` |  
-`port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` |  
-`port` | Parameters releated to whitelabeling port requests | `object()` |   | `false` |  
-`twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` |  
+`outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
+`port.authority` | The email(s) to be used for admin port requests | `string() | array(string())` |   | `false` | `supported`
+`port.features` | The URL to use when the features link is clicked | `string()` |   | `false` | `supported`
+`port.loa` | The URL to use when the LOA link is clicked | `string()` |   | `false` | `supported`
+`port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` | `supported`
+`port.support_email` | The support email address to display to the user | `string()` |   | `false` | `supported`
+`port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` | `supported`
+`port` | Parameters related to white-labeling port requests | `object()` |   | `false` |  
+`twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel
 
@@ -42,7 +42,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
 
@@ -52,7 +52,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel
 
@@ -62,7 +62,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
 
@@ -72,7 +72,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}
 
@@ -82,7 +82,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
@@ -92,7 +92,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
@@ -102,7 +102,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
@@ -112,7 +112,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
@@ -122,7 +122,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
@@ -132,7 +132,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
@@ -142,7 +142,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
@@ -152,7 +152,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
@@ -162,7 +162,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome
 
@@ -172,7 +172,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon
 
@@ -182,7 +182,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo
 

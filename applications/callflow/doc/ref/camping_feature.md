@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the camping_feature callflow's data object
+Validator for the camping_feature callflow data object
 
 
 

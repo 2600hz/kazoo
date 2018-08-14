@@ -1,12 +1,12 @@
-### Acdc Call Stats
+# Acdc Call Stats
 
-#### About Acdc Call Stats
+## About Acdc Call Stats
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/acdc_call_stats
 

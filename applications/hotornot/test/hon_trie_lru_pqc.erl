@@ -184,7 +184,7 @@ cache_rates(Cache, NowMs, RateDocs) ->
 
 cache_rate(Rate, {Cache, NowMs}) ->
     Id = kz_doc:id(Rate),
-    Prefix = kz_term:to_list(kzd_rate:prefix(Rate)),
+    Prefix = kz_term:to_list(kzd_rates:prefix(Rate)),
 
     Rates = props:get_value(Prefix, Cache, []),
     NewRates = props:insert_value(Id, NowMs, Rates),

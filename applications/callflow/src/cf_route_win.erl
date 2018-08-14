@@ -15,8 +15,8 @@
 
 -define(DEFAULT_SERVICES
        ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"video">>, ?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"sms">>, ?JSON([{<<"enabled">>, 'true'}])}
               ]
              )
        ).
@@ -46,9 +46,7 @@ execute_callflow(JObj, Call) ->
 
 -spec should_restrict_call(kapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
-    DefaultEndpointId = kapps_call:authorizing_id(Call),
-    EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
-    should_restrict_call(EndpointId, Call).
+    should_restrict_call(get_endpoint_id(Call), Call).
 
 -spec should_restrict_call(kz_term:api_ne_binary(), kapps_call:call()) -> boolean().
 should_restrict_call('undefined', _Call) -> 'false';
@@ -213,6 +211,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                ,fun set_language/1
                ,fun update_ccvs/1
+               ,fun include_denied_call_restrictions/1
                ,fun maybe_start_recording/1
                ,fun execute_callflow/1
                ,fun maybe_start_metaflow/1
@@ -375,6 +374,26 @@ get_incoming_security(Call) ->
              )
     end.
 
+-spec get_endpoint_id(kapps_call:call()) ->kz_term:api_ne_binary().
+get_endpoint_id(Call) ->
+    DefaultEndpointId = kapps_call:authorizing_id(Call),
+    kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call).
+
+-spec include_denied_call_restrictions(kapps_call:call()) -> kapps_call:call().
+include_denied_call_restrictions(Call) ->
+    case kz_endpoint:get(get_endpoint_id(Call), Call) of
+        {'error', _R} ->
+            Call;
+        {'ok', JObj} ->
+            CallRestriction = kz_json:get_json_value(<<"call_restriction">>, JObj, kz_json:new()),
+            Denied = kz_json:filter(fun filter_action/1, CallRestriction),
+            kapps_call:kvs_store('denied_call_restrictions', Denied, Call)
+    end.
+
+-spec filter_action({any(), kz_json:object()}) -> boolean().
+filter_action({_, Action}) ->
+    <<"deny">> =:= kz_json:get_ne_binary_value(<<"action">>, Action).
+
 %%------------------------------------------------------------------------------
 %% @doc executes the found call flow by starting a new cf_exe process under the
 %% cf_exe_sup tree.
@@ -383,5 +402,6 @@ get_incoming_security(Call) ->
 -spec execute_callflow(kapps_call:call()) -> kapps_call:call().
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
-    {'ok', _P} = cf_exe_sup:new(Call),
-    Call.
+    {'ok', Pid} = cf_exe_sup:new(Call),
+    kapps_call:kvs_store('consumer_pid', Pid, Call).
+

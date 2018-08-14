@@ -21,7 +21,7 @@
              ,resp/0
              ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(EVENT_CATEGORY, <<"rate">>).
 -define(KEY_RATE_REQ, <<"rate.req">>).
@@ -129,12 +129,12 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
 bind_to_q(Q, 'undefined') ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ);
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ);
 bind_to_q(Q, ['req'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ),
     bind_to_q(Q, T);
 bind_to_q(Q, ['broadcast'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_BROADCAST),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_BROADCAST),
     bind_to_q(Q, T);
 bind_to_q(Q, [_|T]) ->
     bind_to_q(Q, T);
@@ -146,12 +146,12 @@ unbind_q(Q, Props) ->
     unbind_q_from(Q, props:get_value('restrict_to', Props)).
 
 unbind_q_from(Q, 'undefined') ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ);
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ);
 unbind_q_from(Q, ['req'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['broadcast'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_BROADCAST),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_BROADCAST),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [_|T]) ->
     unbind_q_from(Q, T);
@@ -164,7 +164,7 @@ unbind_q_from(_Q, []) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:callmgr_exchange().
 
 %%------------------------------------------------------------------------------
 %% @doc Publish the JSON string to the proper Exchange.
@@ -178,7 +178,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATE_REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_REQ).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_REQ).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(Queue, JObj) ->
@@ -187,7 +187,7 @@ publish_resp(Queue, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec broadcast_resp(kz_term:api_terms()) -> 'ok'.
 broadcast_resp(JObj) ->
@@ -196,4 +196,4 @@ broadcast_resp(JObj) ->
 -spec broadcast_resp(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 broadcast_resp(Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_BROADCAST).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_BROADCAST).

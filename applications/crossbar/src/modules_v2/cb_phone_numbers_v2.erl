@@ -506,7 +506,7 @@ port_number_summary(_PhoneNumber, Context, 'false') ->
 -spec normalize_port_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    knm_phone_number_return().
 normalize_port_number(JObj, Num, AuthBy) ->
-    knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{auth_by, AuthBy}])
+    knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{'auth_by', AuthBy}])
                             ,[{fun knm_phone_number:set_assigned_to/2, kz_json:get_value(<<"assigned_to">>, JObj)}
                              ,{fun knm_phone_number:set_used_by/2, kz_json:get_value(<<"used_by">>, JObj)}
                              ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_PORT_IN}
@@ -530,16 +530,21 @@ summary(Context) ->
 view_account_phone_numbers(Context) ->
     Ctx = rename_qs_filters(Context),
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Ctx, fun normalize_view_results/2),
-    IsAdmin = knm_phone_number:is_admin(cb_context:auth_account_id(Context)),
-    ListOfNumProps = [fix_available(IsAdmin, NumJObj) || NumJObj <- cb_context:resp_data(Context1)],
-    PortNumberJObj = maybe_add_port_request_numbers(Context),
-    NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
-    Service = kz_services:fetch(cb_context:account_id(Context)),
-    Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, Service),
-    NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
-                                    ,{<<"casquade_quantity">>, Quantity}
-                                    ]),
-    cb_context:set_resp_data(Context1, NewRespData).
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            IsAdmin = knm_phone_number:is_admin(cb_context:auth_account_id(Context)),
+            ListOfNumProps = [fix_available(IsAdmin, NumJObj) || NumJObj <- cb_context:resp_data(Context1)],
+            PortNumberJObj = maybe_add_port_request_numbers(Context),
+            NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
+            Service = kz_services:fetch(cb_context:account_id(Context)),
+            Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, Service),
+            NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
+                                            ,{<<"cascade_quantity">>, Quantity}
+                                            ]),
+            cb_context:set_resp_data(Context1, NewRespData);
+        _ ->
+            Context1
+    end.
 
 -spec fix_available(boolean(), kz_json:object()) -> kz_json:object().
 fix_available(IsAdmin, NumJObj) ->
@@ -773,10 +778,9 @@ fetch_locality(Context) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
     case knm_locality:fetch(Numbers) of
         {'ok', Localities} ->
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,Localities
-             );
+                                    );
         {'error', 'lookup_failed'} ->
             Msg = <<"number locality lookup failed">>,
             crossbar_util:response('error', Msg, 500, Context);
@@ -1001,28 +1005,27 @@ numbers_action(Context, ?ACTIVATE, Numbers) ->
     knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
 numbers_action(Context, ?HTTP_PUT, Numbers) ->
     ReqData = cb_context:req_data(Context),
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'auth_by', cb_context:auth_account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, ReqData)}
                | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
               ],
     knm_numbers:create(Numbers, Options);
 numbers_action(Context, ?HTTP_POST, Numbers) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
     JObj = cb_context:req_data(Context),
     knm_numbers:update(Numbers, [{fun knm_phone_number:reset_doc/2, JObj}], Options);
 numbers_action(Context, ?HTTP_PATCH, Numbers) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
     JObj = cb_context:req_data(Context),
     knm_numbers:update(Numbers, [{fun knm_phone_number:update_doc/2, JObj}], Options);
 numbers_action(Context, ?HTTP_DELETE, Numbers) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ],
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
     Releaser = pick_release_or_delete(Context, Options),
     knm_numbers:Releaser(Numbers, Options).
 
@@ -1030,7 +1033,7 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
 pick_release_or_delete(Context, Options) ->
     AuthBy = knm_number_options:auth_by(Options),
     Pick = case kz_term:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
-               andalso kz_util:is_system_admin(AuthBy)
+               andalso kzd_accounts:is_superduper_admin(AuthBy)
            of
                'false' -> 'release';
                'true' -> 'delete'
@@ -1038,9 +1041,9 @@ pick_release_or_delete(Context, Options) ->
     lager:debug("picked ~s", [Pick]),
     Pick.
 
--spec maybe_ask_for_state(kz_term:api_ne_binary()) -> [{state, kz_term:ne_binary()}].
-maybe_ask_for_state(undefined) -> [];
-maybe_ask_for_state(StateAskedFor) -> [{state, StateAskedFor}].
+-spec maybe_ask_for_state(kz_term:api_ne_binary()) -> [{'state', kz_term:ne_binary()}].
+maybe_ask_for_state('undefined') -> [];
+maybe_ask_for_state(StateAskedFor) -> [{'state', StateAskedFor}].
 
 %%------------------------------------------------------------------------------
 %% @doc

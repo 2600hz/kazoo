@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Click to call
-%%% Allow embeddable HTML forms (or other ways to POST to the URL)
+%%% Allow embedded HTML forms (or other ways to POST to the URL)
 %%% and create a call.
 %%%
 %%%
@@ -33,7 +33,9 @@
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(HISTORY_LIST, <<"clicktocall/history_listing">>).
 -define(PVT_TYPE, <<"click2call">>).
--define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}, {?KZ_ACCOUNTS_DB, [_]}]).
+-define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}
+                         ,{?KZ_ACCOUNTS_DB, [_]}
+                         ]).
 -define(SUCCESSFUL_HANGUP_CAUSES, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
 %%%=============================================================================
@@ -331,7 +333,7 @@ originate_call(C2CId, Context, Contact) ->
 
 -spec originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), boolean()) -> cb_context:context().
 originate_call(_C2CId, Context, Contact, 'false') ->
-    crossbar_util:response_400(<<"Contact doesnt match whitelist">>, Contact, Context);
+    crossbar_util:response_400(<<"Contact doesn't match whitelist">>, Contact, Context);
 originate_call(C2CId, Context, Contact, 'true') ->
     Request = build_originate_req(Contact, Context),
     _Pid = kz_util:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),

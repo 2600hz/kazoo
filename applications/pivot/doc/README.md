@@ -1,43 +1,65 @@
+# Pivot Intro
 
-# Overview
+## Overview
 
-The Pivot whapp gives developers greater control over callflows than what comes natively in Kazoo. Pivot attempts to corral the salient data and send it, via HTTP to the developer's web server. Pivot expects a response with appropriate XML or JSON, and will execute the callflow returned on behalf of the developer.
+The Pivot gives developers greater control over callflows than what comes natively in Kazoo. Pivot attempts to corral the salient data and send it, via HTTP to the developer's web server. Pivot expects a response with appropriate XML or JSON, and will execute the callflow returned on behalf of the developer.
 
-## Example Callflow
+### Example Callflow
 
 The most basic callflow for Pivot:
 
-    {
-     "flow":{
-         "module":"pivot"
-         ,"data":{
-             "voice_url":"http://your.pivot.server/path/to/script.php"
-             ,"req_format":"kazoo"
-             ,"method":"get"
-             ,"debug":false
-         }
+```json
+{
+ "flow":{
+     "module":"pivot"
+     ,"data":{
+         "voice_url":"http://your.pivot.server/path/to/script.php"
+         ,"req_format":"kazoo"
+         ,"method":"get"
+         ,"debug":false
      }
-    }
+ }
+}
+```
 
-## Formats
+## Response Formats
 
-[Kazoo JSON](./kazoo/)
-[TwiML subset](./twiml/)
+* [Kazoo JSON](./kazoo/README.md)
+* [TwiML](./twiml/README.md)
 
 ## Debugging
 
-You can set the `debug` flag to "true" to log the requests and responses Pivot receives from your Pivot callflows.
+You can set the `debug` flag to "true" to log the requests and responses Pivot receives from your Pivot Callflows.
 
 ### Summary
 
-    curl -H "X-Auth-Token: {AUTH_TOKEN} -H "Content-Type: application/json" 'http://your.crossbar.server/v2/accounts/{ACCOUNT_ID}/pivot/debug'
+Get a list of recent Pivot attempts:
 
-    {"data":["{CALL_ID}"],"revision":"undefined","request_id":"{REQUEST_ID}","status":"success","auth_token":"{AUTH_TOKEN}"}
+```shell
+$ curl -H "X-Auth-Token: {AUTH_TOKEN} \
+     -H "Content-Type: application/json" \
+     'http://your.crossbar.server/v2/accounts/{ACCOUNT_ID}/pivot/debug'
+```
 
-### Specific Call
+Response:
 
-    curl -H "X-Auth-Token: {AUTH_TOKEN} -H "Content-Type: application/json" 'http://your.crossbar.server/v2/accounts/{ACCOUNT_ID}/pivot/debug/{CALL_ID}'
+```json
+{"data":["{CALL_ID}"],"revision":"undefined","request_id":"{REQUEST_ID}","status":"success","auth_token":"{AUTH_TOKEN}"}
+```
 
+## Specific Call
+
+Get details of a specific Pivot attempt:
+
+```shell
+$curl -H "X-Auth-Token: {AUTH_TOKEN} \
+    -H "Content-Type: application/json" \
+    'http://your.crossbar.server/v2/accounts/{ACCOUNT_ID}/pivot/debug/{CALL_ID}'
+```
+
+Response:
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
         "data": [
@@ -71,15 +93,15 @@ You can set the `debug` flag to "true" to log the requests and responses Pivot r
     "revision": "{REVISION}",
     "status": "success"
     }
+```
 
 Remember to URL-encode the `{CALL_ID}` before sending the request.
 
-### Failback
+## Failback
 
+You can add a children to your pivot callflow in case your server is unreachable or send back an error.
 
-You can add a children to your pivot callflow in case your server is unrechable or send back an error.
-
-```
+```json
 "flow": {
     "data": {
         "method": "GET",

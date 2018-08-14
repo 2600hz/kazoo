@@ -618,9 +618,9 @@ shared_queue_name(AcctId, QueueId) ->
 -spec queue_size(kz_term:ne_binary(), kz_term:ne_binary()) -> integer() | 'undefined'.
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
-    try amqp_util:new_queue(Q, [{'return_field', 'all'}
-                               ,{'passive', 'true'}
-                               ])
+    try kz_amqp_util:new_queue(Q, [{'return_field', 'all'}
+                                  ,{'passive', 'true'}
+                                  ])
     of
         {'error', {'server_initiated_close', 404, _Msg}} ->
             lager:debug("failed to query queue size: ~s", [_Msg]),
@@ -648,29 +648,29 @@ bind_q(Q, Props) ->
     bind_q(Q, AcctId, QID, CallId, props:get_value('restrict_to', Props)).
 
 bind_q(Q, AcctId, QID, CallId, 'undefined') ->
-    amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, QID)),
-    amqp_util:bind_q_to_kapps(Q, agent_change_routing_key(AcctId, QID)),
-    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
-    amqp_util:bind_q_to_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
-    amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
-    amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID));
+    kz_amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_kapps(Q, agent_change_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
+    kz_amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID));
 bind_q(Q, AcctId, QID, CallId, ['member_call'|T]) ->
-    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, CallId, T);
 bind_q(Q, AcctId, QID, CallId, ['member_call_result'|T]) ->
-    amqp_util:bind_q_to_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
+    kz_amqp_util:bind_q_to_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
     bind_q(Q, AcctId, QID, CallId, T);
 bind_q(Q, AcctId, QID, CallId, ['member_connect_req'|T]) ->
-    amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, CallId, T);
 bind_q(Q, AcctId, QID, CallId, ['sync_req'|T]) ->
-    amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, CallId, T);
 bind_q(Q, AcctId, QID, CallId, ['agent_change'|T]) ->
-    amqp_util:bind_q_to_kapps(Q, agent_change_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_kapps(Q, agent_change_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, CallId, T);
 bind_q(Q, AcctId, QID, CallId, ['member_addremove'|T]) ->
-    amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, CallId, T);
 bind_q(Q, AcctId, QID, CallId, [_|T]) -> bind_q(Q, AcctId, QID, CallId, T);
 bind_q(_, _, _, _, []) -> 'ok'.
@@ -684,29 +684,29 @@ unbind_q(Q, Props) ->
     unbind_q(Q, AcctId, QID, CallId, props:get_value('restrict_to', Props)).
 
 unbind_q(Q, AcctId, QID, CallId, 'undefined') ->
-    _ = amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, QID)),
-    _ = amqp_util:unbind_q_from_kapps(Q, agent_change_routing_key(AcctId, QID)),
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
-    _ = amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID));
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, agent_change_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID));
 unbind_q(Q, AcctId, QID, CallId, ['member_call'|T]) ->
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, ['member_call_result'|T]) ->
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, ['member_connect_req'|T]) ->
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, ['sync_req'|T]) ->
-    _ = amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, ['agent_change'|T]) ->
-    _ = amqp_util:unbind_q_from_kapps(Q, agent_change_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, agent_change_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, ['member_addremove'|T]) ->
-    _ = amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, [_|T]) ->
     unbind_q(Q, AcctId, QID, CallId, T);
@@ -718,8 +718,8 @@ unbind_q(_, _, _, _, []) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange(),
-    amqp_util:kapps_exchange().
+    kz_amqp_util:callmgr_exchange(),
+    kz_amqp_util:kapps_exchange().
 
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
@@ -736,7 +736,7 @@ publish_member_call(API, ContentType) ->
     Priority = kz_json:get_integer_value(<<"Member-Priority">>, API),
     Props = props:filter_undefined([{'priority', Priority}]),
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API), Props).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API), Props).
 
 -spec publish_member_call_cancel(kz_term:api_terms()) -> 'ok'.
 publish_member_call_cancel(JObj) ->
@@ -745,7 +745,7 @@ publish_member_call_cancel(JObj) ->
 -spec publish_member_call_cancel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_cancel(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_shared_member_call(kz_json:object()) -> 'ok'.
 publish_shared_member_call(JObj) ->
@@ -767,7 +767,7 @@ publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
                                    ,{'mandatory', 'true'}
                                    ]),
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?MEMBER_CALL_VALUES, fun member_call/1),
-    amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, Props).
+    kz_amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, Props).
 
 -spec publish_member_call_failure(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_call_failure(Q, JObj) ->
@@ -776,8 +776,8 @@ publish_member_call_failure(Q, JObj) ->
 -spec publish_member_call_failure(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_failure(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_FAIL_VALUES, fun member_call_failure/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType),
+    kz_amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_member_call_success(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_call_success(Q, JObj) ->
@@ -786,8 +786,8 @@ publish_member_call_success(Q, JObj) ->
 -spec publish_member_call_success(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_success(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_SUCCESS_VALUES, fun member_call_success/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType),
+    kz_amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_member_connect_req(kz_term:api_terms()) -> 'ok'.
 publish_member_connect_req(JObj) ->
@@ -796,7 +796,7 @@ publish_member_connect_req(JObj) ->
 -spec publish_member_connect_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_REQ_VALUES, fun member_connect_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, member_connect_req_routing_key(API)).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, member_connect_req_routing_key(API)).
 
 -spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_resp(Q, JObj) ->
@@ -805,7 +805,7 @@ publish_member_connect_resp(Q, JObj) ->
 -spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_RESP_VALUES, fun member_connect_resp/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_win(Q, JObj) ->
@@ -814,7 +814,7 @@ publish_member_connect_win(Q, JObj) ->
 -spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_win(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_WIN_VALUES, fun member_connect_win/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_agent_timeout(Q, JObj) ->
@@ -823,7 +823,7 @@ publish_agent_timeout(Q, JObj) ->
 -spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_timeout(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_TIMEOUT_VALUES, fun agent_timeout/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_accepted(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_accepted(Q, JObj) ->
@@ -832,7 +832,7 @@ publish_member_connect_accepted(Q, JObj) ->
 -spec publish_member_connect_accepted(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_accepted(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_ACCEPTED_VALUES, fun member_connect_accepted/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_retry(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_retry(Q, JObj) ->
@@ -841,7 +841,7 @@ publish_member_connect_retry(Q, JObj) ->
 -spec publish_member_connect_retry(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_retry(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_RETRY_VALUES, fun member_connect_retry/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_hungup(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_hungup(Q, JObj) ->
@@ -850,7 +850,7 @@ publish_member_hungup(Q, JObj) ->
 -spec publish_member_hungup(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_hungup(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_HUNGUP_VALUES, fun member_hungup/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_sync_req(kz_term:api_terms()) -> 'ok'.
 publish_sync_req(JObj) ->
@@ -859,7 +859,7 @@ publish_sync_req(JObj) ->
 -spec publish_sync_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_REQ_VALUES, fun sync_req/1),
-    amqp_util:kapps_publish(sync_req_routing_key(API), Payload, ContentType).
+    kz_amqp_util:kapps_publish(sync_req_routing_key(API), Payload, ContentType).
 
 -spec publish_sync_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_sync_resp(Q, JObj) ->
@@ -868,7 +868,7 @@ publish_sync_resp(Q, JObj) ->
 -spec publish_sync_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_agent_change(kz_term:api_terms()) -> 'ok'.
 publish_agent_change(JObj) ->
@@ -877,7 +877,7 @@ publish_agent_change(JObj) ->
 -spec publish_agent_change(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_change(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_CHANGE_VALUES, fun agent_change/1),
-    amqp_util:kapps_publish(agent_change_publish_key(API), Payload, ContentType).
+    kz_amqp_util:kapps_publish(agent_change_publish_key(API), Payload, ContentType).
 
 -spec publish_queue_member_add(kz_term:api_terms()) -> 'ok'.
 publish_queue_member_add(JObj) ->
@@ -886,7 +886,7 @@ publish_queue_member_add(JObj) ->
 -spec publish_queue_member_add(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_add(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_ADD_VALUES, fun queue_member_add/1),
-    amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).
+    kz_amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).
 
 -spec publish_queue_member_remove(kz_term:api_terms()) -> 'ok'.
 publish_queue_member_remove(JObj) ->
@@ -895,4 +895,4 @@ publish_queue_member_remove(JObj) ->
 -spec publish_queue_member_remove(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_remove(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_REMOVE_VALUES, fun queue_member_remove/1),
-    amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).
+    kz_amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).

@@ -6,6 +6,7 @@
         "endpoints": {
             "default": {},
             "description": "Endpoints included into group",
+            "support_level": "supported",
             "type": "object"
         },
         "music_on_hold": {
@@ -18,12 +19,14 @@
                     "type": "string"
                 }
             },
+            "support_level": "beta",
             "type": "object"
         },
         "name": {
             "description": "A friendly name for the group",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         }
     },

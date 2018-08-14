@@ -1,14 +1,15 @@
+# Call Channels
 
-### Channels
-
-#### About Channels
+## About Call Channels
 
 The Channels API allows queries to find active channels for an account, a user, or a device. Given a call-id for a channel, a limited set of commands are allowed to be executed against that channel (such as hangup, transfer, or play media).
 
-#### Fetch active channels system wide.
+NOTE: Konami is an outdated and unsupported 2600Hz module. If you need support on this module, please ensure you are signed up for Konami Pro.
 
-For superduper admin only.
-Be sure to set `system_config`->`crossbar.channels`->`system_wide_channels_list` flag to `true`.
+## Fetch active channels system wide.
+
+!!! note
+    For super duper admin only. Be sure to set `system_config`->`crossbar.channels`->`system_wide_channels_list` flag to `true`
 
 > GET /v2/channels
 
@@ -19,7 +20,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/channels
 ```
 
-#### Fetch active channels for an account
+## Fetch active channels for an account
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels
 
@@ -54,9 +55,11 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch channels for a user or device
+## Fetch channels for a user or device
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/channels
+
+For user with `{USER_ID}`:
 
 ```shell
 curl -v -X GET \
@@ -64,6 +67,8 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/channels
 ```
+
+For device with `{DEVICE_ID}`:
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
 
@@ -74,7 +79,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
 ```
 
-#### Fetch a channel's details
+## Fetch a channel's details
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -85,13 +90,10 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-#### Execute an application against a Channel
+## Execute an application against a Channel
 
-##### Schema
-
-
-
-#### Fetch
+!!! note
+    This API requires Konami Pro to be running and metaflows to be enabled on the call
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -103,7 +105,29 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-#### Put a feature (metaflow) on a channel
+Available `action` values are `transfer`, `hangup`, `break`, `callflow`, and `intercept`.
+
+### Transfer
+
+```shell
+curl -v -X POST \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"module":"transfer","data":{"target":"2600","Transfer-Type":"blind","leg":"bleg"}},"action":"metaflow"}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
+```
+
+Key | Description | Type | Default
+--- | ----------- | ---- | -------
+`leg` | Defines which leg of the call to take action against | `string('self' | 'bleg')` | `self`
+`target` | Extension/DID to transfer the `{UUID}` | `string()` |
+`transfer-type` | What type of transfer to perform | `string('attended' | 'blind')` | `blind`
+`moh` | Music on hold to play while transferring | `string()` |
+
+## Put a feature (metaflow) on a channel
+
+!!! note
+    This API requires Konami Pro to be running and metaflows to be enabled on the call
 
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -115,13 +139,13 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-The Metaflow feature is a `metaflow` object which validates with its json schema.
+The Metaflow feature is a `metaflow` object which validates with its corresponding JSON schema.
 
-##### Reasoning
+### Reasoning
 
-The `POST` action required that every metaflow action would have to be coded into the module.
+The `POST` action requires that every Metaflow action would have to be coded into the module.
 
-##### Benefits
+### Benefits
 
-The metaflow feature allows adding new types of metaflows without changing the code.
-It also allows full metaflows and not only single actions, ie, the `children` node is also processed.
+The Metaflow feature allows adding new types of Metaflows without changing the code.
+It also allows full Metaflows and not only single actions, i.e., the `children` node is also processed.

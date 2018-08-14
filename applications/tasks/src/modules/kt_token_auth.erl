@@ -5,6 +5,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_token_auth).
+
 %% behaviour: tasks_provider
 
 -export([init/0

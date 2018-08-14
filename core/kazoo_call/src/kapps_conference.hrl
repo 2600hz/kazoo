@@ -15,23 +15,23 @@
 
 -define(SUPPORT_NAME_ANNOUNCEMENT(AccountId), kz_term:is_true(kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, <<"support_name_announcement">>, 'true'))).
 
--define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 16000}
+-define(DEFAULT_PROFILE_CONFIG, [{<<"alone-sound">>, <<"conf-alone">>}
                                 ,{<<"caller-controls">>, <<"default">>}
-                                ,{<<"moderator-controls">>, <<"default">>}
-                                ,{<<"interval">>, 20}
-                                ,{<<"energy-level">>, 20}
                                 ,{<<"comfort-noise">>, 1000}
-                                ,{<<"moh-sound">>, <<"$${hold_music}">>}
+                                ,{<<"deaf-sound">>, <<"conf-deaf">>}
+                                ,{<<"energy-level">>, 20}
                                 ,{<<"enter-sound">>, ?DEFAULT_ENTRY_TONE}
                                 ,{<<"exit-sound">>, ?DEFAULT_EXIT_TONE}
-                                ,{<<"max-members-sound">>, <<"conf-max_participants">>}
+                                ,{<<"interval">>, 20}
                                 ,{<<"locked-sound">>, <<"conf-max_participants">>}
-                                ,{<<"muted-sound">>, <<"conf-muted">>}
-                                ,{<<"unmuted-sound">>, <<"conf-unmuted">>}
-                                ,{<<"deaf-sound">>, <<"conf-deaf">>}
-                                ,{<<"undeaf-sound">>, <<"conf-undeaf">>}
+                                ,{<<"max-members-sound">>, <<"conf-max_participants">>}
                                 ,{<<"member-enter-sound">>, <<"conf-joining_conference">>}
-                                ,{<<"alone-sound">>, <<"conf-alone">>}
+                                ,{<<"moderator-controls">>, <<"default">>}
+                                ,{<<"moh-sound">>, <<"$${hold_music}">>}
+                                ,{<<"muted-sound">>, <<"conf-muted">>}
+                                ,{<<"rate">>, 16000}
+                                ,{<<"undeaf-sound">>, <<"conf-undeaf">>}
+                                ,{<<"unmuted-sound">>, <<"conf-unmuted">>}
                                 ]).
 
 -define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
@@ -39,8 +39,9 @@
                              ,{<<"interval">>, 20}
                              ,{<<"energy-level">>, 20}
                              ,{<<"comfort-noise">>, 1000}
-                             ,{<<"moh-sound">>, <<>>}
-                             ,{<<"enter-sound">>, <<>>}
+                             ,{<<"moh-sound">>, <<"silence_stream://1">>}
+                             ,{<<"enter-sound">>, <<"silence_stream://1">>}
+                             ,{<<"exit-sound">>, <<"silence_stream://1">>}
                              ]).
 
 -define(DEFAULT_CONTROLS, [kz_json:from_list([{<<"action">>, <<"mute">>},     {<<"digits">>, <<"*1">>}])

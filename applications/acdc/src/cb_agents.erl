@@ -135,7 +135,7 @@ content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /agents mights load a list of agent objects
+%% /agents might load a list of agent objects
 %% /agents/123 might load the agent object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -320,10 +320,10 @@ fetch_current_status(Context, AgentId, 'true') ->
             ,{<<"Agent-ID">>, AgentId}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_acdc_stats:publish_status_req/1
-                                     ,fun kapi_acdc_stats:status_resp_v/1
-                                     )
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_acdc_stats:publish_status_req/1
+                            ,fun kapi_acdc_stats:status_resp_v/1
+                            )
     of
         {'error', E} ->
             crossbar_util:response('error'
@@ -425,13 +425,11 @@ format_stats(Context, Resp) ->
         ++ kz_json:get_value(<<"Waiting">>, Resp, [])
         ++ kz_json:get_value(<<"Processed">>, Resp, []),
 
-    crossbar_util:response(
-      lists:foldl(fun format_stats_fold/2
-                 ,kz_json:new()
-                 ,Stats
-                 )
-                          ,Context
-     ).
+    FormattedStats = lists:foldl(fun format_stats_fold/2
+                                ,kz_json:new()
+                                ,Stats
+                                ),
+    crossbar_util:response(FormattedStats, Context).
 
 -spec format_stats_fold(kz_json:object(), kz_json:object()) ->
                                kz_json:object().
@@ -538,7 +536,7 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the resuts of a view
+%% @doc Normalizes the results of a view
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
@@ -570,15 +568,14 @@ validate_status_change(Context, S) ->
         'true' -> validate_status_change_params(Context, S);
         'false' ->
             lager:debug("status ~s not valid", [S]),
-            cb_context:add_validation_error(
-              <<"status">>
+            cb_context:add_validation_error(<<"status">>
                                            ,<<"enum">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, <<"value is not a valid status">>}
                                               ,{<<"cause">>, S}
                                               ])
                                            ,Context
-             )
+                                           )
     end.
 
 -spec check_for_status_error(cb_context:context(), kz_term:api_binary()) ->
@@ -588,15 +585,14 @@ check_for_status_error(Context, S) ->
         'true' -> Context;
         'false' ->
             lager:debug("status ~s not found", [S]),
-            cb_context:add_validation_error(
-              <<"status">>
+            cb_context:add_validation_error(<<"status">>
                                            ,<<"enum">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, <<"value is not a valid status">>}
                                               ,{<<"cause">>, S}
                                               ])
                                            ,Context
-             )
+                                           )
     end.
 
 -spec validate_status_change_params(cb_context:context(), kz_term:ne_binary()) ->
@@ -607,27 +603,25 @@ validate_status_change_params(Context, <<"pause">>) ->
         N when N >= 0 -> cb_context:set_resp_status(Context, 'success');
         N ->
             lager:debug("bad int for pause: ~p", [N]),
-            cb_context:add_validation_error(
-              <<"timeout">>
+            cb_context:add_validation_error(<<"timeout">>
                                            ,<<"minimum">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, <<"value must be at least greater than or equal to 0">>}
                                               ,{<<"cause">>, N}
                                               ])
                                            ,Context
-             )
+                                           )
     catch
         _E:_R ->
             lager:debug("bad int for pause: ~s: ~p", [_E, _R]),
-            cb_context:add_validation_error(
-              <<"timeout">>
+            cb_context:add_validation_error(<<"timeout">>
                                            ,<<"type">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, <<"value must be an integer greater than or equal to 0">>}
                                               ,{<<"cause">>, Value}
                                               ])
                                            ,Context
-             )
+                                           )
     end;
 validate_status_change_params(Context, _S) ->
     lager:debug("great success for ~s", [_S]),

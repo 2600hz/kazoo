@@ -6,7 +6,7 @@ Puts the caller into a faxbox (expectation is the caller is a fax).
 
 #### Schema
 
-Validator for the faxbox callflow's data object
+Validator for the faxbox callflow data object
 
 
 

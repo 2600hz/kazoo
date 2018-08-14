@@ -53,6 +53,7 @@
         ,timeout/1, timeout/2
         ,t38_enabled/1, t38_enabled/2
         ,to_did/1, to_did/2
+        ,denied_call_restrictions/1, denied_call_restrictions/2
 
         ,msg_id/1
         ,server_id/1
@@ -68,7 +69,7 @@
         ,put_callid/1
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 -include_lib("kazoo_amqp/include/kz_amqp.hrl").
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
@@ -132,6 +133,7 @@
         ,?KEY_RINGBACK
         ,?KEY_T38_ENABLED
         ,?KEY_TIMEOUT
+        ,?KEY_DENIED_CALL_RESTRICTIONS
         ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
        ,[{?KEY_EVENT_CATEGORY, ?CATEGORY_REQ}
@@ -167,6 +169,7 @@
         ,{?KEY_FORCE_OUTBOUND, fun kz_term:is_boolean/1}
         ,{?KEY_TO_DID, fun kz_term:is_ne_binary/1}
         ,{?KEY_BYPASS_E164, fun kz_term:is_boolean/1}
+        ,{?KEY_DENIED_CALL_RESTRICTIONS, fun kz_json:is_json_object/1}
         ]).
 
 %% Offnet Resource Response
@@ -223,11 +226,11 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
+    kz_amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
+    kz_amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API.
@@ -235,7 +238,7 @@ unbind_q(Queue, _Props) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:resource_exchange().
+    kz_amqp_util:resource_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
@@ -244,7 +247,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun req/1),
-    amqp_util:offnet_resource_publish(Payload, ContentType).
+    kz_amqp_util:offnet_resource_publish(Payload, ContentType).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
@@ -253,7 +256,7 @@ publish_resp(TargetQ, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec force_outbound(req()) -> boolean().
 force_outbound(Req) ->
@@ -334,6 +337,14 @@ to_did(Req) ->
 -spec to_did(req(), Default) -> kz_term:ne_binary() | Default.
 to_did(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_TO_DID, JObj, Default).
+
+-spec denied_call_restrictions(req()) -> kz_json:object().
+denied_call_restrictions(Req) ->
+    denied_call_restrictions(Req, kz_json:new()).
+
+-spec denied_call_restrictions(req(), Default) -> kz_json:object() | Default.
+denied_call_restrictions(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_json_value(?KEY_DENIED_CALL_RESTRICTIONS, JObj, Default).
 
 -spec call_id(req()) -> kz_term:api_binary().
 call_id(Req) ->

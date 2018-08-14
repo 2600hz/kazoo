@@ -53,9 +53,6 @@
                     ,{{?MODULE, 'handle_conference_error'}
                      ,[{<<"conference">>, <<"error">>}]
                      }
-                    ,{'conf_config_req'
-                     ,[{<<"conference">>, <<"config_req">>}]
-                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -73,10 +70,8 @@
                      ,conference :: kapps_conference:conference() | 'undefined'
                      ,discovery_event = kz_json:new() :: kz_json:object()
                      ,last_dtmf = <<>> :: binary()
-                     ,server = self() :: pid()
                      ,remote = 'false' :: boolean()
                      ,name_pronounced :: conf_pronounced_name:name_pronounced()
-                     ,config_queue = 'undefined' :: kz_term:api_binary()
                      }).
 -type participant() :: #participant{}.
 
@@ -239,9 +234,6 @@ handle_cast({'channel_replaced', NewCallId}
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     {'noreply', Participant#participant{call=NewCall}};
 
-handle_cast({'gen_listener', {'created_queue', <<"config-", _/binary>> = Q}}, P) ->
-    lager:debug("participant configuration queue created ~s", [Q]),
-    {'noreply', P#participant{config_queue=Q}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                 ,call=Call
                                                                 }=P) ->
@@ -270,14 +262,6 @@ handle_cast({'set_conference', Conference}, Participant=#participant{call=Call})
     CallId = kapps_call:call_id(Call),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
     gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'event', {ConferenceId, CallId}}]}]),
-    kz_util:spawn(fun gen_listener:add_queue/4
-                 ,[self()
-                  ,<<"config-", ConferenceId/binary>>
-                  ,[{'queue_options', [{'exclusive', 'false'}]}
-                   ,{'consume_options', [{'exclusive', 'false'}]}
-                   ]
-                  ,[{'conference', [{'restrict_to', [{'config', get_profile_name(Conference)}]}, 'federate']}]
-                  ]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
@@ -288,15 +272,10 @@ handle_cast({'gen_listener',{'is_consuming','true'}}, Participant) ->
     lager:debug("now consuming messages"),
     {'noreply', Participant};
 handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
-    %% ALL MESSAGES BELLOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
+    %% ALL MESSAGES BELOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
     lager:debug("ignoring message prior to conference discovery: ~p"
                ,[_Message]
                ),
-    {'noreply', Participant};
-handle_cast('join_local', #participant{config_queue='undefined'
-                                      }=Participant) ->
-    lager:debug("configuration queue not created, delaying join_local by 100 ms"),
-    gen_listener:delayed_cast(self(), 'join_local', 100),
     {'noreply', Participant};
 handle_cast('join_local', #participant{call=Call
                                       ,conference=Conference
@@ -305,11 +284,6 @@ handle_cast('join_local', #participant{call=Call
     send_conference_command(Conference, Call),
     {'noreply', Participant};
 
-handle_cast({'join_remote', JObj}, #participant{config_queue='undefined'
-                                               }=Participant) ->
-    lager:debug("configuration queue not created, delaying join_remote by 100 ms"),
-    gen_listener:delayed_cast(self(), {'join_remote', JObj}, 100),
-    {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                ,conference=Conference
                                                ,name_pronounced=Name
@@ -365,7 +339,6 @@ handle_info(_Msg, Participant) ->
 -spec handle_event(kz_json:object(), participant()) -> gen_listener:handle_event_return().
 handle_event(JObj, #participant{call_event_consumers=Consumers
                                ,call=Call
-                               ,server=Srv
                                }) ->
     CallId = kapps_call:call_id(Call),
     case {kz_util:get_event_type(JObj)
@@ -374,15 +347,17 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
     of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             lager:debug("received channel hangup event, maybe terminating"),
-            _Ref = erlang:send_after(3 * ?MILLISECONDS_IN_SECOND, Srv, {'hungup', CallId}),
+            _Ref = erlang:send_after(3 * ?MILLISECONDS_IN_SECOND, self(), {'hungup', CallId}),
             'ok';
         {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
             handle_channel_pivot(JObj, Call);
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, CallId} ->
-            handle_channel_replaced(JObj, Srv);
+            handle_channel_replaced(JObj, self());
         {_, _} -> 'ok'
     end,
-    {'reply', [{'call_event_consumers', Consumers}, {'server', Srv}]}.
+    {'reply', [{'call_event_consumers', Consumers}
+              ,{'is_participant', 'true'}
+              ]}.
 
 -spec handle_channel_replaced(kz_json:object(), kz_types:server_ref()) -> 'ok'.
 handle_channel_replaced(JObj, Srv) ->
@@ -402,7 +377,7 @@ handle_channel_pivot(JObj, Call) ->
                   ,{<<"Call">>, kapps_call:to_json(Call)}
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ],
-            kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1),
+            _ = kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1),
             lager:info("stopping the conf participant"),
             gen_listener:cast(self(), 'pivoted')
     end.
@@ -424,7 +399,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     lager:debug("deleting doc: ~s/~s", [AccountDb, MediaId]),
-    kz_datamgr:del_doc(AccountDb, MediaId),
+    _ = kz_datamgr:del_doc(AccountDb, MediaId),
     'ok';
 maybe_clear(_) -> 'ok'.
 
@@ -511,9 +486,9 @@ bridge_to_conference(Route, Conference, Call, Name) ->
                                  ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
                                  ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
                                  ,{<<"Ignore-Early-Media">>, <<"true">>}
-                                 ,{<<"To-URI">>, <<"sip:", (kapps_conference:id(Conference))/binary
-                                                   ,"@", (get_account_realm(Call))/binary
-                                                 >>
+                                 ,{<<"To-URI">>, list_to_binary(["sip:", kapps_conference:id(Conference)
+                                                                ,"@", get_account_realm(Call)
+                                                                ])
                                   }
                                  ]),
     SIPHeaders = props:filter_undefined([{<<"X-Conf-Flags-Moderator">>, kapps_conference:moderator(Conference)}
@@ -629,7 +604,8 @@ play_entry_tone_media(Tone, Conference) ->
 
 -spec get_profile_name(kapps_conference:conference()) -> kz_term:ne_binary().
 get_profile_name(Conference) ->
-    list_to_binary([kapps_conference:id(Conference)
-                   ,"_"
-                   ,kapps_conference:account_id(Conference)
-                   ]).
+    Default = list_to_binary([kapps_conference:id(Conference)
+                             ,"_"
+                             ,kapps_conference:account_id(Conference)
+                             ]),
+    kapps_conference:profile_name(Conference, Default).

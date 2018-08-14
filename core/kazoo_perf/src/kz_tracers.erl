@@ -128,18 +128,17 @@ verify_no_doc(Doc) ->
     end.
 
 new_doc(AccountDb, Ref) ->
-    Doc = kz_doc:update_pvt_parameters(
-            kz_json:from_list([{<<"_id">>, kz_binary:rand_hex(16)}
-                              ,{<<"ref">>, Ref}
-                              ,{<<"pvt_type">>, <<"load_test">>}
-                               | [{kz_binary:rand_hex(8)
-                                  ,kz_binary:rand_hex(8)
-                                  }
-                                  || _ <- lists:seq(1, 12)
-                                 ]
-                              ])
-                                      ,AccountDb
-           ),
+    BaseDoc = kz_json:from_list([{<<"_id">>, kz_binary:rand_hex(16)}
+                                ,{<<"ref">>, Ref}
+                                ,{<<"pvt_type">>, <<"load_test">>}
+                                 | [{kz_binary:rand_hex(8)
+                                    ,kz_binary:rand_hex(8)
+                                    }
+                                    || _ <- lists:seq(1, 12)
+                                   ]
+                                ]),
+    Doc = kz_doc:update_pvt_parameters(BaseDoc, AccountDb),
+
     {'ok', Saved} = kz_datamgr:save_doc(AccountDb, Doc),
     {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, kz_doc:id(Saved)),
     Saved.

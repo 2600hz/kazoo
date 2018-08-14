@@ -193,7 +193,7 @@ fetch_from_url(#{key_id := KeyId
     case kz_auth_util:get_json_from_url(URL) of
         {'ok', JObj} -> Token#{key_doc => JObj};
         _Err ->
-            lager:debug("error ~p obtaininig public key", [_Err]),
+            lager:debug("error ~p obtaining public key", [_Err]),
             Token
     end;
 fetch_from_url(#{}=Token) -> Token.

@@ -1,10 +1,10 @@
-### Authentication
+# Authentication Token Operations
 
 Crossbar module for operations on JWT Token, SSO/OAuth tokens.
 
-#### About Authentication
+## About Authentication
 
-#### Schema for auth.callback
+## Schema for auth.callback
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -14,13 +14,13 @@ Key | Description | Type | Default | Required
 `redirect_uri` | redirect URI | `string` |   | `true`
 `state` | state | `string` |  | `false`
 
-#### Schema for auth.provider
+### Schema for auth.provider
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `id` | id | `string` |  | `true`
 
-#### Schema for auth.app
+### Schema for auth.app
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -31,15 +31,17 @@ Key | Description | Type | Default | Required
 
 
 
-#### Resetting System (Kazoo) Signature Secret
+## Resetting System (Kazoo) Signature Secret
 
 System signature secret and the subject signature is being used to sign the signature in the JWT token that Kazoo is issuing.
 
 If you feel that this system secret is compromised, use this API to reset it.
 
-> **Caution:** Resetting system signature secret will invalidate *all* issued token! In other words all login users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
+!!! danger
+    Resetting system signature secret will invalidate *all* issued token! In other words all login users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
 
-> **Note:** Only super duper admin can reset system secret!
+!!! note
+    Only super duper admin can reset system secret!
 
 > PUT /v2/auth
 
@@ -50,7 +52,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth
 ```
 
-##### Response
+**Responses**
 
 Returns an empty success response.
 
@@ -65,17 +67,19 @@ Returns an empty success response.
 }
 ```
 
-#### Resetting an Account or a User Signature Secret
+## Resetting an Account or a User Signature Secret
 
 System signature secret and the subject signature is being used to sign the signature in the JWT token that Kazoo is issuing.
 
 If you feel that an account or a user secret is compromised, use this API to reset it.
 
-> **Caution:** Resetting signature secret will invalidate user's issued token! In other words if the user is already login, it will be logout from the system and can't make any further request until login again.
+!!! danger
+    Resetting signature secret will invalidate user's issued token! In other words if the user is already login, it will be logout from the system and can't make any further request until login again.
 
-> **Note:** Only the user or an account admin can reset the user's secret.
+!!! note
+    Only the user or an account admin can reset the user's secret.
 
-##### To Reset an Account Signature Secret
+### To Reset an Account Signature Secret
 
 > PUT /v2/accounts/{ACCOUNT_ID}/auth
 
@@ -86,20 +90,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/auth
 ```
 
-#### Request a new token while current token is still valid
-
-> **Note:** This will fail if your password or User Signature Secret is reset.
-
-> PUT /v2/auth
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "action": "refresh_token", "data": {} }'
-    http://{SERVER}:8000/v2/auth
-```
-
-##### To Reset a User Signature Secret
+### To Reset a User Signature Secret
 
 > PUT /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/auth
 
@@ -110,7 +101,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/users/3bedb94b3adfc4873a548b41d28778b5/auth
 ```
 
-##### Response
+#### Response
 
 Returns an empty success response.
 
@@ -125,7 +116,21 @@ Returns an empty success response.
 }
 ```
 
-#### Get a List of Registered SSO App
+## Request a new token while current token is still valid
+
+!!! note
+    This will fail if your password or User Signature Secret was reset.
+
+> PUT /v2/auth
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{ "action": "refresh_token", "data": {} }'
+    http://{SERVER}:8000/v2/auth
+```
+
+## Get a List of Registered SSO App
 
 This list all registered Single Sign On applications for the account's reseller. Account ID is determined in order by first from the query string `account_id`, or from request path (`/accounts/{ACCOUNT_ID}`) or from authenticated user's account id.
 
@@ -137,7 +142,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/apps
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -157,7 +162,7 @@ curl -v -X GET \
 }
 ```
 
-#### List SSO Provider
+## List SSO Provider
 
 Get a list of all Single Sign On provider.
 
@@ -169,7 +174,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/providers
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -207,7 +212,7 @@ curl -v -X GET \
 }
 ```
 
-#### List User's Linked SSO Applications
+## List User's Linked SSO Applications
 
 Get a list of the linked Single Sign On applications for the authenticated user.
 
@@ -219,7 +224,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/links
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -246,7 +251,7 @@ curl -v -X GET \
 }
 ```
 
-#### List Public Key Cryptography
+## List Public Key Cryptography
 
 Lists a list of keys which is being used to sign and validate JWT tokens.
 
@@ -258,7 +263,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/keys
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -275,7 +280,7 @@ curl -v -X GET \
 }
 ```
 
-#### Authenticate a User with a SSO (Create a Token from SSO Response)
+## Authenticate a User with a SSO (Create a Token from SSO Response)
 
 After a user authenticate with Single Sign On provider, use this API to send the provider response to Crossbar to login and create a token.
 
@@ -288,7 +293,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/callback
 ```
 
-##### Response when no User is Linked yet
+### Response when no User is Linked yet
 
 If this is the first time that the user is authenticating using this SSO provider, Kazoo returns and empty response indicating that user should first login using it's own Kazoo credentials first to link the SSO application with its user. After login the user is linked with the application and it no need to manual login again.
 
@@ -305,7 +310,7 @@ If this is the first time that the user is authenticating using this SSO provide
 }
 ```
 
-##### Response when the User is Linked
+### Response when the User is Linked
 
 ```json
 {
@@ -327,7 +332,7 @@ If this is the first time that the user is authenticating using this SSO provide
 }
 ```
 
-#### Validate and Authorize a Foreign SSO Token/App
+## Validate and Authorize a Foreign SSO Token/App
 
 > PUT /v2/auth/authorize
 
@@ -337,7 +342,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/authorize
 ```
 
-#### Get Token Information (Query String version)
+## Get Token Information (Query String version)
 
 Returns the information encoded in the specified authentication token (from query string `token` parameter).
 
@@ -349,7 +354,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/tokeninfo?token={AN_AUTH_TOKEN}
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -371,7 +376,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get Token Information (Request Body version)
+## Get Token Information (Request Body version)
 
 Returns the information encoded in the specified authentication token (from request body `token` parameter).
 
@@ -384,7 +389,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/auth/tokeninfo
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -406,7 +411,7 @@ curl -v -X POST \
 }
 ```
 
-#### Get a SSO Application
+## Get a SSO Application
 
 Get a Single Sign On application by it's ID.
 
@@ -418,7 +423,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/apps/{APP_ID}
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -435,7 +440,7 @@ curl -v -X GET \
 }
 ```
 
-#### Change a SSO Application
+## Change a SSO Application
 
 > POST /v2/auth/apps/{APP_ID}
 
@@ -445,7 +450,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/auth/apps/{APP_ID}
 ```
 
-#### Remove a SSO Application
+## Remove a SSO Application
 
 > DELETE /v2/auth/apps/{APP_ID}
 
@@ -455,11 +460,12 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/auth/apps/{APP_ID}
 ```
 
-#### Get a Public Key
+## Get a Public Key
 
 Get a public key used for signing the JWT tokens issued by system.
 
-> **Note:** To get the public key in form of a PEM file set `Accept` header as `application/x-pem-file`.
+!!! note
+    To get the public key in form of a PEM file set `Accept` header as `application/x-pem-file`.
 
 > GET /v2/auth/keys/{KEY_ID}
 
@@ -469,7 +475,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/keys/96247ed90b4bec8294c09ae6ece923a2
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -486,13 +492,15 @@ curl -v -X GET \
 }
 ```
 
-#### Reset a Private Key
+## Reset a Private Key
 
 Reset the private key of the system used to signing and verifying issued JWT tokens. If you feel that the private key is compromised, use this API to generate a new private and public key.
 
-> **Caution:** Resetting system private will invalidate *all* issued token! In other words all login users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
+!!! danger
+    Resetting system private will invalidate *all* issued token! In other words all login users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
 
-> **Note:** Only super duper admin can reset system private key!
+!!! note
+    Only super duper admin can reset system private key!
 
 > PUT /v2/auth/keys/{KEY_ID}
 
@@ -503,7 +511,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/keys/96247ed90b4bec8294c09ae6ece923a2
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -516,7 +524,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Fetch a SSO Provider Informations
+## Fetch a SSO Provider Information
 
 > GET /v2/auth/providers/{PROVIDER_ID}
 
@@ -526,7 +534,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/providers/google
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -550,9 +558,10 @@ curl -v -X GET \
 }
 ```
 
-#### Make changes to SSO Provider
+## Make changes to SSO Provider
 
-> **Note:** Only super duper admin can make changes to SSO provider!
+!!! note
+    Only super duper admin can make changes to SSO provider!
 
 > POST /v2/auth/providers/{PROVIDER_ID}
 
@@ -562,9 +571,10 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/auth/providers/{PROVIDER_ID}
 ```
 
-#### Remove a SSO Provider
+## Remove a SSO Provider
 
-> **Note:** Only super duper admin can delete a SSO provider!
+!!! note
+    Only super duper admin can delete a SSO provider!
 
 > DELETE /v2/auth/providers/{PROVIDER_ID}
 
@@ -574,7 +584,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/auth/providers/{PROVIDER_ID}
 ```
 
-#### Get an User's Linked SSO Applications Information
+## Get an User's Linked SSO Applications Information
 
 > GET /v2/auth/links/{LINK_ID}
 
@@ -584,7 +594,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/links/d6faaff6b054393f28356ab7b38ad1bf-116254222860442180295
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -592,7 +602,7 @@ curl -v -X GET \
     "email": "{USER_EMAIL}",
     "verified_email": true,
     "scope": "{PROVIDER_SCOPE}",
-    "scopes": [{SCOPES}],
+    "scopes": ["{SCOPES}"],
     "profile": { //user's profile },
     "display_name": "{Test Person}",
     "id": "d6faaff6b054393f28356ab7b38ad1bf-116254222860442180295"
@@ -606,7 +616,7 @@ curl -v -X GET \
 }
 ```
 
-#### Link an User to a SSO Application
+## Link an User to a SSO Application
 
 When the user is signing on with A Single Sign On provider for the first time, it should login with its own Kazoo credentials one more time, and then make a request to this API to link its Kazoo's user to the SSO. After that the user can sign in with SSO regularly and no need to use Kazoo credentials again.
 
@@ -618,7 +628,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/links/d6faaff6b054393f28356ab7b38ad1bf-116254222860442180295
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -626,7 +636,7 @@ curl -v -X PUT \
     "email": "{USER_EMAIL}",
     "verified_email": true,
     "scope": "{PROVIDER_SCOPE}",
-    "scopes": [{SCOPES}],
+    "scopes": ["{SCOPES}"],
     "profile": { //user's profile },
     "display_name": "{Test Person}",
     "id": "d6faaff6b054393f28356ab7b38ad1bf-116254222860442180295"
@@ -640,7 +650,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Unlink a user from SSO Application
+## Unlink a user from SSO Application
 
 > DELETE /v2/auth/links/{LINK_ID}
 
@@ -650,7 +660,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/auth/links/d6faaff6b054393f28356ab7b38ad1bf-116254222860442180295
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -658,7 +668,7 @@ curl -v -X DELETE \
     "email": "{USER_EMAIL}",
     "verified_email": true,
     "scope": "{PROVIDER_SCOPE}",
-    "scopes": [{SCOPES}],
+    "scopes": ["{SCOPES}"],
     "profile": { //user's profile },
     "display_name": "{Test Person}",
     "id": "d6faaff6b054393f28356ab7b38ad1bf-116254222860442180295"

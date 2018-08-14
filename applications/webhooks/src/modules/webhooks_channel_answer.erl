@@ -36,4 +36,3 @@ bindings_and_responders() ->
       }
      ]
     }.
-

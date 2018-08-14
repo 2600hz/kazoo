@@ -18,16 +18,20 @@
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
+    Number = cf_util:normalize_capture_group(kapps_call:kvs_fetch('cf_capture_group', Call)),
     AccountId = kapps_call:account_id(Call),
-    case is_binary(CaptureGroup)
-        andalso cf_flow:lookup(CaptureGroup, AccountId)
+    case Number =/= 'undefined'
+        andalso cf_flow:lookup(Number, AccountId)
     of
+        'false' ->
+            lager:debug("capture group is empty and can not be set as destination."),
+            cf_exe:stop_bad_destination(Call);
         {'ok', Flow, 'false'} ->
             JObj = suppress_ccv(Data),
             kapps_call_command:set('undefined', JObj, Call),
             cf_exe:branch(kzd_callflow:flow(Flow, kz_json:new()), Call);
-        _ -> cf_exe:continue(Call)
+        _ ->
+            cf_exe:continue(Call)
     end.
 
 -spec suppress_ccv(kz_json:object()) -> kz_json:object().

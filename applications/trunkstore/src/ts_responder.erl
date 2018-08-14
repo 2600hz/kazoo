@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Trunk-Store responder waits for Auth and Route requests on the broadcast
-%%% Exchange, and delievers the requests to the corresponding handler.
+%%% Exchange, and delivers the requests to the corresponding handler.
 %%% TS responder also receives responses from the handlers and returns them
 %%% to the requester.
 %%% Each request received by TS_RESPONDER should be put into a new spawn()

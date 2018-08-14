@@ -395,7 +395,10 @@ header_map(Header, HeaderMap) ->
 -spec json_objs_to_csv(kz_json:objects(), kz_term:proplist()) -> iolist().
 json_objs_to_csv([], _) -> [];
 json_objs_to_csv(JObjs, Options) ->
-    [create_csv_header(JObjs, Options), [json_to_csv(JObj) || JObj <- JObjs]].
+    case props:is_true('build_headers', Options, 'true') of
+        'true' -> [create_csv_header(JObjs, Options), [json_to_csv(JObj) || JObj <- JObjs]];
+        'false' -> [json_to_csv(JObj) || JObj <- JObjs]
+    end.
 
 -spec csv_ize(kz_json:path()) -> iolist().
 csv_ize([F|Rest]) ->

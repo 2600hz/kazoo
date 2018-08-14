@@ -102,7 +102,10 @@ content_types_provided(Context, _) ->
                                     cb_context:context().
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
-                                                                  ,{<<"text">>, <<"directory">>}]}]);
+                                                                  ,{<<"text">>, <<"directory">>}
+                                                                  ]
+                                                    }
+                                                   ]);
 content_types_provided(Context, _, _) ->
     Context.
 
@@ -144,11 +147,10 @@ validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, UserId}])
                                        ,Context
-             );
+                                       );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
@@ -156,11 +158,10 @@ validate_user_id(UserId, Context) ->
 validate_user_id(UserId, Context, Doc) ->
     case kz_doc:is_soft_deleted(Doc) of
         'true' ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, UserId}])
                                        ,Context
-             );
+                                       );
         'false'->
             cb_context:setters(Context
                               ,[{fun cb_context:set_user_id/2, UserId}
@@ -302,10 +303,10 @@ get_channels(Context) ->
           ,{<<"Usernames">>, Usernames}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
-                                     ,fun kapi_call:publish_query_user_channels_req/1
-                                     ,{'ecallmgr', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_call:publish_query_user_channels_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
@@ -358,21 +359,21 @@ set_photo(JObj, Context) ->
         'error' -> JObj;
         'success' ->
             Data = cb_context:resp_data(Attach),
-            CT = kz_json:get_value(<<"content_type">>
-                                  ,kz_json:get_value(?PHOTO
-                                                    ,kz_json:get_value(<<"_attachments">>
-                                                                      ,cb_context:doc(Context)
-                                                                      ))),
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
             kz_json:set_value(?PHOTO, kz_json:from_list([{CT, Data}]), JObj)
     end.
 
 -spec set_org(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_org(JObj, Context) ->
-    case kz_json:get_value(<<"org">>
-                          ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
-                                                           ,Context
-                                                           ,?TYPE_CHECK_OPTION(kzd_user:type()))))
+    LoadedContent = crossbar_doc:load(cb_context:account_id(Context)
+                                     ,Context
+                                     ,?TYPE_CHECK_OPTION(kzd_user:type())
+                                     ),
+
+    case 'success' =:= cb_context:resp_status(LoadedContent)
+        andalso kz_json:get_value(<<"org">>, cb_context:doc(LoadedContent))
     of
+        'false' -> JObj;
         'undefined' -> JObj;
         Val -> kz_json:set_value(<<"org">>, Val, JObj)
     end.

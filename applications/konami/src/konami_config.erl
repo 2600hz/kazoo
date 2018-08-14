@@ -22,10 +22,8 @@
                                        ,{<<"data">>, kz_json:from_list([{<<"text">>, <<"hi">>}])}
                                        ])).
 
--define(DEFAULT_NUMBERS, kz_json:from_list([{<<"2">>, ?META_SAY_HI}
-                                           ])).
--define(DEFAULT_PATTERNS, kz_json:from_list([{<<"^2$">>, ?META_SAY_HI}
-                                            ])).
+-define(DEFAULT_NUMBERS, kz_json:from_list([{<<"2">>, ?META_SAY_HI}])).
+-define(DEFAULT_PATTERNS, kz_json:from_list([{<<"^2$">>, ?META_SAY_HI}])).
 
 -define(DEFAULT_LISTEN_ON, 'a').
 

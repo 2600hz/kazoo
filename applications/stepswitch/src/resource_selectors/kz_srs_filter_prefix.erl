@@ -71,7 +71,7 @@ build_prefixes(<<>>, _, Acc) -> Acc.
 match_prefixes(Id, Set, 'keep', _PrefixMode) ->
     case sets:size(Set) of
         0 ->
-            lager:debug("resource ~s dont match prefix, droping", [Id]),
+            lager:debug("resource ~s doesn't match prefix, dropping", [Id]),
             'false';
         _ ->
             lager:debug("resource ~s matched prefix, keeping", [Id]),
@@ -80,22 +80,22 @@ match_prefixes(Id, Set, 'keep', _PrefixMode) ->
 match_prefixes(Id, Set, 'drop', _PrefixMode) ->
     case sets:size(Set) of
         0 ->
-            lager:debug("resource ~s dont match prefix, keeping", [Id]),
+            lager:debug("resource ~s doesn't match prefix, keeping", [Id]),
             'true';
         _ ->
-            lager:debug("resource ~s matched prefix, droping", [Id]),
+            lager:debug("resource ~s matched prefix, dropping", [Id]),
             'false'
     end.
 
 match_db_prefixes(Id, 'undefined', 'keep', _PrefixMode) ->
-    lager:debug("resource ~s dont match prefix, droping", [Id]),
+    lager:debug("resource ~s doesn't match prefix, dropping", [Id]),
     'false';
 match_db_prefixes(Id, [_|_], 'keep', _PrefixMode) ->
     lager:debug("resource ~s matched prefix, keeping", [Id]),
     'true';
 match_db_prefixes(Id, 'undefined', 'drop', _PrefixMode) ->
-    lager:debug("resource ~s dont match prefix, keeping", [Id]),
+    lager:debug("resource ~s doesn't match prefix, keeping", [Id]),
     'true';
 match_db_prefixes(Id, [_|_], 'drop', _PrefixMode) ->
-    lager:debug("resource ~s matched prefix, droping", [Id]),
+    lager:debug("resource ~s matched prefix, dropping", [Id]),
     'false'.

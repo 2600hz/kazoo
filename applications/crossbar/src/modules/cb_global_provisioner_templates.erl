@@ -90,7 +90,7 @@ content_types_provided_for_provisioner(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
         {'error', _} -> Context;
         {'ok', JObj} ->
             [Type, SubType] = binary:split(get_content_type(JObj), <<"/">>),
-            lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
+            lager:debug("found attachment of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end;
 content_types_provided_for_provisioner(Context, _, _, _) ->

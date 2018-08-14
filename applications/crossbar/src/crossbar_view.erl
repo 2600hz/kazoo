@@ -62,7 +62,7 @@
 %% See also {@link start_end_keys/3}.
 
 -type range_keymap_fun() :: fun((kz_time:gregorian_seconds()) -> api_range_key()).
-%% A function of arity 1. The timestamp from `create_ftom' or `created_to' will pass to this function
+%% A function of arity 1. The timestamp from `create_from' or `created_to' will pass to this function
 %% to construct the start or end key.
 -type range_keymap() :: 'nil' | api_range_key() | range_keymap_fun().
 %% Creates a start/key key for ranged queries. A binary or integer or a list of binary or integer
@@ -85,6 +85,7 @@
                    [{'databases', kz_term:ne_binaries()} |
                     {'mapper', user_mapper_fun()} |
                     {'max_range', pos_integer()} |
+                    {'no_filter', boolean()} |
 
                     %% for non-ranged query
                     {'end_keymap', keymap()} |
@@ -115,6 +116,7 @@
                         ,last_key => last_key()
                         ,mapper => mapper_fun()
                         ,page_size => pos_integer()
+                        ,previous_chunk_length => non_neg_integer()
                         ,queried_jobjs => kz_json:objects()
                         ,should_paginate => boolean()
                         ,start_key => kazoo_data:range_key()
@@ -187,7 +189,11 @@ load_modb(Context, View, Options) ->
 build_load_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
         #{direction := Direction}=LoadMap ->
-            HasQSFilter = crossbar_filter:is_defined(Context),
+            HasQSFilter = not props:get_is_true('no_filter', Options, 'false')
+                andalso crossbar_filter:is_defined(Context),
+
+            lager:debug("has qs filter: ~s", [HasQSFilter]),
+
             UserMapper = props:get_value('mapper', Options),
 
             {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
@@ -221,8 +227,10 @@ build_load_range_params(Context, View, Options) ->
             TimeFilterKey = props:get_ne_binary_value('range_key_name', Options, <<"created">>),
             UserMapper = props:get_value('mapper', Options),
 
-            HasQSFilter = crossbar_filter:is_defined(Context)
+            HasQSFilter = not props:get_is_true('no_filter', Options, 'false')
+                andalso crossbar_filter:is_defined(Context)
                 andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+
             lager:debug("has qs filter: ~s", [HasQSFilter]),
 
             case time_range(Context, Options, TimeFilterKey) of
@@ -487,12 +495,12 @@ time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
         N when N < 0 ->
             Msg = kz_term:to_binary(io_lib:format("~s_to ~b is prior to ~s ~b", [Key, RangeTo, Path, RangeFrom])),
             JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeFrom}]),
-            lager:debug("~s", [Msg]),
+            lager:debug("range error: ~s", [Msg]),
             cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
         N when N > MaxRange ->
             Msg = kz_term:to_binary(io_lib:format("~s_to ~b is more than ~b seconds from ~s ~b", [Key, RangeTo, MaxRange, Path, RangeFrom])),
             JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeTo}]),
-            lager:debug("~s", [Msg]),
+            lager:debug("range_error: ~s", [Msg]),
             cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
         _ ->
             {RangeFrom, RangeTo}
@@ -503,7 +511,7 @@ time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec map_doc_fun() -> mapper_fun().
-map_doc_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"doc">>, JObj)|Acc] end.
+map_doc_fun() -> fun(JObj, Acc) -> [kz_json:get_json_value(<<"doc">>, JObj)|Acc] end.
 
 %%------------------------------------------------------------------------------
 %% @doc Returns a function to get `value' object from each view result.
@@ -551,6 +559,7 @@ load_view(#{is_chunked := 'true'
            ,has_qs_filter := HasQSFilter
            }=LoadMap, Context) ->
     Setters = [{fun cb_context:set_doc/2, []}
+              ,{fun cb_context:set_resp_data/2, []}
               ,{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:store/3, 'is_chunked', 'true'}
               ,{fun cb_context:store/3, 'next_chunk_fun', fun next_chunk/1}
@@ -564,6 +573,7 @@ load_view(#{direction := Direction
            ,has_qs_filter := HasQSFilter
            }=LoadMap, Context) ->
     Setters = [{fun cb_context:set_doc/2, []}
+              ,{fun cb_context:set_resp_data/2, []}
               ,{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:store/3, 'view_direction', Direction}
               ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
@@ -599,7 +609,7 @@ next_chunk(#{options := #{page_size := PageSize}
             }=ChunkMap)
   when is_integer(PageSize)
        andalso PageSize > 0
-       andalso TotalQueried + PrevLength == PageSize
+       andalso TotalQueried + PrevLength =:= PageSize
        andalso LastKey =/= 'undefined' ->
     lager:debug("(chunked) page size exhausted: ~b", [PageSize]),
     ChunkMap#{total_queried => TotalQueried + PrevLength
@@ -619,8 +629,9 @@ next_chunk(#{options := #{last_key := OldLastKey}=LoadMap
     chunk_map_roll_in(ChunkMap, get_results(LoadMap#{total_queried => TotalQueried + PrevLength
                                                     ,context => Context
                                                     ,last_key => LastKey
+                                                    ,previous_chunk_length => 0
                                                     }));
-%% just query next_db if there are any databases left
+%% only one database is left and it does not have any more result give, so request is completed.
 next_chunk(#{options := #{databases := [_]}
             ,previous_chunk_length := PrevLength
             ,total_queried := TotalQueried
@@ -629,6 +640,7 @@ next_chunk(#{options := #{databases := [_]}
     ChunkMap#{total_queried => TotalQueried + PrevLength
              ,chunking_finished => 'true'
              };
+%% just query next_db
 next_chunk(#{options := #{databases := [_|RestDbs], last_key := LastKey}=LoadMap
             ,total_queried := TotalQueried
             ,previous_chunk_length := PrevLength
@@ -639,25 +651,33 @@ next_chunk(#{options := #{databases := [_|RestDbs], last_key := LastKey}=LoadMap
                                                     ,databases => RestDbs
                                                     ,context => Context
                                                     ,last_key => LastKey
+                                                    ,previous_chunk_length => 0
                                                     }));
 %% starting chunked query
 next_chunk(#{context := Context}=ChunkMap) ->
-    LoadMap = cb_context:fetch(Context, 'load_view_opts'),
-    lager:debug("(chunked) starting chunked query"),
-    chunk_map_roll_in(ChunkMap
-                     ,get_results(LoadMap#{context => cb_context:store(Context, 'load_view_opts', 'undefined')})
-                     ).
+    case cb_context:fetch(Context, 'load_view_opts') of
+        #{databases := []} ->
+            lager:debug("(chunked) databases exhausted"),
+            ChunkMap#{chunking_finished => 'true'};
+        #{}=LoadMap ->
+            chunk_map_roll_in(ChunkMap
+                             ,get_results(LoadMap#{context => cb_context:store(Context, 'load_view_opts', 'undefined')
+                                                  ,previous_chunk_length => 0
+                                                  }))
+    end.
 
 -spec chunk_map_roll_in(map(), load_params()) -> map().
 chunk_map_roll_in(#{last_key := OldLastKey}=ChunkMap
                  ,#{start_key := StartKey
                    ,last_key := LastKey
                    ,total_queried := TotalQueried
+                   ,previous_chunk_length := PrevLength
                    ,context := Context
                    }=LoadMap) ->
     ChunkMap#{start_key => StartKey
              ,last_key => LastKey
              ,total_queried => TotalQueried
+             ,previous_chunk_length => PrevLength
              ,context => Context
              ,options => maps:remove(context, LoadMap#{last_key => OldLastKey}) %% to be checked in the next iteration
              }.
@@ -774,6 +794,7 @@ handle_query_result(#{last_key := LastKey
                                                    ,{fun cb_context:set_account_db/2, Db}
                                                    ]
                                                   )
+                    ,previous_chunk_length => Filtered
                     };
         {'exhausted', LoadMap2} -> LoadMap2;
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})
@@ -907,7 +928,7 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Generates general corssbar_view options map for querying view.
+%% @doc Generates general crossbar_view options map for querying view.
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_general_load_params(cb_context:context(), kz_term:ne_binary(), options()) -> load_params() | cb_context:context().

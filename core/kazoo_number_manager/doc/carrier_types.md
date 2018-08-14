@@ -17,21 +17,21 @@ These special numbers do not behave like any other numbers in the system:
 * By default they are not quantified by billing modules
 * By default they do not trigger call authorization
 * By default they can not be used to route inter-account calls without leaving the cluster
-* By default they can not use any number features that would incure charges/cost (such as E911 and CNAM)
+* By default they can not use any number features that would incur charges/cost (such as E911 and CNAM)
 
 ### `knm_inventory`
 
-This module is responsible for number inventories that are manually managed by the system adminstrator.
+This module is responsible for number inventories that are manually managed by the system administrator.
 All numbers managed by this module will move through the typical number lifecycle.
 
 These numbers are expected to be added via CSV jobs/tasks as available numbers, search and found by local admins and returned through aging to the available pool if released.
 
 ### `knm_managed`
 
-This module is responsible for numbers that are generated for specific accounts by the system adminstrator.
+This module is responsible for numbers that are generated for specific accounts by the system administrator.
 All numbers managed by this module will move through the typical number lifecycle.
 
-These numbers are expected to be added via `SUP` as available numbers that can only be searched and aquired by the pre-determined account.
+These numbers are expected to be added via `SUP` as available numbers that can only be searched and acquired by the pre-determined account.
 
 Primarily, this is used for testing or development.
 
@@ -47,15 +47,15 @@ These numbers are internally generated and do not have a direct means of creatio
 
 ### `knm_telnyx`
 
-This module intergrates with https://telnyx.com/ to provide number searching and provisioning services.
+This module integrates with https://telnyx.com/ to provide number searching and provisioning services.
 
 ### `knm_vitelity`
 
-This module intergrates with http://www.vitelity.com/ to provide number searching and provisioning services.
+This module integrates with http://www.vitelity.com/ to provide number searching and provisioning services.
 
 ### `knm_voip_innovations`
 
-This module intergrates with https://voipinnovations.com/ to provide number searching and provisioning services.
+This module integrates with https://voipinnovations.com/ to provide number searching and provisioning services.
 
 ### `knm_bandwidth`
 
@@ -63,11 +63,11 @@ This module is deprecated please use `knm_bandwidth2`.
 
 ### `knm_bandwidth2`
 
-This module intergrates with https://www.bandwidth.com/ to provide number searching and provisioning services.
+This module integrates with https://www.bandwidth.com/ to provide number searching and provisioning services.
 
 ### `knm_inum`
 
-This module intergrates with http://www.inum.net to provide number searching and provisioning services.
+This module integrates with http://www.inum.net to provide number searching and provisioning services.
 
 ### `knm_other`
 

@@ -43,6 +43,7 @@
         ,caller_id/1, caller_id_number/1, caller_id_name/1
         ,callee_id/1, callee_id_number/1, callee_id_name/1
         ,recording_length/1
+        ,fetch_id/1
         ]).
 
 -include("kz_documents.hrl").
@@ -259,3 +260,7 @@ callee_id(JObj) ->
 -spec recording_length(doc()) -> kz_term:api_integer().
 recording_length(JObj) ->
     kz_json:get_integer_value(<<"Length">>, JObj).
+
+-spec fetch_id(doc()) -> kz_term:api_ne_binary().
+fetch_id(JObj) ->
+    kz_json:get_ne_binary_value(<<"Fetch-ID">>, JObj, custom_channel_var(JObj, <<"Fetch-ID">>)).

@@ -30,8 +30,8 @@ A list of regular expressions for matching E.164-formatted (+12223334444) DIDs. 
 
     "^\\+7(\\d{10})$"
 
-You can obviously add regexes for specific area codes, toll-free, E911, and international numbers. The first capture group is what is used to pass in the bridge URI (in the example, the 10-digit number will be passed to the gateways).
+You can obviously add regexps for specific area codes, toll-free, E911, and international numbers. The first capture group is what is used to pass in the bridge URI (in the example, the 10-digit number will be passed to the gateways).
 
 ## CallerID number rules ("cid_rules" field)
-Like "rules" field, but capture groups dont modify outgoing CallerID number. If you want modify CallerID number - use "formaters".
+Like "rules" field, but capture groups don't modify outgoing CallerID number. If you want modify CallerID number - use "formatters".
 

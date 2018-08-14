@@ -108,7 +108,7 @@ resource_exists(_Id, _Node) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /system_configs mights load a list of system_config objects
+%% /system_configs might load a list of system_config objects
 %% /system_configs/123 might load the system_config object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -132,9 +132,9 @@ validate(Context, Id, Node) ->
 -spec validate_document(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_document(Context, Id, ?HTTP_GET) ->
     Config =
-        case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, false)) of
-            true -> kapps_config_doc:config_with_defaults(Id);
-            false -> kapps_config_doc:config_with_default_node(Id)
+        case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, 'false')) of
+            'true' -> kapps_config_doc:config_with_defaults(Id);
+            'false' -> kapps_config_doc:config_with_default_node(Id)
         end,
     crossbar_doc:handle_datamgr_success(set_id(Id, Config), Context);
 
@@ -154,15 +154,17 @@ validate_document(Context, Id, ?HTTP_PATCH) ->
 validate_document(Context, Id, ?HTTP_DELETE) ->
     read_for_delete(Id, Context).
 
+-spec validate_document_request(cb_context:context(), path_token(), kz_json:object()) ->
+                                       cb_context:context().
 validate_document_request(Context, Id, FullConfig) ->
-    cb_context:validate_request_data(kapps_config_util:system_config_document_schema(Id), cb_context:set_req_data(Context, FullConfig),
-                                     fun(Ctx) ->
+    cb_context:validate_request_data(kapps_config_util:system_config_document_schema(Id)
+                                    ,cb_context:set_req_data(Context, FullConfig)
+                                    ,fun(Ctx) ->
                                              Diff = kapps_config_doc:diff_from_default(Id, FullConfig),
                                              Doc = maybe_set_private_fields(Id, Diff),
                                              cb_context:set_doc(Ctx, Doc)
                                      end
                                     ).
-
 
 %%------------------------------------------------------------------------------
 %% Node API
@@ -171,9 +173,9 @@ validate_document_request(Context, Id, FullConfig) ->
 -spec validate_document_node(cb_context:context(), path_token(), http_method(), kz_term:api_ne_binary()) -> cb_context:context().
 validate_document_node(Context, Id, ?HTTP_GET, Node) ->
     Config =
-        case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, false)) of
-            true -> set_id(Id, Node, kapps_config_doc:stored_node(Id, Node));
-            false -> set_id(Id, Node, kz_json:get_value(Node, kapps_config_doc:get_config(Id), kz_json:new()))
+        case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, 'false')) of
+            'true' -> set_id(Id, Node, kapps_config_doc:stored_node(Id, Node));
+            'false' -> set_id(Id, Node, kz_json:get_value(Node, kapps_config_doc:get_config(Id), kz_json:new()))
         end,
     crossbar_doc:handle_datamgr_success(Config, Context);
 
@@ -193,15 +195,14 @@ validate_document_node(Context, Id, ?HTTP_DELETE, _Node) ->
     read_for_delete(Id, Context).
 
 validate_node_request(Context, Id, Node, FullConfig) ->
-    cb_context:validate_request_data(kapps_config_util:system_schema(Id), cb_context:set_req_data(Context, FullConfig),
-                                     fun(Ctx) ->
+    cb_context:validate_request_data(kapps_config_util:system_schema(Id)
+                                    ,cb_context:set_req_data(Context, FullConfig)
+                                    ,fun(Ctx) ->
                                              NodeValue = kapps_config_doc:diff_node_from_default(Id, Node, FullConfig),
                                              Doc = kz_json:set_value(Node, NodeValue, kapps_config_doc:get_config(Id)),
                                              cb_context:set_doc(Ctx, maybe_set_private_fields(Id, Doc))
                                      end
                                     ).
-
-
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
@@ -225,7 +226,7 @@ post(Context, _Id) ->
 post(Context, Id, Node) ->
     Ctx = crossbar_doc:save(Context),
     case cb_context:resp_status(Ctx) of
-        success ->
+        'success' ->
             cb_context:set_resp_data(Ctx, set_id(Id, Node, kz_json:get_value(Node, cb_context:doc(Ctx))));
         _ -> Ctx
     end.
@@ -246,7 +247,8 @@ patch(Context, Id, Node) ->
 -spec delete(cb_context:context(), path_token()) ->
                     cb_context:context().
 delete(Context, _Id) ->
-    crossbar_doc:delete(Context, ?HARD_DELETE).
+    _ = crossbar_doc:delete(Context, ?HARD_DELETE),
+    Context.
 
 -spec delete(cb_context:context(), path_token(), path_token()) ->
                     cb_context:context().
@@ -271,12 +273,9 @@ delete(Context, Id, Node, Doc) ->
 %%------------------------------------------------------------------------------
 -spec read_for_delete(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read_for_delete(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
-    case cb_context:resp_status(Context) of
-        'success' -> Context1;
-        _Status ->
-            lager:debug("failed to find ~s(~s) for delete", [Id, _Status]),
-            Context1
+    case kapps_config:fetch_category(Id) of
+        {'ok', JObj} -> crossbar_doc:handle_datamgr_success(set_id(Id, JObj), Context);
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, Id, Context)
     end.
 
 %%------------------------------------------------------------------------------
@@ -306,7 +305,7 @@ set_db_to_system(Context) ->
 
 -spec maybe_set_private_fields(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_private_fields(ConfigId, JObj) ->
-    case kapps_config:get_category(ConfigId) of
+    case kapps_config:fetch_category(ConfigId) of
         {ok, Doc} -> kz_json:merge(JObj, kz_doc:private_fields(Doc));
         _ -> kz_doc:set_id(JObj, ConfigId)
     end.

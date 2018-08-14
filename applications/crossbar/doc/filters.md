@@ -1,10 +1,10 @@
-### Query String Filters
+# Query String Filters
 
-#### About Filters
+## Overview
 
 Query string filters allow the API results to be filtered by additional criteria to limit the result set. This is especially useful when querying a collection that could be massive (like CDRs) but you're only interested in results that match certain criteria.
 
-#### Available Filters
+## Available Filters
 
 Filter | Operates On | Description
 ------ | ----------- | -----------
@@ -18,12 +18,12 @@ Filter | Operates On | Description
 `modified_from` | `{VALUE}` | Doc included if the last-modified time is greater than or equal to `{VALUE}`
 `modified_to` | `{VALUE}` | Doc included if the last-modified time is less than or equal to `{VALUE}`
 
-#### Keys
+## Keys
 
-Filters can be used on validated keys (those appearing in the schemas) and on custom keys (those included by the caller).
+Filters can be used on validated keys (those appearing in the schema) and on custom keys (those included by the caller).
 
 `{KEY}` can be a dot-delimited string representing a JSON key path. So `filter_foo.bar.baz=1` would match a doc that had `{"foo":{"bar":{"baz":1}}}` in it.
 
-#### Multiple Filters
+## Multiple Filters
 
 Filters can be chained together on a query string and will be applied as a boolean `AND` operation. For example, `?filter_foo=1&has_key=bar` will look for docs where `foo=1` and the key `bar` exists on the doc.

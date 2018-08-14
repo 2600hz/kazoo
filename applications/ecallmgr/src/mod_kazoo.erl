@@ -46,7 +46,7 @@
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -type fs_api_ok() :: {'ok', binary()}.
--type fs_api_error():: {'error', 'timeout' | 'exception' | binary()}.
+-type fs_api_error():: {'error', 'baduuid' | 'timeout' | 'exception' | binary()}.
 -type fs_api_return() :: fs_api_ok() | fs_api_error() | 'ok'.
 -export_type([fs_api_ok/0
              ,fs_api_error/0
@@ -154,7 +154,7 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
+%% @doc Make a background API call to FreeSWITCH. The asynchronous reply is
 %% sent to calling process after it is received. This function
 %% returns the result of the initial `bgapi' call or `timeout' if FreeSWITCH fails
 %% to respond.

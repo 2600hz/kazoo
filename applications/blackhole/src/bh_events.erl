@@ -117,7 +117,9 @@ unsubscribe(Context, Payload) ->
 event(Binding, RK, EventJObj) ->
     kz_util:put_callid(EventJObj),
     Name = event_name(EventJObj),
-    NormJObj = kz_json:normalize_jobj(EventJObj),
+    NormJObj = kz_json:normalize_jobj(
+                 kz_api:public_fields(EventJObj)
+                ),
     blackhole_data_emitter:event(Binding, RK, Name, NormJObj).
 
 -spec event_name(kz_json:object()) -> kz_term:ne_binary().

@@ -14,7 +14,12 @@
             "type": "integer"
         },
         "autoload_modules": {
-            "description": "crossbar autoload modules"
+            "description": "crossbar autoload modules",
+            "items": {
+                "description": "name of the crossbar module to load",
+                "type": "string"
+            },
+            "type": "array"
         },
         "check_reverse_proxies": {
             "default": true,
@@ -96,6 +101,26 @@
             "description": "crossbar pretty metrics",
             "type": "boolean"
         },
+        "refresh_app_keys": {
+            "default": [
+                "name",
+                "i18n",
+                "tags",
+                "author",
+                "version",
+                "license",
+                "price",
+                "icon",
+                "screenshots",
+                "api_url",
+                "phase"
+            ],
+            "description": "crossbar refresh_app_keys",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "request_timeout_ms": {
             "default": 10000,
             "description": "crossbar request timeout in milliseconds",
@@ -147,6 +172,15 @@
             "default": 100,
             "description": "crossbar ssl workers",
             "type": "integer"
+        },
+        "stability_level": {
+            "description": "crossbar stability_level",
+            "enum": [
+                "alpha",
+                "beta",
+                "stable"
+            ],
+            "type": "string"
         },
         "token_costs": {
             "default": 1,

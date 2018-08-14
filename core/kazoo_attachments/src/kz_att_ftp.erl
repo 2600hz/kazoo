@@ -161,7 +161,7 @@ handle_fetch(Pid, {'ok', _Bin}=OK) ->
     ftp:close(Pid),
     OK;
 handle_fetch(Pid, {'error', _Reason}=Err) ->
-    lager:debug("error transfering file from ftp server : ~p", [_Reason]),
+    lager:debug("error transferring file from ftp server : ~p", [_Reason]),
     ftp:close(Pid),
     Err.
 
@@ -172,5 +172,5 @@ handle_ftp_error_response({'error', Reason}, Routines)
     lager:error("ftp error ~p", [Reason]),
     kz_att_error:new(Reason, Routines);
 handle_ftp_error_response(_E, Routines) ->
-    lager:error("dropbox request error ~p", [_E]),
+    lager:error("ftp request error ~p", [_E]),
     kz_att_error:new('request_error', Routines).

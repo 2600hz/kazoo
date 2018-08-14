@@ -1,6 +1,6 @@
 # Database Compaction
 
-Because CouchDb/BigCouch uses an append-only file to write changes to, you must monitor the size of those files on disk and periodically *compact* them. Compaction is the process of taking all the current revisions in the file and writing a new file with just the *active* documents, effectively deleting all old revisions. Compaction can have dramatic results in recovered disk space and performance (as seek times are reduced on smaller files).
+Because CouchDB/BigCouch uses an append-only file to write changes to, you must monitor the size of those files on disk and periodically *compact* them. Compaction is the process of taking all the current revisions in the file and writing a new file with just the *active* documents, effectively deleting all old revisions. Compaction can have dramatic results in recovered disk space and performance (as seek times are reduced on smaller files).
 
 ## Automatic Compaction
 
@@ -28,7 +28,7 @@ Key | Description | Type | Default | Required
 `sleep_between_compaction` | kazoo_couch sleep between compaction | `integer` | `60000` | `false`
 `sleep_between_poll` | kazoo_couch sleep between poll | `integer` | `3000` | `false`
 `sleep_between_views` | kazoo_couch sleep between views | `integer` | `2000` | `false`
-`use_bigcouch_direct` | kazoo_couch use bigcouch direct | `boolean` | `true` | `false`
+`use_bigcouch_direct` | kazoo_couch use BigCouch direct | `boolean` | `true` | `false`
 
 ## Operations
 
@@ -153,3 +153,28 @@ For instance, compact two databases, forcing compaction on the first database, a
     ```
 
 Start, query and export as before.
+
+### Via SUP
+
+You can compact all databases on a node:
+
+```shell
+> sup kt_compactor compact_node {BIGCOUCH@SERVER1.COM}
+node, database, before_disk, before_data, after_disk, after_data
+{BIGCOUCH@SERVER1.COM}, webhooks, 41056, 8273, 24672, 8273
+{BIGCOUCH@SERVER1.COM}, token_auth, 24672, 283, 8288, 283
+{BIGCOUCH@SERVER1.COM}, tasks, 28768, 2724, 12384, 2724
+...
+```
+
+You can compact a database across all nodes:
+
+```shell
+> shell kt_compactor compact_db {DATABASE}
+node, database, before_disk, before_data, after_disk, after_data
+{BIGCOUCH@SERVER1.COM}, {DATABASE}, 24672, 4192, 16480, 4192
+{BIGCOUCH@SERVER2.COM}, {DATABASE}, 24672, 4192, 16480, 4192
+{BIGCOUCH@SERVER3.COM}, {DATABASE}, 24672, 4192, 16480, 4192
+```
+
+You can compact account databases by using the account id; compact MODBs with `{ACCOUNT_ID}-{YYYY}{MM}`.

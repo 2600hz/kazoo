@@ -334,7 +334,7 @@ default_response(<<"INCOMPATIBLE_DESTINATION">>) ->
     ];
 default_response(<<"MANDATORY_IE_MISSING">>) ->
     [{<<"Code">>, <<"400">>}
-    ,{<<"Message">>, <<"Mandatory informatin missing">>}
+    ,{<<"Message">>, <<"Mandatory information missing">>}
     ,{<<"Media">>, <<"fault-facility_trouble">>}
     ];
 default_response(<<"RECOVERY_ON_TIMER_EXPIRE">>) ->
@@ -344,7 +344,7 @@ default_response(<<"RECOVERY_ON_TIMER_EXPIRE">>) ->
     ];
 default_response(<<"MANDATORY_IE_LENGTH_ERROR">>) ->
     [{<<"Code">>, <<"400">>}
-    ,{<<"Message">>, <<"Mandatory informatin missing">>}
+    ,{<<"Message">>, <<"Mandatory information missing">>}
     ,{<<"Media">>, <<"fault-facility_trouble">>}
     ];
 default_response(<<"ORIGINATOR_CANCEL">>) ->

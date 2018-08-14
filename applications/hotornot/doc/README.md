@@ -46,7 +46,7 @@ Key | Description | Type | Default
 `default_rate_nocharge_time` | No charge time when `rate_nocharge_time`  is not defined in rate | `integer` | `0`
 `default_rate_surcharge` | Surcharge used when `rate_surcharge` is not defined in rate | `float` | `0.0`
 `filter_list.[]` |  | `string` |
-`filter_list` | List additional filters (after prefix match) | `array(string)` | `["direction", "route_options", "routes"]`
+`filter_list` | List additional filters (after prefix match) | `array(string)` | `["direction", "route_options", "routes", "caller_id_numbers"]`
 `sort_by_weight` | Sort matched filters by `weight`(`true`) or by `rate_cost` (`false`) | `boolean` | `true`
 `use_trie` | Use in-memory prefix dictionary for search rates | `boolean` | `false`
 
@@ -80,7 +80,11 @@ If `route_options` filter defined in `filter_list` then "Options", "Outbound-Fla
 
 ### routes
 
-If `routes` filter defined in `filter_list` then "To-DID" from rate request compared with list of regexes in `routes` value of rates. Rate matched if any of regexes matched. Empty regexes list or undefined value in rate means "match nobody" and this rate will never be used.
+If `routes` filter defined in `filter_list` then "To-DID" from rate request compared with list of regexps in `routes` value of rates. Rate matched if any of regexps matched. Empty regexps list or undefined value in rate means "match nobody" and this rate will never be used.
+
+### caller_id_numbers
+
+If `caller_id_numbers` filter defined in `filter_list` then "From-DID" from rate request compared with list of regexps in `caller_id_numbers` value of rates. Rate matched if any of regexps matched. Undefined regexps list value in rate means "match all".
 
 ### ratedeck_name
 

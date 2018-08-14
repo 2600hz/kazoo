@@ -29,7 +29,8 @@
             "type": "boolean"
         },
         "dialog_subscribed_mwi_prefix": {
-            "description": "callflow dialog_subscribed_mwi_prefix"
+            "description": "callflow dialog_subscribed_mwi_prefix",
+            "type": "string"
         },
         "ensure_valid_caller_id": {
             "default": false,
@@ -51,9 +52,9 @@
             "description": "callflow minimum bucket cost",
             "type": "integer"
         },
-        "mwi_send_unsoliciated_updates": {
+        "mwi_send_unsolicited_updates": {
             "default": true,
-            "description": "callflow mwi send unsoliciated updates",
+            "description": "callflow mwi send unsolicited updates",
             "type": "boolean"
         },
         "operator_key": {

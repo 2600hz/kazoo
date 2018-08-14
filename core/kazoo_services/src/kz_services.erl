@@ -273,7 +273,6 @@ fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), _NotFromCache) ->
         {ok, _}=OK -> OK;
         {error, _} ->
             ?LOG_DEBUG("~n~n NO SERVICE DOC FOR AccountId: ~p~n~n", [AccountId]),
-            kz_util:log_stacktrace(),
             {error, wrong}
             %% Not throwing since this is needed for one of the kapps_account_config test
             %% {error, _}=Error ->
@@ -448,8 +447,9 @@ save_doc(JObj) ->
 delete(Account) ->
     AccountId = kz_util:format_account_id(Account),
     %% TODO: support other bookkeepers, and just cancel subscriptions....
-    _ = (catch braintree_customer:delete(AccountId)),
-    case fetch_services_doc(AccountId, true) of
+    _ = braintree:is_configured()
+        andalso (catch braintree_customer:delete(AccountId)),
+    case fetch_services_doc(AccountId, 'true') of
         {'ok', JObj} ->
             lager:debug("marking services for account ~s as deleted", [AccountId]),
             Values = [{?SERVICES_PVT_IS_DELETED, 'true'}
@@ -853,7 +853,7 @@ reconcile_only(#kz_services{account_id=AccountId}=Services) ->
 -spec reconcile_module(module(), services()) -> services().
 -ifdef(TEST).
 reconcile_module(M, Services) ->
-    {reconcile,1} = lists:keyfind(reconcile, 1, M:module_info(exports)),
+    'true' = kz_module:is_exported(M, 'reconcile', 1),
     Services.
 -else.
 reconcile_module(M, Services) ->
@@ -1237,7 +1237,7 @@ get_service_modules() ->
             [kz_term:to_atom(Mod, 'true') || Mod <- ConfModules];
         _ ->
             ConfModules = ?SERVICE_MODULES,
-            kapps_config:set_default(?CONFIG_CAT, <<"modules">>, ConfModules),
+            _ = kapps_config:set_default(?CONFIG_CAT, <<"modules">>, ConfModules),
             lager:info("set default service modules: ~p", [ConfModules]),
             ConfModules
     end.
@@ -1340,7 +1340,6 @@ cascade_results(View, AccountId) ->
         {ok, _}=OK -> OK;
         {error, _}=Error ->
             ?LOG_DEBUG("~n~n NO VIEW FOR AccountId: ~p View: ~p~n~n", [AccountId, View]),
-            kz_util:log_stacktrace(),
             Error
             %% Not throwing since this is needed for one of the kapps_account_config test
             %% throw(Error)
@@ -1463,7 +1462,7 @@ get_reseller_id([]) ->
 get_reseller_id([Parent|Ancestors]) ->
     case fetch_services_doc(Parent, cache_failures) of
         {'error', _R} ->
-            lager:debug("failed to open services doc ~s durning reseller search: ~p", [Parent, _R]),
+            lager:debug("failed to open services doc ~s during reseller search: ~p", [Parent, _R]),
             get_reseller_id(Ancestors);
         {'ok', ServicesJObj} ->
             get_reseller_id(Parent, Ancestors, ServicesJObj)
@@ -1553,7 +1552,7 @@ any_changed(KeyNotSameFun, Quantities) ->
 get_account_definition(?MATCH_ACCOUNT_RAW(AccountId)) ->
     case fetch_account(AccountId) of
         {'error', _R} ->
-            lager:debug("unable to get account defintion for ~s: ~p", [AccountId, _R]),
+            lager:debug("unable to get account definition for ~s: ~p", [AccountId, _R]),
             kz_json:new();
         {'ok', JObj} -> JObj
     end.
@@ -1749,16 +1748,11 @@ handle_topup_transactions(Account, _, _) ->
 
 -spec did_topup_failed(kz_json:objects()) -> boolean().
 did_topup_failed(JObjs) ->
-    lists:foldl(
-      fun(JObj, Acc) ->
-              case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
-                  ?CODE_TOPUP -> 'true';
-                  _ -> Acc
-              end
-      end
-               ,'false'
-               ,JObjs
-     ).
+    lists:any(fun has_topup_code/1, JObjs).
+
+-spec has_topup_code(kz_json:object()) -> boolean().
+has_topup_code(JObj) ->
+    ?CODE_TOPUP =:= kz_json:get_integer_value(<<"pvt_code">>, JObj).
 
 -spec maybe_sync_reseller(kz_term:ne_binary(), kzd_services:doc()) -> kz_term:std_return().
 maybe_sync_reseller(AccountId, ServicesJObj) ->

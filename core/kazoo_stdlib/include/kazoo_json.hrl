@@ -38,7 +38,12 @@
 -type json_array()  :: json_terms().
 %% Denotes array in JSON.
 
+-ifdef(PROPER).
+%% PropEr will blow up the atom table if running this in an interactive shell
+-type json_string() :: kz_term:ne_binary().
+-else.
 -type json_string() :: kz_term:ne_binary() | atom().
+-endif.
 %% Denotes string in JSON.
 
 -type json_number() :: integer() | float().
@@ -54,7 +59,7 @@
 %% Denotes a flatten version of JSON proplist, `[{full_path, value}]'.
 
 -type flat_object() :: ?JSON_WRAPPER(flat_proplist()).
-%% Denotes a JSON of flatten version of JSON proplist, same as {@link flat_prolist()} but wrapped in `{}'.
+%% Denotes a JSON of flatten version of JSON proplist, same as {@link flat_proplist()} but wrapped in `{}'.
 
 -type flat_objects() :: [flat_object()].
 %% A list of flatten JSON objects.
@@ -62,7 +67,7 @@
 -type key() :: json_string().
 %% Denotes a JSON key.
 
--type keys() :: [key(),...].
+-type keys() :: [key()].
 %% Denotes a list of JSON keys.
 
 -type path() :: keys() | key() | pos_integer() | [pos_integer()].
@@ -71,7 +76,7 @@
 -type paths() :: [path()].
 %% Denotes a list of paths (or n-th element of) a value in a JSON.
 
--type json_proplist() :: [{key(), json_term()}] | [].
+-type json_proplist() :: [{key(), json_term()}].
 %% Denotes proplist of JSON object Erlang representation.
 -type json_proplists() :: [json_proplist()].
 

@@ -10,6 +10,8 @@
 
 -define(CONFIG_CAT, <<"conferences">>).
 
+-define(CACHE_NAME, 'conference_cache').
+
 -define(DEFAULT_MAX_MEMBERS_MEDIA, <<"conf-max_participants">>).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).

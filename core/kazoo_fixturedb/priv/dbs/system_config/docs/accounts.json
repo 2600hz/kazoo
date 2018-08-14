@@ -1,0 +1,15 @@
+{
+    "_id": "accounts",
+    "_rev": "64-9e558d5c144eace986698b7e147d3346",
+    "default": {
+        "allow_subaccounts_for_direct": true,
+        "default_timezone": "America/Los_Angeles",
+        "master_account_id": "account0000000000000000000000001"
+    },
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63634461712,
+    "pvt_modified": 63635069997,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "config"
+}

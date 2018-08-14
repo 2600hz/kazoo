@@ -413,7 +413,7 @@ filter_callflow_list(CallflowId, JObjs) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @doc collect addional informat about the objects referenced in the flow
+%% @doc collect additional information about the objects referenced in the flow
 %% @end
 %%------------------------------------------------------------------------------
 

@@ -69,7 +69,7 @@ store_items(NodeName, [{TableName,TableField} | Rest], Items) ->
             store_items(NodeName, Rest, Items)
     end.
 
-%%% Store information ordered by node name so table row order is consistant
+%%% Store information ordered by node name so table row order is consistent
 store_item2(NewItems, [], _) ->
     [NewItems];
 store_item2(NewItems, [ Table | Rest ], NodeName ) ->
@@ -101,7 +101,7 @@ collect_items([{Domain, Items} | Rest], Db) ->
 
 -spec send(kz_json:objects() | kz_term:ne_binary()) -> 'ok'.
 send(Payload) when is_list(Payload) -> send(kz_json:encode(Payload));
-send(Payload) -> amqp_util:targeted_publish(<<"statistics">>, Payload).
+send(Payload) -> kz_amqp_util:targeted_publish(<<"statistics">>, Payload).
 
 -spec get_next(kz_term:ne_binary(), list(), list()) -> ['endOfTable' | {list(), list()}].
 get_next(Table, Row, Col)

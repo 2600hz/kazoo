@@ -12,6 +12,9 @@
         "B-Leg-Events": {
             "type": "string"
         },
+        "Call-Restrictions-Enabled": {
+            "type": "string"
+        },
         "Callee-ID-Name": {
             "type": "string"
         },
@@ -92,8 +95,14 @@
         "Existing-Call-ID": {
             "type": "string"
         },
+        "Export-Bridge-Variables": {
+            "type": "string"
+        },
         "Export-Custom-Channel-Vars": {
             "type": "object"
+        },
+        "Export-Variables": {
+            "type": "string"
         },
         "Fail-On-Single-Reject": {
             "type": "string"
@@ -135,6 +144,9 @@
             "type": "string"
         },
         "Originate-Immediate": {
+            "type": "string"
+        },
+        "Origination-Call-ID": {
             "type": "string"
         },
         "Outbound-Call-ID": {

@@ -9,7 +9,16 @@
             "type": "string"
         },
         "routesip": {
-            "description": "number_manager.vitelity routesip"
+            "description": "number_manager.vitelity routesip",
+            "type": [
+                "string",
+                "array"
+            ]
+        },
+        "use_stepswitch_cnam": {
+            "default": false,
+            "description": "number_manager.vitelity use_stepswitch_cnam",
+            "type": "boolean"
         }
     },
     "type": "object"

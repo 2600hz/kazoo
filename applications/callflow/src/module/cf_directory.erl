@@ -317,7 +317,7 @@ play_confirm_match(Call, User) ->
 -spec username_audio_macro(kapps_call:call(), directory_user()) -> kapps_call_command:audio_macro_prompt().
 username_audio_macro(Call, User) ->
     case media_name(User) of
-        'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ascii '
+        'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ASCII '
         MediaID     -> maybe_play_media(Call, User, MediaID)
     end.
 
@@ -426,52 +426,58 @@ get_directory_user(U, CallflowId) ->
     First = kz_json:get_value(<<"first_name">>, U),
     Last = kz_json:get_value(<<"last_name">>, U),
 
-    #directory_user{
-       first_name = First
+    #directory_user{first_name = First
                    ,last_name = Last
                    ,full_name = <<First/binary, " ", Last/binary>>
                    ,first_last_keys = cf_util:alpha_to_dialpad(<<First/binary, Last/binary>>)
                    ,last_first_keys = cf_util:alpha_to_dialpad(<<Last/binary, First/binary>>)
                    ,callflow_id = CallflowId
                    ,name_audio_id = kz_json:get_value(?RECORDED_NAME_KEY, U)
-      }.
-
+                   }.
 
 -spec filter_users(directory_users(), kz_term:ne_binary(), 'last' | 'first') -> directory_users().
 filter_users(Users, DTMFs, 'last') ->
     lager:info("filtering users by ~s", [DTMFs]),
     Size = byte_size(DTMFs),
     queue:to_list(
-      lists:foldl(
-        fun(U, Q) ->
-                case maybe_dtmf_matches(DTMFs, Size, last_first_dtmfs(U)) of
-                    'true' -> queue:in_r(U, Q);
-                    'false' ->
-                        case maybe_dtmf_matches(DTMFs, Size, first_last_dtmfs(U)) of
-                            'true' -> queue:in(U, Q);
-                            'false' -> Q
-                        end
-                end
-        end, queue:new(), Users
-       )
+      lists:foldl(fun(U, Q) -> maybe_queue_user(U, Q, DTMFs, Size, 'last') end
+                 ,queue:new()
+                 ,Users
+                 )
      );
 filter_users(Users, DTMFs, 'first') ->
     lager:info("filtering users by ~s", [DTMFs]),
     Size = byte_size(DTMFs),
     queue:to_list(
-      lists:foldl(
-        fun(U, Q) ->
-                case maybe_dtmf_matches(DTMFs, Size, first_last_dtmfs(U)) of
-                    'true' -> queue:in_r(U, Q);
-                    'false' ->
-                        case maybe_dtmf_matches(DTMFs, Size, last_first_dtmfs(U)) of
-                            'true' -> queue:in(U, Q);
-                            'false' -> Q
-                        end
-                end
-        end, queue:new(), Users
-       )
+      lists:foldl(fun(U, Q) -> maybe_queue_user(U, Q, DTMFs, Size, 'first') end
+                 ,queue:new()
+                 ,Users
+                 )
      ).
+
+-spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer(), 'last' | 'first') ->
+                              queue:queue().
+maybe_queue_user(User, Queue, DTMFs, Size, FirstCheck) ->
+    case maybe_dtmf_matches(DTMFs, Size, first_check(FirstCheck, User)) of
+        'true' -> queue:in_r(User, Queue);
+        'false' ->
+            case maybe_dtmf_matches(DTMFs, Size, second_check(FirstCheck, User)) of
+                'true' -> queue:in(User, Queue);
+                'false' -> Queue
+            end
+    end.
+
+-spec first_check('last' | 'first', directory_user()) -> kz_term:ne_binary().
+first_check('last', User) ->
+    last_first_dtmfs(User);
+first_check('first', User) ->
+    first_last_dtmfs(User).
+
+-spec second_check('last' | 'first', directory_user()) -> kz_term:ne_binary().
+second_check('last', User) ->
+    first_last_dtmfs(User);
+second_check('first', User) ->
+    last_first_dtmfs(User).
 
 -spec maybe_dtmf_matches(kz_term:ne_binary(), pos_integer(), kz_term:ne_binary()) -> boolean().
 maybe_dtmf_matches(_, 0, _) -> 'false';

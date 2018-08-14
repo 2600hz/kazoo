@@ -78,14 +78,20 @@ handle_req(JObj) ->
 
 -spec prepare_and_save(account_id(), kz_time:gregorian_seconds(), kz_json:object()) -> 'ok'.
 prepare_and_save(AccountId, Timestamp, JObj) ->
-    Routines = [fun update_pvt_parameters/3
-               ,fun update_ccvs/3
+    %% Caution: The Timestamp is ahead of interaction-timestamp.
+    %%          {@link set_interaction/3} is setting Id based on interaction-timestamp.
+    %%          So there is an edge case for the midnight between two months. If interaction time is less than midnight
+    %%          and Timestamp is falling to after midnight (which is next month) the document ends up in the next month MODB
+    %%          but the document ID is for previous month. Which breaks cb_cdrs and interaction view.
+
+    Routines = [fun update_ccvs/3
                ,fun set_doc_id/3
                ,fun set_recording_url/3
                ,fun set_call_priority/3
                ,fun maybe_set_e164_destination/3
                ,fun is_conference/3
                ,fun set_interaction/3
+               ,fun update_pvt_parameters/3 %% due to interaction-timestamp MUST be called LAST
                ,fun save_cdr/3
                ],
     _ = lists:foldl(fun(F, J) -> F(AccountId, Timestamp, J) end
@@ -101,7 +107,8 @@ update_pvt_parameters('undefined', _, JObj) ->
             ],
     kz_doc:update_pvt_parameters(JObj, ?KZ_ANONYMOUS_CDR_DB, Props);
 update_pvt_parameters(AccountId, Timestamp, JObj) ->
-    AccountMODb = kz_util:format_account_id(AccountId, Timestamp),
+    CorrectTimetamp = kz_json:get_integer_value(<<"Interaction-Time">>, JObj, Timestamp),
+    AccountMODb = kz_util:format_account_id(AccountId, CorrectTimetamp),
     Props = [{'type', 'cdr'}
             ,{'crossbar_doc_vsn', 2}
             ,{'account_id', AccountId}
@@ -135,6 +142,12 @@ set_doc_id(_, Timestamp, JObj) ->
     %% we should consider this because there is a lost channel in case of
     %% nightmare transfers
     %%    CallId = kz_binary:rand_hex(16),
+    %%
+    %% Caution: The Timestamp is ahead of interaction-timestamp.
+    %%          {@link set_interaction/3} is setting Id based on interaction-timestamp.
+    %%          So there is an edge case for the midnight between two months. If interaction time is less than midnight
+    %%          and Timestamp is falling to after midnight (which is next month) the document ends up in the next month MODB
+    %%          but the document ID is for previous month. Which breaks cb_cdrs and interaction view.
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     kz_doc:set_id(JObj, DocId).
 
@@ -172,6 +185,9 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
 -spec set_interaction(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) ->
                              kz_json:object().
 set_interaction(_AccountId, _Timestamp, JObj) ->
+
+    %% See {@link prepare_and_save/3} for an edge case for Timestamp
+
     Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>, ?CALL_INTERACTION_DEFAULT),
     <<Time:11/binary, "-", Key/binary>> = Interaction,
     Timestamp = kz_term:to_integer(Time),

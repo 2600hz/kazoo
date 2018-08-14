@@ -222,7 +222,7 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /port_requests mights load a list of port_request objects
+%% /port_requests might load a list of port_request objects
 %% /port_requests/123 might load the port_request object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -365,13 +365,19 @@ maybe_set_scheduled_date_from_schedule_on(Doc) ->
             kz_json:set_value(<<"scheduled_date">>, Scheduled, Doc)
     end.
 
--spec date_as_configured_timezone(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_time:gregorian_seconds().
+-spec date_as_configured_timezone(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_time:gregorian_seconds().
 date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $\s,
                               HH:2/binary, $:, Mm:2/binary>>
                            ,FromTimezone
                            ) ->
     Date = {kz_term:to_integer(YYYY), kz_term:to_integer(MM), kz_term:to_integer(DD)},
     Time = {kz_term:to_integer(HH), kz_term:to_integer(Mm), 0},
+
+    date_as_configured_timezone(Date, Time, FromTimezone).
+
+date_as_configured_timezone(Date, Time, 'undefined') ->
+    date_as_configured_timezone(Date, Time, kzd_accounts:default_timezone());
+date_as_configured_timezone(Date, Time, FromTimezone) ->
     kz_time:to_gregorian_seconds({Date, Time}, FromTimezone).
 
 %%------------------------------------------------------------------------------

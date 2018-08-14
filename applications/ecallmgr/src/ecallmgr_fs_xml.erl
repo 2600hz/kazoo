@@ -413,9 +413,10 @@ route_resp_ccvs(JObj) ->
 
 -spec route_resp_cavs(kz_json:object()) -> kz_types:xml_els().
 route_resp_cavs(JObj) ->
-    case kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj) of
-        'undefined' -> [];
-        CAVs -> [action_el(<<"kz_multiset">>, route_cavs_list(kz_json:to_proplist(CAVs)))]
+    CAVs = kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new()),
+    case kz_json:to_proplist(CAVs) of
+        [] -> [];
+        Props -> [action_el(<<"kz_multiset">>, route_cavs_list(Props))]
     end.
 
 -spec route_ccvs_list(kz_term:proplist()) -> kz_term:ne_binary().
@@ -589,7 +590,7 @@ get_channel_vars({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
      | Vars
     ];
 
-get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
+get_channel_vars({AMQPHeader, V}, Vars) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
         {_, Prefix} ->
@@ -750,7 +751,9 @@ context(JObj, Props) ->
 %%%-----------------------------------------------------------------------------
 %% XML record creators and helpers
 %%%-----------------------------------------------------------------------------
--spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
+-spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el() | kz_types:xml_els().
+acl_node_el(Type, CIDRs) when is_list(CIDRs) ->
+    [acl_node_el(Type, CIDR) || CIDR <- CIDRs];
 acl_node_el(Type, CIDR) ->
     #xmlElement{name='node'
                ,attributes=[xml_attrib('type', Type)
@@ -1076,7 +1079,11 @@ room_el(Name, Status) ->
                            ]
                }.
 
--spec prepend_child(kz_types:xml_el(), kz_types:xml_el()) -> kz_types:xml_el().
+-spec prepend_child(kz_types:xml_el(), kz_types:xml_el() | kz_types:xml_els()) -> kz_types:xml_el().
+prepend_child(#xmlElement{}=El, Children) when is_list(Children) ->
+    lists:foldl(fun(C, #xmlElement{content=Contents}=E) ->
+                        E#xmlElement{content=[C|Contents]}
+                end, El, Children);
 prepend_child(#xmlElement{content=Contents}=El, Child) ->
     El#xmlElement{content=[Child|Contents]}.
 

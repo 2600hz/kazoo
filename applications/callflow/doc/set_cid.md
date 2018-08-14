@@ -6,7 +6,7 @@ Statically set the caller ID name and number
 
 #### Schema
 
-Validator for the set_cid callflow's data object
+Validator for the set_cid callflow data object
 
 
 

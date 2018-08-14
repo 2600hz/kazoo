@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2018, 2600Hz
+%%% @copyright (C) 2017 Voxter Communications
 %%% @doc Flush DTMF collection on a call.
 %%%
 %%% <h4>Data options:</h4>

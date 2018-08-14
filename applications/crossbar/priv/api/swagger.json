@@ -24,7 +24,7 @@
                     "type": "string"
                 },
                 "user_agent": {
-                    "description": "RegExp to match valid user agent strings",
+                    "description": "Regexp to match valid user agent strings",
                     "type": "string"
                 }
             },
@@ -38,7 +38,8 @@
             "description": "Schema for callflow account_config",
             "properties": {
                 "dialog_subscribed_mwi_prefix": {
-                    "description": "callflow dialog_subscribed_mwi_prefix"
+                    "description": "callflow dialog_subscribed_mwi_prefix",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -60,10 +61,38 @@
                 "controls": {
                     "properties": {
                         "default": {
-                            "description": "conferences controls default"
+                            "description": "conferences controls default",
+                            "items": {
+                                "properties": {
+                                    "action": {
+                                        "description": "what action to assign to the star-code",
+                                        "type": "string"
+                                    },
+                                    "digits": {
+                                        "description": "what digit sequence to bind the action to",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
                         },
                         "page": {
-                            "description": "conferences controls page"
+                            "description": "conferences controls page",
+                            "items": {
+                                "properties": {
+                                    "action": {
+                                        "description": "what action to assign to the star-code",
+                                        "type": "string"
+                                    },
+                                    "digits": {
+                                        "description": "what digit sequence to bind the action to",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
                         }
                     }
                 },
@@ -326,7 +355,7 @@
             "properties": {
                 "dialog_subscribed_mwi_prefix": {
                     "default": "*98",
-                    "description": "prefix used when subsribing vm updates for dialog",
+                    "description": "prefix used when subscribing vm updates for dialog",
                     "type": "string"
                 }
             },
@@ -506,12 +535,11 @@
                             "description": "Low balance settings",
                             "properties": {
                                 "enabled": {
-                                    "default": true,
                                     "description": "should the account be checked for this alert",
                                     "type": "boolean"
                                 },
                                 "last_notification": {
-                                    "description": "Timestamp, in gregorian seconds, of when the last low_balance alert was sent",
+                                    "description": "Timestamp, in Gregorian seconds, of when the last low_balance alert was sent",
                                     "type": "integer"
                                 },
                                 "sent_low_balance": {
@@ -719,7 +747,8 @@
                     "description": "Application test phase",
                     "enum": [
                         "alpha",
-                        "beta"
+                        "beta",
+                        "gold"
                     ],
                     "type": "string"
                 },
@@ -979,13 +1008,16 @@
             "description": "endpoint recording settings",
             "properties": {
                 "any": {
-                    "$ref": "#/definitions/call_recording.source"
+                    "$ref": "#/definitions/call_recording.source",
+                    "description": "settings for any calls to/from the endpoint"
                 },
                 "inbound": {
-                    "$ref": "#/definitions/call_recording.source"
+                    "$ref": "#/definitions/call_recording.source",
+                    "description": "settings for inbound calls to the endpoint"
                 },
                 "outbound": {
-                    "$ref": "#/definitions/call_recording.source"
+                    "$ref": "#/definitions/call_recording.source",
+                    "description": "settings for outbound calls from the endpoint"
                 }
             },
             "type": "object"
@@ -1037,13 +1069,16 @@
         "call_recording.source": {
             "properties": {
                 "any": {
-                    "$ref": "#/definitions/call_recording.parameters"
+                    "$ref": "#/definitions/call_recording.parameters",
+                    "description": "settings for calls from any network"
                 },
                 "offnet": {
-                    "$ref": "#/definitions/call_recording.parameters"
+                    "$ref": "#/definitions/call_recording.parameters",
+                    "description": "settings for calls from offnet networks"
                 },
                 "onnet": {
-                    "$ref": "#/definitions/call_recording.parameters"
+                    "$ref": "#/definitions/call_recording.parameters",
+                    "description": "settings for calls from onnet networks"
                 }
             },
             "type": "object"
@@ -1159,7 +1194,7 @@
                     "type": "string"
                 },
                 "start": {
-                    "description": "start timestamp, in gregorian seconds",
+                    "description": "start timestamp, in Gregorian seconds",
                     "name": "start",
                     "type": "integer"
                 },
@@ -1291,7 +1326,7 @@
             "type": "object"
         },
         "callflows.acdc_agent": {
-            "description": "Validator for the acdc_agent callflow's data object",
+            "description": "Validator for the acdc_agent callflow data object",
             "properties": {
                 "action": {
                     "description": "Set which action to perform",
@@ -1327,7 +1362,7 @@
             "type": "object"
         },
         "callflows.acdc_member": {
-            "description": "Validator for the acdc_member callflow's data object",
+            "description": "Validator for the acdc_member callflow data object",
             "properties": {
                 "id": {
                     "description": "ID of the ACDc Queue",
@@ -1341,7 +1376,7 @@
             "type": "object"
         },
         "callflows.acdc_queue": {
-            "description": "Validator for the acdc_queue callflow's data object",
+            "description": "Validator for the acdc_queue callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform on the agent for this queue",
@@ -1354,6 +1389,20 @@
                 "id": {
                     "description": "Queue ID",
                     "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.acdc_wait_time": {
+            "description": "Validator for the acdc_wait_time callflow data object",
+            "properties": {
+                "id": {
+                    "description": "Queue ID",
+                    "type": "string"
+                },
+                "window": {
+                    "description": "Window over which average wait time is calculated (in seconds)",
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -1371,7 +1420,7 @@
                     "type": "object"
                 },
                 "module": {
-                    "description": "The name of the callflow module to excute at this node",
+                    "description": "The name of the callflow module to execute at this node",
                     "maxLength": 64,
                     "minLength": 1,
                     "type": "string"
@@ -1384,7 +1433,7 @@
             "type": "object"
         },
         "callflows.after_bridge": {
-            "description": "Validator for the after_bridge callflow's data object",
+            "description": "Validator for the after_bridge callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform after a call is bridged",
@@ -1406,7 +1455,7 @@
             "type": "object"
         },
         "callflows.audio_macro": {
-            "description": "Validator for the audio_macro callflow's data object",
+            "description": "Validator for the audio_macro callflow data object",
             "properties": {
                 "language": {
                     "description": "The language of the speaker",
@@ -1668,12 +1717,12 @@
             "type": "object"
         },
         "callflows.branch_bnumber": {
-            "description": "Validator for the branch_bnumber callflow's data object",
+            "description": "Validator for the branch_bnumber callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.branch_variable": {
-            "description": "Validator for the branch_variable callflow's data object",
+            "description": "Validator for the branch_variable callflow data object",
             "properties": {
                 "scope": {
                     "default": "custom_channel_vars",
@@ -1699,7 +1748,7 @@
             "type": "object"
         },
         "callflows.call_forward": {
-            "description": "Validator for the call_forward callflow's data object",
+            "description": "Validator for the call_forward callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform on the caller's call forwarding",
@@ -1716,7 +1765,7 @@
             "type": "object"
         },
         "callflows.call_waiting": {
-            "description": "Validator for the call_waiting callflow's data object",
+            "description": "Validator for the call_waiting callflow data object",
             "properties": {
                 "action": {
                     "default": "toggle",
@@ -1741,7 +1790,7 @@
             "type": "object"
         },
         "callflows.callflow": {
-            "description": "Validator for the callflow callflow's data object",
+            "description": "Validator for the callflow callflow data object",
             "properties": {
                 "id": {
                     "description": "The Callflow ID to branch to",
@@ -1751,12 +1800,12 @@
             "type": "object"
         },
         "callflows.camping_feature": {
-            "description": "Validator for the camping_feature callflow's data object",
+            "description": "Validator for the camping_feature callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.check_cid": {
-            "description": "Validator for the check_cid callflow's data object",
+            "description": "Validator for the check_cid callflow data object",
             "properties": {
                 "caller_id": {
                     "properties": {
@@ -1794,7 +1843,7 @@
             "type": "object"
         },
         "callflows.cidlistmatch": {
-            "description": "Validator for the cidlistmatch callflow's data object",
+            "description": "Validator for the cidlistmatch callflow data object",
             "properties": {
                 "id": {
                     "description": "CallerID List ID",
@@ -1925,7 +1974,7 @@
             "type": "object"
         },
         "callflows.dead_air": {
-            "description": "Validator for the dead_air callflow's data object",
+            "description": "Validator for the dead_air callflow data object",
             "properties": {},
             "type": "object"
         },
@@ -1974,7 +2023,7 @@
             "type": "object"
         },
         "callflows.directory": {
-            "description": "Validator for the directory callflow's data object",
+            "description": "Validator for the directory callflow data object",
             "properties": {
                 "id": {
                     "description": "Directory ID",
@@ -1984,12 +2033,12 @@
             "type": "object"
         },
         "callflows.disa": {
-            "description": "Validator for the disa callflow's data object",
+            "description": "Validator for the DISA callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.do_not_disturb": {
-            "description": "Validator for the do_not_disturb callflow's data object",
+            "description": "Validator for the do_not_disturb callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform",
@@ -2008,7 +2057,7 @@
             "type": "object"
         },
         "callflows.dynamic_cid": {
-            "description": "Validator for the dynamic_cid callflow's data object",
+            "description": "Validator for the dynamic_cid callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform",
@@ -2071,7 +2120,7 @@
             "type": "object"
         },
         "callflows.eavesdrop": {
-            "description": "Validator for the eavesdrop callflow's data object",
+            "description": "Validator for the eavesdrop callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restricts the calling device to this Device",
@@ -2097,7 +2146,7 @@
             "type": "object"
         },
         "callflows.eavesdrop_feature": {
-            "description": "Validator for the eavesdrop_feature callflow's data object",
+            "description": "Validator for the eavesdrop_feature callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restricts the calling device to this Device",
@@ -2119,12 +2168,12 @@
             "type": "object"
         },
         "callflows.edr": {
-            "description": "Validator for the edr callflow's data object",
+            "description": "Validator for the edr callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.fax_detect": {
-            "description": "Validator for the fax_detect callflow's data object",
+            "description": "Validator for the fax_detect callflow data object",
             "properties": {
                 "duration": {
                     "description": "How long, in seconds, to try detecting fax tones",
@@ -2134,7 +2183,7 @@
             "type": "object"
         },
         "callflows.faxbox": {
-            "description": "Validator for the faxbox callflow's data object",
+            "description": "Validator for the faxbox callflow data object",
             "properties": {
                 "faxbox_id": {
                     "description": "ID of the faxbox",
@@ -2165,7 +2214,7 @@
             "type": "object"
         },
         "callflows.flush_dtmf": {
-            "description": "Validator for the flush_dtmf callflow's data object",
+            "description": "Validator for the flush_dtmf callflow data object",
             "properties": {
                 "collection_name": {
                     "default": "default",
@@ -2176,7 +2225,7 @@
             "type": "object"
         },
         "callflows.group": {
-            "description": "Validator for the group callflow's data object",
+            "description": "Validator for the group callflow data object",
             "properties": {
                 "endpoints": {
                     "default": [],
@@ -2240,7 +2289,7 @@
             "type": "object"
         },
         "callflows.group_pickup": {
-            "description": "Validator for the group_pickup callflow's data object",
+            "description": "Validator for the group_pickup callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restrict calling device to Device",
@@ -2270,7 +2319,7 @@
             "type": "object"
         },
         "callflows.group_pickup_feature": {
-            "description": "Validator for the group_pickup_feature callflow's data object",
+            "description": "Validator for the group_pickup_feature callflow data object",
             "properties": {
                 "type": {
                     "description": "The type of collection to pickup",
@@ -2286,12 +2335,12 @@
             "type": "object"
         },
         "callflows.hangup": {
-            "description": "Validator for the hangup callflow's data object",
+            "description": "Validator for the hangup callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.hotdesk": {
-            "description": "Validator for the hotdesk callflow's data object",
+            "description": "Validator for the hotdesk callflow data object",
             "properties": {
                 "action": {
                     "description": "The action to take for hotdesking",
@@ -2315,7 +2364,7 @@
             "type": "object"
         },
         "callflows.intercept": {
-            "description": "Validator for the intercept callflow's data object",
+            "description": "Validator for the intercept callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restrict calling device to Device",
@@ -2345,7 +2394,7 @@
             "type": "object"
         },
         "callflows.intercept_feature": {
-            "description": "Validator for the intercept_feature callflow's data object",
+            "description": "Validator for the intercept_feature callflow data object",
             "properties": {
                 "approved_device_id": {
                     "description": "Restricts the calling device to this Device",
@@ -2372,7 +2421,7 @@
             "type": "object"
         },
         "callflows.intercom": {
-            "description": "Validator for the intercom callflow's data object",
+            "description": "Validator for the intercom callflow data object",
             "properties": {
                 "barge_calls": {
                     "description": "Whether to barge in on the callee",
@@ -2436,7 +2485,7 @@
             "type": "object"
         },
         "callflows.menu": {
-            "description": "Validator for the menu callflow's data object",
+            "description": "Validator for the menu callflow data object",
             "properties": {
                 "id": {
                     "description": "Menu ID to use",
@@ -2450,14 +2499,14 @@
             "type": "object"
         },
         "callflows.missed_call_alert": {
-            "description": "Validator for the missed_call_alert callflow's data object",
+            "description": "Validator for the missed_call_alert callflow data object",
             "properties": {
                 "recipients": {
                     "description": "One or more specific email addresses, Kazoo user ids or a combination of both",
                     "items": {
                         "properties": {
                             "id": {
-                                "description": "The email address/user ID or the list of email addresses/user IDs based on sepecified type",
+                                "description": "The email address/user ID or the list of email addresses/user IDs based on specified type",
                                 "type": [
                                     "string",
                                     "array"
@@ -2487,7 +2536,7 @@
             "type": "object"
         },
         "callflows.move": {
-            "description": "Validator for the move callflow's data object",
+            "description": "Validator for the move callflow data object",
             "properties": {},
             "type": "object"
         },
@@ -2513,7 +2562,7 @@
             "type": "object"
         },
         "callflows.offnet": {
-            "description": "Validator for the offnet callflow's data object",
+            "description": "Validator for the offnet callflow data object",
             "properties": {
                 "bypass_e164": {
                     "description": "Use the original requested number instead of normalizing to E164",
@@ -2606,7 +2655,7 @@
             "type": "object"
         },
         "callflows.page_group": {
-            "description": "Validator for the page_group callflow's data object",
+            "description": "Validator for the page_group callflow data object",
             "properties": {
                 "audio": {
                     "default": "one-way",
@@ -2680,7 +2729,7 @@
             "type": "object"
         },
         "callflows.park": {
-            "description": "Validator for the park callflow's data object",
+            "description": "Validator for the park callflow data object",
             "properties": {
                 "action": {
                     "default": "park",
@@ -2785,7 +2834,7 @@
             "type": "object"
         },
         "callflows.play": {
-            "description": "Validator for the play callflow's data object",
+            "description": "Validator for the play callflow data object",
             "properties": {
                 "answer": {
                     "description": "Whether to answer an unanswered call",
@@ -2830,7 +2879,7 @@
             "type": "object"
         },
         "callflows.prepend_cid": {
-            "description": "Validator for the prepend_cid callflow's data object",
+            "description": "Validator for the prepend_cid callflow data object",
             "properties": {
                 "action": {
                     "default": "prepend",
@@ -2864,7 +2913,7 @@
             "type": "object"
         },
         "callflows.privacy": {
-            "description": "Validator for the privacy callflow's data object",
+            "description": "Validator for the privacy callflow data object",
             "properties": {
                 "endpoint_strategy": {
                     "default": "overwrite",
@@ -2890,7 +2939,7 @@
             "type": "object"
         },
         "callflows.receive_fax": {
-            "description": "Validator for the receive_fax callflow's data object",
+            "description": "Validator for the receive_fax callflow data object",
             "properties": {
                 "media": {
                     "properties": {
@@ -3028,7 +3077,7 @@
             "type": "object"
         },
         "callflows.resources": {
-            "description": "Validator for the resources callflow's data object",
+            "description": "Validator for the resources callflow data object",
             "properties": {
                 "bypass_e164": {
                     "description": "Use the original requested number instead of normalizing to E164",
@@ -3246,7 +3295,7 @@
             "type": "object"
         },
         "callflows.ring_group_toggle": {
-            "description": "Validator for the ring_group_toggle callflow's data object",
+            "description": "Validator for the ring_group_toggle callflow data object",
             "properties": {
                 "action": {
                     "description": "What the module should do. Options are 'login' and 'logout'",
@@ -3337,12 +3386,25 @@
             "type": "object"
         },
         "callflows.set": {
-            "description": "Validator for the set callflow's data object",
+            "description": "Validator for the set callflow data object",
             "properties": {},
             "type": "object"
         },
+        "callflows.set_alert_info": {
+            "description": "Validator for the set_alert_info callflow data object",
+            "properties": {
+                "alert_info": {
+                    "description": "Set `Alert-Info` header inside b-leg channel. Used for distinctive ring.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "alert_info"
+            ],
+            "type": "object"
+        },
         "callflows.set_cid": {
-            "description": "Validator for the set_cid callflow's data object",
+            "description": "Validator for the set_cid callflow data object",
             "properties": {
                 "caller_id_name": {
                     "default": "",
@@ -3358,7 +3420,7 @@
             "type": "object"
         },
         "callflows.set_variable": {
-            "description": "Validator for the set_variable callflow's data object",
+            "description": "Validator for the set_variable callflow data object",
             "properties": {
                 "channel": {
                     "default": "a",
@@ -3381,7 +3443,7 @@
             "type": "object"
         },
         "callflows.set_variables": {
-            "description": "Validator for the set_variables callflow's data object",
+            "description": "Validator for the set_variables callflow data object",
             "properties": {
                 "custom_application_vars": {
                     "default": {},
@@ -3399,12 +3461,12 @@
             "type": "object"
         },
         "callflows.skel": {
-            "description": "Validator for the skel callflow's data object",
+            "description": "Validator for the skel callflow data object",
             "properties": {},
             "type": "object"
         },
         "callflows.sleep": {
-            "description": "Validator for the sleep callflow's data object",
+            "description": "Validator for the sleep callflow data object",
             "properties": {
                 "duration": {
                     "default": 0,
@@ -3428,7 +3490,7 @@
             "type": "object"
         },
         "callflows.temporal_route": {
-            "description": "Validator for the temporal_route callflow's data object",
+            "description": "Validator for the temporal_route callflow data object",
             "properties": {
                 "action": {
                     "description": "What action to perform",
@@ -3523,7 +3585,7 @@
             "type": "object"
         },
         "callflows.user": {
-            "description": "Validator for the user callflow's data object",
+            "description": "Validator for the user callflow data object",
             "properties": {
                 "can_call_self": {
                     "description": "Toggle whether devices of this use can call each other",
@@ -3613,7 +3675,7 @@
             "type": "object"
         },
         "callflows.webhook": {
-            "description": "Validator for the webhook callflow's data object",
+            "description": "Validator for the webhook callflow data object",
             "properties": {
                 "custom_data": {
                     "description": "JSON object of custom data included on the HTTP request",
@@ -3655,7 +3717,7 @@
                     "type": "string"
                 },
                 "max_concurent_calls_per_user": {
-                    "description": "Calls per user limit. Counts all user's legs and compares to max_concurent_calls_per_user multiplied by 2",
+                    "description": "Calls per user limit. Counts all user's legs and compares to max_concurrent_calls_per_user multiplied by 2",
                     "type": "integer"
                 },
                 "pin": {
@@ -3846,7 +3908,7 @@
                     "type": "string"
                 },
                 "timestamp": {
-                    "description": "UTC timestamp, in gregorian seconds, of when the CDR was generated",
+                    "description": "UTC timestamp, in Gregorian seconds, of when the CDR was generated",
                     "type": "string"
                 },
                 "to": {
@@ -3880,7 +3942,7 @@
                     "type": "string"
                 },
                 "dial_first": {
-                    "description": "Determinates what will be dialed first: extension or contact",
+                    "description": "Determines what will be dialed first: extension or contact",
                     "enum": [
                         "extension",
                         "contact"
@@ -4090,6 +4152,7 @@
                     "type": "boolean"
                 },
                 "profile": {
+                    "$ref": "#/definitions/conferences.profile",
                     "description": "Profile configuration",
                     "type": "object"
                 },
@@ -4154,6 +4217,10 @@
                     },
                     "type": "array"
                 },
+                "profile_name": {
+                    "description": "The profile name to use for configuration",
+                    "type": "string"
+                },
                 "target_call_id": {
                     "description": "Existing UUID to use as a hint for where to start the conference",
                     "type": "string"
@@ -4167,6 +4234,92 @@
             "required": [
                 "endpoints"
             ]
+        },
+        "conferences.profile": {
+            "description": "Schema for conference profiles",
+            "properties": {
+                "alone-sound": {
+                    "description": "Audio that plays while you are alone in the conference",
+                    "type": "string"
+                },
+                "announce-count": {
+                    "description": "Play member count to conference when above this threshold",
+                    "type": "integer"
+                },
+                "caller-controls": {
+                    "description": "Name of the caller control group",
+                    "type": "string"
+                },
+                "comfort-noise": {
+                    "description": "The volume level of background white noise",
+                    "maximum": 10000,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "energy-level": {
+                    "description": "Energy level required for audio to be sent to other users",
+                    "maximum": 1800,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "enter-sound": {
+                    "description": "Audio to play when entering a conference",
+                    "type": "string"
+                },
+                "exit-sound": {
+                    "description": "Audio to play when exiting a conference",
+                    "type": "string"
+                },
+                "interval": {
+                    "description": "Milliseconds per frame",
+                    "maximum": 120,
+                    "minimum": 10,
+                    "type": "integer"
+                },
+                "locked-sound": {
+                    "description": "Audio to play when the conference is locked",
+                    "type": "string"
+                },
+                "max-members": {
+                    "description": "Set the maximum number of members in the conference",
+                    "minimum": 2,
+                    "type": "integer"
+                },
+                "max-members-sound": {
+                    "description": "If max-members has been reached, audio to play to caller instead of joining the conference",
+                    "type": "string"
+                },
+                "moderator-controls": {
+                    "description": "Name of the moderator control group to use",
+                    "type": "string"
+                },
+                "moh-sound": {
+                    "description": "Audio to play, on a loop, while participant count is 1",
+                    "type": "string"
+                },
+                "muted-sound": {
+                    "description": "Audio to play when muted",
+                    "type": "string"
+                },
+                "rate": {
+                    "description": "Audio sample rate",
+                    "enum": [
+                        8000,
+                        12000,
+                        16000,
+                        24000,
+                        32000,
+                        44100,
+                        48000
+                    ],
+                    "type": "integer"
+                },
+                "unmuted-sound": {
+                    "description": "Audio to play when unmuted",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
         "connectivity": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
@@ -4289,6 +4442,26 @@
                                         "description": "The time, in seconds, to wait before attempting to call the server",
                                         "type": "integer"
                                     },
+                                    "dynamic_flags": {
+                                        "description": "List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "emergency_caller_id": {
+                                        "properties": {
+                                            "cid_name": {
+                                                "maxLength": 35,
+                                                "type": "string"
+                                            },
+                                            "cid_number": {
+                                                "maxLength": 35,
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
                                     "enabled": {
                                         "default": true,
                                         "description": "Is the server ready for sending and receiving calls",
@@ -4308,9 +4481,25 @@
                                         },
                                         "type": "object"
                                     },
+                                    "flags": {
+                                        "description": "List of flags to use when matching resources to route the call",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
                                     "force_outbound": {
                                         "default": false,
                                         "description": "If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)",
+                                        "type": "boolean"
+                                    },
+                                    "hunt_account_id": {
+                                        "description": "When using local resources, use this account instead of the account making the call (useful for resellers)",
+                                        "type": "string"
+                                    },
+                                    "hunt_non_reconcilable": {
+                                        "default": false,
+                                        "description": "Whether to allow routing to continue on a non-reconcilable TO number",
                                         "type": "boolean"
                                     },
                                     "ignore_early_media": {
@@ -4526,7 +4715,7 @@
                 },
                 "contact_list": {
                     "default": {},
-                    "description": "Contect List Parameters",
+                    "description": "Contact List Parameters",
                     "properties": {
                         "exclude": {
                             "description": "If set to true the device is excluded from the contact list",
@@ -4566,6 +4755,14 @@
                 "formatters": {
                     "$ref": "#/definitions/formatters"
                 },
+                "hotdesk": {
+                    "description": "The hotdesk status of this device",
+                    "type": "object",
+                    "users": {
+                        "description": "The user(s) currently hotdesked into the device",
+                        "type": "object"
+                    }
+                },
                 "language": {
                     "description": "The language for the device",
                     "type": "string"
@@ -4594,9 +4791,9 @@
                     },
                     "type": "object"
                 },
-                "mwi_unsolicitated_updates": {
+                "mwi_unsolicited_updates": {
                     "default": true,
-                    "description": "When true enables unsolicitated mwi notifications",
+                    "description": "When true enables unsolicited mwi notifications",
                     "type": "boolean"
                 },
                 "name": {
@@ -4806,7 +5003,7 @@
             "type": "object"
         },
         "devices_notify": {
-            "description": "Schema for CrossBar devices notify API",
+            "description": "Schema for Crossbar devices notify API",
             "properties": {
                 "data": {
                     "description": "Action-specific parameters",
@@ -5057,7 +5254,7 @@
             "properties": {
                 "attempts": {
                     "default": 0,
-                    "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+                    "description": "The number of attempts made, this will be set by the system and reset automatically on put/post",
                     "maximum": 4,
                     "minimum": 0,
                     "type": "integer"
@@ -5142,7 +5339,7 @@
                                     "description": "Inbound Email Notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of email recipent(s)",
+                                            "description": "A list or string of email recipient(s)",
                                             "format": "email",
                                             "items": {
                                                 "format": "email",
@@ -5160,7 +5357,7 @@
                                     "description": "SMS notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of sms recipent(s)",
+                                            "description": "A list or string of sms recipient(s)",
                                             "items": {
                                                 "type": "string"
                                             },
@@ -5209,7 +5406,7 @@
                                     "description": "Email notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of email recipent(s)",
+                                            "description": "A list or string of email recipient(s)",
                                             "format": "email",
                                             "items": {
                                                 "format": "email",
@@ -5227,7 +5424,7 @@
                                     "description": "SMS notifications",
                                     "properties": {
                                         "send_to": {
-                                            "description": "A list or string of sms recipent(s)",
+                                            "description": "A list or string of sms recipient(s)",
                                             "items": {
                                                 "type": "string"
                                             },
@@ -5271,7 +5468,7 @@
             "properties": {
                 "attempts": {
                     "default": 0,
-                    "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+                    "description": "The number of attempts made, this will be set by the system and reset automatically on put/post",
                     "maximum": 4,
                     "minimum": 0,
                     "type": "integer"
@@ -5294,7 +5491,7 @@
                         },
                         "method": {
                             "default": "get",
-                            "description": "The method that should be used to reteive the document",
+                            "description": "The method that should be used to retrieve the document",
                             "enum": [
                                 "get",
                                 "post"
@@ -5331,7 +5528,7 @@
                             "description": "Email notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -5349,7 +5546,7 @@
                             "description": "SMS notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of sms recipent(s)",
+                                    "description": "A list or string of sms recipient(s)",
                                     "items": {
                                         "type": "string"
                                     },
@@ -5419,7 +5616,7 @@
                         },
                         "time_elapsed": {
                             "default": 0,
-                            "description": "The amount of time from submition to completion",
+                            "description": "The amount of time from submission to completion",
                             "type": "integer"
                         }
                     },
@@ -6668,6 +6865,9 @@
                 "Queue-ID": {
                     "minLength": 1,
                     "type": "string"
+                },
+                "Window": {
+                    "type": "integer"
                 }
             },
             "required": [
@@ -9107,6 +9307,9 @@
                 "Presence-ID": {
                     "type": "string"
                 },
+                "Profile-Name": {
+                    "type": "string"
+                },
                 "Raw-Application-Data": {
                     "type": "string"
                 },
@@ -9347,6 +9550,9 @@
                 "Participant-Flags": {
                     "type": "string"
                 },
+                "Profile-Name": {
+                    "type": "string"
+                },
                 "Target-Call-ID": {
                     "type": "string"
                 },
@@ -9401,6 +9607,9 @@
                     "type": "string"
                 },
                 "Conference-ID": {
+                    "type": "string"
+                },
+                "Conference-Name": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -10785,6 +10994,12 @@
                     "enum": [
                         "command"
                     ],
+                    "type": "string"
+                },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
+                "Export-Variables": {
                     "type": "string"
                 },
                 "Fail-On-Single-Reject": {
@@ -14169,6 +14384,9 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Control-Queue": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "start"
@@ -14259,6 +14477,9 @@
                     "type": "string"
                 },
                 "Page": {
+                    "type": "string"
+                },
+                "Stage": {
                     "type": "string"
                 },
                 "Status": {
@@ -16683,10 +16904,28 @@
                 "Fax-To-Email": {
                     "type": "string"
                 },
+                "FaxBox-ID": {
+                    "type": "string"
+                },
+                "FaxBox-Name": {
+                    "type": "string"
+                },
+                "FaxBox-Timezone": {
+                    "type": "string"
+                },
                 "From": {
                     "type": "string"
                 },
                 "HTML": {
+                    "type": "string"
+                },
+                "Number": {
+                    "type": "string"
+                },
+                "Original-Number": {
+                    "type": "string"
+                },
+                "Owner-ID": {
                     "type": "string"
                 },
                 "Preview": {
@@ -16699,6 +16938,9 @@
                     "type": "string"
                 },
                 "Text": {
+                    "type": "string"
+                },
+                "Timestamp": {
                     "type": "string"
                 },
                 "To": {
@@ -18411,13 +18653,16 @@
                 "Control-Queue": {
                     "type": "string"
                 },
-                "Custom-Appliction-Vars": {
+                "Custom-Application-Vars": {
                     "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "Denied-Call-Restrictions": {
                     "type": "object"
                 },
                 "Emergency-Caller-ID-Name": {
@@ -18973,6 +19218,12 @@
                 },
                 "To": {
                     "type": "string"
+                },
+                "To-Realm": {
+                    "type": "string"
+                },
+                "To-User": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -19037,6 +19288,12 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "To-Realm": {
+                    "type": "string"
+                },
+                "To-User": {
                     "type": "string"
                 }
             },
@@ -19404,6 +19661,9 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Alert": {
+                    "type": "string"
+                },
                 "Alert-Body": {
                     "type": "string"
                 },
@@ -19435,6 +19695,9 @@
                     "type": "string"
                 },
                 "Expires": {
+                    "type": "string"
+                },
+                "Payload": {
                     "type": "string"
                 },
                 "Queue": {
@@ -19960,6 +20223,9 @@
                 "B-Leg-Events": {
                     "type": "string"
                 },
+                "Call-Restrictions-Enabled": {
+                    "type": "string"
+                },
                 "Callee-ID-Name": {
                     "type": "string"
                 },
@@ -20040,8 +20306,14 @@
                 "Existing-Call-ID": {
                     "type": "string"
                 },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
                 "Export-Custom-Channel-Vars": {
                     "type": "object"
+                },
+                "Export-Variables": {
+                    "type": "string"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -20083,6 +20355,9 @@
                     "type": "string"
                 },
                 "Originate-Immediate": {
+                    "type": "string"
+                },
+                "Origination-Call-ID": {
                     "type": "string"
                 },
                 "Outbound-Call-ID": {
@@ -20181,6 +20456,9 @@
                 "B-Leg-Events": {
                     "type": "string"
                 },
+                "Call-Restrictions-Enabled": {
+                    "type": "string"
+                },
                 "Callee-ID-Name": {
                     "type": "string"
                 },
@@ -20269,8 +20547,14 @@
                 "Existing-Call-ID": {
                     "type": "string"
                 },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
                 "Export-Custom-Channel-Vars": {
                     "type": "object"
+                },
+                "Export-Variables": {
+                    "type": "string"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -20317,6 +20601,9 @@
                     "type": "string"
                 },
                 "Originate-Immediate": {
+                    "type": "string"
+                },
+                "Origination-Call-ID": {
                     "type": "string"
                 },
                 "Outbound-Call-ID": {
@@ -20631,9 +20918,6 @@
                     "type": "string"
                 },
                 "Custom-Application-Vars": {
-                    "type": "object"
-                },
-                "Custom-Appliction-Vars": {
                     "type": "object"
                 },
                 "Custom-Channel-Vars": {
@@ -21766,6 +22050,12 @@
                     "enum": [
                         "route"
                     ],
+                    "type": "string"
+                },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
+                "Export-Variables": {
                     "type": "string"
                 },
                 "Fail-On-Single-Reject": {
@@ -23121,7 +23411,7 @@
                     "type": "string"
                 },
                 "timestamp": {
-                    "description": "The UTC timestamp, in gregorian seconds, that the message was left on",
+                    "description": "The UTC timestamp, in Gregorian seconds, that the message was left on",
                     "type": "integer"
                 },
                 "to": {
@@ -23162,7 +23452,7 @@
                     "type": "string"
                 },
                 "description": {
-                    "description": "A breif description of the media update, usally the original file name",
+                    "description": "A brief description of the media update, usually the original file name",
                     "maxLength": 128,
                     "minLength": 1,
                     "type": "string"
@@ -23341,7 +23631,7 @@
                             "type": "string"
                         },
                         "invalid_media": {
-                            "description": "When the collected digits dont result in a match or hunt this media can be played",
+                            "description": "When the collected digits don't result in a match or hunt this media can be played",
                             "maxLength": 2048,
                             "minLength": 3,
                             "type": [
@@ -23380,8 +23670,13 @@
                     "minimum": 1,
                     "type": "integer"
                 },
+                "suppress_media": {
+                    "default": false,
+                    "description": "Determines if the playing of 'Invalid Entry' is suppressed.",
+                    "type": "boolean"
+                },
                 "timeout": {
-                    "description": "The amount of time (in milliseconds) to wait for the caller to beging entering digits",
+                    "description": "The amount of time (in milliseconds) to wait for the caller to begin entering digits",
                     "maximum": 60000,
                     "minimum": 1,
                     "type": "integer"
@@ -23732,7 +24027,7 @@
                     "type": "string"
                 },
                 "record_min_sec": {
-                    "description": "Miniumum number of seconds recorded to consider it a valid recording",
+                    "description": "Minimum number of seconds recorded to consider it a valid recording",
                     "type": "integer"
                 },
                 "record_on_answer": {
@@ -23881,7 +24176,7 @@
                 },
                 "adjust_in_semitones": {
                     "default": 0,
-                    "description": "Asjust the pitch in semitones",
+                    "description": "Adjust the pitch in semitones",
                     "maximum": 14.0,
                     "minimum": -14.0,
                     "type": "number"
@@ -24424,7 +24719,7 @@
                             "description": "Inbound Email Notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -24461,7 +24756,7 @@
                     "type": "string"
                 },
                 "transfer_date": {
-                    "description": "Requested transfer date in gregorain timestamp",
+                    "description": "Requested transfer date in Gregorian timestamp",
                     "type": "integer"
                 }
             },
@@ -25338,6 +25633,10 @@
                     "description": "Reseller's account ID",
                     "type": "string"
                 },
+                "caller_id_numbers": {
+                    "description": "String of caller id prefixes separated by ':'",
+                    "type": "string"
+                },
                 "carrier": {
                     "description": "Friendly name for the carrier providing this rate",
                     "type": "string"
@@ -25401,6 +25700,10 @@
                     "minimum": 0,
                     "type": "integer"
                 },
+                "rate_suffix": {
+                    "description": "Suffix applied to rate name",
+                    "type": "string"
+                },
                 "rate_surcharge": {
                     "description": "The upfront cost of connecting the call",
                     "minimum": 0,
@@ -25415,7 +25718,7 @@
                     "type": "string"
                 },
                 "routes": {
-                    "description": "List of regexs that match valid DIDs for this rate",
+                    "description": "List of regexps that match valid DIDs for this rate",
                     "items": {
                         "type": "string"
                     },
@@ -25479,11 +25782,11 @@
                     "type": "string"
                 },
                 "start_time": {
-                    "description": "Start time (gregorian seconds)",
+                    "description": "Start time (Gregorian seconds)",
                     "type": "integer"
                 },
                 "stop_time": {
-                    "description": "Stop time (gregorian seconds)",
+                    "description": "Stop time (Gregorian seconds)",
                     "type": "integer"
                 },
                 "value": {
@@ -25541,11 +25844,11 @@
                     "type": "object"
                 },
                 "from_uri_realm": {
-                    "description": "When formating SIP From on outbound requests this can be used to override the realm",
+                    "description": "When formatting SIP From on outbound requests this can be used to override the realm",
                     "type": "string"
                 },
                 "gateways": {
-                    "description": "A list of gateways avaliable for this resource",
+                    "description": "A list of gateways available for this resource",
                     "items": {
                         "default": {},
                         "properties": {
@@ -25572,7 +25875,7 @@
                                 "type": "string"
                             },
                             "codecs": {
-                                "description": "A list of single list codecs supported by this gateway (to support backward compatibilty)",
+                                "description": "A list of single list codecs supported by this gateway (to support backward compatibility)",
                                 "items": {
                                     "enum": [
                                         "G729",
@@ -25646,7 +25949,7 @@
                                 "type": "boolean"
                             },
                             "from_uri_realm": {
-                                "description": "When formating SIP From on outbound requests this can be used to override the realm",
+                                "description": "When formatting SIP From on outbound requests this can be used to override the realm",
                                 "type": "string"
                             },
                             "invite_format": {
@@ -25703,7 +26006,7 @@
                                                                 }
                                                             ]
                                                         },
-                                                        "seperator": {
+                                                        "separator": {
                                                             "type": "string"
                                                         },
                                                         "tag": {
@@ -25769,7 +26072,7 @@
                                 "type": "string"
                             },
                             "route": {
-                                "description": "A staticly configured SIP URI to route all call to",
+                                "description": "A statically configured SIP URI to route all call to",
                                 "type": "string"
                             },
                             "server": {
@@ -25815,6 +26118,10 @@
                     "maximum": 20,
                     "minimum": 1,
                     "type": "integer"
+                },
+                "ignore_flags": {
+                    "description": "When set to true this resource is used if the rules/classifiers match regardless of flags",
+                    "type": "boolean"
                 },
                 "media": {
                     "$ref": "#/definitions/endpoint.media",
@@ -25989,7 +26296,7 @@
                     "type": "array"
                 },
                 "merge": {
-                    "description": "Optionally defines a strategy and priorty to merge multiple service plans together",
+                    "description": "Optionally defines a strategy and priority to merge multiple service plans together",
                     "properties": {
                         "priority": {
                             "description": "The priority among the service plans with the merge strategy",
@@ -26233,7 +26540,7 @@
                     "type": "string"
                 },
                 "settings": {
-                    "description": "Settings for the DropBox account",
+                    "description": "Settings for the Dropbox account",
                     "properties": {
                         "oauth_doc_id": {
                             "description": "Doc ID in the system 'auth' database",
@@ -26367,7 +26674,7 @@
             "type": "object"
         },
         "storage.connection.couchdb": {
-            "description": "schema for couchdb connection entry",
+            "description": "schema for CouchDB connection entry",
             "properties": {
                 "driver": {
                     "enum": [
@@ -26718,6 +27025,10 @@
                     },
                     "type": "array"
                 },
+                "bindings": {
+                    "description": "blackhole bindings",
+                    "type": "object"
+                },
                 "compress_response_body": {
                     "default": true,
                     "description": "blackhole compress_response_body",
@@ -26851,6 +27162,16 @@
                     "description": "call_command digit timeout",
                     "type": "integer"
                 },
+                "export_bridge_variables": {
+                    "default": [
+                        "hold_music"
+                    ],
+                    "description": "call_command export_bridge_variables",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "interdigit_timeout": {
                     "default": 2000,
                     "description": "call_command interdigit timeout",
@@ -26937,7 +27258,8 @@
                     "type": "boolean"
                 },
                 "dialog_subscribed_mwi_prefix": {
-                    "description": "callflow dialog_subscribed_mwi_prefix"
+                    "description": "callflow dialog_subscribed_mwi_prefix",
+                    "type": "string"
                 },
                 "ensure_valid_caller_id": {
                     "default": false,
@@ -26959,9 +27281,9 @@
                     "description": "callflow minimum bucket cost",
                     "type": "integer"
                 },
-                "mwi_send_unsoliciated_updates": {
+                "mwi_send_unsolicited_updates": {
                     "default": true,
-                    "description": "callflow mwi send unsoliciated updates",
+                    "description": "callflow mwi send unsolicited updates",
                     "type": "boolean"
                 },
                 "operator_key": {
@@ -27341,10 +27663,38 @@
                 "controls": {
                     "properties": {
                         "default": {
-                            "description": "conferences controls default"
+                            "description": "conferences controls default",
+                            "items": {
+                                "properties": {
+                                    "action": {
+                                        "description": "what action to assign to the star-code",
+                                        "type": "string"
+                                    },
+                                    "digits": {
+                                        "description": "what digit sequence to bind the action to",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
                         },
                         "page": {
-                            "description": "conferences controls page"
+                            "description": "conferences controls page",
+                            "items": {
+                                "properties": {
+                                    "action": {
+                                        "description": "what action to assign to the star-code",
+                                        "type": "string"
+                                    },
+                                    "digits": {
+                                        "description": "what digit sequence to bind the action to",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
                         }
                     }
                 },
@@ -27447,7 +27797,12 @@
                     "type": "integer"
                 },
                 "autoload_modules": {
-                    "description": "crossbar autoload modules"
+                    "description": "crossbar autoload modules",
+                    "items": {
+                        "description": "name of the crossbar module to load",
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "check_reverse_proxies": {
                     "default": true,
@@ -27529,6 +27884,26 @@
                     "description": "crossbar pretty metrics",
                     "type": "boolean"
                 },
+                "refresh_app_keys": {
+                    "default": [
+                        "name",
+                        "i18n",
+                        "tags",
+                        "author",
+                        "version",
+                        "license",
+                        "price",
+                        "icon",
+                        "screenshots",
+                        "api_url",
+                        "phase"
+                    ],
+                    "description": "crossbar refresh_app_keys",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "request_timeout_ms": {
                     "default": 10000,
                     "description": "crossbar request timeout in milliseconds",
@@ -27580,6 +27955,15 @@
                     "default": 100,
                     "description": "crossbar ssl workers",
                     "type": "integer"
+                },
+                "stability_level": {
+                    "description": "crossbar stability_level",
+                    "enum": [
+                        "alpha",
+                        "beta",
+                        "stable"
+                    ],
+                    "type": "string"
                 },
                 "token_costs": {
                     "default": 1,
@@ -28546,6 +28930,11 @@
                     "description": "ecallmgr maximum timeout for node restart",
                     "type": "integer"
                 },
+                "multivar_separator": {
+                    "default": "~",
+                    "description": "ecallmgr multivar_separator",
+                    "type": "string"
+                },
                 "network_map": {
                     "default": {},
                     "description": "ecallmgr network map",
@@ -28824,7 +29213,7 @@
                                                 "type": "object"
                                             },
                                             "type": {
-                                                "description": "The formatter module to be used (eg. json refers to edr_fmt_json.erl)",
+                                                "description": "The formatter module to be used (e.g. json refers to edr_fmt_json.erl)",
                                                 "enum": [
                                                     "json"
                                                 ],
@@ -28837,7 +29226,7 @@
                                 "type": "object"
                             },
                             "type": {
-                                "description": "The backend module to be used (eg. amqp refers to edr_be_amqp.erl)",
+                                "description": "The backend module to be used (e.g. amqp refers to edr_be_amqp.erl)",
                                 "enum": [
                                     "amqp",
                                     "file",
@@ -28895,34 +29284,9 @@
                     "description": "fax cloud registration pool interval",
                     "type": "integer"
                 },
-                "conversion_image_command": {
-                    "default": "convert -density 204x98 -units PixelsPerInch -size 1728x1078 ~s ~s > /dev/null && echo -n success",
-                    "description": "fax conversion image command",
-                    "type": "string"
-                },
-                "conversion_openoffice_document_command": {
-                    "default": "unoconv -c ~s -f pdf --stdout ~s | /usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s - > /dev/null&& echo -n success",
-                    "description": "fax conversion openoffice document command",
-                    "type": "string"
-                },
-                "conversion_pdf_command": {
-                    "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s > /dev/null && echo -n success",
-                    "description": "fax conversion pdf command",
-                    "type": "string"
-                },
-                "count_pages_command": {
-                    "default": "echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`",
-                    "description": "fax count pages command",
-                    "type": "string"
-                },
                 "default_compare_field": {
                     "default": "result_cause",
                     "description": "fax default compare field",
-                    "type": "string"
-                },
-                "default_fax_extension": {
-                    "default": ".tiff",
-                    "description": "fax default fax extension",
                     "type": "string"
                 },
                 "default_retry_count": {
@@ -28937,7 +29301,7 @@
                 },
                 "default_smtp_domain": {
                     "default": "fax.kazoo.io",
-                    "description": "fax defaultsmtp domain",
+                    "description": "fax default SMTP domain",
                     "type": "string"
                 },
                 "delete_empty_faxes": {
@@ -29020,11 +29384,6 @@
                     "description": "fax maximum storage retry",
                     "type": "integer"
                 },
-                "openoffice_server": {
-                    "default": "'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'",
-                    "description": "fax openoffice server",
-                    "type": "string"
-                },
                 "port": {
                     "default": 30950,
                     "description": "fax port",
@@ -29050,6 +29409,11 @@
                     "description": "fax reschedule",
                     "type": "object"
                 },
+                "serialize_outbound_numbers": {
+                    "default": true,
+                    "description": "Serialize fax transmissions by outbound number globally",
+                    "type": "boolean"
+                },
                 "smtp_max_msg_size": {
                     "default": 10485670,
                     "description": "fax smtp maximum msg size",
@@ -29064,6 +29428,21 @@
                     "default": 50,
                     "description": "fax smtp sessions",
                     "type": "integer"
+                },
+                "store_fax_pdf": {
+                    "default": true,
+                    "description": "store the post processed fax document",
+                    "type": "boolean"
+                },
+                "store_fax_tiff": {
+                    "default": true,
+                    "description": "store a pdf copy of the post processed fax document",
+                    "type": "boolean"
+                },
+                "store_url_document": {
+                    "default": true,
+                    "description": "store the document url result in the database",
+                    "type": "boolean"
                 },
                 "wait_for_fax_timeout_ms": {
                     "default": 3600000,
@@ -29278,7 +29657,7 @@
                 },
                 "resource_flat_rate_lookup": {
                     "default": false,
-                    "description": "lookup flat rate regexes per resource",
+                    "description": "lookup flat rate regexps per resource",
                     "type": "boolean"
                 }
             },
@@ -29287,11 +29666,6 @@
         "system_config.kapps_controller": {
             "description": "Schema for kapps_controller system_config",
             "properties": {
-                "default_apps_ip_address_to_bind": {
-                    "default": "0.0.0.0",
-                    "description": "Default IP which Kazoo Applications can bind into",
-                    "type": "string"
-                },
                 "kapps": {
                     "default": [
                         "blackhole",
@@ -29339,6 +29713,86 @@
                 "html2pdf": {
                     "default": "/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$",
                     "description": "kazoo.pdf html2pdf",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.kazoo_convert": {
+            "description": "Schema for kazoo_convert system_config",
+            "properties": {
+                "fax": {
+                    "properties": {
+                        "attachment_format": {
+                            "default": "pdf",
+                            "description": "Format to use for receipt email messages and api responses",
+                            "type": "string"
+                        },
+                        "convert_command_timeout": {
+                            "default": 120000,
+                            "description": "Timeout value in ms for how long a convert command can run before being killed",
+                            "type": "integer"
+                        },
+                        "convert_image_command": {
+                            "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728x1078\\! -compress group4 $TO",
+                            "description": "The command to resample a tiff file to a fax compatible format or convert a supported image/* format to a tiff",
+                            "type": "string"
+                        },
+                        "convert_openoffice_command": {
+                            "default": "libreoffice --headless --convert-to pdf $FROM --outdir $WORKDIR  2>&1 |egrep 'parser error|Error' && exit 1 || exit 0",
+                            "description": "The command to convert open office documents to pdf",
+                            "type": "string"
+                        },
+                        "convert_pdf_command": {
+                            "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg4 -sOutputFile=$TO -- $FROM",
+                            "description": "The command to convert pdf documents to tiff",
+                            "type": "string"
+                        },
+                        "convert_tiff_command": {
+                            "default": "tiff2pdf -o $TO $FROM",
+                            "description": "The command to convert a tiff file to PDF",
+                            "type": "string"
+                        },
+                        "enable_openoffice": {
+                            "default": true,
+                            "description": "Enables the conversion of openoffice compatible documents",
+                            "type": "boolean"
+                        },
+                        "large_tiff_command": {
+                            "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728\\!x1078 -compress group4 $TO",
+                            "description": "The command to convert large tiffs to standard dimensions",
+                            "type": "string"
+                        },
+                        "serialize_openoffice": {
+                            "default": true,
+                            "description": "Enable Serialization of openoffice compatible document conversions",
+                            "type": "boolean"
+                        },
+                        "small_tiff_command": {
+                            "default": "convert $FROM -gravity center -resample 204x98 -units PixelsPerInch -extent 1728x1078 -compress group4 $TO",
+                            "description": "The command to convert small tiffs to a fax compatible format",
+                            "type": "string"
+                        },
+                        "validate_pdf_command": {
+                            "default": "gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE",
+                            "description": "The command to verify a PDF file is valid",
+                            "type": "string"
+                        },
+                        "validate_tiff_command": {
+                            "default": "tiffinfo $FILE",
+                            "description": "The command to verify a TIFF file is valid",
+                            "type": "string"
+                        }
+                    }
+                },
+                "fax_converter": {
+                    "default": "fax_converter",
+                    "description": "Module to use for fax related file conversions",
+                    "type": "string"
+                },
+                "file_cache_path": {
+                    "default": "/tmp/",
+                    "description": "The default working directory to use when converting files",
                     "type": "string"
                 }
             },
@@ -29681,7 +30135,7 @@
                     "type": "string"
                 },
                 "proxy_hostname": {
-                    "description": "media proxy hostname to be used with haproxy",
+                    "description": "media proxy hostname to be used with HAProxy",
                     "type": "string"
                 },
                 "proxy_ip": {
@@ -30382,16 +30836,16 @@
                         "did_us": {
                             "friendly_name": "US DID",
                             "pretty_print": "SS(###) ### - ####",
-                            "regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
+                            "regex": "^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$"
                         },
                         "emergency": {
                             "emergency": true,
                             "friendly_name": "Emergency Dispatcher",
-                            "regex": "^(911)$"
+                            "regex": "^(911|922|933|833|811|711|999)$"
                         },
                         "international": {
                             "friendly_name": "International",
-                            "regex": "^(011\\d*)$|^(00\\d*)$"
+                            "regex": "^\\+([2-9]\\d{7,})$"
                         },
                         "toll_us": {
                             "friendly_name": "US Toll",
@@ -30399,7 +30853,7 @@
                             "regex": "^\\+1(900\\d{7})$"
                         },
                         "tollfree_us": {
-                            "friendly_name": "US TollFree",
+                            "friendly_name": "US Tollfree",
                             "pretty_print": "SS(###) ### - ####",
                             "regex": "^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})$"
                         },
@@ -30427,6 +30881,17 @@
                     "type": "boolean"
                 },
                 "e164_converters": {
+                    "default": {
+                        "^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$": {
+                            "prefix": "+1"
+                        },
+                        "^011(\\d{5,})$|^00(\\d{5,})$": {
+                            "prefix": "+"
+                        },
+                        "^[2-9]\\d{7,}$": {
+                            "prefix": "+"
+                        }
+                    },
                     "description": "regular expressions to convert numbers to E164 format",
                     "type": "object"
                 },
@@ -30497,7 +30962,7 @@
                     "type": "array"
                 },
                 "reconcile_regex": {
-                    "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
+                    "default": "^(\\+?1)?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
                     "description": "if a number matches this regular expression then it is reconcilable",
                     "type": "string"
                 },
@@ -30555,7 +31020,11 @@
                     "type": "boolean"
                 },
                 "endpoints": {
-                    "description": "number_manager.bandwidth endpoints"
+                    "description": "number_manager.bandwidth endpoints",
+                    "type": [
+                        "string",
+                        "array"
+                    ]
                 },
                 "numbers_api_url": {
                     "default": "https://api.bandwidth.com/public/v2/numbers.api",
@@ -30671,8 +31140,17 @@
         "system_config.number_manager.other": {
             "description": "Schema for number_manager.other system_config",
             "properties": {
+                "default_country": {
+                    "default": "US",
+                    "description": "Country to search and acquire blocks of numbers from",
+                    "type": "string"
+                },
                 "endpoints": {
-                    "description": "number_manager.other endpoints"
+                    "description": "number_manager.other endpoints",
+                    "type": [
+                        "string",
+                        "array"
+                    ]
                 },
                 "phonebook_url": {
                     "description": "number_manager.other phonebook url",
@@ -30765,7 +31243,16 @@
                     "type": "string"
                 },
                 "routesip": {
-                    "description": "number_manager.vitelity routesip"
+                    "description": "number_manager.vitelity routesip",
+                    "type": [
+                        "string",
+                        "array"
+                    ]
+                },
+                "use_stepswitch_cnam": {
+                    "default": false,
+                    "description": "number_manager.vitelity use_stepswitch_cnam",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -30811,7 +31298,7 @@
             "properties": {
                 "dialog_subscribed_mwi_prefix": {
                     "default": "*98",
-                    "description": "prefix used when subsribing vm updates for dialog",
+                    "description": "prefix used when subscribing vm updates for dialog",
                     "type": "string"
                 },
                 "expire_check_ms": {
@@ -30903,6 +31390,15 @@
                                 "personal_parking": "Busy Lamp Field",
                                 "presence": "Busy Lamp Field",
                                 "speed_dial": "Speed Dial"
+                            }
+                        },
+                        "vtech": {
+                            "_": {
+                                "line": "line",
+                                "parking": "blf",
+                                "personal_parking": "blf",
+                                "presence": "presense",
+                                "speed_dial": "speed"
                             }
                         },
                         "yealink": {
@@ -31177,6 +31673,10 @@
                     "description": "services default allow updates",
                     "type": "boolean"
                 },
+                "get_items_from_quantities": {
+                    "description": "services get_items_from_quantities",
+                    "type": "boolean"
+                },
                 "master_account_bookkeeper": {
                     "default": "kz_bookkeeper_local",
                     "description": "services master account bookkeeper",
@@ -31335,7 +31835,7 @@
                 },
                 "use_ssl": {
                     "default": false,
-                    "description": "smtp_client use ssl",
+                    "description": "smtp_client use SSL",
                     "type": "boolean"
                 },
                 "username": {
@@ -31351,7 +31851,7 @@
             "properties": {
                 "asr_api_key": {
                     "default": "",
-                    "description": "speech asr api key",
+                    "description": "speech asr API key",
                     "type": "string"
                 },
                 "asr_locale": {
@@ -31442,6 +31942,33 @@
             },
             "type": "object"
         },
+        "system_config.speech.google": {
+            "description": "Schema for speech.google system_config",
+            "properties": {
+                "asr_api_key": {
+                    "default": "",
+                    "description": "API key for Google Cloud Speech",
+                    "type": "string"
+                },
+                "asr_enable_word_time_offsets": {
+                    "description": "top result includes a list of words and the start and end time offsets",
+                    "type": "boolean"
+                },
+                "asr_profanity_filter": {
+                    "description": "server will attempt to filter out profanities, replacing all but the initial character in each filtered word with asterisk",
+                    "type": "boolean"
+                },
+                "asr_url": {
+                    "default": "https://speech.googleapis.com/v1/speech:recognize",
+                    "description": "Google Cloud Speech API url",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "asr_api_key"
+            ],
+            "type": "object"
+        },
         "system_config.stepswitch": {
             "description": "Schema for stepswitch system_config",
             "properties": {
@@ -31486,7 +32013,13 @@
                     "type": "string"
                 },
                 "default_formatters": {
-                    "description": "stepswitch default formatters"
+                    "description": "stepswitch default formatters",
+                    "items": {
+                        "$ref": "#/definitions/formatters",
+                        "description": "default formatter",
+                        "type": "object"
+                    },
+                    "type": "array"
                 },
                 "default_prefix": {
                     "default": "",
@@ -31549,6 +32082,11 @@
                     "description": "stepswitch ensure valid emergency cid",
                     "type": "boolean"
                 },
+                "fixed_length_shortdial_correction": {
+                    "description": "stepswitch fixed_length_shortdial_correction",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "format_from_uri": {
                     "default": false,
                     "description": "stepswitch format from uri",
@@ -31557,11 +32095,13 @@
                 "max_shortdial_correction": {
                     "default": 5,
                     "description": "stepswitch maximum shortdial correction",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "min_shortdial_correction": {
                     "default": 2,
                     "description": "stepswitch minimum shortdial correction",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "route_by": {
@@ -31571,7 +32111,7 @@
                 },
                 "use_first_dedicated_proxy_only": {
                     "default": true,
-                    "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usally local to the call).",
+                    "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usually local to the call).",
                     "type": "boolean"
                 }
             },
@@ -31623,6 +32163,11 @@
                 "http_method": {
                     "default": "get",
                     "description": "stepswitch.cnam http method",
+                    "type": "string"
+                },
+                "http_token_auth_token": {
+                    "default": "",
+                    "description": "stepswitch cnam http_token_auth_token",
                     "type": "string"
                 },
                 "http_url": {
@@ -31831,7 +32376,7 @@
                 },
                 "retry_after_fudge_s": {
                     "default": 600000,
-                    "description": "Constant time in seconds which would be multipy with attemtps to set retry time",
+                    "description": "Constant time in seconds which would be multiplied with attempts to set retry time",
                     "type": "integer"
                 }
             },
@@ -32034,6 +32579,10 @@
                     },
                     "type": "array"
                 },
+                "enabled": {
+                    "description": "Whether the rule is enabled",
+                    "type": "boolean"
+                },
                 "interval": {
                     "default": 1,
                     "description": "The recurrence interval for this rule",
@@ -32071,6 +32620,12 @@
                     "type": "integer"
                 },
                 "time_window_start": {
+                    "description": "Seconds from the start of a day to consider this rule valid",
+                    "maximum": 86400,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "time_window_stop": {
                     "description": "Seconds from the start of a day to stop considering this rule valid",
                     "maximum": 86400,
                     "minimum": 0,
@@ -32594,7 +33149,7 @@
                 },
                 "contact_list": {
                     "default": {},
-                    "description": "Contect List Parameters",
+                    "description": "Contact List Parameters",
                     "properties": {
                         "exclude": {
                             "description": "If set to true the device is excluded from the contact list",
@@ -32839,7 +33394,7 @@
                     "type": "integer"
                 },
                 "timestamp": {
-                    "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
+                    "description": "The UTC timestamp, in Gregorian seconds, that the voicemail was left on",
                     "type": "integer"
                 },
                 "to": {
@@ -33196,12 +33751,12 @@
                 },
                 "hide_credits": {
                     "default": false,
-                    "description": "When checkef this hides the credits",
+                    "description": "When checked this hides the credits",
                     "type": "boolean"
                 },
                 "hide_powered": {
                     "default": false,
-                    "description": "When checked this hides the powered by 2600hz on the bottom right",
+                    "description": "When checked this hides the powered by 2600Hz on the bottom right",
                     "type": "boolean"
                 },
                 "hide_registration": {
@@ -33234,7 +33789,7 @@
                     "type": "string"
                 },
                 "port": {
-                    "description": "Parameters releated to whitelabeling port requests",
+                    "description": "Parameters related to white-labeling port requests",
                     "properties": {
                         "authority": {
                             "description": "The email(s) to be used for admin port requests",
@@ -33500,6 +34055,12 @@
             "required": true,
             "type": "string"
         },
+        "ERROR_ID": {
+            "in": "path",
+            "name": "ERROR_ID",
+            "required": true,
+            "type": "string"
+        },
         "EXTENSION": {
             "in": "path",
             "name": "EXTENSION",
@@ -33543,6 +34104,12 @@
             "minLength": 32,
             "name": "GROUP_ID",
             "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "HANDLER_ID": {
+            "in": "path",
+            "name": "HANDLER_ID",
             "required": true,
             "type": "string"
         },
@@ -34668,6 +35235,63 @@
                     },
                     {
                         "$ref": "#/parameters/APP_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/att_handlers_errors": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/att_handlers_errors/handler/{HANDLER_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/HANDLER_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/att_handlers_errors/{ERROR_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ERROR_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
@@ -41678,6 +42302,23 @@
                 }
             }
         },
+        "/accounts/{ACCOUNT_ID}/service_plans/editable": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/accounts/{ACCOUNT_ID}/service_plans/override": {
             "post": {
                 "parameters": [
@@ -43355,7 +43996,7 @@
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw": {
             "post": {
-                "description": "Fetch raw aduio of a list message id",
+                "description": "Fetch raw audio of a list message id",
                 "parameters": [
                     {
                         "in": "body",

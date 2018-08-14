@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the check_cid callflow's data object
+Validator for the check_cid callflow data object
 
 
 

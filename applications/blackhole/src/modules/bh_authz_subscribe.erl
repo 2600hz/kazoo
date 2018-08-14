@@ -46,7 +46,7 @@ maybe_authorize_account(Context, 'undefined', _AccountId) ->
     bh_context:add_error(Context, <<"auth_account_id not set">>);
 
 maybe_authorize_account(Context, AuthAccountId, AccountId) ->
-    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true') of
+    case kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId, 'true') of
         'true'  -> Context;
         'false' -> bh_context:add_error(Context, <<"unauthorized account id">>)
     end.

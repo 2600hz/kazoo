@@ -105,7 +105,7 @@ refresh() ->
     kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views").
 
 %%------------------------------------------------------------------------------
-%% @doc scheduals an eventual sync with the bookkeeper and will dirty the
+%% @doc schedules an eventual sync with the bookkeeper and will dirty the
 %% full reseller tree (as it normally does when changes occur)
 %% @end
 %%------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ reconcile(Account) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc runs an immediate sync with a bookkeeper without dirting the
+%% @doc runs an immediate sync with a bookkeeper without dirtying the
 %% reseller tree (only the one account is affected)
 %% @end
 %%------------------------------------------------------------------------------

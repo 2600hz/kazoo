@@ -480,10 +480,10 @@ handle_call(Request, From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_return().
 handle_cast({'ack', Delivery}, State) ->
-    _A = (catch amqp_util:basic_ack(Delivery)),
+    _A = (catch kz_amqp_util:basic_ack(Delivery)),
     {'noreply', State};
 handle_cast({'nack', Delivery}, State) ->
-    _N = (catch amqp_util:basic_nack(Delivery)),
+    _N = (catch kz_amqp_util:basic_nack(Delivery)),
     {'noreply', State};
 handle_cast({'add_queue', QueueName, QueueProps, Bindings}, State) ->
     {_, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
@@ -577,7 +577,7 @@ handle_cast({'start_listener', _Params}, State) ->
     {'noreply', State};
 
 handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
-    lists:foreach(fun amqp_util:basic_cancel/1, Tags),
+    lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags),
     {'noreply', State};
 
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
@@ -636,7 +636,7 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=
                                              }}
            ,#state{params=Params, auto_ack=AutoAck}=State) ->
     _ = case AutoAck of
-            'true' -> (catch amqp_util:basic_ack(BD));
+            'true' -> (catch kz_amqp_util:basic_ack(BD));
             'false' -> 'ok'
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
@@ -670,7 +670,7 @@ handle_info(#'basic.nack'{}=Nack, #state{}=State) ->
     handle_confirm(Nack, State);
 handle_info(#'channel.flow'{active=Active}, State) ->
     lager:debug("received channel flow (~s)", [Active]),
-    amqp_util:flow_control_reply(Active),
+    kz_amqp_util:flow_control_reply(Active),
     gen_server:cast(self(), {?MODULE,{'channel_flow_control', Active}}),
     {'noreply', State};
 handle_info('$is_gen_listener_consuming'
@@ -759,7 +759,7 @@ terminate(Reason, #state{module=Module
                         ,federators=Fs
                         ,consumer_tags=Tags
                         }) ->
-    _ = (catch(lists:foreach(fun amqp_util:basic_cancel/1, Tags))),
+    _ = (catch(lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags))),
     _ = (catch Module:terminate(Reason, ModuleState)),
     _ = (catch kz_amqp_channel:release()),
     _ = [listener_federator:stop(F) || {_Broker, F} <- Fs],
@@ -964,7 +964,7 @@ start_amqp(Props, AutoAck) ->
     QueueName = props:get_value('queue_name', Props, <<>>),
     ConsumeOptions = props:get_value('consume_options', Props, []),
 
-    case amqp_util:new_queue(QueueName, QueueProps) of
+    case kz_amqp_util:new_queue(QueueName, QueueProps) of
         {'error', _}=E -> E;
         Q ->
             set_qos(props:get_value('basic_qos', Props)),
@@ -975,11 +975,11 @@ start_amqp(Props, AutoAck) ->
 
 -spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
 set_qos('undefined') -> 'ok';
-set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
+set_qos(N) when is_integer(N), N >= 0 -> kz_amqp_util:basic_qos(N).
 
 -spec start_consumer(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
-start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
-start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
+start_consumer(Q, 'undefined') -> kz_amqp_util:basic_consume(Q, []);
+start_consumer(Q, ConsumeProps) -> kz_amqp_util:basic_consume(Q, ConsumeProps).
 
 -spec remove_binding(binding_module(), kz_term:proplist(), kz_term:api_binary()) -> 'ok'.
 remove_binding(Binding, Props, Q) ->
@@ -1109,6 +1109,7 @@ handle_rm_binding(Binding, Props, #state{queue=Q
                                         ,Props
                                         ,Q
                                         )],
+    maybe_remove_federated_binding(Binding, Props, State),
     State#state{bindings=KeepBs}.
 
 -spec handle_add_binding(binding_module(), kz_term:proplist(), state()) ->
@@ -1136,10 +1137,10 @@ handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
                   ,Props
                   )
     of
-        'true' ->
+        'true' when length(Props) =:= length(ExistingProps)->
             lager:debug("binding ~s with props exists", [Binding]),
             State;
-        'false' ->
+        _ ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})
@@ -1172,6 +1173,18 @@ update_federated_bindings(#state{bindings=[{Binding, Props}|_]
             State#state{federators=NewListeners ++ Fs, waiting_federators=New ++ State#state.waiting_federators}
     end.
 
+-spec maybe_remove_federated_binding(binding(), kz_term:proplist(), state()) -> 'ok'.
+maybe_remove_federated_binding(Binding, Props, State) ->
+    maybe_remove_federated_binding(is_federated_binding(Props), Binding, Props, State).
+
+-spec maybe_remove_federated_binding(boolean(), binding(), kz_term:proplist(), state()) -> 'ok'.
+maybe_remove_federated_binding('true', Binding, Props, #state{federators=Fs}) when Fs =/= [] ->
+    NonFederatedProps = props:delete('federate', Props),
+    remove_federated_binding(Fs, Binding, NonFederatedProps);
+
+maybe_remove_federated_binding(_Flag, _Binging, _Props, _State) ->
+    'ok'.
+
 -spec broker_connections(federator_listeners(), kz_term:ne_binaries()) ->
                                 {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 broker_connections(Listeners, Brokers) ->
@@ -1193,6 +1206,13 @@ start_new_listener(Broker, Binding, Props, #state{params=Ps}) ->
     lager:debug("started federated listener on broker ~s: ~p", [Broker, Pid]),
     {Broker, Pid}.
 
+-spec remove_federated_binding(federator_listeners(), binding_module(), kz_term:proplist()) -> 'ok'.
+remove_federated_binding(Listeners, Binding, Props) ->
+    _ = [?MODULE:rm_binding(Pid, Binding, Props)
+         || {_Broker, Pid} <- Listeners
+        ],
+    'ok'.
+
 -spec update_existing_listeners_bindings(federator_listeners(), binding_module(), kz_term:proplist()) -> 'ok'.
 update_existing_listeners_bindings(Listeners, Binding, Props) ->
     _ = [update_existing_listener_bindings(Listener, Binding, Props)
@@ -1208,18 +1228,21 @@ update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
 -spec create_federated_params({binding_module(), kz_term:proplist()}, kz_term:proplist()) ->
                                      kz_term:proplist().
 create_federated_params(FederateBindings, Params) ->
+    QueueOptions = props:get_value('queue_options', Params, []),
     [{'responders', []}
     ,{'bindings', [FederateBindings]}
-    ,{'queue_name', federated_queue_name(Params)}
-    ,{'queue_options', props:get_value('queue_options', Params, [])}
+    ,{'queue_name', federated_queue_name(Params, QueueOptions)}
+    ,{'queue_options', QueueOptions}
     ,{'consume_options', props:get_value('consume_options', Params, [])}
     ].
 
--spec federated_queue_name(kz_term:proplist()) -> kz_term:api_binary().
-federated_queue_name(Params) ->
+-spec federated_queue_name(kz_term:proplist(), kz_term:proplist()) -> kz_term:api_binary().
+federated_queue_name(Params, Options) ->
     QueueName = props:get_value('queue_name', Params, <<>>),
+    IsGlobalQueue = props:is_true('federated_queue_name_is_global', Options, 'false'),
     case kz_term:is_empty(QueueName) of
         'true' -> QueueName;
+        'false' when IsGlobalQueue -> QueueName;
         'false' ->
             Zone = kz_config:zone('binary'),
             <<QueueName/binary, "-", Zone/binary>>
@@ -1279,12 +1302,12 @@ handle_exchanges_failed(#state{params=Params}=State) ->
 
 -spec maybe_server_confirms(boolean()) -> 'ok'.
 maybe_server_confirms('true') ->
-    amqp_util:confirm_select();
+    kz_amqp_util:confirm_select();
 maybe_server_confirms(_) -> 'ok'.
 
 -spec maybe_channel_flow(boolean()) -> 'ok'.
 maybe_channel_flow('true') ->
-    amqp_util:flow_control();
+    kz_amqp_util:flow_control();
 maybe_channel_flow(_) -> 'ok'.
 
 -spec maybe_declare_exchanges(declare_exchanges()) ->
@@ -1297,9 +1320,9 @@ maybe_declare_exchanges(Exchanges) ->
                                      command_ret().
 maybe_declare_exchanges(_Channel, []) -> 'ok';
 maybe_declare_exchanges(Channel, [{Ex, Type, Opts} | Exchanges]) ->
-    declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts), Exchanges);
+    declare_exchange(Channel, kz_amqp_util:declare_exchange(Ex, Type, Opts), Exchanges);
 maybe_declare_exchanges(Channel, [{Ex, Type} | Exchanges]) ->
-    declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type), Exchanges).
+    declare_exchange(Channel, kz_amqp_util:declare_exchange(Ex, Type), Exchanges).
 
 -spec declare_exchange(kz_amqp_assignment(), kz_amqp_exchange(), declare_exchanges()) -> command_ret().
 declare_exchange(Channel, Exchange, Exchanges) ->

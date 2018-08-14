@@ -205,7 +205,7 @@ maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('rewrite_cid_number', Call) of
         'undefined' -> maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call);
         NewNumber ->
-            lager:debug("reformating caller id number from ~s to ~s", [Number, NewNumber]),
+            lager:debug("reformatting caller id number from ~s to ~s", [Number, NewNumber]),
             maybe_rewrite_cid_name(NewNumber, Name, Validate, Attribute, Call)
     end.
 
@@ -214,7 +214,7 @@ maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('rewrite_cid_name', Call) of
         'undefined' -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
         NewName ->
-            lager:debug("reformating caller id name from ~s to ~s", [Name, NewName]),
+            lager:debug("reformatting caller id name from ~s to ~s", [Name, NewName]),
             maybe_ensure_cid_valid(Number, NewName, Validate, Attribute, Call)
     end.
 
@@ -456,7 +456,7 @@ owner_ids(ObjectId, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc This function will return the precense id for the endpoint
+%% @doc This function will return the presence id for the endpoint
 %% @end
 %%------------------------------------------------------------------------------
 -spec presence_id(kapps_call:call()) -> kz_term:api_binary().
@@ -638,7 +638,7 @@ get_account_dynamic_flags(_, Call, Flags) ->
             Flags
     end.
 
--spec get_config_dynamic_flags(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
+-spec get_config_dynamic_flags(kz_types:ne_binary(), kapps_call:call(), kz_term:ne_binaries()) ->
                                       kz_term:ne_binaries().
 get_config_dynamic_flags(ApplicationName, Call, Flags) ->
     DynamicFlags = kapps_account_config:get_ne_binaries(kapps_call:account_id(Call)
@@ -683,13 +683,7 @@ process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
 
 -spec is_flag_exported(kz_term:ne_binary()) -> boolean().
 is_flag_exported(Flag) ->
-    is_flag_exported(kz_term:to_binary(Flag), kapps_call:module_info('exports')).
-
-is_flag_exported(_, []) -> 'false';
-is_flag_exported(Flag, [{F, 1}|Funs]) ->
-    kz_term:to_binary(F) =:= Flag
-        orelse is_flag_exported(Flag, Funs);
-is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
+    kz_module:is_exported('kapps_call', kz_term:to_atom(Flag), 1).
 
 %%------------------------------------------------------------------------------
 %% @doc

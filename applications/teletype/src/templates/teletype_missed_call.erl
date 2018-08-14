@@ -16,7 +16,7 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"missed_call.reason">>, <<"missed_call_reasom">>, <<"Missed Call Reason">>, <<"Reason why the call is terminated without been bridged or left a voicemail message">>)
+          [?MACRO_VALUE(<<"missed_call.reason">>, <<"missed_call_reason">>, <<"Missed Call Reason">>, <<"Reason why the call is terminated without been bridged or left a voicemail message">>)
            | ?DEFAULT_CALL_MACROS
            ++ ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Missed call from {{caller_id.name}} ({{caller_id.number}})">>).
+-define(TEMPLATE_SUBJECT, <<"Missed call from {{caller_id.name_number}}">>).
 -define(TEMPLATE_CATEGORY, <<"sip">>).
 -define(TEMPLATE_NAME, <<"Missed Call">>).
 

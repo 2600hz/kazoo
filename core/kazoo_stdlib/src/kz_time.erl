@@ -53,25 +53,26 @@
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
+-type ordinal() :: kz_term:ne_binary(). % "every" | "first" | "second" | "third" | "fourth" | "fifth" | "last".
 
--export_type([now/0
-             ,year/0
-             ,month/0
-             ,day/0
-             ,hour/0
-             ,minute/0
-             ,second/0
-             ,daynum/0
-             ,weeknum/0
+-export_type([api_seconds/0
              ,date/0
-             ,time/0
              ,datetime/0
-             ,iso_week/0
+             ,day/0
+             ,daynum/0
              ,gregorian_seconds/0
+             ,hour/0
+             ,iso_week/0
+             ,minute/0
+             ,month/0
+             ,now/0
+             ,ordinal/0
+             ,second/0
+             ,time/0
              ,unix_seconds/0
-             ,api_seconds/0
+             ,weeknum/0
+             ,year/0
              ]).
-
 
 %% returns current seconds
 -spec current_tstamp() -> gregorian_seconds().
@@ -94,20 +95,15 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
     ?UNIX_EPOCH_IN_GREGORIAN + (kz_term:to_integer(UnixTimestamp) div ?MILLISECONDS_IN_SECOND).
 
--spec to_gregorian_seconds(datetime(), kz_term:api_ne_binary()) -> gregorian_seconds().
+-spec to_gregorian_seconds(datetime(), kz_term:ne_binary()) -> gregorian_seconds().
 -ifdef(TEST).
-to_gregorian_seconds(Datetime, 'undefined') ->
-    to_gregorian_seconds(Datetime, <<"America/Los_Angeles">>);
 to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
     calendar:datetime_to_gregorian_seconds(
       localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")).
 -else.
-to_gregorian_seconds(Datetime, 'undefined') ->
-    to_gregorian_seconds(Datetime, kzd_accounts:default_timezone());
 to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
-    calendar:datetime_to_gregorian_seconds(
-      localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")
-     ).
+    {{_,_,_}, {_,_,_}} = UTC = localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC"),
+    calendar:datetime_to_gregorian_seconds(UTC).
 -endif.
 
 -spec pretty_print_datetime(datetime() | integer()) -> kz_term:ne_binary().
@@ -160,7 +156,7 @@ iso8601(Timestamp) when is_integer(Timestamp) ->
     iso8601(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
 %% borrowed from cow_date.erl
--spec weekday(1..7) -> <<_:24>>.
+-spec weekday(daynum()) -> <<_:24>>.
 weekday(1) -> <<"Mon">>;
 weekday(2) -> <<"Tue">>;
 weekday(3) -> <<"Wed">>;
@@ -169,7 +165,7 @@ weekday(5) -> <<"Fri">>;
 weekday(6) -> <<"Sat">>;
 weekday(7) -> <<"Sun">>.
 
--spec month(1..12) -> <<_:24>>.
+-spec month(month()) -> <<_:24>>.
 month( 1) -> <<"Jan">>;
 month( 2) -> <<"Feb">>;
 month( 3) -> <<"Mar">>;

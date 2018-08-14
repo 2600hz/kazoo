@@ -25,7 +25,7 @@
         ,fetch_id/1
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 -include("kapi_dialplan.hrl").
 -include("kapi_route.hrl").
 
@@ -160,14 +160,14 @@ bind_q(Queue, Props) ->
 -spec bind_q(kz_term:ne_binary(), list() | 'undefined', kz_term:proplist()) -> 'ok'.
 bind_q(Queue, 'undefined', Props) ->
     Keys = get_all_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys);
+    lists:foreach(fun(Key) -> kz_amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys);
 bind_q(Queue, ['no_account' | T], Props) ->
     Keys = get_realm_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
     bind_q(Queue, T, Props);
 bind_q(Queue, ['account' | T], Props) ->
     Keys = get_account_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
     bind_q(Queue, T, Props);
 bind_q(Queue, [_ | T], Props) ->
     bind_q(Queue, T, Props);
@@ -180,14 +180,14 @@ unbind_q(Queue, Props) ->
 -spec unbind_q(kz_term:ne_binary(), list() | 'undefined', kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', Props) ->
     Keys = get_all_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys);
+    lists:foreach(fun(Key) -> kz_amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys);
 unbind_q(Queue, ['no_account' | T], Props) ->
     Keys = get_realm_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
     unbind_q(Queue, T, Props);
 unbind_q(Queue, ['account' | T], Props) ->
     Keys = get_account_routing_keys(Props),
-    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
+    lists:foreach(fun(Key) -> kz_amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
     unbind_q(Queue, T, Props);
 unbind_q(Queue, [_ | T], Props) ->
     unbind_q(Queue, T, Props);
@@ -213,15 +213,15 @@ get_account_routing_keys(Props) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:callmgr_exchange().
 
 -spec get_route_req_account_routing(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_route_req_account_routing(Type, AccountId) ->
-    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(AccountId)]).
+    list_to_binary([?KEY_ROUTE_REQ, ".", kz_amqp_util:encode(Type), ".", kz_amqp_util:encode(AccountId)]).
 
 -spec get_route_req_realm_routing(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_route_req_realm_routing(Type, Realm, User) ->
-    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+    list_to_binary([?KEY_ROUTE_REQ, ".", kz_amqp_util:encode(Type), ".", kz_amqp_util:encode(Realm), ".", kz_amqp_util:encode(User)]).
 
 -spec get_route_req_routing(kz_term:api_terms()) -> kz_term:ne_binary().
 get_route_req_routing(Api) ->
@@ -238,8 +238,13 @@ publish_req(JObj) ->
 
 -spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,?ROUTE_REQ_VALUES
+                                                ,[{'formatter', fun req/1}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
+    kz_amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
@@ -248,7 +253,7 @@ publish_resp(RespQ, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ROUTE_RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_win(RespQ, JObj) ->
@@ -257,7 +262,7 @@ publish_win(RespQ, JObj) ->
 -spec publish_win(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_win(RespQ, Win, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Extract the auth realm from the API request, using the requests to domain

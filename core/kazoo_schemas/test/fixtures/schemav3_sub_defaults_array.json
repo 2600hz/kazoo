@@ -155,6 +155,10 @@
                         "description": "When formating SIP From on outbound requests this can be used to override the realm",
                         "type": "string"
                     },
+                    "ignore_flags": {
+                        "description": "When set to true this resource is used if the rules/classifiers match regardless of flags",
+                        "type": "boolean"
+                    },
                     "invite_format": {
                         "default": "route",
                         "description": "The format of the DID needed by the underlying hardware/gateway",
@@ -209,7 +213,7 @@
                                                         }
                                                     ]
                                                 },
-                                                "seperator": {
+                                                "separator": {
                                                     "type": "string"
                                                 },
                                                 "tag": {

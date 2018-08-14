@@ -68,13 +68,16 @@
         "Control-Queue": {
             "type": "string"
         },
-        "Custom-Appliction-Vars": {
+        "Custom-Application-Vars": {
             "type": "object"
         },
         "Custom-Channel-Vars": {
             "type": "object"
         },
         "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Denied-Call-Restrictions": {
             "type": "object"
         },
         "Emergency-Caller-ID-Name": {

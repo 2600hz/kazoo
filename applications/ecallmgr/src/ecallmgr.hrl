@@ -236,6 +236,8 @@
                               ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
                               ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
                               ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
+                              ,{<<"Export-Variables">>, <<"export_vars">>}
+                              ,{<<"Export-Bridge-Variables">>, <<"bridge_export_vars">>}
                               ,{<<"Fail-On-Single-Reject">>, <<"fail_on_single_reject">>}
                               ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
                               ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}

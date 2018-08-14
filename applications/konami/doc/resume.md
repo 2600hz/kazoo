@@ -21,7 +21,7 @@ Alice has put Bob [on hold](./hold.md) while she is away from her desk. She retu
 
 ### Configure the metaflow
 
-The *resume* module should be placed under the "numbers" key in the "metaflows" object. Konami will attempt to re-connect her with the other party (and will fail if the other party has hungup already).
+The *resume* module should be placed under the "numbers" key in the "metaflows" object. Konami will attempt to re-connect her with the other party (and will fail if the other party has hung up already).
 
 ```json
     "metaflows":{

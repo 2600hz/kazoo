@@ -222,7 +222,7 @@ content_types_accepted_for_upload(Context, _Verb) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /notifications mights load a list of skel objects
+%% /notifications might load a list of skel objects
 %% /notifications/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -476,7 +476,7 @@ build_preview_payload(Context, Notification) ->
 handle_preview_response(Context, Resp) ->
     case kz_json:get_value(<<"Status">>, Resp) of
         <<"failed">> ->
-            lager:debug("failed notificaiton preview: ~p", [Resp]),
+            lager:debug("failed notification preview: ~p", [Resp]),
             CleansedResp = kz_json:normalize(kz_api:remove_defaults(Resp)),
             crossbar_util:response_invalid_data(CleansedResp, Context);
         _Status ->
@@ -509,6 +509,8 @@ maybe_add_extra_data(<<"transaction">>, API) ->
     props:set_value(<<"Success">>, 'true', API);
 maybe_add_extra_data(<<"transaction_failed">>, API) ->
     props:set_value(<<"Success">>, 'false', API);
+maybe_add_extra_data(<<"port_", _/binary>>, API) ->
+    props:set_value(<<"Reason">>, kz_json:new(), API);
 maybe_add_extra_data(_Id, API) -> API.
 
 -spec publish_fun(kz_term:ne_binary()) -> fun((kz_term:api_terms()) -> 'ok').
@@ -1129,13 +1131,8 @@ attachment_name_by_media_type(CT) ->
 template_module_name(Id, Context, CT) ->
     AccountId = cb_context:account_db(Context),
     [_C, Type] = binary:split(CT, <<"/">>),
-    kz_term:to_atom(
-      <<AccountId/binary
-        ,"_"
-        ,Id/binary
-        ,"_"
-        ,Type/binary
-      >>, 'true').
+    ModuleName = list_to_binary([AccountId, "_", Id, "_", Type]),
+    kz_term:to_atom(ModuleName, 'true').
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this

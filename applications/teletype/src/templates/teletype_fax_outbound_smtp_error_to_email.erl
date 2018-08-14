@@ -18,8 +18,9 @@
 
 -define(TEMPLATE_SUBJECT, <<"Error Sending Fax">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
--define(TEMPLATE_NAME, <<"Outbound Fax SMTP Error to Email">>).
+-define(TEMPLATE_NAME, <<"Unable Processing Email-To-Fax">>).
 
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
@@ -32,6 +33,7 @@ init() ->
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
                                           ,{'from', ?TEMPLATE_FROM}
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
@@ -91,9 +93,43 @@ process_req(DataJObj) ->
 build_macros(DataJObj) ->
     [Error | _]=Errors = kz_json:get_list_value(<<"errors">>, DataJObj),
 
-    [{<<"errors">>, Errors}
-    ,{<<"error">>, Error}
-    ,{<<"to_email">>, kz_json:get_ne_binary_value(<<"fax_to_email">>, DataJObj)}
-    ,{<<"from_email">>, kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)}
-    ,{<<"account_id">>, kz_json:get_ne_binary_value(<<"account_id">>, DataJObj)}
+    [{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"account_id">>, kz_json:get_ne_binary_value(<<"account_id">>, DataJObj)} %% backward compatibility
+    ,{<<"date">>, teletype_util:fix_timestamp(kz_json:get_integer_value(<<"timestamp">>, DataJObj), DataJObj)}
+    ,{<<"errors">>, Errors} %% backward compatibility
+    ,{<<"error">>, Error} %% backward compatibility
+    ,{<<"from_email">>, kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)} %% backward compatibility
+    ,{<<"fax">>, get_fax_data(DataJObj)}
+    ,{<<"faxbox">>, get_faxbox_data(DataJObj)}
+    ,{<<"system">>, teletype_util:system_params()}
+    ,{<<"to_email">>, kz_json:get_ne_binary_value(<<"fax_to_email">>, DataJObj)} %% backward compatibility
+    ,{<<"user">>, get_user_data(DataJObj)}
     ].
+
+-spec get_fax_data(kz_json:object()) -> kz_term:proplist() | 'undefined'.
+get_fax_data(DataJObj) ->
+    [Error | _]=Errors = kz_json:get_list_value(<<"errors">>, DataJObj),
+    props:filter_empty(
+      [{<<"from">>, kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)}
+      ,{<<"number">>, kz_json:get_ne_binary_value(<<"number">>, DataJObj)}
+      ,{<<"original_number">>, kz_json:get_ne_binary_value(<<"original_number">>, DataJObj)}
+      ,{<<"to">>, kz_json:get_ne_binary_value(<<"fax_to_email">>, DataJObj)}
+      ,{<<"errors">>, Errors}
+      ,{<<"error">>, Error}
+      ]).
+
+-spec get_faxbox_data(kz_json:object()) -> kz_term:proplist() | 'undefined'.
+get_faxbox_data(DataJObj) ->
+    props:filter_empty(
+      [{<<"id">>, kz_json:get_ne_binary_value(<<"faxbox_id">>, DataJObj)}
+      ,{<<"name">>, kz_json:get_ne_binary_value(<<"faxbox_name">>, DataJObj)}
+      ]).
+
+-spec get_user_data(kz_json:object()) -> kz_term:proplist().
+get_user_data(DataJObj) ->
+    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, DataJObj),
+    case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
+        {'ok', JObj} -> teletype_util:user_params(JObj);
+        {'error', _Reason} ->
+            []
+    end.

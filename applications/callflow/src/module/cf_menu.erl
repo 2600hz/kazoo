@@ -67,7 +67,7 @@ handle(Data, Call) ->
 %%------------------------------------------------------------------------------
 -spec menu_loop(menu(), kapps_call:call()) -> 'ok'.
 menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
-    lager:info("maxium number of retries reached"),
+    lager:info("maximum number of retries reached"),
     _ = kapps_call_command:flush_dtmf(Call),
     _ = play_exit_prompt(Menu, Call),
     case cf_exe:attempt(<<"max_retries">>, Call) of
@@ -433,7 +433,8 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
             ,{<<"source_type">>, <<"menu">>}
             ,{<<"source_id">>, Id}
             ,{<<"media_source">>, <<"recording">>}
-            ,{<<"streamable">>, 'true'}],
+            ,{<<"streamable">>, 'true'}
+            ],
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Doc),
     kz_doc:id(JObj).

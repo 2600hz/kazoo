@@ -25,7 +25,7 @@
         ,code_change/3
         ]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -462,7 +462,7 @@ add_channel_primary_broker(Broker, Connection, Channel) ->
 
 -spec maybe_reclaim_channel(kz_term:ne_binary(), pid(), pid()) -> 'true'.
 maybe_reclaim_channel(Broker, Connection, Channel) ->
-    %% This will attemp to find a floating channel not using
+    %% This will attempt to find a floating channel not using
     %% the primary broker and move to the new channel
     %% (assumed to be from the primary broker)
     %% NOTE: this is a relatively expensive lookup so I
@@ -624,7 +624,7 @@ maybe_reserve(Consumer, Broker, Type) ->
     case ets:match_object(?TAB, Pattern, 1) of
         '$end_of_table' ->
             %% This handles the condition when a consumer requested a channel but
-            %% the broker was not avaiable (or there where none for a float)...
+            %% the broker was not available (or there where none for a float)...
             %% the first time.  Add a reservation for matching prechannels.
             reserve(Consumer, Broker, Type);
         {[#kz_amqp_assignment{}=ExistingAssignment], _} ->

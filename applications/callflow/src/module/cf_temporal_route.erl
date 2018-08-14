@@ -5,7 +5,7 @@
 %%% <h4>Data options:</h4>
 %%% <dl>
 %%%   <dt>`action'</dt>
-%%%   <dd>One of: `menu', `enable', `diable', `reset'.</dd>
+%%%   <dd>One of: `menu', `enable', `disable', `reset'.</dd>
 %%%
 %%%   <dt>`rules'</dt>
 %%%   <dd>List of the rules.</dd>
@@ -39,28 +39,24 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Temporal = get_temporal_route(Data, Call),
-    case kz_json:get_ne_binary_value(<<"action">>, Data) of
+    case action(Data) of
         <<"menu">> ->
             lager:info("temporal rules main menu"),
-            Rules = kz_json:get_value(<<"rules">>, Data, []),
-            _ = temporal_route_menu(Temporal, Rules, Call),
+            _ = temporal_route_menu(Temporal, rule_ids(Data), Call),
             cf_exe:stop(Call);
         <<"enable">> ->
             lager:info("force temporal rules to enable"),
-            Rules = kz_json:get_value(<<"rules">>, Data, []),
-            _ = enable_temporal_rules(Temporal, Rules, Call),
+            _ = enable_temporal_rules(Temporal, rule_ids(Data), Call),
             cf_exe:stop(Call);
         <<"disable">> ->
             lager:info("force temporal rules to disable"),
-            Rules = kz_json:get_value(<<"rules">>, Data, []),
-            _ = disable_temporal_rules(Temporal, Rules, Call),
+            _ = disable_temporal_rules(Temporal, rule_ids(Data), Call),
             cf_exe:stop(Call);
         <<"reset">> ->
             lager:info("resume normal temporal rule operation"),
-            Rules = kz_json:get_value(<<"rules">>, Data, []),
-            _ = reset_temporal_rules(Temporal, Rules, Call),
+            _ = reset_temporal_rules(Temporal, rule_ids(Data), Call),
             cf_exe:stop(Call);
-        _ ->
+        _Action ->
             Rules = get_temporal_rules(Temporal, Call),
             case process_rules(Temporal, Rules, Call) of
                 'default' ->
@@ -77,24 +73,39 @@ handle(Data, Call) ->
 %%------------------------------------------------------------------------------
 -spec process_rules(temporal(), rules(), kapps_call:call()) ->
                            'default' | binary().
-process_rules(Temporal, [#rule{enabled='false'
-                              ,id=Id
-                              ,name=Name
-                              }|Rs], Call) ->
+process_rules(Temporal
+             ,[#rule{enabled='false'
+                    ,id=Id
+                    ,name=Name
+                    }
+               | Rules
+              ]
+             ,Call
+             ) ->
     lager:info("time based rule ~p (~s) disabled", [Id, Name]),
-    process_rules(Temporal, Rs, Call);
-process_rules(_, [#rule{enabled='true'
-                       ,id=Id
-                       ,name=Name
-                       }|_], _) ->
+    process_rules(Temporal, Rules, Call);
+process_rules(_Temporal
+             ,[#rule{enabled='true'
+                    ,id=Id
+                    ,name=Name
+                    }
+               | _Rules
+              ]
+             ,_Call
+             ) ->
     lager:info("time based rule ~p (~s) is forced active", [Id, Name]),
     Id;
-process_rules(Temporal, [#rule{id=Id
-                              ,name=Name
-                              ,cycle = <<>>
-                              }|Rs], Call) ->
+process_rules(Temporal
+             ,[#rule{id=Id
+                    ,name=Name
+                    ,cycle = <<>>
+                    }
+               | Rules
+              ]
+             ,Call
+             ) ->
     lager:error("time based rule ~p (~s) is invalid, skipping", [Id, Name]),
-    process_rules(Temporal, Rs, Call);
+    process_rules(Temporal, Rules, Call);
 process_rules(#temporal{local_sec=LSec
                        ,local_date={Y, M, D}
                        }=T
@@ -103,9 +114,10 @@ process_rules(#temporal{local_sec=LSec
                     ,wtime_start=TStart
                     ,wtime_stop=TStop
                     }=Rule
-               |Rules
+               | Rules
               ]
-             ,Call) ->
+             ,Call
+             ) ->
     lager:info("processing temporal rule ~s (~s)", [Id, Name]),
     PrevDay = kz_date:normalize({Y, M, D - 1}),
     BaseDate = next_rule_date(Rule, PrevDay),
@@ -122,7 +134,7 @@ process_rules(#temporal{local_sec=LSec
             lager:info("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
             Id
     end;
-process_rules(_, [], _) ->
+process_rules(_Temporal, [], _Call) ->
     lager:info("continuing with default callflow"),
     'default'.
 
@@ -135,18 +147,17 @@ process_rules(_, [], _) ->
 get_temporal_rules(#temporal{local_sec=LSec
                             ,routes=Routes
                             ,timezone=TZ
-                            }, Call) ->
+                            }
+                  ,Call
+                  ) ->
     get_temporal_rules(Routes, LSec, kapps_call:account_db(Call), TZ, []).
 
 -spec get_temporal_rules(kz_json:path(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), rules()) -> rules().
 get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
-    Now = localtime:utc_to_local(calendar:universal_time()
-                                ,kz_term:to_list(TZ)
-                                ),
+    Now = localtime:utc_to_local(calendar:universal_time(), kz_term:to_list(TZ)),
     get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
 
--spec get_temporal_rules(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules()) ->
-                                rules().
+-spec get_temporal_rules(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules()) -> rules().
 get_temporal_rules([], _, _, _, _, Rules) -> lists:reverse(Rules);
 get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
     case kz_datamgr:open_cache_doc(AccountDb, Route) of
@@ -157,41 +168,41 @@ get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
             maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, JObj)
     end.
 
--spec maybe_build_rule(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules(), kz_term:ne_binary(), kz_json:object()) -> rules().
-maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, JObj) ->
-    StartDate = kz_date:from_gregorian_seconds(kz_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ),
-    RuleName = kz_json:get_ne_binary_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME),
+-spec maybe_build_rule(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules(), kz_term:ne_binary(), kzd_temporal_rules:doc()) -> rules().
+maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, RulesDoc) ->
+    StartDate = kz_date:from_gregorian_seconds(kzd_temporal_rules:start_date(RulesDoc, LSec), TZ),
+    RuleName = kzd_temporal_rules:name(RulesDoc, ?RULE_DEFAULT_NAME),
 
     case kz_date:relative_difference(Now, {StartDate, {0,0,0}}) of
         'future' ->
             lager:warning("rule ~p is in the future discarding", [RuleName]),
             get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
         _ ->
-            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [build_rule(Id, JObj, StartDate, RuleName) | Rules])
+            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [build_rule(Id, RulesDoc, StartDate, RuleName) | Rules])
     end.
 
--spec build_rule(kz_term:ne_binary(), kz_json:object(), kz_time:date(), kz_term:ne_binary()) -> rule().
-build_rule(Id, JObj, StartDate, RuleName) ->
-    #rule{cycle = kz_json:get_binary_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
-         ,days = days_in_rule(JObj)
-         ,enabled = kz_json:is_true(<<"enabled">>, JObj, 'undefined')
+-spec build_rule(kz_term:ne_binary(), kzd_temporal_rules:doc(), kz_time:date(), kz_term:ne_binary()) -> rule().
+build_rule(Id, RulesDoc, StartDate, RuleName) ->
+    #rule{cycle = kzd_temporal_rules:cycle(RulesDoc, ?RULE_DEFAULT_CYCLE)
+         ,days = days_in_rule(RulesDoc)
+         ,enabled = kzd_temporal_rules:enabled(RulesDoc, 'undefined')
          ,id = Id
-         ,interval = kz_json:get_integer_value(<<"interval">>, JObj, ?RULE_DEFAULT_INTERVAL)
-         ,month = kz_json:get_integer_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
+         ,interval = kzd_temporal_rules:interval(RulesDoc, ?RULE_DEFAULT_INTERVAL)
+         ,month = kzd_temporal_rules:month(RulesDoc, ?RULE_DEFAULT_MONTH)
          ,name = RuleName
-         ,ordinal = kz_json:get_ne_binary_value(<<"ordinal">>, JObj, ?RULE_DEFAULT_ORDINAL)
+         ,ordinal = kzd_temporal_rules:ordinal(RulesDoc, ?RULE_DEFAULT_ORDINAL)
          ,start_date = StartDate
-         ,wdays = sort_wdays(kz_json:get_list_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS))
-         ,wtime_start = kz_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
-         ,wtime_stop = kz_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
+         ,wdays = sort_wdays(kzd_temporal_rules:wdays(RulesDoc, ?RULE_DEFAULT_WDAYS))
+         ,wtime_start = kzd_temporal_rules:time_window_start(RulesDoc, ?RULE_DEFAULT_WTIME_START)
+         ,wtime_stop = kzd_temporal_rules:time_window_start(RulesDoc, ?RULE_DEFAULT_WTIME_STOP)
          }.
 
--spec days_in_rule(kz_json:object()) -> [integer()].
-days_in_rule(JObj) ->
-    lists:foldr(fun(Day, Acc) -> [kz_term:to_integer(Day)|Acc] end
-               ,[]
-               ,kz_json:get_list_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
-               ).
+-spec days_in_rule(kzd_temporal_rules:doc()) -> kz_term:integers().
+days_in_rule(RulesDoc) ->
+    lists:foldr(fun add_day/2, [], kzd_temporal_rules:days(RulesDoc, ?RULE_DEFAULT_DAYS)).
+
+-spec add_day(kz_term:ne_binary() | integer(), kz_term:integers()) -> kz_term:integers().
+add_day(Day, Acc) -> [kz_term:to_integer(Day)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Loads the temporal record with data from the db.
@@ -199,7 +210,7 @@ days_in_rule(JObj) ->
 %%------------------------------------------------------------------------------
 -spec maybe_load_rules(kz_json:object(), kapps_call:call(), routes()) -> routes().
 maybe_load_rules(Data, _Call, Routes) ->
-    Rules = kz_json:get_value(<<"rules">>, Data, []),
+    Rules = rule_ids(Data),
     lager:info("loaded ~p routes from rules", [length(Rules)]),
     Routes ++ [{X, X} || X <- Rules].
 
@@ -211,7 +222,7 @@ maybe_load_branch_keys(_Data, Call, Routes) ->
 
 -spec maybe_load_rulesets(kz_json:object(), kapps_call:call(), routes()) -> routes().
 maybe_load_rulesets(Data, Call, Routes) ->
-    case kz_json:get_ne_binary_value(<<"rule_set">>, Data) of
+    case rule_set_id(Data) of
         'undefined' ->
             lager:info("no rule_set id configured"),
             Routes;
@@ -260,13 +271,6 @@ get_temporal_route(Data, Call) ->
                                ,interdigit_timeout = interdigit_timeout(Data)
                                }).
 
--spec interdigit_timeout(kz_json:object()) -> integer().
-interdigit_timeout(Data) ->
-    kz_json:get_integer_value(<<"interdigit_timeout">>
-                             ,Data
-                             ,kapps_call_command:default_interdigit_timeout()
-                             ).
-
 %%------------------------------------------------------------------------------
 %% @doc Loads rules set from account db.
 %% @end
@@ -282,7 +286,8 @@ get_rule_set(Id, Call) ->
         {'error', _E} ->
             lager:error("failed to load ~s in ~s", [Id, AccountDb]),
             [];
-        {'ok', JObj} -> kz_json:get_list_value(<<"temporal_rules">>, JObj, [])
+        {'ok', TemporalRulesSet} ->
+            kzd_temporal_rules_sets:temporal_rules(TemporalRulesSet, [])
     end.
 
 %%------------------------------------------------------------------------------
@@ -290,7 +295,7 @@ get_rule_set(Id, Call) ->
 %% the provided temporal rules.
 %% @end
 %%------------------------------------------------------------------------------
--spec temporal_route_menu(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
+-spec temporal_route_menu(temporal(), rule_ids(), kapps_call:call()) -> cf_api_std_return().
 temporal_route_menu(#temporal{keys=#keys{enable=Enable
                                         ,disable=Disable
                                         ,reset=Reset
@@ -328,27 +333,27 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
 %% operation.
 %% @end
 %%------------------------------------------------------------------------------
--spec disable_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
+-spec disable_temporal_rules(temporal(), rule_ids(), kapps_call:call()) -> cf_api_std_return().
 disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
     kapps_call_command:b_prompt(Disabled, Call);
-disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
+disable_temporal_rules(Temporal, [RuleId|T]=Rules, Call) ->
     try
         AccountDb = kapps_call:account_db(Call),
-        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
-        case kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"enabled">>, 'false', JObj)) of
+        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, RuleId),
+        case kz_datamgr:save_doc(AccountDb, kzd_temporal_rules:set_enabled(JObj, 'false')) of
             {'ok', _} ->
-                lager:info("set temporal rule ~s to disabled", [Id]),
+                lager:info("set temporal rule ~s to disabled", [RuleId]),
                 disable_temporal_rules(Temporal, T, Call);
             {'error', 'conflict'} ->
-                lager:info("conflict during disable of temporal rule ~s, trying again", [Id]),
+                lager:info("conflict during disable of temporal rule ~s, trying again", [RuleId]),
                 disable_temporal_rules(Temporal, Rules, Call);
             {'error', R1} ->
-                lager:info("unable to update temporal rule ~s, ~p",[Id, R1]),
+                lager:info("unable to update temporal rule ~s, ~p", [RuleId, R1]),
                 disable_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
-            lager:info("unable to update temporal rules ~p",[R2]),
+            lager:info("unable to update temporal rules ~p", [R2]),
             disable_temporal_rules(Temporal, T, Call)
     end.
 
@@ -358,27 +363,27 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %% operation.
 %% @end
 %%------------------------------------------------------------------------------
--spec reset_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
+-spec reset_temporal_rules(temporal(), rule_ids(), kapps_call:call()) -> cf_api_std_return().
 reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
     kapps_call_command:b_prompt(Reset, Call);
-reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
+reset_temporal_rules(Temporal, [RuleId|T]=Rules, Call) ->
     try
         AccountDb = kapps_call:account_db(Call),
-        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
-        case kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"enabled">>, JObj)) of
+        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, RuleId),
+        case kz_datamgr:save_doc(AccountDb, kzd_temporal_rules:delete_enabled(JObj)) of
             {'ok', _} ->
-                lager:info("reset temporal rule ~s", [Id]),
+                lager:info("reset temporal rule ~s", [RuleId]),
                 reset_temporal_rules(Temporal, T, Call);
             {'error', 'conflict'} ->
-                lager:info("conflict during reset of temporal rule ~s, trying again", [Id]),
+                lager:info("conflict during reset of temporal rule ~s, trying again", [RuleId]),
                 reset_temporal_rules(Temporal, Rules, Call);
             {'error', R1} ->
-                lager:info("unable to reset temporal rule ~s, ~p",[Id, R1]),
+                lager:info("unable to reset temporal rule ~s, ~p", [RuleId, R1]),
                 reset_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
-            lager:info("unable to reset temporal rule ~s ~p",[Id, R2]),
+            lager:info("unable to reset temporal rule ~s ~p", [RuleId, R2]),
             reset_temporal_rules(Temporal, T, Call)
     end.
 
@@ -388,32 +393,32 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %% operation.
 %% @end
 %%------------------------------------------------------------------------------
--spec enable_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
+-spec enable_temporal_rules(temporal(), rule_ids(), kapps_call:call()) -> cf_api_std_return().
 enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
     kapps_call_command:b_prompt(Enabled, Call);
-enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
+enable_temporal_rules(Temporal, [RuleId|T]=Rules, Call) ->
     try
         AccountDb = kapps_call:account_db(Call),
-        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
-        case kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"enabled">>, 'true', JObj)) of
+        {'ok', RuleDoc} = kz_datamgr:open_doc(AccountDb, RuleId),
+        case kz_datamgr:save_doc(AccountDb, kzd_temporal_rules:set_enabled(RuleDoc, 'true')) of
             {'ok', _} ->
-                lager:info("set temporal rule ~s to enabled active", [Id]),
+                lager:info("set temporal rule ~s to enabled active", [RuleId]),
                 enable_temporal_rules(Temporal, T, Call);
             {'error', 'conflict'} ->
-                lager:info("conflict during enable of temporal rule ~s, trying again", [Id]),
+                lager:info("conflict during enable of temporal rule ~s, trying again", [RuleId]),
                 enable_temporal_rules(Temporal, Rules, Call);
             {'error', R1} ->
-                lager:info("unable to enable temporal rule ~s, ~p",[Id, R1]),
+                lager:info("unable to enable temporal rule ~s, ~p", [RuleId, R1]),
                 enable_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
-            lager:info("unable to enable temporal rule ~s ~p",[Id, R2]),
+            lager:info("unable to enable temporal rule ~s ~p", [RuleId, R2]),
             enable_temporal_rules(Temporal, T, Call)
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc determines the appropriate gregorian seconds to be used as the
+%% @doc determines the appropriate Gregorian seconds to be used as the
 %% current date/time for this temporal route selection
 %% @end
 %%------------------------------------------------------------------------------
@@ -506,14 +511,14 @@ next_rule_date(#rule{cycle = <<"monthly">>
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
     case [D || D <- Days, D > D1] of
-        %% The day hasn't happend on an 'active' month
+        %% The day hasn't happened on an 'active' month
         [Day|_] when Distance =:= Offset ->
             M01 = M0 + Offset,
             kz_date:normalize({Y0 + (M01 div 12), M01 rem 12, Day});
         %% Empty List:
         %%   All of the days in the list have already happened
         %% Non Empty List that failed the guard:
-        %%   The day hasn't happend on an 'inactive' month
+        %%   The day hasn't happened on an 'inactive' month
         _ ->
             M01 = M0 + Offset + I0,
             kz_date:normalize({Y0 + (M01 div 12), M01 rem 12, hd(Days)})
@@ -560,18 +565,18 @@ next_rule_date(#rule{cycle = <<"monthly">>
     case Distance =:= Offset
         andalso find_last_weekday({Y1, M1, 1}, Weekday)
     of
-        %% If today is before the occurace day on an 'active' month since
-        %%   the 'last' only happens once per month if we havent passed it
+        %% If today is before the occurrence day on an 'active' month since
+        %%   the 'last' only happens once per month if we haven't passed it
         %%   then it must be this month
         {_, _, D2}=Date when D1 < D2 ->
             Date;
         %% In an 'inactive' month or when we have already passed
-        %%   the last occurance of the DOW
+        %%   the last occurrence of the DOW
         _ ->
             find_last_weekday({Y0, M0 + Offset + I0, 1}, Weekday)
     end;
 
-%% WARNING: There is a known bug when requesting the fifth occurance
+%% WARNING: There is a known bug when requesting the fifth occurrence
 %%   of a weekday when I0 > 1 and the current month only has four instances
 %%   of the given weekday, the calculation is incorrect.  I was told not
 %%   to worry about that now...
@@ -588,26 +593,26 @@ next_rule_date(#rule{cycle = <<"monthly">>
     case Distance =:= Offset
         andalso {find_ordinal_weekday(Y1, M1, Weekday, Ordinal), I0}
     of
-        %% If today is before the occurance day on an 'active' month and
-        %%   the occurance does not cross month/year boundaries then the
+        %% If today is before the occurrence day on an 'active' month and
+        %%   the occurrence does not cross month/year boundaries then the
         %%   calculated date is accurate
         {{_, M1, D2}=Date, _} when D1 < D2, I0 > 1 ->
             Date;
-        %% If today is before the occurance day on an 'active' month and
-        %%   the iterval =:= 1 then it happens every month so it doesnt
+        %% If today is before the occurrence day on an 'active' month and
+        %%   the interval =:= 1 then it happens every month so it doesn't
         %%   matter if it crosses month/year boundaries
         {{_, M2, D2}=Date, 1} when D1 < D2; M1 < M2 ->
             Date;
         %% false:
         %%   In an 'inactive' month
         %% {kz_time:date(), integer()}:
-        %%   We have already passed the last occurance of the DOW
+        %%   We have already passed the last occurrence of the DOW
         _ ->
             find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, Ordinal)
     end;
 
 %% WARNING: This function does not ensure the provided day actually
-%%   exists in the month provided.  For temporal routes that isnt
+%%   exists in the month provided.  For temporal routes that isn't
 %%   an issue because we will 'pass' the invalid date and compute
 %%   the next
 next_rule_date(#rule{cycle = <<"yearly">>
@@ -660,11 +665,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
         andalso kz_date:find_next_weekday({Y1, Month, D1}, Weekday)
     of
         %% During an 'active' year before the target month the calculated
-        %%   occurance is accurate
+        %%   occurrence is accurate
         {Y1, Month, _}=Date when M1 < Month ->
             Date;
         %% During an 'active' year on the target month before the
-        %%   calculated occurance day it is accurate
+        %%   calculated occurrence day it is accurate
         {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
             Date;
         %% During an 'inactive' year, or after the target month
@@ -688,11 +693,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
         andalso find_last_weekday({Y1, Month, 1}, Weekday)
     of
         %% During an 'active' year before the target month the calculated
-        %%   occurance is accurate
+        %%   occurrence is accurate
         {Y1, _, _}=Date when M1 < Month ->
             Date;
         %% During an 'active' year on the target month before the
-        %%   calculated occurance day it is accurate
+        %%   calculated occurrence day it is accurate
         {Y1, _, D2}=Date when M1 =:= Month, D1 < D2 ->
             Date;
         %% During an 'inactive' year, or after the target month
@@ -716,17 +721,29 @@ next_rule_date(#rule{cycle = <<"yearly">>
         andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal)
     of
         %% During an 'active' year before the target month the calculated
-        %%   occurance is accurate
+        %%   occurrence is accurate
         {Y1, Month, _}=Date when M1 < Month ->
             Date;
         %% During an 'active' year on the target month before the
-        %%   calculated occurance day it is accurate
+        %%   calculated occurrence day it is accurate
         {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
             Date;
         %% During an 'inactive' year or after the calculated
-        %%   occurance determine the next iteration
+        %%   occurrence, determine the next iteration
         _ ->
-            find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal)
+            find_next_yearly_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal, I0)
+    end.
+
+-spec find_next_yearly_ordinal_weekday(kz_time:year(), kz_time:month(), wday(), kz_time:ordinal(), interval()) -> kz_time:date().
+find_next_yearly_ordinal_weekday(Y0, M0, Weekday, Ordinal, Interval) ->
+    case find_ordinal_weekday(Y0, M0, Weekday, Ordinal) of
+        {_Y1, M0, _D1}=Date ->
+            %% found a date in the same month
+            Date;
+        {_Y1, _M1, _D1} ->
+            %% might be a "fifth" day in the next month,
+            %% let's try again
+            find_next_yearly_ordinal_weekday(Y0 + Interval, M0, Weekday, Ordinal, Interval)
     end.
 
 %%------------------------------------------------------------------------------
@@ -737,7 +754,7 @@ next_rule_date(#rule{cycle = <<"yearly">>
 %% <div class="notice">It is possible for this function to cross month/year boundaries.</div>
 %% @end
 %%------------------------------------------------------------------------------
--spec find_ordinal_weekday(kz_time:year(), improper_month(), wday(), strict_ordinal()) -> kz_time:date().
+-spec find_ordinal_weekday(kz_time:year(), improper_month(), wday(), kz_time:ordinal()) -> kz_time:date().
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 =:= 13 ->
     find_ordinal_weekday(Y1 + 1, 1, Weekday, Ordinal);
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 > 12 ->
@@ -750,18 +767,18 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Calculates the date of the last occurance of a weekday within a
+%% @doc Calculates the date of the last occurrence of a weekday within a
 %% given month/year.  The date can be provided as an improper date.
 %%
 %% Assumption/Principle:
 %%   A DOW can never occur more than four times in a month.
 %% @end
 %%------------------------------------------------------------------------------
-%% First attempt to calulate the date of the fouth DOW
-%% occurance.  Since the function corrects an invalid
-%% date by crossing month/year boundries, cause a badmatch
+%% First attempt to calculate the date of the fourth DOW
+%% occurrence.  Since the function corrects an invalid
+%% date by crossing month/year boundaries, cause a badmatch
 %% if this happens. Therefore, during the exception the last
-%% occurance MUST be in the third week.
+%% occurrence MUST be in the third week.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_last_weekday(improper_date(), wday()) -> kz_time:date().
@@ -804,7 +821,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %%------------------------------------------------------------------------------
 %% @doc Calculates the distance, in total ISO weeks, between two dates
 %% I rather dislike this approach, but it is the best of MANY evils that I came up with...
-%% The idea here is to find the difference (in days) between the ISO 8601 mondays
+%% The idea here is to find the difference (in days) between the ISO 8601 Mondays
 %% of the start and end dates.  This takes care of all the corner cases for us such as:
 %%    - Start date in ISO week of previous year
 %%    - End date in ISO week of previous year
@@ -832,3 +849,23 @@ sort_wdays(WDays0) ->
                     lists:keysort(1, [{kz_date:wday_to_dow(Day), Day} || Day <- WDays0])
                    ),
     WDays1.
+
+-spec interdigit_timeout(kz_json:object()) -> integer().
+interdigit_timeout(Data) ->
+    kz_json:get_integer_value(<<"interdigit_timeout">>
+                             ,Data
+                             ,kapps_call_command:default_interdigit_timeout()
+                             ).
+
+-type rule_ids() :: kz_term:ne_binaries().
+-spec rule_ids(kz_json:object()) -> rule_ids().
+rule_ids(Data) ->
+    kz_json:get_list_value(<<"rules">>, Data, []).
+
+-spec action(kz_json:object()) -> kz_term:api_ne_binary().
+action(Data) ->
+    kz_json:get_ne_binary_value(<<"action">>, Data).
+
+-spec rule_set_id(kz_json:object()) -> kz_term:api_ne_binary().
+rule_set_id(Data) ->
+    kz_json:get_ne_binary_value(<<"rule_set">>, Data).

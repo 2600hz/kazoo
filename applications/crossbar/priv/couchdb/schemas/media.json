@@ -7,6 +7,7 @@
             "description": "Length, in bytes, of the file",
             "maximum": 5242880,
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         },
         "content_type": {
@@ -25,17 +26,20 @@
                 "video/mp4",
                 "video/webm"
             ],
+            "support_level": "supported",
             "type": "string"
         },
         "description": {
-            "description": "A breif description of the media update, usally the original file name",
+            "description": "A brief description of the media update, usually the original file name",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "language": {
             "default": "en-us",
             "description": "The language of the media file or text",
+            "support_level": "supported",
             "type": "string"
         },
         "media_source": {
@@ -46,12 +50,14 @@
                 "upload",
                 "tts"
             ],
+            "support_level": "supported",
             "type": "string"
         },
         "name": {
             "description": "A friendly name for the media",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "prompt_id": {
@@ -62,15 +68,18 @@
             "description": "If the media was generated from a callflow module, this is ID of the properties",
             "maxLength": 32,
             "minLength": 32,
+            "support_level": "beta",
             "type": "string"
         },
         "source_type": {
             "description": "If the media was generated from a callflow module, this is the module name",
+            "support_level": "beta",
             "type": "string"
         },
         "streamable": {
             "default": true,
             "description": "Determines if the media can be streamed",
+            "support_level": "supported",
             "type": "boolean"
         },
         "tts": {
@@ -80,6 +89,7 @@
                 "text": {
                     "description": "The text to be converted into audio",
                     "minLength": 1,
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "voice": {
@@ -137,9 +147,11 @@
                         "female/ru-RU/Maria",
                         "female/ru-RU/Lidia"
                     ],
+                    "support_level": "supported",
                     "type": "string"
                 }
             },
+            "support_level": "supported",
             "type": "object"
         }
     },

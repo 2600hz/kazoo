@@ -6,7 +6,7 @@ Ring Group Toggle allows a user to log in and out of a ring group dynamically.
 
 ### Schema
 
-Validator for the ring_group_toggle callflow's data object
+Validator for the ring_group_toggle callflow data object
 
 Key | Description | Type | Default | Required | Support
 --- | ----------- | ---- | ------- | -------- | --------

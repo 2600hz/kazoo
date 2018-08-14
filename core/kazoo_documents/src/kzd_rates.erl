@@ -7,6 +7,7 @@
 
 -export([new/0]).
 -export([account_id/1, account_id/2, set_account_id/2]).
+-export([caller_id_numbers/1, caller_id_numbers/2, set_caller_id_numbers/2]).
 -export([carrier/1, carrier/2, set_carrier/2]).
 -export([description/1, description/2, set_description/2]).
 -export([direction/1, direction/2, set_direction/2]).
@@ -19,17 +20,29 @@
 -export([rate_minimum/1, rate_minimum/2, set_rate_minimum/2]).
 -export([rate_name/1, rate_name/2, set_rate_name/2]).
 -export([rate_nocharge_time/1, rate_nocharge_time/2, set_rate_nocharge_time/2]).
+-export([rate_suffix/1, rate_suffix/2, set_rate_suffix/2]).
 -export([rate_surcharge/1, rate_surcharge/2, set_rate_surcharge/2]).
 -export([rate_version/1, rate_version/2, set_rate_version/2]).
 -export([ratedeck_id/1, ratedeck_id/2, set_ratedeck_id/2]).
 -export([routes/1, routes/2, set_routes/2]).
 -export([weight/1, weight/2, set_weight/2]).
 
+-export([from_map/1, from_json/1]).
+-export([type/0, type/1, set_type/1]).
+-export([constrain_weight/1]).
+-export([private_cost/1, private_cost/2, set_private_cost/2]).
+-export([private_surcharge/1, private_surcharge/2, set_private_surcharge/2]).
+-export([set_default_route/1]).
 
 -include("kz_documents.hrl").
+-define(KEY_DIRECTION, <<"direction">>).
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type docs() :: [doc()].
+-type weight_range() :: 1..100.
+-export_type([doc/0, docs/0
+             ,weight_range/0
+             ]).
 
 -define(SCHEMA, <<"rates">>).
 
@@ -48,6 +61,18 @@ account_id(Doc, Default) ->
 -spec set_account_id(doc(), binary()) -> doc().
 set_account_id(Doc, AccountId) ->
     kz_json:set_value([<<"account_id">>], AccountId, Doc).
+
+-spec caller_id_numbers(doc()) -> kz_term:api_binary().
+caller_id_numbers(Doc) ->
+    caller_id_numbers(Doc, 'undefined').
+
+-spec caller_id_numbers(doc(), Default) -> binary() | Default.
+caller_id_numbers(Doc, Default) ->
+    kz_json:get_binary_value([<<"caller_id_numbers">>], Doc, Default).
+
+-spec set_caller_id_numbers(doc(), binary()) -> doc().
+set_caller_id_numbers(Doc, CallerIdNumbers) ->
+    kz_json:set_value([<<"caller_id_numbers">>], CallerIdNumbers, Doc).
 
 -spec carrier(doc()) -> kz_term:api_binary().
 carrier(Doc) ->
@@ -73,17 +98,26 @@ description(Doc, Default) ->
 set_description(Doc, Description) ->
     kz_json:set_value([<<"description">>], Description, Doc).
 
--spec direction(doc()) -> kz_term:api_ne_binaries().
+-define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
+
+-spec direction(doc()) -> kz_term:ne_binaries().
 direction(Doc) ->
-    direction(Doc, 'undefined').
+    direction(Doc, ?BOTH_DIRECTIONS).
 
 -spec direction(doc(), Default) -> kz_term:ne_binaries() | Default.
 direction(Doc, Default) ->
-    kz_json:get_list_value([<<"direction">>], Doc, Default).
+    case kz_json:get_value([<<"direction">>], Doc) of
+        'undefined' -> Default;
+        <<"inbound">>=V -> [V];
+        <<"outbound">>=V -> [V];
+        Directions when is_list(Directions) -> Directions
+    end.
 
--spec set_direction(doc(), kz_term:ne_binaries()) -> doc().
-set_direction(Doc, Direction) ->
-    kz_json:set_value([<<"direction">>], Direction, Doc).
+-spec set_direction(doc(), kz_term:ne_binaries() | kz_term:ne_binary()) -> doc().
+set_direction(Doc, Directions) when is_list(Directions) ->
+    kz_json:set_value([<<"direction">>], Directions, Doc);
+set_direction(Doc, Direction) when is_binary(Direction) ->
+    set_direction(Doc, [Direction]).
 
 -spec internal_rate_cost(doc()) -> kz_term:api_number().
 internal_rate_cost(Doc) ->
@@ -193,9 +227,9 @@ rate_nocharge_time(Doc, Default) ->
 set_rate_nocharge_time(Doc, RateNochargeTime) ->
     kz_json:set_value([<<"rate_nocharge_time">>], RateNochargeTime, Doc).
 
--spec rate_surcharge(doc()) -> kz_term:api_number().
+-spec rate_surcharge(doc()) -> number().
 rate_surcharge(Doc) ->
-    rate_surcharge(Doc, 'undefined').
+    rate_surcharge(Doc, 0.0).
 
 -spec rate_surcharge(doc(), Default) -> number() | Default.
 rate_surcharge(Doc, Default) ->
@@ -250,5 +284,107 @@ weight(Doc, Default) ->
     kz_json:get_integer_value([<<"weight">>], Doc, Default).
 
 -spec set_weight(doc(), integer()) -> doc().
-set_weight(Doc, Weight) ->
-    kz_json:set_value([<<"weight">>], Weight, Doc).
+set_weight(Rate, Weight) when is_integer(Weight) ->
+    kz_json:set_value(<<"weight">>, constrain_weight(Weight), Rate).
+
+-spec constrain_weight(kz_term:text() | integer()) -> weight_range().
+constrain_weight(X) when not is_integer(X) -> constrain_weight(kz_term:to_integer(X));
+constrain_weight(X) when X =< 0 -> 1;
+constrain_weight(X) when X >= 100 -> 100;
+constrain_weight(X) -> X.
+
+-spec from_json(kz_json:object()) -> doc().
+from_json(JObj) ->
+    Rate = kz_doc:public_fields(JObj),
+    Fs = [fun set_type/1
+         ,fun ensure_id/1
+         ,fun maybe_fix_direction/1
+         ],
+    lists:foldl(fun(F, R) -> F(R) end, Rate, Fs).
+
+-spec from_map(map()) -> doc().
+from_map(Map) ->
+    from_json(kz_json:from_map(Map)).
+
+-spec maybe_fix_direction(doc()) -> doc().
+maybe_fix_direction(Rate) ->
+    case kz_json:get_value(?KEY_DIRECTION, Rate) of
+        'undefined' -> Rate;
+        L when is_list(L) -> Rate;
+        <<"inbound">> -> set_direction(Rate, [<<"inbound">>]);
+        <<"outbound">> -> set_direction(Rate, [<<"outbound">>])
+    end.
+
+-spec ensure_id(doc()) -> doc().
+ensure_id(Rate) ->
+    ensure_id(Rate, kz_doc:id(Rate)).
+
+-spec ensure_id(doc(), kz_term:api_ne_binary()) -> doc().
+ensure_id(Rate, 'undefined') ->
+    ID = list_to_binary([iso_country_code(Rate, <<"XX">>)
+                        ,<<"-">>
+                        ,kz_term:to_binary(prefix(Rate))
+                        ,rate_suffix(Rate)
+                        ]),
+    kz_doc:set_id(Rate, ID);
+ensure_id(Rate, ID) ->
+    kz_doc:set_id(Rate, ID).
+
+-spec type() -> kz_term:ne_binary().
+type() -> <<"rate">>.
+
+-spec type(doc()) -> kz_term:ne_binary().
+type(Doc) -> kz_doc:type(Doc, type()).
+
+-spec set_type(doc()) -> doc().
+set_type(Doc) -> kz_doc:set_type(Doc, type()).
+
+-spec rate_suffix(doc()) -> kz_term:ne_binary().
+rate_suffix(Rate) ->
+    rate_suffix(Rate, 'undefined').
+
+-spec rate_suffix(doc(), Default) -> kz_term:ne_binary() | Default.
+rate_suffix(Rate, Default) ->
+    case kz_json:get_ne_binary_value(<<"rate_suffix">>, Rate, Default) of
+        'undefined' -> <<>>;
+        RateSuffix -> <<"-", RateSuffix/binary>>
+    end.
+
+-spec set_rate_suffix(doc(), kz_term:ne_binary()) -> doc().
+set_rate_suffix(Rate, Suffix) ->
+    kz_json:set_value(<<"rate_suffix">>, Suffix, Rate).
+
+-spec private_cost(doc()) -> kz_transaction:units().
+private_cost(Rate) ->
+    private_cost(Rate, 0.0).
+
+-spec private_cost(doc(), float()) -> kz_transaction:units().
+private_cost(Rate, Default) ->
+    Cost = kz_json:get_float_value(<<"pvt_internal_rate_cost">>, Rate, Default),
+    wht_util:dollars_to_units(Cost).
+
+-spec set_private_cost(doc(), float()) -> doc().
+set_private_cost(Rate, Cost) when is_float(Cost) ->
+    kz_json:set_value(<<"pvt_internal_rate_cost">>, Cost, Rate).
+
+-spec private_surcharge(doc()) -> kz_transaction:units().
+private_surcharge(Rate) ->
+    private_surcharge(Rate, 0.0).
+
+-spec private_surcharge(doc(), float()) -> kz_transaction:units().
+private_surcharge(Rate, Default) ->
+    Surcharge = kz_json:get_float_value(<<"pvt_rate_surcharge">>, Rate, Default),
+    wht_util:dollars_to_units(Surcharge).
+
+-spec set_private_surcharge(doc(), float()) -> doc().
+set_private_surcharge(Rate, Surcharge) when is_float(Surcharge) ->
+    kz_json:set_value(<<"pvt_rate_surcharge">>, Surcharge, Rate).
+
+-spec set_default_route(doc()) -> doc().
+set_default_route(Rate) ->
+    set_default_route(Rate, prefix(Rate)).
+
+-spec set_default_route(doc(), integer()) -> doc().
+set_default_route(Rate, Prefix) ->
+    PrefixBin = kz_term:to_binary(Prefix),
+    set_routes(Rate, [<<"^\\+?", PrefixBin/binary, ".+$">>]).

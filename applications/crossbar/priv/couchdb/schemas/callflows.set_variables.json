@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.set_variables",
-    "description": "Validator for the set_variables callflow's data object",
+    "description": "Validator for the set_variables callflow data object",
     "properties": {
         "custom_application_vars": {
             "default": {},

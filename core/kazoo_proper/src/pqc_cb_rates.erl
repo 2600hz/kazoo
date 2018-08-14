@@ -41,24 +41,21 @@
 -define(PHONE_NUMBERS, [<<"+12223334444">>]).
 -define(ACCOUNT_NAMES, [<<"account_for_rates">>]).
 
--define(GLOBAL_COST, 1).
--define(ACCOUNT_COST, 4).
-
 -spec rate_doc(kz_term:ne_binary() | proper_types:type(), number() | proper_types:type()) ->
-                      kzd_rate:doc().
+                      kzd_rates:doc().
 rate_doc(RatedeckId, Cost) ->
-    kzd_rate:from_map(#{<<"prefix">> => <<"1222">>
-                       ,<<"rate_cost">> => Cost
-                       ,<<"ratedeck_id">> => RatedeckId
-                       ,<<"direction">> => <<"inbound">>
-                       }
-                     ).
+    kzd_rates:from_map(#{<<"prefix">> => <<"1222">>
+                        ,<<"rate_cost">> => Cost
+                        ,<<"ratedeck_id">> => RatedeckId
+                        ,<<"direction">> => <<"inbound">>
+                        }
+                      ).
 
--spec upload_rate(pqc_cb_api:state(), kzd_rate:doc()) -> {'ok', kz_term:api_ne_binary()}.
+-spec upload_rate(pqc_cb_api:state(), kzd_rates:doc()) -> {'ok', kz_term:api_ne_binary()}.
 upload_rate(API, RateDoc) ->
     ?INFO("uploading rate ~p", [RateDoc]),
     CSV = kz_csv:from_jobjs([RateDoc]),
-    upload_csv(API, CSV, kzd_rate:ratedeck(RateDoc)).
+    upload_csv(API, CSV, kzd_rates:ratedeck_id(RateDoc)).
 
 -spec upload_csv(pqc_cb_api:state(), iodata()) ->
                         {'ok', kz_term:api_ne_binary()}.
@@ -115,7 +112,7 @@ rate_account_did(API, AccountId, DID) ->
     URL = string:join([pqc_cb_accounts:account_url(AccountId), "rates", "number", kz_term:to_list(DID)], "/"),
     make_rating_request(API, URL).
 
--spec ratedeck_service_plan(kz_term:ne_binary() | kzd_rate:doc()) -> kzd_service_plan:doc().
+-spec ratedeck_service_plan(kz_term:ne_binary() | kzd_rates:doc()) -> kzd_service_plan:doc().
 ratedeck_service_plan(<<_/binary>> = RatedeckId) ->
     Plan = kz_json:from_list([{<<"ratedeck">>
                               ,kz_json:from_list([{RatedeckId, kz_json:new()}])
@@ -131,28 +128,32 @@ ratedeck_service_plan(<<_/binary>> = RatedeckId) ->
                ,Funs
                );
 ratedeck_service_plan(RateDoc) ->
-    ratedeck_service_plan(kzd_rate:ratedeck(RateDoc)).
+    ratedeck_service_plan(kzd_rates:ratedeck_id(RateDoc)).
 
 service_plan_id(RatedeckId) ->
     <<"plan_ratedeck_", RatedeckId/binary>>.
 
 wait_for_task(API, TaskId) ->
     GetResp = pqc_cb_tasks:fetch(API, TaskId),
-    case kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
-                          ,kz_json:decode(GetResp)
-                          )
+    case is_binary(GetResp)
+        andalso kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
+                                 ,kz_json:decode(GetResp)
+                                 )
     of
+        'false' ->
+            ?ERROR("failed to query for task: ~p~n", [GetResp]),
+            throw(GetResp);
         <<"success">> -> pqc_cb_tasks:delete(API, TaskId);
         _Status ->
             timer:sleep(1000),
             wait_for_task(API, TaskId)
     end.
 
--spec delete_rate(pqc_cb_api:state(), kz_term:ne_binary() | kzd_rate:doc()) -> pqc_cb_api:response().
+-spec delete_rate(pqc_cb_api:state(), kz_term:ne_binary() | kzd_rates:doc()) -> pqc_cb_api:response().
 delete_rate(API, <<_/binary>>=RatedeckId) ->
     delete_rate(API, ?RATE_ID, RatedeckId);
 delete_rate(API, RateDoc) ->
-    delete_rate(API, ?RATE_ID, kzd_rate:ratedeck(RateDoc)).
+    delete_rate(API, ?RATE_ID, kzd_rates:ratedeck_id(RateDoc)).
 
 -spec delete_rate(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete_rate(API, ID, <<_/binary>>=RatedeckId) ->
@@ -165,13 +166,13 @@ delete_rate(API, ID, <<_/binary>>=RatedeckId) ->
                            ,pqc_cb_api:request_headers(API)
                            ).
 
--spec get_rate(pqc_cb_api:state(), kzd_rate:doc()) -> pqc_cb_api:response().
+-spec get_rate(pqc_cb_api:state(), kzd_rates:doc()) -> pqc_cb_api:response().
 get_rate(API, RateDoc) ->
     ID = kz_doc:id(RateDoc),
 
-    ?INFO("getting rate info for ~s in ~s", [ID, kzd_rate:ratedeck(RateDoc)]),
+    ?INFO("getting rate info for ~s in ~s", [ID, kzd_rates:ratedeck_id(RateDoc)]),
 
-    URL = rate_url(ID, kzd_rate:ratedeck(RateDoc)),
+    URL = rate_url(ID, kzd_rates:ratedeck_id(RateDoc)),
     pqc_cb_api:make_request([200, 404]
                            ,fun kz_http:get/2
                            ,URL
@@ -198,7 +199,7 @@ rate_did(API, RatedeckId, DID) ->
 
     make_rating_request(API, URL).
 
--spec make_rating_request(pqc_cb_api:state(), string()) -> kz_term:api_integer().
+-spec make_rating_request(pqc_cb_api:state(), string()) -> kz_term:api_number().
 make_rating_request(API, URL) ->
     RequestHeaders = pqc_cb_api:request_headers(API),
 
@@ -210,7 +211,10 @@ make_rating_request(API, URL) ->
     RespJObj = kz_json:decode(Resp),
     case kz_json:get_ne_binary_value(<<"status">>, RespJObj) of
         <<"error">> -> 'undefined';
-        <<"success">> -> kz_json:get_float_value([<<"data">>, <<"Rate">>], RespJObj)
+        <<"success">> ->
+            Cost = kz_json:get_float_value([<<"data">>, <<"Base-Cost">>], RespJObj),
+            ?INFO("rate cost: ~p: ~p", [Cost, RespJObj]),
+            Cost
     end.
 
 rates_url() ->
@@ -310,65 +314,65 @@ seq() ->
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
-    try
-        RateDoc = rate_doc(<<"custom">>, 1),
+    RateDoc = rate_doc(<<"custom">>, 1.0),
 
-        _Up = ?MODULE:upload_rate(API, RateDoc),
-        ?INFO("upload: ~p~n", [_Up]),
+    RateCost = wht_util:units_to_dollars(
+                 wht_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
+                                        ,kzd_rates:rate_minimum(RateDoc, 60)
+                                        ,kzd_rates:rate_surcharge(RateDoc)
+                                        )
+                ),
+    ?INFO("rate cost from doc: ~p", [RateCost]),
 
-        _Get = ?MODULE:get_rate(API, RateDoc),
-        ?INFO("get: ~p~n", [_Get]),
+    {'ok', TaskId} = ?MODULE:upload_rate(API, RateDoc),
+    ?INFO("uploaded task: ~s~n", [TaskId]),
 
-        _Rated = ?MODULE:rate_did(API, kzd_rate:ratedeck(RateDoc), hd(?PHONE_NUMBERS)),
-        ?INFO("rated: ~p~n", [_Rated]),
+    GetResp = ?MODULE:get_rate(API, RateDoc),
+    GetJObj = kz_json:decode(GetResp),
+    RateJObj = kz_json:get_json_value(<<"data">>, GetJObj),
+    ?INFO("get rate: ~p~n", [RateJObj]),
+    'true' = kz_doc:id(RateDoc) =:= kz_doc:id(RateJObj),
 
-        _SP = ?MODULE:create_service_plan(API, kzd_rate:ratedeck(RateDoc)),
-        ?INFO("created sp: ~p~n", [_SP]),
+    RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
+    ?INFO("successfully rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),
 
-        AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
-        AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
+    'ok' = ?MODULE:create_service_plan(API, kzd_rates:ratedeck_id(RateDoc)),
+    ?INFO("created service plan for ratedeck"),
 
-        case is_binary(AccountId) of
-            'true' -> ?INFO("created account ~s~n", [AccountId]);
-            'false' ->
-                ?INFO("failed to get account id from ~s~n", [AccountResp]),
-                throw('no_account_id')
-        end,
+    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("create account resp: ~p", [AccountResp]),
+    AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
 
-        RatedeckId = kzd_rate:ratedeck(RateDoc),
+    case is_binary(AccountId) of
+        'true' -> ?INFO("created account ~s~n", [AccountId]);
+        'false' ->
+            ?INFO("failed to get account id from ~s~n", [AccountResp]),
+            throw('no_account_id')
+    end,
 
-        _Assigned = ?MODULE:assign_service_plan(API, AccountId, kzd_rate:ratedeck(RateDoc)),
-        case kz_json:get_value([<<"data">>, <<"plan">>, <<"ratedeck">>, RatedeckId]
-                              ,kz_json:decode(_Assigned)
-                              )
-        of
-            'undefined' ->
-                ?ERROR("failed to assign service plan for ~s to account ~s", [RatedeckId, AccountId]),
-                throw('no_plan');
-            _ ->
-                ?INFO("assigned service plan to account: ~p~n", [_Assigned])
-        end,
+    RatedeckId = kzd_rates:ratedeck_id(RateDoc),
 
-        _AcctRated = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
-        ?INFO("rated ~s in account ~s: ~p~n", [hd(?PHONE_NUMBERS), AccountId, _AcctRated]),
+    _Assigned = ?MODULE:assign_service_plan(API, AccountId, kzd_rates:ratedeck_id(RateDoc)),
+    case kz_json:get_value([<<"data">>, <<"plan">>, <<"ratedeck">>, RatedeckId]
+                          ,kz_json:decode(_Assigned)
+                          )
+    of
+        'undefined' ->
+            ?ERROR("failed to assign service plan for ~s to account ~s", [RatedeckId, AccountId]),
+            throw('no_plan');
+        _ ->
+            ?INFO("assigned service plan to account ~s~n", [AccountId])
+    end,
 
-        _Deleted = ?MODULE:delete_rate(API, RateDoc),
-        ?INFO("deleted: ~p~n", [_Deleted])
-    catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            ?INFO("crashed ~s: ~p~n", [_E, _R]),
-            io:format("crashed ~s: ~p~n", [_E, _R]),
-            [begin
-                 ?INFO("s: ~p~n", [S]),
-                 io:format("s: ~p~n", [S])
-             end
-             || S <- ST
-            ]
-    after
-        cleanup(API),
-        io:format("done: ~p~n", [API])
-    end.
+    RateCost = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
+    ?INFO("rated DID ~s in account ~s", [hd(?PHONE_NUMBERS), AccountId]),
+
+    _Deleted = ?MODULE:delete_rate(API, RateDoc),
+    ?INFO("deleted: ~p", [_Deleted]),
+
+    ?INFO("COMPLETED SUCCESSFULLY!"),
+    cleanup(API),
+    io:format("done: ~p~n", [API]).
 
 -spec command(any()) -> proper_types:type().
 command(Model) ->
@@ -393,7 +397,7 @@ ratedeck_id() ->
     oneof(?RATEDECK_NAMES).
 
 rate_cost() ->
-    range(1,10).
+    range(1.0, 10.0).
 
 phone_number() ->
     elements(?PHONE_NUMBERS).
@@ -408,7 +412,7 @@ next_state(Model
           ,_APIResp
           ,{'call', _, 'upload_rate', [_API, RateDoc]}
           ) ->
-    Ratedeck = kzd_rate:ratedeck(RateDoc, ?KZ_RATES_DB),
+    Ratedeck = kzd_rates:ratedeck_id(RateDoc, ?KZ_RATES_DB),
     pqc_util:transition_if(Model
                           ,[{fun pqc_kazoo_model:is_rate_missing/3, [Ratedeck, RateDoc]}
                            ,{fun pqc_kazoo_model:add_rate_to_ratedeck/3, [Ratedeck, RateDoc]}
@@ -482,7 +486,7 @@ postcondition1(Model
               ,{'call', ?MODULE, 'get_rate', [_API, RateDoc]}
               ,FetchResp
               ) ->
-    RatedeckId = kzd_rate:ratedeck(RateDoc),
+    RatedeckId = kzd_rates:ratedeck_id(RateDoc),
     case pqc_kazoo_model:is_rate_missing(Model, RatedeckId, RateDoc) of
         'true' ->
             404 =:= kz_json:get_integer_value(<<"error">>, kz_json:decode(FetchResp));
@@ -490,7 +494,7 @@ postcondition1(Model
             Data = kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp), kz_json:new()),
             kz_json:all(fun({K, V}) ->
                                 F = kz_term:to_atom(K),
-                                V =:= kzd_rate:F(Data)
+                                V =:= kzd_rates:F(Data)
                         end
                        ,RateDoc
                        )

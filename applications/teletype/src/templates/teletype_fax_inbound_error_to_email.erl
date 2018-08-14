@@ -25,7 +25,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Error receiving fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof fax.remote_station_id caller_id.number \"Unknown Number\" %})">>).
+-define(TEMPLATE_SUBJECT, <<"Error receiving fax{% if caller_id.name_number or fax.remote_station_id %} from {% firstof caller_id.name_number fax.remote_station_id %}{% endif %}">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Inbound Fax Negotiation Error to Email">>).
 
@@ -83,10 +83,9 @@ process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
     RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                           ,Macros
-               ),
+                                          ),
     lager:debug("rendered subject: ~s", [Subject]),
 
     EmailsJObj =

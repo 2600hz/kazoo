@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018-, 2600Hz
 %%% @doc Message Wait Indicator utilities.
-%%% @author Luis Lazedo
+%%% @author Luis Azedo
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kvm_mwi).
 
 -export([notify_vmbox/2
@@ -19,7 +19,7 @@
 -define(VM_NO_NEW_MESSAGES, <<"terminated">>).
 -define(VM_HAS_NEW_MESSAGES, <<"confirmed">>).
 
--define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
+-define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsolicited_updates">>).
 
 %%------------------------------------------------------------------------------
 %% @doc Generate database name based on DocId
@@ -91,10 +91,9 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-            lists:foreach(
-              fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
+            lists:foreach(fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
                          ,JObjs
-             ),
+                         ),
             'ok';
         {'error', _R} ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R])
@@ -110,12 +109,11 @@ maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) ->
         andalso 'undefined' =/= Username
         andalso 'undefined' =/= Realm
         andalso 'undefined' =/= OwnerId
-        andalso kzd_devices:mwi_unsolicitated_updates(J)
+        andalso kzd_devices:mwi_unsolicited_updates(J)
     of
         'true' -> send_unsolicited_mwi_update(New, Saved, Username, Realm);
         'false' -> 'ok'
     end.
-
 
 -spec unsolicited_endpoint_mwi_update(kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 unsolicited_endpoint_mwi_update('undefined', _) ->
@@ -137,10 +135,9 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
         {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
     end.
 
-
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
-    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:mwi_unsolicitated_updates(JObj)).
+    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:mwi_unsolicited_updates(JObj)).
 
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object(), boolean()) -> 'ok'.
 maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->

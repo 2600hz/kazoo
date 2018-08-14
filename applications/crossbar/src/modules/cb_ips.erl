@@ -45,7 +45,7 @@ authorize(Context) ->
     _ = cb_context:put_reqid(Context),
     authorize(Context, cb_context:req_nouns(Context)).
 
-authorize(Context, [{<<"ips">>, []}]) ->
+authorize(Context, [{<<"ips">>, _}]) ->
     cb_context:is_superduper_admin(Context);
 authorize(_Context, _Nouns) -> 'false'.
 
@@ -90,7 +90,7 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /dedicated_ips mights load a list of skel objects
+%% /dedicated_ips might load a list of skel objects
 %% /dedicated_ips/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

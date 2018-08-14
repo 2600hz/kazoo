@@ -122,15 +122,15 @@ start_debug_file(File) ->
 
 -spec syslog_level(kz_term:text()) -> 'ok'.
 syslog_level(Level) ->
-    kz_util:change_syslog_log_level(kz_term:to_atom(Level)).
+    kz_log:change_syslog_log_level(kz_term:to_atom(Level)).
 
 -spec error_level(kz_term:text()) -> 'ok'.
 error_level(Level) ->
-    kz_util:change_error_log_level(kz_term:to_atom(Level)).
+    kz_log:change_error_log_level(kz_term:to_atom(Level)).
 
 -spec console_level(kz_term:text()) -> 'ok'.
 console_level(Level) ->
-    kz_util:change_console_log_level(kz_term:to_atom(Level)).
+    kz_log:change_console_log_level(kz_term:to_atom(Level)).
 
 -spec hotload(kz_term:text() | atom()) -> 'ok' | 'no_return'.
 hotload(Module) when is_atom(Module) ->

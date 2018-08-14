@@ -15,10 +15,30 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?SUPER('kz_hooks_listener_sup')
-                  ,?WORKER('kazoo_apps_init')
-                  ,?WORKER('kapps_controller')
+-define(KAPPS_GETBY_ORIGIN_BINDINGS, [[{'type', <<"account">>}]
+                                     ]).
+
+-define(KAPPS_GETBY_PROPS, [{'origin_bindings', ?KAPPS_GETBY_ORIGIN_BINDINGS}]).
+
+-define(KAPPS_CONFIG_ORIGIN_BINDINGS, [[{'type', <<"account">>}]
+                                      ,[{'type', <<"account_config">>}]
+                                      ,[{'db', ?KZ_CONFIG_DB}]
+                                      ]).
+
+-define(KAPPS_CONFIG_PROPS, [{'origin_bindings', ?KAPPS_CONFIG_ORIGIN_BINDINGS}]).
+
+-ifdef(TEST).
+-define(CHILDREN, [?CACHE_ARGS(?KAPPS_CONFIG_CACHE, [])
+                  ,?CACHE_ARGS(?KAPPS_GETBY_CACHE, [])
                   ]).
+-else.
+-define(CHILDREN, [?WORKER('kazoo_apps_init')
+                  ,?CACHE_ARGS(?KAPPS_CONFIG_CACHE, ?KAPPS_CONFIG_PROPS)
+                  ,?WORKER('kapps_controller')
+                  ,?CACHE_ARGS(?KAPPS_GETBY_CACHE, ?KAPPS_GETBY_PROPS)
+                  ,?WORKER('kazoo_apps_maint_listener')
+                  ]).
+-endif.
 
 %%==============================================================================
 %% API functions

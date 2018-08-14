@@ -1,8 +1,8 @@
-### Notifications
+# Email Notifications Template
 
 Allow managing templates for notification emails.
 
-#### About Notifications
+## About Notifications
 
 Flowing is a basic structure of a notification object (here it is a digest of `voicemail_to_email` notification).
 
@@ -52,17 +52,17 @@ By looking at above structure, there are some points of interest to say about no
 
 In addition to the JSON data describing configuration of a notification, notification templates can be represented in various formats and can be modified by uploading the representation document (such as using a WYSIWYG tool). Currently supported formats are plain text and HTML documents.
 
-##### Template Formats
+### Template Formats
 
 Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
 
-##### Operation considerations
+### Operation considerations
 
 In Kazoo versions prior to 3.19, notification templates were managed and processed by the `notify` application. In the newer Kazoo versions this has been replace by a robust and more featureful `teletype` application.
 
 All accounts will continue to be processed by the `notify` application until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding application in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` application to ignore processing and instructs the `teletype` application to process it instead. This allows administrators to run both `notify` and `teletype` concurrently without sending multiple copies of each notification.
 
-#### Notifications Schema
+## Notifications Schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -89,7 +89,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Summary of Available System Notifications
+## Summary of Available System Notifications
 
 Request to see what templates exist on the system to override.
 
@@ -101,7 +101,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -134,7 +134,7 @@ curl -v -X GET \
 }
 ```
 
-#### Summary of Account Overridden Notifications
+## Summary of Account Overridden Notifications
 
 To see what notification templates an account overrides. The key `account_overridden` will exist on any templates that are account-specific.
 
@@ -180,11 +180,12 @@ curl -v -X GET \
 }
 ```
 
-#### Create a New System Notification
+## Create a New System Notification
 
 Creates a new system notification template.
 
-> **Note:** Only a super duper admin can create/modify/delete system notifications!
+!!! note
+    Only a super duper admin can create/modify/delete system notifications!
 
 > PUT /v2/notifications
 
@@ -206,7 +207,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/notifications
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -234,11 +235,12 @@ curl -v -X PUT \
 }
 ```
 
-#### Create a Notification as Account Override
+## Create a Notification as Account Override
 
 Now that you've fetched the system default template, modify the template and PUT it back to the account.
 
-*This request will fail if `id` does not already exist in the system defaults.*
+!!! note
+    This request will fail if `id` does not already exist in the system defaults.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/notifications
 
@@ -260,7 +262,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
-##### Response
+**Responses**
 
 Same as `PUT` for system level, but with the `"account_overridden": true` flag added.
 
@@ -277,7 +279,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/notifications/{NOTIFICATION_ID}
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -306,7 +308,7 @@ curl -v -X GET \
 }
 ```
 
-#### Details of an Account Overridden Notification
+## Details of an Account Overridden Notification
 
 Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added.
 
@@ -318,7 +320,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-##### Response
+**Responses**
 
 Same as above with the `account_overridden` flag added.
 
@@ -328,7 +330,8 @@ Similar to the PUT, POST will update an existing configuration:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-> **Note:** Omit `/accounts/{ACCOUNT_ID}` to update the system's version. Only a super duper admin can create/modify/delete system notifications!
+!!! note
+    Omit `/accounts/{ACCOUNT_ID}` to update the system's version. Only a super duper admin can create/modify/delete system notifications!
 
 ```shell
 curl -v -X POST \
@@ -360,7 +363,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-#### Remove a Notification
+## Remove a Notification
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -372,13 +375,13 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-#### Get Notification Template:
+## Get Notification Template:
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
 When you perform a `GET` request to fetch a notification configuration (using `Accept: application/json` header or not setting `Accept` header at all), there is a `Content-Type` HTTP header in the response headers. Use those content types to fetch a specific template by setting your request `Accept` header:
 
-##### Get as `text/html`
+### Get as `text/html`
 
 ```shell
 curl -v -X GET \
@@ -387,7 +390,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-##### Get as `text/plain`
+### Get as `text/plain`
 
 ```shell
 curl -v -X GET \
@@ -396,15 +399,15 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent `Accept` MIME type, expect to receive a `406 Not Acceptable` error.
+Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a nonexistent `Accept` MIME type, expect to receive a `406 Not Acceptable` error.
 
 For clients that do not support setting the `Accept` header, a query string parameter can be included (e.g. `/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template).
 
-#### Update Notification Template:
+## Update Notification Template:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-##### Update `text/plain`
+### Update `text/plain`
 
 ```shell
 curl -v -X POST \
@@ -414,7 +417,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-##### Update `text/html`
+### Update `text/html`
 
 An Example using Curl Upload File:
 
@@ -426,9 +429,10 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-> **Note:** Omit `/accounts/{ACCOUNT_ID}` to update the system's version. Only a super duper admin can create/modify/delete system notifications!
+!!! note
+    Omit `/accounts/{ACCOUNT_ID}` to update the system's version. Only a super duper admin can create/modify/delete system notifications!
 
-#### Preview a new template
+## Preview a new template
 
 It can be helpful to preview the resulting email when modifying templates, but before actually saving the template.
 
@@ -453,7 +457,7 @@ curl -v -X POST \
 * `plain` is the plain-text template
 
 
-#### Remove All Account's Notification Customizations
+## Remove All Account's Notification Customizations
 
 To remove all notification customizations made on the account use a `DELETE` method with action `remove_customizations`.
 
@@ -518,7 +522,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Force All Account's Notifications to System Default
+## Force All Account's Notifications to System Default
 
 To remove all notification customizations made on the account and use the notification from system use a `PUT` method with action `force_system`.
 
@@ -531,7 +535,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -582,7 +586,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Get the notification(s) SMTP log
+## Get the Notifications SMTP Logs
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 
@@ -593,7 +597,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```
 
-#### Get a notification's SMTP log
+## Get a notification's SMTP log
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}
 
@@ -631,11 +635,11 @@ curl -v -X GET \
 }
 ```
 
-#### Customer update
+## Customer update
 
 You can use the special Customer Update notification to send a message to all reseller's children users or to a particular account's users.
 
-##### Send Message to All Reseller's Accounts:
+### Send Message to All Reseller's Accounts:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
 
@@ -647,7 +651,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{RESELLER_ACCOUNT_ID}/notifications/customer_update/message
 ```
 
-##### Send Message to a Particular Account:
+### Send Message to a Particular Account:
 
 ```shell
 curl -v -X POST \
@@ -657,7 +661,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{PARTICULAR_ACCOUNT_ID}/notifications/customer_update/message
 ```
 
-##### Send Message to Particular Users
+### Send Message to Particular Users
 
 You can send a message to all users, administrators only or a particular user within an account. Just add a `user_type` field to your payload:
 
@@ -667,7 +671,7 @@ You can send a message to all users, administrators only or a particular user wi
 {
   "data": {"user_type": "all_users"}
 }
-````
+```
 
 * **Particular user:**
 
@@ -677,7 +681,7 @@ You can send a message to all users, administrators only or a particular user wi
 {
   "data": {"user_type": "{USER_ID}"}
 }
-````
+```
 
 * **Admin privileged users only**
 
@@ -687,9 +691,9 @@ You can send a message to all users, administrators only or a particular user wi
 {
   "data": {"user_type": "admins_only"}
 }
-````
+```
 
-##### Specifying the Message
+### Specifying the Message
 
 For specifying the actual message (and the email subject) you want to send, provide HTML and plain text templates by uploading document:
 
@@ -755,7 +759,7 @@ For specifying the actual message (and the email subject) you want to send, prov
 }
 ```
 
-#### Send Message from your Kazoo Application
+### Send Message from your Kazoo Application
 
 To send an update to a customer from your Kazoo Application, you can build payload include your application data (`<<"DataBag">>` field) and send it over AMQP using predefined particular template (`<<"Template-ID">>` field) or your own hard coded templates (`<<"HTML">>` and `<<"Text">>` fields):
 

@@ -1,13 +1,12 @@
+# Multi-part Request
 
-### Crossbar Multi-part Request
+Some APIs support sending a multi part request, such as outgoing faxes.
 
-Some APIs support sending a multipart request, such as outgoing faxes.
+## Sending Multi-part Outgoing Faxes Request
 
-#### Outgoing Faxes
+With multi part you can create an outgoing fax request and upload the document to fax (e.g.: a PDF file) at the same time.
 
-With multipart you can create an outgoing fax request and upload the document to fax (eg: a pdf file) at the same time.
-
-##### Create a JSON file for the outgoing fax options
+**Create a JSON file for the outgoing fax options**
 
 ```json
 {
@@ -23,7 +22,7 @@ With multipart you can create an outgoing fax request and upload the document to
 }
 ```
 
-##### Execute the cURL request
+**Execute the cURL request**
 
 ```shell
 curl -v -X PUT -i \

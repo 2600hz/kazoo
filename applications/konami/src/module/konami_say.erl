@@ -29,8 +29,7 @@ handle(Data, Call) ->
                                                ,kz_json:get_value(<<"language">>, Data)
                                                ,Call
                                                ),
-    kapps_call_command:send_command(
-      kz_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
+    kapps_call_command:send_command(kz_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
                                    ,Call
-     ),
+                                   ),
     {'continue', Call}.

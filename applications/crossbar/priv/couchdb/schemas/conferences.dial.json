@@ -46,6 +46,10 @@
             },
             "type": "array"
         },
+        "profile_name": {
+            "description": "The profile name to use for configuration",
+            "type": "string"
+        },
         "target_call_id": {
             "description": "Existing UUID to use as a hint for where to start the conference",
             "type": "string"

@@ -6,29 +6,34 @@
         "allow_record_from_offnet": {
             "default": false,
             "description": "Determines if the record pin can be used by external calls",
+            "support_level": "supported",
             "type": "boolean"
         },
         "hunt": {
             "default": true,
             "description": "Determines if the callers can dial internal extensions directly",
+            "support_level": "supported",
             "type": "boolean"
         },
         "hunt_allow": {
             "description": "A regular expression that an extension the caller dialed must match to be allowed to continue",
             "maxLength": 256,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "hunt_deny": {
             "description": "A regular expression that if matched does not allow the caller to dial directly",
             "maxLength": 256,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "interdigit_timeout": {
             "description": "The amount of time (in milliseconds) to wait for the caller to press the next digit after pressing a digit",
             "maximum": 10000,
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         },
         "max_extension_length": {
@@ -36,6 +41,7 @@
             "description": "The maximum number of digits that can be collected",
             "maximum": 6,
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         },
         "media": {
@@ -46,6 +52,7 @@
                     "description": "When a call is transferred from the menu after all retries exhausted this media can be played (prior to transfer if enabled)",
                     "maxLength": 2048,
                     "minLength": 3,
+                    "support_level": "supported",
                     "type": [
                         "boolean",
                         "string"
@@ -55,12 +62,14 @@
                     "description": "The ID of a media object that should be used as the menu greeting",
                     "maxLength": 2048,
                     "minLength": 3,
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "invalid_media": {
-                    "description": "When the collected digits dont result in a match or hunt this media can be played",
+                    "description": "When the collected digits don't result in a match or hunt this media can be played",
                     "maxLength": 2048,
                     "minLength": 3,
+                    "support_level": "supported",
                     "type": [
                         "boolean",
                         "string"
@@ -70,24 +79,28 @@
                     "description": "When a call is transferred from the menu, either after all retries exhausted or a successful hunt, this media can be played",
                     "maxLength": 2048,
                     "minLength": 3,
+                    "support_level": "supported",
                     "type": [
                         "boolean",
                         "string"
                     ]
                 }
             },
+            "support_level": "supported",
             "type": "object"
         },
         "name": {
             "description": "A friendly name for the menu",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "record_pin": {
             "description": "The pin number used to record the menu prompt",
             "maxLength": 6,
             "minLength": 3,
+            "support_level": "supported",
             "type": "string"
         },
         "retries": {
@@ -95,12 +108,20 @@
             "description": "The number of times a menu should be played until a valid entry is collected",
             "maximum": 10,
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         },
+        "suppress_media": {
+            "default": false,
+            "description": "Determines if the playing of 'Invalid Entry' is suppressed.",
+            "support_level": "supported",
+            "type": "boolean"
+        },
         "timeout": {
-            "description": "The amount of time (in milliseconds) to wait for the caller to beging entering digits",
+            "description": "The amount of time (in milliseconds) to wait for the caller to begin entering digits",
             "maximum": 60000,
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         }
     },

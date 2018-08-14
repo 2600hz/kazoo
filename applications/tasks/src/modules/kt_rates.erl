@@ -5,12 +5,13 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_rates).
+
 %% behaviour: tasks_provider
 
 -export([init/0
         ,help/1, help/2, help/3
         ,output_header/1
-        ,cleanup/2
+        ,finish/2
         ]).
 
 %% Verifiers
@@ -34,6 +35,8 @@
 -define(RATES_VIEW, <<"rates/lookup">>).
 -define(BULK_LIMIT, 500).
 
+-define(DOLLAR_SIGN, 36). % = $\$ but makes fmt wonky atm
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -47,7 +50,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".direction">>, ?MODULE, 'direction'),
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".cleanup">>, ?MODULE, 'cleanup'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".finish">>, ?MODULE, 'finish'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 -spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
@@ -159,13 +162,13 @@ import(ExtraArgs, 'init', Args) ->
     end;
 import(_ExtraArgs, Dict, Args) ->
     Rate = generate_row(Args),
-    Db = kzd_ratedeck:format_ratedeck_db(kzd_rate:ratedeck(Rate, ?KZ_RATES_DB)),
+    Db = kzd_ratedeck:format_ratedeck_db(kzd_rates:ratedeck_id(Rate, ?KZ_RATES_DB)),
 
     BulkLimit = kz_datamgr:max_bulk_insert(),
 
     case dict:find(Db, Dict) of
         'error' ->
-            lager:debug("adding prefix ~s to ratedeck '~s'", [kzd_rate:prefix(Rate), Db]),
+            lager:debug("adding prefix ~p to ratedeck '~s'", [kzd_rates:prefix(Rate), Db]),
             {'ok', dict:store(Db, {1, [Rate]}, Dict)};
         {'ok', {BulkLimit, Rates}} ->
             lager:info("saving ~b rates to '~s'", [BulkLimit, Db]),
@@ -198,11 +201,11 @@ delete(ExtraArgs, 'init', Args) ->
             {<<"task execution is forbidden">>, 'stop'}
     end;
 delete(_ExtraArgs, State, Args) ->
-    Rate = kzd_rate:from_map(Args),
+    Rate = kzd_rates:from_map(Args),
 
     Limit = props:get_value('limit', State),
     Count = props:get_value('count', State) + 1,
-    P = kz_term:to_integer(kzd_rate:prefix(Rate)),
+    P = kzd_rates:prefix(Rate),
 
     %% override account-ID from task props
     Dict = dict:append(P, Rate, props:get_value('dict', State)),
@@ -228,12 +231,12 @@ delete(_ExtraArgs, State, Args) ->
             }
     end.
 
--spec cleanup(kz_term:ne_binary(), any()) -> any().
-cleanup(<<"import">>, Dict) ->
+-spec finish(kz_term:ne_binary(), any()) -> any().
+finish(<<"import">>, Dict) ->
     _Size = dict:size(Dict),
-    lager:debug("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
+    lager:info("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
     _ = dict:map(fun import_rates_into_ratedeck/2, Dict);
-cleanup(<<"delete">>, State) ->
+finish(<<"delete">>, State) ->
     Db = props:get_value('db', State),
     Keys = props:get_value('keys', State),
     Dict = props:get_value('dict', State),
@@ -241,7 +244,7 @@ cleanup(<<"delete">>, State) ->
     kz_datamgr:enable_change_notice(),
     kzs_publish:publish_db(Db, <<"edited">>).
 
--spec import_rates_into_ratedeck(kz_term:ne_binary(), {non_neg_integer(), kz_json:objects()}) -> 'ok'.
+-spec import_rates_into_ratedeck(kz_term:ne_binary(), {non_neg_integer(), kz_json:objects()}) -> 'true'.
 import_rates_into_ratedeck(Ratedeck, {0, []}) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     kz_datamgr:enable_change_notice(),
@@ -286,7 +289,7 @@ is_allowed(ExtraArgs) ->
     AccountId = maps:get('account_id', ExtraArgs),
     {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
     {'ok', AuthAccountDoc} = kzd_accounts:fetch(AuthAccountId),
-    kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+    kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
     %% Serve request for reseller rates
         andalso kzd_accounts:is_reseller(AccountDoc)
     %% or serve requests from SuperAdmin
@@ -302,20 +305,34 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [kz_json:get_binary_value(Key, Doc) || Key <- ?DOC_FIELDS].
 
--spec generate_row(kz_tasks:args()) -> kzd_rate:doc().
+-spec maybe_override_rate(kz_tasks:args()) -> kzd_rates:doc().
+maybe_override_rate(Args) ->
+    RateJObj = kzd_rates:from_map(Args),
+    Id = kz_doc:id(RateJObj),
+    Db = kzd_ratedeck:format_ratedeck_db(kzd_rates:ratedeck_id(RateJObj, ?KZ_RATES_DB)),
+
+    case kz_datamgr:open_cache_doc(Db, Id) of
+        {'ok', ExistingJObj} ->
+            lager:debug("updating existing rate ~s(~s) in ~s", [Id, kz_doc:revision(ExistingJObj), Db]),
+            kz_json:merge(ExistingJObj, RateJObj);
+        {'error', 'not_found'} -> RateJObj
+    end.
+
+-spec generate_row(kz_tasks:args()) -> kzd_rates:doc().
 generate_row(Args) ->
-    RateJObj = kzd_rate:from_map(Args),
-    Prefix = kzd_rate:prefix(RateJObj),
+    RateJObj = maybe_override_rate(Args),
+    Prefix = kz_term:to_binary(kzd_rates:prefix(RateJObj)),
     lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
 
     Update = props:filter_undefined(
-               [{fun kzd_rate:set_name/2, maybe_generate_name(RateJObj)}
-               ,{fun kzd_rate:set_weight/2, maybe_generate_weight(RateJObj)}
-               ,{fun kzd_rate:set_routes/2, [<<"^\\+?", Prefix/binary, ".+$">>]}
-               ]),
-    kz_json:set_values(Update, RateJObj).
+               [{fun kzd_rates:set_rate_name/2, maybe_generate_name(RateJObj)}
+               ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
+               ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
+               ]
+              ),
+    kz_json:set_values(Update, kzd_rates:set_default_route(RateJObj)).
 
--spec save_rates(kz_term:ne_binary(), kzd_rate:docs()) -> 'ok'.
+-spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 save_rates(Db, Rates) ->
     case kz_datamgr:save_docs(Db, Rates) of
         {'ok', _Result} ->
@@ -395,19 +412,21 @@ maybe_delete_rate(JObj, Dict) ->
 maybe_default(0, Default) -> Default;
 maybe_default(Value, _Default) -> Value.
 
--spec maybe_generate_name(kzd_rate:doc()) -> kz_term:ne_binary().
+-spec maybe_generate_name(kzd_rates:doc()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj) ->
-    maybe_generate_name(RateJObj, kzd_rate:name(RateJObj)).
+    maybe_generate_name(RateJObj, kzd_rates:rate_name(RateJObj)).
 
--spec maybe_generate_name(kzd_rate:doc(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
+-spec maybe_generate_name(kzd_rates:doc(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj, 'undefined') ->
-    generate_name(kzd_rate:prefix(RateJObj)
-                 ,kzd_rate:iso_country_code(RateJObj)
-                 ,kzd_rate:direction(RateJObj, [])
+    generate_name(kzd_rates:prefix(RateJObj)
+                 ,kzd_rates:iso_country_code(RateJObj)
+                 ,kzd_rates:direction(RateJObj, [])
                  );
 maybe_generate_name(_RateJObj, Name) -> Name.
 
--spec generate_name(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
+-spec generate_name(kz_term:ne_binary() | pos_integer(), kz_term:api_ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
+generate_name(Prefix, ISO, Directions) when is_integer(Prefix) ->
+    generate_name(kz_term:to_binary(Prefix), ISO, Directions);
 generate_name(Prefix, 'undefined', []) when is_binary(Prefix) ->
     Prefix;
 generate_name(Prefix, ISO, []) ->
@@ -419,23 +438,37 @@ generate_name(Prefix, ISO, Directions) ->
     Direction = kz_binary:join(Directions, <<"_">>),
     <<Direction/binary, "_", ISO/binary, "_", Prefix/binary>>.
 
--spec maybe_generate_weight(kzd_rate:doc()) -> integer().
+-spec maybe_generate_weight(kzd_rates:doc()) -> integer().
 maybe_generate_weight(RateJObj) ->
-    maybe_generate_weight(RateJObj, kzd_rate:weight(RateJObj, 'undefined')).
+    maybe_generate_weight(RateJObj, kzd_rates:weight(RateJObj, 'undefined')).
 
--spec maybe_generate_weight(kzd_rate:doc(), kz_term:api_integer()) -> integer().
+-spec maybe_generate_weight(kzd_rates:doc(), kz_term:api_integer()) -> integer().
 maybe_generate_weight(RateJObj, 'undefined') ->
-    generate_weight(kzd_rate:prefix(RateJObj)
-                   ,kzd_rate:rate_cost(RateJObj)
-                   ,kzd_rate:private_cost(RateJObj)
+    generate_weight(kzd_rates:prefix(RateJObj)
+                   ,kzd_rates:rate_cost(RateJObj)
+                   ,kzd_rates:private_cost(RateJObj)
                    );
-maybe_generate_weight(_RateJObj, Weight) -> kzd_rate:constrain_weight(Weight).
+maybe_generate_weight(_RateJObj, Weight) -> kzd_rates:constrain_weight(Weight).
 
--spec generate_weight(kz_term:ne_binary(), kz_transaction:units(), kz_transaction:units()) ->
-                             kzd_rate:weight_range().
+-spec generate_weight(kz_term:ne_binary() | pos_integer(), kz_transaction:units(), kz_transaction:units()) ->
+                             kzd_rates:weight_range().
+generate_weight(Prefix, UnitCost, UnitIntCost) when is_integer(Prefix) ->
+    generate_weight(kz_term:to_binary(Prefix), UnitCost, UnitIntCost);
 generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
     UnitCostToUse = maybe_default(UnitIntCost, UnitCost),
     CostToUse = wht_util:units_to_dollars(UnitCostToUse),
 
     Weight = (byte_size(Prefix) * 10) - trunc(CostToUse * 100),
-    kzd_rate:constrain_weight(Weight).
+    kzd_rates:constrain_weight(Weight).
+
+-spec maybe_generate_caller_id_numbers(kzd_rates:doc()) -> kz_term:ne_binaries()|'undefined'.
+maybe_generate_caller_id_numbers(RateJObj) ->
+    maybe_generate_caller_id_numbers(RateJObj, kz_json:get_value(<<"caller_id_numbers">>, RateJObj)).
+
+-spec maybe_generate_caller_id_numbers(kzd_rates:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
+maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Numbers) ->
+    lists:map(fun(X) -> <<"^\\+?", X/binary, ".+", ?DOLLAR_SIGN>> end
+             ,binary:split(CID_Numbers, <<":">>, ['global'])
+             );
+maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
+    'undefined'.

@@ -1,8 +1,10 @@
-### Ledgers
+# Ledgers
 
-#### About Ledgers
+## About Ledgers
 
-#### Ledgers Schema
+The Ledgers API provides an easy way to see usage like per-minutes or flat-rate and manage your account's credit/debit values.
+
+## Ledgers Schema
 
 ledgers document
 
@@ -25,7 +27,7 @@ Key | Description | Type | Default | Required
 `usage.unit` | Usage unit | `string()` |   | `true`
 `usage` | Usage for ledger | `object()` |   | `true`
 
-#### Get Available Ledgers
+## Get Available Ledgers
 
 List available ledger sources from the account's reseller.
 
@@ -57,7 +59,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers
 
@@ -96,7 +98,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get Ledger values
+## Get Ledger values
 
 List ledger values for an account with paging and filtering support
 
@@ -141,7 +143,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get Ledger document
+## Get Ledger document
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}
 
@@ -181,7 +183,7 @@ curl -v -X GET \
 }
 ```
 
-#### Credit / Debit
+## Credit / Debit
 
 Credit or Debit a specific ledger.
 the `account_id` for `AUTH_TOKEN` must be reseller of target account.

@@ -1,0 +1,5 @@
+.deps.mk
+*.beam
+*.app
+
+/priv/couchdb/schemas/port_requests.to_scheduled.json

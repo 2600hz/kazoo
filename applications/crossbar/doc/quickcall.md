@@ -1,8 +1,32 @@
-### Quickcall
+# Quickcall
 
-#### About Quickcall
+## About Quickcall
 
-#### Schema
+Quickcall allows you to create legs between endpoints (user, device, ...).
+
+### Target Call ID
+
+If you know ahead of time that this new quickcall leg will be interacting with an existing call leg, you can supply the existing call-id to the API call to ensure the new leg will be created on the same media server as the existing call leg.
+
+### Endpoints supported
+
+Supported endpoints for quickcalls:
+
+ Endpoint Type | Endpoint Id
+ ------------- | -----------
+ `users`       | `{USER_ID}`
+ `devices`     | `{DEVICE_ID}`
+
+### Custom Application Vars
+
+CAVs allow you to set custom data that will appear on subsequent call events (found in [Webhook](./webhooks.md) and [Websocket](./websockets.md) payloads) as well as the final CDR.
+
+You can specify CAVs in two way:
+
+* As query-string parameters: `/quickcall/{NUMBER}?foo=bar`
+* As POST body: `{"data":{"custom_application_vars":{"foo":"bar"}}}`
+
+## Schema
 
 Request options (query string in a GET or POST body):
 
@@ -18,19 +42,7 @@ Key | Type | Description
 `target_call_id` | `string()` | An existing call-id used to determine what media server to create the quickcall leg on
 `timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
 
-##### Target Call ID
-
-If you know ahead of time that this new quickcall leg will be interacting with an existing call leg, you can supply the existing call-id to the API call to ensure the new leg will be created on the same media server as the existing call leg.
-
-##### Custom Application Vars
-
-CAVs allow you to set custom data that will appear on subsequent call events (found in webhook and websocket payloads) as well as the final CDR.
-
-As query-string parameters: `/quickcall/{NUMBER}?foo=bar`
-
-As POST body: `{"data":{"custom_application_vars":{"foo":"bar"}}}`
-
-#### Non-blocking Quickcall
+## Non-blocking Quickcall
 
 This returns a 202 immediately. The drawback is that if no endpoints are found to originate to, there will be no channel events generated to let an external application know the quickcall failed.
 
@@ -42,7 +54,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/{ENDPOINTS}/{ENDPOINT_ID}/quickcall/{NUMBER}
 ```
 
-#### Blocking Quickcall
+## Blocking Quickcall
 
 This will return a 202 if the quickcall successfully originates (meaning a channel is started). It will return errors if the originate fails to start a channel or if there aren't any endpoints available.
 
@@ -54,16 +66,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/{ENDPOINTS}/{ENDPOINT_ID}/quickcall/{NUMBER}
 ```
 
-#### Endpoints supported
-
-Supported endpoints for quickcalls:
-
- Endpoint Type | Endpoint Id
- ------------- | -----------
- `users`       | `{USER_ID}`
- `devices`     | `{DEVICE_ID}`
-
-#### Execute a quick call for a device
+## Execute a quick call for a device
 
 Ring the device; once answered, connect to `{PHONE_NUMBER}`
 
@@ -141,7 +144,7 @@ curl -v -X GET \
 }
 ```
 
-#### Execute a quick call for a user
+## Execute a quick call for a user
 
 Ring user's devices; once answered, connect to `{PHONE_NUMBER}`
 
@@ -219,7 +222,7 @@ curl -v -X GET \
 }
 ```
 
-### Failing Requests
+## Failing Requests
 
 If issued with a `GET` to an unregistered device (or a user with no available devices), quickcall will return the call setup information immediately but no channel events will be generated (no events for webhooks/websockets). This can lead external apps to not know if the quickcall was originated properly or not.
 

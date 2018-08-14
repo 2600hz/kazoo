@@ -1,0 +1,32 @@
+{
+    "_id": "_design/att_handlers_errors",
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'attachment_handler_error' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_created, {",
+                "    'id': doc._id,",
+                "    'attachment_name': doc.attachment_name,",
+                "    'resp_code': doc.resp_code,",
+                "    'reason': doc.reason",
+                "  });",
+                "}"
+            ]
+        },
+        "list_by_handler": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'attachment_handler_error' || doc.pvt_deleted || !doc.handler_id) return;",
+                "  emit([doc.handler_id, doc.pvt_created], {",
+                "    'id': doc._id,",
+                "    'attachment_name': doc.attachment_name,",
+                "    'resp_code': doc.resp_code,",
+                "    'reason': doc.reason",
+                "  });",
+                "}"
+            ]
+        }
+    }
+}

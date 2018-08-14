@@ -62,7 +62,11 @@ default_provider() ->
 -spec default_provider(kapps_call:call()) -> kz_term:ne_binary().
 default_provider(Call) ->
     Default = default_provider(),
-    kapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, Default).
+    kapps_account_config:get_global(kapps_call:account_id(Call)
+                                   ,?MOD_CONFIG_CAT
+                                   ,<<"tts_provider">>
+                                   ,Default
+                                   ).
 
 -spec set_default_provider(kz_term:ne_binary()) -> 'ok'.
 set_default_provider(Provider) ->

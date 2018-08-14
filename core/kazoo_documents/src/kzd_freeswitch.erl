@@ -419,7 +419,7 @@ to_tag(Props) ->
 
 -spec origination_call_id(data()) -> kz_term:api_binary().
 origination_call_id(Props) ->
-    props:get_value(<<"variable_sip_origination_call_id">>, Props).
+    props:get_value(<<"variable_sip_origination_call_uuid">>, Props).
 
 -spec conference_name(data()) -> kz_term:api_ne_binary().
 conference_name(Props) ->

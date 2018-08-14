@@ -53,7 +53,11 @@ create_account(API, NewAccountName) ->
 
 -spec allow_number_additions(kz_term:ne_binary()) -> {'ok', kzd_accounts:doc()}.
 allow_number_additions(AccountId) ->
-    {'ok', _Account} = kz_util:set_allow_number_additions(AccountId, 'true').
+    {'ok', _Account} = kzd_accounts:save(AccountId
+                                        ,fun(J) ->
+                                                 kzd_accounts:set_allow_number_additions(J, 'true')
+                                         end
+                                        ).
 
 -spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> binary().
 delete_account(API, AccountId) ->
@@ -73,28 +77,28 @@ cleanup_accounts(API, AccountNames) ->
 
 -spec cleanup_account(pqc_cb_api:state(), kz_term:ne_binary()) -> 'ok'.
 cleanup_account(API, AccountName) ->
-    _ = try pqc_cb_search:search_account_by_name(API, AccountName) of
-            ?FAILED_RESPONSE ->
-                ?INFO("failed to search for account by name ~s~n", [AccountName]);
-            APIResp ->
-                Data = pqc_cb_response:data(APIResp),
-                case kz_json:get_ne_binary_value([1, <<"id">>], Data) of
-                    'undefined' ->
-                        check_accounts_db(AccountName);
-                    AccountId -> delete_account(API, AccountId)
-                end
-        catch
-            'throw':{'error', 'socket_closed_remotely'} ->
-                ?ERROR("broke the SUT cleaning up account ~s (~p)~n", [AccountName, API])
-        end,
+    _Attempt = try pqc_cb_search:search_account_by_name(API, AccountName) of
+                   ?FAILED_RESPONSE ->
+                       ?ERROR("failed to search for account by name ~s~n", [AccountName]);
+                   APIResp ->
+                       Data = pqc_cb_response:data(APIResp),
+                       case kz_json:get_ne_binary_value([1, <<"id">>], Data) of
+                           'undefined' ->
+                               check_accounts_db(AccountName);
+                           AccountId -> delete_account(API, AccountId)
+                       end
+               catch
+                   'throw':{'error', 'socket_closed_remotely'} ->
+                       ?ERROR("broke the SUT cleaning up account ~s (~p)~n", [AccountName, API])
+               end,
     timer:sleep(1000).% was needed to stop overwhelming the socket, at least locally
 
 check_accounts_db(Name) ->
-    AccountName = kz_util:normalize_account_name(Name),
+    AccountName = kzd_accounts:normalize_name(Name),
     ViewOptions = [{'key', AccountName}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_name">>, ViewOptions) of
         {'ok', []} -> 'ok';
-        {'error', _} -> 'ok';
+        {'error', _E} -> ?ERROR("failed to list by name: ~p", [_E]);
         {'ok', JObjs} ->
             ?INFO("deleting from ~s: ~p~n", [?KZ_ACCOUNTS_DB, JObjs]),
             kz_datamgr:del_docs(?KZ_ACCOUNTS_DB, JObjs)

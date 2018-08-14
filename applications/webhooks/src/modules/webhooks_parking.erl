@@ -46,7 +46,8 @@ bindings_and_responders() ->
     ,[{{?MODULE, 'handle'}
       ,[{<<"call_event">>, <<"PARK_PARKED">>}
        ,{<<"call_event">>, <<"PARK_RETRIEVED">>}
-       ,{<<"call_event">>, <<"PARK_ABANDONED">>}]
+       ,{<<"call_event">>, <<"PARK_ABANDONED">>}
+       ]
       }
      ]
     }.
@@ -89,4 +90,3 @@ format(JObj) ->
                  ,<<"Custom-Channel-Vars">>
                  ],
     kz_json:normalize_jobj(JObj1, RemoveKeys, []).
-

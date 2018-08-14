@@ -26,7 +26,7 @@ reconcile(Services) ->
                   ],
     case kz_datamgr:get_results(AccountDb, <<"services/opaque_billing">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("unable to get current opaque billing quantites: ~p", [_R]),
+            lager:debug("unable to get current opaque billing quantities: ~p", [_R]),
             Services;
         {'ok', []} -> kz_services:reset_category(?SERVICE_CATEGORY, Services);
         {'ok', JObjs} ->

@@ -1,6 +1,6 @@
-### Cdrs
+# Cdrs
 
-#### About Cdrs
+## About Cdrs
 
 #### Schema
 
@@ -51,12 +51,12 @@ Key | Description | Type | Default | Required | Support Level
 `remote_sdp` | The SDP negotiated by the remote agent | `string()` |   | `false` |  
 `request` | Built by Kazoo this is the processed request URI | `string()` |   | `false` |  
 `ringing_seconds` | How many seconds the leg was ringing (pre-answer) | `string()` |   | `false` |  
-`timestamp` | UTC timestamp, in gregorian seconds, of when the CDR was generated | `string()` |   | `false` |  
+`timestamp` | UTC timestamp, in Gregorian seconds, of when the CDR was generated | `string()` |   | `false` |  
 `to` | Built by Kazoo, depending on direction, to represent the To user | `string()` |   | `false` |  
 `to_uri` | The To SIP URI | `string()` |   | `false` |  
 `user_agent` | User agent header from SIP packet | `string()` |   | `false` |  
 
-##### custom_sip_headers
+### custom_sip_headers
 
 Custom SIP headers applied to an INVITE
 
@@ -67,7 +67,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
@@ -77,7 +77,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
 
@@ -87,7 +87,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/summary
 
@@ -97,7 +97,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/summary
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/interaction
 
@@ -107,7 +107,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/interaction
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}
 

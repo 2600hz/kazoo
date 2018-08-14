@@ -6,7 +6,7 @@ Most of the time, calls end in a handful of expected ways that are considered 'n
 
 Just as most computers show you metrics related to CPU usage over time (one, five and fifteen minutes typically), the hangups app tracks hangup causes and gives you the tools to send alerts when thresholds are exceeded.
 
-For instance, a common sign that an upstream carrier is having issues with their network is an increase in `PROGRESS_TIMEOUT` hangup causes when sending calls to the carrier. When the INVITE goes to the carrier, Kazoo waits a certain amount of time (8 seconds by default) to hear back a "progress" SIP message (180, 183, or 200 typically). If the carrier fails to respond in time, the leg is hungup with `PROGRESS_TIMEOUT` and the cause, and the next carrier (if any) is tried. If you set the threshold for `PROGRESS_TIMEOUT` to `0.5` for the `one` minute metric, you will receive alerts when the number of calls terminating with `PRGORESS_TIMEOUT` increase to the point that the threshold is tripped.
+For instance, a common sign that an upstream carrier is having issues with their network is an increase in `PROGRESS_TIMEOUT` hangup causes when sending calls to the carrier. When the INVITE goes to the carrier, Kazoo waits a certain amount of time (8 seconds by default) to hear back a "progress" SIP message (180, 183, or 200 typically). If the carrier fails to respond in time, the leg is hung up with `PROGRESS_TIMEOUT` and the cause, and the next carrier (if any) is tried. If you set the threshold for `PROGRESS_TIMEOUT` to `0.5` for the `one` minute metric, you will receive alerts when the number of calls terminating with `PROGRESS_TIMEOUT` increase to the point that the threshold is tripped.
 
 Other hangup causes can imply other failure scenarios worth investigating. The table below offers some suggestions for interpreting the hangup cause.
 
@@ -31,7 +31,7 @@ Update `ignore_hangup_causes` with additional hangup causes you'd like to *not* 
 
 ### Setting the load average
 
-Load averages help tell you when something is occuring regularly. But how to know what thresholds should cause alerting? There are many articles that talk about this. [One article](http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages) uses a bridge metaphor that can be helpful. The truth is you'll need to play with these as you go, since as your volume of calls increase, the thresholds at which you reach "hair is on fire" severity will change. In CPU load terms, 1.0 is high when you have a single CPU but is nothing when you have a 24-core server.
+Load averages help tell you when something is occurring regularly. But how to know what thresholds should cause alerting? There are many articles that talk about this. [One article](http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages) uses a bridge metaphor that can be helpful. The truth is you'll need to play with these as you go, since as your volume of calls increase, the thresholds at which you reach "hair is on fire" severity will change. In CPU load terms, 1.0 is high when you have a single CPU but is nothing when you have a 24-core server.
 
 `{LOAD_AVG}` should be the number above which alerting should start (0.0 will disable alerting for that metric).
 

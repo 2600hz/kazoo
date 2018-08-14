@@ -9,6 +9,7 @@ pages:
     - 'applications/crossbar/doc/multipart.md'
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md'
+    - 'applications/crossbar/doc/how_to_authenticate.md'
   - 'Authentication':
     - 'applications/crossbar/doc/api_authentication.md'
     - 'applications/crossbar/doc/auth.md'
@@ -201,6 +202,7 @@ pages:
     - 'Conference': 'applications/callflow/doc/conference.md'
     - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
     - 'Webhooks': 'applications/callflow/doc/webhooks.md'
+    - 'EDR Event': 'applications/callflow/doc/edr.md'
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
     - 'Preflows': 'applications/callflow/doc/preflow.md'
     - 'Resources': 'applications/callflow/doc/resources.md'
@@ -228,6 +230,7 @@ pages:
     - 'Set Call Variable(s)':
         - 'applications/callflow/doc/set_variable.md'
         - 'applications/callflow/doc/set_variables.md'
+    - 'Set Alert-Info': 'applications/callflow/doc/set_alert_info.md'
     - 'Intercept':
         - 'Action': 'applications/callflow/doc/intercept.md'
         - 'Feature Code': 'applications/callflow/doc/intercept_feature.md'
@@ -242,6 +245,7 @@ pages:
         - 'Agents': 'applications/callflow/doc/acdc_agent.md'
         - 'Queue Login': 'applications/callflow/doc/acdc_queue.md'
         - 'Member Entry': 'applications/callflow/doc/acdc_member.md'
+        - 'Average Wait Time': 'applications/callflow/doc/acdc_wait_time.md'
     - 'Menu (IVR)': 'applications/callflow/doc/menu.md'
     - 'Custom Webhook': 'applications/callflow/doc/webhook.md'
     - 'Channel Move': 'applications/callflow/doc/move.md'
@@ -276,11 +280,9 @@ pages:
     - 'applications/ecallmgr/doc/config.md'
   - 'Fax':
     - 'applications/fax/doc/README.md'
+    - 'Virtual Fax Machine (FaxBox)': 'applications/fax/doc/faxbox.md'
     - 'Postfix Settings': 'applications/fax/doc/postfix.md'
-    - 'SMTP Settings': 'applications/fax/doc/smtp.md'
     - 'HAProxy Settings': 'applications/fax/doc/haproxy.md'
-    - 'DNS Settings': 'applications/fax/doc/dns.md'
-    - 'Google Cloud Printer': 'applications/fax/doc/gcp.md'
     - 'Internet Fax for Office 2010': 'applications/fax/doc/user.md'
   - 'Frontier':
     - 'applications/frontier/doc/README.md'
@@ -348,6 +350,9 @@ pages:
   - 'Trunkstore':
     - 'applications/trunkstore/doc/README.md'
 - 'Core':
+  - 'Kazoo Caches':
+      - 'core/kazoo_caches/doc/README.md'
+      - 'Caching Strategy Load Tests': 'core/kazoo_data/doc/loadtest.md'
   - 'Kazoo Endpoints':
     - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
     - 'CallerID Privacy': 'core/kazoo_endpoint/doc/privacy-cid.md'
@@ -356,6 +361,9 @@ pages:
     - 'core/kazoo_ips/doc/maintenance.md'
   - 'Kazoo Media':
     - 'core/kazoo_media/doc/README.md'
+  - 'Kazoo Convert':
+    - 'core/kazoo_convert/doc/README.md'
+    - 'core/kazoo_convert/doc/fax_converter.md'
   - 'Kazoo Apps':
     - 'core/kazoo_apps/doc/README.md'
     - 'core/kazoo_apps/doc/kapps_notify_publisher.md'
@@ -397,6 +405,7 @@ pages:
   - 'Kazoo Speech':
       - 'core/kazoo_speech/doc/README.md'
       - 'core/kazoo_speech/doc/ispeech.md'
+      - 'core/kazoo_speech/doc/google.md'
   - 'Kazoo MODB':
     - 'core/kazoo_modb/doc/README.md'
   - 'Kazoo CouchDB':
@@ -438,10 +447,13 @@ pages:
 - 'Engineering':
   - 'Announcements': 'doc/announcements.md'
   - 'Install/Build Kazoo': 'doc/installation.md'
+  - 'The Makefile': 'doc/engineering/make.md'
+  - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
   - 'Call Recording': 'doc/engineering/call_recording.md'
   - 'Caller ID Formatting': 'doc/reference/caller_id_formatting.md'
   - 'Documentation':
     - 'How to write docs': 'doc/engineering/documentation.md'
+    - 'How to Write Erlang Documentation': 'doc/engineering/erlang-documentation.md'
     - 'Sample API reference doc': 'doc/engineering/things.md'
   - 'Erlang Releases': 'doc/engineering/releases.md'
   - 'Erlang VM Tracing': 'doc/engineering/tracing.md'
@@ -450,6 +462,25 @@ pages:
   - 'Loopback Channels': 'doc/engineering/loopback.md'
   - 'Kazoo Scripts': 'scripts/README.md'
   - 'Running Dev Shells': 'scripts/dev/README.md'
+  - 'Testing': 'doc/engineering/testing.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
   - 'Webhooks': 'doc/engineering/webhooks.md'
   - 'Attachments': 'core/kazoo_attachments/README.md'
+  - 'Attachment Handlers Errors': 'applications/crossbar/doc/att_handlers_errors.md'
+- 'App Exchange':
+  - 'doc/appexchange/style_guide.md'
+  - 'doc/appexchange/planning.md'
+  - 'doc/appexchange/getting_started.md'
+  - 'doc/appexchange/intro.md'
+  - 'doc/appexchange/sell_faq.md'
+  - 'doc/appexchange/build_faq.md'
+  - 'doc/appexchange/pricing.md'
+  - 'doc/appexchange/support.md'
+  - 'doc/appexchange/how_to_sell.md'
+  - 'doc/appexchange/submit_app.md'
+  - 'doc/appexchange/guidelines.md'
+  - 'doc/appexchange/financial_terms.md'
+  - 'doc/appexchange/payments.md'
+  - 'doc/appexchange/approval_process.md'
+  - 'doc/appexchange/whitelabeling.md'
+  - 'doc/appexchange/list_faq.md'

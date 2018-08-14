@@ -14,28 +14,46 @@
 
 -include("blackhole.hrl").
 
+-define(ACCOUNT_STATUS(AccountId, FaxId)
+       ,<<"fax.status.", AccountId/binary, ".", FaxId/binary>>
+       ).
+-define(STATUS(FaxId)
+       ,<<"fax.status.", FaxId/binary>>
+       ).
+
+-define(OBJECT(Action)
+       ,<<"fax.object.", Action/binary>>
+       ).
+
 -spec init() -> any().
 init() ->
+    init_bindings(),
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.fax">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.fax">>, ?MODULE, 'bindings').
 
+init_bindings() ->
+    Bindings = [?STATUS(<<"{FAX_ID}">>)
+               ,?OBJECT(<<"{ACTION}">>)
+               ],
+    case kapps_config:set_default(?CONFIG_CAT, [<<"bindings">>, <<"fax">>], Bindings) of
+        {'ok', _} -> lager:debug("initialized fax bindings");
+        {'error', _E} -> lager:info("failed to initialize fax bindings: ~p", [_E])
+    end.
+
 -spec validate(bh_context:context(), map()) -> bh_context:context().
-validate(Context, #{keys := [<<"status">>, _]
-                   }) ->
+validate(Context, #{keys := [<<"status">>, _]}) ->
     Context;
-validate(Context, #{keys := [<<"object">>, _]
-                   }) ->
+validate(Context, #{keys := [<<"object">>, _]}) ->
     Context;
 validate(Context, #{keys := Keys}) ->
-    bh_context:add_error(Context, <<"invalid format for object subscription : ", (kz_binary:join(Keys))/binary>>).
-
+    bh_context:add_error(Context, <<"invalid format for fax subscription : ", (kz_binary:join(Keys))/binary>>).
 
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{account_id := AccountId
                     ,keys := [<<"status">>, FaxId]
                     }=Map) ->
-    Requested = <<"fax.status.", FaxId/binary>>,
-    Subscribed = [<<"fax.status.", AccountId/binary, ".", FaxId/binary>>],
+    Requested = ?STATUS(FaxId),
+    Subscribed = [?ACCOUNT_STATUS(AccountId, FaxId)],
     Listeners = [{'amqp', 'fax', fax_status_bind_options(AccountId, FaxId)}],
     Map#{requested => Requested
         ,subscribed => Subscribed
@@ -45,7 +63,7 @@ bindings(_Context, #{account_id := AccountId
                     ,keys := [<<"object">>, Action]
                     }=Map) ->
     MODB = kazoo_modb:get_modb(AccountId),
-    Requested = <<"fax.object.", Action/binary>>,
+    Requested = ?OBJECT(Action),
     Subscribed = [<<Action/binary, ".", MODB/binary, ".fax.*">>],
     Listeners = [{'amqp', 'conf', fax_object_bind_options(MODB, Action)}],
     Map#{requested => Requested

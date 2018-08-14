@@ -4,11 +4,13 @@
 -define(KEY_RATING_REQ, <<"call.rating">>).
 
 %% Call Events
--define(CALL_EVENT_ROUTING_KEY(Event, CallId), <<"call."
-                                                 ,(kz_term:to_binary(Event))/binary
-                                                 ,"."
-                                                 ,(amqp_util:encode(CallId))/binary
-                                               >>).
+-define(CALL_EVENT_ROUTING_KEY(Event, CallId)
+       ,list_to_binary(["call."
+                       ,kz_term:to_binary(Event)
+                       ,"."
+                       ,kz_amqp_util:encode(CallId)
+                       ])
+       ).
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS
        ,[<<"Application-Data">>

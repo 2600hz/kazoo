@@ -5,35 +5,41 @@
     "properties": {
         "attempts": {
             "default": 0,
-            "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+            "description": "The number of attempts made, this will be set by the system and reset automatically on put/post",
             "maximum": 4,
             "minimum": 0,
             "type": "integer"
         },
         "caller_id": {
             "description": "The Caller-ID-Number",
+            "support_level": "supported",
             "type": "string"
         },
         "caller_name": {
             "default": "Kazoo Fax Printer",
             "description": "The Caller-ID-Name",
+            "support_level": "supported",
             "type": "string"
         },
         "custom_smtp_email_address": {
             "description": "custom smtp address",
+            "support_level": "supported",
             "type": "string"
         },
         "fax_header": {
             "default": "Kazoo Fax Printer",
             "description": "The name printed at the top of the fax",
+            "support_level": "supported",
             "type": "string"
         },
         "fax_identity": {
             "description": "The number printed at the top of the fax",
+            "support_level": "supported",
             "type": "string"
         },
         "fax_timezone": {
             "description": "The timezone announced",
+            "support_level": "supported",
             "type": "string"
         },
         "media": {
@@ -42,15 +48,18 @@
             "properties": {
                 "fax_option": {
                     "description": "Is T.38 Supported?",
+                    "support_level": "beta",
                     "type": "boolean"
                 }
             },
+            "support_level": "beta",
             "type": "object"
         },
         "name": {
             "description": "A friendly name for the faxbox",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "notifications": {
@@ -84,13 +93,14 @@
                                     "type": "string"
                                 }
                             },
+                            "support_level": "beta",
                             "type": "object"
                         },
                         "email": {
                             "description": "Inbound Email Notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -102,13 +112,14 @@
                                     ]
                                 }
                             },
+                            "support_level": "supported",
                             "type": "object"
                         },
                         "sms": {
                             "description": "SMS notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of sms recipent(s)",
+                                    "description": "A list or string of sms recipient(s)",
                                     "items": {
                                         "type": "string"
                                     },
@@ -118,9 +129,11 @@
                                     ]
                                 }
                             },
+                            "support_level": "beta",
                             "type": "object"
                         }
                     },
+                    "support_level": "supported",
                     "type": "object"
                 },
                 "outbound": {
@@ -151,13 +164,14 @@
                                     "type": "string"
                                 }
                             },
+                            "support_level": "beta",
                             "type": "object"
                         },
                         "email": {
                             "description": "Email notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of email recipent(s)",
+                                    "description": "A list or string of email recipient(s)",
                                     "format": "email",
                                     "items": {
                                         "format": "email",
@@ -169,13 +183,14 @@
                                     ]
                                 }
                             },
+                            "support_level": "supported",
                             "type": "object"
                         },
                         "sms": {
                             "description": "SMS notifications",
                             "properties": {
                                 "send_to": {
-                                    "description": "A list or string of sms recipent(s)",
+                                    "description": "A list or string of sms recipient(s)",
                                     "items": {
                                         "type": "string"
                                     },
@@ -185,12 +200,15 @@
                                     ]
                                 }
                             },
+                            "support_level": "beta",
                             "type": "object"
                         }
                     },
+                    "support_level": "supported",
                     "type": "object"
                 }
             },
+            "support_level": "supported",
             "type": "object"
         },
         "retries": {
@@ -198,6 +216,7 @@
             "description": "The number of times to retry",
             "maximum": 4,
             "minimum": 0,
+            "support_level": "supported",
             "type": "integer"
         },
         "smtp_permission_list": {
@@ -206,6 +225,7 @@
             "items": {
                 "type": "string"
             },
+            "support_level": "supported",
             "type": "array"
         }
     },

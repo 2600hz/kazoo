@@ -1,6 +1,6 @@
-### User Authentication
+# User Authentication
 
-#### About User Authentication
+## About User Authentication
 
 #### Schema
 
@@ -18,7 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Create
+## Create
 
 > PUT /v2/user_auth
 
@@ -28,7 +28,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/user_auth
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/user_auth/{AUTH_TOKEN}
 
@@ -38,7 +38,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/user_auth/{AUTH_TOKEN}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/user_auth/recovery
 
@@ -48,7 +48,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/user_auth/recovery
 ```
 
-#### Change
+## Change
 
 > POST /v2/user_auth/recovery
 

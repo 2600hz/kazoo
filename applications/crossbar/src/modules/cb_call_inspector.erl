@@ -11,8 +11,6 @@
         ,allowed_methods/0, allowed_methods/1
         ,resource_exists/0, resource_exists/1
         ,validate/1, validate/2
-        ,to_json/1
-        ,to_csv/1
         ]).
 
 -include("crossbar.hrl").
@@ -40,21 +38,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.to_json.get.call_inspector">>, ?MODULE, 'to_json'),
     _ = crossbar_bindings:bind(<<"*.to_csv.get.call_inspector">>, ?MODULE, 'to_csv'),
     crossbar_bindings:bind(<<"*.validate.call_inspector">>, ?MODULE, 'validate').
-
--spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
-to_json({Req, Context}) ->
-    {Req, to_response(Context, <<"json">>, cb_context:req_nouns(Context))}.
-
--spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
-to_csv({Req, Context}) ->
-    {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
-
-to_response(Context, RespType, [{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
-    load_chunked_cdrs(Context, RespType);
-to_response(Context, RespType, [{<<"call_inspector">>, []}, {<<"users">>, [_]}|_]) ->
-    load_chunked_cdrs(Context, RespType);
-to_response(Context, _, _) ->
-    Context.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
@@ -87,7 +70,7 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /call_inspector mights load a list of skel objects
+%% /call_inspector might load a list of skel objects
 %% /call_inspector/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -105,12 +88,14 @@ validate(Context) ->
 -spec load_chunk_view(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
 load_chunk_view(Context, ViewName, Options0) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsReseller = kz_services:is_reseller(AuthAccountId),
+    C1 = cb_context:store(Context, 'is_reseller', kz_services:is_reseller(AuthAccountId)),
     Options = [{'is_chunked', 'true'}
               ,{'chunk_size', ?MAX_BULK}
+              ,{'mapper', fun(JObjs) -> cdrs_listing_mapper(Context, JObjs) end}
+              ,'include_docs'
                | Options0
               ],
-    crossbar_view:load_modb(cb_context:store(Context, 'is_reseller', IsReseller), ViewName, Options).
+    crossbar_view:load_modb(cb_cdrs:fix_qs_filter_keys(C1), ViewName, Options).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, CallId) ->
@@ -182,28 +167,18 @@ get_view_options(_) ->
 %% @doc Loads CDR docs from database and normalized the them.
 %% @end
 %%------------------------------------------------------------------------------
--spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_chunked_cdrs(Context, RespType) ->
-    Ids = get_cdr_ids(cb_context:resp_data(Context)),
-    cb_cdrs:load_chunked_cdr_ids(Context, RespType, Ids).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec get_cdr_ids(kz_json:objects()) -> kz_term:ne_binaries().
-get_cdr_ids(JObjs) ->
-    Ids = [kz_doc:id(JObj) || JObj <- JObjs],
-    %% Remove leading year, month and dash
-    CallIds = [CallId || ?MATCH_CDR_ID(_, CallId) <- Ids],
+-spec cdrs_listing_mapper(cb_context:context(), kz_json:objects()) -> kz_json:objects().
+cdrs_listing_mapper(Context, JObjs) ->
+    CallIds = [kz_json:get_value([<<"doc">>, <<"call_id">>], JObj) || JObj <- JObjs],
 
     lager:debug("filtering ~p call_ids", [length(CallIds)]),
     FilteredCallIds = filter_callids(CallIds),
 
     lager:debug("found ~p dialogues", [length(FilteredCallIds)]),
 
-    [Id ||?MATCH_CDR_ID(_, CallId)=Id <- Ids,
-          lists:member(CallId, FilteredCallIds)
+    [cb_cdrs:normalize_cdr(Context, <<"json">>, JObj)
+     || JObj <- JObjs,
+        lists:member(kz_json:get_value([<<"doc">>, <<"call_id">>], JObj), FilteredCallIds)
     ].
 
 %%------------------------------------------------------------------------------
@@ -233,3 +208,4 @@ filter_callids(CallIds) ->
             lager:debug("error: ~p", [_E]),
             []
     end.
+

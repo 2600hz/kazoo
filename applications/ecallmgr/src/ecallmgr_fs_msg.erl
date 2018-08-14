@@ -257,18 +257,17 @@ send_error(Node, JObj, Err) ->
                              {'ok', kz_term:proplist()} |
                              {'error', kz_term:ne_binary()}.
 format_endpoint(Endpoint, Props, JObj) ->
-    format_endpoint(
-      Endpoint
+    format_endpoint(Endpoint
                    ,Props
                    ,JObj
-                   ,kz_json:get_value(<<"Invite-Format">>, Endpoint)
-     ).
+                   ,kz_json:get_ne_binary_value(<<"Invite-Format">>, Endpoint)
+                   ).
 
 -spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary()) ->
                              {'ok', kz_term:proplist()} |
                              {'error', kz_term:ne_binary()}.
 format_endpoint(Endpoint, Props, JObj, <<"route">>) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj),
     case kz_json:is_true(<<"Bounce-Back">>, CCVs, 'false') of
         'true' -> format_bounce_endpoint(Endpoint, Props, JObj);
         'false' -> format_route_endpoint(Endpoint, Props, JObj)
@@ -282,12 +281,14 @@ format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
             [#uri{user=_ToUser
                  ,domain=ToIP
                  ,port=ToPort
-                 }=_ToContact] = kzsip_uri:uris(Contact),
+                 }=_ToContact
+            ] = kzsip_uri:uris(Contact),
             {'ok', props:filter_empty(
                      [{"to", kz_term:to_list(ToURI)}
                      ,{"to_sip_ip", kz_term:to_list(ToIP)}
                      ,{"to_sip_port", kz_term:to_list(ToPort)}
-                     ])};
+                     ])
+            };
         {'error', _Err}=E ->
             lager:debug("failed to find original contact for ~s@~s: ~p", [Username, Realm, _Err]),
             E
@@ -301,12 +302,14 @@ format_route_endpoint(Endpoint, _Props, _JObj) ->
     [#uri{user=_ToUser
          ,domain=ToIP
          ,port=ToPort
-         }=_ToContact] = kzsip_uri:uris(ToURI),
+         }=_ToContact
+    ] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
              [{"to", kz_term:to_list(ToURI)}
              ,{"to_sip_ip", kz_term:to_list(ToIP)}
              ,{"to_sip_port", kz_term:to_list(ToPort)}
-             ])}.
+             ])
+    }.
 
 -spec format_bounce_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object()) -> {'ok', kz_term:proplist()} | {'error', kz_term:ne_binary()}.
 format_bounce_endpoint(Endpoint, Props, JObj) ->
@@ -319,20 +322,22 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
     [#uri{user=_ToUser
          ,domain=ToIP
          ,port=ToPort
-         }=_ToContact] = kzsip_uri:uris(ToURI),
+         }=_ToContact
+    ] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
              [{"to", kz_term:to_list(To)}
              ,{"to_sip_ip", kz_term:to_list(ToIP)}
              ,{"to_sip_port", kz_term:to_list(ToPort)}
-             ])}.
+             ])
+    }.
 
 -spec process_fs_event(atom(), kz_term:proplist()) -> any().
 process_fs_event(Node, Props) ->
-    process_fs_event(
-      props:get_value(<<"Event-Name">>, Props),
-      props:get_value(<<"Event-Subclass">>, Props),
-      Node,
-      lists:usort(Props)).
+    process_fs_event(props:get_value(<<"Event-Name">>, Props)
+                    ,props:get_value(<<"Event-Subclass">>, Props)
+                    ,Node
+                    ,lists:usort(Props)
+                    ).
 
 -spec process_fs_event(kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:proplist()) -> any().
 process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
@@ -340,18 +345,17 @@ process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
 process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
     ServerId =  props:get_value(<<"Server-ID">>, Props),
     CallId = props:get_value(<<"Call-ID">>, Props),
-    BaseProps = props:filter_empty(props:filter_undefined(
-                                     [{<<"Call-ID">>, CallId}
-                                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-                                     ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
-                                     ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-                                     ,{<<"Delivery-Result-Code">>, props:get_value(<<"Delivery-Result-Code">>, Props)}
-                                     ,{<<"Delivery-Failure">>, props:get_value(<<"Delivery-Failure">>, Props)}
-                                     ,{<<"Custom-Channel-Vars">>, kz_json:from_list( get_ccvs(Props)) }
-                                     ,{<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Props)}
-                                     ,{<<"Status">>, props:get_value(<<"Status">>, Props)}
-                                      | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
-                                     ])),
+    BaseProps = props:filter_empty([{<<"Call-ID">>, CallId}
+                                   ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
+                                   ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
+                                   ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+                                   ,{<<"Delivery-Result-Code">>, props:get_value(<<"Delivery-Result-Code">>, Props)}
+                                   ,{<<"Delivery-Failure">>, props:get_value(<<"Delivery-Failure">>, Props)}
+                                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list( get_ccvs(Props)) }
+                                   ,{<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Props)}
+                                   ,{<<"Status">>, props:get_value(<<"Status">>, Props)}
+                                    | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                                   ]),
     lager:debug("received delivery event for message ~s",[CallId]),
     EventProps = get_event_uris(Props, BaseProps),
     kz_amqp_worker:cast(EventProps, fun(A) -> kapi_sms:publish_targeted_delivery(ServerId, A) end);
@@ -361,10 +365,14 @@ process_fs_event(_EventName, _SubClass, _Node, _Props) ->
 
 get_event_uris(Props, EventProps) ->
     Uris = [{<<"From">>, <<"from_full">>}
-           ,{<<"To">>, <<"to">>}],
+           ,{<<"To">>, <<"to">>}
+           ],
     lists:foldl(fun(T, Acc) ->
                         Acc ++ get_event_uris_props(T, Props)
-                end, EventProps, Uris).
+                end
+               ,EventProps
+               ,Uris
+               ).
 
 -spec get_event_uris_props(tuple() | kz_term:ne_binary(), kz_term:proplist() | kz_term:ne_binary()) -> kz_term:proplist().
 get_event_uris_props({K, F}, Props) ->
@@ -373,8 +381,9 @@ get_event_uris_props('undefined', _) -> [];
 get_event_uris_props(Uri, Base) ->
     [#uri{user=User, domain=Realm}=_URI] = kzsip_uri:uris(Uri),
     [{Base, <<User/binary, "@", Realm/binary>>}
-    ,{<<Base/binary, "-User">>, User }
-    ,{<<Base/binary, "-Realm">>, Realm }].
+    ,{<<Base/binary, "-User">>, User}
+    ,{<<Base/binary, "-Realm">>, Realm}
+    ].
 
 -spec is_ccv(tuple()) -> boolean().
 is_ccv({?GET_CCV(_K), _V}) -> 'true';

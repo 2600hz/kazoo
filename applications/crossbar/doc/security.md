@@ -1,18 +1,19 @@
-### Security
+# Security Configuration
 
 Crossbar API to configure authentication for an account.
 
-#### About Security
+## About Security
 
 Crossbar authenticator modules can have their own account's version configuration to control some aspect of them like enabling/disabling the module or use multi factor authenticator for that specific module.
 
-> **Note:** This API endpoint is _only_ configuring the authentication for a account, for configuring the system, you should use [System Configuration](./system_configs.md) instead. System config category is `crossbar.auth`.
+!!! note
+    This API endpoint is _only_ configuring the authentication for a account, for configuring the system, you should use `system_configs` instead as super duper admin. System config category is `crossbar.auth`.
 
-##### How Crossbar is looking for authentication configuration
+### How Crossbar is looking for authentication configuration
 
 Configuration is the merged result of the account's configuration and all its parent's account up to the first reseller, then the system config itself. So the account inherits parent and reseller account and system config.
 
-#### Enable Multi Factor Authentication for a Crossbar auth module
+### Enable Multi Factor Authentication for a Crossbar auth module
 
 If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true`. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`.
 
@@ -22,7 +23,7 @@ Only a parent Account or the same Account can set `configuration_id` and `accoun
 
 See [Multi Factor Authentication API documentation](./multi_factor.md).
 
-#### Account Auth Configuration Schema
+## Account Auth Configuration Schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -46,7 +47,7 @@ Key | Description | Type | Default | Required
 `multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean` |  | `false`
 `token_auth_expiry_s` | expiration period of the JWT token (seconds) | `integer` |  | `false`
 
-#### Get a List of Available Auth Module
+## Get a List of Available Auth Module
 
 List of all available auth module to be configured.
 
@@ -58,7 +59,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/security
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -80,7 +81,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch All Configurations
+## Fetch All Configurations
 
 Get all configured authenticator module on the account alongside the default settings of merged result of account itself and its parents, reseller and system.
 
@@ -92,7 +93,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -149,7 +150,7 @@ curl -v -X GET \
 }
 ```
 
-#### Change
+## Change
 
 Customize modules config for the account. Set what settings you want here, crossbar always get the merged config from account and hierarchy.
 
@@ -186,7 +187,7 @@ curl -v -X POST \
 }
 ```
 
-#### Patch
+## Patch
 
 Patch field(s) of config for the account customization.
 
@@ -200,7 +201,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -224,7 +225,7 @@ curl -v -X PATCH \
 }
 ```
 
-#### Remove
+## Remove
 
 Delete account's auth config.
 
@@ -236,7 +237,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -260,7 +261,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Set Multi Factor Configuration for a Authentication Module
+## Set Multi Factor Configuration for a Authentication Module
 
 > POST /v2/accounts/{ACCOUNT_ID}/security
 
@@ -271,7 +272,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -301,7 +302,7 @@ curl -v -X POST \
 }
 ```
 
-#### Get a List of All Login Attempts
+## Get a List of All Login Attempts
 
 > GET /v2/accounts/{ACCOUNT_ID}/security/attempts
 
@@ -311,7 +312,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security/attempts
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -336,7 +337,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get a Login Attempt Details
+## Get a Login Attempt Details
 
 > GET /v2/accounts/{ACCOUNT_ID}/security/attempts/{ATTEMPT_ID}
 
@@ -346,7 +347,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security/attempts/201707-5e9c6dc29efb34d87c0a06e8f613b1fd
 ```
 
-##### Response
+**Responses**
 
 ```json
 {

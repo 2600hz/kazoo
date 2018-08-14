@@ -15,7 +15,7 @@
 %%% and append the default headers to the application-specific portions, and
 %%% insert these commands into the CmdQ. We then check whether the old CmdQ is
 %%% empty AND the new CmdQ is not, and that the current App is the empty
-%%% binary. If so, we dequeue the next command, execute it, and loop; otherwise
+%%% binary. If so, we de-queue the next command, execute it, and loop; otherwise
 %%% we loop with the CmdQ.
 %%% If just a single application is sent in the message, we check the CmdQ's
 %%% size and the current App's status; if both are empty, we fire the command
@@ -54,6 +54,7 @@
 -export([other_legs/1
         ,update_node/2
         ,control_procs/1
+        ,publish_usurp/3
         ]).
 -export([fs_nodeup/2]).
 -export([fs_nodedown/2]).
@@ -79,17 +80,17 @@
 -record(state, {node :: atom()
                ,call_id :: kz_term:ne_binary()
                ,command_q = queue:new() :: queue:queue()
-               ,current_app :: kz_term:api_binary()
+               ,current_app :: kz_term:api_ne_binary()
                ,current_cmd :: kz_term:api_object()
                ,start_time = os:timestamp() :: kz_time:now()
                ,is_call_up = 'true' :: boolean()
                ,is_node_up = 'true' :: boolean()
                ,keep_alive_ref :: kz_term:api_reference()
                ,other_legs = [] :: kz_term:ne_binaries()
-               ,last_removed_leg :: kz_term:api_binary()
+               ,last_removed_leg :: kz_term:api_ne_binary()
                ,sanity_check_tref :: kz_term:api_reference()
-               ,msg_id :: kz_term:api_binary()
-               ,fetch_id :: kz_term:api_binary()
+               ,msg_id :: kz_term:api_ne_binary()
+               ,fetch_id :: kz_term:api_ne_binary()
                ,controller_q :: kz_term:api_ne_binary()
                ,control_q :: kz_term:api_ne_binary()
                ,initial_ccvs :: kz_json:object()
@@ -117,7 +118,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% because the call_events process might have been spun up with A->B
     %% then transferred to A->D, but the route landed in a different
     %% ecallmgr.  Since our call_events will get a bad session if we
-    %% try to handlecall more than once on a UUID we had to leave the
+    %% try to handle call more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
     Bindings = [{'call', [{'callid', CallId}
                          ,{'restrict_to', [<<"usurp_control">>]}
@@ -251,11 +252,6 @@ handle_cast({'event_execute_complete', _, _, _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{control_q=Q}};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
-           ,#state{controller_q='undefined'}=State
-           ) ->
-    lager:debug("call control got is_consuming but controller is undefined"),
-    {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     call_control_ready(State),
     {'noreply', State};
@@ -361,11 +357,11 @@ handle_conference_command(JObj) ->
 -spec handle_call_events(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_call_events(JObj, FetchId) ->
     kz_util:put_callid(kz_json:get_value(<<"Call-ID">>, JObj)),
-    case kz_json:get_value(<<"Event-Name">>, JObj) of
+    case kz_api:event_name(JObj) of
         <<"usurp_control">> ->
-            case kz_json:get_value(<<"Fetch-ID">>, JObj) =:= FetchId of
-                'false' -> gen_listener:cast(self(), {'usurp_control', JObj});
-                'true' -> 'ok'
+            case kz_json:get_ne_binary_value(<<"Fetch-ID">>, JObj) =/= FetchId of
+                'true' -> gen_listener:cast(self(), {'usurp_control', JObj});
+                'false' -> 'ok'
             end;
         _Else -> 'ok'
     end.
@@ -405,13 +401,35 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
-call_control_ready(#state{call_id=CallId
-                         ,controller_q=ControllerQ
-                         ,control_q=Q
-                         ,initial_ccvs=CCVs
-                         ,fetch_id=FetchId
-                         ,node=Node
-                         }) ->
+call_control_ready(#state{controller_q=ControllerQ}=State) ->
+    'undefined' =/= ControllerQ
+        andalso publish_route_win(State),
+    publish_usurp(State).
+
+-spec publish_usurp(state()) -> 'ok'.
+publish_usurp(#state{call_id=CallId
+                    ,fetch_id=FetchId
+                    ,node=Node
+                    }) ->
+    publish_usurp(CallId, FetchId, Node).
+
+-spec publish_usurp(kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
+publish_usurp(CallId, FetchId, Node) ->
+    Usurp = [{<<"Call-ID">>, CallId}
+            ,{<<"Fetch-ID">>, FetchId}
+            ,{<<"Reason">>, <<"Route-Win">>}
+            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    lager:debug("sending control usurp for fetch-id ~s(~s)", [FetchId, CallId]),
+    kapi_call:publish_usurp_control(CallId, Usurp).
+
+-spec publish_route_win(state()) -> 'ok'.
+publish_route_win(#state{call_id=CallId
+                        ,controller_q=ControllerQ
+                        ,control_q=Q
+                        ,initial_ccvs=CCVs
+                        }) ->
     Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Call-ID">>, CallId}
           ,{<<"Control-Queue">>, Q}
@@ -419,15 +437,7 @@ call_control_ready(#state{call_id=CallId
            | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
-    kapi_route:publish_win(ControllerQ, Win),
-    Usurp = [{<<"Call-ID">>, CallId}
-            ,{<<"Fetch-ID">>, FetchId}
-            ,{<<"Reason">>, <<"Route-Win">>}
-            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    lager:debug("sending control usurp for ~s", [FetchId]),
-    kapi_call:publish_usurp_control(CallId, Usurp).
+    kapi_route:publish_win(ControllerQ, Win).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -468,7 +478,7 @@ handle_channel_destroyed(#state{sanity_check_tref=SCTRef
     catch (erlang:cancel_timer(SCTRef)),
 
     %% if the current application can not be run without a channel and we have received the
-    %% channel_destory (the last event we will ever receive from freeswitch for this call)
+    %% channel_destroy (the last event we will ever receive from freeswitch for this call)
     %% then create an error and force advance. This will happen with dialplan actions that
     %% have not been executed on freeswitch but were already queued (for example in xferext).
     %% Commonly events like masquerade, noop, etc
@@ -500,7 +510,7 @@ force_queue_advance(#state{call_id=CallId
     of
         'false' ->
             %% if the node is down, don't inject the next FS event
-            lager:debug("not continuing until the media node becomes avaliable"),
+            lager:debug("not continuing until the media node becomes available"),
             State#state{current_app='undefined'};
         {'empty', _} ->
             lager:debug("no call commands remain queued, hibernating"),
@@ -614,7 +624,7 @@ forward_queue(#state{call_id = CallId
     of
         'false' ->
             %% if the node is down, don't inject the next FS event
-            lager:debug("not continuing until the media node becomes avaliable"),
+            lager:debug("not continuing until the media node becomes available"),
             State#state{current_app='undefined', msg_id='undefined'};
         {'empty', _} ->
             lager:debug("no call commands remain queued, hibernating"),
@@ -696,7 +706,7 @@ add_leg(Props, LegId, #state{other_legs=Legs
             _ = kz_util:spawn(
                   fun() ->
                           kz_util:put_callid(CallId),
-                          kz_amqp_channel:consumer_pid(ConsumerPid),
+                          _ = kz_amqp_channel:consumer_pid(ConsumerPid),
                           publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
                   end),
             _ = case ecallmgr_fs_channel:fetch(CallId) of
@@ -736,7 +746,7 @@ add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
             _ = kz_util:spawn(
                   fun() ->
                           kz_util:put_callid(CallId),
-                          kz_amqp_channel:consumer_pid(ConsumerPid),
+                          _ = kz_amqp_channel:consumer_pid(ConsumerPid),
                           publish_cleg_addition(Props, OtherLeg, CallId)
                   end),
             State#state{other_legs=[LegId|Legs]}
@@ -783,7 +793,7 @@ remove_leg(Props, #state{other_legs=Legs
             _ = kz_util:spawn(
                   fun() ->
                           kz_util:put_callid(CallId),
-                          kz_amqp_channel:consumer_pid(ConsumerPid),
+                          _ = kz_amqp_channel:consumer_pid(ConsumerPid),
                           publish_leg_removal(Props)
                   end),
             State#state{other_legs=lists:delete(LegId, Legs)
@@ -859,7 +869,7 @@ insert_command(#state{node=Node
         andalso AName
     of
         'false' ->
-            lager:debug("node ~s is not avaliable", [Node]),
+            lager:debug("node ~s is not available", [Node]),
             lager:debug("sending execution error for command ~s", [AName]),
             {Mega,Sec,Micro} = os:timestamp(),
             Props = [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
@@ -1050,22 +1060,28 @@ execute_control_request(Cmd, #state{node=Node
 
     try Mod:exec_cmd(Node, CallLeg, Cmd, self())
     catch
+        'throw':{'error', 'baduuid'} ->
+            lager:debug("unable to execute command, baduuid"),
+            Msg = list_to_binary(["Session ", CallId
+                                 ," not found for ", Application
+                                 ]),
+            send_error_resp(CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId},
+            'ok';
         _:{'error', 'nosession'} ->
             lager:debug("unable to execute command, no session"),
-            send_error_resp(CallId, Cmd, <<"Session "
-                                           ,CallId/binary
-                                           ," not found for "
-                                           ,Application/binary
-                                         >>),
+            Msg = list_to_binary(["Session ", CallId
+                                 ," not found for ", Application
+                                 ]),
+            send_error_resp(CallId, Cmd, Msg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'error':{'badmatch', {'error', 'nosession'}} ->
             lager:debug("unable to execute command, no session"),
-            send_error_resp(CallId, Cmd, <<"Session "
-                                           ,CallId/binary
-                                           ," not found for "
-                                           ,Application/binary
-                                         >>),
+            Msg = list_to_binary(["Session ", CallId
+                                 ," not found for ", Application
+                                 ]),
+            send_error_resp(CallId, Cmd, Msg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'error':{'badmatch', {'error', ErrMsg}} ->
@@ -1118,7 +1134,7 @@ maybe_send_error_resp(CallId, Cmd, AppName) ->
 -spec send_error_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_error_resp(CallId, Cmd) ->
     Msg = <<"Could not execute dialplan action: "
-            ,(kapi_dialplan:application_name(Cmd))/binary
+           ,(kapi_dialplan:application_name(Cmd))/binary
           >>,
     send_error_resp(CallId, Cmd, Msg).
 

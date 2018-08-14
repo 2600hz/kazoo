@@ -24,10 +24,9 @@ is_ip_unique(IP, DeviceId) ->
 
 -spec is_ip_acl_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_acl_unique(IP, DeviceId) ->
-    lists:all(
-      fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
+    lists:all(fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
              ,get_all_acl_ips()
-     ).
+             ).
 
 -spec is_ip_unique(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_unique(JObj, IP, DeviceId) ->
@@ -55,11 +54,10 @@ get_all_acl_ips() ->
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp = kapps_util:amqp_pool_request(
-             props:filter_undefined(Req)
-                                       ,fun kapi_sysconf:publish_get_req/1
-                                       ,fun kapi_sysconf:get_resp_v/1
-            ),
+    Resp = kz_amqp_worker:call(props:filter_undefined(Req)
+                              ,fun kapi_sysconf:publish_get_req/1
+                              ,fun kapi_sysconf:get_resp_v/1
+                              ),
     case Resp of
         {'error', _} -> [];
         {'ok', JObj} ->

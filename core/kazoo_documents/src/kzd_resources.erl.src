@@ -16,6 +16,7 @@
 -export([from_uri_realm/1, from_uri_realm/2, set_from_uri_realm/2]).
 -export([gateways/1, gateways/2, set_gateways/2]).
 -export([grace_period/1, grace_period/2, set_grace_period/2]).
+-export([ignore_flags/1, ignore_flags/2, set_ignore_flags/2]).
 -export([media/1, media/2, set_media/2]).
 -export([name/1, name/2, set_name/2]).
 -export([require_flags/1, require_flags/2, set_require_flags/2]).
@@ -153,6 +154,18 @@ grace_period(Doc, Default) ->
 -spec set_grace_period(doc(), integer()) -> doc().
 set_grace_period(Doc, GracePeriod) ->
     kz_json:set_value([<<"grace_period">>], GracePeriod, Doc).
+
+-spec ignore_flags(doc()) -> kz_term:api_boolean().
+ignore_flags(Doc) ->
+    ignore_flags(Doc, 'undefined').
+
+-spec ignore_flags(doc(), Default) -> boolean() | Default.
+ignore_flags(Doc, Default) ->
+    kz_json:get_boolean_value([<<"ignore_flags">>], Doc, Default).
+
+-spec set_ignore_flags(doc(), boolean()) -> doc().
+set_ignore_flags(Doc, IgnoreFlags) ->
+    kz_json:set_value([<<"ignore_flags">>], IgnoreFlags, Doc).
 
 -spec media(doc()) -> kz_term:api_object().
 media(Doc) ->

@@ -10,69 +10,92 @@
 
 -define(SEP(I, C, L), <<(binary:copy(<<$%>>, I))/binary, (binary:copy(C, L))/binary>>).
 
-%% regex for evil spec+specs
--define(REGEX_SPECSPEC, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '^\\-spec[^.]+\\.$(\\n+\\-spec[^.]+\\.$)+' core/ applications/").
-
-%% regex to find contributors tag.
--define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/").
-
--define(REGEX_BUMP_COPYRIGHT(Year), "ag -LG '(applications|core)/.*/src/.*.(erl|erl.src)$' '^%%% @copyright \\(C\\) 20[0-9]{2}-(" ++ Year ++ ")?, 2600Hz$'").
-
-%% regex to find `@public' tag.
-%% TODO: remove private tag from this regex in a distant future.
--define(REGEX_PUBLIC_TAG, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public|private)' core/ applications/").
-
-%% regex for spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
-%% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
-%% multi line regex won't work). For multi line the first line should end with `|' followed by same regex until exhausted.
--define(REGEX_COMMENT_SPEC, "ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)' core/ applications/").
-
-%% regex to find functions without comment block before them after a separator comment block
-%% to avoid EDoc to use the separator as the functions comment.
-%% Regex explanation: search for any line starts with at least two `%%' followed by any whitespace, followed by any new line until
-%% a `-spec' attribute or a function head is found.
--define(REGEX_SEP_SPEC, "ag -G '(erl)$' '%%%*\\s*==+$(\\n+(^-spec+|[a-z]+))' applications/ core/").
-
-%% regex for escaping codes in comment for `resource_exists' function crossbar modules.
--define(REGEX_CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/").
-
-%% regex for finding comment block with no @end
--define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '^%%*[ ]*@doc[^\\n]*$(\\n^(?!(%%* *@end|%%* ?--+$|%%* ?==+$))^%%[^\\n]*$)*(\\n%%* ?(--+|==+)$)' core/ applications/").
-
-%% regex for separator lines with length lower than 78 (for %%) or 77 (for %%%).
--define(REGEX_INCREASE_SEP_LENGTH_2, "ag -G '(applications|core)/.*/src/.*.(erl|erl.src|hrl|hrl.src)$' '^%% *-{50,77}$'").
--define(REGEX_INCREASE_SEP_LENGTH_3, "ag -G '(applications|core)/.*/src/.*.(erl|erl.src|hrl|hrl.src)$' '^%%%+ *={50,76}$'").
-
-%% regex for finding first comment line after `@doc'
--define(REGEX_TO_DOC_LINE, "ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/").
-
-%% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
--define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%* *@doc *$(\\n%%* *$)+' core/ applications/").
-
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
     check_ag_available(),
     ScriptsDir = filename:dirname(escript:script_name()),
     ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
-    io:format("cwd: ~p~n", [file:get_cwd()]),
 
     {Year, _, _} = erlang:date(),
 
     io:format("Edocify Kazoo...~n~n"),
 
-    Run = [{?REGEX_SPECSPEC, "removing evil sepc+specs", fun evil_specs/1}
-          ,{?REGEX_BUMP_COPYRIGHT(integer_to_list(Year)), "bump/fix copyright", fun(R) -> bump_copyright(R, Year) end}
-          ,{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
-          ,{?REGEX_PUBLIC_TAG, "remove @public tag", fun remove_public_tag/1}
-          ,{?REGEX_COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
-          ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
-          ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
-          ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
-          ,{?REGEX_INCREASE_SEP_LENGTH_2, "increase separator line (starts with %%) length", fun(R) -> increase_sep_length(R, <<"-">>) end}
-          ,{?REGEX_INCREASE_SEP_LENGTH_3, "increase separator line (starts with %%%) length", fun(R) -> increase_sep_length(R, <<"=">>) end}
-          ,{?REGEX_TO_DOC_LINE, "move first comment line to the same line as @doc", fun move_to_doc_line/1}
+    Run = [
+           %% regex for evil spec+specs
+           {"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '^\\-spec[^.]+\\.$(\\n+\\-spec[^.]+\\.$)+' core/ applications/"
+           ,"separate evil sepc+specs"
+           ,fun evil_specs/1
+           }
+
+          ,{"ag -lG '(applications|core)/.*/src/.*.(erl|erl.src)$' 'copyright.+2600[Hh]z$'"
+           ,"bump/fix copyright"
+           ,fun(R) -> bump_copyright(R, Year) end
+           }
+
+           %% regex to find contributors tag.
+          ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/"
+           ,"rename contributors tag to author"
+           ,fun edocify_headers/1
+           }
+
+           %% regex to find `@public' tag.
+           %% TODO: remove private tag from this regex in a distant future.
+          ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public|private)' core/ applications/"
+           ,"remove public/private tag"
+           ,fun remove_public_tag/1
+           }
+
+           %% regex for spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
+           %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
+           %% multi line regex won't work). For multi line the first line should end with `|' followed by same regex until exhausted.
+          ,{"ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)' core/ applications/"
+           ,"removing spec from comment"
+           ,fun remove_comment_specs/1
+           }
+
+           %% regex to find functions without comment block before them after a separator comment block
+           %% to avoid EDoc to use the separator as the functions comment.
+           %% Regex explanation: search for any line starts with at least two `%%' followed by any whitespace, followed by any new line until
+           %% a `-spec' attribute or a function head is found.
+          ,{"ag -G '(erl)$' '%%%*\\s*==+$(\\n+(^-spec+|[a-z]+))' applications/ core/"
+           ,"add missing comments block after separator"
+           ,fun missing_comment_blocks_after_sep/1
+           }
+
+           %% regex for escaping codes in comment for `resource_exists' function crossbar modules.
+          ,{"ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/"
+           ,"escape code block in 'resource_exists' function crossbar modules"
+           ,fun cb_resource_exists_comments/1
+           }
+
+           %% regex for finding comment block with no @end
+          ,{"ag '^%%*[ ]*@doc[^\\n]*$(\\n^(?!(%%* *@end|%%* ?--+$|%%* ?==+$))^%%[^\\n]*$)*(\\n%%* ?(--+|==+)$)' core/ applications/"
+           ,"fix comment blocks with no end"
+           ,fun comment_blocks_with_no_end/1
+           }
+
+           %% regex for separator lines with length lower than 78 (for %%) or 77 (for %%%).
+          ,{"ag -G '(applications|core)/.*/src/.*.(erl|erl.src|hrl|hrl.src)$' '^%% *-{50,77}$'"
+           ,"increase separator line (starts with %%) length"
+           ,fun(R) -> increase_sep_length(R, <<"-">>) end
+           }
+          ,{"ag -G '(applications|core)/.*/src/.*.(erl|erl.src|hrl|hrl.src)$' '^%%%+ *={50,76}$'"
+           ,"increase separator line (starts with %%%) length"
+           ,fun(R) -> increase_sep_length(R, <<"=">>) end
+           }
+
+           %% regex for finding first comment line after `@doc'
+          ,{"ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/"
+           ,"move first comment line to the same line as doc tag"
+           ,fun move_to_doc_line/1
+           }
+
+           %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
            %% must be last thing to run
-          ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
+          ,{"ag -G '(erl|erl.src|hrl|hrl.src)$' '%%* *@doc *$(\\n%%* *$)+' core/ applications/"
+           ,"remove empty comment line after doc tag"
+           ,fun remove_doc_tag_empty_comment/1
+           }
           ],
     edocify(Run, 0).
 
@@ -94,7 +117,7 @@ run_ag(Cmd) ->
     try os:cmd(Cmd)
     catch
         _E:_T ->
-            io:format("ag failed: ~p:~p~n", [_E, _T]),
+            io:format("ag command failed: ~p:~p~n", [_E, _T]),
             halt(1)
     end.
 
@@ -104,23 +127,28 @@ edocify([], Ret) ->
     io:format("~nWe had some EDocification! 🤔~n"),
     halt(Ret);
 edocify([{Cmd, Desc, Fun}|Rest], Ret) ->
-    io:format("* ~s: ", [Desc]),
+    io:format("* running command: ~s~n", [Desc]),
     case check_result(list_to_binary(run_ag(Cmd))) of
         ok -> edocify(Rest, Ret);
         AgResult ->
-            case Fun(AgResult) of
+            try Fun(AgResult) of
                 ok ->
-                    io:format(" done~n"),
+                    io:format("\e[32;1mdone\e[0m~n"),
                     edocify(Rest, 1);
                 NewRet ->
-                    io:format(" done~n"),
+                    io:format("\e[32;1mdone\e[0m~n"),
                     edocify(Rest, NewRet)
+            catch
+                _T:_R ->
+                    io:format("~nexception occurred while running command: ~p:~p~n", [_T, _R]),
+                    halt(1)
             end
     end.
 
 check_result(<<>>) ->
-    io:format(" done~n");
+    io:format("\e[32;1mdone\e[0m~n");
 check_result(<<"ERR:", _/binary>>=Error) ->
+    io:format("ag command failed~n"),
     io:put_chars(Error),
     halt(1);
 check_result(Result) ->
@@ -164,7 +192,7 @@ map_specs_to_file([H|T], SpecAcc) ->
     {NewTail, FileSpecs} = get_specs_for_file(File, T, [FirstLine]),
     FilePath = binary_to_list(File),
     {ok, Forms} = epp_dodger:quick_parse_file(FilePath, [{no_fail, true}]),
-    SpecMaps = get_specs_info(Forms, FileSpecs, []),
+    SpecMaps = get_specs_info(File, Forms, FileSpecs, []),
     map_specs_to_file(NewTail, [{FilePath, SpecMaps}|SpecAcc]).
 
 %% Get all specs for this file.
@@ -178,8 +206,8 @@ get_specs_for_file(File, [H|T], Acc) ->
     end.
 
 %% Find spec function name/arity from AST.
-get_specs_info(_, [], Acc) -> Acc;
-get_specs_info(Forms, [{_, Pos, Line, true}|T], Acc) ->
+get_specs_info(_, _, [], Acc) -> Acc;
+get_specs_info(File, Forms, [{_, Pos, Line, true}|T], Acc) ->
     %% {attribute, line, {{fun_name, arity}, func_type_ast}}
     {_, _, _, {{FunName, Arity}, _}} = lists:keyfind(Pos, 2, Forms),
     {NewTail, SpecLines} = get_multi_line_spec(T, [Line]),
@@ -188,8 +216,9 @@ get_specs_info(Forms, [{_, Pos, Line, true}|T], Acc) ->
                ,spec_length => length(SpecLines)
                ,fun_name => FunName
                ,arity => Arity
+               ,file => File
                },
-    get_specs_info(Forms, NewTail, Acc ++ [SpecMap]).
+    get_specs_info(File, Forms, NewTail, Acc ++ [SpecMap]).
 
 %% Accumulate lines until next spec definition.
 get_multi_line_spec([{_, _, Line, false}|T], Acc) ->
@@ -200,13 +229,13 @@ get_multi_line_spec(Lines, Acc) ->
 %% Removing evil specs first then get functions new position from AST
 %% and add specs to position right before their function's position.
 process_evil_specs({File, SpecMaps}) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     remove_evil_specs(File, SpecMaps),
     {ok, Forms} = epp_dodger:quick_parse_file(File, [{no_fail, true}]),
     Lines = read_lines(File, false),
     save_lines(File, move_file_specs(Lines, 0, functions_new_position(Forms, SpecMaps, []))).
 
-%% First read files and create tupleList of {LineNumber, String}
+%% First read files and create tuple List of {LineNumber, String}
 %% Then loop over SpecMaps and get the position of all lines that the spec
 %% is occupied.
 remove_evil_specs(File, SpecMaps) ->
@@ -232,8 +261,10 @@ fun_arity_filter(_, _, _) ->
 
 %% When there are two implementations for function, one normal and one guarded by `?TEST',
 %% save position of both functions to move spec to both positions.
-is_test_or_regular_function([], #{fun_name := FunName, arity := Arity}, []) ->
-    io:format("~ncan't find function '~s/~b'~n", [FunName, Arity]),
+is_test_or_regular_function([], #{fun_name := FunName, arity := Arity, file := File}, []) ->
+    io:format("~nCan't find function '~s/~b' in file '~s'~nIf this is header file remove the specs line from it and write specs in module itself."
+             ,[FunName, Arity, File]
+             ),
     halt(1);
 is_test_or_regular_function([], _, Acc) -> Acc;
 is_test_or_regular_function([{_, FunLine, _, _, _}|T], Map, Acc) ->
@@ -286,23 +317,36 @@ move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length 
                    ,<<"core/kazoo_ast/src/kz_edoc_layout.erl">>
                    ]).
 
-bump_copyright(Result, Year) ->
+bump_copyright(Result, Y) ->
+    Year = integer_to_binary(Y),
     Files = [F
              || F <- binary:split(Result, <<"\n">>, [global]),
                 F =/= <<>>,
                 not lists:member(F, ?DONT_BUMP)
             ],
-    _ = [bump_copyright_file(F, integer_to_binary(Year)) || F <- Files],
-    case Files of
+    Bumped = [bump_copyright_file(F, Year) || F <- Files],
+    case [OkBump || OkBump <- Bumped, OkBump =:= ok] of
         [] -> 0;
         _ -> 1
     end.
 
 bump_copyright_file(File, Year) ->
-    io:format("."),
     Lines = read_lines(File, false),
     {Module, Header, OtherLines} = get_module_header_comments(Lines, [], []),
-    save_lines(File, bump_copyright(Module, Header, [], [], Year) ++ OtherLines).
+    case re:run(iolist_to_binary(Header), "2600[Hh]z", [global]) of
+        {match, _} ->
+            MaybeBumped = bump_copyright(Module, Header, [], [], Year),
+            case is_bumped(Header, MaybeBumped, Module) of
+                true -> ignore;
+                false ->
+                    io:format("processing ~s~n", [File]),
+                    save_lines(File,  MaybeBumped ++ OtherLines)
+            end;
+        _ -> ignore
+    end.
+
+is_bumped(OldHeader, NewHeader, Module) ->
+    OldHeader ++ Module =:= [strip_comment(H) || H <- NewHeader].
 
 bump_copyright(Module, [], Copyright, [], Year) ->
     bump_copyright(Module, [], Copyright, [<<"%%% @doc">>], Year);
@@ -319,7 +363,7 @@ bump_copyright(Module, [<<"@copyright", Rest/binary>>|T], _, Header, Year) ->
 bump_copyright(Module, [H|T], Copyright, Header, Year) ->
     Striped = strip_right_spaces(strip_left_spaces(H)),
     case Striped =/= <<"@end">>
-        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+        andalso is_separator_chars(Striped, [<<$=>>, <<$->>])
     of
         false ->
             %% removing end tag to add it later
@@ -335,7 +379,7 @@ bump_copyright(Module, [H|T], Copyright, Header, Year) ->
     end.
 
 do_bump_copyright(C, Year) ->
-    Nums = re:replace(C, "([a-zA-Z().,!?~#@$%$'`\"_=&/\\^+* ]*|2600)", <<>>, [global, {return, binary}]),
+    Nums = re:replace(C, "([^0-9\\-]*|2600)", <<>>, [global, {return, binary}]),
     case lists:usort([B || B <- binary:split(Nums, <<"-">>, [global]), B =/= <<>>]) of
         [Year] -> generate_copyright_line(Year, <<>>);
         [<<"20", _:2/binary>> = Y] -> generate_copyright_line(Y, Year);
@@ -375,7 +419,7 @@ edocify_headers(Result) ->
     'ok'.
 
 edocify_header(File) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, false),
     {Module, Header, OtherLines} = get_module_header_comments(Lines, [], []),
     save_lines(File, edocify_header(Module, Header, []) ++ OtherLines).
@@ -388,8 +432,8 @@ edocify_header(Module, [<<"@contributors", _/binary>>|T], Header) ->
                       Author <- [strip_right_spaces(strip_left_spaces(A))],
                       Author =/= <<>>,
                       <<"@end">> =/= Author,
-                      not is_seprator_char(Author, <<$->>),
-                      not is_seprator_char(Author, <<$=>>)
+                      not is_separator_char(Author, <<$->>),
+                      not is_separator_char(Author, <<$=>>)
               ],
     edocify_header(Module, [], Header ++ [<<"%%%">>] ++ Authors);
 edocify_header(Module, [<<"Contributors", Rest/binary>>|T], Header) ->
@@ -404,7 +448,7 @@ edocify_header(Module, [<<"@Contributions", Rest/binary>>|T], Header) ->
 edocify_header(Module, [H|T], Header) ->
     Striped = strip_right_spaces(strip_left_spaces(H)),
     case Striped =/= <<"@end">>
-        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+        andalso is_separator_chars(Striped, [<<$=>>, <<$->>])
     of
         false ->
             %% removing end tag to add it later
@@ -454,7 +498,7 @@ remove_public_tag(Result) ->
     'ok'.
 
 do_remove_public_tag(File, Positions) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, [L || {LN, L} <- Lines, not lists:member(LN, Positions)]).
 
@@ -483,7 +527,7 @@ remove_comment_specs(Result) ->
     'ok'.
 
 do_remove_comment_specs(File, Positions) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, [L || {LN, L} <- Lines, not lists:member(LN, Positions)]).
 
@@ -515,7 +559,7 @@ missing_comment_blocks_after_sep(Result) ->
     'ok'.
 
 add_missing_comment_blocks(File, Positions) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, do_add_missing_comment_blocks(Lines, Positions, [])).
 
@@ -582,7 +626,7 @@ cb_resource_exists_comments(Result) ->
     'ok'.
 
 fix_cb_resource_exists_comment(File, Positions) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, do_cb_resource_exists_comment(Lines, Positions, [])).
 
@@ -636,7 +680,7 @@ comment_blocks_with_no_end(Result) ->
     'ok'.
 
 comment_blocks_with_no_end(File, Positions) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, do_comment_blocks_with_no_end(Lines, Positions, [])).
 
@@ -680,7 +724,7 @@ make_me_sep(S = <<"=">>) ->
     ?SEP(3, S, 77).
 
 increase_sep_length(File, Positions, Separator) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, do_increase_sep_length(Lines, Positions, Separator, [])).
 
@@ -727,7 +771,7 @@ move_to_doc_line(Result) ->
     'ok'.
 
 move_to_doc_line(File, Positions) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, do_move_to_doc_line(Lines, Positions, [])).
 
@@ -743,12 +787,12 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
             %% remove empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
         <<"@doc">> ->
-            PerCount = count_precent(Line),
+            PerCount = count_percent(Line),
             %% add doc tag in case there is no non-empty comment lines so we don't loose the doc tag
             do_move_to_doc_line(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>]);
         Rest ->
             %% this clause should only match once for the first non empty comment line
-            PerCount = count_precent(Line),
+            PerCount = count_percent(Line),
             DocTagLine = <<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>,
             NewForm = case lists:last(Formatted) of
                           DocTagLine -> lists:droplast(Formatted);
@@ -781,7 +825,7 @@ remove_doc_tag_empty_comment(Result) ->
     'ok'.
 
 remove_doc_tag_empty_comment(File, Positions) ->
-    io:format("."),
+    io:format("processing ~s~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, do_remove_doc_tag_empty_comment(Lines, Positions, [])).
 
@@ -825,20 +869,20 @@ analyze_separator(<<>>, _, _) ->
 analyze_separator(<<"%", Rest/binary>>, Chars, PerCount) ->
     analyze_separator(Rest, Chars, PerCount + 1);
 analyze_separator(Rest, Chars, PerCount) ->
-    {PerCount, is_seprator_chars(strip_right_spaces(strip_left_spaces(Rest)), Chars)}.
+    {PerCount, is_separator_chars(strip_right_spaces(strip_left_spaces(Rest)), Chars)}.
 
-is_seprator_chars(_, []) -> {false, []};
-is_seprator_chars(Line, [H|T]) ->
-    case is_seprator_char(Line, H) of
+is_separator_chars(_, []) -> {false, []};
+is_separator_chars(Line, [H|T]) ->
+    case is_separator_char(Line, H) of
         true -> {true, H};
-        false -> is_seprator_chars(Line, T)
+        false -> is_separator_chars(Line, T)
     end.
 
-is_seprator_char(C, C) ->
+is_separator_char(C, C) ->
     true;
-is_seprator_char(<<C:1/binary, B/binary>>, C) ->
-    is_seprator_char(B, C);
-is_seprator_char(_, _) ->
+is_separator_char(<<C:1/binary, B/binary>>, C) ->
+    is_separator_char(B, C);
+is_separator_char(_, _) ->
     false.
 
 collect_positions_per_file([], Map) -> Map;
@@ -847,12 +891,13 @@ collect_positions_per_file([Line | Lines], Map) ->
     collect_positions_per_file(Lines, Map#{File => maps:get(File, Map, []) ++ [Pos]}).
 
 parse_ag_line(<<"ERR:", _/binary>>=Error) ->
+    io:format("~nag command failed,~n"),
     io:put_chars(Error),
     halt(1);
 parse_ag_line(Bin) ->
     try explode_line(Bin)
-    catch _E:_T ->
-            io:format("~nfailed to parse file, position in ag response, ~p:~p, line:~n~s~n", [_E, _T, Bin]),
+    catch _:_ ->
+            io:format("~nfailed to explode line in ag output, failed output line:~n~s~n", [Bin]),
             halt(1)
     end.
 
@@ -869,11 +914,11 @@ strip_comment(<<$%, B/binary>>) -> strip_comment(B);
 strip_comment(<<$\s, B/binary>>) -> B;
 strip_comment(A) -> A.
 
-count_precent(A) ->
-    count_precent(A, 0).
+count_percent(A) ->
+    count_percent(A, 0).
 
-count_precent(<<$%, B/binary>>, Count) -> count_precent(B, Count + 1);
-count_precent(_, Count) -> Count.
+count_percent(<<$%, B/binary>>, Count) -> count_percent(B, Count + 1);
+count_percent(_, Count) -> Count.
 
 strip_left_spaces(<<$\s, B/binary>>) -> strip_left_spaces(B);
 strip_left_spaces(A) -> A.
@@ -907,7 +952,8 @@ read_lines(File, WithLineNumber) ->
                 false -> binary:split(Bin, <<"\n">>, [global])
             end;
         {error, Reason} ->
-            throw({error, File, Reason})
+            io:format("failed to read lines from ~s: ~p~n", [File, Reason]),
+            throw({error, Reason})
     end.
 
 save_lines(File, Lines) ->
@@ -915,7 +961,8 @@ save_lines(File, Lines) ->
     case file:write_file(File, Data) of
         ok -> ok;
         {error, Reason} ->
-            throw({error, File, Reason})
+            io:format("failed to write lines to ~s: ~p~n", [File, Reason]),
+            throw({error, Reason})
     end.
 
 check_final_newline([<<"\n">>|Tser]) ->

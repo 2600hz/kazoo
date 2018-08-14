@@ -16,6 +16,7 @@
 -spec start() -> {'ok', kz_term:atoms()}.
 start() ->
     _ = io:setopts('user', [{'encoding', 'unicode'}]),
+    'true' = does_system_has_network_subsystem(),
     {'ok', _Apps} = application:ensure_all_started(?APP).
 
 %% Application callbacks
@@ -26,6 +27,7 @@ start() ->
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
+    kapps_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_voicemail_maintenance', 'migrate'),
     kazoo_apps_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -34,4 +36,16 @@ start(_StartType, _StartArgs) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    kapps_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_voicemail_maintenance', 'migrate'),
     'ok'.
+
+-spec does_system_has_network_subsystem() -> boolean().
+does_system_has_network_subsystem() ->
+    try kz_network_utils:default_binding_ip() of
+        _ -> 'true'
+    catch
+        'throw':{'error', Reason} ->
+            io:format("~n~nCRITICAL ERROR: ~s~n~n", [Reason]),
+            throw({'error', Reason})
+    end.
+

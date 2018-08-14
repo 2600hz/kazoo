@@ -125,7 +125,7 @@ get_node_section_name() ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Set or unset enviroment variables
+%% @doc Set or unset environment variables
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -295,8 +295,7 @@ load() ->
 zone() ->
     case application:get_env(?APP, 'zone') of
         'undefined' ->
-            [Local] = get(get_node_section_name(), 'zone', ['local']),
-            Zone = kz_term:to_atom(Local, 'true'),
+            Zone = maybe_zone_from_env(),
             application:set_env(?APP, 'zone', Zone),
             Zone;
         {'ok', Zone} -> Zone
@@ -305,3 +304,15 @@ zone() ->
 -spec zone(atom()) -> kz_term:ne_binary() | atom().
 zone('binary') -> kz_term:to_binary(zone());
 zone(_) -> zone().
+
+-spec maybe_zone_from_env() -> atom().
+maybe_zone_from_env() ->
+    case os:getenv("KAZOO_ZONE", "noenv") of
+        "noenv" -> zone_from_ini();
+        Zone -> kz_term:to_atom(Zone, 'true')
+    end.
+
+-spec zone_from_ini() -> atom().
+zone_from_ini() ->
+    [Local] = get(get_node_section_name(), 'zone', ['local']),
+    kz_term:to_atom(Local, 'true').

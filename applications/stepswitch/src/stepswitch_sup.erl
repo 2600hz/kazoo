@@ -3,7 +3,6 @@
 %%% @doc Root supervisor tree for stepswitch routing WhApp
 %%% @end
 %%%-----------------------------------------------------------------------------
-
 -module(stepswitch_sup).
 
 -behaviour(supervisor).

@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.connection.couchdb",
-    "description": "schema for couchdb connection entry",
+    "description": "schema for CouchDB connection entry",
     "properties": {
         "driver": {
             "enum": [

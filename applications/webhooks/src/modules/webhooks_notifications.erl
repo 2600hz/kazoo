@@ -107,7 +107,13 @@ handle_event(JObj, _Props) ->
     'true' = Validate(JObj),
 
     AccountId = kapi_notifications:account_id(JObj),
-    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
+    case EventName =:= <<"webhook">>
+        orelse webhooks_util:find_webhooks(?HOOK_NAME, AccountId)
+    of
+        'true' ->
+            Hook = webhooks_util:from_json(kz_json:get_ne_json_value(<<"Hook">>, JObj, kz_json:new())),
+            Data = kz_json:normalize(kz_json:get_ne_json_value(<<"Data">>, JObj, kz_json:new())),
+            webhooks_util:fire_hooks(Data, [Hook]);
         [] ->
             lager:debug("no hooks to handle ~s for ~s", [EventName, AccountId]);
         Hooks ->

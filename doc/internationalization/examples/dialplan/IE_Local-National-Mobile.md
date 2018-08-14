@@ -1,8 +1,9 @@
-
+# Example Ireland Dialplan
 
 Dialplan object for devices/users/accounts calling in from Ireland
 
 ```json
+{
   "dial_plan":{
       "^01(\\d{7})$":{
          "description":"IE_Dublin",
@@ -229,4 +230,5 @@ Dialplan object for devices/users/accounts calling in from Ireland
          "prefix":"+35376"
       }
    }
+}
 ```

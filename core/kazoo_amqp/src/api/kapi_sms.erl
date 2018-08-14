@@ -19,10 +19,10 @@
         ,publish_targeted_delivery/2, publish_targeted_delivery/3
         ,publish_resume/1, publish_resume/2
         ,publish_inbound/1, publish_inbound/2
-        ,publish_outbound/1, publish_outbound/2
+        ,publish_outbound/1, publish_outbound/3
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(LOWER(X), kz_term:to_lower_binary(X)).
 
@@ -61,10 +61,12 @@
                        ,{<<"Message-ID">>, fun is_binary/1}
                        ,{<<"Body">>, fun is_binary/1}
                        ]).
--define(SMS_ROUTING_KEY(RouteId,CallId), <<"message.route."
-                                           ,(amqp_util:encode(RouteId))/binary, "."
-                                           ,(amqp_util:encode(CallId))/binary
-                                         >>).
+-define(SMS_ROUTING_KEY(RouteId, CallId)
+       ,list_to_binary(["message.route."
+                       ,kz_amqp_util:encode(RouteId), "."
+                       ,kz_amqp_util:encode(CallId)
+                       ])
+       ).
 
 %% SMS Endpoints
 -define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
@@ -105,7 +107,7 @@
 -define(DELIVERY_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                              ,{<<"Event-Name">>, ?DELIVERY_REQ_EVENT_NAME}
                              ]).
--define(DELIVERY_ROUTING_KEY(CallId), <<"message.delivery.", (amqp_util:encode(CallId))/binary>>).
+-define(DELIVERY_ROUTING_KEY(CallId), <<"message.delivery.", (kz_amqp_util:encode(CallId))/binary>>).
 
 %% SMS Resume
 -define(RESUME_REQ_EVENT_NAME, <<"resume">>).
@@ -115,7 +117,7 @@
                            ,{<<"Event-Name">>, ?RESUME_REQ_EVENT_NAME}
                            ]).
 -define(RESUME_REQ_TYPES, []).
--define(RESUME_ROUTING_KEY(CallId), <<"message.resume.", (amqp_util:encode(CallId))/binary>>).
+-define(RESUME_ROUTING_KEY(CallId), <<"message.resume.", (kz_amqp_util:encode(CallId))/binary>>).
 
 %% Inbound
 -define(INBOUND_REQ_EVENT_NAME, <<"inbound">>).
@@ -153,8 +155,8 @@
                             ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                             ]).
 -define(INBOUND_ROUTING_KEY(RouteId, CallId), <<"message.inbound."
-                                                ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                ,(amqp_util:encode(CallId))/binary
+                                               ,(kz_amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                               ,(kz_amqp_util:encode(CallId))/binary
                                               >>).
 
 %% Outbound
@@ -192,16 +194,12 @@
                              ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
                              ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
--define(OUTBOUND_ROUTING_KEY(RouteId, CallId), <<"message.outbound."
-                                                 ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                 ,(amqp_util:encode(CallId))/binary
-                                               >>).
-
--define(SMS_DEFAULT_OUTBOUND_OPTIONS, kz_json:from_list([{<<"delivery_mode">>, 2}
-                                                        ,{<<"mandatory">>, 'true'}
-                                                        ])).
--define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
--define(SMS_OUTBOUND_OPTIONS, kapps_config:get_json(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)).
+-define(OUTBOUND_ROUTING_KEY(RouteId, CallId)
+       ,list_to_binary(["message.outbound."
+                       ,kz_amqp_util:encode(?LOWER(RouteId)), "."
+                       ,kz_amqp_util:encode(CallId)
+                       ])
+       ).
 
 -spec message(kz_term:api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->
@@ -308,25 +306,25 @@ bind_q(Queue, Props) ->
 
 -spec bind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Exchange, Queue, CallId, RouteId, 'undefined') ->
-    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
-    amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
-    amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
-    amqp_util:bind_q_to_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
-    amqp_util:bind_q_to_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange);
+    kz_amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange);
 bind_q(Exchange, Queue, CallId, RouteId, ['route'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
     bind_q(Exchange, Queue, CallId, RouteId, Restrict);
 bind_q(Exchange, Queue, CallId, RouteId, ['delivery'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
     bind_q(Exchange, Queue, CallId, RouteId, Restrict);
 bind_q(Exchange, Queue, CallId, RouteId, ['resume'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
     bind_q(Exchange, Queue, CallId, RouteId, Restrict);
 bind_q(Exchange, Queue, CallId, RouteId, ['inbound'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
     bind_q(Exchange, Queue, CallId, RouteId, Restrict);
 bind_q(Exchange, Queue, CallId, RouteId, ['outbound'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
     bind_q(Exchange, Queue, CallId, RouteId, Restrict);
 bind_q(_, _, _, _, []) -> 'ok'.
 
@@ -339,25 +337,25 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Exchange, Queue, CallId, RouteId, 'undefined') ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
-    amqp_util:unbind_q_from_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange);
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
+    kz_amqp_util:unbind_q_from_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange);
 unbind_q(Exchange, Queue, CallId, RouteId, ['route'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
     unbind_q(Exchange, Queue, CallId, RouteId, Restrict);
 unbind_q(Exchange, Queue, CallId, RouteId, ['delivery'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
     unbind_q(Exchange, Queue, CallId, RouteId, Restrict);
 unbind_q(Exchange, Queue, CallId, RouteId, ['resume'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), Exchange),
     unbind_q(Exchange, Queue, CallId, RouteId, Restrict);
 unbind_q(Exchange, Queue, CallId, RouteId, ['inbound'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?INBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
     unbind_q(Exchange, Queue, CallId, RouteId, Restrict);
 unbind_q(Exchange, Queue, CallId, RouteId, ['outbound'|Restrict]) ->
-    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?OUTBOUND_ROUTING_KEY(RouteId, CallId), Exchange),
     unbind_q(Exchange, Queue, CallId, RouteId, Restrict);
 unbind_q(_, _, _, _, []) -> 'ok'.
 
@@ -367,7 +365,7 @@ unbind_q(_, _, _, _, []) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?SMS_EXCHANGE, <<"topic">>).
+    kz_amqp_util:new_exchange(?SMS_EXCHANGE, <<"topic">>).
 
 -spec publish_message(kz_term:api_terms()) -> 'ok'.
 publish_message(JObj) ->
@@ -379,7 +377,7 @@ publish_message(Req, ContentType) ->
     CallId = props:get_value(<<"Call-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
-    amqp_util:basic_publish(Exchange, ?SMS_ROUTING_KEY(RouteId, CallId), Payload, ContentType).
+    kz_amqp_util:basic_publish(Exchange, ?SMS_ROUTING_KEY(RouteId, CallId), Payload, ContentType).
 
 -spec publish_inbound(kz_term:api_terms()) -> 'ok'.
 publish_inbound(JObj) ->
@@ -391,21 +389,20 @@ publish_inbound(Req, ContentType) ->
     MessageId = props:get_value(<<"Message-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
-    amqp_util:basic_publish(Exchange, ?INBOUND_ROUTING_KEY(RouteId, MessageId), Payload, ContentType).
+    kz_amqp_util:basic_publish(Exchange, ?INBOUND_ROUTING_KEY(RouteId, MessageId), Payload, ContentType).
 
 -spec publish_outbound(kz_term:api_terms()) -> 'ok'.
 publish_outbound(JObj) ->
-    publish_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
+    publish_outbound(JObj, ?DEFAULT_CONTENT_TYPE, []).
 
--spec publish_outbound(kz_term:api_terms(), binary()) -> 'ok'.
-publish_outbound(Req, ContentType) ->
+-spec publish_outbound(kz_term:api_terms(), binary(), list()) -> 'ok'.
+publish_outbound(Req, ContentType, AMQPOptions) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OUTBOUND_REQ_VALUES, fun outbound/1),
     MessageId = props:get_value(<<"Message-ID">>, Req),
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     RK = ?OUTBOUND_ROUTING_KEY(RouteId, MessageId),
-    Opts = amqp_options(?SMS_OUTBOUND_OPTIONS),
-    amqp_util:basic_publish(Exchange, RK, Payload, ContentType, Opts).
+    kz_amqp_util:basic_publish(Exchange, RK, Payload, ContentType, AMQPOptions).
 
 -spec publish_delivery(kz_term:api_terms()) -> 'ok'.
 publish_delivery(JObj) ->
@@ -416,7 +413,7 @@ publish_delivery(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DELIVERY_REQ_VALUES, fun delivery/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
-    amqp_util:basic_publish(Exchange, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
+    kz_amqp_util:basic_publish(Exchange, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
 
 -spec publish_targeted_delivery(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_targeted_delivery(RespQ, JObj) ->
@@ -425,7 +422,7 @@ publish_targeted_delivery(RespQ, JObj) ->
 -spec publish_targeted_delivery(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_targeted_delivery(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?DELIVERY_REQ_VALUES, fun delivery/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_resume(kz_term:api_terms() | kz_term:ne_binary()) -> 'ok'.
 publish_resume(SMS) when is_binary(SMS) ->
@@ -441,11 +438,4 @@ publish_resume(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RESUME_REQ_VALUES, fun resume/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
-    amqp_util:basic_publish(Exchange, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
-
--spec amqp_options(kz_term:api_object()) -> kz_term:proplist().
-amqp_options('undefined') -> [];
-amqp_options(JObj) ->
-    [{kz_term:to_atom(K, 'true'), V}
-     || {K, V} <- kz_json:to_proplist(JObj)
-    ].
+    kz_amqp_util:basic_publish(Exchange, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).

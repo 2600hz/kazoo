@@ -25,24 +25,9 @@
                           ,{<<"event">>, Event}
                           ])).
 
--define(CALL, [?TO_JSON(<<"call.CHANNEL_CREATE.*">>, <<"CHANNEL_CREATE">>)
-              ,?TO_JSON(<<"call.CHANNEL_ANSWER.*">>, <<"CHANNEL_ANSWER">>)
-              ,?TO_JSON(<<"call.CHANNEL_DESTROY.*">>, <<"CHANNEL_DESTROY">>)
-              ,?TO_JSON(<<"call.CHANNEL_BRIDGE.*">>, <<"CHANNEL_BRIDGE">>)
-              ,?TO_JSON(<<"call.CHANNEL_HOLD.*">>, <<"CHANNEL_HOLD">>)
-              ,?TO_JSON(<<"call.CHANNEL_UNHOLD.*">>, <<"CHANNEL_UNHOLD">>)
-              ]).
-
--define(OBJECTS,
-        [?TO_JSON(<<"object.", A/binary, ".", T/binary>>, <<A/binary, ".", T/binary>>)
-         || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
-        ]).
-
--define(AVAILABLE,
-        kz_json:from_list([{<<"call">>, ?CALL}
-                          ,{<<"fax">>, [?TO_JSON(<<"fax.status.*">>, <<"fax">>)]}
-                          ,{<<"object">>, ?OBJECTS}
-                          ])).
+-define(AVAILABLE
+       ,kapps_config:get_json(<<"blackhole">>, <<"bindings">>)
+       ).
 
 %%%=============================================================================
 %%% API
@@ -113,7 +98,7 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /websockets mights load a list of websocket objects
+%% /websockets might load a list of websocket objects
 %% /websockets/123 might load the websocket object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

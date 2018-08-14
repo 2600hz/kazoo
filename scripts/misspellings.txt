@@ -31,6 +31,7 @@ becoming|becomeing
 beginning|begining
 believe|beleive
 bellwether|bellweather
+below|bellow
 buoy|bouy
 buoyant|bouyant
 business|buisness
@@ -67,6 +68,7 @@ disappoint|disapoint
 disastrous|disasterous
 drunkenness|drunkeness
 dumbbell|dumbell
+etc|ect
 embarrass|embarass
 equipment|equiptment
 exceed|excede
@@ -140,6 +142,7 @@ playwright|playright playwrite
 possession|posession possesion
 possible|possilbe
 potatoes|potatos
+preferred|prefered
 precede|preceed
 presence|presance
 principle|principal
@@ -157,6 +160,7 @@ readable|readible
 really|realy
 receive|recieve
 receipt|reciept
+recipient|recipent
 recommend|recomend reccommend
 referred|refered
 reference|referance refrence
@@ -185,7 +189,7 @@ tomorrow|tommorow tommorrow
 twelfth|twelth
 tyranny|tyrany
 underrate|underate
-unfortunatly|unfortunately
+unfortunately|unfortunatly
 until|untill
 upholstery|upholstry
 usable|usible

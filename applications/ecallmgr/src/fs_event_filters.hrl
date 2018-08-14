@@ -70,6 +70,7 @@
         ,<<"X-AUTH-PORT">>
         ,<<"action">>
         ,<<"att_xfer_replaced_by">>
+        ,<<"conference_name">>
         ,<<"context">>
         ,<<"domain">>
         ,<<"expires">>
@@ -90,6 +91,8 @@
         ,<<"sip_auth_response">>
         ,<<"sip_auth_uri">>
         ,<<"sip_call_id">>
+        ,<<"sip_from_host">>
+        ,<<"sip_from_user">>
         ,<<"sip_request_host">>
         ,<<"sip_to_host">>
         ,<<"sip_user_agent">>
@@ -168,12 +171,13 @@
         ,<<"variable_silence_hits_exhausted">>
         ,<<"variable_sip_auth_realm">>
         ,<<"variable_sip_call_id">>
+        ,<<"variable_sip_from_host">>
         ,<<"variable_sip_from_tag">>
         ,<<"variable_sip_from_uri">>
         ,<<"variable_sip_from_user">>
         ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
-        ,<<"variable_sip_origination_call_id">>
+        ,<<"variable_sip_origination_call_uuid">>
         ,<<"variable_sip_received_ip">>
         ,<<"variable_sip_received_port">>
         ,<<"variable_sip_refer_to">>

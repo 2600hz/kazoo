@@ -43,7 +43,7 @@ Search in Kazoo is possible with specific CouchDB view with design document ID `
 
 With that in mind, a system administrator can create a custom index to expose extra fields out of document to view. This requires full understanding of how to write CouchDB design documents and a bit of the internal structure of the document in the database. You can look at `{ACCOUNT_DB}/_design/search` to see how Kazoo default search view is implemented.
 
-It's require to name your custom search view index name prefixed with `search_by_{YOUR_CUSTOME_VIEW_NAME}`, which conventionally `{YOUR_CUSTOME_VIEW_NAME}` is the name of the field in the document that you're creating this view for.
+It's require to name your custom search view index name prefixed with `search_by_{YOUR_CUSTOM_VIEW_NAME}`, which conventionally `{YOUR_CUSTOM_VIEW_NAME}` is the name of the field in the document that you're creating this view for.
 
 #### Search with Single Value
 

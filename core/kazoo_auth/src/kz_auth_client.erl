@@ -8,8 +8,9 @@
 -include("kazoo_auth.hrl").
 
 -define(AUTH_BY_SYSTEM_IDS, <<"auth/auth_by_system_ids">>).
+-define(AUTH_TOKEN_CACHE_FUDGE, 30).
 
--type token() :: {ok | error, map()}.
+-type token() :: {'ok' | 'error', map()}.
 -export_type([token/0]).
 
 %%%=============================================================================
@@ -18,14 +19,16 @@
 
 -export([token_for_app/1, token_for_app/2
         ,token_for_auth_id/1, token_for_auth_id/2
+        ,token_for_user/3
+        ,request/2, request/4
         ]).
 
 
--spec token_for_auth_id(kz_term:ne_binary()) -> {ok | error, map()}.
+-spec token_for_auth_id(kz_term:ne_binary()) -> {'ok' | 'error', map()}.
 token_for_auth_id(AuthId) ->
     token_for_auth_id(AuthId, #{}).
 
--spec token_for_auth_id(kz_term:ne_binary(), map()) -> {ok | error, map()}.
+-spec token_for_auth_id(kz_term:ne_binary(), map()) -> {'ok' | 'error', map()}.
 token_for_auth_id(AuthId, Options) ->
     Map = #{options => Options#{auth_id => AuthId}},
     Routines = [fun add_subject/1
@@ -36,17 +39,22 @@ token_for_auth_id(AuthId, Options) ->
                ,fun add_audience/1
                ,fun add_scope/1
                ,fun add_subject_claim/1
+               ,fun cached_token/1
                ,fun request_token/1
                ,fun authorization_header/1
+               ,fun cache_token/1
                ],
     kz_auth_util:run(Map, Routines).
 
+-spec token_for_user(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok' | 'error', map()}.
+token_for_user(AppId, AccountId, OwnerId) ->
+    token_for_app(AppId, #{subject => {AccountId, OwnerId}}).
 
--spec token_for_app(kz_term:ne_binary()) -> {ok | error, map()}.
+-spec token_for_app(kz_term:ne_binary()) -> {'ok' | 'error', map()}.
 token_for_app(AppId) ->
     token_for_app(AppId, #{}).
 
--spec token_for_app(kz_term:ne_binary(), map()) -> {ok | error, map()}.
+-spec token_for_app(kz_term:ne_binary(), map()) -> {'ok' | 'error', map()}.
 token_for_app(AppId, Options) ->
     Map = #{app_id => AppId
            ,options => Options
@@ -59,11 +67,12 @@ token_for_app(AppId, Options) ->
                ,fun add_scope/1
                ,fun add_subject/1
                ,fun add_subject_claim/1
+               ,fun cached_token/1
                ,fun request_token/1
                ,fun authorization_header/1
+               ,fun cache_token/1
                ],
     kz_auth_util:run(Map, Routines).
-
 
 %%%=============================================================================
 %%% Internal functions
@@ -125,7 +134,6 @@ add_scope(#{claims := Claims
     Map#{claims => Claims#{scope => Scope}};
 add_scope(#{}=Map) -> Map.
 
-
 add_subject(#{auth_app := #{name := AppId}
              ,options := #{subject := {AccountId, OwnerId}}
              }=Map) ->
@@ -136,21 +144,21 @@ add_subject(#{auth_app := #{name := AppId}
         {'ok', Doc} ->
             Subject = kz_json:to_map(kz_json:get_value(<<"doc">>, Doc)),
             Map#{subject => kz_maps:keys_to_atoms(Subject, 'false')};
-        _ -> Map
+        _ -> {'error', 'not_found'}
     end;
 add_subject(#{auth_app := #{name := AppId}
              ,options := #{account_id := AccountId
                           ,owner_id := OwnerId
                           }
              }=Map) ->
-    Options = [{key, [AppId, AccountId, OwnerId]}
+    Options = [{'key', [AppId, AccountId, OwnerId]}
               ,'include_docs'
               ],
     case kz_datamgr:get_single_result(?KZ_AUTH_DB, ?AUTH_BY_SYSTEM_IDS, Options) of
         {'ok', Doc} ->
             Subject = kz_json:to_map(kz_json:get_value(<<"doc">>, Doc)),
             Map#{subject => kz_maps:keys_to_atoms(Subject, 'false')};
-        _ -> Map
+        _ -> {'error', 'not_found'}
     end;
 add_subject(#{options := #{subject := SubjectId}
              }=Map) ->
@@ -158,7 +166,7 @@ add_subject(#{options := #{subject := SubjectId}
         {'ok', Doc} ->
             Subject = kz_json:to_map(Doc),
             Map#{subject => kz_maps:keys_to_atoms(Subject, 'false')};
-        _ -> Map
+        _ -> {'error', 'not_found'}
     end;
 add_subject(#{options := #{auth_id := AuthId}
              }=Map) ->
@@ -166,7 +174,7 @@ add_subject(#{options := #{auth_id := AuthId}
         {'ok', Doc} ->
             Subject = kz_json:to_map(Doc),
             Map#{subject => kz_maps:keys_to_atoms(Subject, 'false')};
-        _ -> Map
+        _ -> {'error', 'not_found'}
     end;
 add_subject(#{}=Map) -> Map.
 
@@ -179,10 +187,10 @@ add_subject_claim(#{auth_app := #{jwt_flow := #{sub := Sub}}
                    ,claims := Claims
                    }=Map) ->
     case kz_maps:get(Sub, Profile) of
-        undefined -> case kz_maps:get(kz_term:to_atom(Sub, 'true'), Subject) of
-                         undefined -> Map;
-                         Value -> Map#{claims => Claims#{sub => Value}}
-                     end;
+        'undefined' -> case kz_maps:get(kz_term:to_atom(Sub, 'true'), Subject) of
+                           'undefined' -> Map;
+                           Value -> Map#{claims => Claims#{sub => Value}}
+                       end;
         Value -> Map#{claims => Claims#{sub => Value}}
     end;
 add_subject_claim(#{auth_provider := #{jwt_flow := #{sub := Sub}}
@@ -190,10 +198,10 @@ add_subject_claim(#{auth_provider := #{jwt_flow := #{sub := Sub}}
                    ,claims := Claims
                    }=Map) ->
     case kz_maps:get(Sub, Profile) of
-        undefined -> case kz_maps:get(kz_term:to_atom(Sub, 'true'), Subject) of
-                         undefined -> Map;
-                         Value -> Map#{claims => Claims#{sub => Value}}
-                     end;
+        'undefined' -> case kz_maps:get(kz_term:to_atom(Sub, 'true'), Subject) of
+                           'undefined' -> Map;
+                           Value -> Map#{claims => Claims#{sub => Value}}
+                       end;
         Value -> Map#{claims => Claims#{sub => Value}}
     end;
 add_subject_claim(#{}=Map) -> Map.
@@ -210,6 +218,7 @@ authorization_header(Map) -> Map.
 request_token(#{subject := #{pvt_static_token := JObj}}=Map) ->
     M = kz_maps:keys_to_atoms(kz_json:to_map(JObj)),
     Map#{token => M};
+request_token(#{from_cache := 'true'}=Map) -> Map;
 request_token(#{subject := #{pvt_refresh_token := Token}}=Map) ->
     refresh_token_flow(Map#{refresh_token => Token});
 request_token(Map) ->
@@ -232,7 +241,7 @@ jwt_url(#{auth_app := #{auth_url := URL}}=Map) ->
 jwt_url(#{auth_provider := #{auth_url := URL}}=Map) ->
     Map#{auth_url => URL};
 jwt_url(Map) ->
-    {error, Map#{error => <<"no auth_url">>}}.
+    {'error', Map#{error => <<"no auth_url">>}}.
 
 jwt_issuer(#{auth_app := #{jwt_flow := #{iss := Issuer}}
             ,claims := Claims
@@ -242,8 +251,8 @@ jwt_issuer(Map) -> Map.
 
 jwt_assertion(Map) ->
     case kz_auth_jwt:encode(Map) of
-        {ok, JWT} -> Map#{jwt => JWT};
-        {error, Error} -> {error, Map#{error => Error}}
+        {'ok', JWT} -> Map#{jwt => JWT};
+        {'error', Error} -> {'error', Map#{error => Error}}
     end.
 
 jwt_request(#{auth_url := URL
@@ -284,7 +293,7 @@ refresh_token_flow(#{auth_app := #{name := AppId
              ,{"refresh_token",kz_term:to_list(RefreshToken)}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=")] end, Fields)), "&"),
-    Options = kz_maps:get([options, http_options], Map, []),
+    Options = kz_maps:get(['options', 'http_options'], Map, []),
     case kz_http:post(kz_term:to_list(URL), Headers, Body, Options) of
         {'ok', 200, RespHeaders, RespBody} ->
             JObj = kz_json:decode(RespBody),
@@ -302,5 +311,60 @@ refresh_token_flow(#{auth_app := #{name := AppId
 add_claims(Claims) ->
     maps:from_list(lists:map(fun add_claim/1, Claims)).
 
-add_claim(<<"iat">>) -> {iat, kz_time:current_unix_tstamp()-500};
-add_claim(<<"exp">>) -> {exp, kz_time:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}.
+add_claim(<<"iat">>) -> {'iat', kz_time:current_unix_tstamp()-500};
+add_claim(<<"exp">>) -> {'exp', kz_time:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}.
+
+-spec request(kz_term:ne_binary(), map()) -> kz_http:ret().
+request(URL, Token) ->
+    request('get', URL, <<>>, Token).
+
+-spec request(atom(), kz_term:ne_binary(), binary(), map()) -> {'ok', binary()} | {'error', any()}.
+request(Verb, URL, Body, #{token := #{authorization := Authorization}}) ->
+    Options = [{'headers_as_is', 'true'}
+              ,{'ssl', [{'versions', ['tlsv1.2']}]}
+              ],
+    {'ok',{_,_, Host, _, _, _}} = http_uri:parse(URL),
+    Headers = [{<<"host">>, Host}
+              ,{<<"Content-Type">>, <<"application/json">>}
+              ,{"Authorization", kz_term:to_list(Authorization)}
+              ],
+    case kz_http:req(Verb, URL, Headers, Body, Options) of
+        {'ok', 200, _RespHeaders, RespBody} -> {'ok', RespBody};
+        {'ok', 401, _RespHeaders, _RespXML} -> {'error', 'not_authorized'};
+        {'ok', 404, _RespHeaders, _RespXML} -> {'error', 'not_found'};
+        {'ok', _Code, _RespHeaders, _RespXML} -> {'error', 'other'};
+        {'error', _}=Error -> Error
+    end.
+
+-spec cached_token(map()) -> map().
+cached_token(#{subject := #{'_id' := Id}} = Map) ->
+    case kz_cache:peek_local(?TOKENS_CACHE, {'client', Id}) of
+        {'ok', CachedToken} -> Map#{token => CachedToken
+                                   ,from_cache => 'true'
+                                   };
+        {'error', 'not_found'} -> Map
+    end;
+cached_token(Token) -> Token.
+
+-spec cache_token(map()) -> map().
+cache_token(#{from_cache := 'true'}=Map) -> Map;
+cache_token(#{subject := #{'_id' := Id}
+             ,token := #{expires_in := Expires} = Token
+             } = Map) ->
+    Props = [{'origin', [{'db', ?KZ_AUTH_DB, Id}]}
+            ,{'expires', Expires - ?AUTH_TOKEN_CACHE_FUDGE}
+            ],
+    kz_cache:store_local(?TOKENS_CACHE, {'client', Id}, Token, Props),
+    Map;
+cache_token(#{subject := #{'_id' := Id}
+             ,claims := #{exp := ExpiresAt}
+             ,token := Token
+             } = Map) ->
+    Now = kz_time:current_unix_tstamp(),
+    Expires = (ExpiresAt - Now) - ?AUTH_TOKEN_CACHE_FUDGE,
+    Props = [{'origin', [{'db', ?KZ_AUTH_DB, Id}]}
+            ,{'expires', Expires}
+            ],
+    kz_cache:store_local(?TOKENS_CACHE, {'client', Id}, Token, Props),
+    Map;
+cache_token(Map) -> Map.

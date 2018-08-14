@@ -10,15 +10,15 @@
 -export([declare_exchanges/0]).
 -export([publish_message/2, publish_message/3]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, _Props) ->
-    amqp_util:bind_q_to_targeted(Q).
+    kz_amqp_util:bind_q_to_targeted(Q).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, _Props) ->
-    amqp_util:unbind_q_from_targeted(Q).
+    kz_amqp_util:unbind_q_from_targeted(Q).
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API.
@@ -26,7 +26,7 @@ unbind_q(Q, _Props) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:targeted_exchange().
+    kz_amqp_util:targeted_exchange().
 
 -spec publish_message(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 publish_message(ServerId, JObj) ->
@@ -35,7 +35,7 @@ publish_message(ServerId, JObj) ->
 -spec publish_message(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_message(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [], fun build/1),
-    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec build(kz_term:api_terms()) -> {'ok', iolist()}.
 build(Prop) when is_list(Prop) ->

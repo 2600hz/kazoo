@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.hangup",
-    "description": "Validator for the hangup callflow's data object",
+    "description": "Validator for the hangup callflow data object",
     "properties": {},
     "type": "object"
 }

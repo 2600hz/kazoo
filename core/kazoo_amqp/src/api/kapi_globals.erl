@@ -1,6 +1,6 @@
-%%------------------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc Globals API,
+%%% @doc Globals API.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_globals).
@@ -40,7 +40,7 @@
 -export([publish_register_resp/2, publish_register_resp/3]).
 -export([publish_unregister/1, publish_unregister/2]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 %% Types & Accessors
 
@@ -130,17 +130,17 @@ node(JObj) ->
 -define(GLOBALS_EXCHANGE_TYPE, <<"topic">>).
 
 routing_key(Event, Name) when is_binary(Name) ->
-    <<"globals."
-      ,(kz_term:to_binary(Event))/binary
-      ,"."
-      ,(amqp_util:encode(Name))/binary
-    >>;
+    list_to_binary(["globals."
+                   ,kz_term:to_binary(Event)
+                   ,"."
+                   ,kz_amqp_util:encode(Name)
+                   ]);
 routing_key(Event, Name) ->
-    <<"globals."
-      ,(kz_term:to_binary(Event))/binary
-      ,"."
-      ,(kz_term:to_hex_binary(maybe_encode(Name)))/binary
-    >>.
+    list_to_binary(["globals."
+                   ,kz_term:to_binary(Event)
+                   ,"."
+                   ,kz_term:to_hex_binary(maybe_encode(Name))
+                   ]).
 
 %% Globals Events
 -define(GLOBALS_EVENT_ROUTING_KEY(Event, Name)
@@ -329,7 +329,7 @@ query_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?GLOBALS_EXCHANGE, ?GLOBALS_EXCHANGE_TYPE).
+    kz_amqp_util:new_exchange(?GLOBALS_EXCHANGE, ?GLOBALS_EXCHANGE_TYPE).
 
 -spec publish_targeted_call(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_targeted_call(ServerId, JObj) ->
@@ -338,7 +338,7 @@ publish_targeted_call(ServerId, JObj) ->
 -spec publish_targeted_call(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_call(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?CALL_REQ_VALUES, fun call/1),
-    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_call(kz_term:api_terms()) -> 'ok'.
 publish_call(JObj) ->
@@ -358,7 +358,7 @@ publish_targeted_send(ServerId, JObj) ->
 -spec publish_targeted_send(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_send(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?SEND_REQ_VALUES, fun send/1),
-    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_send(kz_term:api_terms()) -> 'ok'.
 publish_send(JObj) ->
@@ -378,7 +378,7 @@ publish_reply(ServerId, JObj) ->
 -spec publish_reply(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_reply(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REPLY_REQ_VALUES, fun reply_msg/1),
-    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_register(kz_term:api_terms()) -> 'ok'.
 publish_register(Req) ->
@@ -397,7 +397,7 @@ publish_register_resp(ServerId, JObj) ->
 -spec publish_register_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register_resp(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REGISTER_RESP_VALUES, fun register_resp/1),
-    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_unregister(kz_term:api_terms()) -> 'ok'.
 publish_unregister(Req) ->
@@ -416,7 +416,7 @@ publish_query_resp(ServerId, JObj) ->
 -spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?QUERY_RESP_VALUES, fun query_resp/1),
-    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_query(kz_term:api_terms()) -> 'ok'.
 publish_query(JObj) ->
@@ -436,7 +436,7 @@ bind_q(Queue, Props) ->
     bind_q(Queue, Events, Name).
 
 bind_q(Q, [Event|T], Name) ->
-    _ = amqp_util:bind_q_to_exchange(Q, ?GLOBALS_EVENT_ROUTING_KEY(Event, Name), ?GLOBALS_EXCHANGE),
+    _ = kz_amqp_util:bind_q_to_exchange(Q, ?GLOBALS_EVENT_ROUTING_KEY(Event, Name), ?GLOBALS_EXCHANGE),
     bind_q(Q, T, Name);
 bind_q(_Q, [], _Name) -> 'ok'.
 
@@ -447,9 +447,9 @@ unbind_q(Queue, Props) ->
     unbind_q(Queue, Events, Name).
 
 unbind_q(Q, [Event|T], Name) ->
-    _ = amqp_util:unbind_q_from_exchange(Q, ?GLOBALS_EVENT_ROUTING_KEY(Event, Name), ?GLOBALS_EXCHANGE),
+    _ = kz_amqp_util:unbind_q_from_exchange(Q, ?GLOBALS_EVENT_ROUTING_KEY(Event, Name), ?GLOBALS_EXCHANGE),
     unbind_q(Q, T, Name);
 unbind_q(_Q, [], _Name) -> 'ok'.
 
 publish(Routing, Payload, ContentType) ->
-    amqp_util:basic_publish(?GLOBALS_EXCHANGE, Routing, Payload, ContentType).
+    kz_amqp_util:basic_publish(?GLOBALS_EXCHANGE, Routing, Payload, ContentType).

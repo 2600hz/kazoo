@@ -18,14 +18,16 @@
 
 -include("kz_couch.hrl").
 
--type ddoc() :: 'all_docs' | kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}.
+-type ddoc() :: 'all_docs' |
+                kz_term:ne_binary() |
+                {kz_term:ne_binary(), kz_term:ne_binary()}.
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 design_compact(#server{}=Conn, DbName, Design) ->
     case couchbeam:compact(kz_couch_util:get_db(Conn, DbName), Design) of
         {'error', _E} ->
-            lager:debug("failed to compact design doc ~s/~s: ~p", [DbName, Design, kz_couch_util:format_error(_E)]),
+            lager:info("failed to compact design doc ~s/~s: ~p", [DbName, Design, kz_couch_util:format_error(_E)]),
             'false';
         'ok' -> 'true'
     end.
@@ -100,11 +102,11 @@ do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
            {'ok', JObj} -> {'ok', kz_json:get_value(<<"rows">>, JObj, JObj)};
-           {'error', Error, []} -> {'error', kz_couch_util:format_error(Error)};
+           {'error', Error, []} -> {'error', Error};
            {'error', Error, Rows} ->
                lager:error("error ~p with results, ~p", [Error, Rows]),
-               {'error', kz_couch_util:format_error(Error)};
-           {'error', E} -> {'error', kz_couch_util:format_error(E)}
+               {'error', Error};
+           {'error', _}=Error -> Error
        end
       ).
 

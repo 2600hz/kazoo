@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.branch_variable",
-    "description": "Validator for the branch_variable callflow's data object",
+    "description": "Validator for the branch_variable callflow data object",
     "properties": {
         "scope": {
             "default": "custom_channel_vars",

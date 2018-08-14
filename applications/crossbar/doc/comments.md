@@ -1,14 +1,10 @@
-### Comments
+# Comments
 
-#### About Comments
+## About Comments
 
 Allows you to add comments to "any" documents in Kazoo.
 
-#### Schema
-
-
-
-#### Fetch
+## Fetch
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/comments
 
@@ -27,7 +23,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Fetch a Comment
+## Fetch a Comment
 
 > GET /v2/accounts/{ACCOUNT_ID}/comments
 
@@ -39,13 +35,13 @@ curl -v -X GET \
 
 ```json
 {
-  "data": {COMMENT},
+  "data": "{COMMENT}",
   "status": "success"
 }
 ```
 
 
-#### Add a Comment
+## Add a Comment
 
 > PUT /v2/accounts/{ACCOUNT_ID}/comments
 
@@ -60,9 +56,9 @@ curl -v -X PUT \
 {
     "data": {
         "comments": [
-            {COMMENT_1},
-            {COMMENT_2},
-            {COMMENT_3}
+            "{COMMENT_1}",
+            "{COMMENT_2}",
+            "{COMMENT_3}"
         ]
     },
     "status": "success"
@@ -70,7 +66,7 @@ curl -v -X PUT \
 ```
 
 
-#### Delete a Comment
+## Delete a Comment
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
 
@@ -84,8 +80,8 @@ curl -v -X DELETE \
 {
     "data": {
         "comments": [
-            {COMMENT_1},
-            {COMMENT_2}
+            "{COMMENT_1}",
+            "{COMMENT_2}"
         ]
     },
     "status": "success"
@@ -93,7 +89,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Fetch a Comment
+## Fetch a Comment
 
 > GET /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
 
@@ -107,8 +103,8 @@ curl -v -X GET \
 {
     "data": {
         "comments": [
-            {{COMMENT_1}},
-            {{COMMENT_2}}
+            "{COMMENT_1}",
+            "{COMMENT_2}"
         ]
     },
     "status": "success"
@@ -116,20 +112,20 @@ curl -v -X GET \
 ```
 
 
-#### Update a Comment
+## Update a Comment
 
 > POST /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {COMMENT}}' \
+    -d '{"data": "{COMMENT}"}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
 ```
 
 ```json
 {
-    "data": {COMMENT},
+    "data": "{COMMENT}",
     "status": "success"
 }
 ```

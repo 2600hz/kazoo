@@ -257,15 +257,14 @@ is_valid_mode(Context, Data) ->
         'true' -> 'true';
         'false' ->
             {'false'
-            ,cb_context:add_validation_error(
-               <<"mode">>
+            ,cb_context:add_validation_error(<<"mode">>
                                             ,<<"enum">>
                                             ,kz_json:from_list(
                                                [{<<"message">>, <<"Value not found in enumerated list of values">>}
                                                ,{<<"cause">>, Mode}
                                                ])
                                             ,Context
-              )
+                                            )
             }
     end.
 
@@ -276,14 +275,13 @@ is_valid_call(Context, Data) ->
     case kz_json:get_binary_value(<<"call_id">>, Data) of
         'undefined' ->
             {'false'
-            ,cb_context:add_validation_error(
-               <<"call_id">>
+            ,cb_context:add_validation_error(<<"call_id">>
                                             ,<<"required">>
                                             ,kz_json:from_list(
                                                [{<<"message">>, <<"Field is required but missing">>}]
                                               )
                                             ,Context
-              )
+                                            )
             };
         CallId ->
             is_active_call(Context, CallId)
@@ -297,15 +295,14 @@ is_active_call(Context, CallId) ->
         {'error', _E} ->
             lager:debug("is not valid call: ~p", [_E]),
             {'false'
-            ,cb_context:add_validation_error(
-               <<"call_id">>
+            ,cb_context:add_validation_error(<<"call_id">>
                                             ,<<"not_found">>
                                             ,kz_json:from_list(
                                                [{<<"message">>, <<"Call was not found">>}
                                                ,{<<"cause">>, CallId}
                                                ])
                                             ,Context
-              )
+                                            )
             };
         {'ok', _} -> 'true'
     end.
@@ -316,15 +313,14 @@ is_valid_queue(Context, <<_/binary>> = QueueId) ->
         {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
         {'error', _} ->
             {'false'
-            ,cb_context:add_validation_error(
-               <<"queue_id">>
+            ,cb_context:add_validation_error(<<"queue_id">>
                                             ,<<"not_found">>
                                             ,kz_json:from_list(
                                                [{<<"message">>, <<"Queue was not found">>}
                                                ,{<<"cause">>, QueueId}
                                                ])
                                             ,Context
-              )
+                                            )
             }
     end;
 is_valid_queue(Context, QueueJObj) ->
@@ -332,12 +328,11 @@ is_valid_queue(Context, QueueJObj) ->
         <<"queue">> -> 'true';
         _ ->
             {'false'
-            ,cb_context:add_validation_error(
-               <<"queue_id">>
+            ,cb_context:add_validation_error(<<"queue_id">>
                                             ,<<"type">>
                                             ,kz_json:from_list([{<<"message">>, <<"Id did not represent a queue">>}])
                                             ,Context
-              )
+                                            )
             }
     end.
 
@@ -348,15 +343,14 @@ is_valid_endpoint(Context, DataJObj) ->
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
             {'false'
-            ,cb_context:add_validation_error(
-               <<"id">>
+            ,cb_context:add_validation_error(<<"id">>
                                             ,<<"not_found">>
                                             ,kz_json:from_list(
                                                [{<<"message">>, <<"Id was not found">>}
                                                ,{<<"cause">>, Id}
                                                ])
                                             ,Context
-              )
+                                            )
             }
     end.
 
@@ -365,20 +359,19 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
         <<"device">> -> 'true';
         Type ->
             {'false'
-            ,cb_context:add_validation_error(
-               <<"id">>
+            ,cb_context:add_validation_error(<<"id">>
                                             ,<<"type">>
                                             ,kz_json:from_list(
                                                [{<<"message">>, <<"Id did not represent a valid endpoint">>}
                                                ,{<<"cause">>, Type}
                                                ])
                                             ,Context
-              )
+                                            )
             }
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -417,19 +410,18 @@ default_eavesdrop_req(Context) ->
 
 -spec eavesdrop_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 eavesdrop_req(Context, Prop) ->
-    case kapps_util:amqp_pool_request(props:filter_undefined(Prop)
-                                     ,fun kapi_resource:publish_eavesdrop_req/1
-                                     ,fun kapi_resource:eavesdrop_resp_v/1
-                                     ,2 * ?MILLISECONDS_IN_SECOND
-                                     )
+    case kz_amqp_worker:call(props:filter_undefined(Prop)
+                            ,fun kapi_resource:publish_eavesdrop_req/1
+                            ,fun kapi_resource:eavesdrop_resp_v/1
+                            ,2 * ?MILLISECONDS_IN_SECOND
+                            )
     of
         {'ok', Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
         {'error', 'timeout'} ->
-            cb_context:add_system_error(
-              'timeout'
+            cb_context:add_system_error('timeout'
                                        ,kz_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
                                        ,Context
-             );
+                                       );
         {'error', E} -> crossbar_util:response('error', <<"error">>, 500, E, Context)
     end.
 
@@ -447,7 +439,7 @@ filter_response_fields(JObj) ->
                      ).
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%------------------------------------------------------------------------------
@@ -470,7 +462,7 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
 patch(Context, Id) ->
     post(Context, Id).
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -677,10 +669,9 @@ format_stats(Context, Resp) ->
                                       kz_json:get_value(<<"Processed">>, Resp, [])
                                  )}
                               ]),
-    cb_context:set_resp_status(
-      cb_context:set_resp_data(Context, Stats)
+    cb_context:set_resp_status(cb_context:set_resp_data(Context, Stats)
                               ,'success'
-     ).
+                              ).
 
 fetch_ranged_queue_stats(Context, StartRange) ->
     MaxRange = ?ACDC_CLEANUP_WINDOW,
@@ -721,10 +712,10 @@ fetch_ranged_queue_stats(Context, From, To, 'false') ->
 
 -spec fetch_from_amqp(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 fetch_from_amqp(Context, Req) ->
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_acdc_stats:publish_current_calls_req/1
-                                     ,fun kapi_acdc_stats:current_calls_resp_v/1
-                                     )
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_acdc_stats:publish_current_calls_req/1
+                            ,fun kapi_acdc_stats:current_calls_resp_v/1
+                            )
     of
         {'error', _E} ->
             lager:debug("failed to recv resp from AMQP: ~p", [_E]),
@@ -746,7 +737,7 @@ summary(Context) ->
                           ).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the resuts of a view
+%% @doc Normalizes the results of a view
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

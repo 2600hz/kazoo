@@ -22,13 +22,14 @@
 -define(DEFAULT_PUBLISHER_ENABLED,
         kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_persist_enabled">>, true)
        ).
--define(ACCOUNT_SHOULD_PRESIST(AccountId),
+-define(ACCOUNT_SHOULD_PERSIST(AccountId),
         kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_persist_for_retry">>, true)
        ).
 
 -define(DEFAULT_TYPE_EXCEPTION, [<<"system_alert">>
                                 ,<<"voicemail_save">>
                                 ,<<"register">>
+                                ,<<"webhook">>
                                 ]).
 -define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION,
         kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_persist_temporary_force_exceptions">>, [])
@@ -36,6 +37,9 @@
 -define(NOTIFY_TYPE_EXCEPTION(AccountId),
         kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
        ).
+
+-define(DEFAULT_RETRY_PERIOD,
+        kapps_config:get_integer(<<"tasks.notify_resend">>, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)).
 
 -type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
@@ -130,7 +134,7 @@ maybe_handle_error(NotifyType, Req, Reason) ->
 %%------------------------------------------------------------------------------
 -spec handle_error(kz_term:ne_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 handle_error(NotifyType, Req, {Reason, Metadata}) ->
-    lager:warning("attempt to publishing notification ~s was unsuccessful: ~p", [NotifyType, Reason]),
+    lager:warning("failed to publish notification ~s: ~p  , saving the payload...", [NotifyType, Reason]),
     Props = props:filter_undefined(
               [{<<"description">>, <<"failed to publish notification">>}
               ,{<<"failure_reason">>, Reason}
@@ -138,6 +142,7 @@ handle_error(NotifyType, Req, {Reason, Metadata}) ->
               ,{<<"notification_type">>, NotifyType}
               ,{<<"payload">>, Req}
               ,{<<"attempts">>, 1}
+              ,{<<"retry_after">>, ?DEFAULT_RETRY_PERIOD}
               ]),
     PvtOptions = [{'type', <<"failed_notify">>}
                  ,{'account_id', kapi_notifications:account_id(Req)}
@@ -148,11 +153,11 @@ handle_error(NotifyType, Req, {Reason, Metadata}) ->
 
 -spec save_pending_notification(kz_term:ne_binary(), kz_json:object(), integer()) -> 'ok'.
 save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
-    lager:error("max try to save payload for notification ~s publish attempt", [_NotifyType]);
+    lager:error("max try to save payload for notification ~s", [_NotifyType]);
 save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?KZ_PENDING_NOTIFY_DB, JObj) of
         {'ok', _SavedJObj} ->
-            lager:warning("payload for failed ~s publish attempt is saved to ~s", [NotifyType, kz_doc:id(_SavedJObj)]);
+            lager:warning("payload for notification ~s is saved to ~s", [NotifyType, kz_doc:id(_SavedJObj)]);
         {'error', 'not_found'} ->
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
@@ -161,7 +166,7 @@ save_pending_notification(NotifyType, JObj, Loop) ->
         {'error', 'conflict'} ->
             save_pending_notification(NotifyType, JObj, Loop - 1);
         {'error', _E} ->
-            lager:error("failed to save payload for ~s publish attempt: ~p", [NotifyType, _E])
+            lager:error("failed to save payload for notification ~s: ~p", [NotifyType, _E])
     end.
 
 %%------------------------------------------------------------------------------
@@ -223,7 +228,7 @@ should_ignore_failure(<<"validation_failed">>) -> 'true';
 should_ignore_failure(<<"missing_data:", _/binary>>) -> 'true';
 should_ignore_failure(<<"failed_template:", _/binary>>) -> 'true'; %% rendering problems
 should_ignore_failure(<<"template_error:", _/binary>>) -> 'true'; %% rendering problems
-should_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% no module is binded?
+should_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% no module is bound?
 should_ignore_failure(<<"unknown error throw-ed">>) -> 'true';
 
 %% explicitly not ignoring these below:
@@ -303,8 +308,7 @@ cast_to_binary(Error) ->
     try kz_term:to_binary(Error)
     catch
         _:_ ->
-            lager:debug("failed to convert notification failure reason to binary: ~p", [Error]),
-            <<"unknown_reason">>
+            kz_term:to_binary(io_lib:format("~p", [Error]))
     end.
 
 %%------------------------------------------------------------------------------
@@ -328,7 +332,7 @@ notify_type(PublishFun) ->
 -spec should_persist_notify(kz_term:api_binary()) -> boolean().
 should_persist_notify(AccountId) ->
     ?DEFAULT_PUBLISHER_ENABLED
-        andalso ?ACCOUNT_SHOULD_PRESIST(AccountId).
+        andalso ?ACCOUNT_SHOULD_PERSIST(AccountId).
 
 -spec should_handle_notify_type(kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
 should_handle_notify_type(NotifyType, AccountId) ->

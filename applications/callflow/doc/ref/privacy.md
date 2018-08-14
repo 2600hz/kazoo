@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the privacy callflow's data object
+Validator for the privacy callflow data object
 
 
 

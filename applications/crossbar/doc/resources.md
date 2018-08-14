@@ -1,8 +1,8 @@
-### Resources
+# Resources
 
-#### About Resources
+## About Resources
 
-Resources represent external assets such as TDM hardware, SIP trunks, transcoders, and other remote termination/originating call services or equipment.
+Resources represent external assets such as TDM hardware, SIP trunks, trans-coders, and other remote termination/originating call services or equipment.
 
 There are two levels of resources, global (or system-wide), and per-account (bring your own carrier). The JSON format for both is identical; only their location in the Kazoo database structure defines whether they are globally available or not.
 
@@ -12,7 +12,7 @@ To perform bulk resource operations use the collections endpoints.
 
 There are two deprecated API endpoints, `global_resources` and `local_resources`. These should continue to work as before, but it is recommended to use `resources` instead, using the presence of an account id to toggle whether the resource is global or not.
 
-#### About Adding Bulk Numbers
+### About Adding Bulk Numbers
 
 It is possible to add numbers, in bulk, to an account using the Jobs API below. If a job fails to run, there is a recovery process that runs periodically to attempt to resume stalled jobs.
 
@@ -20,7 +20,7 @@ You can configure how frequently the system checks for failed jobs in `system_co
 
 You can configure how what is considered a 'stalled' job by defining how old the job is (the last time the job document was modified) relative to the current time. Configure in `system_config/crossbar.resources`, using the `job_recover_threshold_s` key (defaults to 1 hour). If a job is not completed, and hasn't been modified in over an hour, there's a good chance the job executor died. A new job executor will be started to pick up where the old one left off.
 
-#### Schema
+## Schema
 
 Schema for resources
 
@@ -28,124 +28,125 @@ Schema for resources
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`emergency` | Determines if the resource represents emergency services | `boolean()` | `false` | `false` |  
-`enabled` | Determines if the resource is currently enabled | `boolean()` | `true` | `false` |  
-`flags.[]` |   | `string()` |   | `false` |  
-`flags` | A list of flags that can be provided on the request and must match for the resource to be eligible | `array(string())` | `[]` | `false` |  
-`flat_rate_blacklist` | Regex for determining if a number should not be eligible for flat-rate trunking | `string()` |   | `false` |  
-`flat_rate_whitelist` | Regex for determining if the number is eligible for flat-rate trunking | `string()` |   | `false` |  
-`format_from_uri` | When set to true requests to this resource will have a reformatted SIP From Header | `boolean()` |   | `false` |  
-`formatters` |   | `object()` |   | `false` |  
-`from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false` |  
-`gateways.[].bypass_media` | The resource gateway bypass media mode | `boolean()` |   | `false` |  
-`gateways.[].caller_id_type` | The type of caller id to use | `string('internal' | 'external' | 'emergency')` |   | `false` |  
-`gateways.[].channel_selection` | Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite | `string('ascending' | 'descending')` | `ascending` | `false` |  
-`gateways.[].codecs.[]` |   | `string('G729' | 'PCMU' | 'PCMA' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'GSM' | 'OPUS' | 'H261' | 'H263' | 'H264' | 'VP8')` |   | `false` |  
-`gateways.[].codecs` | A list of single list codecs supported by this gateway (to support backward compatibilty) | `array(string('G729' | 'PCMU' | 'PCMA' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'GSM' | 'OPUS' | 'H261' | 'H263' | 'H264' | 'VP8'))` |   | `false` |  
-`gateways.[].custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |  
-`gateways.[].custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |  
-`gateways.[].custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |  
-`gateways.[].custom_sip_headers` | A property list of SIP headers | `object()` |   | `false` |  
-`gateways.[].custom_sip_interface` | The name of a custom SIP interface | `string()` |   | `false` |  
-`gateways.[].enabled` | Determines if the resource gateway is currently enabled | `boolean()` | `true` | `false` |  
-`gateways.[].endpoint_type` | What type of endpoint is this gateway | `string('sip' | 'freetdm' | 'skype' | 'amqp')` | `sip` | `false` |  
-`gateways.[].force_port` | Allow request only from this port | `boolean()` | `false` | `false` |  
-`gateways.[].format_from_uri` | When set to true requests to this resource gateway will have a reformatted SIP From Header | `boolean()` |   | `false` |  
-`gateways.[].from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false` |  
-`gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route' | 'username' | 'e164' | 'npan' | '1npan')` | `route` | `false` |  
-`gateways.[].invite_parameters.dynamic.[]` |   | `string()|string()|string('zone')|object()` |   |   |  
-`gateways.[].invite_parameters.dynamic` | A list of properties that, if found on the inbound call, should be added as an INVITE parameter | `array()` |   | `false` |  
-`gateways.[].invite_parameters.static.[]` |   | `string()` |   | `false` |  
-`gateways.[].invite_parameters.static` | A list of static values that should be added as INVITE parameters | `array(string())` |   | `false` |  
-`gateways.[].invite_parameters` |   | `object()` |   | `false` |  
-`gateways.[].media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false` |  
-`gateways.[].media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false` |  
-`gateways.[].media` | The media parameters for the resource gateway | `object()` |   | `false` |  
-`gateways.[].password` | SIP authentication password | `string(0..32)` |   | `false` |  
-`gateways.[].port` | This resource gateway port | `integer()` | `5060` | `false` |  
-`gateways.[].prefix` | A string to prepend to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |  
-`gateways.[].progress_timeout` | The progress timeout to apply to the resource gateway | `integer()` |   | `false` |  
-`gateways.[].realm` | This resource gateway authentication realm | `string(0..64)` |   | `false` |  
-`gateways.[].route` | A staticly configured SIP URI to route all call to | `string()` |   | `false` |  
-`gateways.[].server` | This resource gateway server | `string(1..128)` |   | `true` |  
-`gateways.[].skype_interface` | The name of the Skype interface to route the call over | `string()` |   | `false` |  
-`gateways.[].skype_rr` | Determines whether to round-robin calls amongst all interfaces (overrides "skype_interface" setting) | `boolean()` | `true` | `false` |  
-`gateways.[].span` | The identity of the hardware on the media server | `string()` |   | `false` |  
-`gateways.[].suffix` | A string to append to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |  
-`gateways.[].username` | SIP authentication username | `string(0..32)` |   | `false` |  
-`gateways` | A list of gateways avaliable for this resource | `array(object())` |   | `true` |  
-`grace_period` | The amount of time, in seconds, to wait before starting another resource | `integer()` | `5` | `false` |  
-`media` | Media options for resources | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |  
-`name` | A friendly name for the resource | `string(1..128)` |   | `true` |  
-`require_flags` | When set to true this resource is ignored if the request does not specify outbound flags | `boolean()` |   | `false` |  
-`rules.[]` |   | `string()` |   | `false` |  
-`rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string())` | `[]` | `false` |  
-`weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false` |  
+`emergency` | Determines if the resource represents emergency services | `boolean()` | `false` | `false` |
+`enabled` | Determines if the resource is currently enabled | `boolean()` | `true` | `false` |
+`flags.[]` |   | `string()` |   | `false` |
+`flags` | A list of flags that can be provided on the request and must match for the resource to be eligible | `array(string())` | `[]` | `false` |
+`flat_rate_blacklist` | Regex for determining if a number should not be eligible for flat-rate trunking | `string()` |   | `false` |
+`flat_rate_whitelist` | Regex for determining if the number is eligible for flat-rate trunking | `string()` |   | `false` |
+`format_from_uri` | When set to true requests to this resource will have a reformatted SIP From Header | `boolean()` |   | `false` |
+`formatters` |   | `object()` |   | `false` |
+`from_uri_realm` | When formatting SIP From on outbound requests this can be used to override the realm | `string()` |   | `false` |
+`gateways.[].bypass_media` | The resource gateway bypass media mode | `boolean()` |   | `false` |
+`gateways.[].caller_id_type` | The type of caller id to use | `string('internal' | 'external' | 'emergency')` |   | `false` |
+`gateways.[].channel_selection` | Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite | `string('ascending' | 'descending')` | `ascending` | `false` |
+`gateways.[].codecs.[]` |   | `string('G729' | 'PCMU' | 'PCMA' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'GSM' | 'OPUS' | 'H261' | 'H263' | 'H264' | 'VP8')` |   | `false` |
+`gateways.[].codecs` | A list of single list codecs supported by this gateway (to support backward compatibility) | `array(string('G729' | 'PCMU' | 'PCMA' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'GSM' | 'OPUS' | 'H261' | 'H263' | 'H264' | 'VP8'))` |   | `false` |
+`gateways.[].custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |
+`gateways.[].custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |
+`gateways.[].custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |
+`gateways.[].custom_sip_headers` | A property list of SIP headers | `object()` |   | `false` |
+`gateways.[].custom_sip_interface` | The name of a custom SIP interface | `string()` |   | `false` |
+`gateways.[].enabled` | Determines if the resource gateway is currently enabled | `boolean()` | `true` | `false` |
+`gateways.[].endpoint_type` | What type of endpoint is this gateway | `string('sip' | 'freetdm' | 'skype' | 'amqp')` | `sip` | `false` |
+`gateways.[].force_port` | Allow request only from this port | `boolean()` | `false` | `false` |
+`gateways.[].format_from_uri` | When set to true requests to this resource gateway will have a reformatted SIP From Header | `boolean()` |   | `false` |
+`gateways.[].from_uri_realm` | When formatting SIP From on outbound requests this can be used to override the realm | `string()` |   | `false` |
+`gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route' | 'username' | 'e164' | 'npan' | '1npan')` | `route` | `false` |
+`gateways.[].invite_parameters.dynamic.[]` |   | `string()|string()|string('zone')|object()` |   |   |
+`gateways.[].invite_parameters.dynamic` | A list of properties that, if found on the inbound call, should be added as an INVITE parameter | `array()` |   | `false` |
+`gateways.[].invite_parameters.static.[]` |   | `string()` |   | `false` |
+`gateways.[].invite_parameters.static` | A list of static values that should be added as INVITE parameters | `array(string())` |   | `false` |
+`gateways.[].invite_parameters` |   | `object()` |   | `false` |
+`gateways.[].media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false` |
+`gateways.[].media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false` |
+`gateways.[].media` | The media parameters for the resource gateway | `object()` |   | `false` |
+`gateways.[].password` | SIP authentication password | `string(0..32)` |   | `false` |
+`gateways.[].port` | This resource gateway port | `integer()` | `5060` | `false` |
+`gateways.[].prefix` | A string to prepend to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |
+`gateways.[].progress_timeout` | The progress timeout to apply to the resource gateway | `integer()` |   | `false` |
+`gateways.[].realm` | This resource gateway authentication realm | `string(0..64)` |   | `false` |
+`gateways.[].route` | A statically configured SIP URI to route all call to | `string()` |   | `false` |
+`gateways.[].server` | This resource gateway server | `string(1..128)` |   | `true` |
+`gateways.[].skype_interface` | The name of the Skype interface to route the call over | `string()` |   | `false` |
+`gateways.[].skype_rr` | Determines whether to round-robin calls amongst all interfaces (overrides "skype_interface" setting) | `boolean()` | `true` | `false` |
+`gateways.[].span` | The identity of the hardware on the media server | `string()` |   | `false` |
+`gateways.[].suffix` | A string to append to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |
+`gateways.[].username` | SIP authentication username | `string(0..32)` |   | `false` |
+`gateways` | A list of gateways available for this resource | `array(object())` |   | `true` |
+`grace_period` | The amount of time, in seconds, to wait before starting another resource | `integer()` | `5` | `false` |
+`ignore_flags` | When set to true this resource is used if the rules/classifiers match regardless of flags | `boolean()` |   | `false` |
+`media` | Media options for resources | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |
+`name` | A friendly name for the resource | `string(1..128)` |   | `true` |
+`require_flags` | When set to true this resource is ignored if the request does not specify outbound flags | `boolean()` |   | `false` |
+`rules.[]` |   | `string()` |   | `false` |
+`rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string())` | `[]` | `false` |
+`weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false` |
 
-##### custom_sip_headers
+### custom_sip_headers
 
 Custom SIP headers applied to an INVITE
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |  
+`^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |
 
-##### endpoint.media
+### endpoint.media
 
 Schema for endpoint media options
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`audio.codecs.[]` |   | `string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex')` |   | `false` |  
-`audio.codecs` | A list of audio codecs the endpoint supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false` |  
-`audio` | The audio media parameters | `object()` | `{}` | `false` |  
-`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false` |  
-`encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false` |  
-`encryption.methods.[]` |   | `string('zrtp' | 'srtp')` |   | `false` |  
-`encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false` |  
-`encryption` | Encryption Parameters | `object()` | `{}` | `false` |  
-`fax_option` | Is T.38 Supported? | `boolean()` |   | `false` |  
-`ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false` |  
-`progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false` |  
-`video.codecs.[]` |   | `string('H261' | 'H263' | 'H264' | 'VP8')` |   | `false` |  
-`video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false` |  
-`video` | The video media parameters | `object()` | `{}` | `false` |  
+`audio.codecs.[]` |   | `string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex')` |   | `false` |
+`audio.codecs` | A list of audio codecs the endpoint supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false` |
+`audio` | The audio media parameters | `object()` | `{}` | `false` |
+`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false` |
+`encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false` |
+`encryption.methods.[]` |   | `string('zrtp' | 'srtp')` |   | `false` |
+`encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false` |
+`encryption` | Encryption Parameters | `object()` | `{}` | `false` |
+`fax_option` | Is T.38 Supported? | `boolean()` |   | `false` |
+`ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false` |
+`progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false` |
+`video.codecs.[]` |   | `string('H261' | 'H263' | 'H264' | 'VP8')` |   | `false` |
+`video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false` |
+`video` | The video media parameters | `object()` | `{}` | `false` |
 
-##### formatters
+### formatters
 
 Schema for request formatters
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^[[:alnum:]_]+$` | Key to match in the route request JSON | `array([#/definitions/formatters.format_options](#formattersformat_options)) | [#/definitions/formatters.format_options](#formattersformat_options)` |   | `false` |  
+`^[[:alnum:]_]+$` | Key to match in the route request JSON | `array([#/definitions/formatters.format_options](#formattersformat_options)) | [#/definitions/formatters.format_options](#formattersformat_options)` |   | `false` |
 
-##### formatters.format_options
+### formatters.format_options
 
 Schema for formatter options
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`direction` | Only apply the formatter on the relevant request direction | `string('inbound' | 'outbound' | 'both')` |   | `false` |  
-`match_invite_format` | Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request. | `boolean()` |   | `false` |  
-`prefix` | Prepends value against the result of a successful regex match | `string()` |   | `false` |  
-`regex` | Matches against the value, with optional capture group | `string()` |   | `false` |  
-`strip` | If set to true, the field will be stripped from the payload | `boolean()` |   | `false` |  
-`suffix` | Appends value against the result of a successful regex match | `string()` |   | `false` |  
-`value` | Replaces the current value with the static value defined | `string()` |   | `false` |  
+`direction` | Only apply the formatter on the relevant request direction | `string('inbound' | 'outbound' | 'both')` |   | `false` |
+`match_invite_format` | Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request. | `boolean()` |   | `false` |
+`prefix` | Prepends value against the result of a successful regex match | `string()` |   | `false` |
+`regex` | Matches against the value, with optional capture group | `string()` |   | `false` |
+`strip` | If set to true, the field will be stripped from the payload | `boolean()` |   | `false` |
+`suffix` | Appends value against the result of a successful regex match | `string()` |   | `false` |
+`value` | Replaces the current value with the static value defined | `string()` |   | `false` |
 
 
 
-#### INVITE Parameters
+## INVITE Parameters
 
-The INVITE parameters object defines both static and dynamic parameters that should be added to the request URI.
+The `INVITE` parameters object defines both static and dynamic parameters that should be added to the request URI.
 
 Static parameters are added 'as-is' and can be any format.  However, they should follow the SIP standard for the header field format and should not include a semi-colon.
 
-Dynamic parameters obtain the value from properties of the initiating call (requestor) if present, and are ignored if not. Dynamic parameters can be defined either as a string or an object.  When defined as a string the property is extracted from the requestor and if found the resulting value used without modification as an INVITE parameter.  When defined as an object both a tag as well as a key propery must be defined.  The key property is used to extract the value from the requestor and the tag is appended as the INVITE parameter name.  By default the INVITE parameter name and value are seperated by an equals sign but this can be overridden by providing a seperator property.
+Dynamic parameters obtain the value from properties of the initiating call (requestor) if present, and are ignored if not. Dynamic parameters can be defined either as a string or an object.  When defined as a string the property is extracted from the requestor and if found the resulting value used without modification as an `INVITE` parameter.  When defined as an object both a tag as well as a key property must be defined.  The key property is used to extract the value from the requestor and the tag is appended as the `INVITE` parameter name.  By default the `INVITE` parameter name and value are separated by an equals sign but this can be overridden by providing a separator property.
 
 For example, if a resource gateway contains the following object:
 
@@ -164,14 +165,14 @@ For example, if a resource gateway contains the following object:
            }
 ```
 
-and assuming the requesting call has pass-through (with value "pass-through=0288") as well as account_id (with value "XXXX") custom channel variables it will result in an INVITE request URI such as:
+and assuming the requesting call has pass-through (with value `pass-through=0288`) as well as account_id (with value `XXXX`) custom channel variables it will result in an `INVITE` request URI such as:
 
 ```
 INVITE sip:+14158867900@10.26.0.88;npid;id=XXXX;pass-through=0288 SIP/2.0
 ```
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources
 
@@ -203,7 +204,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create a new resource
+## Create a new resource
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources
 
@@ -243,7 +244,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Remove a resource
+## Remove a resource
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -307,7 +308,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch a resource
+## Fetch a resource
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -371,7 +372,7 @@ curl -v -X GET \
 }
 ```
 
-#### Change a resource
+## Change a resource
 
 > POST /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -437,7 +438,7 @@ curl -v -X POST \
 }
 ```
 
-#### Patch a resource
+## Patch a resource
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -507,7 +508,7 @@ curl -v -X PATCH \
 ```
 
 
-#### Fetch a listing of jobs
+## Fetch a listing of jobs
 
 Do note you can use the `created_from` and `created_to` flags to change to time period queried.
 
@@ -531,7 +532,7 @@ curl -v -X GET \
             "id": "201408-394de70ecf6f8252",
             "status": "pending",
             "timestamp": 63575950041,
-            "resource_id":{RESOURCE_ID}
+            "resource_id":"{RESOURCE_ID}"
         },
         {
             "failures": 0,
@@ -539,7 +540,7 @@ curl -v -X GET \
             "id": "201408-70766ed00a24",
             "status": "pending",
             "timestamp": 63575878379,
-            "resource_id":{RESOURCE_ID}
+            "resource_id":"{RESOURCE_ID}"
         }
     ]
     "page_size": 2,
@@ -550,7 +551,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create a new job
+## Create a new job
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/jobs
 
@@ -580,7 +581,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Fetch a job's status
+## Fetch a job's status
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}
 
@@ -610,7 +611,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create a new collection of resources
+## Create a new collection of resources
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
 
@@ -622,7 +623,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```
 
-#### Change a collection
+## Change a collection
 
 > POST /v2/accounts/{ACCOUNT_ID}/resources/collection
 
@@ -639,10 +640,10 @@ curl -v -X POST \
     "auth_token": "{AUTH_TOKEN}",
     "data":{
         "errors":{
-            "{RESOURCE_ID}":"{ERROR_MESSAGE}"
+            "{RESOURCE_ID}": "{ERROR_MESSAGE}"
         },
         "successes":{
-            "{RESOURCE_ID}":{RESOURCE_DOC}
+            "{RESOURCE_ID}": "{RESOURCE_DOC}"
         }
     }
 }

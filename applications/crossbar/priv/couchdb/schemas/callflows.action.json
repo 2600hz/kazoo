@@ -19,7 +19,7 @@
             "type": "object"
         },
         "module": {
-            "description": "The name of the callflow module to excute at this node",
+            "description": "The name of the callflow module to execute at this node",
             "kazoo-validation": true,
             "maxLength": 64,
             "minLength": 1,

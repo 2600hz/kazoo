@@ -1,5 +1,6 @@
 -ifndef(CROSSBAR_TYPES_INCLUDED).
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_web/include/kazoo_web.hrl").
 
 -define(CATCH_ALL, <<"_">>).
 -define(HARD_DELETE, 'false').
@@ -60,14 +61,6 @@
 -type couch_schema() :: [{couch_doc_path(), validator_rules()}].
 
 -type cb_cowboy_payload() :: {cowboy_req:req(), cb_context:context()}.
-
--define(HTTP_GET, <<"GET">>).
--define(HTTP_POST, <<"POST">>).
--define(HTTP_PUT, <<"PUT">>).
--define(HTTP_DELETE, <<"DELETE">>).
--define(HTTP_OPTIONS, <<"OPTIONS">>).
--define(HTTP_HEAD, <<"HEAD">>).
--define(HTTP_PATCH, <<"PATCH">>).
 
 -define(CSV_CONTENT_TYPES, [{<<"application">>, <<"octet-stream">>}
                            ,{<<"text">>, <<"csv">>}

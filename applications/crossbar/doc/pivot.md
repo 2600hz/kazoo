@@ -1,10 +1,10 @@
-### Pivot
+# Pivot API
 
-#### About Pivot
+## About Pivot
 
-The Pivot Crossbar resource allows the client to query and inspect data related to the [Pivot](/applications/pivot) application (real-time call control).
+The Pivot Crossbar resource allows the client to query and inspect data related to the [Pivot](../../pivot/doc/README.md) application (real-time call control).
 
-#### Enabling in Crossbar
+## Enabling in Crossbar
 
 The Pivot endpoint is not loaded on start in a default Kazoo installation.
 
@@ -16,9 +16,10 @@ The Pivot endpoint is not loaded on start in a default Kazoo installation.
     * Click the green check box to the right of the input box
     * Click 'Save Document' in top left of the screen
 
-Note: adding `cb_pivot` to the crossbar `system_config` doc will not start the endpoint; only on restarting Crossbar will `cb_pivot` be loaded. Use the [sup](./sup.md) command above to start the endpoint at runtime.
+!!! note
+    Adding `cb_pivot` to the crossbar `system_config` doc will not start the endpoint; only on restarting Crossbar will `cb_pivot` be loaded. Use the `sup` command above to start the endpoint at runtime.
 
-#### Callflow Schema
+## Callflow Schema
 
 Any pivot callflow node must obey this schema.
 
@@ -30,13 +31,15 @@ Key | Description | Type | Default | Required
 `req_format` | What format of Pivot will the your server respond with | `string('kazoo', 'twiml')` | `kazoo` | `false`
 `voice_url` | What URL to request the initial Pivot callflow | `string` |   | `true`
 
-> Note: `cdr_url` is only applicable when using the XML (TwiML) format. When using the kazoo format, control is handed off to the Callflows app, with the Pivot process ending (and nothing waiting for the CDR). Instead, please use [webhooks](./webhooks.md) (specifically the CHANNEL_DESTROY event) to receive CDRs.
+!!! note
+    `cdr_url` is only applicable when using the XML (TwiML) format. When using the kazoo format, control is handed off to the Callflows app, with the Pivot process ending (and nothing waiting for the CDR). Instead, please use [webhooks](./webhooks.md) (specifically the CHANNEL_DESTROY event) to receive CDRs.
 
-#### Debugging pivot attempts
+## Debugging pivot attempts
 
-You will need to edit the "data" object in the "pivot" callflow element to include a "debug" flag:
+You will need to edit the `data` object in the `pivot` callflow element to include a `debug` flag:
 
 ```json
+{
     "flow": {
       "data": {
         "method": "GET",
@@ -48,12 +51,13 @@ You will need to edit the "data" object in the "pivot" callflow element to inclu
       "children": {
       }
     }
+}
 ```
 
 All calls to this callflow will now store debug logs to the account's current MODb database.
 
 
-#### Fetch debugged UUIDs
+## Fetch a List of Debug UUIDs
 
 > GET /v2/accounts/{ACCOUNT_ID}/pivot/debug
 
@@ -65,8 +69,8 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "{AUTH_TOKEN}"
-    ,"data": [
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
         {
             "call_id": "{UUID_1}",
             "created": 63635231906,
@@ -84,14 +88,14 @@ curl -v -X GET \
             "has_schema_errors": true
         }
       ],
-     ,"page_size": 3,
-     ,"request_id": "{REQUEST_ID}"
-     ,"revision": "{REVISION}"
-     ,"status": "success"
+     "page_size": 3,
+     "request_id": "{REQUEST_ID}",
+     "revision": "{REVISION}",
+     "status": "success",
 }
 ```
 
-#### Fetch debug logs for a UUID
+## Fetch Debug Logs for a UUID
 
 > GET /v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}
 
@@ -132,4 +136,5 @@ curl -v -X GET \
      }
 ```
 
-Note: You must URL-encode the call-id in the URL. Typically this would just mean converting `@` to `%40', but you'll need to take care depending on how your call-ids are constructed.
+!!! note
+    You must URL-encode the call-id in the URL. Typically this would just mean converting `@` to `%40`, but you'll need to take care depending on how your call-ids are constructed.

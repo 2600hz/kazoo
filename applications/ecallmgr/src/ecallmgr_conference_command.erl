@@ -258,13 +258,21 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
 -spec dial(atom(), kz_term:ne_binary(), kz_json:object(), kz_json:object() | kz_json:objects()) ->
                   api_response().
 dial(Node, ConferenceId, JObj, [_|_]=Endpoints) ->
+    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj),
+
+    ConferenceName = case kz_json:get_ne_binary_value(<<"Profile-Name">>, JObj) of
+                         'undefined' -> list_to_binary([ConferenceId, "@", ConferenceId, "_", AccountId]);
+                         ProfileName ->
+                             list_to_binary([ConferenceId, "@", ProfileName])
+                     end,
+
     DialCmd = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj)
                              ,ecallmgr_fs_bridge:try_create_bridge_string(Endpoints, JObj)
                              ,caller_id(kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)
                                        ,kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)
                                        )
                              ]),
-    api(Node, ConferenceId, {<<"bgdial">>, DialCmd});
+    api(Node, ConferenceName, {<<"bgdial">>, DialCmd});
 dial(Node, ConferenceId, JObj, Endpoint) ->
     dial(Node, ConferenceId, JObj, [Endpoint]).
 

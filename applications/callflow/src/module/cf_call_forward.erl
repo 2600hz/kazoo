@@ -138,7 +138,7 @@ cf_toggle(CF, _, Call) ->
     cf_deactivate(CF, Call).
 
 %%------------------------------------------------------------------------------
-%% @doc This function will udpate the call forwarding object on the owner
+%% @doc This function will update the call forwarding object on the owner
 %% document to enable call forwarding
 %% @end
 %%------------------------------------------------------------------------------
@@ -164,7 +164,7 @@ cf_activate(CF, CaptureGroup, Call) ->
     CF#callfwd{enabled='true', number=CaptureGroup}.
 
 %%------------------------------------------------------------------------------
-%% @doc This function will udpate the call forwarding object on the owner
+%% @doc This function will update the call forwarding object on the owner
 %% document to disable call forwarding
 %% @end
 %%------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ cf_deactivate(CF, Call) ->
     CF#callfwd{enabled='false'}.
 
 %%------------------------------------------------------------------------------
-%% @doc This function will udpate the call forwarding object on the owner
+%% @doc This function will update the call forwarding object on the owner
 %% document with a new number
 %% @end
 %%------------------------------------------------------------------------------

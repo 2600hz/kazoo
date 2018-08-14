@@ -37,6 +37,9 @@
         ,remove_termination_handler/2
         ]).
 
+-export([stop_bad_destination/1]).
+-export([status/1]).
+
 %% gen_listener callbacks
 -export([init/1
         ,handle_call/3
@@ -61,12 +64,15 @@
 
 -define(MAX_BRANCH_COUNT, kapps_config:get_integer(?CF_CONFIG_CAT, <<"max_branch_count">>, 50)).
 
+-type callfow_status() :: 'init' | 'running' | 'not_running'.
+-export_type([callfow_status/0]).
+
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                ,flow = kz_json:new() :: kz_json:object()
                ,flows = [] :: kz_json:objects()
                ,cf_module_pid :: kz_term:api_pid_ref()
                ,cf_module_old_pid :: kz_term:api_pid_ref()
-               ,status = <<"sane">> :: kz_term:ne_binary()
+               ,status = 'init' :: callfow_status()
                ,queue :: kz_term:api_ne_binary()
                ,self = self() :: pid()
                ,stop_on_destroy = 'true' :: boolean()
@@ -391,6 +397,8 @@ handle_call({'add_termination_handler', {_M, _F, _Args}=H},  _From, #state{termi
     {'reply', 'ok', State#state{termination_handlers=lists:usort([H | Handlers])}};
 handle_call({'remove_termination_handler', {_M, _F, _Args}=H},  _From, #state{termination_handlers=Handlers}=State) ->
     {'reply', 'ok', State#state{termination_handlers=lists:delete(H, Handlers)}};
+handle_call('status', _From, #state{status=Status}=State) ->
+    {'reply', Status, State};
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.
@@ -427,6 +435,10 @@ handle_cast({'continue', Key}, #state{flow=Flow
         NewFlow ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
+handle_cast({'stop', _}, #state{stop_on_destroy='true'
+                               ,destroyed='true'
+                               }=State) ->
+    {'stop', 'normal', State};
 handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
     {'stop', 'normal', State};
 handle_cast({'stop', Cause}, #state{flows=[]
@@ -442,6 +454,10 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
+handle_cast('channel_destroyed', #state{stop_on_destroy='true'
+                                       ,cf_module_pid='undefined'
+                                       }=State) ->
+    {'stop', 'normal', State};
 handle_cast('channel_destroyed', State) ->
     {'noreply', State#state{destroyed='true'}};
 handle_cast('stop_on_destroy', State) ->
@@ -508,7 +524,7 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
            ,#state{cf_module_pid='undefined'}=State
            ) ->
     lager:debug("ready to recv events, launching the callflow"),
-    {'noreply', launch_cf_module(State)};
+    {'noreply', launch_cf_module(State#state{status = 'running'})};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -660,8 +676,22 @@ launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
     State;
 launch_cf_module(#state{call=Call
                        ,flow=Flow
-                       ,cf_module_pid=OldPidRef
                        }=State) ->
+    case cf_util:token_check(Call, Flow) of
+        'true' ->
+            do_launch_cf_module(State);
+
+        'false' ->
+            lager:debug("call does not have enough tokens to proceed, stopping execution"),
+            stop(self()),
+            State
+    end.
+
+-spec do_launch_cf_module(state()) -> state().
+do_launch_cf_module(#state{call=Call
+                          ,flow=Flow
+                          ,cf_module_pid=OldPidRef
+                          }=State) ->
     Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
     Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
 
@@ -686,12 +716,11 @@ launch_cf_module(#state{call=Call
                                    {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
-    try CFModule:module_info('exports') of
-        _ ->
+    case kz_module:is_exported(CFModule, 'handle', 2) of
+        'true' ->
             lager:info("moving to action '~s'", [CFModule]),
-            spawn_cf_module(CFModule, Data, Call)
-    catch
-        'error':'undef' ->
+            spawn_cf_module(CFModule, Data, Call);
+        'false' ->
             lager:debug("failed to find callflow module ~s", [CFModule]),
             cf_module_not_found(Call)
     end.
@@ -879,3 +908,16 @@ handle_channel_pivoted(Self, PidRef, JObj, Call) ->
 maybe_stop_action({Pid, _Ref}) ->
     exit(Pid, 'normal');
 maybe_stop_action('undefined') -> 'ok'.
+
+-spec stop_bad_destination(kapps_call:call()) -> 'ok'.
+stop_bad_destination(Call) ->
+    _ = kapps_call_command:prompt(<<"fault-can_not_be_completed_as_dialed">>, Call),
+    stop(Call).
+
+-spec status(kapps_call:call() | pid() | 'undefined') -> callfow_status().
+status('undefined') -> 'not_running';
+status(Srv) when is_pid(Srv) ->
+    gen_listener:call(Srv, 'status');
+status(Call) ->
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
+    status(Srv).

@@ -1,8 +1,8 @@
-### Whitelabeling
+# Whitelabeling
 
-#### About
+Whitelabling is one of the core functionality of the Kazoo which allows to make your own brand.
 
-#### Schema
+## Schema
 
 Whitelabel settings
 
@@ -10,29 +10,29 @@ Whitelabel settings
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`company_name` | The company name to display to users | `string()` |   | `false` |  
-`domain` | This is the whitelabeled domain that users will be entering to reach the UI | `string()` |   | `false` |  
-`fake_api_url` | This is a whitelabeled API URL, primarily used by the developer application | `string()` |   | `false` |  
-`hide_credits` | When checkef this hides the credits | `boolean()` | `false` | `false` |  
-`hide_powered` | When checked this hides the powered by 2600hz on the bottom right | `boolean()` | `false` | `false` |  
-`hide_registration` | When checked this hides the ability to register for a new account | `boolean()` | `false` | `false` |  
-`inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false` |  
-`nav.help` | The URL to use when the help link is clicked | `string()` |   | `false` |  
-`nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false` |  
-`nav` | Properties related to navigation in the UI | `object()` |   | `false` |  
-`outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false` |  
-`port.authority` | The email(s) to be used for admin port requests | `string() | array(string())` |   | `false` |  
-`port.features` | The URL to use when the features link is clicked | `string()` |   | `false` |  
-`port.loa` | The URL to use when the LOA link is clicked | `string()` |   | `false` |  
-`port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` |  
-`port.support_email` | The support email address to display to the user | `string()` |   | `false` |  
-`port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` |  
-`port` | Parameters releated to whitelabeling port requests | `object()` |   | `false` |  
-`twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` |  
+`company_name` | The company name to display to users | `string()` |   | `false` | `supported`
+`domain` | This is the whitelabeled domain that users will be entering to reach the UI | `string()` |   | `false` | `supported`
+`fake_api_url` | This is a whitelabeled API URL, primarily used by the developer application | `string()` |   | `false` | `beta`
+`hide_credits` | When checked this hides the credits | `boolean()` | `false` | `false` | `beta`
+`hide_powered` | When checked this hides the powered by 2600Hz on the bottom right | `boolean()` | `false` | `false` | `supported`
+`hide_registration` | When checked this hides the ability to register for a new account | `boolean()` | `false` | `false` | `beta`
+`inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
+`nav.help` | The URL to use when the help link is clicked | `string()` |   | `false` | `supported`
+`nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false` | `supported`
+`nav` | Properties related to navigation in the UI | `object()` |   | `false` |
+`outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
+`port.authority` | The email(s) to be used for admin port requests | `string() | array(string())` |   | `false` | `supported`
+`port.features` | The URL to use when the features link is clicked | `string()` |   | `false` | `supported`
+`port.loa` | The URL to use when the LOA link is clicked | `string()` |   | `false` | `supported`
+`port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` | `supported`
+`port.support_email` | The support email address to display to the user | `string()` |   | `false` | `supported`
+`port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` | `supported`
+`port` | Parameters related to white-labeling port requests | `object()` |   | `false` |
+`twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
@@ -142,7 +142,7 @@ Assuming your whitelabel domain is "mydomain.com" you should receive a payload s
 
 Here you can see which DNS records are supported and where they should point to access the Kazoo cluster.
 
-#### Testing your domains
+## Testing your domains
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
@@ -239,9 +239,9 @@ Similar to the GET, you can include a `domain=` parameter in the request to test
 }
 ```
 
-You should be able to compare your hosts in each DNS type against the expected values configured by the system admin and adjust your DNS settins as appropriate.
+You should be able to compare your hosts in each DNS type against the expected values configured by the system admin and adjust your DNS settings as appropriate.
 
-##### Configuring the Domains (System Administrators only)
+## Configuring the Domains (System Administrators only)
 
 System administrators can set/update the domains object that is used when resellers whitelabel the service. The generic format of the JSON object is:
 

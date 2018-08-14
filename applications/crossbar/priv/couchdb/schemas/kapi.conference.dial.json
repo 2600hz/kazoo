@@ -53,6 +53,9 @@
         "Participant-Flags": {
             "type": "string"
         },
+        "Profile-Name": {
+            "type": "string"
+        },
         "Target-Call-ID": {
             "type": "string"
         },

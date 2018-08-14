@@ -44,7 +44,7 @@
 -export([get_descendants/1]).
 -export([get_tree/1]).
 -export([replicate_account_definition/1]).
--export([disable_account/1
+-export([disable_account/1, maybe_disable_account/1
         ,enable_account/1
         ,change_pvt_enabled/2
         ]).
@@ -158,7 +158,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function loads the response vars in Context, soon it will
-%% make smarter choices about formating resp_data and filtering
+%% make smarter choices about formatting resp_data and filtering
 %% other parameters.
 %% @end
 %%------------------------------------------------------------------------------
@@ -308,7 +308,7 @@ flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
+    kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registrations(Context) ->
     flush_registrations(kzd_accounts:fetch_realm(cb_context:account_id(Context))).
 
@@ -321,8 +321,8 @@ flush_registration(Username, <<_/binary>> = Realm) ->
                ,{<<"Username">>, Username}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_switch:publish_notify/1),
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
+    _ = kz_amqp_worker:cast(FlushCmd, fun kapi_switch:publish_notify/1),
+    kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
     Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     flush_registration(Username, Realm).
@@ -567,12 +567,21 @@ disable_account(AccountId) ->
             E
     end.
 
+-spec maybe_disable_account(kz_types:ne_binary()) -> any().
+maybe_disable_account(AccountId) ->
+    {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
+    case kzd_accounts:is_enabled(AccountJObj) of
+        'false' -> 'ok';
+        'true' ->
+            kzd_accounts:save(kzd_accounts:disable(AccountJObj))
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc Flag all descendants of the account id as enabled.
 %% @end
 %%------------------------------------------------------------------------------
 -spec enable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
-enable_account('undefined') -> ok;
+enable_account('undefined') -> 'ok';
 enable_account(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
@@ -832,7 +841,7 @@ create_auth_token(Context, AuthModule, JObj) ->
 -spec get_token_restrictions(atom(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                     kz_term:api_object().
 get_token_restrictions(AuthModule, AccountId, OwnerId) ->
-    case kz_util:is_system_admin(AccountId) of
+    case kzd_accounts:is_superduper_admin(AccountId) of
         'true' -> 'undefined';
         'false' ->
             Restrictions =
@@ -961,10 +970,9 @@ format_emergency_caller_id_number(Context, Emergency) ->
             CallerId = cb_context:req_value(Context, <<"caller_id">>),
             NCallerId = kz_json:set_value(?KEY_EMERGENCY, NEmergency, CallerId),
 
-            cb_context:set_req_data(
-              Context
+            cb_context:set_req_data(Context
                                    ,kz_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
-             )
+                                   )
     end.
 
 -type refresh_type() :: 'user' | 'device' | 'sys_info' | 'account'.

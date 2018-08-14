@@ -21,26 +21,24 @@ run_modules() ->
 
 -spec run_module(atom() | kz_term:ne_binary()) -> 'no_return'.
 run_module(Module) when is_atom(Module) ->
-    Exports = Module:module_info('exports'),
-    _ = quickcheck_exports(Module, Exports),
+    Module = kz_module:ensure_loaded(Module),
+    _ = quickcheck_exports(Module),
     'no_return';
 run_module(ModuleBin) ->
     run_module(kz_term:to_atom(ModuleBin)).
 
--spec quickcheck_exports(module(), [{function(), arity()}]) -> 'ok'.
-quickcheck_exports(Module, Exports) ->
-    _ = [quickcheck_export(Module, Export) || Export <- Exports],
+-spec quickcheck_exports(module()) -> 'ok'.
+quickcheck_exports(Module) ->
+    _ = [quickcheck_export(Module, Function)
+         || Function <- ['correct', 'correct_parallel'],
+            kz_module:is_exported(Module, Function, 0)
+        ],
     'ok'.
 
--spec quickcheck_export(module(), {function(), arity()}) -> 'true'.
-quickcheck_export(Module, {'correct', 0}) ->
-    io:format("quickchecking ~s:correct/0~n", [Module]),
-    'true' = proper:quickcheck(Module:correct());
-quickcheck_export(Module, {'correct_parallel', 0}) ->
-    io:format("quickchecking ~s:correct_parallel/0~n", [Module]),
-    'true' = proper:quickcheck(Module:correct_parallel());
-quickcheck_export(_Module, _FunArity) ->
-    'true'.
+-spec quickcheck_export(module(), atom()) -> 'true'.
+quickcheck_export(Module, Function) ->
+    io:format("quick-checking ~s:~s/0~n", [Module, Function]),
+    'true' = proper:quickcheck(Module:Function()).
 
 -spec run_seq_modules() -> 'no_return'.
 run_seq_modules() ->
@@ -49,23 +47,13 @@ run_seq_modules() ->
 
 -spec run_seq_module(atom() | kz_term:ne_binary()) -> 'no_return'.
 run_seq_module(Module) when is_atom(Module) ->
-    Exports = Module:module_info('exports'),
-    _ = seq_exports(Module, Exports),
+    _ = [Module:Function()
+         || Function <- ['seq'],
+            kz_module:is_exported(Module, Function, 0)
+        ],
     'no_return';
 run_seq_module(ModuleBin) ->
     run_seq_module(kz_term:to_atom(ModuleBin)).
-
--spec seq_exports(module(), [{function(), arity()}]) -> 'ok'.
-seq_exports(Module, Exports) ->
-    _ = [seq_export(Module, Export) || Export <- Exports],
-    'ok'.
-
--spec seq_export(module(), {function(), arity()}) -> any().
-seq_export(Module, {'seq', 0}) ->
-    io:format("run ~s:seq/0~n", [Module]),
-    (catch Module:seq());
-seq_export(_Module, _FunArity) ->
-    'true'.
 
 -spec modules() -> [module()].
 modules() ->

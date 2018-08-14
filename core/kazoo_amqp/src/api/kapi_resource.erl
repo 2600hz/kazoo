@@ -30,7 +30,7 @@
         ,publish_eavesdrop_resp/2, publish_eavesdrop_resp/3
         ]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 %% Eavesdrop: If you set a Group ID, the Call-ID is ignored and "all" is used instead
 -define(EAVESDROP_VALID_MODES, [<<"listen">>   % hear both sides - default
@@ -73,6 +73,8 @@
                                         ,<<"Export-Custom-Channel-Vars">>
                                         ,<<"Originate-Immediate">>
                                         ,<<"Outbound-Call-ID">>
+                                        ,<<"Origination-Call-ID">>
+
                                              %% Eavesdrop
                                         ,<<"Eavesdrop-Call-ID">>
                                         ,<<"Eavesdrop-Mode">>
@@ -124,7 +126,7 @@
                                ,{<<"Event-Name">>, <<"originate_resp">>}
                                ]).
 -define(ORIGINATE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                              ,{<<"Custom-Appliction-Vars">>, fun kz_json:is_json_object/1}
+                              ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                               ]).
 
 %% Originate Started
@@ -310,13 +312,13 @@ bind_q(Queue, Prop) ->
     bind_q(Queue, Prop, props:get_value('restrict_to', Prop)).
 
 bind_q(Queue, _Prop, 'undefined') ->
-    'ok' = amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ),
-    amqp_util:bind_q_to_callmgr(Queue, ?KEY_EAVESDROP_REQ);
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    kz_amqp_util:bind_q_to_callmgr(Queue, ?KEY_EAVESDROP_REQ);
 bind_q(Queue, Prop, ['originate'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ),
     bind_q(Queue, Prop, T);
 bind_q(Queue, Prop, ['eavesdrop'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Queue, ?KEY_EAVESDROP_REQ),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Queue, ?KEY_EAVESDROP_REQ),
     bind_q(Queue, Prop, T);
 bind_q(Queue, Prop, [_|T]) ->
     bind_q(Queue, Prop, T);
@@ -328,13 +330,13 @@ unbind_q(Queue, Prop) ->
     unbind_q(Queue, Prop, props:get_value('restrict_to', Prop)).
 
 unbind_q(Queue, _Prop, 'undefined') ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ),
-    amqp_util:unbind_q_from_callmgr(Queue, ?KEY_EAVESDROP_REQ);
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    kz_amqp_util:unbind_q_from_callmgr(Queue, ?KEY_EAVESDROP_REQ);
 unbind_q(Queue, Prop, ['originate'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ),
     unbind_q(Queue, Prop, T);
 unbind_q(Queue, Prop, ['eavesdrop'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Queue, ?KEY_EAVESDROP_REQ),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Queue, ?KEY_EAVESDROP_REQ),
     unbind_q(Queue, Prop, T);
 unbind_q(Queue, Prop, [_|T]) ->
     unbind_q(Queue, Prop, T);
@@ -347,7 +349,7 @@ unbind_q(_, _, []) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:callmgr_exchange().
 
 -spec publish_originate_req(kz_term:api_terms()) -> 'ok'.
 publish_originate_req(JObj) ->
@@ -356,7 +358,7 @@ publish_originate_req(JObj) ->
 -spec publish_originate_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ORIGINATE_REQ_VALUES, fun originate_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ, [{'mandatory', 'true'}]).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ, [{'mandatory', 'true'}]).
 
 -spec publish_originate_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_originate_resp(TargetQ, JObj) ->
@@ -365,7 +367,7 @@ publish_originate_resp(TargetQ, JObj) ->
 -spec publish_originate_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_RESP_VALUES, fun originate_resp/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_originate_started(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_originate_started(TargetQ, JObj) ->
@@ -374,7 +376,7 @@ publish_originate_started(TargetQ, JObj) ->
 -spec publish_originate_started(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_started(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_STARTED_VALUES, fun originate_started/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_originate_uuid(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_originate_uuid(TargetQ, JObj) ->
@@ -383,7 +385,7 @@ publish_originate_uuid(TargetQ, JObj) ->
 -spec publish_originate_uuid(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_uuid(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_UUID_VALUES, fun originate_uuid/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_eavesdrop_req(kz_term:api_terms()) -> 'ok'.
 publish_eavesdrop_req(JObj) ->
@@ -392,7 +394,7 @@ publish_eavesdrop_req(JObj) ->
 -spec publish_eavesdrop_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_eavesdrop_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?EAVESDROP_REQ_VALUES, fun eavesdrop_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_EAVESDROP_REQ).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_EAVESDROP_REQ).
 
 -spec publish_eavesdrop_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_eavesdrop_resp(TargetQ, JObj) ->
@@ -401,4 +403,4 @@ publish_eavesdrop_resp(TargetQ, JObj) ->
 -spec publish_eavesdrop_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_eavesdrop_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?EAVESDROP_RESP_VALUES, fun eavesdrop_resp/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).

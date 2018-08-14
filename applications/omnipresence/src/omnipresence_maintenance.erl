@@ -79,11 +79,11 @@ subscribe(Realm, User) ->
            ,{<<"Queue">>, <<>>}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    case kapps_util:amqp_pool_request_custom(Prop
-                                            ,fun kapi_presence:publish_subscribe/1
-                                            ,fun kapi_presence:update_v/1
-                                            ,{'presence', [{'restrict_to', ['updates']}]}
-                                            )
+    case kz_amqp_worker:call_custom(Prop
+                                   ,fun kapi_presence:publish_subscribe/1
+                                   ,fun kapi_presence:update_v/1
+                                   ,{'presence', [{'restrict_to', ['updates']}]}
+                                   )
     of
         {'ok', UpJObj} ->
             io:format("Sent subscription for ~s@~s, recv'd update of state ~s~n"

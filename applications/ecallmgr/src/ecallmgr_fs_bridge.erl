@@ -26,7 +26,7 @@ call_command(Node, UUID, JObj) ->
         'true' when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
         'true' ->
             %% if we are intending to ring multiple device simultaneously then
-            %% execute ring_ready so we dont leave the caller hanging with dead air.
+            %% execute ring_ready so we don't leave the caller hanging with dead air.
             %% this does not test how many are ACTUALLY dialed (registered)
             %% since that is one of the things we want to be ringing during
 
@@ -85,7 +85,9 @@ handle_ringback(Node, UUID, JObj) ->
                                   ,JObj
                                   )
     of
-        'undefined' -> 'ok';
+        'undefined' ->
+            {'ok', Default} = ecallmgr_util:get_setting(<<"default_ringback">>),
+            ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, kz_term:to_binary(Default)}]);
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom ringback: ~s", [Stream]),
@@ -265,7 +267,7 @@ try_create_bridge_string(Endpoints, JObj) ->
     DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
     case ecallmgr_util:build_bridge_string(Endpoints, DialSeparator) of
         <<>> ->
-            lager:warning("bridge string resulted in no enpoints"),
+            lager:warning("bridge string resulted in no endpoints"),
             throw(<<"registrar returned no endpoints">>);
         BridgeString -> BridgeString
     end.

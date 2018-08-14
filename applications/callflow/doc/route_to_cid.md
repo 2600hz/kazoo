@@ -18,7 +18,7 @@ This could be especially useful for Asterisk based newbies to eliminate shock of
            ],
            "endpoint_types": [
                "device",
-               "useer"
+               "user"
            ],
            "timeout": 60,
            "can_call_self": true,

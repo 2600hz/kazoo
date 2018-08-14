@@ -147,7 +147,7 @@ maybe_credit_billing_id(Context) ->
             lager:debug("master's child wants to credit himself. invoking a bookkeeper to add credit"),
             normal_credit(Context);
         AuthAccountId when AuthAccountId =/= CreditAccountId ->
-            lager:debug("allowing non mster reseller to credit its child (but not himself) without invoking a bookkeeper"),
+            lager:debug("allowing non master reseller to credit its child (but not himself) without invoking a bookkeeper"),
             free_credit(Context);
         ResellerId ->
             lager:debug("sub-resellers must contact resellers to add credit to themselves"),
@@ -199,7 +199,7 @@ create_credit_tansaction(CreditType, Context) ->
              [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}
              ]),
     Reason = kz_json:get_value(<<"reason">>, JObj, wht_util:manual_addition()),
-    Description = kz_json:get_value(<<"description">>, JObj),
+    Description = kz_json:get_ne_binary_value(<<"description">>, JObj, wht_util:admin_discretion()),
 
     Routines = [fun(Tr) -> kz_transaction:set_reason(Reason, Tr) end
                ,fun(Tr) -> kz_transaction:set_description(Description, Tr) end
@@ -249,19 +249,16 @@ maybe_create_debit_tansaction(Context) ->
     case create_debit_tansaction(Context) of
         {'error', _R}=Error ->
             lager:error("failed to create debit transaction : ~p", [_R]),
-            cb_context:add_system_error(
-              'transaction_failed'
-                                       ,kz_json:from_list(
-                                          [{<<"message">>, <<"failed to create debit transaction">>}
-                                          ,{<<"cause">>, kz_term:error_to_binary(Error)}
-                                          ])
+            cb_context:add_system_error('transaction_failed'
+                                       ,kz_json:from_list([{<<"message">>, <<"failed to create debit transaction">>}
+                                                          ,{<<"cause">>, kz_term:error_to_binary(Error)}
+                                                          ])
                                        ,Context
-             );
+                                       );
         {'ok', Transaction} ->
-            cb_context:set_resp_data(
-              Context
+            cb_context:set_resp_data(Context
                                     ,kz_transaction:to_public_json(Transaction)
-             )
+                                    )
     end.
 
 -spec create_debit_tansaction(cb_context:context()) ->
@@ -273,22 +270,19 @@ create_debit_tansaction(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, JObj),
     Units = wht_util:dollars_to_units(Amount),
     Meta =
-        kz_json:from_list(
-          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
-         ),
+        kz_json:from_list([{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]),
     Reason = kz_json:get_value(<<"reason">>, JObj, wht_util:admin_discretion()),
-    Description = kz_json:get_value(<<"description">>, JObj),
+    Description = kz_json:get_ne_binary_value(<<"description">>, JObj, wht_util:admin_discretion()),
 
     Routines = [fun(Tr) -> kz_transaction:set_reason(Reason, Tr) end
                ,fun(Tr) -> kz_transaction:set_description(Description, Tr) end
                ,fun(Tr) -> kz_transaction:set_metadata(Meta, Tr) end
                ,fun kz_transaction:save/1
                ],
-    lists:foldl(
-      fun(F, Tr) -> F(Tr) end
+    lists:foldl(fun(F, Tr) -> F(Tr) end
                ,kz_transaction:debit(AccountId, Units)
                ,Routines
-     ).
+               ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -346,8 +340,7 @@ validate_credit(Context) ->
         'true' -> validate_credit(Context, Amount);
         'false' ->
             case kz_services:is_reseller(cb_context:auth_account_id(Context))
-                orelse
-                MasterAccountId =:= kz_services:find_reseller_id(cb_context:account_id(Context))
+                orelse MasterAccountId =:= kz_services:find_reseller_id(cb_context:account_id(Context))
             of
                 'true' -> validate_credit(Context, Amount);
                 'false' -> cb_context:add_system_error('forbidden', Context)
@@ -476,7 +469,7 @@ filter_subscriptions(Context) ->
     case kz_service_transactions:current_billing_period(AccountId, 'subscriptions') of
         'not_found' ->
             send_resp({'error', <<"no data found in braintree">>}, Context);
-        'unknow_error' ->
+        'unknown_error' ->
             send_resp({'error', <<"unknown braintree error">>}, Context);
         BSubscriptions ->
             JObjs = [filter_subscription(BSub) || BSub <- BSubscriptions],

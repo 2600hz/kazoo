@@ -25,4 +25,6 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = cowboy:stop_listener('blackhole_socket_handler'),
+    _ = cowboy:stop_listener('blackhole_socket_handler_ssl'),
     blackhole_bindings:flush().

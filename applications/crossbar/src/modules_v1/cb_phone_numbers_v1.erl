@@ -300,7 +300,7 @@ summary(Context) ->
     Service = kz_services:fetch(cb_context:account_id(Context)),
     Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, Service),
     NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
-                                    ,{<<"casquade_quantity">>, Quantity}
+                                    ,{<<"cascade_quantity">>, Quantity}
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
 
@@ -335,11 +335,10 @@ normalize_view_results(JObj, Acc) ->
 identify(Context, Number) ->
     case knm_number:lookup_account(Number) of
         {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
+            cb_context:add_system_error('bad_identifier'
                                        ,kz_json:from_list([{<<"cause">>, Number}])
                                        ,Context
-             );
+                                       );
         {'error', E} ->
             set_response({kz_term:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
@@ -357,8 +356,7 @@ identify(Context, Number) ->
 %%------------------------------------------------------------------------------
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Number) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ],
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
     Result = case knm_number:get(Number, Options) of
                  {'ok', KNum} -> {'ok', knm_number:to_public_json(KNum)};
                  {'error', _R}=Error -> Error
@@ -462,8 +460,8 @@ set_response({Error, Reason}, _, Context) ->
     crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context);
 set_response(CollectionJObjOrUnkown, _, Context) ->
     case kz_json:is_json_object(CollectionJObjOrUnkown) of
-        true -> crossbar_util:response(CollectionJObjOrUnkown, Context);
-        false ->
+        'true' -> crossbar_util:response(CollectionJObjOrUnkown, Context);
+        'false' ->
             lager:debug("unexpected response: ~p", [CollectionJObjOrUnkown]),
             cb_context:add_system_error('unspecified_fault', Context)
     end.

@@ -95,17 +95,17 @@ match_did(ToDID, AccountId, RatedeckId) ->
         {'ok', {_Prefix, RateIds}} -> load_rates(Ratedeck, RateIds)
     end.
 
--spec load_rates(kz_term:ne_binary(), kz_term:ne_binaries()) -> {'ok', kzd_rate:docs()}.
+-spec load_rates(kz_term:ne_binary(), kz_term:ne_binaries()) -> {'ok', kzd_rates:docs()}.
 load_rates(Ratedeck, RateIds) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     {'ok', lists:foldl(fun(R, Acc) -> load_rate(R, Acc, RatedeckDb) end, [], RateIds)}.
 
--spec load_rate(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binary()) -> kzd_rate:docs().
+-spec load_rate(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binary()) -> kzd_rates:docs().
 load_rate(RateId, Acc, RatedeckDb) ->
     case kz_datamgr:open_cache_doc(RatedeckDb, RateId) of
         {'error', _} -> Acc;
         {'ok', RateDoc} ->
-            [kzd_rate:set_ratedeck(RateDoc, kzd_ratedeck:format_ratedeck_id(RatedeckDb)) | Acc]
+            [kzd_rates:set_ratedeck_id(RateDoc, kzd_ratedeck:format_ratedeck_id(RatedeckDb)) | Acc]
     end.
 
 -endif.
@@ -228,7 +228,7 @@ process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_CREATED) ->
     maybe_start_trie_server(RatedeckDb);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_EDITED) ->
     {'ok', Pid} = gen_server:call(trie_proc_name(RatedeckDb), 'rebuild'),
-    lager:info("ratedeck ~s changed, rebuiding trie in ~p", [RatedeckDb, Pid]);
+    lager:info("ratedeck ~s changed, rebuilding trie in ~p", [RatedeckDb, Pid]);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_DELETED) ->
     Pid = trie_proc_name(RatedeckDb),
     _ = hon_tries_sup:stop_trie(Pid),

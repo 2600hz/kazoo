@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the directory callflow's data object
+Validator for the directory callflow data object
 
 
 

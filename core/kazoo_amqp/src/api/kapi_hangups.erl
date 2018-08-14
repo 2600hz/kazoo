@@ -16,7 +16,7 @@
         ,publish_query_resp/2, publish_query_resp/3
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(QUERY_REQ_ROUTING_KEY, <<"hangups.query">>).
 
@@ -82,15 +82,15 @@ query_resp_v(JObj) -> query_resp_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    'ok' = amqp_util:bind_q_to_kapps(Queue, ?QUERY_REQ_ROUTING_KEY).
+    'ok' = kz_amqp_util:bind_q_to_kapps(Queue, ?QUERY_REQ_ROUTING_KEY).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
-    'ok' = amqp_util:unbind_q_from_kapps(Queue, ?QUERY_REQ_ROUTING_KEY).
+    'ok' = kz_amqp_util:unbind_q_from_kapps(Queue, ?QUERY_REQ_ROUTING_KEY).
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:kapps_exchange().
+    kz_amqp_util:kapps_exchange().
 
 -spec publish_query_req(kz_term:api_terms()) -> 'ok'.
 publish_query_req(JObj) ->
@@ -99,7 +99,7 @@ publish_query_req(JObj) ->
 -spec publish_query_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUERY_REQ_VALUES, fun query_req/1),
-    amqp_util:kapps_publish(?QUERY_REQ_ROUTING_KEY, Payload, ContentType).
+    kz_amqp_util:kapps_publish(?QUERY_REQ_ROUTING_KEY, Payload, ContentType).
 
 -spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_query_resp(RespQ, JObj) ->
@@ -108,4 +108,4 @@ publish_query_resp(RespQ, JObj) ->
 -spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUERY_RESP_VALUES, fun query_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).

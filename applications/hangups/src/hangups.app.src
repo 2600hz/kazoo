@@ -1,5 +1,5 @@
 {application,hangups,
-             [{applications,[folsom,kazoo,kazoo_amqp,kazoo_apps,kazoo_config,
+             [{applications,[folsom,kazoo,kazoo_amqp,kazoo_apps,
                              kazoo_documents,kazoo_endpoint,
                              kazoo_number_manager,kazoo_stdlib,kernel,lager,
                              stdlib]},

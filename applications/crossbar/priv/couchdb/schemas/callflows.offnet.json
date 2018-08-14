@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.offnet",
-    "description": "Validator for the offnet callflow's data object",
+    "description": "Validator for the offnet callflow data object",
     "properties": {
         "bypass_e164": {
             "description": "Use the original requested number instead of normalizing to E164",

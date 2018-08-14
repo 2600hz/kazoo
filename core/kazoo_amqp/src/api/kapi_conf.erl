@@ -28,7 +28,7 @@
 -type action() :: 'created' | 'edited' | 'deleted'.
 -export_type([action/0]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Database">>]).
@@ -173,9 +173,9 @@ bind_q(_Q, _Props, []) -> 'ok'.
 bind_for_doc_changes(Q, Props) ->
     case props:get_value('keys', Props) of
         'undefined' ->
-            amqp_util:bind_q_to_configuration(Q, get_routing_key(Props));
+            kz_amqp_util:bind_q_to_configuration(Q, get_routing_key(Props));
         List ->
-            _ = [amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps))
+            _ = [kz_amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps))
                  || KeyProps <- List
                 ],
             'ok'
@@ -186,7 +186,7 @@ bind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
         'undefined' -> bind_for_doc_types(Q, Props);
         Type ->
-            amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
+            kz_amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
     end.
 
 -spec bind_for_doc_types(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -195,7 +195,7 @@ bind_for_doc_types(Q, Props) ->
         'undefined' ->
             lager:warning("binding for doc type changes without supplying a type");
         Types ->
-            _ = [amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
+            _ = [kz_amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
                  || Type <- Types
                 ],
             'ok'
@@ -222,9 +222,9 @@ unbind_q(_Q, _Props, []) -> 'ok'.
 unbind_for_doc_changes(Q, Props) ->
     case props:get_value('keys', Props) of
         'undefined' ->
-            amqp_util:unbind_q_from_configuration(Q, get_routing_key(Props));
+            kz_amqp_util:unbind_q_from_configuration(Q, get_routing_key(Props));
         List ->
-            _ = [amqp_util:unbind_q_from_configuration(Q, get_routing_key(KeyProps))
+            _ = [kz_amqp_util:unbind_q_from_configuration(Q, get_routing_key(KeyProps))
                  || KeyProps <- List
                 ],
             'ok'
@@ -235,7 +235,7 @@ unbind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
         'undefined' -> unbind_for_doc_types(Q, Props);
         Type ->
-            amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
+            kz_amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
     end.
 
 -spec unbind_for_doc_types(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -243,7 +243,7 @@ unbind_for_doc_types(Q, Props) ->
     case props:get_value('types', Props) of
         'undefined' -> 'ok';
         Types ->
-            [amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
+            [kz_amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
              || Type <- Types
             ]
     end.
@@ -254,7 +254,7 @@ unbind_for_doc_types(Q, Props) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:configuration_exchange().
+    kz_amqp_util:configuration_exchange().
 
 -spec get_routing_key(kz_term:proplist()) -> binary().
 get_routing_key(Props) ->
@@ -266,7 +266,7 @@ get_routing_key(Props) ->
     Id = props:get_binary_value('doc_id', Props
                                ,props:get_value('id', Props, <<"*">>)
                                ),
-    amqp_util:document_routing_key(Action, Db, Type, Id).
+    kz_amqp_util:document_routing_key(Action, Db, Type, Id).
 
 -spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, JObj) ->
@@ -275,7 +275,7 @@ publish_doc_update(Action, Db, Type, Id, JObj) ->
 -spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
-    amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).
+    kz_amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).
 
 -spec publish_db_update(action(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_db_update(Action, Db, JObj) ->
@@ -284,7 +284,7 @@ publish_db_update(Action, Db, JObj) ->
 -spec publish_db_update(action(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_db_update(Action, Db, Change, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
-    amqp_util:document_change_publish(Action, Db, <<"database">>, Db, Payload, ContentType).
+    kz_amqp_util:document_change_publish(Action, Db, <<"database">>, Db, Payload, ContentType).
 
 -spec publish_doc_type_update(kz_term:api_terms()) -> 'ok'.
 publish_doc_type_update(JObj) ->
@@ -293,7 +293,7 @@ publish_doc_type_update(JObj) ->
 -spec publish_doc_type_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_type_update(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?DOC_TYPE_UPDATE_VALUES, fun doc_type_update/1),
-    amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).
+    kz_amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).
 
 -spec doc_type_update_routing_key(kz_term:api_terms() | kz_term:ne_binary()) -> kz_term:ne_binary().
 doc_type_update_routing_key(<<_/binary>> = Type) ->

@@ -45,7 +45,8 @@
 
 -include("crossbar.hrl").
 
--define(MAX_UPLOAD_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
+-define(MAX_UPLOAD_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)). %% limit the whole payload/file size
+-define(READ_BODY_LENGTH, 8000000). %% read body in 8MB chunks
 
 -define(DATA_SCHEMA
        ,kz_json:from_list([{<<"type">>, [<<"object">>, <<"array">>]}
@@ -170,9 +171,13 @@ get_content_type(Req) ->
                           stop_return().
 get_req_data(Context, Req0, 'undefined', QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
-    {Body, Req1} = get_request_body(Req0),
-    Ctx = cb_context:set_req_header(Context, <<"content-type">>, ?DEFAULT_CONTENT_TYPE),
-    try_json(Body, QS, Ctx, Req1);
+    case get_request_body(Req0) of
+        {'ok', Body, Req1} ->
+            Ctx = cb_context:set_req_header(Context, <<"content-type">>, ?DEFAULT_CONTENT_TYPE),
+            try_json(Body, QS, Ctx, Req1);
+        {'error', 'max_size', Req1} ->
+            handle_max_filesize_exceeded(Context, Req1)
+    end;
 get_req_data(Context, Req, <<"multipart/form-data">>, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
@@ -184,12 +189,20 @@ get_req_data(Context, Req1, <<"application/x-www-form-urlencoded">>, QS) ->
 
 get_req_data(Context, Req0, <<"application/json">>, QS) ->
     lager:debug("application/json content type when getting req data"),
-    {Body, Req1} = get_request_body(Req0),
-    try_json(Body, QS, Context, Req1);
+    case get_request_body(Req0) of
+        {'ok', Body, Req1} ->
+            try_json(Body, QS, Context, Req1);
+        {'error', 'max_size', Req1} ->
+            handle_max_filesize_exceeded(Context, Req1)
+    end;
 get_req_data(Context, Req0, <<"application/x-json">>, QS) ->
     lager:debug("application/x-json content type when getting req data"),
-    {Body, Req1} = get_request_body(Req0),
-    try_json(Body, QS, Context, Req1);
+    case get_request_body(Req0) of
+        {'ok', Body, Req1} ->
+            try_json(Body, QS, Context, Req1);
+        {'error', 'max_size', Req1} ->
+            handle_max_filesize_exceeded(Context, Req1)
+    end;
 get_req_data(Context, Req1, <<"application/base64">>, QS) ->
     lager:debug("application/base64 content type when getting req data"),
     decode_base64(cb_context:set_query_string(Context, QS), <<"application/base64">>, Req1);
@@ -220,15 +233,16 @@ maybe_extract_multipart(Context, Req0, QS) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      stop_return().
 handle_failed_multipart(Context, Req0, QS) ->
-    {ReqBody, Req1} = get_request_body(Req0),
-
-    try get_url_encoded_body(ReqBody) of
-        JObj ->
-            handle_url_encoded_body(Context, Req1, QS, ReqBody, JObj)
-    catch
-        _E:_R ->
-            lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
-            try_json(ReqBody, QS, Context, Req1)
+    case get_request_body(Req0) of
+        {'ok', ReqBody, Req1} ->
+            try handle_url_encoded_body(Context, Req1, QS, ReqBody, get_url_encoded_body(ReqBody))
+            catch
+                _E:_R ->
+                    lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
+                    try_json(ReqBody, QS, Context, Req1)
+            end;
+        {'error', 'max_size', Req1} ->
+            handle_max_filesize_exceeded(Context, Req1)
     end.
 
 -spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), kz_json:object(), binary(), kz_json:object()) ->
@@ -318,15 +332,19 @@ get_url_encoded_body(ReqBody) ->
                                      cowboy_req:req().
 
 -spec extract_multipart(cb_context:context(), cowboy_multipart_response(), kz_json:object()) ->
-                               {cb_context:context(), cowboy_req:req()}.
+                               {cb_context:context(), cowboy_req:req()} |
+                               stop_return().
 extract_multipart(Context, {'done', Req}, _QS) ->
-    {Context, Req};
-extract_multipart(Context, {'ok', Headers, Req}, QS) ->
-    {Ctx, R} = get_req_data(Context, Req, maps:get(<<"content-type">>, Headers, 'undefined'), QS),
-    extract_multipart(Ctx
-                     ,cowboy_req:read_part(R)
-                     ,QS
-                     );
+    {cb_context:store(Context, <<"multipart_headers">>, 'undefined'), Req};
+extract_multipart(Context0, {'ok', Headers, Req0}, QS) ->
+    Context = cb_context:store(Context0, <<"multipart_headers">>, Headers),
+    %% TODO: maybe check all files and req_data to see they reached to maximum upload size.
+    case get_req_data(Context, Req0, maps:get(<<"content-type">>, Headers, 'undefined'), QS) of
+        {Context1, Req1} ->
+            extract_multipart(Context1 ,cowboy_req:read_part(Req1), QS);
+        {'stop', _, _}=Stop ->
+            Stop
+    end;
 extract_multipart(Context, Req, QS) ->
     extract_multipart(Context
                      ,cowboy_req:read_part(Req)
@@ -337,73 +355,38 @@ extract_multipart(Context, Req, QS) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
 extract_file(Context, ContentType, Req0) ->
-    try extract_file_part_body(Context, ContentType, Req0)
-    catch
-        _E:_R ->
-            extract_file_body(Context, ContentType, Req0)
-    end.
-
--spec extract_file_part_body(cb_context:context(), kz_term:ne_binary(), cowboy_req:req()) ->
-                                    {cb_context:context(), cowboy_req:req()} |
-                                    stop_return().
-extract_file_part_body(Context, ContentType, Req0) ->
-    case cowboy_req:read_part_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
-        {'more', _, Req1} ->
-            handle_max_filesize_exceeded(Context, Req1);
+    case get_request_body(Req0) of
         {'ok', FileContents, Req1} ->
-            handle_file_contents(Context, ContentType, Req1, FileContents)
+            handle_file_contents(Context, ContentType, Req1, FileContents);
+        {'error', 'max_size', Req1} ->
+            handle_max_filesize_exceeded(Context, Req1)
     end.
-
--spec extract_file_body(cb_context:context(), kz_term:ne_binary(), cowboy_req:req()) ->
-                               {cb_context:context(), cowboy_req:req()} |
-                               stop_return().
-extract_file_body(Context, ContentType, Req0) ->
-    case cowboy_req:read_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
-        {'more', _, Req1} ->
-            handle_max_filesize_exceeded(Context, Req1);
-        {'ok', FileContents, Req1} ->
-            handle_file_contents(Context, ContentType, Req1, FileContents)
-    end.
-
--spec handle_max_filesize_exceeded(cb_context:context(), cowboy_req:req()) ->
-                                          stop_return().
-handle_max_filesize_exceeded(Context, Req1) ->
-    Maximum = ?MAX_UPLOAD_SIZE,
-    MaxSize = kz_term:to_binary(Maximum),
-
-    lager:error("file size exceeded, max is ~p", [Maximum]),
-
-    Message = <<"Files must not be more than ", MaxSize/binary, " bytes">>,
-    JObj = kz_json:from_list([{<<"message">>, Message}, {<<"target">>, Maximum}]),
-    Context1 = cb_context:add_validation_error(<<"file">>
-                                              ,<<"maxSize">>
-                                              ,JObj
-                                              ,cb_context:set_resp_error_code(Context, 413)
-                                              ),
-
-    ?MODULE:stop(Req1, Context1).
 
 -spec handle_file_contents(cb_context:context(), kz_term:ne_binary(), cowboy_req:req(), binary()) ->
                                   {cb_context:context(), cowboy_req:req()} |
                                   stop_return().
 handle_file_contents(Context, ContentType, Req, FileContents) ->
+
+    MultiPartHeaders = cb_context:fetch(Context, <<"multipart_headers">>, #{}),
     %% http://tools.ietf.org/html/rfc2045#page-17
-    case cowboy_req:header(<<"content-transfer-encoding">>, Req) of
+    TransferKey = <<"content-transfer-encoding">>,
+    case maps:get(TransferKey, MultiPartHeaders, cowboy_req:header(TransferKey, Req)) of
         <<"base64">> ->
             lager:debug("base64 encoded request coming in"),
-            decode_base64(Context, ContentType, Req);
+            decode_base64(Context, ContentType, Req, FileContents);
         _Else ->
             lager:debug("unexpected transfer encoding: '~s'", [_Else]),
-            ContentLength = cowboy_req:header(<<"content-length">>, Req),
-            Headers = kz_json:from_list([{<<"content_type">>, ContentType}
-                                        ,{<<"content_length">>, ContentLength}
-                                        ]),
-            FileJObj = kz_json:from_list([{<<"headers">>, Headers}
+            ContentLength = maps:get(<<"content-length">>, MultiPartHeaders, cowboy_req:header(<<"content-length">>, Req)),
+            FileHeaders = kz_json:from_list([{<<"content_type">>, ContentType}
+                                            ,{<<"content_length">>, ContentLength}
+                                            ]),
+            FileJObj = kz_json:from_list([{<<"headers">>, FileHeaders}
                                          ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a file upload of type: ~s", [ContentType]),
 
             Filename = uploaded_filename(Context),
+            %% TODO: if request has more files this line will replace old files in context
             {cb_context:set_req_files(Context, [{Filename, FileJObj}]), Req}
     end.
 
@@ -424,28 +407,22 @@ default_filename() ->
                            {cb_context:context(), cowboy_req:req()} |
                            stop_return().
 decode_base64(Context, CT, Req0) ->
-    decode_base64(Context, CT, Req0, []).
-
-decode_base64(Context, CT, Req0, Body) ->
-    case cowboy_req:read_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
-        {'error', 'badlength'} ->
-            lager:debug("the request body was most likely too big"),
-            handle_max_filesize_exceeded(Context, Req0);
-        {'error', E} ->
-            lager:debug("error getting request body: ~p", [E]),
-            ?MODULE:stop(Req0
-                        ,cb_context:set_resp_status(cb_context:set_resp_data(Context, E)
-                                                   ,'fatal'
-                                                   )
-                        );
-        {'more', _, Req1} ->
-            handle_max_filesize_exceeded(Context, Req1);
+    case get_request_body(Req0) of
         {'ok', Base64Data, Req1} ->
-            Data = iolist_to_binary(lists:reverse([Base64Data | Body])),
+            decode_base64(Context, CT, Req1, Base64Data);
+        {'error', 'max_size', Req1} ->
+            handle_max_filesize_exceeded(Context, Req1)
+    end.
 
-            {EncodedType, FileContents} = kz_attachment:decode_base64(Data),
+-spec decode_base64(cb_context:context(), kz_term:ne_binary(), cowboy_req:req(), binary()) ->
+                           {cb_context:context(), cowboy_req:req()} |
+                           stop_return().
+decode_base64(Context, CT, Req, Base64Data) ->
+    try kz_attachment:decode_base64(Base64Data) of
+        {EncodedType, FileContents} ->
             ContentType = case EncodedType of
                               'undefined' -> CT;
+                              {'error', 'badarg'} -> CT;
                               <<"application/base64">> -> <<"application/octet-stream">>;
                               Else -> Else
                           end,
@@ -456,37 +433,63 @@ decode_base64(Context, CT, Req0, Body) ->
                                          ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
-            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req1}
+            %% TODO: if request has more files this line will replace old files in context
+            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req}
+    catch
+        _T:_E ->
+            lager:debug("failed to decode base64 data: ~p:~p", [_T,_E]),
+            JObj = kz_json:from_list([{<<"message">>, <<"failed to decode base64 data">>}]),
+            Context1 = cb_context:add_validation_error(<<"file">>
+                                                      ,<<"encoding">>
+                                                      ,JObj
+                                                      ,cb_context:set_resp_error_code(Context, 413)
+                                                      ),
+
+            ?MODULE:stop(Req, Context1)
     end.
 
 -spec get_request_body(cowboy_req:req()) ->
-                              {binary(), cowboy_req:req()}.
+                              {'ok', binary(), cowboy_req:req()} |
+                              {'error', 'max_size', cowboy_req:req()}.
 get_request_body(Req) ->
-    get_request_body(Req, []).
+    ReadLength = ?READ_BODY_LENGTH,
+    MaxSize = ?MAX_UPLOAD_SIZE,
 
--spec get_request_body(cowboy_req:req(), iolist()) ->
-                              {binary(), cowboy_req:req()}.
-get_request_body(Req0, Body) ->
-    try get_request_body(Req0, Body, cowboy_req:read_part_body(Req0))
+    Params = #{read_options => #{'length' => ReadLength}
+              ,max_size => MaxSize
+              },
+
+    try get_request_body(Req, Params#{read_fun => fun cowboy_req:read_part_body/2})
     catch
         'error':{'badmatch', _} ->
-            get_request_body(Req0, Body, cowboy_req:read_body(Req0))
+            get_request_body(Req, Params#{read_fun => fun cowboy_req:read_body/2})
     end.
 
 -type body_return() :: {'more', binary(), cowboy_req:req()} |
-                       {'error', atom()} |
                        {'ok', binary(), cowboy_req:req()}.
 
--spec get_request_body(cowboy_req:req(), iolist(), body_return()) ->
-                              {binary(), cowboy_req:req()}.
-get_request_body(Req0, _Body, {'error', _E}) ->
-    lager:debug("request body had no payload: ~p", [_E]),
-    {<<>>, Req0};
-get_request_body(_Req0, _Body, {'more', _, Req1}) ->
-    lager:error("file size exceeded, max is ~p", [?MAX_UPLOAD_SIZE]),
-    {<<>>, Req1};
-get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
-    {iolist_to_binary([Body, Data]), Req1}.
+-spec get_request_body(cowboy_req:req(), map()) ->
+                              {'ok', binary(), cowboy_req:req()} |
+                              {'error', 'max_size', cowboy_req:req()}.
+get_request_body(Req, #{read_fun := ReadFun
+                       ,read_options := Opts
+                       }=Params) ->
+    get_request_body(Params, <<>>, ReadFun(Req, Opts)).
+
+-spec get_request_body(map(), binary(), body_return()) ->
+                              {'ok', binary(), cowboy_req:req()} |
+                              {'error', 'max_size', cowboy_req:req()}.
+get_request_body(_, <<>>, {'ok', <<>>, Req1}) ->
+    lager:debug("request body had no payload"),
+    {'ok', <<>>, Req1};
+get_request_body(#{max_size := MaxSize}, Body, {'more', Data, Req1})
+  when size(Body) + size(Data) > MaxSize ->
+    {'error', 'max_size', Req1};
+get_request_body(#{read_fun := ReadFun, read_options := Opts}=Params, Body, {'more', Data, Req1}) ->
+    get_request_body(Params, iolist_to_binary([Body, Data]), ReadFun(Req1, Opts));
+get_request_body(_, Body, {'ok', Data, Req1}) ->
+    lager:debug("received request body payload (size: ~b bytes)", [size(Body)]),
+    {'ok', iolist_to_binary([Body, Data]), Req1}.
 
 -type get_json_return() :: {kz_term:api_object(), cowboy_req:req()} |
                            {{'malformed', kz_term:ne_binary()}, cowboy_req:req()}.
@@ -494,6 +497,23 @@ get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
 
 get_json_body(<<>>, Req) -> {'undefined', Req};
 get_json_body(ReqBody, Req) -> decode_json_body(ReqBody, Req).
+
+-spec handle_max_filesize_exceeded(cb_context:context(), cowboy_req:req()) -> stop_return().
+handle_max_filesize_exceeded(Context, Req1) ->
+    Maximum = ?MAX_UPLOAD_SIZE,
+    MaxSize = kz_term:to_binary(Maximum),
+
+    lager:error("file size exceeded, max is ~p", [MaxSize]),
+
+    Message = <<"Payload or Files must not be more than ", MaxSize/binary, " bytes">>,
+    JObj = kz_json:from_list([{<<"message">>, Message}, {<<"target">>, Maximum}]),
+    Context1 = cb_context:add_validation_error(<<"file">>
+                                              ,<<"maxSize">>
+                                              ,JObj
+                                              ,cb_context:set_resp_error_code(Context, 413)
+                                              ),
+
+    ?MODULE:stop(Req1, Context1).
 
 -spec decode_json_body(binary(), cowboy_req:req()) -> get_json_return().
 decode_json_body(ReqBody, Req) ->
@@ -611,27 +631,19 @@ parse_path_tokens(Context, [Mod|T], Events) ->
 
 -spec is_cb_module(cb_context:context(), kz_term:ne_binary()) -> boolean().
 is_cb_module(Context, Elem) ->
-    try (kz_term:to_atom(<<"cb_", Elem/binary>>)):module_info('exports') of
-        _ -> 'true'
-    catch
-        'error':'badarg' -> 'false'; %% atom didn't exist already
-        _E:_R -> is_cb_module_version(Context, Elem)
-    end.
+    ApiVersion = cb_context:api_version(Context),
 
--spec is_cb_module_version(cb_context:context(), kz_term:ne_binary()) -> boolean().
-is_cb_module_version(Context, Elem) ->
-    case cb_context:is_context(Context) of
-        'false' -> 'false';
-        'true'  ->
-            ApiVersion = cb_context:api_version(Context),
-            ModuleName = <<"cb_", Elem/binary, "_", ApiVersion/binary>>,
-            try (kz_term:to_atom(ModuleName)):module_info('exports') of
-                _ -> 'true'
-            catch
-                'error':'badarg' -> 'false'; %% atom didn't exist already
-                _E:_R -> 'false'
-            end
-    end.
+    Modules = [<<"cb_", Elem/binary>>
+              ,<<"cb_", Elem/binary, "_", ApiVersion/binary>>
+              ],
+
+    is_cb_module(Modules).
+
+-spec is_cb_module(kz_term:ne_binaries()) -> boolean().
+is_cb_module([]) -> 'false';
+is_cb_module([Module|Modules]) ->
+    'true' =:= kz_module:is_exported(Module, 'init', 0)
+        orelse is_cb_module(Modules).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will find the intersection of the allowed methods
@@ -1194,7 +1206,7 @@ get_encode_options(Context) ->
 -spec create_csv_resp_content(cowboy_req:req(), cb_context:context()) ->
                                      {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
 create_csv_resp_content(Req, Context) ->
-    Content = csv_body(cb_context:resp_data(Context)),
+    Content = csv_body(cb_context:resp_data(Context), 'true'),
     ContextHeaders = cb_context:resp_headers(Context),
     FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
@@ -1217,7 +1229,7 @@ create_resp_file(Req, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Encodes the `JObj' and send it as a chunk. Starts chunk response if is
-%% not started yet. This is usually called by `api_resource:to_chnuk/3'.
+%% not started yet. This is usually called by `api_resource:to_chunk/3'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_json_chunk_response(cowboy_req:req(), cb_context:context()) ->
@@ -1226,8 +1238,10 @@ create_json_chunk_response(Req, Context) ->
     JObjs = cb_context:resp_data(Context),
     create_json_chunk_response(Req, JObjs, cb_context:fetch(Context, 'chunking_started', 'false')).
 
--spec create_json_chunk_response(cowboy_req:req(), kz_json:objects(), boolean()) ->
+-spec create_json_chunk_response(cowboy_req:req(), kz_json:api_objects(), boolean()) ->
                                         {boolean(), cowboy_req:req()}.
+create_json_chunk_response(Req, 'undefined', StartedChunk) ->
+    {StartedChunk, Req};
 create_json_chunk_response(Req, [], StartedChunk) ->
     {StartedChunk, Req};
 create_json_chunk_response(Req, JObjs, StartedChunk) ->
@@ -1257,17 +1271,35 @@ do_encode_to_json(JObjs) ->
 -spec create_csv_chunk_response(cowboy_req:req(), cb_context:context()) ->
                                        {boolean(), cowboy_req:req()}.
 create_csv_chunk_response(Req, Context) ->
-    CSVs = cb_context:resp_data(Context),
-    case cb_context:fetch(Context, 'chunking_started', 'false') of
-        'true' ->
-            'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req),
+    case {cb_context:resp_data(Context)
+         ,cb_context:fetch(Context, 'chunking_started', 'false')
+         }
+    of
+        {'undefined', IsStarted} ->
+            {IsStarted, Req};
+        {<<>>, IsStarted} ->
+            {IsStarted, Req};
+        {[], IsStarted} ->
+            {IsStarted, Req};
+        {CSVs, 'true'} ->
+            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs, 'false'), 'nofin', Req),
             {'true', Req};
-        'false' ->
+        {CSVs, 'false'} ->
             FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
             Req1 = init_chunk_stream(Req, <<"to_csv">>, FileName),
-            'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req1),
+            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs, 'true'), 'nofin', Req1),
             {'true', Req1}
     end.
+
+-spec maybe_convert_to_csv(kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object() | kz_json:objects(), boolean()) -> iolist().
+maybe_convert_to_csv(?NE_BINARY=Body, _) -> Body;
+maybe_convert_to_csv([Content|_]=Body, BuildHeaders) ->
+    case kz_json:is_json_object(Content) of
+        'true' -> csv_body(Body, BuildHeaders);
+        'false' -> Body
+    end;
+maybe_convert_to_csv(JObj, BuildHeaders) ->
+    csv_body(JObj, BuildHeaders).
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the `x-file-name' from the request header if available.
@@ -1299,16 +1331,25 @@ init_chunk_stream(Req, <<"to_csv">>, FileName) ->
     Headers = maps:merge(Headers0, cowboy_req:resp_headers(Req)),
     cowboy_req:stream_reply(200, Headers, Req).
 
--spec csv_body(kz_term:ne_binary() | kz_json:object() | kz_json:objects()) -> iolist().
-csv_body(Body=?NE_BINARY) -> Body;
-csv_body(JObjs) when is_list(JObjs) ->
+-spec csv_body(kz_term:api_binary() | kz_json:object() | kz_json:objects(), boolean()) -> iolist().
+csv_body('undefined', _) -> [];
+csv_body(<<>>, _) -> [];
+csv_body(Body=?NE_BINARY, _) -> [Body];
+csv_body(JObjs, BuildHeaders) when is_list(JObjs) ->
     FlattenJObjs = [kz_json:flatten(JObj, 'binary_join') || JObj <- JObjs],
-    CsvOptions = [{'transform_fun', fun map_empty_json_value_to_binary/2}
-                 ,{'header_map', ?CSV_HEADER_MAP}
-                 ],
-    kz_csv:from_jobjs(FlattenJObjs, CsvOptions);
-csv_body(JObj) ->
-    csv_body([JObj]).
+    kz_csv:from_jobjs(FlattenJObjs, kz_csv_options(BuildHeaders));
+csv_body(JObj, BuildHeaders) ->
+    csv_body([JObj], BuildHeaders).
+
+-spec kz_csv_options(boolean()) -> kz_term:proplist().
+kz_csv_options('true') ->
+    [{'transform_fun', fun map_empty_json_value_to_binary/2}
+    ,{'header_map', ?CSV_HEADER_MAP}
+    ];
+kz_csv_options('false') ->
+    [{'transform_fun', fun map_empty_json_value_to_binary/2}
+    ,{'build_headers', 'false'}
+    ].
 
 -spec map_empty_json_value_to_binary(kz_json:key(), kz_json:term()) -> {kz_json:key(), kz_json:term()}.
 map_empty_json_value_to_binary(Key, Value) ->
@@ -1477,7 +1518,7 @@ set_resp_headers(Req0, Context) ->
                         {binary(), binary()}.
 fix_header(<<"Location">>, Path, Req) ->
     {<<"location">>, crossbar_util:get_path(Req, Path)};
-fix_header(<<"ocation">> = H, Path, Req) ->
+fix_header(<<"location">> = H, Path, Req) ->
     {H, crossbar_util:get_path(Req, Path)};
 fix_header(H, V, _) ->
     {kz_term:to_lower_binary(H), kz_term:to_binary(V)}.

@@ -20,7 +20,7 @@
         },
         "adjust_in_semitones": {
             "default": 0,
-            "description": "Asjust the pitch in semitones",
+            "description": "Adjust the pitch in semitones",
             "maximum": 14.0,
             "minimum": -14.0,
             "type": "number"

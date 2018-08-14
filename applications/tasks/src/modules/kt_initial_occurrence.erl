@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc Looks for the account's initial call
+%%% @doc Looks for the account's initial call.
 %%% @author Harenson Henao
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -65,10 +65,10 @@ test_for_registrations(AccountId, Realm) ->
           ,{<<"Fields">>, [<<"Account-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Reg
-                                     ,fun kapi_registration:publish_query_req/1
-                                     ,{'ecallmgr', fun kapi_registration:query_resp_v/1}
-                                     )
+    case kz_amqp_worker:call_collect(Reg
+                                    ,fun kapi_registration:publish_query_req/1
+                                    ,{'ecallmgr', fun kapi_registration:query_resp_v/1}
+                                    )
     of
         {'error', _} -> 'ok';
         {_, JObjs} ->
@@ -90,7 +90,7 @@ handle_initial_registration(AccountId) ->
 -spec notify_initial_registration(kzd_accounts:doc()) -> 'ok'.
 notify_initial_registration(AccountJObj) ->
     UpdatedAccountJObj = kzd_accounts:set_initial_registration_sent(AccountJObj, 'true'),
-    _ = kz_util:account_update(UpdatedAccountJObj),
+    _ = kzd_accounts:save(UpdatedAccountJObj),
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"registration">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -129,7 +129,7 @@ handle_initial_call(AccountId) ->
 -spec notify_initial_call(kzd_accounts:doc()) -> 'ok'.
 notify_initial_call(AccountJObj) ->
     UpdatedAccountJObj = kzd_accounts:set_initial_call_sent(AccountJObj, 'true'),
-    _ = kz_util:account_update(UpdatedAccountJObj),
+    _ = kzd_accounts:save(UpdatedAccountJObj),
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"call">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

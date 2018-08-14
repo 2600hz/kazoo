@@ -807,36 +807,35 @@ create_registration(JObj) ->
                                  ,JObj
                                  ,Reg#registration.registrar_hostname
                                  ),
-    augment_registration(
-      Reg#registration{username=Username
-                      ,realm=Realm
-                      ,proxy=Proxy
-                      ,proxy_ip=ProxyIP
-                      ,proxy_port=ProxyPort
-                      ,proxy_proto=ProxyProto
-                      ,expires=Expires
-                      ,registrar_node=RegistrarNode
-                      ,registrar_hostname=RegistrarHostname
-                      ,contact=fix_contact(OriginalContact)
-                      ,original_contact=OriginalContact
-                      ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
-                      ,previous_contact=kz_json:get_value(<<"Previous-Contact">>, JObj, Reg#registration.previous_contact)
-                      ,last_registration=kz_json:get_integer_value(<<"Last-Registration">>, JObj, Reg#registration.last_registration)
-                      ,initial_registration=kz_json:get_integer_value(<<"Initial-Registration">>, JObj, Reg#registration.initial_registration)
-                      ,network_port=kz_json:get_value(<<"Network-Port">>, JObj, Reg#registration.network_port)
-                      ,network_ip=kz_json:get_value(<<"Network-IP">>, JObj, Reg#registration.network_ip)
-                      ,to_host=kz_json:get_value(<<"To-Host">>, JObj, Reg#registration.to_host)
-                      ,to_user=kz_json:get_value(<<"To-User">>, JObj, Reg#registration.to_user)
-                      ,from_host=kz_json:get_value(<<"From-Host">>, JObj, Reg#registration.from_host)
-                      ,from_user=kz_json:get_value(<<"From-User">>, JObj, Reg#registration.from_user)
-                      ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, Reg#registration.call_id)
-                      ,user_agent=kz_json:get_value(<<"User-Agent">>, JObj, Reg#registration.user_agent)
-                      ,initial=kz_json:is_true(<<"First-Registration">>, JObj, Reg#registration.initial)
-                      ,source_ip=kz_json:get_value(<<"Source-IP">>, JObj)
-                      ,source_port=kz_json:get_value(<<"Source-Port">>, JObj)
-                      }
+    augment_registration(Reg#registration{username=Username
+                                         ,realm=Realm
+                                         ,proxy=Proxy
+                                         ,proxy_ip=ProxyIP
+                                         ,proxy_port=ProxyPort
+                                         ,proxy_proto=ProxyProto
+                                         ,expires=Expires
+                                         ,registrar_node=RegistrarNode
+                                         ,registrar_hostname=RegistrarHostname
+                                         ,contact=fix_contact(OriginalContact)
+                                         ,original_contact=OriginalContact
+                                         ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
+                                         ,previous_contact=kz_json:get_value(<<"Previous-Contact">>, JObj, Reg#registration.previous_contact)
+                                         ,last_registration=kz_json:get_integer_value(<<"Last-Registration">>, JObj, Reg#registration.last_registration)
+                                         ,initial_registration=kz_json:get_integer_value(<<"Initial-Registration">>, JObj, Reg#registration.initial_registration)
+                                         ,network_port=kz_json:get_value(<<"Network-Port">>, JObj, Reg#registration.network_port)
+                                         ,network_ip=kz_json:get_value(<<"Network-IP">>, JObj, Reg#registration.network_ip)
+                                         ,to_host=kz_json:get_value(<<"To-Host">>, JObj, Reg#registration.to_host)
+                                         ,to_user=kz_json:get_value(<<"To-User">>, JObj, Reg#registration.to_user)
+                                         ,from_host=kz_json:get_value(<<"From-Host">>, JObj, Reg#registration.from_host)
+                                         ,from_user=kz_json:get_value(<<"From-User">>, JObj, Reg#registration.from_user)
+                                         ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, Reg#registration.call_id)
+                                         ,user_agent=kz_json:get_value(<<"User-Agent">>, JObj, Reg#registration.user_agent)
+                                         ,initial=kz_json:is_true(<<"First-Registration">>, JObj, Reg#registration.initial)
+                                         ,source_ip=kz_json:get_value(<<"Source-IP">>, JObj)
+                                         ,source_port=kz_json:get_value(<<"Source-Port">>, JObj)
+                                         }
                         ,JObj
-     ).
+                        ).
 
 -spec augment_registration(registration(), kz_json:object()) -> registration().
 augment_registration(Reg, JObj) ->
@@ -897,11 +896,7 @@ augment_registration(Reg, JObj) ->
 -spec fix_contact(kz_term:api_binary()) -> kz_term:api_binary().
 fix_contact('undefined') -> 'undefined';
 fix_contact(Contact) ->
-    binary:replace(Contact
-                  ,[<<"<">>, <<">">>]
-                  ,<<>>
-                  ,['global']
-                  ).
+    binary:replace(Contact, [<<"<">>, <<">">>], <<>>, ['global']).
 
 -spec bridge_uri(kz_term:api_binary(), kz_term:api_binary(), binary(), binary()) -> kz_term:api_binary().
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';

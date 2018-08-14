@@ -14,21 +14,23 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec decode_base64(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:ne_binary()}.
+-spec decode_base64(kz_term:ne_binary()) -> {kz_term:api_binary() | {'error', 'badarg'}, kz_term:ne_binary()}.
 decode_base64(Base64) ->
     case binary:split(Base64, <<",">>) of
         %% http://tools.ietf.org/html/rfc4648
         [Bin] ->
-            {'undefined', corrected_base64_decode(Bin)};
+            {'undefined', corrected_base64_decode(strip_base64(Bin))};
         %% http://tools.ietf.org/rfc/rfc2397.txt
         [<<"data:", CT/binary>>, Bin] ->
-            {get_content_type(CT), corrected_base64_decode(Bin)};
+            {get_content_type(CT), corrected_base64_decode(strip_base64(Bin))};
         [_SplitLeft, _SplitRight] ->
-            {'undefined', corrected_base64_decode(Base64)}
+            {'undefined', corrected_base64_decode(strip_base64(Base64))}
     end.
 
 -spec get_content_type(kz_term:ne_binary()) -> kz_term:api_binary().
-get_content_type(MediaType) ->
+get_content_type(CT) ->
+    %% stripping white-spaces for lazy developers
+    MediaType = binary:replace(CT, <<$\s>>, <<>>, [global]),
     get_content_type(MediaType, kz_binary:truncate_left(MediaType, 6)).
 
 get_content_type(MediaType, <<"base64">>) ->
@@ -39,9 +41,14 @@ get_content_type(MediaType, _) ->
             kz_binary:join([Type, SubType], <<"/">>)
     catch
         _E:_R ->
-            lager:debug("failed to parse ~p: ~s: ~p", [MediaType, _E, _R]),
+            lager:debug("failed to parse content-type ~p: ~s: ~p", [MediaType, _E, _R]),
             {'error', 'badarg'}
     end.
+
+-spec strip_base64(kz_term:ne_binary()) -> kz_term:ne_binary().
+strip_base64(Base64) ->
+    %% Why Cowboy is not doing this?
+    binary:replace(Base64, [<<$\s>>, <<$\r>>, <<$\n>>], <<>>, [global]).
 
 -spec corrected_base64_decode(kz_term:ne_binary()) -> kz_term:ne_binary().
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 =:= 3 ->

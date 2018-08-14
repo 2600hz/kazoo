@@ -1,0 +1,2 @@
+# Support Procedures and Liability
+2600Hz Support considers technical issues involving third-party code outside the scope of our support. Please only raise issue with 2600Hz Support if you need access to information that the customer cannot retrieve themselves or if you believe the issue to be related to an existing or new 2600Hz bug. If you believe the issue to be related to an existing or new 2600Hz bug please log a support request.

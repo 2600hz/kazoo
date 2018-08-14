@@ -122,10 +122,9 @@ validate(Context, Username) ->
 
 -spec validate_count(cb_context:context()) -> cb_context:context().
 validate_count(Context) ->
-    crossbar_util:response(
-      kz_json:from_list([{<<"count">>, count_registrations(Context)}])
+    crossbar_util:response(kz_json:from_list([{<<"count">>, count_registrations(Context)}])
                           ,Context
-     ).
+                          ).
 
 -spec validate_sip_username(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_sip_username(Context, Username) ->
@@ -165,10 +164,10 @@ lookup_regs(Context) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    ReqResp = kapps_util:amqp_pool_collect(Req
-                                          ,fun kapi_registration:publish_query_req/1
-                                          ,{'ecallmgr', 'true'}
-                                          ),
+    ReqResp = kz_amqp_worker:call_collect(Req
+                                         ,fun kapi_registration:publish_query_req/1
+                                         ,{'ecallmgr', 'true'}
+                                         ),
     case ReqResp of
         {'error', _} -> [];
         {_, JObjs} -> merge_responses(JObjs)
@@ -225,10 +224,10 @@ count_registrations(Context) ->
           ,{<<"Count-Only">>, 'true'}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = kapps_util:amqp_pool_request(Req
-                                          ,fun kapi_registration:publish_query_req/1
-                                          ,fun kapi_registration:query_resp_v/1
-                                          ),
+    ReqResp = kz_amqp_worker:call(Req
+                                 ,fun kapi_registration:publish_query_req/1
+                                 ,fun kapi_registration:query_resp_v/1
+                                 ),
     case ReqResp of
         {'error', _E} -> lager:debug("no resps found: ~p", [_E]), 0;
         {'ok', JObj} -> kz_json:get_integer_value(<<"Count">>, JObj, 0);

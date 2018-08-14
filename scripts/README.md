@@ -20,6 +20,89 @@ Calculates application interdependencies, correcting .app.src files as necessary
 
 For now, we just calculate app files in `applications/` since `core/` is a tangled mess right now (and is typically installed as one lump package anyway).
 
+### Create .dot file of application dependencies
+
+```shell
+ERL_LIBS=deps:core:applications ./scripts/apps_of_app.escript -d
+cwd: {ok,"/home/james/local/git/2600hz/kazoo"}
+o: [dot]
+a: []
+................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................wrote DOT file to /tmp/kazoo_project.dot
+```
+
+Then use your favorite program to convert the .dot file to an image.
+
+To just do a single application's dependencies: `ERL_LIBS=deps:core:applications ./scripts/apps_of_app.escript -d {APPLICATION}`
+
+### Find cycles in application dependencies
+
+```shell
+ERL_LIBS=deps:core:applications ./scripts/apps_of_app.escript -c
+cwd: {ok,"/home/james/local/git/2600hz/kazoo"}
+o: [circle]
+a: []
+finding circular dependencies ................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................ done
+cycle through braintree: [braintree,kazoo_config,kazoo_services,braintree]
+cycle through crossbar: [crossbar,kazoo_apps,kazoo_proper,crossbar]
+cycle through kazoo: [kazoo,kazoo_config,kazoo]
+cycle through kazoo_amqp: [kazoo_amqp,kazoo_data,kazoo_amqp]
+cycle through kazoo_apps: [kazoo_apps,kazoo_call,kazoo_apps]
+cycle through kazoo_attachments: [kazoo_attachments,kazoo_data,
+                                  kazoo_attachments]
+cycle through kazoo_auth: [kazoo_auth,kazoo_data,kazoo_attachments,kazoo_auth]
+cycle through kazoo_bindings: [kazoo_bindings,kazoo,kazoo_documents,
+                               kazoo_apps,kazoo_bindings]
+cycle through kazoo_caches: [kazoo_caches,kazoo,kazoo_config,kazoo_caches]
+cycle through kazoo_call: [kazoo_call,kazoo_apps,kazoo_call]
+cycle through kazoo_config: [kazoo_config,kazoo,kazoo_config]
+cycle through kazoo_couch: [kazoo_couch,kazoo,kazoo_documents,kazoo_apps,
+                            kazoo_proper,tasks,kazoo_couch]
+cycle through kazoo_csv: [kazoo_csv,kazoo,kazoo_data,kazoo_modb,kazoo_csv]
+cycle through kazoo_data: [kazoo_data,kazoo,kazoo_data]
+cycle through kazoo_documents: [kazoo_documents,kazoo,kazoo_documents]
+cycle through kazoo_endpoint: [kazoo_endpoint,kazoo_call,kazoo_endpoint]
+cycle through kazoo_etsmgr: [kazoo_etsmgr,kazoo,kazoo_documents,kazoo_apps,
+                             kazoo_proper,crossbar,kazoo_token_buckets,
+                             kazoo_etsmgr]
+cycle through kazoo_globals: [kazoo_globals,kazoo_amqp,kazoo_globals]
+cycle through kazoo_ips: [kazoo_ips,kazoo_config,kazoo_services,kazoo_ips]
+cycle through kazoo_ledgers: [kazoo_ledgers,kazoo_config,kazoo_services,
+                              kazoo_ledgers]
+cycle through kazoo_media: [kazoo_media,kazoo_config,kazoo_call,kazoo_media]
+cycle through kazoo_modb: [kazoo_modb,kazoo_apps,kazoo_modb]
+cycle through kazoo_number_manager: [kazoo_number_manager,kazoo_apps,
+                                     kazoo_number_manager]
+cycle through kazoo_oauth: [kazoo_oauth,kazoo,kazoo_documents,kazoo_apps,
+                            kazoo_proper,crossbar,kazoo_oauth]
+cycle through kazoo_perf: [kazoo_perf,kazoo,kazoo_documents,kazoo_apps,
+                           kazoo_proper,crossbar,kazoo_perf]
+cycle through kazoo_proper: [kazoo_proper,kazoo_apps,kazoo_proper]
+cycle through kazoo_schemas: [kazoo_schemas,kazoo,kazoo_config,kazoo_schemas]
+cycle through kazoo_services: [kazoo_services,kazoo_config,kazoo_services]
+cycle through kazoo_sip: [kazoo_sip,kazoo_stdlib,kazoo_documents,kazoo_apps,
+                          kazoo_call,kazoo_endpoint,kazoo_sip]
+cycle through kazoo_speech: [kazoo_speech,kazoo_config,kazoo_call,
+                             kazoo_speech]
+cycle through kazoo_stats: [kazoo_stats,kazoo_amqp,kazoo_globals,kazoo_apps,
+                            kazoo_proper,tasks,kazoo_couch,kazoo_stats]
+cycle through kazoo_stdlib: [kazoo_stdlib,kazoo_documents,kazoo_stdlib]
+cycle through kazoo_tasks: [kazoo_tasks,kazoo_documents,kazoo_apps,
+                            kazoo_proper,crossbar,kazoo_tasks]
+cycle through kazoo_templates: [kazoo_templates,kazoo,kazoo_documents,
+                                kazoo_apps,kazoo_proper,crossbar,
+                                kazoo_templates]
+cycle through kazoo_token_buckets: [kazoo_token_buckets,kazoo,kazoo_documents,
+                                    kazoo_apps,kazoo_proper,crossbar,
+                                    kazoo_token_buckets]
+cycle through kazoo_transactions: [kazoo_transactions,kazoo_documents,
+                                   kazoo_transactions]
+cycle through kazoo_voicemail: [kazoo_voicemail,kazoo_apps,kazoo_voicemail]
+cycle through kazoo_web: [kazoo_web,kazoo_stdlib,kazoo_documents,kazoo_web]
+cycle through kazoo_xml: [kazoo_xml,kazoo_stdlib,kazoo_documents,kazoo_apps,
+                          kazoo_number_manager,kazoo_xml]
+cycle through tasks: [tasks,kazoo_apps,kazoo_proper,tasks]
+```
+
 ## bump-copyright-year.sh
 
 Python script to walk the supplied files and bumps the copyright year if appropriate.
@@ -65,11 +148,6 @@ Typically \`TO\_DIALYZE\` would be a generated list of files.
 Do note: this will only check the file itself for issues. To really leverage Dialyzer, you'll want to include remote project modules for Dialyzer to use as well.
 
 
-## check-release-startup.sh
-
-Creates a release, starts it, and issues some commands to test that the release starts up and appears to be running
-
-
 ## check-scripts-readme.bash
 
 A quick script to check that all scripts in `$(ROOT)/scripts` are documented in this file!
@@ -107,6 +185,10 @@ If there are any calls to nonexistent modules, or non-exported functions, you wi
 ## check-whitespace.sh
 
 Removes trailing whitespaces from files
+
+## circleci.bash
+
+When building applications that don't live in the kazoo src tree, this script will configure CircleCI to run the necessary tests against Kazoo with the application added in.
 
 ## circleci-build-erlang.sh
 
@@ -296,10 +378,55 @@ Already EDocified! 🎉
 Checks JSON schemas for empty "description" properties and exit(1) if any are found
 
 
+## `eunit_run.escript`
+
+Run EUnit tests on specified module names, filtering test modules which has same as their normal module name like `fobar` and `fobar_tests` to avoid running the `fobar_tests` twice.
+
+Usage:
+
+```bash
+cd core/kazoo_stdlib ## or your desire application or on the root kazoo project dir
+KAZOO_CONFIG=../../rel/config-test.ini ERL_LIBS=../../deps:../../core:../../applications ../../scripts/eunit_run.escript --with-cover \
+    --cover-project-name kazoo_stdlib --cover-report-dir cover \
+    kz_binary kz_binary_tests kz_date kz_date_tests kz_json kz_json_tests kz_maps kz_maps_tests kz_mochinum kz_module kz_module_tests
+    kz_term kz_term_tests kz_time kz_time_tests kz_types props props_tests
+
+```
+
+or simply:
+
+```bash
+cd core/kazoo_stdlib ## or your desire application or on the root kazoo project dir
+make eunit # or make test
+```
+
+
 ## `export_auth_token.bash`
 
 Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
 
+```bash
+./scripts/export_auth_token.bash -h
+Gets an auth token and outputs Bash script to export the following environment
+variables:
+
+    ACCOUNT_ID
+    AUTH_TOKEN
+
+Usage:
+
+$(eval ./scripts/export_auth_token.bash [options])
+
+Options:
+
+-v:                      Print extra information (verbose)
+-c CREDENTIALS_HASH      $(echo -n "username:password" | md5sum | cut -d ' ' -f 1)
+-a ACCOUNT_NAME
+-p PHONE_NUMBER
+-r ACCOUNT_REALM
+-k API_KEY
+-s BASE_URL             Defaults to http://localhost:8000; include the http(s) scheme
+```
 
 ## format-json.sh
 
@@ -696,6 +823,10 @@ Searches for undocumented source files:
     Files without documentations in module header: 769/1277 (%60)
     Files with undocumented functions: 1021/1277 (%79)
 
+## `sync_mkdocs_pages.sh`
+
+A script to missing pages (MakrDown files) from `mkdocs.yml` to other YAML files. Flag those files which are deleted or rename.
+
 ## `sync_to_remote.bash`
 
 ```bash
@@ -715,6 +846,9 @@ Useful in conjunction with `sync_to_remote`. Takes .beam files in a directory an
 -   `BEAMS`: Path to beam files, defaults to `/tmp/beams/*.beam`
 -   `DEST`: Path to the release's lib/ directory, defaults to `/opt/kazoo/lib`
 
+## tags.escript
+
+Generates a [TAGS file](https://www.emacswiki.org/emacs/EmacsTags) based on all Erlang code in the code path.
 
 ## update-the-types.sh
 
@@ -805,3 +939,11 @@ Part of the great rename, converts Whistle-related names to Kazoo-specific names
 ## `make-swag.sh`
 
 Generate API clients in multiple languages from the Swagger file.
+
+## `next_version`
+
+returns next release based on branch & tags.
+
+## `increment_version.bash`
+
+routine to increment a version

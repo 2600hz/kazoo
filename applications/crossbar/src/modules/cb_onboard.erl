@@ -108,7 +108,7 @@ put(Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function will loop over all the 'extensions' and collect
-%% valid context's for users, voicemailboxes, devices, and callflows.
+%% valid context's for users, voicemail boxes, devices, and callflows.
 %% Any errors will also be collected.
 %% @end
 %%------------------------------------------------------------------------------
@@ -419,7 +419,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc This function will loop over the prevously generated context records
+%% @doc This function will loop over the previously generated context records
 %% providing each to the respective 'put' binding in order to create
 %% the objects.  Starts with the account :)
 %% @end

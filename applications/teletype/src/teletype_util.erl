@@ -53,8 +53,8 @@
                                   ,{?TEXT_HTML, 2}
                                   ]).
 
--define(NOTICE_ENABLED_BY_DEFAULT,
-        kapps_config:get_is_true(?APP_NAME, <<"notice_enabled_by_default">>, 'true')
+-define(NOTICE_ENABLED_BY_DEFAULT
+       ,kapps_config:get_is_true(?APP_NAME, <<"notice_enabled_by_default">>, 'true')
        ).
 
 -spec send_email(email_map(), kz_term:ne_binary(), rendered_templates()) ->
@@ -70,16 +70,15 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     From = props:get_value(<<"from">>, Emails),
     Email = {<<"multipart">>
             ,<<"mixed">>
-            ,email_parameters(
-               [{<<"To">>, To}
-               ,{<<"Cc">>, props:get_value(<<"cc">>, Emails)}
-               ,{<<"Bcc">>, props:get_value(<<"bcc">>, Emails)}
-               ]
+            ,email_parameters([{<<"To">>, To}
+                              ,{<<"Cc">>, props:get_value(<<"cc">>, Emails)}
+                              ,{<<"Bcc">>, props:get_value(<<"bcc">>, Emails)}
+                              ]
                              ,[{<<"From">>, From}
                               ,{<<"Reply-To">>, props:get_value(<<"reply_to">>, Emails)}
                               ,{<<"Subject">>, Subject}
                               ]
-              )
+                             )
             ,[{<<"content-type-params">>, [{<<"charset">>, <<"utf-8">>}]}]
             ,[email_body(RenderedTemplates)
               | add_attachments(Attachments)
@@ -168,7 +167,8 @@ relay_email(To, From, {_Type
                       ,Addresses
                       ,_ContentTypeParams
                       ,_Body
-                      }=Email) ->
+                      }=Email
+           ) ->
     try mimemail:encode(Email) of
         Encoded ->
             RelayResult = relay_encoded_email(To, From, Encoded),
@@ -315,8 +315,8 @@ add_rendered_templates_to_email(RenderedTemplates) ->
 add_rendered_templates_to_email([], Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
-    CTEncoding = kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT,
-                                            [<<"mime-encoding">>
+    CTEncoding = kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT
+                                           ,[<<"mime-encoding">>
                                             ,ContentType
                                             ,<<"content_transfer_encoding">>
                                             ]
@@ -636,8 +636,11 @@ is_notice_enabled_default(TemplateKey) ->
 get_parent_account_id(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} -> kzd_accounts:parent_account_id(JObj);
+        {'error', 'not_found'} ->
+            lager:info("account ~s no longer exists, no parent account", [AccountId]),
+            'undefined';
         {'error', _E} ->
-            lager:error("failed to find parent account for ~s", [AccountId]),
+            lager:error("failed to find parent account for ~s: ~p", [AccountId, _E]),
             'undefined'
     end.
 
@@ -709,14 +712,21 @@ get_address_value(Key, Path, [JObj|JObjs]) ->
 -spec check_address_value(binary() | kz_term:binaries() | kz_json:object() | 'undefined') -> kz_term:api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';
-check_address_value(<<_/binary>> = Email) -> [Email];
+check_address_value(<<_/binary>> = Email) -> check_address_value([Email]);
 check_address_value(Emails) when is_list(Emails) ->
-    case [E || E <- Emails, not kz_term:is_empty(E)] of
+    case [E || E <- Emails,
+               kz_term:is_ne_binary(E),
+               length(binary:split(E, <<"@">>, ['global'])) == 2
+         ]
+    of
         [] -> 'undefined';
         Es -> Es
     end;
-check_address_value(JObj) ->
-    check_address_value(kz_json:get_value(<<"email_addresses">>, JObj)).
+check_address_value(Emails) ->
+    case kz_json:is_json_object(Emails) of
+        'true' -> check_address_value(kz_json:get_value(<<"email_addresses">>, Emails));
+        'false' -> 'undefined'
+    end.
 
 -spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_json:path()) ->
                                kz_term:api_ne_binaries().
@@ -827,6 +837,7 @@ fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
     props:filter_undefined(
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
       ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, TZ)}
+      ,{<<"timestamp">>, Timestamp}
       ,{<<"timezone">>, TZ}
       ]);
 fix_timestamp(Timestamp, 'undefined') ->
@@ -855,17 +866,37 @@ build_call_data(DataJObj, Timezone) ->
 
 -spec build_caller_id_data(kz_json:object()) -> kz_term:proplist().
 build_caller_id_data(DataJObj) ->
+    Name = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_name">>, DataJObj)),
+    Number = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_number">>, DataJObj)),
+    NameNumber = build_name_and_number(Name, Number),
     props:filter_undefined(
-      [{<<"name">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_name">>, DataJObj))}
-      ,{<<"number">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_number">>, DataJObj))}
+      [{<<"name">>, Name}
+      ,{<<"number">>, Number}
+      ,{<<"name_number">>, NameNumber}
       ]).
 
 -spec build_callee_id_data(kz_json:object()) -> kz_term:proplist().
 build_callee_id_data(DataJObj) ->
+    Name = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_name">>, DataJObj)),
+    Number = knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_number">>, DataJObj)),
+    NameNumber = build_name_and_number(Name, Number),
     props:filter_undefined(
-      [{<<"name">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_name">>, DataJObj))}
-      ,{<<"number">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_number">>, DataJObj))}
+      [{<<"name">>, Name}
+      ,{<<"number">>, Number}
+      ,{<<"name_number">>, NameNumber}
       ]).
+
+-spec build_name_and_number(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+build_name_and_number(<<"unknown">>, <<"unknown">>) ->
+    'undefined';
+build_name_and_number(<<"unknown">>, Number) ->
+    Number;
+build_name_and_number(Name, <<"unknown">>) ->
+    Name;
+build_name_and_number(Number, Number) ->
+    Number;
+build_name_and_number(Name, Number) ->
+    <<Name/binary, "(", Number/binary, ")">>.
 
 -spec build_date_called_data(kz_json:object(), kz_term:api_ne_binary()) -> kz_term:proplist().
 build_date_called_data(DataJObj, Timezone) ->
@@ -903,9 +934,7 @@ build_to_data(DataJObj) ->
 -spec public_proplist(kz_json:path(), kz_json:object()) -> kz_term:proplist().
 public_proplist(Key, JObj) ->
     kz_json:recursive_to_proplist(
-      kz_doc:public_fields(
-        kz_json:get_value(Key, JObj, kz_json:new())
-       )
+      kz_doc:public_fields(kz_json:get_value(Key, JObj, kz_json:new()))
      ).
 
 -spec notification_completed(kz_term:ne_binary()) -> template_response().
@@ -917,7 +946,7 @@ notification_ignored(TemplateId) -> {'ignored', TemplateId}.
 -spec notification_failed(kz_term:ne_binary(), any()) -> template_response().
 notification_failed(TemplateId, Reason) -> {'failed', Reason, TemplateId}.
 
--spec notification_disabled(kz_term:ne_binary(), kz_json:object()) -> template_response().
+-spec notification_disabled(kz_json:object(), kz_term:ne_binary()) -> template_response().
 notification_disabled(DataJObj, TemplateId) ->
     AccountId = kapi_notifications:account_id(DataJObj),
     lager:debug("notification ~s is disabled for account ~s", [TemplateId, AccountId]),
@@ -952,7 +981,9 @@ fetch_attachment_from_url(URL) ->
 attachment_from_url_result(Headers, Body) ->
     CT = kz_term:to_binary(props:get_value("content-type", Headers, <<"text/plain">>)),
     Disposition = kz_term:to_binary(props:get_value("content-disposition", Headers, <<>>)),
-    CDs = [ list_to_tuple(binary:split(kz_binary:strip(CD), <<"=">>)) || CD <- binary:split(Disposition, <<";">>)],
+    CDs = [list_to_tuple(binary:split(kz_binary:strip(CD), <<"=">>))
+           || CD <- binary:split(Disposition, <<";">>)
+          ],
     Filename = case props:get_value(<<"filename">>, CDs) of
                    'undefined' -> kz_mime:to_filename(CT);
                    FileDisposition -> FileDisposition

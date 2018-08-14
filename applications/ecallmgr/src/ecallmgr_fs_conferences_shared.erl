@@ -274,17 +274,33 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, {'ok', Resp}}) ->
     BuiltResp = handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp),
     props:insert_value(<<"Call-ID">>, LoopbackCallId, BuiltResp).
 
+-record(outbound_dial, {loopback_a :: kz_term:ne_binary()
+                       ,loopback_b :: kz_term:api_ne_binary()
+                       ,b_leg :: kz_term:api_ne_binary()
+                       ,dial_resp :: kz_term:api_ne_binary()
+                       ,channel_props = [] :: kz_term:proplist()
+                       }
+       ).
+-type outbound_dial() :: #outbound_dial{}.
+
 -spec handle_call_startup(atom(), kapi_conference:doc(), kz_term:ne_binary(), kz_term:proplist()) ->
                                  kz_term:proplist().
 handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
-    case wait_for_bowout(LoopbackCallId
-                        ,'undefined'
+    case wait_for_bowout(#outbound_dial{loopback_a=LoopbackCallId}
                         ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
                         )
     of
-        {'ok', CallId, DialResp, ChannelProps} ->
+        {'ok', #outbound_dial{b_leg=CallId
+                             ,dial_resp=DialResp
+                             ,channel_props=ChannelProps
+                             }=OutboundDial
+        }->
             lager:debug("finished waiting for ~s, now ~s", [LoopbackCallId, CallId]),
-            add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId), ChannelProps),
+            add_participant(JObj
+                           ,CallId
+                           ,start_call_handlers(ConferenceNode, JObj, OutboundDial)
+                           ,ChannelProps
+                           ),
             props:set_values([{<<"Message">>, DialResp}
                              ,{<<"Call-ID">>, CallId}
                              ]
@@ -302,86 +318,125 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
                             )
     end.
 
--spec wait_for_bowout(kz_term:ne_binary(), kz_term:api_ne_binary(), pos_integer()) ->
-                             {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()} |
-                             {'error', 'timeout'} |
-                             {'error', kz_term:ne_binary(), kz_term:ne_binary()}.
-wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
-    wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, []).
+-type bowout_return() :: {'ok', outbound_dial()} |
+                         {'error', 'timeout'} |
+                         {'error', kz_term:ne_binary(), kz_term:ne_binary()}.
 
--spec wait_for_bowout(kz_term:ne_binary(), kz_term:api_ne_binary(), pos_integer(), kz_term:proplist()) ->
-                             {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()} |
-                             {'error', 'timeout'} |
-                             {'error', kz_term:ne_binary(), kz_term:ne_binary()}.
-wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps) ->
+-spec wait_for_bowout(outbound_dial(), pos_integer()) -> bowout_return().
+wait_for_bowout(#outbound_dial{loopback_a=LoopbackALeg
+                              ,loopback_b=LoopbackBLeg
+                              }=OutboundDial
+               ,Timeout) ->
     Start = kz_time:now_s(),
     receive
         {'event', [LoopbackALeg | Props]} ->
-            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props);
+            handle_call_event(OutboundDial, Timeout, Start, Props);
         {'event', [LoopbackBLeg | Props]} ->
-            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props);
+            handle_call_event(OutboundDial, Timeout, Start, Props);
         ?LOOPBACK_BOWOUT_MSG(_Node, Props) when is_list(Props) ->
-            handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props)
+            handle_bowout(OutboundDial, Timeout, Start, Props)
     after Timeout ->
             lager:info("timed out waiting for ~s", [LoopbackALeg]),
             {'error', 'timeout'}
     end.
 
-handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) ->
+-spec handle_call_event(outbound_dial(), pos_integer(), pos_integer(), kz_term:proplist()) ->
+                               bowout_return().
+handle_call_event(#outbound_dial{loopback_a=LoopbackALeg
+                                ,loopback_b=LoopbackBLeg
+                                }=OutboundDial
+                 ,Timeout, Start, Props
+                 ) ->
     case {kzd_freeswitch:call_id(Props)
          ,kzd_freeswitch:event_name(Props)
          }
     of
         {LoopbackALeg, <<"CHANNEL_DESTROY">>} ->
-            handle_loopback_destroy(LoopbackALeg, kzd_freeswitch:hangup_cause(Props));
+            handle_loopback_destroy(OutboundDial, kzd_freeswitch:hangup_cause(Props));
         {LoopbackBLeg, <<"CHANNEL_DESTROY">>} ->
-            handle_loopback_destroy(LoopbackBLeg, kzd_freeswitch:hangup_cause(Props));
+            handle_loopback_destroy(OutboundDial, kzd_freeswitch:hangup_cause(Props));
         {LoopbackALeg, <<"CHANNEL_CREATE">>} ->
-            handle_create(LoopbackALeg, Timeout, ChannelProps, Start, Props);
+            handle_create(OutboundDial, Timeout, Start, Props);
         {_CallId, _Evt} ->
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
+            wait_for_bowout(OutboundDial, kz_time:decr_timeout(Timeout, Start))
     end.
 
-handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, ChannelProps, Start, Props) ->
+-spec handle_create(outbound_dial(), pos_integer(), pos_integer(), kz_term:proplist()) ->
+                           bowout_return().
+handle_create(#outbound_dial{loopback_a = <<?LB_ALEG_PREFIX, _/binary>>
+                            ,channel_props=ChannelProps
+                            }=OutboundDial
+             ,Timeout, Start, Props
+             ) ->
     case {kzd_freeswitch:other_leg_call_id(Props)
          ,kzd_freeswitch:loopback_other_leg(Props)
          }
     of
         {'undefined', 'undefined'} ->
-            wait_for_bowout(LoopbackALeg, 'undefined', kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps));
+            wait_for_bowout(OutboundDial#outbound_dial{channel_props=props:insert_values(Props, ChannelProps)}
+                           ,kz_time:decr_timeout(Timeout, Start)
+                           );
         {'undefined', LoopbackBLeg} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps));
+            maybe_update_ecallmgr_node([LoopbackBLeg]),
+            wait_for_bowout(OutboundDial#outbound_dial{loopback_b=LoopbackBLeg
+                                                      ,channel_props=props:insert_values(Props, ChannelProps)
+                                                      }
+                           ,kz_time:decr_timeout(Timeout, Start)
+                           );
         {LoopbackBLeg, _} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps))
+            wait_for_bowout(OutboundDial#outbound_dial{channel_props=props:insert_values(Props, ChannelProps)}
+                           ,kz_time:decr_timeout(Timeout, Start)
+                           )
     end;
-handle_create(ALeg, _Timeout, ChannelProps, _Start, Props) ->
+handle_create(#outbound_dial{loopback_a=ALeg
+                            ,channel_props=ChannelProps
+                            }=OutboundDial, _Timeout, _Start, Props) ->
     lager:debug("dial started to ~s", [ALeg]),
-    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>, props:insert_values(Props, ChannelProps)}.
+    {'ok'
+    ,OutboundDial#outbound_dial{b_leg=ALeg
+                               ,channel_props=props:insert_values(Props, ChannelProps)
+                               ,dial_resp = <<"dial resulted in call id ", ALeg/binary>>
+                               }
+    }.
 
-handle_loopback_destroy(_LoopbackALeg, <<"NORMAL_UNSPECIFIED">>) ->
-    lager:debug("~s went down", [_LoopbackALeg]);
-handle_loopback_destroy(_LoopbackALeg, HangupCause) ->
+handle_loopback_destroy(#outbound_dial{loopback_a=_LoopbackALeg}, <<"NORMAL_UNSPECIFIED">>) ->
+    lager:debug("loopback a-leg ~s went down", [_LoopbackALeg]);
+handle_loopback_destroy(#outbound_dial{loopback_a=_LoopbackALeg}, HangupCause) ->
     lager:info("~s went down with ~s", [_LoopbackALeg, HangupCause]),
     {'error', HangupCause, <<"failed to start call: ", HangupCause/binary>>}.
 
-handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) ->
+handle_bowout(#outbound_dial{loopback_a=LoopbackALeg
+                            ,channel_props=ChannelProps
+                            }=OutboundDial
+             ,Timeout, Start, Props
+             ) ->
     case {props:get_value(?RESIGNING_UUID, Props)
          ,props:get_value(?ACQUIRED_UUID, Props)
          }
     of
         {LoopbackALeg, LoopbackALeg} ->
             lager:debug("call id after bowout remains the same"),
-            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>, props:insert_values(Props, ChannelProps)};
+            {'ok'
+            ,OutboundDial#outbound_dial{b_leg=LoopbackALeg
+                                       ,channel_props=props:insert_values(Props, ChannelProps)
+                                       ,dial_resp = <<"dial resulted in call id ", LoopbackALeg/binary>>
+                                       }
+            };
         {LoopbackALeg, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("~s acquired as ~s", [LoopbackALeg, AcquiringUUID]),
-            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>, props:insert_values(Props, ChannelProps)};
+            {'ok'
+            ,OutboundDial#outbound_dial{b_leg=AcquiringUUID
+                                       ,channel_props=props:insert_values(Props, ChannelProps)
+                                       ,dial_resp = <<"dial resulted in call id ", LoopbackALeg/binary>>
+                                       }
+            };
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
+            wait_for_bowout(OutboundDial, kz_time:decr_timeout(Timeout, Start))
     end.
 
 -spec register_for_events(atom(), kz_term:ne_binary()) -> 'ok'.
@@ -392,15 +447,30 @@ register_for_events(ConferenceNode, EndpointCallId) ->
         ],
     'ok'.
 
--spec start_call_handlers(atom(), kapi_conference:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
-start_call_handlers(Node, JObj, CallId) ->
-    FetchId = kz_api:msg_id(JObj),
+-spec start_call_handlers(atom(), kapi_conference:doc(), outbound_dial()) -> kz_term:api_ne_binary().
+start_call_handlers(Node, JObj, #outbound_dial{loopback_b=LoopbackB, b_leg=CallId}) ->
     CCVs = kz_json:new(),
+    FetchId = kz_api:msg_id(JObj),
+
+    ecallmgr_call_control:publish_usurp(LoopbackB, FetchId, node()),
+    maybe_update_ecallmgr_node([LoopbackB, CallId]),
 
     _ = kz_util:spawn(fun ecallmgr_call_sup:start_event_process/2, [Node, CallId]),
     {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
 
     get_control_queue(CtlPid).
+
+maybe_update_ecallmgr_node([]) -> 'ok';
+maybe_update_ecallmgr_node(['undefined' | Legs]) -> maybe_update_ecallmgr_node(Legs);
+maybe_update_ecallmgr_node([Leg | Legs]) ->
+    case ecallmgr_fs_channel:fetch(Leg, 'record') of
+        {'ok', #channel{node=Node}} ->
+            ecallmgr_fs_command:export(Node, Leg, [{<<"Ecallmgr-Node">>, node()}]),
+            lager:debug("exported ecallmgr node to ~s (~s)", [Node, Leg]);
+        {'error', 'not_found'} ->
+            lager:debug("leg ~s not found, skipping", [Leg])
+    end,
+    maybe_update_ecallmgr_node(Legs).
 
 -spec get_control_queue(pid()) -> kz_term:api_ne_binary().
 get_control_queue(CtlPid) ->
@@ -438,6 +508,7 @@ add_participant(JObj, CallId, ControlQueue, ChannelProps) ->
                                  ,{<<"Control-Queue">>, ControlQueue}
                                  ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
                                  ,{<<"Participant-Flags">>, kz_json:get_list_value(<<"Participant-Flags">>, JObj)}
+                                 ,{<<"Profile-Name">>, kz_json:get_ne_binary_value(<<"Profile-Name">>, JObj)}
                                  ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)}
                                  ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)}
                                   | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)

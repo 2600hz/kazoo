@@ -1,8 +1,106 @@
-### Allotments
+# Allotments
 
-#### About Allotments
+## Allotments Explanation
 
-#### Schema
+Each object have name (`outbound_national`) which build from direction (inbound or outbound) and classification from number manager configuration.
+
+**Properties**
+
+- `amount`: time in seconds. which can be consumed
+- `cycle`: when we reset consumed allotments counter, must be one of `minutely`, `hourly`, `daily`, `weekly`, `monthly`.
+- `increment`: step (in seconds) of incrementing counter, minimum 1 second
+- `minimum`: minimum amount added to counter
+- `no_consume_time`: if call less or equal of this time (in seconds), then no allotment consumed.
+- `group_consume`: other allotments which will be summed, when calculating rest of allotments time on authorization. See examples below.
+
+### Examples
+
+#### increment", "minimum" and "no_consume_time"
+
+```json
+{
+    "outbound_local": {
+       "increment": 10,
+       "minimum": 60,
+       "no_consume_time": 5
+    }
+}
+```
+
+Call consumed time rounded before store it to DB. Call with duration 40 seconds will be count as 60 seconds.
+
+```
+69 seconds -> 70
+75 seconds -> 80
+5 seconds -> 0
+6 seconds -> 60
+```
+
+#### "group_consume"
+
+```json
+{
+  "Class1": {
+       "amount": 600,
+       "group_consume": [
+           "Class2"
+       ]
+   },
+   "Class2": {
+       "amount": 600,
+       "group_consume": [
+           "Class1"
+       ]
+   }
+}
+```
+
+Here we have 2 classifiers which share same counter.
+If `Class1` already consumed 400 seconds and `Class2` consumed 150 seconds, next call with classifier `Class2` (or `Class1`) will have 50 free seconds.
+
+Little more complex example:
+
+```json
+{
+  "Class1": {
+       "amount": 600,
+       "group_consume": [
+           "Class2",
+           "Class3"
+       ]
+   },
+   "Class2": {
+       "amount": 120,
+       "group_consume": [
+           "Class1"
+       ]
+   },
+   "Class3": {
+       "amount": 300,
+       "group_consume": [
+            "Class2"
+       ]
+   }
+}
+```
+
+So if we already have consumed calls:
+
+```
+Class1 - 300
+Class2 - 60
+Class3 - 180
+```
+
+As result next call will have this free seconds:
+
+```
+Class1 - 60 (300 Class1 + 60 Class2 + 180 Class3 = 540, 600-540 = 60)
+Class2 - 0 (60 Class2 + 300 Class1 = 360, 360 > 120)
+Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
+```
+
+## Schema
 
 Create buckets of minutes per time-period
 
@@ -10,18 +108,18 @@ Create buckets of minutes per time-period
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^\w+$.amount` |   | `integer()` |   | `false` |  
-`^\w+$.cycle` |   | `string('minutely' | 'hourly' | 'daily' | 'weekly' | 'monthly')` |   | `false` |  
-`^\w+$.group_consume.[]` |   | `string()` |   | `false` |  
-`^\w+$.group_consume` |   | `array(string())` |   | `false` |  
-`^\w+$.increment` |   | `integer()` |   | `false` |  
-`^\w+$.minimum` |   | `integer()` |   | `false` |  
-`^\w+$.no_consume_time` |   | `integer()` |   | `false` |  
-`^\w+$` |   | `object()` |   | `false` |  
+`^\w+$.amount` |   | `integer()` |   | `false` |
+`^\w+$.cycle` |   | `string('minutely' | 'hourly' | 'daily' | 'weekly' | 'monthly')` |   | `false` |
+`^\w+$.group_consume.[]` |   | `string()` |   | `false` |
+`^\w+$.group_consume` |   | `array(string())` |   | `false` |
+`^\w+$.increment` |   | `integer()` |   | `false` |
+`^\w+$.minimum` |   | `integer()` |   | `false` |
+`^\w+$.no_consume_time` |   | `integer()` |   | `false` |
+`^\w+$` |   | `object()` |   | `false` |
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments
 
@@ -59,93 +157,7 @@ curl -v -X GET \
 }
 ```
 
-###### Explanаtion
-
-Each object have name (`outbound_national`) which build from direction (inbound or outbound) and classificator from number_manager configuration.
-
-Properties:
-
-- `amount`: time in seconds. which can be consumed
-- `cycle`: when we reset consumed allotments counter, must be one of `minutely`, `hourly`, `daily`, `weekly`, `monthly`.
-- `increment`: step (in seconds) of incrementing counter, minimum 1 second
-- `minimum`: minimum ammount added to counter
-- `no_consume_time`: if call less or equal of this time (in seconds), then no allotment consumed.
-- `group_consume`: other allotments which will be summed, when calcualting rest of allotments time on authorization. See examples below.
-
-###### Examples
-
-####### "increment", "minimum" and "no_consume_time"
-
-```json
-      "outbound_local": {
-           "increment": 10,
-           "minimum": 60,
-           "no_consume_time": 5
-       }
-```
-
-Call consumed time rounded before store it to DB.
-Call with duration 40 seconds will be count as 60 seconds.
-69 seconds -> 70
-75 seconds -> 80
-5 seconds -> 0
-6 seconds -> 60
-
-###### "group_consume"
-
-```json
-      "Class1": {
-           "amount": 600,
-           "group_consume": [
-               "Class2"
-           ]
-       },
-       "Class2": {
-           "amount": 600,
-           "group_consume": [
-               "Class1"
-           ]
-       }
-```
-
-Here we have 2 classifiers which share same counter.
-If Class1 already counsmed 400 seconds and Class2 consumed 150 seconds, next call with classifier Class2 (or Class1) will have 50 free seconds.
-
-Little more complex example:
-
-```json
-      "Class1": {
-           "amount": 600,
-           "group_consume": [
-               "Class2",
-               "Class3"
-           ]
-       },
-       "Class2": {
-           "amount": 120,
-           "group_consume": [
-               "Class1"
-           ]
-       },
-       "Class3": {
-           "amount": 300,
-           "group_consume": [
-                "Class2"
-           ]
-       }
-```
-
-So if we already have counsumed calls:
-Class1 - 300
-Class2 - 60
-Class3 - 180
-
-As result next call wil have this free seconds:
-Class1 - 60 (300 Class1 + 60 Class2 + 180 Class3 = 540, 600-540 = 60)
-Class2 - 0 (60 Class2 + 300 Class1 = 360, 360 > 120)
-Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
-
-#### Update allotments configuration for a given account
+## Update allotments configuration for a given account
 
 > POST /v2/accounts/{ACCOUNT_ID}/allotments
 
@@ -182,7 +194,7 @@ curl -v -X POST \
 }
 ```
 
-#### Get consumed allotments for a given account
+## Get consumed allotments for a given account
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments/consumed
 
@@ -212,7 +224,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get consumed allotments for a certain period of time
+## Get consumed allotments for a certain period of time
 
 `{TIMESTAMP}` - Gregorian epoch seconds.
 
@@ -242,7 +254,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get consumed allotments at certain time
+## Get consumed allotments at certain time
 
 `{TIMESTAMP}` - Gregorian epoch seconds.
 
@@ -269,14 +281,14 @@ Response:
     "data": {
         "outbound_local": {
             "consumed": 180,
-            "consumed_to": month2_end_timestamp,
-            "consumed_from": month2_start_timestamp,
+            "consumed_to": 63692087455, // month2_end_timestamp
+            "consumed_from": 63691988379, // month2_start_timestamp
             "cycle": "monthly"
         },
         "outbound_national": {
             "consumed": 60,
-            "consumed_to": week4_end_timestamp,
-            "consumed_from": week4_start_timestamp,
+            "consumed_to": 63692088370, // week4_end_timestamp
+            "consumed_from": 63692078446, // week4_start_timestamp
             "cycle": "weekly"
         }
     },
@@ -284,6 +296,7 @@ Response:
 }
 ```
 
+### Example Time Diagram
 
 ```
                                  {TIMESTAMP}

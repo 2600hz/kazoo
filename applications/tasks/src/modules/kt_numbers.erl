@@ -5,6 +5,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_numbers).
+
 %% behaviour: tasks_provider
 
 -export([init/0
@@ -315,7 +316,7 @@ action(<<"reserve">>) ->
      ,<<"doc">> => <<"Sets numbers to state 'reserved' (creating number if it is missing).\n"
                      "Note: number must be E164-formatted.\n"
                      "Note: account creating the task (or `auth_by` account) must have permission to proceed.\n"
-                     "Note: after transitionning state to 'reserved', number is assigned to `account_id`.\n"
+                     "Note: after transitioning state to 'reserved', number is assigned to `account_id`.\n"
                    >>
      ,<<"expected_content">> => <<"text/csv">>
      ,<<"mandatory">> => [<<"e164">>]
@@ -396,7 +397,7 @@ list_numbers(AuthBy, E164s) ->
 
 list_bad_rows(E164, 'not_reconcilable', Rows) ->
     %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
-    %% Their fields are not queriable but we return the id to show it exists.
+    %% Their fields are not queryable but we return the id to show it exists.
     Row = [E164 | lists:duplicate(length(list_output_header()) - 1, 'undefined')],
     [Row|Rows];
 list_bad_rows(_E164, _R, Rows) ->
@@ -624,7 +625,7 @@ maybe_nest(_, []) -> [];
 maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
 import_module_name(AuthBy, Carrier) ->
-    case kz_util:is_system_admin(AuthBy)
+    case kzd_accounts:is_superduper_admin(AuthBy)
         andalso Carrier
     of
         'false' -> ?IMPORT_DEFAULTS_TO_CARRIER;
@@ -633,7 +634,7 @@ import_module_name(AuthBy, Carrier) ->
     end.
 
 import_state(AuthBy, State) ->
-    case kz_util:is_system_admin(AuthBy)
+    case kzd_accounts:is_superduper_admin(AuthBy)
         andalso 'undefined' =/= State
     of
         'false' -> [];

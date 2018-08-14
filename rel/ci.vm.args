@@ -1,0 +1,34 @@
+# Tell SASL not to log progress reports, and log SASL errors to a file
+-sasl errlog_type error
+-sasl sasl_error_logger '{file, "log/error_log.sasl"}'
+-boot start_sasl
+
+-kernel inet_dist_listen_min 11500 inet_dist_listen_max 11999
+
+# Use kernel poll functionality if supported by emulator
++K true
+
+# Start a pool of asynchronous IO threads
++A 100
+
+# Treat error_logger:warning_msg/2 as warnings instead of errors (default)
++W w
+
+# utf8
+-pc unicode
+
+# Hearbeat disbled by default
+##-heart
+
+# GC more often
+-env ERL_FULLSWEEP_AFTER 10
+
+# Increase number of concurrent ports / sockets
+##-env ERL_MAX_PORTS 4096
+
+# When crashing, write dump with highest priority
+-env ERL_CRASH_DUMP_NICE 1
+
+-s kazoo_apps_app
+
+-s kapps_maintenance check_release

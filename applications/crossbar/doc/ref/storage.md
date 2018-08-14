@@ -1,6 +1,6 @@
-### Storage
+# Storage
 
-#### About Storage
+## About Storage
 
 #### Schema
 
@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required | Support Level
 `plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false` |  
 `ui_metadata` |   | `object()` |   | `false` |  
 
-##### storage.attachment.aws
+### storage.attachment.aws
 
 schema for AWS attachment entry
 
@@ -35,7 +35,7 @@ Key | Description | Type | Default | Required | Support Level
 `settings.secret` | AWS Secret to use | `string(1..128)` |   | `true` |  
 `settings` | AWS API settings | `object()` |   | `true` |  
 
-##### storage.attachment.azure
+### storage.attachment.azure
 
 schema for azure attachment entry
 
@@ -48,7 +48,7 @@ Key | Description | Type | Default | Required | Support Level
 `settings.key` | the azure api key | `string()` |   | `true` |  
 `settings` | Settings for the Azure account | `object()` |   | `true` |  
 
-##### storage.attachment.dropbox
+### storage.attachment.dropbox
 
 schema for dropbox attachment entry
 
@@ -57,9 +57,9 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('dropbox')` |   | `true` |  
 `settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |  
-`settings` | Settings for the DropBox account | `object()` |   | `true` |  
+`settings` | Settings for the Dropbox account | `object()` |   | `true` |  
 
-##### storage.attachment.google_drive
+### storage.attachment.google_drive
 
 schema for google drive attachment entry
 
@@ -71,7 +71,7 @@ Key | Description | Type | Default | Required | Support Level
 `settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |  
 `settings` | Settings for the Google Drive account | `object()` |   | `true` |  
 
-##### storage.attachment.google_storage
+### storage.attachment.google_storage
 
 schema for google storage attachment entry
 
@@ -81,7 +81,7 @@ Key | Description | Type | Default | Required | Support Level
 `handler` | What handler module to use | `string('google_storage')` |   | `true` |  
 `settings` | Settings for the Google Storage account | `object()` |   | `true` |  
 
-##### storage.attachment.onedrive
+### storage.attachment.onedrive
 
 schema for OneDrive attachment entry
 
@@ -92,7 +92,7 @@ Key | Description | Type | Default | Required | Support Level
 `settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |  
 `settings` | Settings for the OneDrive account | `object()` |   | `true` |  
 
-##### storage.attachments
+### storage.attachments
 
 Keys are 32-character identifiers to be used in storage plans
 
@@ -105,9 +105,9 @@ Key | Description | Type | Default | Required | Support Level
 `^[a-z0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false` |  
 `^[a-z0-9]{32}$` | Configuration for the supported storage backends | `object()` |   | `false` |  
 
-##### storage.connection.couchdb
+### storage.connection.couchdb
 
-schema for couchdb connection entry
+schema for CouchDB connection entry
 
 
 Key | Description | Type | Default | Required | Support Level
@@ -129,7 +129,7 @@ Key | Description | Type | Default | Required | Support Level
 `settings.port` |   | `integer()` |   | `true` |  
 `settings` |   | `object()` |   | `true` |  
 
-##### storage.connections
+### storage.connections
 
 
 Key | Description | Type | Default | Required | Support Level
@@ -137,7 +137,7 @@ Key | Description | Type | Default | Required | Support Level
 `^([a-z,0-9]){32}$` |   | [#/definitions/storage.connection.couchdb](#storageconnection.couchdb) |   | `false` |  
 `local` |   | `object()` |   | `false` |  
 
-##### storage.plan
+### storage.plan
 
 schema for storage plan
 
@@ -148,7 +148,7 @@ Key | Description | Type | Default | Required | Support Level
 `modb` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
 `system` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
 
-##### storage.plan.database
+### storage.plan.database
 
 schema for database storage plan
 
@@ -165,7 +165,7 @@ Key | Description | Type | Default | Required | Support Level
 `types.media` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
 `types` |   | `object()` |   | `false` |  
 
-##### storage.plan.database.attachment
+### storage.plan.database.attachment
 
 schema for attachment ref type storage plan
 
@@ -177,7 +177,7 @@ Key | Description | Type | Default | Required | Support Level
 `params` |   | `object()` |   | `false` |  
 `stub` |   | `boolean()` |   | `false` |  
 
-##### storage.plan.database.document
+### storage.plan.database.document
 
 schema for document type storage plan
 
@@ -189,7 +189,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/storage
 
@@ -199,7 +199,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/storage
 
@@ -209,7 +209,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/storage
 
@@ -219,7 +219,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/storage
 
@@ -229,7 +229,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/storage
 
@@ -239,7 +239,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/storage/plans
 
@@ -249,7 +249,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage/plans
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/storage/plans
 
@@ -259,7 +259,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage/plans
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 
@@ -269,7 +269,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 
@@ -279,7 +279,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 
@@ -289,7 +289,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 

@@ -13,33 +13,34 @@
 
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     AccountId = kapps_call:account_id(Call),
-    case cf_flow:lookup(CaptureGroup, AccountId) of
+    Number = cf_util:normalize_capture_group(kapps_call:kvs_fetch('cf_capture_group', Call), AccountId),
+    case Number =/= 'undefined'
+        andalso cf_flow:lookup(Number, AccountId)
+    of
+        'false' ->
+            lager:debug("capture group is empty and can not be set as destination, hanging up."),
+            cf_exe:stop_bad_destination(Call);
         {'ok', CallFlow, _} ->
             Mode = kz_json:get_ne_binary_value(<<"mode">>, Data, <<"full">>),
             kapps_call_command:privacy(Mode, Call),
-            update_call(CaptureGroup
-                       ,cf_exe:get_call(Call)
-                       ,Mode
-                       ,should_use_endpoint_privacy(Data)
-                       ),
+            update_call(Number, cf_exe:get_call(Call), Mode, should_use_endpoint_privacy(Data)),
             cf_exe:branch(kz_json:get_value(<<"flow">>, CallFlow), Call);
         {'error', _} ->
             cf_exe:stop(Call)
     end.
 
 -spec update_call(kz_term:ne_binary(), {'ok', kapps_call:call()}, kz_term:ne_binary(), boolean()) -> 'ok'.
-update_call(CaptureGroup, {'ok', Call}, Mode, Overwrite) ->
-    Normalize = knm_converters:normalize(CaptureGroup),
+update_call(Number, {'ok', Call}, Mode, Override) ->
+    lager:debug("setting privacy mode for number ~s to ~s. use endpoint privacy: ~s"
+               ,[Number, Mode, Override]
+               ),
     CCVs = ccvs_by_privacy_mode(Mode),
     Routines = [{fun kapps_call:set_request/2
-                ,<<Normalize/binary, "@"
-                   ,(kapps_call:request_realm(Call))/binary
-                 >>
+                ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
                 }
                ,{fun kapps_call:set_custom_channel_vars/2, CCVs}
-               ,{fun kapps_call:kvs_store/3, <<"use_endpoint_privacy">>, Overwrite}
+               ,{fun kapps_call:kvs_store/3, <<"use_endpoint_privacy">>, Override}
                ],
     cf_exe:set_call(kapps_call:exec(Routines, Call)).
 

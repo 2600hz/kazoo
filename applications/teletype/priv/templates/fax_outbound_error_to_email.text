@@ -2,14 +2,14 @@
 
 Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
-An attempt to send a fax document to {% firstof callee_id.name fax.remote_station_id %} ({% firstof callee_id.number fax.remote_station_id "Unknown Number" %}) was unsuccessful.
+An attempt to send a fax document {% if callee_id.name_number or fax.remote_station_id %} to {% firstof callee_id.name_number fax.remote_station_id %}{% endif %} was unsuccessful.
 
 Here are some more details on what went wrong during transmission.
 
 
 === Sending Fax Failure Details ===
 
-    Sender: {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %})
+    Sender: {% if caller_id.name_number or fax.remote_station_id %}{% firstof caller_id.name_number fax.remote_station_id %}{% endif %}
     Callee: {{to.user}} (originally dialed number)
     Sent Date: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
     Fax ID: {{fax.id}}

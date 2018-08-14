@@ -287,15 +287,15 @@ get_blocks(?BLOCK_PHONEBOOK_URL, _Prefix, _Quantity, Options) ->
 get_blocks(Url, Prefix, Quantity, Options) ->
     Offset = props:get_binary_value('offset', Options, <<"0">>),
     Limit = props:get_binary_value('blocks', Options, <<"0">>),
-    ReqBody = <<"?prefix=", (kz_util:uri_encode(Prefix))/binary
-                ,"&size=", (kz_term:to_binary(Quantity))/binary
-                ,"&offset=", Offset/binary
-                ,"&limit=", Limit/binary
-              >>,
-    Uri = <<Url/binary
-            ,"/blocks/", (?COUNTRY)/binary
-            ,"/search", ReqBody/binary
-          >>,
+    ReqBody = list_to_binary(["?prefix=", kz_util:uri_encode(Prefix)
+                             ,"&size=", kz_term:to_binary(Quantity)
+                             ,"&offset=", Offset
+                             ,"&limit=", Limit
+                             ]),
+    Uri = list_to_binary([Url
+                         ,"/blocks/", (?COUNTRY)
+                         ,"/search", ReqBody
+                         ]),
     lager:debug("making request to ~s", [Uri]),
     case kz_http:get(binary:bin_to_list(Uri)) of
         {'ok', 200, _Headers, Body} ->

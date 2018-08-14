@@ -368,7 +368,7 @@ handle_event(_JObj, #state{uuid=UUID}) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{control_pid=CtrlPid}) when is_pid(CtrlPid) ->
-    lager:debug("stop abandoned call controll process ~p", [CtrlPid]),
+    lager:debug("stop abandoned call control process ~p", [CtrlPid]),
     ecallmgr_call_control:stop(CtrlPid),
     lager:debug("originate termination: ~p", [_Reason]);
 terminate(_Reason, _State) ->
@@ -748,10 +748,9 @@ find_originate_timeout(JObj) ->
                    LT when LT > 0 -> LT;
                    _ -> 10
                end,
-    find_max_endpoint_timeout(
-      kz_json:get_value(<<"Endpoints">>, JObj, [])
+    find_max_endpoint_timeout(kz_json:get_list_value(<<"Endpoints">>, JObj, [])
                              ,OTimeout
-     ).
+                             ).
 
 -spec find_max_endpoint_timeout(kz_json:objects(), pos_integer()) -> pos_integer().
 find_max_endpoint_timeout([], T) -> T;

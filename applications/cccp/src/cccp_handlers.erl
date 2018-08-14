@@ -39,7 +39,7 @@ park_call(JObj, Props, Call) ->
                                   ]),
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
-    kapps_util:amqp_pool_send(Resp, Publisher),
+    kz_amqp_worker:cast(Resp, Publisher),
     kapps_call:cache(Call, ?APP_NAME).
 
 -spec handle_route_win(kz_json:object(), kz_term:proplist()) -> 'ok'.

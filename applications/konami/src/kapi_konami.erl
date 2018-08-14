@@ -74,20 +74,20 @@ unbind_q(Queue, CallId, [_Restriction|Restrictions]) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:kapps_exchange().
+    kz_amqp_util:kapps_exchange().
 
 -spec publish_transferred(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_transferred(TargetCallId, API) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSFERRED_VALUES, fun transferred/1),
-    amqp_util:kapps_publish(transferred_routing_key(TargetCallId), Payload).
+    kz_amqp_util:kapps_publish(transferred_routing_key(TargetCallId), Payload).
 
 -spec bind_for_transferred(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_for_transferred(Queue, CallId) ->
-    manipulate_queue_bindings(Queue, transferred_routing_key(CallId), fun amqp_util:bind_q_to_kapps/2).
+    manipulate_queue_bindings(Queue, transferred_routing_key(CallId), fun kz_amqp_util:bind_q_to_kapps/2).
 
 -spec unbind_for_transferred(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 unbind_for_transferred(Queue, CallId) ->
-    manipulate_queue_bindings(Queue, transferred_routing_key(CallId), fun amqp_util:unbind_q_from_kapps/2).
+    manipulate_queue_bindings(Queue, transferred_routing_key(CallId), fun kz_amqp_util:unbind_q_from_kapps/2).
 
 -spec manipulate_queue_bindings(kz_term:ne_binary(), kz_term:ne_binary(), fun()) -> 'ok'.
 manipulate_queue_bindings(Queue, RoutingKey, Fun) ->

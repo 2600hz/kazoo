@@ -1,4 +1,4 @@
-### Port Requests
+# Number Port Requests
 
 * [About Port Requests](#about-port-requests)
 * [Schema](#schema)
@@ -45,7 +45,7 @@
     - [Update](#replace-an-attachment-on-a-port-request)
     - [Delete](#delete-an-attachment-on-a-port-request)
 
-#### About Port Requests
+## About Port Requests
 
 Manage and track number port requests through the Port Requests API.
 
@@ -61,7 +61,7 @@ A port request can be in one of seven **states**:
 
 ![porting state flow](images/port-request-states-flow.svg)
 
-#### Schema
+## Schema
 
 Schema for a port request
 
@@ -69,24 +69,24 @@ Schema for a port request
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`bill.carrier` | The name of the losing carrier | `string()` |   | `false` |  
-`bill.extended_address` | The suite/floor/apt of the billing address the losing carrier has on record | `string()` |   | `false` |  
-`bill.locality` | The locality (city) of the billing address the losing carrier has on record | `string()` |   | `false` |  
-`bill.name` | The losing carrier billing/account name | `string()` |   | `false` |  
-`bill.postal_code` | The zip/postal code of the billing address the losing carrier has on record | `string()` |   | `false` |  
-`bill.region` | The region (state) of the billing address the losing carrier has on record | `string()` |   | `false` |  
-`bill.street_address` | The address of the billing address the losing carrier has on record | `string()` |   | `false` |  
-`bill` | Billing information of the losing carrier | `object()` |   | `false` |  
-`comments` | The history of comments made on a port request | `array(object())` |   | `false` |  
-`name` | A friendly name for the port request | `string(1..128)` |   | `true` |  
-`notifications.email.send_to.[]` |   | `string()` |   | `false` |  
-`notifications.email.send_to` | A list or string of email recipent(s) | `string() | array(string())` |   | `false` |  
-`notifications.email` | Inbound Email Notifications | `object()` |   | `false` |  
-`notifications` | Status notifications | `object()` |   | `false` |  
-`numbers./\+?[0-9]+/` |   | `object()` |   | `false` |  
-`numbers` | The numbers to port in | `object()` |   | `true` |  
-`port_state` | What state the port request is currently in | `string('unconfirmed' | 'pending' | 'submitted' | 'scheduled' | 'completed' | 'rejected' | 'canceled')` | `unconfirmed` | `false` |  
-`transfer_date` | Requested transfer date in gregorain timestamp | `integer()` |   | `false` |  
+`bill.carrier` | The name of the losing carrier | `string()` |   | `false` |
+`bill.extended_address` | The suite/floor/apt of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill.locality` | The locality (city) of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill.name` | The losing carrier billing/account name | `string()` |   | `false` |
+`bill.postal_code` | The zip/postal code of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill.region` | The region (state) of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill.street_address` | The address of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill` | Billing information of the losing carrier | `object()` |   | `false` |
+`comments` | The history of comments made on a port request | `array(object())` |   | `false` |
+`name` | A friendly name for the port request | `string(1..128)` |   | `true` |
+`notifications.email.send_to.[]` |   | `string()` |   | `false` |
+`notifications.email.send_to` | A list or string of email recipient(s) | `string() | array(string())` |   | `false` |
+`notifications.email` | Inbound Email Notifications | `object()` |   | `false` |
+`notifications` | Status notifications | `object()` |   | `false` |
+`numbers./\+?[0-9]+/` |   | `object()` |   | `false` |
+`numbers` | The numbers to port in | `object()` |   | `true` |
+`port_state` | What state the port request is currently in | `string('unconfirmed' | 'pending' | 'submitted' | 'scheduled' | 'completed' | 'rejected' | 'canceled')` | `unconfirmed` | `false` |
+`transfer_date` | Requested transfer date in Gregorian timestamp | `integer()` |   | `false` |
 
 
 

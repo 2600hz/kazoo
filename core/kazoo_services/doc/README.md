@@ -1,9 +1,3 @@
-/*
-Section: Kazoo Services
-Title: Kazoo Services
-Language: en-US
-*/
-
 # Kazoo Services *Service Plans*
 Planning your services since 2012
 

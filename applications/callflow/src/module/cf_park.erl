@@ -228,13 +228,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
         %% attended transfer but the provided slot number is occupied, we are still connected to the 'parker'
         %% not the 'parkee'
         {'undefined', {'error', 'occupied'}} ->
-            lager:info("selected slot is occupied"),
-            %% Update screen with error that the slot is occupied
-            _ = kapps_call_command:b_answer(Call),
-            %% playback message that caller will have to try a different slot
-            _ = kapps_call_command:b_prompt(<<"park-already_in_use">>, Call),
-            cf_exe:stop(Call),
-            'ok';
+            error_occupied_slot(Call);
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
         %% not the 'parkee'
         {'undefined', _} ->
@@ -320,7 +314,7 @@ slot_presence_id(SlotNumber, Data, Call) ->
 slot_presence_id(SlotNumber, Call) ->
     User = kapps_call:request_user(Call),
     case kapps_call:kvs_fetch('cf_capture_group', <<>>, Call) of
-        CaptureGroup when byte_size(CaptureGroup) > 0 -> User;
+        _ = ?NE_BINARY -> User;
         _Other -> <<User/binary, SlotNumber/binary>>
     end.
 
@@ -344,7 +338,7 @@ maybe_custom_presence_id(Data, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_slot_number(kz_json:object(), kz_term:api_binary()) -> kz_term:ne_binary().
-get_slot_number(_, CaptureGroup) when byte_size(CaptureGroup) > 0 ->
+get_slot_number(_, ?NE_BINARY=CaptureGroup) ->
     CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
     Slots = [kz_term:to_integer(Slot)
@@ -430,7 +424,7 @@ maybe_add_slot_doc_rev(JObj, AccountDb) ->
 %%------------------------------------------------------------------------------
 %% @doc After an attended transfer we need to find the callid that we stored
 %% because it was the "C-Leg" of a transfer and now we have the
-%% actuall "A-Leg".  Find the old callid and update it with the new one.
+%% actual "A-Leg".  Find the old callid and update it with the new one.
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_call_id(kz_term:ne_binary(), kapps_call:call()) ->
@@ -534,8 +528,10 @@ load_parked_calls(JObjs) ->
 load_parked_call(JObj) ->
     Doc = kz_json:get_json_value(<<"doc">>, JObj),
     <<"parking-slot-", SlotNumber/binary>> = kz_doc:id(Doc),
-    Slot = kz_json:get_json_value(<<"slot">>, Doc),
-    {SlotNumber, kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(Doc), Slot)}.
+    case kz_json:get_json_value(<<"slot">>, Doc) of
+        'undefined' -> 'undefined';
+        Slot -> {SlotNumber, kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(Doc), Slot)}
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -954,3 +950,19 @@ maybe_empty_slot(JObj) ->
                                     )
             }
     end.
+
+-spec error_occupied_slot(kapps_call:call()) -> 'ok'.
+error_occupied_slot(Call) ->
+    lager:info("selected slot is occupied"),
+    %% Update screen with error that the slot is occupied
+    case kapps_call_command:b_answer(Call) of
+        {'error', 'timeout'} ->
+            lager:info("timed out waiting for the answer to complete");
+        {'error', 'channel_hungup'} ->
+            lager:info("channel hungup while answering");
+        _ ->
+            lager:debug("channel answered, prompting of the slot being in use"),
+            %% playback message that caller will have to try a different slot
+            kapps_call_command:b_prompt(<<"park-already_in_use">>, Call)
+    end,
+    cf_exe:stop(Call).

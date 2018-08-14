@@ -1,12 +1,14 @@
-### API Authentication
-
-Generating an auth token from your API token
+# Account API Authentication
 
 Use your account's API token to instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.
 
-#### Getting your API key from the API (must already authenticate as a user):
+## Getting your API key from the API:
 
-Get your API key for your account:
+Use [Account API](accounts.md) to get API key for your account:
+
+!!! note
+    Must already authenticated as a user.
+
 
 ```shell
 curl -v -X GET \
@@ -24,18 +26,6 @@ curl -v -X GET \
    "request_id":"{REQUEST_ID}",
    "status":"success"
 }
-```
-
-#### Getting the API Key from the database:
-
-Get your API key by requesting the account document directly from the database (through haproxy):
-```shell
-curl http://127.0.0.1:15984/accounts/{ACCOUNT_ID} 2> /dev/null | egrep -o '"pvt_api_key":"[0-9a-f]+"'
-```
-
-
-```
-"pvt_api_key":"{API_KEY}"
 ```
 
 #### Schema

@@ -1,6 +1,6 @@
-### API Authentication
+# API Authentication
 
-#### About API Authentication
+## About API Authentication
 
 #### Schema
 
@@ -14,7 +14,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Create
+## Create
 
 > PUT /v2/api_auth
 

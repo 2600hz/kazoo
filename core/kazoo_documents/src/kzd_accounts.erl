@@ -51,6 +51,7 @@
 -export([type/0
         ,fetch/1, fetch/2
         ,fetch_name/1, fetch_realm/1
+        ,save/1, save/2
 
         ,api_key/1, set_api_key/2
         ,is_enabled/1, enable/1, disable/1
@@ -92,6 +93,9 @@
         ,set_initial_registration_sent/2
         ,set_low_balance_sent/1
         ,set_low_balance_tstamp/1
+
+        ,is_in_account_hierarchy/2, is_in_account_hierarchy/3
+        ,normalize_name/1
         ]).
 
 -include("kz_documents.hrl").
@@ -215,7 +219,7 @@ set_do_not_disturb_enabled(Doc, DoNotDisturbEnabled) ->
 
 -spec enabled(doc()) -> boolean().
 enabled(Doc) ->
-    enabled(Doc, true).
+    enabled(Doc, 'true').
 
 -spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc, Default) ->
@@ -359,7 +363,7 @@ set_notifications_low_balance(Doc, NotificationsLowBalance) ->
 
 -spec notifications_low_balance_enabled(doc()) -> boolean().
 notifications_low_balance_enabled(Doc) ->
-    notifications_low_balance_enabled(Doc, true).
+    notifications_low_balance_enabled(Doc, 'undefined').
 
 -spec notifications_low_balance_enabled(doc(), Default) -> boolean() | Default.
 notifications_low_balance_enabled(Doc, Default) ->
@@ -659,16 +663,17 @@ fetch(AccountId, 'accounts') ->
 open_cache_doc(Db, AccountId) ->
     kz_datamgr:open_cache_doc(Db, AccountId, [{'cache_failures','false'}]).
 
--spec fetch_name(kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec fetch_name(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 fetch_name(Account) ->
     fetch_value(Account, fun name/1).
 
--spec fetch_realm(kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec fetch_realm(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 fetch_realm(Account) ->
     fetch_value(Account, fun realm/1).
 
--spec fetch_value(kz_term:ne_binary(), fun((doc()) -> kz_json:json_term())) ->
+-spec fetch_value(kz_term:api_ne_binary(), fun((doc()) -> kz_json:json_term())) ->
                          kz_json:api_json_term().
+fetch_value('undefined', _Getter) -> 'undefined';
 fetch_value(Account, Getter) ->
     case fetch(Account) of
         {'ok', Doc} -> Getter(Doc);
@@ -685,7 +690,13 @@ api_key(JObj) ->
 set_api_key(JObj, ApiKey) ->
     kz_json:set_value([<<"pvt_api_key">>], ApiKey, JObj).
 
--spec is_enabled(doc()) -> boolean().
+-spec is_enabled(doc() | kz_term:api_ne_binary()) -> boolean().
+is_enabled('undefined') -> 'false';
+is_enabled(?NE_BINARY = Id) ->
+    case fetch(Id) of
+        {'ok', JObj} -> is_enabled(JObj);
+        {'error', _} -> 'false'
+    end;
 is_enabled(JObj) ->
     kz_json:is_true([<<"pvt_enabled">>], JObj, 'true').
 
@@ -696,7 +707,6 @@ enable(JObj) ->
 -spec disable(doc()) -> doc().
 disable(JObj) ->
     kz_json:set_value([<<"pvt_enabled">>], 'false', JObj).
-
 
 -spec tree(doc()) -> kz_term:ne_binaries().
 tree(JObj) ->
@@ -740,11 +750,21 @@ set_notification_preference(JObj, Pref) ->
 allow_number_additions(JObj) ->
     kz_json:is_true([<<"pvt_wnm_allow_additions">>], JObj).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec set_allow_number_additions(doc(), boolean()) -> doc().
 set_allow_number_additions(JObj, IsAllowed) ->
     kz_json:set_value([<<"pvt_wnm_allow_additions">>], kz_term:is_true(IsAllowed), JObj).
 
--spec is_superduper_admin(doc()) -> boolean().
+-spec is_superduper_admin(kz_term:api_ne_binary() | doc()) -> boolean().
+is_superduper_admin('undefined') -> 'false';
+is_superduper_admin(?NE_BINARY = Id) ->
+    case fetch(Id) of
+        {'ok', JObj} -> is_superduper_admin(JObj);
+        {'error', _} -> 'false'
+    end;
 is_superduper_admin(JObj) ->
     kz_json:is_true([<<"pvt_superduper_admin">>], JObj).
 
@@ -785,7 +805,13 @@ trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined'
         andalso trial_time_left(JObj, Now) =< 0.
 
--spec is_expired(doc()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
+-spec is_expired(doc() | kz_types:api_ne_binary()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
+is_expired('undefined') -> 'false';
+is_expired(?NE_BINARY = Id) ->
+    case fetch(Id) of
+        {'ok', JObj} -> is_expired(JObj);
+        {'error', _} -> 'false'
+    end;
 is_expired(JObj) ->
     case trial_has_expired(JObj) of
         'false' -> 'false';
@@ -997,3 +1023,95 @@ sent_initial_call(Doc) ->
 -spec set_initial_call_sent(doc(), boolean()) -> doc().
 set_initial_call_sent(Doc, Sent) ->
     set_notifications_first_occurrence_sent_initial_call(Doc, Sent).
+
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec save(doc()) ->
+                  {'ok', kz_json:object()} |
+                  {'error', any()}.
+save(AccountJObj) ->
+    AccountDb = kz_doc:account_db(AccountJObj),
+    case kz_datamgr:ensure_saved(AccountDb, AccountJObj) of
+        {'error', _R}=E -> E;
+        {'ok', SavedJObj} ->
+            kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, SavedJObj)
+    end.
+
+-spec save(kz_term:ne_binary(), function()) -> 'ok' | {'error', any()}.
+save(?NE_BINARY = Account, UpdateFun) ->
+    case fetch(Account) of
+        {'error', _R}=E -> E;
+        {'ok', AccountJObj} ->
+            save(UpdateFun(AccountJObj))
+    end.
+
+%% @equiv is_in_account_hierarchy(CheckFor, InAccount, false)
+
+-spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
+is_in_account_hierarchy(CheckFor, InAccount) ->
+    is_in_account_hierarchy(CheckFor, InAccount, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Determine if the given account ID/DB exists in the hierarchy of
+%% the provided account ID/DB. Optionally consider the account in
+%% its own hierarchy if third argument is `true'.
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
+is_in_account_hierarchy('undefined', _, _) -> 'false';
+is_in_account_hierarchy(_, 'undefined', _) -> 'false';
+is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
+    CheckId = kz_util:format_account_id(CheckFor),
+    AccountId = kz_util:format_account_id(InAccount),
+    case (IncludeSelf
+          andalso AccountId =:= CheckId
+         )
+        orelse fetch(AccountId)
+    of
+        'true' ->
+            lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
+            'true';
+        {'ok', JObj} ->
+            Tree = tree(JObj),
+            case lists:member(CheckId, Tree) of
+                'true' ->
+                    lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
+                    'true';
+                'false' ->
+                    lager:debug("account ~s was not found in the account hierarchy of ~s", [CheckId, AccountId]),
+                    'false'
+            end;
+        {'error', _R} ->
+            lager:debug("failed to get the ancestry of the account ~s: ~p", [AccountId, _R]),
+            'false'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Normalize the account name by converting the name to lower case
+%% and then removing all non-alphanumeric characters.
+%%
+%% This can possibly return an empty binary.
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_name(kz_term:api_binary()) -> kz_term:api_binary().
+normalize_name('undefined') -> 'undefined';
+normalize_name(AccountName) ->
+    << <<Char>>
+       || <<Char>> <= kz_term:to_lower_binary(AccountName),
+          is_alphanumeric(Char)
+    >>.
+
+is_alphanumeric(Char)
+  when Char >= $a,
+       Char =< $z ->
+    'true';
+is_alphanumeric(Char)
+  when Char >= $0,
+       Char =< $9 ->
+    'true';
+is_alphanumeric(_) ->
+    'false'.

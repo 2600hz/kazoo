@@ -196,9 +196,9 @@ is_authorized(AccountId, UserId, AppId, AppStoreJObj) ->
 -spec get_specific_ids(kz_json:objects()) -> kz_term:ne_binaries().
 get_specific_ids(Users) ->
     [Id || User <- Users,
-           (Id = kz_doc:id(User)) =/= 'undefined'
+           Id <- [kz_doc:id(User)],
+           'undefined' =/= Id
     ].
-
 
 -spec add_permissions(kz_json:object(), kz_json:object()) -> kz_json:object().
 add_permissions(App, JObj) ->
@@ -209,12 +209,10 @@ add_permissions(App, JObj) ->
             kz_json:merge([kzd_app:publish(App), AppPerm])
     end.
 
-
 -spec is_blacklisted(kz_json:object(), kz_json:object()) -> boolean().
 is_blacklisted(App, JObj) ->
     Blacklist = kzd_apps_store:blacklist(JObj),
     lists:member(kz_doc:id(App), Blacklist).
-
 
 -spec is_filtered(kz_term:ne_binary(), kz_json:object()) -> boolean().
 is_filtered(AccountId, App) ->
@@ -238,7 +236,6 @@ is_filtered(_AccountId, _App, _AppName) ->
     lager:debug("not filtering '~s'", [_AppName]),
     'false'.
 
-
 -spec maybe_set_account(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_account(Account, Doc) ->
     JObj = kz_json:get_value(<<"doc">>, Doc),
@@ -248,7 +245,6 @@ maybe_set_account(Account, Doc) ->
         'true' -> set_account(Account, JObj);
         'false' -> JObj
     end.
-
 
 -spec set_account(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_account(Account, JObj) ->
@@ -264,7 +260,6 @@ set_account(Account, JObj) ->
             lager:error("failed to correct app"),
             Corrected
     end.
-
 
 -spec get_plan_apps(kzd_service_plan:doc()) -> kz_json:object().
 get_plan_apps(ServicePlan) ->

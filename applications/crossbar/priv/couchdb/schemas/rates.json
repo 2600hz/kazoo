@@ -7,6 +7,10 @@
             "description": "Reseller's account ID",
             "type": "string"
         },
+        "caller_id_numbers": {
+            "description": "String of caller id prefixes separated by ':'",
+            "type": "string"
+        },
         "carrier": {
             "description": "Friendly name for the carrier providing this rate",
             "type": "string"
@@ -70,6 +74,10 @@
             "minimum": 0,
             "type": "integer"
         },
+        "rate_suffix": {
+            "description": "Suffix applied to rate name",
+            "type": "string"
+        },
         "rate_surcharge": {
             "description": "The upfront cost of connecting the call",
             "minimum": 0,
@@ -84,7 +92,7 @@
             "type": "string"
         },
         "routes": {
-            "description": "List of regexs that match valid DIDs for this rate",
+            "description": "List of regexps that match valid DIDs for this rate",
             "items": {
                 "type": "string"
             },

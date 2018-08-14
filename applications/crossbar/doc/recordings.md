@@ -1,10 +1,10 @@
-### Recordings
+# Call Recordings
 
-#### About Recordings
+## About Recordings
 
 Recordings endpoint provides a way to access call recordings.
 
-#### Fetch recordings
+## Fetch recordings
 
 > GET /v2/accounts/{ACCOUNT_ID}/recordings
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/recordings
@@ -17,7 +17,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings
 ```
 
-#### Fetch recording media or document
+## Fetch recording media or document
 
 > GET /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 
@@ -31,7 +31,7 @@ curl -v -X GET \
 
 Gets a specific recording document attachment if available.
 Mind the `Accept` header in example below.
-For clients that do not support setting the `Accept` header, a querystring parameter can be included: `?accept=audio/mpeg`.
+For clients that do not support setting the `Accept` header, a query string parameter can be included: `?accept=audio/mpeg`.
 
 Optional parameter `inline` can be either `true` or `false`.
 
@@ -42,7 +42,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 ```
 
-#### Remove a recording
+## Remove a recording
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 

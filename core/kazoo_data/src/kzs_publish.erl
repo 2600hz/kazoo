@@ -91,7 +91,7 @@ publish_doc(DbName, Doc, JObj) ->
 -spec do_publish_db(kz_term:ne_binary(), kapi_conf:action()) -> 'ok'.
 do_publish_db(DbName, Action) ->
     Props =
-        [{<<"Type">>, 'database'}
+        [{<<"Type">>, <<"database">>}
         ,{<<"ID">>, DbName}
         ,{<<"Database">>, DbName}
          | kz_api:default_headers(<<"configuration">>

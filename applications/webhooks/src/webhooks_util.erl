@@ -26,6 +26,7 @@
 
         ,reenable/2
         ,init_metadata/2
+        ,available_events/0
         ]).
 
 %% ETS Management
@@ -104,7 +105,10 @@ find_webhooks(HookEvent, AccountId, Accounts) ->
     match_account_webhooks(HookEvent, AccountId) ++
         lists:foldl(fun(ParentId, Acc) ->
                             Acc ++ match_subaccount_webhooks(HookEvent, ParentId)
-                    end, [], Accounts).
+                    end
+                   ,[]
+                   ,Accounts
+                   ).
 
 match_account_webhooks(HookEvent, AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
@@ -192,9 +196,11 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
                 } = Hook, EventId, JObj) ->
     lager:debug("sending hook ~s(~s) with interaction id ~s via 'get' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
 
-    Url = kz_term:to_list(<<(kz_term:to_binary(URI))/binary
-                            ,(kz_term:to_binary([$? | kz_http_util:json_to_querystring(JObj)]))/binary
-                          >>),
+    Url = kz_term:to_list(
+            list_to_binary([kz_term:to_binary(URI)
+                           ,kz_term:to_binary([$? | kz_http_util:json_to_querystring(JObj)])
+                           ])
+           ),
     Headers = ?HTTP_REQ_HEADERS(Hook),
     Debug = debug_req(Hook, EventId, URI, Headers, <<>>),
     Fired = kz_http:get(Url, Headers, ?HTTP_OPTS),
@@ -366,10 +372,10 @@ fix_value(O) -> kz_term:to_lower_binary(O).
 
 -spec fix_error_value(atom() | {atom(), atom()}) -> kz_term:ne_binary().
 fix_error_value({E, R}) ->
-    <<(kz_term:to_binary(E))/binary
-      ,": "
-      ,(kz_term:to_binary(R))/binary
-    >>;
+    list_to_binary([kz_term:to_binary(E)
+                   ,": "
+                   ,kz_term:to_binary(R)
+                   ]);
 fix_error_value(E) ->
     kz_term:to_binary(E).
 

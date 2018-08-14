@@ -141,13 +141,14 @@ do(Monad, Actions) ->
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Ok = do(just([Data, Call]),[fun init/1
-                               ,fun get_target/1
-                               ,fun check_target_type/1
-                               ,fun (State) -> check_self(State, Call) end
-                               ,fun (State) -> get_channels(State, Call) end
-                               ,fun (State) -> send_request(State, Call) end
-                               ]),
+    Ok = do(just([Data, Call])
+           ,[fun init/1
+            ,fun get_target/1
+            ,fun check_target_type/1
+            ,fun (State) -> check_self(State, Call) end
+            ,fun (State) -> get_channels(State, Call) end
+            ,fun (State) -> send_request(State, Call) end
+            ]),
     case Ok of
         {'Just', 'accepted'} ->
             _ = kapps_call_command:b_prompt(<<"camper-queue">>, Call),

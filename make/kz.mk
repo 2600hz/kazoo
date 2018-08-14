@@ -1,6 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES)
+.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES) splchk
 
 ## Platform detection.
 ifeq ($(PLATFORM),)
@@ -42,7 +42,7 @@ ERLC_OPTS += -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}'
 ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec +deterministic
 #ERLC_OPTS += +warn_untyped_record
 
-ELIBS ?= $(if $(ERL_LIBS), $(ERL_LIBS):)$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
+ELIBS ?= $(if $(ERL_LIBS),$(ERL_LIBS):)$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
 
 EBINS += $(ROOT)/deps/lager/ebin
 
@@ -55,6 +55,8 @@ DEPS_RULES = .deps.mk
 comma := ,
 empty :=
 space := $(empty) $(empty)
+
+KZ_VERSION ?= $(shell $(ROOT)/scripts/next_version)
 
 ## SOURCES provides a way to specify compilation order (left to right)
 SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
@@ -76,7 +78,8 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 ebin/$(PROJECT).app:
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
-	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src > $@
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src \
+	| sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(KZ_VERSION)\"}/g" > $@
 
 ebin/%.beam: src/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
@@ -123,19 +126,19 @@ TEST_CONFIG=$(ROOT)/rel/config-test.ini
 
 ## Use this one when debugging
 test: compile-test
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $(TEST_MODULE_NAMES)
 test.%: compile-test
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$*], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $*
 
-COVERDATA=$(PROJECT).coverdata
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
 eunit: compile-test eunit-run
 
 eunit-run:
-	@mkdir -p $(COVER_REPORT_DIR)
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript --with-cover \
+		--cover-project-name $(PROJECT) --cover-report-dir $(COVER_REPORT_DIR) \
+		$(TEST_MODULE_NAMES)
 
 cover: $(ROOT)/make/cover.mk
 	COVER=1 $(MAKE) eunit
@@ -162,6 +165,9 @@ dialyze: TO_DIALYZE ?= $(abspath ebin)
 dialyze: $(PLT) compile
 	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
+dialyze-hard: TO_DIALYZE ?= $(abspath ebin)
+dialyze-hard: $(PLT) compile
+	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(TO_DIALYZE)
 
 REBAR=$(ROOT)/deps/.erlang.mk/rebar/rebar
 
@@ -189,3 +195,5 @@ fixture_shell: NODE_NAME ?= fixturedb
 fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
 		erl -name '$(NODE_NAME)' -s reloader "$$@"
+
+include $(ROOT)/make/splchk.mk

@@ -25,6 +25,8 @@
 
 -export([load_doc_from_file/2]).
 
+-export([cache_strategy/0, set_cache_strategy/1]).
+
 -spec flush() -> 'ok'.
 flush() ->
     _ = kz_datamgr:flush_cache_docs(),
@@ -114,3 +116,29 @@ load_doc_from_file(Db, FilePath) ->
             lager:debug("exception: ~p", [Reason]),
             {'error', Reason}
     end.
+
+-spec set_cache_strategy(kz_types:text()) -> 'ok'.
+set_cache_strategy(?NE_BINARY = StrategyBin) ->
+    set_cache_strategy(kz_term:to_atom(StrategyBin));
+set_cache_strategy(Strategy) when is_atom(Strategy) ->
+    application:set_env('kazoo_data', 'cache_strategy', Strategy),
+    cache_strategy().
+
+-spec cache_strategy() -> 'ok'.
+cache_strategy() ->
+    Strategy = kzs_cache:cache_strategy(),
+    io:format("             strategy: ~s~n", [Strategy]),
+    print_strategy_details(Strategy).
+
+-define(STRATEGY_DETAILS(Mitigate, Async)
+       ,io:format("  stampede mitigation: ~s~n          async store: ~s~n", [Mitigate, Async])
+       ).
+
+print_strategy_details('none') ->
+    ?STRATEGY_DETAILS('false', 'false');
+print_strategy_details('stampede') ->
+    ?STRATEGY_DETAILS('true', 'false');
+print_strategy_details('async') ->
+    ?STRATEGY_DETAILS('false', 'true');
+print_strategy_details('stampede_async') ->
+    ?STRATEGY_DETAILS('true', 'true').

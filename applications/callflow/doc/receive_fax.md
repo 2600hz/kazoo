@@ -6,7 +6,7 @@ Instructs the switch to receive a fax from the caller. Stores the fax in the dat
 
 #### Schema
 
-Validator for the receive_fax callflow's data object
+Validator for the receive_fax callflow data object
 
 
 

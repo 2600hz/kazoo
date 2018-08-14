@@ -2,7 +2,7 @@
 
 Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
-{% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %}) tried to
+{% if caller_id.name_number or fax.remote_station_id %}{% firstof caller_id.name_number fax.remote_station_id %}{% endif %} tried to
 send a fax document to {% if fax.box_name %}your faxbox {{fax.box_name}}{% else %}you{% endif %},
 but unfortunately it was unsuccessful.
 
@@ -11,7 +11,7 @@ Here are some more details on what went wrong during transmission.
 
 === Receiving Fax Failure Details ===
 
-    Sender: {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %})
+    Sender: {% if caller_id.name_number or fax.remote_station_id %}{% firstof caller_id.name_number fax.remote_station_id %}{% endif %}
     Callee: {{to.user}} (originally dialed number)
     Receiving Date: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
     Fax ID: {{fax.id}}

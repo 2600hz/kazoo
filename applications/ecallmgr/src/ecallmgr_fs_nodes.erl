@@ -153,10 +153,7 @@ flush() -> do_flush(<<>>).
 
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(User, Realm) ->
-    Args = <<"id "
-             ,User/binary, " "
-             ,Realm/binary
-           >>,
+    Args = list_to_binary(["id ", User, " ", Realm]),
     do_flush(Args).
 
 -spec do_flush(binary()) -> 'ok'.
@@ -176,8 +173,8 @@ sip_url(Node) when not is_atom(Node) ->
     sip_url(kz_term:to_atom(Node, 'true'));
 sip_url(Node) when is_atom(Node) ->
     case [ecallmgr_fs_node:sip_url(Srv)
-          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-                 ,ecallmgr_fs_node:fs_node(Srv) =:= Node
+          || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'}),
+             ecallmgr_fs_node:fs_node(Srv) =:= Node
          ]
     of
         [URL|_] -> URL;
@@ -238,7 +235,7 @@ has_capability(Node, Capability) when is_binary(Capability) ->
         [Loaded] -> Loaded
     end;
 has_capability(Node, Capability) ->
-    has_capability(Node, kz_json:get_value(<<"capability">>, Capability)).
+    has_capability(Node, kz_json:get_ne_binary_value(<<"capability">>, Capability)).
 
 -spec remove_capabilities(atom()) -> non_neg_integer().
 remove_capabilities(Node) ->

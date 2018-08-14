@@ -1,10 +1,10 @@
-### Resource Selectors
+# Resource Selectors
 
-#### About Resource Selectors
+## About Resource Selectors
 
-Resource selectors is a new way to route Offnet-calls. Old way used regex rules and "flags" for select proper resources (gateways). With new "resource selectors" you have several small modules, which can be organaized in "chain" (rules).
+Resource selectors is a new way to route Offnet-calls. Old way used regex rules and "flags" for select proper resources (gateways). With new "resource selectors" you have several small modules, which can be organized in "chain" (rules).
 
-#### Schema
+## Schema
 
 Schema for resource selector document
 
@@ -12,16 +12,16 @@ Schema for resource selector document
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`name` | Selector name | `string()` |   | `true` |  
-`resource` | Resource ID | `string()` |   | `true` |  
-`selector` | Selector data | `string()` |   | `true` |  
-`start_time` | Start time (gregorian seconds) | `integer()` |   | `false` |  
-`stop_time` | Stop time (gregorian seconds) | `integer()` |   | `false` |  
-`value` | Extra selector data | `string()` |   | `false` |  
+`name` | Selector name | `string()` |   | `true` |
+`resource` | Resource ID | `string()` |   | `true` |
+`selector` | Selector data | `string()` |   | `true` |
+`start_time` | Start time (Gregorian seconds) | `integer()` |   | `false` |
+`stop_time` | Stop time (Gregorian seconds) | `integer()` |   | `false` |
+`value` | Extra selector data | `string()` |   | `false` |
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/resource_selectors/rules
 
@@ -78,7 +78,7 @@ curl -X GET \
 }
 ```
 
-#### Update rules
+## Update rules
 
 > POST /v2/resource_selectors/rules
 
@@ -107,6 +107,7 @@ curl -X POST \
           "action": "keep"
         }
       },
+    ],
     "id": "resource_selector_rules"
   },
   "revision": "{REVISION_ID}",
@@ -120,7 +121,7 @@ curl -X POST \
 
 Database selectors - selectors stored in special database. Name of this database `account/XX/XX/XXXXXXXXXXXXXXXXXXXXXXXXXXXX-selectors`, where `XXX...XXX` - Account ID. System-wide selectors database use Master Account ID.
 
-Each selector is sepparate doument:
+Each selector is separate document:
 
 ```json
 {
@@ -142,7 +143,7 @@ Each selector is sepparate doument:
 
 ### List selectors
 
-#### List selectors names
+## List selectors names
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name
 
@@ -199,7 +200,7 @@ curl -v -X GET \
 }
 ```
 
-#### List resources
+## List resources
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource
 
@@ -229,7 +230,7 @@ curl -v -X GET \
 }
 ```
 
-In this example we see resources `RES-2` with 3 docuemnts, `RES-3` with 8 documents and `RES-4` with 1 document.
+In this example we see resources `RES-2` with 3 documents, `RES-3` with 8 documents and `RES-4` with 1 document.
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}
 
@@ -256,7 +257,7 @@ curl -v -X GET \
 }
 ```
 
-#### Show selectors
+## Show selectors
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
 
@@ -293,20 +294,20 @@ curl -v -X GET \
 }
 ```
 
-Here we ses selectors for resource `RES-4` with selector name `lcr`. Resulted list can be simple list of strings or list of objects, its dependind if there additional `value` or not.
+Here we see selectors for resource `RES-4` with selector name `lcr`. Resulted list can be simple list of strings or list of objects, its depending if there additional `value` or not.
 
 ### Manage selectors
 
 Manage (import/delete) resource selectors made via kazoo tasks (CSV file).
 
-Category `resourse_selectors`, action `import` or `delete`.
+Category `resource_selectors`, action `import` or `delete`.
 
 CSV columns:
-* mandatory
- * name
- * selector
- * resource
-* optional
- * stat_time
- * stop_time
- * value
+* `mandatory`
+    * `name`
+    * `selector`
+    * `resource`
+* `optional`
+    * `stat_time`
+    * `stop_time`
+    * `value`

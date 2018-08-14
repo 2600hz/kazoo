@@ -64,6 +64,8 @@
 
 -include("kz_couch.hrl").
 
+-export_type([couch_version/0]).
+
 %% Server operations
 -spec new_connection(map()) -> kz_data:connection() |
                                {'error', 'timeout' | 'ehostunreach' | _}.

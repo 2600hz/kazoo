@@ -597,12 +597,11 @@ cf_module_prefix(_Call, _) -> <<"cf_">>.
                                    {kz_term:pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
-    try CFModule:module_info('exports') of
-        _ ->
+    case kz_module:is_exported(CFModule, 'handle', 2) of
+        'true' ->
             lager:info("moving to action '~s'", [CFModule]),
-            spawn_cf_module(CFModule, Data, Call)
-    catch
-        'error':'undef' ->
+            spawn_cf_module(CFModule, Data, Call);
+        'false' ->
             cf_module_skip(ModuleBin, Call)
     end.
 
@@ -658,7 +657,7 @@ send_command(Command, ControlQ, CallId) ->
     Props = Command ++ [{<<"Call-ID">>, CallId}
                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                        ],
-    kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
+    kz_amqp_worker:cast(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec add_server_id(kz_term:api_terms(), kz_term:ne_binary()) -> kz_term:api_terms().
 add_server_id(API, Q) when is_list(API) ->

@@ -8,6 +8,7 @@
 -module(cb_service_plans).
 
 -export([init/0
+        ,authorize/2
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
@@ -24,6 +25,28 @@
 -define(SYNCHRONIZATION, <<"synchronization">>).
 -define(RECONCILIATION, <<"reconciliation">>).
 -define(OVERRIDE, <<"override">>).
+-define(EDITABLE, <<"editable">>).
+
+-define(ITEM_FIELDS,
+        kz_json:from_list(
+          [{<<"activation_charge">>, kz_json:new()}
+          ,{<<"discounts">>
+           ,kz_json:from_list(
+              [{<<"maximum">>, kz_json:new()}
+              ,{<<"rate">>, kz_json:new()}
+              ])
+           }
+          ,{<<"minimum">>, kz_json:new()}
+          ,{<<"rate">>, kz_json:new()}
+          ])
+       ).
+
+-define(UNDERSCORE_ALL_FIELDS,
+        kz_json:set_values([{<<"as">>, kz_json:new()}
+                           ,{<<"exceptions">>, kz_json:new()}
+                           ]
+                          ,?ITEM_FIELDS)
+       ).
 
 %%%=============================================================================
 %%% API
@@ -36,13 +59,27 @@
 -spec init() -> 'ok'.
 init() ->
     cb_modules_util:bind(?MODULE
-                        ,[{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
+                        ,[{<<"*.authorize.service_plans">>, 'authorize'}
+                         ,{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
                          ,{<<"*.resource_exists.service_plans">>, 'resource_exists'}
                          ,{<<"*.content_types_provided.service_plans">>, 'content_types_provided'}
                          ,{<<"*.validate.service_plans">>, 'validate'}
                          ,{<<"*.execute.post.service_plans">>, 'post'}
                          ,{<<"*.execute.delete.service_plans">>, 'delete'}
                          ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
+%% @end
+%%------------------------------------------------------------------------------
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
+authorize(Context, _) ->
+    is_authorized(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec is_authorized(req_verb(), req_nouns()) -> 'true'.
+is_authorized(?HTTP_GET, [{<<"service_plans">>, [?EDITABLE]}]) ->
+    'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
@@ -64,6 +101,8 @@ allowed_methods(?CURRENT) ->
 allowed_methods(?OVERRIDE) ->
     [?HTTP_POST];
 allowed_methods(?AVAILABLE) ->
+    [?HTTP_GET];
+allowed_methods(?EDITABLE) ->
     [?HTTP_GET];
 allowed_methods(_PlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
@@ -96,7 +135,7 @@ resource_exists(_, _) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /service_plans mights load a list of service_plan objects
+%% /service_plans might load a list of service_plan objects
 %% /service_plans/123 might load the service_plan object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -136,7 +175,7 @@ validate(Context, ?RECONCILIATION) ->
     end;
 validate(Context, ?OVERRIDE) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    case kz_util:is_system_admin(AuthAccountId) of
+    case kzd_accounts:is_superduper_admin(AuthAccountId) of
         'true' ->
             crossbar_doc:load(cb_context:account_id(Context)
                              ,cb_context:set_account_db(Context, ?KZ_SERVICES_DB)
@@ -144,6 +183,8 @@ validate(Context, ?OVERRIDE) ->
                              );
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
+validate(Context, ?EDITABLE) ->
+    summary_editable_fields(Context);
 validate(Context, PlanId) ->
     validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
 
@@ -247,7 +288,7 @@ post(Context, PlanId, ?OVERRIDE) ->
     end.
 
 %%----------------------------------- ---------------------------------
-%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -340,7 +381,7 @@ is_allowed(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
 
     (AuthAccountId =:= ResellerId
-     orelse kz_util:is_system_admin(AuthAccountId)
+     orelse kzd_accounts:is_superduper_admin(AuthAccountId)
     )
         andalso {'ok', ResellerId}.
 
@@ -380,7 +421,7 @@ check_plan_ids(Context, ResellerId) ->
 
 -spec check_plan_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 check_plan_ids(Context, _ResellerId, []) ->
-    Context;
+    cb_context:set_resp_status(Context, 'success');
 check_plan_ids(Context, ResellerId, PlanIds) ->
     lists:foldl(fun(PlanId, Ctxt) ->
                         case cb_context:resp_status(Ctxt) of
@@ -423,3 +464,44 @@ maybe_forbid_delete(DeletePlansIds, Context) ->
                 _ -> cb_context:add_system_error('plan_is_not_assigned', Context)
             end
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Returns fixtures of what fields in service plans is customizable
+%% @end
+%%------------------------------------------------------------------------------
+-spec summary_editable_fields(cb_context:context()) -> cb_context:context().
+summary_editable_fields(Context) ->
+    JObj = read_service_plan_editable(),
+    UIApps = kz_json:from_list(get_ui_apps(kapps_util:get_master_account_id())),
+    crossbar_doc:handle_json_success(kz_json:set_value(<<"ui_apps">>, UIApps, JObj), Context).
+
+-spec read_service_plan_editable() -> kz_json:object().
+read_service_plan_editable() ->
+    Path = filename:join([code:priv_dir(?APP), "service_plan_editable_fields.json"]),
+    case file:read_file(Path) of
+        {'ok', Bin} -> kz_json:decode(Bin);
+        {'error', _Reason} ->
+            lager:debug("failed to read file ~s: ~p", [Path, _Reason]),
+            kz_json:new()
+    end.
+
+-spec get_ui_apps({'ok', kz_term:ne_binary()} | {'error', any()}) -> kz_term:proplist().
+get_ui_apps({'ok', MasterId}) ->
+    case kzd_apps_store:fetch(MasterId) of
+        {'ok', JObj} ->
+            Apps = kzd_apps_store:apps(JObj),
+            Fun = fun(_App, AppJObj, Acc) ->
+                          case kzd_app:name(AppJObj) of
+                              ?NE_BINARY=Name ->
+                                  [{Name, ?ITEM_FIELDS}|Acc];
+                              _ -> Acc
+                          end
+                  end,
+            kz_json:foldl(Fun, [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}], Apps);
+        {'error', _Reason} ->
+            lager:debug("failed to read master's app_store: ~p", [_Reason]),
+            [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}]
+    end;
+get_ui_apps({'error', _Reason}) ->
+    lager:debug("failed to get master account_id: ~p", [_Reason]),
+    [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}].

@@ -5,7 +5,7 @@
 %%%      and such
 %%%   2. a shared queue that member_call messages will be published to,
 %%%      each consumer will be round-robined. The consumers aren't going
-%%%      to auto-ack the payloads, defering that until the connection is
+%%%      to auto-ack the payloads, deferring that until the connection is
 %%%      accepted by the agent.
 %%%
 %%%
@@ -250,11 +250,11 @@ start_shared_queue(#state{account_id=AccountId
          ),
     lager:debug("started shared queue listener: ~p", [SharedPid]),
 
-    {'noreply', State#state{
-                  fsm_pid = FSMPid
+    {'noreply', State#state{fsm_pid = FSMPid
                            ,shared_pid = SharedPid
                            ,my_id = acdc_util:proc_id(FSMPid)
-                 }}.
+                           }
+    }.
 
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup

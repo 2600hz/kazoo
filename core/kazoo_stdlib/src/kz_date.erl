@@ -37,11 +37,12 @@
 %% @doc Convert a Gregorian seconds integer to kz_date taking into consideration timezone
 %% @end
 %%------------------------------------------------------------------------------
--spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) -> kz_time:date().
+-spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
+                                    kz_time:date().
 from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
-    {Date, _} = localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Seconds)
-                                      ,kz_term:to_list(TZ)
-                                      ),
+    {{_,_,_}, {_,_,_}} = DateTime = calendar:gregorian_seconds_to_datetime(Seconds),
+    TZList = kz_term:to_list(TZ),
+    {{_,_,_}=Date, {_,_,_}} = localtime:utc_to_local(DateTime, TZList),
     Date.
 
 %%------------------------------------------------------------------------------
@@ -60,7 +61,7 @@ from_iso_week({Year, Week}) ->
         (Week - 1) * 7,
     calendar:gregorian_days_to_date(Days).
 
--spec weekday_distance(1..7, 1..7) -> 1..7.
+-spec weekday_distance(kz_time:daynum(), kz_time:daynum()) -> kz_time:daynum().
 weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
     case D0 - D1 of
         Days when Days =< 7 -> Days;
@@ -94,7 +95,7 @@ normalize({Y, M, D}=Date) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Calculate when the second date is in time, relative to the first
-%% calendar:time_difference/2 is obsolete. Convert to gregorian seconds instead
+%% calendar:time_difference/2 is obsolete. Convert to Gregorian seconds instead
 %% @end
 %%------------------------------------------------------------------------------
 -spec relative_difference(kz_time:datetime(), kz_time:datetime()) -> 'future' | 'equal' | 'past'.

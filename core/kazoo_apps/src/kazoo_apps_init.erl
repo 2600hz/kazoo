@@ -54,11 +54,11 @@ cookie_from_ini() ->
 -spec set_loglevel() -> 'ok'.
 set_loglevel() ->
     [Console|_] = kz_config:get_atom('log', 'console', ['notice']),
-    kz_util:change_console_log_level(Console),
+    kz_log:change_console_log_level(Console),
     [Syslog|_] = kz_config:get_atom('log', 'syslog', ['info']),
-    kz_util:change_syslog_log_level(Syslog),
+    kz_log:change_syslog_log_level(Syslog),
     [Error|_] = kz_config:get_atom('log', 'error', ['error']),
-    kz_util:change_error_log_level(Error),
+    kz_log:change_error_log_level(Error),
     'ok'.
 
 -spec sanity_checks() -> boolean().
@@ -126,7 +126,7 @@ is_system_clock_on_utc() ->
     case {calendar:local_time(), calendar:universal_time()} of
         {UTC, UTC} -> 'true';
         {_Local, _UTC} ->
-            lager:warning("local: ~p utc: ~p", [_Local, _UTC]),
+            lager:warning("local: ~p UTC: ~p", [_Local, _UTC]),
             lager:critical("system is not running in UTC and Kazoo expects it"),
             'false'
     end.

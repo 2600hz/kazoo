@@ -52,16 +52,11 @@ balance_check_req(Accounts) ->
 -spec balance_check_response(kz_json:object()) -> kz_term:ne_binaries().
 balance_check_response(JObj) ->
     Balances = kz_json:get_json_value(<<"Balances">>, JObj),
-    kz_json:foldl(
-      fun(Key, Value, Acc) ->
-              case Value of
-                  'true' -> Acc;
-                  'false' -> [ Key | Acc ]
-              end
-      end
-                 ,[]
-                 ,Balances
-     ).
+    kz_json:foldl(fun maybe_add_key/3, [], Balances).
+
+-spec maybe_add_key(kz_json:key(), boolean(), kz_json:keys()) -> kz_json:keys().
+maybe_add_key(Key, 'false', Acc) -> [Key | Acc];
+maybe_add_key(_Key, 'true', Acc) -> Acc.
 
 -spec disconnect_accounts(kz_term:ne_binaries()) -> 'ok'.
 disconnect_accounts([]) -> 'ok';

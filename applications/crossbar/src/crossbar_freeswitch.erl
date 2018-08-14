@@ -393,7 +393,7 @@ process_device(Number, AccountId, JObj) ->
             render_templates(Number, AccountId, Username, Realm, Props),
             lager:debug("rendered templates");
         {'error', _R} ->
-            lager:debug("unable to query registrar for credentails of ~s@~s in account ~s: ~p"
+            lager:debug("unable to query registrar for credentials of ~s@~s in account ~s: ~p"
                        ,[Username, Realm, AccountId, _R])
     end.
 
@@ -473,11 +473,11 @@ query_registrar(Realm, Username) ->
           ,{<<"Method">>, <<"REGISTER">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapps_util:amqp_pool_request(props:filter_undefined(Req)
-                                ,fun kapi_authn:publish_req/1
-                                ,fun kapi_authn:resp_v/1
-                                ,?AUTHN_TIMEOUT
-                                ).
+    kz_amqp_worker:call(props:filter_undefined(Req)
+                       ,fun kapi_authn:publish_req/1
+                       ,fun kapi_authn:resp_v/1
+                       ,?AUTHN_TIMEOUT
+                       ).
 
 -spec template_file(atom()) -> string().
 template_file(Module) ->

@@ -1,12 +1,12 @@
-### Contact List
+# Contact List
 
-#### About Contact List
+## About Contact List
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/contact_list
 

@@ -229,18 +229,16 @@ authorize(Request, Limits) ->
                ,fun j5_flat_rate:authorize/2
                ,fun j5_per_minute:authorize/2
                ],
-    maybe_soft_limit(
-      lists:foldl(fun(F, R) ->
-                          case j5_request:is_authorized(R, Limits) of
-                              'false' -> F(R, Limits);
-                              'true' -> R
-                          end
-                  end
-                 ,Request
-                 ,Routines
-                 )
-                    ,Limits
-     ).
+    Result = lists:foldl(fun(F, R) ->
+                                 case j5_request:is_authorized(R, Limits) of
+                                     'false' -> F(R, Limits);
+                                     'true' -> R
+                                 end
+                         end
+                        ,Request
+                        ,Routines
+                        ),
+    maybe_soft_limit(Result, Limits).
 
 -spec maybe_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_soft_limit(Request, Limits) ->
@@ -338,11 +336,10 @@ send_response(Request) ->
 -spec trunk_usage(kz_term:ne_binary()) -> kz_term:ne_binary().
 trunk_usage(Id) ->
     Limits = j5_limits:get(Id),
-    <<
-      (kz_term:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
-      (kz_term:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
-      (kz_term:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
-      (kz_term:to_binary(j5_limits:burst_trunks(Limits)))/binary, "/",
-      (kz_term:to_binary(j5_channels:inbound_flat_rate(Id)))/binary, "/",
-      (kz_term:to_binary(j5_channels:outbound_flat_rate(Id)))/binary
+    <<(kz_term:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/"
+     ,(kz_term:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/"
+     ,(kz_term:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/"
+     ,(kz_term:to_binary(j5_limits:burst_trunks(Limits)))/binary, "/"
+     ,(kz_term:to_binary(j5_channels:inbound_flat_rate(Id)))/binary, "/"
+     ,(kz_term:to_binary(j5_channels:outbound_flat_rate(Id)))/binary
     >>.

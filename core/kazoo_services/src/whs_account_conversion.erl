@@ -41,7 +41,7 @@ force_promote(Account) ->
 
 -spec do_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_promote(AccountId) ->
-    _ = kz_util:account_update(AccountId, fun kzd_accounts:promote/1),
+    _ = kzd_accounts:save(AccountId, fun kzd_accounts:promote/1),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'true'),
     io:format("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
     cascade_reseller_id(AccountId, AccountId).
@@ -70,7 +70,7 @@ force_demote(Account) ->
 
 -spec do_demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_demote(AccountId) ->
-    _ = kz_util:account_update(AccountId, fun kzd_accounts:demote/1),
+    _ = kzd_accounts:save(AccountId, fun kzd_accounts:demote/1),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'false'),
     ResellerId = kz_services:find_reseller_id(AccountId),
     io:format("demoting reseller status for account ~s, and now belongs to reseller ~s~n", [AccountId, ResellerId]),
@@ -90,7 +90,7 @@ cascade_reseller_id(Reseller, Account) ->
                   ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'error', _R}=Error ->
-            lager:debug("unable to determin descendants of ~s: ~p", [AccountId, _R]),
+            lager:debug("unable to determine descendants of ~s: ~p", [AccountId, _R]),
             Error;
         {'ok', JObjs} ->
             _ = [set_reseller_id(ResellerId, SubAccountId)
@@ -101,7 +101,7 @@ cascade_reseller_id(Reseller, Account) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Set teh reseller_id to the provided value on the provided account
+%% @doc Set the reseller_id to the provided value on the provided account
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.
@@ -109,7 +109,7 @@ set_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ResellerId = kz_util:format_account_id(Reseller, 'raw'),
     io:format("setting account ~s reseller id to ~s~n", [AccountId, ResellerId]),
-    _ = kz_util:account_update(AccountId, fun(JObj) -> kzd_accounts:set_reseller_id(JObj, ResellerId) end),
+    _ = kzd_accounts:save(AccountId, fun(JObj) -> kzd_accounts:set_reseller_id(JObj, ResellerId) end),
     maybe_update_services(AccountId, ?SERVICES_PVT_RESELLER_ID, ResellerId).
 
 %%------------------------------------------------------------------------------

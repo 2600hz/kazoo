@@ -30,7 +30,7 @@
         ,get_value/1, get_value/2
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(CAT_KEY, <<"Category">>).
 -define(KEY_KEY, <<"Key">>).
@@ -69,7 +69,6 @@
 -define(SYSCONF_SET_RESP_VALUES, [{<<"Event-Name">>, <<"set_resp">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_TYPES, [{?CAT_KEY, fun is_binary/1}
-                       ,{?KEY_KEY, fun is_binary/1}
                        ,{<<"Node">>, fun is_binary/1}
                        ]).
 
@@ -175,17 +174,17 @@ bind_q(Q, Prop) ->
     add_bindings(Q, props:get_value('restrict_to', Prop)).
 
 add_bindings(Q, 'undefined') ->
-    _ = amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
-    _ = amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
-    amqp_util:bind_q_to_sysconf(Q, routing_key_flush());
+    _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
+    _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
+    kz_amqp_util:bind_q_to_sysconf(Q, routing_key_flush());
 add_bindings(Q, ['get'|T]) ->
-    _ = amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
+    _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
     add_bindings(Q, T);
 add_bindings(Q, ['set'|T]) ->
-    _ = amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
+    _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
     add_bindings(Q, T);
 add_bindings(Q, ['flush'|T]) ->
-    _ = amqp_util:bind_q_to_sysconf(Q, routing_key_flush()),
+    _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_flush()),
     add_bindings(Q, T);
 add_bindings(Q, [_|T]) ->
     add_bindings(Q, T);
@@ -197,17 +196,17 @@ unbind_q(Q, Prop) ->
     rm_bindings(Q, props:get_value('restrict_to', Prop)).
 
 rm_bindings(Q, 'undefined') ->
-    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
-    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_set()),
-    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_flush());
+    _ = kz_amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
+    _ = kz_amqp_util:unbind_q_from_sysconf(Q, routing_key_set()),
+    _ = kz_amqp_util:unbind_q_from_sysconf(Q, routing_key_flush());
 rm_bindings(Q, ['get'|T]) ->
-    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
+    _ = kz_amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
     rm_bindings(Q, T);
 rm_bindings(Q, ['set'|T]) ->
-    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_set()),
+    _ = kz_amqp_util:unbind_q_from_sysconf(Q, routing_key_set()),
     rm_bindings(Q, T);
 rm_bindings(Q, ['flush'|T]) ->
-    _ = amqp_util:unbind_q_from_sysconf(Q, routing_key_flush()),
+    _ = kz_amqp_util:unbind_q_from_sysconf(Q, routing_key_flush()),
     rm_bindings(Q, T);
 rm_bindings(Q, [_|T]) ->
     rm_bindings(Q, T);
@@ -220,7 +219,7 @@ rm_bindings(_, []) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:sysconf_exchange().
+    kz_amqp_util:sysconf_exchange().
 
 -spec publish_get_req(kz_term:api_terms()) -> 'ok'.
 publish_get_req(JObj) ->
@@ -229,7 +228,7 @@ publish_get_req(JObj) ->
 -spec publish_get_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_REQ_VALUES, fun get_req/1),
-    amqp_util:sysconf_publish(routing_key_get(), Payload, ContentType).
+    kz_amqp_util:sysconf_publish(routing_key_get(), Payload, ContentType).
 
 -spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->
@@ -241,7 +240,7 @@ publish_get_resp(RespQ, Api, ContentType) ->
                      ,{'remove_recursive', 'false'}
                      ],
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_RESP_VALUES, PrepareOptions),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_set_req(kz_term:api_terms()) -> 'ok'.
 publish_set_req(JObj) ->
@@ -250,7 +249,7 @@ publish_set_req(JObj) ->
 -spec publish_set_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_set_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_REQ_VALUES, fun set_req/1),
-    amqp_util:sysconf_publish(routing_key_set(), Payload, ContentType).
+    kz_amqp_util:sysconf_publish(routing_key_set(), Payload, ContentType).
 
 -spec publish_set_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_set_resp(RespQ, JObj) ->
@@ -259,7 +258,7 @@ publish_set_resp(RespQ, JObj) ->
 -spec publish_set_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_set_resp(RespQ, Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_RESP_VALUES, fun set_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_flush_req(kz_term:api_terms()) -> 'ok'.
 publish_flush_req(JObj) ->
@@ -268,7 +267,7 @@ publish_flush_req(JObj) ->
 -spec publish_flush_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_FLUSH_REQ_VALUES, fun flush_req/1),
-    amqp_util:sysconf_publish(routing_key_flush(), Payload, ContentType).
+    kz_amqp_util:sysconf_publish(routing_key_flush(), Payload, ContentType).
 
 routing_key_get() ->
     ?KEY_SYSCONF_GET_REQ.

@@ -150,8 +150,10 @@ set_usage(Ledger, [_|Usage]) ->
 set_extra(Ledger, []) -> Ledger;
 set_extra(Ledger, [{<<"amount">>, Val}|Props]) ->
     set_extra(kazoo_ledger:set_amount(Ledger, Val), Props);
-set_extra(Ledger, [{<<"description">>, Val}|Props]) ->
+set_extra(Ledger, [{<<"description">>, ?NE_BINARY=Val}|Props]) ->
     set_extra(kazoo_ledger:set_description(Ledger, Val), Props);
+set_extra(Ledger, [{<<"description">>, _}|Props]) ->
+    set_extra(Ledger, Props);
 set_extra(Ledger, [{<<"period_start">>, Val}|Props]) ->
     set_extra(kazoo_ledger:set_period_start(Ledger, Val), Props);
 set_extra(Ledger, [{<<"period_end">>, Val}|Props]) ->

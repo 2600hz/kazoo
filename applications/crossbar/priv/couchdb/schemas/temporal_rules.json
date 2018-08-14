@@ -12,6 +12,7 @@
                 "monthly",
                 "yearly"
             ],
+            "support_level": "supported",
             "type": "string"
         },
         "days": {
@@ -21,24 +22,32 @@
                 "minimum": 1,
                 "type": "integer"
             },
+            "support_level": "supported",
             "type": "array"
+        },
+        "enabled": {
+            "description": "Whether the rule is enabled",
+            "type": "boolean"
         },
         "interval": {
             "default": 1,
             "description": "The recurrence interval for this rule",
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         },
         "month": {
             "description": "The recurrence month for this rule",
             "maximum": 12,
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         },
         "name": {
             "description": "A friendly name for the temporal rule",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "ordinal": {
@@ -52,17 +61,27 @@
                 "fifth",
                 "last"
             ],
+            "support_level": "supported",
             "type": "string"
         },
         "start_date": {
             "default": 62586115200,
             "description": "The date that any recurrence should be calculated as starting on",
+            "support_level": "supported",
             "type": "integer"
         },
         "time_window_start": {
+            "description": "Seconds from the start of a day to consider this rule valid",
+            "maximum": 86400,
+            "minimum": 0,
+            "support_level": "supported",
+            "type": "integer"
+        },
+        "time_window_stop": {
             "description": "Seconds from the start of a day to stop considering this rule valid",
             "maximum": 86400,
             "minimum": 0,
+            "support_level": "supported",
             "type": "integer"
         },
         "wdays": {
@@ -80,6 +99,7 @@
                 ],
                 "type": "string"
             },
+            "support_level": "supported",
             "type": "array"
         }
     },

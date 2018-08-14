@@ -57,5 +57,6 @@ get_results_count(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
 doc_type_from_view(<<"faxes">>, _ViewName) -> <<"fax">>;
 doc_type_from_view(<<"cdrs">>, _ViewName) -> <<"cdr">>;
 doc_type_from_view(<<"recordings">>, _ViewName) -> <<"call_recording">>;
+doc_type_from_view(<<"mailbox_messages">>, _ViewName) -> <<"mailbox_message">>;
 doc_type_from_view(<<"sms">>, _ViewName) -> <<"sms">>;
 doc_type_from_view(_ViewType, _ViewName) -> <<"any">>.

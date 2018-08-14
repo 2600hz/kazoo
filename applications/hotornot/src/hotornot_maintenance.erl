@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Helper functions for users to inspect how HotOrNot is running
+%%% @doc Helper functions for users to inspect how Hotornot is running
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -85,7 +85,7 @@ rates_for_did(DID, Direction, AccountId, RouteOptions) when is_list(RouteOptions
 rates_for_did(DID, Direction, AccountId, Opt) ->
     rates_for_did(DID, Direction, AccountId, [Opt]).
 
--spec print_matching(kzd_rate:docs()) -> 'ok'.
+-spec print_matching(kzd_rates:docs()) -> 'ok'.
 print_matching([]) ->
     io:format("no rates matched~n");
 print_matching(Matching) ->
@@ -93,10 +93,10 @@ print_matching(Matching) ->
     ?LOCAL_SUMMARY_HEADER,
 
     [Winning|Sorted] = hon_util:sort_rates(Matching),
-    Name = kzd_rate:name(Winning),
+    Name = kzd_rates:rate_name(Winning),
 
     lists:foreach(fun print_rate/1
-                 ,[kzd_rate:set_name(Winning, <<"* ", Name/binary>>)
+                 ,[kzd_rates:set_rate_name(Winning, <<"* ", Name/binary>>)
                    | Sorted
                   ]).
 
@@ -115,18 +115,18 @@ rates_between(Pre, Post) ->
             'ok'
     end.
 
--spec print_rate(kzd_rate:doc()) -> 'ok'.
+-spec print_rate(kzd_rates:doc()) -> 'ok'.
 print_rate(Rate) ->
     io:format(?LOCAL_SUMMARY_ROW_FORMAT
-             ,[kz_term:to_binary(kzd_rate:name(Rate))
-              ,kz_term:to_binary(kzd_rate:rate_cost(Rate))
-              ,kz_term:to_binary(kzd_rate:increment(Rate))
-              ,kz_term:to_binary(kzd_rate:minimum(Rate))
-              ,kz_term:to_binary(kzd_rate:surcharge(Rate))
-              ,kz_term:to_binary(kzd_rate:weight(Rate))
-              ,kz_term:to_binary(kzd_rate:prefix(Rate))
-              ,kz_term:to_binary(kzd_rate:ratedeck(Rate, <<>>))
-              ,kz_term:to_binary(kzd_rate:version(Rate, <<>>))
+             ,[kz_term:to_binary(kzd_rates:rate_name(Rate))
+              ,kz_term:to_binary(kzd_rates:rate_cost(Rate))
+              ,kz_term:to_binary(kzd_rates:rate_increment(Rate))
+              ,kz_term:to_binary(kzd_rates:rate_minimum(Rate))
+              ,kz_term:to_binary(kzd_rates:rate_surcharge(Rate))
+              ,kz_term:to_binary(kzd_rates:weight(Rate))
+              ,kz_term:to_binary(kzd_rates:prefix(Rate))
+              ,kz_term:to_binary(kzd_rates:ratedeck_id(Rate, <<>>))
+              ,kz_term:to_binary(kzd_rates:rate_version(Rate, <<>>))
               ]).
 
 -spec get_rate_version() -> kz_term:api_binary().

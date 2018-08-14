@@ -1,6 +1,6 @@
-### Allotments
+# Allotments
 
-#### About Allotments
+## About Allotments
 
 #### Schema
 
@@ -21,7 +21,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments
 
@@ -31,7 +31,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/allotments
 
@@ -41,7 +41,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments/consumed
 

@@ -1,6 +1,6 @@
-### Directories
+# Directories
 
-#### About Directories
+## About Directories
 
 #### Schema
 
@@ -10,17 +10,17 @@ Allow a caller to search for a user/device by name instead of extension/DID
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`confirm_match` | When one match is found, require caller to confirm the match before connecting | `boolean()` | `true` | `false` |  
-`max_dtmf` | Cap the number of DTMF characters collected from a caller, 0 for unlimited | `integer()` | `0` | `false` |  
-`min_dtmf` | How many DTMF characters to collect from a caller before processing the directory | `integer()` | `3` | `false` |  
-`name` | The name of the directory | `string(1..)` |   | `true` |  
-`sort_by` | What field to sort on in matching documents when a caller enters characters | `string('first_name' | 'last_name')` | `last_name` | `false` |  
-`users.[]` |   | `string()` |   | `false` |  
-`users` | The list of users associated with this directory | `array(string())` | `[]` | `false` |  
+`confirm_match` | When one match is found, require caller to confirm the match before connecting | `boolean()` | `true` | `false` | `supported`
+`max_dtmf` | Cap the number of DTMF characters collected from a caller, 0 for unlimited | `integer()` | `0` | `false` | `supported`
+`min_dtmf` | How many DTMF characters to collect from a caller before processing the directory | `integer()` | `3` | `false` | `supported`
+`name` | The name of the directory | `string(1..)` |   | `true` | `supported`
+`sort_by` | What field to sort on in matching documents when a caller enters characters | `string('first_name' | 'last_name')` | `last_name` | `false` | `supported`
+`users.[]` |   | `string()` |   | `false` | `supported`
+`users` | The list of users associated with this directory | `array(string())` | `[]` | `false` | `supported`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories
 
@@ -30,7 +30,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/directories
 
@@ -40,7 +40,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
@@ -50,7 +50,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
@@ -60,7 +60,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
@@ -70,7 +70,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 

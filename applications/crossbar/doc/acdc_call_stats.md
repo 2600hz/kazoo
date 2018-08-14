@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/acdc_call_stats
 ```
 
-Get a time range of ACDC Call Stats (using gregorian seconds for timestamps):
+Get a time range of ACDC Call Stats (using Gregorian seconds for timestamps):
 
 ```shell
 curl -v -X GET \

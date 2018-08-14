@@ -1,8 +1,10 @@
-### Limits
+# Limits
 
-#### About Limits
+Configures limit on call consumed for your account.
 
-#### Schema
+## About Limits
+
+## Schema
 
 Limit an account's ability to place concurrent calls using flat rate trunks
 
@@ -10,17 +12,17 @@ Limit an account's ability to place concurrent calls using flat rate trunks
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`allow_prepay` | Determines if the account would like to allow per-minute calls if they have no available credit | `boolean()` | `true` | `false` |  
-`burst_trunks` | The number of two-way, flat-rate trunks used only if no other trunks are available | `integer()` |   | `false` |  
-`calls` | A hard limit for the total number calls | `integer()` |   | `false` |  
-`inbound_trunks` | The number of inbound, flat-rate trunks | `integer()` |   | `false` |  
-`outbound_trunks` | The number of outbound, flat-rate trunks | `integer()` |   | `false` |  
-`resource_consuming_calls` | A hard limit for the number of resource consuming calls | `integer()` |   | `false` |  
-`twoway_trunks` | The number of two-way, flat-rate trunks | `integer()` |   | `false` |  
+`allow_prepay` | Determines if the account would like to allow per-minute calls if they have no available credit | `boolean()` | `true` | `false` | `supported`
+`burst_trunks` | The number of two-way, flat-rate trunks used only if no other trunks are available | `integer()` |   | `false` | `beta`
+`calls` | A hard limit for the total number calls | `integer()` |   | `false` | `beta`
+`inbound_trunks` | The number of inbound, flat-rate trunks | `integer()` |   | `false` | `supported`
+`outbound_trunks` | The number of outbound, flat-rate trunks | `integer()` |   | `false` | `supported`
+`resource_consuming_calls` | A hard limit for the number of resource consuming calls | `integer()` |   | `false` | `beta`
+`twoway_trunks` | The number of two-way, flat-rate trunks | `integer()` |   | `false` | `beta`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/limits
 
@@ -43,7 +45,7 @@ curl -v -X GET \
 }
 ```
 
-#### Update limits for a given account
+## Update limits for a given account
 
 > POST /v2/accounts/{ACCOUNT_ID}/limits
 
@@ -125,7 +127,7 @@ curl -v -X POST \
         "id": "limits",
         "allow_prepay": true,
         "outbound_trunks": 5,
-        "accept_charges": trye
+        "accept_charges": true
     }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/limits
 ```

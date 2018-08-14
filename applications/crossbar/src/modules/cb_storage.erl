@@ -149,7 +149,7 @@ resource_exists(?PLANS_TOKEN, _PlanId) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /storage mights load a list of storage objects
+%% /storage might load a list of storage objects
 %% /storage/123 might load the storage object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -426,12 +426,13 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     AName = <<Random/binary, "_test_credentials_file.txt">>,
     AccountId = cb_context:account_id(ContextAcc),
     %% Create dummy document where the attachment(s) will be attached to.
-    %% TODO: move this tmpdoc creation to maybe_check_storage_settings function.
+    %% TODO: move this tmp doc creation to maybe_check_storage_settings function.
     TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
                                ,<<"pvt_type">> => <<"storage_settings_probe">>
                                }),
-    {ok, Doc} = kazoo_modb:save_doc(AccountId, TmpDoc),
     DbName = kazoo_modb:get_modb(AccountId),
+    UpdatedDoc = kz_doc:update_pvt_parameters(TmpDoc, DbName),
+    {ok, Doc} = kazoo_modb:save_doc(AccountId, UpdatedDoc),
     DocId = kz_json:get_value(<<"_id">>, Doc),
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
     Settings = kz_json:get_json_value(<<"settings">>, Att),
@@ -439,8 +440,10 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     AttSettings = kz_maps:keys_to_atoms(kz_json:to_map(Settings)),
     Opts = [{'plan_override', #{'att_handler' => {AttHandler, AttSettings}
                                ,'att_post_handler' => 'external'
+                               ,'att_handler_id' => AttId
                                }}
            ,{'error_verbosity', 'verbose'}
+           ,{'save_error', 'false'}
            ],
     %% Check the storage settings have permissions to create files
     case kz_datamgr:put_attachment(DbName, DocId, AName, Content, Opts) of

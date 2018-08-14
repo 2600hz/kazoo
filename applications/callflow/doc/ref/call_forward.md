@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the call_forward callflow's data object
+Validator for the call_forward callflow data object
 
 
 

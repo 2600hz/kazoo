@@ -1,13 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz
+%%% @copyright (C) 2016, SIPLABS, LLC
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_edr).
 
--include("../callflow.hrl").
+-behaviour(gen_cf_action).
 
 -export([handle/2]).
+
+-include("../callflow.hrl").
 
 -define(SPECIAL_VARS, [<<"Caller-ID-Name">>
                       ,<<"Caller-ID-Number">>

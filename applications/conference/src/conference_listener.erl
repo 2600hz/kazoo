@@ -24,11 +24,13 @@
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'route', [{'types', ?RESOURCE_TYPES_HANDLED}]}
+                  ,{'conference', [{'restrict_to', [{'config', <<"*">>}]}]} % get all conference config requests
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'conf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
+                    ,{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}
                     ]).
--define(QUEUE_NAME, <<"">>).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 

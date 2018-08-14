@@ -54,8 +54,9 @@
 -define(SUPER_NAME_ARGS_TYPE(N, I, Args, Type), {N, {I, 'start_link', Args}, Type, 'infinity', 'supervisor', [I]}).
 -define(SUPER_NAME_TYPE(N, I, Type), {N, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
 
--define(CACHE(N), {N, {'kz_cache', 'start_link', [N]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kz_cache']}).
--define(CACHE_ARGS(N, Arg), {N, {'kz_cache', 'start_link', [N, Arg]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kz_cache']}).
+-define(CACHE(N), {N, {'kz_cache_sup', 'start_link', [N]}, 'permanent', 'infinity', 'supervisor', ['kz_cache_sup']}).
+-define(CACHE_ARGS(N, Arg), {N, {'kz_cache_sup', 'start_link', [N, Arg]}, 'permanent', 'infinity', 'supervisor', ['kz_cache_sup']}).
+-define(CACHE_ARGS(N, Expires, Props), {N, {'kz_cache_sup', 'start_link', [N, Expires, Props]}, 'permanent', 'infinity', 'supervisor', ['kz_cache_sup']}).
 
 %% Used by ecallmgr and kapi_dialplan at least
 -define(CALL_EVENTS,
@@ -77,120 +78,120 @@
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT
-       ,<<(kz_term:to_binary(kz_time:now_s()))/binary
-          ,"-", (kz_binary:rand_hex(4))/binary
-        >>).
+       ,list_to_binary([kz_term:to_binary(kz_time:now_s())
+                       ,"-", kz_binary:rand_hex(4)
+                       ])
+       ).
 
 -define(BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S, 20).
 
-
--define(MATCH_ACCOUNT_RAW(Account),
-        <<(Account):32/binary>>
+-define(MATCH_ACCOUNT_RAW(Account)
+       ,<<(Account):32/binary>>
        ).
--define(MATCH_ACCOUNT_UNENCODED(Account),
-        <<"account/", (Account):34/binary>>
+-define(MATCH_ACCOUNT_UNENCODED(Account)
+       ,<<"account/", (Account):34/binary>>
        ).
--define(MATCH_ACCOUNT_ENCODED(Account),
-        <<"account%2F", (Account):38/binary>>
+-define(MATCH_ACCOUNT_ENCODED(Account)
+       ,<<"account%2F", (Account):38/binary>>
        ).
--define(MATCH_ACCOUNT_encoded(Account),
-        <<"account%2f", (Account):38/binary>>
-       ).
-
--define(MATCH_ACCOUNT_RAW(A, B, Rest),
-        <<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add missing size (Rest:28)
-       ).
--define(MATCH_ACCOUNT_UNENCODED(A, B, Rest),
-        <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary>>
-       ).
--define(MATCH_ACCOUNT_ENCODED(A, B, Rest),
-        <<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary>>
-       ).
--define(MATCH_ACCOUNT_encoded(A, B, Rest),
-        <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary>>
+-define(MATCH_ACCOUNT_encoded(Account)
+       ,<<"account%2f", (Account):38/binary>>
        ).
 
--define(MATCH_PROVISIONER_RAW(Account),
-        <<"account/", (Account):34/binary, "-provisioner">>
+-define(MATCH_ACCOUNT_RAW(A, B, Rest)
+       ,<<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add missing size (Rest:28)
        ).
--define(MATCH_PROVISIONER_ENCODED(Account),
-        <<"account%2F", (Account):38/binary, "-provisioner">>
+-define(MATCH_ACCOUNT_UNENCODED(A, B, Rest)
+       ,<<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary>>
        ).
--define(MATCH_PROVISIONER_encoded(Account),
-        <<"account%2f", (Account):38/binary, "-provisioner">>
+-define(MATCH_ACCOUNT_ENCODED(A, B, Rest)
+       ,<<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary>>
+       ).
+-define(MATCH_ACCOUNT_encoded(A, B, Rest)
+       ,<<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary>>
        ).
 
--define(MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month),
-        <<(A):2/binary, (B):2/binary, (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+-define(MATCH_PROVISIONER_RAW(Account)
+       ,<<"account/", (Account):34/binary, "-provisioner">>
+       ).
+-define(MATCH_PROVISIONER_ENCODED(Account)
+       ,<<"account%2F", (Account):38/binary, "-provisioner">>
+       ).
+-define(MATCH_PROVISIONER_encoded(Account)
+       ,<<"account%2f", (Account):38/binary, "-provisioner">>
+       ).
+
+-define(MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month)
+       ,<<(A):2/binary, (B):2/binary, (Rest):28/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
--define(MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month),
-        <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+-define(MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)
+       ,<<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
--define(MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month),
-        <<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+-define(MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)
+       ,<<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
--define(MATCH_MODB_SUFFIX_encoded(A, B, Rest, Year, Month),
-        <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary
-          ,"-", (Year):4/binary, (Month):2/binary
+-define(MATCH_MODB_SUFFIX_encoded(A, B, Rest, Year, Month)
+       ,<<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary
+         ,"-", (Year):4/binary, (Month):2/binary
         >>
        ).
 
 %% FIXME: replace these with the above ones, actually matching: "account..."
 %% FIXME: add MATCH_MODB_SUFFIX_encoded/3
--define(MATCH_MODB_SUFFIX_RAW(Account, Year, Month),
-        <<(Account):32/binary, "-", (Year):4/binary, (Month):2/binary>>
+-define(MATCH_MODB_SUFFIX_RAW(Account, Year, Month)
+       ,<<(Account):32/binary, "-", (Year):4/binary, (Month):2/binary>>
        ).
--define(MATCH_MODB_SUFFIX_UNENCODED(Account, Year, Month),
-        <<(Account):42/binary, "-", (Year):4/binary, (Month):2/binary>>
+-define(MATCH_MODB_SUFFIX_UNENCODED(Account, Year, Month)
+       ,<<(Account):42/binary, "-", (Year):4/binary, (Month):2/binary>>
        ).
--define(MATCH_MODB_SUFFIX_ENCODED(Account, Year, Month),
-        <<(Account):48/binary, "-", (Year):4/binary, (Month):2/binary>>
-       ).
-
--define(MATCH_MODB_PREFIX(Year, Month, Account),
-        <<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>  %% FIXME: add missing size
-       ).
--define(MATCH_MODB_PREFIX_M1(Year, Month, Account),
-        <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add missing size
+-define(MATCH_MODB_SUFFIX_ENCODED(Account, Year, Month)
+       ,<<(Account):48/binary, "-", (Year):4/binary, (Month):2/binary>>
        ).
 
--define(MATCH_RESOURCE_SELECTORS_RAW(Account),
-        <<(Account):32/binary, "-selectors">>
+-define(MATCH_MODB_PREFIX(Year, Month, Account)
+       ,<<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>  %% FIXME: add missing size
        ).
--define(MATCH_RESOURCE_SELECTORS_UNENCODED(Account),
-        <<"account/", (Account):34/binary, "-selectors">>
-       ).
--define(MATCH_RESOURCE_SELECTORS_ENCODED(Account),
-        <<"account%2F", (Account):38/binary, "-selectors">>
-       ).
--define(MATCH_RESOURCE_SELECTORS_encoded(Account),
-        <<"account%2f", (Account):38/binary, "-selectors">>
+-define(MATCH_MODB_PREFIX_M1(Year, Month, Account)
+       ,<<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add missing size
        ).
 
--define(MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest),
-        <<(A):2/binary, (B):2/binary, (Rest):28/binary
-          ,"-selectors"
+-define(MATCH_RESOURCE_SELECTORS_RAW(Account)
+       ,<<(Account):32/binary, "-selectors">>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_UNENCODED(Account)
+       ,<<"account/", (Account):34/binary, "-selectors">>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_ENCODED(Account)
+       ,<<"account%2F", (Account):38/binary, "-selectors">>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_encoded(Account)
+       ,<<"account%2f", (Account):38/binary, "-selectors">>
+       ).
+
+-define(MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest)
+       ,<<(A):2/binary, (B):2/binary, (Rest):28/binary
+         ,"-selectors"
         >>
        ).
--define(MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest),
-        <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary
-          ,"-selectors"
+-define(MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest)
+       ,<<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary
+         ,"-selectors"
         >>
        ).
--define(MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest),
-        <<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary
-          ,"-selectors"
+-define(MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest)
+       ,<<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary
+         ,"-selectors"
         >>
        ).
--define(MATCH_RESOURCE_SELECTORS_encoded(A, B, Rest),
-        <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary
-          ,"-selectors"
+-define(MATCH_RESOURCE_SELECTORS_encoded(A, B, Rest)
+       ,<<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary
+         ,"-selectors"
         >>
        ).
 

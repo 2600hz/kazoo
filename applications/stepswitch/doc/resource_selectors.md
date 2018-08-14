@@ -1,6 +1,6 @@
 # Stepswitch Resource Selectors
 
-Stepswitch Resource Selectors (SRS) - new flexible way to route outbound offnet calls to carriers (resources). SRS controled by chain of small modules. Output one module is the input of other module (similar to "pipes" in Unix-shell). Input and output of each module is list of resources. Each module make some actions with this list like adding new resources, filtering resource, reordering resources, etc...
+Stepswitch Resource Selectors (SRS) - new flexible way to route outbound offnet calls to carriers (resources). SRS controlled by chain of small modules. Output one module is the input of other module (similar to "pipes" in Unix-shell). Input and output of each module is list of resources. Each module make some actions with this list like adding new resources, filtering resource, reordering resources, etc...
 
 
 List of modules with addition parameters (controlling behavior of modules) called "rules". This rules saved at Account-DB in document `resource_selectors_rules`. Rules in Master Account DB acting as "system" rules and applied to resources in "offnet" DB.
@@ -10,7 +10,7 @@ You can use module several times with different parameters.
 
 ## Rules
 
-Rules is array of JSON objects. Key of object is the name of module. Value is another object contains paramters for module.
+Rules is array of JSON objects. Key of object is the name of module. Value is another object contains parameters for module.
 
 
 Example:
@@ -71,18 +71,18 @@ This modules filter resources with some criterion.
 
 All filter modules have similar parameters:
 
-Name | Descritpion
+Name | Description
 ---- | -----------
 value_a | Value, which will be used for filtering (phone number)
-value_b | Rules for testing (list of regexes for phone number)
+value_b | Rules for testing (list of regexps for phone number)
 action | What to do when `value_a` matched rules in `value_b`, `keep` or `drop`
-mode | Filter specific paramter
+mode | Filter specific parameter
 
 `value_a` and `value_b` can be:
 - `number` - dialed phone number in e164 format
 - `cid_number` - Caller-ID number
-- `service_plans` - list of service plans in form "plan-id:account-id" (account-id is account which created this service plan, usualy it is master or reseller account). Example `["2fa2e806f0ba8c00796a27788861be78:37c8ecfc3cbddc3a5d7e83634ae8241d", "ff9462f98263fd203e776282cabf7d65:37c8ecfc3cbddc3a5d7e83634ae8241d"]`
-- `resource:{RESOURCE_FIELD}` - value ov the resource field like flags, weight, etc... (`resource:flags`, `resource:weight_cost`)
+- `service_plans` - list of service plans in form "plan-id:account-id" (account-id is account which created this service plan, usually it is master or reseller account). Example `["2fa2e806f0ba8c00796a27788861be78:37c8ecfc3cbddc3a5d7e83634ae8241d", "ff9462f98263fd203e776282cabf7d65:37c8ecfc3cbddc3a5d7e83634ae8241d"]`
+- `resource:{RESOURCE_FIELD}` - value of the resource field like flags, weight, etc... (`resource:flags`, `resource:weight_cost`)
 - `request:{REQUEST_FIELD}` - value of field in Offnet-Request (`request:Flags`)
 - `database:{SELECTOR_NAME}` - value got from database (this selectors managed via `cb_resource_selectors` module)
 
@@ -115,13 +115,13 @@ Module output will be: `Res-1`, `Res-3`, `Res-5` and `Res-6`
 
 #### filter_regex (kz_srs_filter_regex)
 
-This module filter resources based on list of regex rules (usualy it's `rules`/`cid_rules` from resource).
+This module filter resources based on list of regex rules (usually it's `rules`/`cid_rules` from resource).
 
 
 `mode` parameter for this module:
 
 - `empty_fail`: if list of rules is empty, then it equal to fail match (default behavior)
-- `empty_ok`: if list of rules is empty then it equal to match, this behavior useful for Caller-ID check. You allow any Caller-ID on most of your resources, but several resources have strict rules. For this kined resources you write rules, all other leave with empty `cid_rules` field.
+- `empty_ok`: if list of rules is empty then it equal to match, this behavior useful for Caller-ID check. You allow any Caller-ID on most of your resources, but several resources have strict rules. For this kind of resources you write rules, all other leave with empty `cid_rules` field.
 
 #### filter_list (kz_srs_filter_list)
 
@@ -145,7 +145,7 @@ Default rule:
 }
 ```
 
-Here we got list of flags from "Flags" field in Offent-Request, and compare it with field "flags" in each resource.
+Here we got list of flags from "Flags" field in Offnet-Request, and compare it with field "flags" in each resource.
 
 
 `mode` parameter:
@@ -153,7 +153,7 @@ Here we got list of flags from "Flags" field in Offent-Request, and compare it w
 - subset: `value_a` must be subset of `value_b`, `["flag2", "flag3"]` will match `["flag5", "flag3", "flag2"]`, empty list in `value_a` match any list (empty too) in `value_b`.
 - `ne_subset`: similar to `"subset"`, but empty list in `value_a` always fails
 - `ne_subset_or_exact`: similar to `"subset"`, but empty list in `value_a` match only with empty list in `value_b`
-- `intersect`: match if any elemnt in `value_a` exist in `value_b`, empty `vaule_a` and/or `value_b` will fail to match
+- `intersect`: match if any element in `value_a` exist in `value_b`, empty `vaule_a` and/or `value_b` will fail to match
 - `disjoint`: inverse of `"intersect"` mode
 
 ### order (kz_srs_order)

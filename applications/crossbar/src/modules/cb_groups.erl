@@ -75,7 +75,7 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /groups mights load a list of group objects
+%% /groups might load a list of group objects
 %% /groups/123 might load the group object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -104,7 +104,7 @@ validate_group(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -112,7 +112,7 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ post(Context, _) ->
     crossbar_doc:save(Context).
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is PATCH, execute the actual action, usually a db save
+%% @doc If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ patch(Context, _) ->
     crossbar_doc:save(Context).
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().

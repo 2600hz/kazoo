@@ -5,7 +5,7 @@
     "properties": {
         "asr_api_key": {
             "default": "",
-            "description": "speech asr api key",
+            "description": "speech asr API key",
             "type": "string"
         },
         "asr_locale": {

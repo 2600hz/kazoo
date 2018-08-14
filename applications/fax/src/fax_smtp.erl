@@ -257,18 +257,30 @@ handle_message(#state{filename=Filename
                      ,errors=[]
                      }=State) ->
     lager:debug("checking file ~s", [Filename]),
+    ContentType = kz_mime:from_filename(Filename),
     case file:read_file(Filename) of
-        {'ok', FileContents} ->
-            CT = kz_mime:from_filename(Filename),
-            case fax_util:save_fax_docs([Doc], FileContents, CT) of
-                'ok' ->
-                    lager:debug("smtp fax document saved"),
-                    kz_util:delete_file(Filename);
-                {'error', Error} -> maybe_faxbox_log(State#state{errors=[Error]})
+        {'ok', Content} ->
+            case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, Doc, Content, ContentType) of
+                {'ok', NewDoc} ->
+                    Updates = [{<<"pvt_job_status">>, <<"pending">>}
+                              ,{<<"pvt_modified">>, kz_time:now_s()}
+                              ],
+                    case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, NewDoc)) of
+                        {'ok', NewerDoc} ->
+                            lager:debug("fax jobid ~s set to pending", [kz_doc:id(NewerDoc)]);
+                        {'error', Error} ->
+                            lager:debug("error ~p setting fax jobid ~s to pending",[Error, kz_doc:id(NewDoc)]),
+                            maybe_faxbox_log(State#state{errors=[Error]})
+                    end;
+                {'error', Error} ->
+                    lager:error("failed converting attachment with error: ~p", [Error]),
+                    Message = kz_term:to_binary(io_lib:format("error converting attachment ~s", [Filename])),
+                    maybe_faxbox_log(State#state{errors=[Message]})
             end;
-        _Else ->
-            Error = kz_term:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
-            maybe_faxbox_log(State#state{errors=[Error]})
+        {'error', Error} ->
+            lager:error("failed to read file: ~s with error: ~p", [Filename, Error]),
+            Message = kz_term:to_binary(io_lib:format("error reading file ~s", [Filename])),
+            maybe_faxbox_log(State#state{errors=[Message]})
     end.
 
 -spec maybe_system_report(state()) -> 'ok'.
@@ -341,9 +353,11 @@ faxbox_log(#state{account_id=AccountId}=State) ->
 -spec error_doc() -> kz_term:ne_binary().
 error_doc() ->
     {Year, Month, _} = erlang:date(),
-    <<(kz_term:to_binary(Year))/binary,(kz_date:pad_month(Month))/binary
-      ,"-",(kz_binary:rand_hex(16))/binary
-    >>.
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,kz_binary:rand_hex(16)
+                   ]).
 
 -spec to_proplist(state()) -> kz_term:proplist().
 to_proplist(#state{}=State) ->
@@ -472,7 +486,7 @@ check_permissions(#state{from=From
                         ,errors=Errors
                         }=State, Permissions) ->
     case lists:any(fun(A) -> match(From, A) end, Permissions)
-        orelse From =:= OwnerEmail
+        orelse From =:= kz_term:to_lower_binary(OwnerEmail)
     of
         'true' -> add_fax_document(State);
         'false' ->
@@ -627,7 +641,7 @@ maybe_faxbox_by_rules([], #state{account_id=AccountId
                                 ,from=From
                                 ,errors=Errors
                                 }=State) ->
-    Error = <<"no mathing rules in account ", AccountId/binary, " for ", From/binary >>,
+    Error = <<"no matching rules in account ", AccountId/binary, " for ", From/binary >>,
     lager:debug(Error),
     State#state{errors=[Error | Errors]};
 maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
@@ -743,7 +757,7 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                |Parts
               ], State) ->
     {_ , NewState}
-        = maybe_process_part(fax_util:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
+        = maybe_process_part(kz_mime:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
                             ,Parameters
                             ,BodyPart
                             ,State
@@ -773,8 +787,10 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
     lager:debug("part is application/octet-stream, try check attachment filename extension"),
     case props:get_value(<<"disposition">>, Parameters) of
         <<"attachment">> ->
-            Props = props:get_value(<<"disposition-params">>, Parameters, []),
-            Filename = kz_term:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
+            DispositionParams = props:get_value(<<"disposition-params">>, Parameters, []),
+            ContentTypeParams = props:get_value(<<"content-type-params">>, Parameters, []),
+            Props = DispositionParams ++ ContentTypeParams,
+            Filename = kz_term:to_lower_binary(props:get_first_defined([<<"filename">>, <<"name">>], Props, <<>>)),
             case kz_mime:from_filename(Filename) of
                 <<"application/octet-stream">> ->
                     lager:debug("unable to determine content-type for extension : ~s", [Filename]),
@@ -925,13 +941,30 @@ send_outbound_smtp_fax_error(#state{account_id=AccountId
                                    ,from=From
                                    ,to=To
                                    ,errors=Errors
-                                   }) ->
+                                   ,original_number=FaxNumber
+                                   ,owner_id=OwnerId
+                                   ,number=Number
+                                   }=State) ->
     Message = props:filter_empty(
                 [{<<"Account-ID">>, AccountId}
                 ,{<<"Fax-From-Email">>, From}
                 ,{<<"Fax-To-Email">>, To}
+
                 ,{<<"Errors">>, Errors}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ,{<<"Original-Number">>, FaxNumber}
+                ,{<<"Owner-ID">>, OwnerId}
+                ,{<<"Number">>, Number}
+                ,{<<"Timestamp">>, kz_time:now_s()}
+                 | maybe_add_faxbox_info(State) ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     %% Do not crash if fields were undefined
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound_smtp_error/1).
+
+-spec maybe_add_faxbox_info(state()) -> kz_term:proplist().
+maybe_add_faxbox_info(#state{faxbox='undefined'}) ->
+    [];
+maybe_add_faxbox_info(#state{faxbox=FaxBoxDoc}) ->
+    [{<<"FaxBox-ID">>, kz_doc:id(FaxBoxDoc)}
+    ,{<<"FaxBox-Name">>, kzd_faxbox:name(FaxBoxDoc)}
+    ,{<<"FaxBox-Timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
+    ].

@@ -262,7 +262,7 @@ are_equal(JObj1, JObj2) ->
 %% The sub-proplist `[{d,e}]' needs converting before being passed to the next level.
 %% @end
 %%------------------------------------------------------------------------------
--spec from_list(json_proplist()) -> object().
+-spec from_list(json_proplist() | flat_proplist()) -> object() | flat_object().
 from_list(L) when is_list(L) ->
     ?JSON_WRAPPER(props:filter_undefined(L)).
 
@@ -554,12 +554,32 @@ recursive_to_map(Else) -> Else.
 from_map(Map) when is_map(Map) ->
     recursive_from_map(Map).
 
--spec recursive_from_map(map()) -> object().
+-spec recursive_from_map(any()) -> any().
 recursive_from_map(Map) when is_map(Map) ->
     from_list([{K, recursive_from_map(V)} || {K, V} <- maps:to_list(Map)]);
+recursive_from_map([]) -> [];
 recursive_from_map(List) when is_list(List) ->
-    [recursive_from_map(Item) || Item <- List];
+    Res = [recursive_from_map(Item) || Item <- List],
+
+    case lists:all(fun is_raw_tuple/1, Res) of
+        'false' -> [maybe_tuple_to_json(R) || R  <- Res];
+        'true' -> from_list(Res)
+    end;
+recursive_from_map({K, V}) ->
+    {K, recursive_from_map(V)};
 recursive_from_map(Else) -> Else.
+
+is_raw_tuple(?JSON_WRAPPER(_)) -> 'false';
+is_raw_tuple(Term) -> is_tuple(Term).
+
+-spec maybe_tuple_to_json(json_term() | tuple()) -> json_term().
+maybe_tuple_to_json({K, V})
+  when is_binary(K);
+       is_atom(K) ->
+    from_list([{K, V}]);
+maybe_tuple_to_json({K, V}) ->
+    from_list([{kz_term:to_binary(K), V}]);
+maybe_tuple_to_json(V) -> V.
 
 -spec get_json_value(path(), object()) -> kz_term:api_object().
 get_json_value(Key, JObj) -> get_json_value(Key, JObj, 'undefined').
@@ -786,14 +806,14 @@ get_binary_boolean(Key, JObj, Default) ->
         Value -> kz_term:to_binary(kz_term:is_true(Value))
     end.
 
--spec get_keys(object() | flat_object()) -> keys() | [keys(),...] | [].
+-spec get_keys(object() | flat_object()) -> keys() | [keys(),...].
 get_keys(JObj) -> get_keys1(JObj).
 
--spec get_keys(path(), object() | flat_object()) -> keys() | [keys(),...] | [].
+-spec get_keys(path(), object() | flat_object()) -> keys() | [keys(),...].
 get_keys([], JObj) -> get_keys1(JObj);
 get_keys(Keys, JObj) -> get_keys1(get_json_value(Keys, JObj, new())).
 
--spec get_keys1(list() | object() | flat_object()) -> keys() | [keys(),...] | [].
+-spec get_keys1(list() | object() | flat_object()) -> keys() | [keys(),...].
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1, length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
@@ -975,7 +995,8 @@ insert_values(KVs, JObj) ->
 insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
--spec set_value(path(), json_term() | 'null', object() | objects()) -> object() | objects().
+-spec set_value(path(), api_json_term() | 'null', object() | objects()) -> object() | objects().
+set_value(_Keys, 'undefined', JObj) -> JObj;
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
@@ -1026,7 +1047,7 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
             %% replaced so continue looping the keys creating the necessary json as we go
             ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new())}));
         'false' when T == [] ->
-            %% This is the final key and doesnt already exist, just add it to this
+            %% This is the final key and doesn't already exist, just add it to this
             %% objects existing properties
             ?JSON_WRAPPER(Props ++ [{Key1, Value}]);
         'false' ->
@@ -1190,6 +1211,9 @@ load_fixture_from_file(App, Dir, File) ->
         {'ok', Bin} = file:read_file(Path),
         decode(Bin)
     catch
+        _Type:{'badmatch', {'error', 'enoent'}} ->
+            lager:error("failed to find ~s to read", [Path]),
+            {'error', 'enoent'};
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("badmatch error: ~p", [Reason]),
             {'error', Reason};
@@ -1244,7 +1268,7 @@ normalize_key(Key) when is_binary(Key) ->
 -spec normalize_key_char(char()) -> char().
 normalize_key_char($-) -> $_;
 normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
-%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
+%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ASCII 215) "multiplication sign: x"
 normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.

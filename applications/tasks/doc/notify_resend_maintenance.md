@@ -9,17 +9,17 @@
 {SUP} notify_resend_maintenance pending
 ```
 
-> List `{ShowCount}` number of pending notifications
+> List `{SHOW_COUNT}` number of pending notifications
 
 ```shell
-{SUP} notify_resend_maintenance pending {ShowCount}
+{SUP} notify_resend_maintenance pending {SHOW_COUNT}
 ```
 
-> List `{ShowCount}` number of pending notifications, optionally shows
-> the whole JSON object if `{Deatils}` is `true`
+> List `{SHOW_COUNT}` number of pending notifications, optionally shows
+> the whole JSON object if `{DETAILS}` is `true`
 
 ```shell
-{SUP} notify_resend_maintenance pending {ShowCount} {Details}
+{SUP} notify_resend_maintenance pending {SHOW_COUNT} {Details}
 ```
 
 > List pending notifications by notification type (e.g. voicemail_new, ...)
@@ -36,17 +36,17 @@
 {SUP} notify_resend_maintenance failed
 ```
 
-> List `{ShowCount}` number of failed notifications
+> List `{{SHOW_COUNT}}` number of failed notifications
 
 ```shell
-{SUP} notify_resend_maintenance failed {ShowCount}
+{SUP} notify_resend_maintenance failed {SHOW_COUNT}
 ```
 
-> List `{ShowCount}` number of failed notifications, optionally shows
-> the whole JSON object if `{Deatils}` is `true`
+> List `{SHOW_COUNT}` number of failed notifications, optionally shows
+> the whole JSON object if `{DETAILS}` is `true`
 
 ```shell
-{SUP} notify_resend_maintenance failed {ShowCount} {Details}
+{SUP} notify_resend_maintenance failed {SHOW_COUNT} {Details}
 ```
 
 > List failed notifications by notification type (e.g. voicemail_new, ...)
@@ -97,5 +97,5 @@
 > Timestamps are Gregorian seconds
 
 ```shell
-{SUP} notify_resend_maintenance delete_between {StartTimestamp} {EndTimestamp}
+{SUP} notify_resend_maintenance delete_between {START_TIMESTAMP} {END_TIMESTAMP}
 ```

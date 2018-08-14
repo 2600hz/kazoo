@@ -123,12 +123,21 @@ pretty_print_dollars(Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec base_call_cost(integer(), integer(), integer()) -> integer().
+-spec base_call_cost(units() | dollars(), units() | dollars(), units() | dollars()) -> units().
+base_call_cost(RateCost, 0, RateSurcharge) ->
+    base_call_cost(RateCost, 60, RateSurcharge);
 base_call_cost(RateCost, RateMin, RateSurcharge)
   when is_integer(RateCost),
        is_integer(RateMin),
        is_integer(RateSurcharge) ->
-    RateCost * ( RateMin div 60 ) + RateSurcharge.
+    RateCost * (RateMin div 60) + RateSurcharge;
+base_call_cost(RateCost, RateMin, RateSurcharge) ->
+    Args = [maybe_convert_to_units(X) || X <- [RateCost, RateMin, RateSurcharge]],
+    apply(fun base_call_cost/3, Args).
+
+-spec maybe_convert_to_units(units() | dollars()) -> units().
+maybe_convert_to_units(Units) when is_integer(Units) -> Units;
+maybe_convert_to_units(Dollars) -> dollars_to_units(Dollars).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -140,9 +149,11 @@ base_call_cost(RateCost, RateMin, RateSurcharge)
 current_balance(Account) ->
     get_balance(Account, []).
 
--spec previous_balance(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> balance_ret().
+-spec previous_balance(kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> balance_ret().
 previous_balance(Account, Year, Month) ->
-    Options = [{'year', kz_term:to_binary(Year)}, {'month', kz_date:pad_month(Month)}],
+    Options = [{'year', kz_term:to_binary(Year)}
+              ,{'month', kz_date:pad_month(Month)}
+              ],
     get_balance(Account, Options).
 
 -spec get_balance(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().
@@ -192,7 +203,7 @@ maybe_rollup(Account, ViewOptions, Balance) ->
             %%   but is negative make sure the rollup exists
             verify_monthly_rollup_exists(Account, Balance);
         'undefined' ->
-            %% NOTE: if the balance is positive the rollup likey
+            %% NOTE: if the balance is positive the rollup likely
             %%   occurred without issue
             {'ok', Balance};
         _Else ->
@@ -301,7 +312,8 @@ calculate_call(JObj) ->
             Surcharge = get_integer_value(<<"Surcharge">>, CCVs),
             {ChargedSeconds, Cost} = calculate_call(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             Discount = trunc((get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost),
-            lager:info("rate $~p/~ps,"
+            lager:info("rate $~p,"
+                       " increment ~ps,"
                        " minimum ~ps,"
                        " surcharge $~p,"
                        " for ~ps (~ps),"

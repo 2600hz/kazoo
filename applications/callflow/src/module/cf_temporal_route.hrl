@@ -39,11 +39,13 @@
 -define(RULE_DEFAULT_WTIME_START, 0).
 -define(RULE_DEFAULT_WTIME_STOP, ?SECONDS_IN_DAY).
 
+-type interval() :: non_neg_integer().
+
 -record(rule, {id = <<>> :: binary()
               ,enabled :: kz_term:api_boolean()
               ,name = ?RULE_DEFAULT_NAME :: binary()
               ,cycle = ?RULE_DEFAULT_CYCLE :: cycle_type()
-              ,interval = ?RULE_DEFAULT_INTERVAL :: non_neg_integer()
+              ,interval = ?RULE_DEFAULT_INTERVAL :: interval()
               ,days = ?RULE_DEFAULT_DAYS :: [kz_time:day()]
               ,wdays = ?RULE_DEFAULT_WDAYS :: [wday()]
               ,ordinal = ?RULE_DEFAULT_ORDINAL :: ordinal()

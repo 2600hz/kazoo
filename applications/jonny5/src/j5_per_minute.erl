@@ -104,7 +104,7 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
                        ),
             'true';
         'true' ->
-            lager:debug("account ~s would exceed the maxium postpay amount $~w/$~w"
+            lager:debug("account ~s would exceed the maximum postpay amount $~w/$~w"
                        ,[AccountId
                         ,wht_util:units_to_dollars(Balance)
                         ,wht_util:units_to_dollars(MaxPostpay)

@@ -33,16 +33,16 @@
                 "did_us": {
                     "friendly_name": "US DID",
                     "pretty_print": "SS(###) ### - ####",
-                    "regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
+                    "regex": "^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$"
                 },
                 "emergency": {
                     "emergency": true,
                     "friendly_name": "Emergency Dispatcher",
-                    "regex": "^(911)$"
+                    "regex": "^(911|922|933|833|811|711|999)$"
                 },
                 "international": {
                     "friendly_name": "International",
-                    "regex": "^(011\\d*)$|^(00\\d*)$"
+                    "regex": "^\\+([2-9]\\d{7,})$"
                 },
                 "toll_us": {
                     "friendly_name": "US Toll",
@@ -50,7 +50,7 @@
                     "regex": "^\\+1(900\\d{7})$"
                 },
                 "tollfree_us": {
-                    "friendly_name": "US TollFree",
+                    "friendly_name": "US Tollfree",
                     "pretty_print": "SS(###) ### - ####",
                     "regex": "^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})$"
                 },
@@ -78,6 +78,17 @@
             "type": "boolean"
         },
         "e164_converters": {
+            "default": {
+                "^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$": {
+                    "prefix": "+1"
+                },
+                "^011(\\d{5,})$|^00(\\d{5,})$": {
+                    "prefix": "+"
+                },
+                "^[2-9]\\d{7,}$": {
+                    "prefix": "+"
+                }
+            },
             "description": "regular expressions to convert numbers to E164 format",
             "type": "object"
         },
@@ -148,7 +159,7 @@
             "type": "array"
         },
         "reconcile_regex": {
-            "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
+            "default": "^(\\+?1)?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
             "description": "if a number matches this regular expression then it is reconcilable",
             "type": "string"
         },

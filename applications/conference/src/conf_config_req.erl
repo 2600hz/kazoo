@@ -5,29 +5,29 @@
 %%%-----------------------------------------------------------------------------
 -module(conf_config_req).
 
--export([handle_req/2]).
+-export([handle_req/2
+        ,cache_profile/1
+        ]).
 
 -include("conference.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
+-spec cache_profile(kapps_conference:conference()) -> 'ok'.
+cache_profile(Conference) ->
+    {ProfileName, Profile} = kapps_conference:profile(Conference),
+    lager:debug("caching profile ~s: ~p", [ProfileName, Profile]),
+    kz_cache:store_local(?CACHE_NAME, {'profile', ProfileName}, fix_profile(Conference, Profile)).
+
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_req(JObj, Props) ->
+handle_req(JObj, _Props) ->
     'true' = kapi_conference:config_req_v(JObj),
     Request = kz_json:get_ne_binary_value(<<"Request">>, JObj),
-
-    case props:get_value('server', Props) of
-        'undefined' ->
-            lager:debug("'~s' profile request received, no participant involved here", [Request]),
-            handle_request(Request, JObj, create_conference(JObj));
-        Server ->
-            lager:debug("'~s' profile request received, asking participant ~p", [Request, Server]),
-            {'ok', Conference} = conf_participant:conference(Server),
-            handle_request(Request, JObj, Conference)
-    end.
+    lager:debug("'~s' profile request received", [Request]),
+    handle_request(Request, JObj, create_conference(JObj)).
 
 -spec create_conference(kz_json:object()) -> kapps_conference:conference().
 create_conference(JObj) ->
-    Conference = kapps_conference:new(),
+    Conference = kapps_conference:from_json(JObj),
     ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj),
     case binary:split(ProfileName, <<"_">>) of
         [ConferenceId, AccountId] ->
@@ -50,11 +50,11 @@ handle_request(<<"Controls">>, JObj, Conference) ->
 
 -spec handle_profile_request(kz_json:object(), kapps_conference:conference()) -> 'ok'.
 handle_profile_request(JObj, Conference) ->
-    {Name, Profile} = kapps_conference:profile(Conference),
-    ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj, Name),
+    ProfileName = requested_profile_name(JObj),
+    Profile = lookup_profile(ProfileName, Conference),
 
     ServerId = kz_api:server_id(JObj),
-    Resp = [{<<"Profiles">>, kz_json:from_list([{ProfileName, fix_profile(Conference, Profile)}])}
+    Resp = [{<<"Profiles">>, kz_json:from_list([{ProfileName, Profile}])}
            ,{<<"Advertise">>, advertise(ProfileName)}
            ,{<<"Chat-Permissions">>, chat_permissions(ProfileName)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
@@ -63,6 +63,24 @@ handle_profile_request(JObj, Conference) ->
     lager:debug("returning conference profile ~s", [ProfileName]),
     lager:debug("~s", [kz_json:encode(kz_json:from_list(Resp))]),
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
+
+-spec lookup_profile(kz_term:ne_binary(), kapps_conference:conferece()) -> kz_json:object().
+lookup_profile(ProfileName, Conference) ->
+    lager:info("looking up profile ~s", [ProfileName]),
+    case kz_cache:peek_local(?CACHE_NAME, {'profile', ProfileName}) of
+        {'error', 'not_found'} ->
+            lager:info("cached version not found, building"),
+            build_profile(Conference);
+        {'ok', Profile} ->
+            lager:info("using cached version ~p", [Profile]),
+            Profile
+    end.
+
+-spec build_profile(kapps_conference:conferece()) -> kz_json:object().
+build_profile(Conference) ->
+    {_Name, Profile} = kapps_conference:profile(Conference),
+    lager:info("built profile ~s: ~p", [_Name, Profile]),
+    fix_profile(Conference, Profile).
 
 -spec requested_profile_name(kz_json:object()) -> kz_term:ne_binary().
 requested_profile_name(JObj) ->
@@ -114,6 +132,7 @@ update_prompt(Key, Value, Acc) ->
 -spec update_prompt(kz_json:key(), kz_json:key(), kz_json:json_string(), update_acc()) -> update_acc().
 update_prompt(<<"dnuos-", _/binary>>, _Key, <<>>, Acc) -> Acc;
 update_prompt(<<"dnuos-", _/binary>>, _Key, <<"tone_stream://", _/binary>>, Acc) -> Acc;
+update_prompt(<<"dnuos-", _/binary>>, _Key, <<"silence_stream://", _/binary>>, Acc) -> Acc;
 update_prompt(<<"dnuos-", _/binary>>, _Key, <<"$${", _/binary>>, Acc) -> Acc;
 update_prompt(<<"dnuos-", _/binary>>, Key, PromptId, {Conference, Profile}) ->
     AccountId = prompt_account_id(Conference),
@@ -180,12 +199,16 @@ max_participants(Conference) ->
 
 -spec max_members_sound(kapps_conference:conference()) -> kz_term:api_binary().
 max_members_sound(Conference) ->
+    AccountId = kapps_conference:account_id(Conference),
     case kapps_conference:max_members_media(Conference) of
+        'undefined' when 'undefined' =:= AccountId ->
+            lager:debug("getting system max-members prompt"),
+            kz_media_util:get_prompt(?DEFAULT_MAX_MEMBERS_MEDIA);
         'undefined' ->
-            lager:debug("getting max members prompt from account"),
+            lager:debug("getting max members prompt from account ~s", [AccountId]),
             kz_media_util:get_account_prompt(?DEFAULT_MAX_MEMBERS_MEDIA
                                             ,'undefined'
-                                            ,kapps_conference:account_id(Conference)
+                                            ,AccountId
                                             );
         Media ->
             lager:debug("conference has max-members-sound: ~s", [Media]),
@@ -212,7 +235,7 @@ handle_controls_request(JObj, Conference) ->
 requested_controls_name(JObj) ->
     kz_json:get_ne_value(<<"Controls">>, JObj).
 
--spec controls(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+-spec controls(kz_term:ne_binary(), kz_json:objects()) -> kz_json:object().
 controls(ControlsName, Controls) ->
     kz_json:from_list([{ControlsName, Controls}]).
 

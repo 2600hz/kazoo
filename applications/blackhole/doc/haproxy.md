@@ -1,9 +1,8 @@
+# Blackhole HAProxy Configuration
 
-# Blackhole
+## Configuration for API and Websockets
 
-## configuring haproxy
-
-combining a http listener for both api and websockets
+Combining a HTTP listener for both API and Websockets:
 
 ```
 listen kazoo-crossbar-https
@@ -14,9 +13,6 @@ listen kazoo-crossbar-https
         acl is_blackhole path_beg /socket.io/
         use_backend kapps-blackhole if is_blackhole
         default_backend kapps-crossbar
-```
-
-```
 backend kapps-blackhole
   balance source
     mode http
@@ -33,20 +29,17 @@ backend kapps-blackhole
 
 ```
 
-## configuring monster-ui
+## Configuring Monster UI
 
-edit js/config.js
+Edit `src/js/config.js` Monster UI file:
 
-```
+
+```javascript hl_lines="4 5"
 define(function(require){
-
     return {
         api: {
-            // The default API URL defines what API is used to log in to your back-end
-            default: 'https://api.mydomain.com:8443/v2/'
-
-            // If you want to use WebSockets you need to turn blackhole on in the back-end and then put the URL in the 'socket' key below
-           , socket: 'https://api.mydomain.com:8443'
+            default: 'https://api.mydomain.com:8443/v2/',
+            socket: 'https://api.mydomain.com:8443'
         },
         ...
 ```

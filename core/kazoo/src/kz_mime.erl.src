@@ -9,6 +9,7 @@
 -export([from_extension/1]).
 -export([from_filename/1]).
 -export([to_filename/1]).
+-export([normalize_content_type/1]).
 
 %%------------------------------------------------------------------------------
 %% @doc Transform a mimetype to an extension
@@ -57,6 +58,37 @@ from_filename(Path) ->
 -spec to_filename(binary()) -> binary().
 to_filename(CT) ->
     list_to_binary([kz_binary:rand_hex(16), ".", hd(to_extensions(CT))]).
+
+
+%%------------------------------------------------------------------------------
+%% @doc normalize the content types.
+%%
+%% Example:
+%%
+%% ```
+%% 1> kz_mime:normalize_content_type(<<"image/tiff">>).
+%% <<"image/tiff">>
+%% '''
+%% @todo make this work for all the content typs in applications/crossbar/src/crossbar_types.hrl
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_content_type(kz_term:text()) -> kz_term:ne_binary().
+normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/x-tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/x-tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"application/tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/x-tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/x-tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"application/pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"application/x-pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<_/binary>> = Else) -> Else;
+normalize_content_type(CT) ->
+    normalize_content_type(kz_term:to_binary(CT)).
 
 %%------------------------------------------------------------------------------
 %% @doc Return the mime type for any file by looking at its extension.

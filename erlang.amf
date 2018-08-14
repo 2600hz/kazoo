@@ -1,0 +1,16 @@
+MODE erlang
+
+ASPELL >=0.60.7
+
+MAGIC /<noregex>/erl/escript
+MAGIC /<noregex>/hrl
+
+DESCRIPTION mode for checking Erlang code (.erl/.escript/.hrl) comments and string/binary/atom literals
+
+FILTER url
+FILTER context
+OPTION clear-context-delimiters
+OPTION add-context-delimiters <<" ">>
+OPTION add-context-delimiters " "
+OPTION add-context-delimiters ' '
+OPTION add-context-delimiters % \0

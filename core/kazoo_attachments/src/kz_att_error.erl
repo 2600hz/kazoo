@@ -17,8 +17,9 @@
 -export([resp_body/1, set_resp_body/2]).
 -export([resp_code/1, set_resp_code/2]).
 -export([resp_headers/1, set_resp_headers/2]).
--export([attachment_content/1, set_attachment_content/2]).
 -export([options/1, set_options/2]).
+
+-export([to_json/1]).
 
 -type req_url() :: kz_term:ne_binary().
 -type resp_code() :: pos_integer() | atom().
@@ -30,7 +31,6 @@
 -type extended_error() :: #{'db_name' => gen_attachment:db_name()
                            ,'document_id' => gen_attachment:doc_id()
                            ,'attachment_name' => gen_attachment:att_name()
-                           ,'attachment_content' => gen_attachment:contents() | 'undefined'
                            ,'handler_props' => gen_attachment:handler_props()
                            ,'req_url' => req_url()
                            ,'resp_code' => resp_code()
@@ -79,12 +79,11 @@ fetch_routines(HandlerProps, DbName, DocumentId, AttachmentName) ->
                   ,gen_attachment:contents()
                   ,gen_attachment:options()
                   ) -> update_routines().
-put_routines(Settings, DbName, DocumentId, AttachmentName, Contents, Options) ->
+put_routines(Settings, DbName, DocumentId, AttachmentName, _Contents, Options) ->
     [{fun set_handler_props/2, Settings}
     ,{fun set_db_name/2, DbName}
     ,{fun set_document_id/2, DocumentId}
     ,{fun set_attachment_name/2, AttachmentName}
-    ,{fun set_attachment_content/2, Contents}
     ,{fun set_options/2, Options}
     ].
 
@@ -124,7 +123,7 @@ set_handler_props(ExtendedError, HandlerProps) ->
 req_url(#{'req_url' := Url}) ->
     Url.
 
--spec set_req_url(extended_error(), req_url()) -> req_url().
+-spec set_req_url(extended_error(), req_url()) -> extended_error().
 set_req_url(ExtendedError, Url) ->
     ExtendedError#{'req_url' => Url}.
 
@@ -150,15 +149,7 @@ resp_headers(#{'resp_headers' := Headers}) ->
 
 -spec set_resp_headers(extended_error(), resp_headers()) -> extended_error().
 set_resp_headers(ExtendedError, Headers) ->
-    ExtendedError#{'resp_headers' => Headers}.
-
--spec attachment_content(extended_error()) -> gen_attachment:contents().
-attachment_content(#{'attachment_content' := Contents}) ->
-    Contents.
-
--spec set_attachment_content(extended_error(), gen_attachment:contents()) -> extended_error().
-set_attachment_content(ExtendedError, Contents) ->
-    ExtendedError#{'attachment_content' => Contents}.
+    ExtendedError#{'resp_headers' => [{kz_term:to_binary(K), kz_term:to_binary(V)}|| {K,V} <- Headers]}.
 
 -spec options(extended_error()) -> gen_attachment:options().
 options(#{'options' := Options}) ->
@@ -167,6 +158,10 @@ options(#{'options' := Options}) ->
 -spec set_options(extended_error(), gen_attachment:options()) -> extended_error().
 set_options(ExtendedError, Options) ->
     ExtendedError#{'options' => Options}.
+
+-spec to_json(extended_error()) -> kz_json:object().
+to_json(ExtendedError) ->
+    kz_json:from_map(ExtendedError).
 
 %%%=============================================================================
 %%% Internal functions

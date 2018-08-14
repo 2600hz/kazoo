@@ -203,11 +203,12 @@ download_file(URL, Authorization) ->
         {'ok', 200, RespHeaders, RespBody} ->
             CT = kz_term:to_binary(props:get_value("content-type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
-            FileName = <<"/tmp/fax_printer_"
-                         ,(kz_term:to_binary(kz_time:now_s()))/binary
-                         ,"."
-                         ,Ext/binary
-                       >>,
+            FileName = list_to_binary(["/tmp/fax_printer_"
+                                      ,kz_term:to_binary(kz_time:now_s())
+                                      ,"."
+                                      ,Ext
+                                      ]),
+
             case file:write_file(FileName, RespBody) of
                 'ok' -> {'ok', CT, RespBody};
                 {'error', _}=Error ->
@@ -236,7 +237,7 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
         {'ok', Authorization} ->
             case download_file(FileURL,Authorization) of
                 {'ok', CT, FileContents} ->
-                    case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+                    case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, JObj, FileContents, CT) of
                         {'ok', _} -> update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>);
                         {'error', E} ->
                             lager:debug("error saving attachment for JobId ~s : ~p",[JobId, E])

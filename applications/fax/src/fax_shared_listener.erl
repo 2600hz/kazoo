@@ -57,12 +57,6 @@
                     ,{{'fax_request', 'new_request'}
                      ,[{<<"dialplan">>, <<"fax_req">>}]
                      }
-                    ,{{'fax_jobs', 'handle_start_account'}
-                     ,[{<<"start">>, <<"account">>}]
-                     }
-                    ,{{'fax_worker', 'handle_start_job'}
-                     ,[{<<"start">>, <<"job">>}]
-                     }
                     ,{{'fax_xmpp', 'handle_printer_start'}
                      ,[{<<"xmpp_event">>, <<"start">>}]
                      }
@@ -76,7 +70,6 @@
                   ,{'xmpp', [{'restrict_to', ['start']}, 'federate']}
                   ,{'conf',?FAXBOX_RESTRICT}
                   ,{'fax', [{'restrict_to', ['req']}]}
-                  ,{'fax', [{'restrict_to', ['start']}, 'federate']}
                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"fax_shared_listener">>).

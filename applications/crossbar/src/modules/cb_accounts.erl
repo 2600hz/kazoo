@@ -416,7 +416,7 @@ create_apps_store_doc(AccountId) ->
 validate_move(<<"superduper_admin">>, Context, _, _) ->
     lager:debug("using superduper_admin flag to allow move account"),
     AuthId = kz_json:get_value(<<"account_id">>, cb_context:auth_doc(Context)),
-    kz_util:is_system_admin(AuthId);
+    kzd_accounts:is_superduper_admin(AuthId);
 validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
     lager:debug("using tree to allow move account"),
     AuthId = kz_doc:account_id(cb_context:auth_doc(Context)),
@@ -666,7 +666,7 @@ validate_delete_request(AccountId, Context) ->
             case knm_port_request:account_has_active_port(AccountId) of
                 'false' -> cb_context:set_resp_status(Context, 'success');
                 'true' ->
-                    lager:debug("pervent deleting account ~s due to has active port request", [AccountId]),
+                    lager:debug("prevent deleting account ~s due to has active port request", [AccountId]),
                     Msg = kz_json:from_list(
                             [{<<"message">>, <<"Account has active port request">>}
                             ]),
@@ -923,12 +923,12 @@ load_paginated_descendants(AccountId, Context) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @doc Load a summary of the siblngs of this account
+%% @doc Load a summary of the siblings of this account
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
-    case kz_util:is_system_admin(cb_context:auth_account_id(Context))
+    case kzd_accounts:is_superduper_admin(cb_context:auth_account_id(Context))
         orelse
         (AccountId =/= cb_context:auth_account_id(Context)
          andalso kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_sibling_listing">>, 'true')
@@ -1422,7 +1422,7 @@ maybe_is_unique_account_name(AccountId, Name) ->
 
 -spec is_unique_account_name(kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
 is_unique_account_name(AccountId, Name) ->
-    AccountName = kz_util:normalize_account_name(Name),
+    AccountName = kzd_accounts:normalize_name(Name),
     ViewOptions = [{'key', AccountName}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
         {'ok', []} -> 'true';
@@ -1524,7 +1524,7 @@ delete_remove_db(Context) ->
                       delete_mod_dbs(Context);
                   {'error', 'not_found'} -> 'true';
                   {'error', _R} ->
-                      lager:debug("failed to open account defintion ~s: ~p", [cb_context:account_id(Context), _R]),
+                      lager:debug("failed to open account definition ~s: ~p", [cb_context:account_id(Context), _R]),
                       'false'
               end,
     case Removed of

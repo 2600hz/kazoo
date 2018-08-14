@@ -9,6 +9,7 @@
 -export([candidate_rates/1, candidate_rates/2, candidate_rates/3
         ,matching_rates/2
         ,sort_rates/1
+        ,sort_rates_by_cost/1, sort_rates_by_weight/1
         ,account_ratedeck/1, account_ratedeck/2
         ]).
 
@@ -20,7 +21,7 @@
 
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 
--type candidate_rates_return() :: {'ok', kzd_rate:docs()} |
+-type candidate_rates_return() :: {'ok', kzd_rates:docs()} |
                                   {'error', 'did_to_short'} |
                                   kz_datamgr:data_error().
 
@@ -91,9 +92,9 @@ fetch_candidate_rates(E164, AccountId, RatedeckId, Keys) ->
         {'error', _}=E -> E;
         {'ok', ViewRows} ->
             {'ok'
-            ,[kzd_rate:set_ratedeck(kz_json:get_json_value(<<"doc">>, ViewRow)
-                                   ,kzd_ratedeck:format_ratedeck_id(RatedeckDb)
-                                   )
+            ,[kzd_rates:set_ratedeck_id(kz_json:get_json_value(<<"doc">>, ViewRow)
+                                       ,kzd_ratedeck:format_ratedeck_id(RatedeckDb)
+                                       )
               || ViewRow <- ViewRows
              ]
             }
@@ -182,8 +183,8 @@ build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
     build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_term:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
 build_keys(<<>>, _, Acc) -> Acc.
 
--spec matching_rates(kzd_rate:docs(), kapi_rate:req()) ->
-                            kzd_rate:docs().
+-spec matching_rates(kzd_rates:docs(), kapi_rate:req()) ->
+                            kzd_rates:docs().
 matching_rates(Rates, RateReq) ->
     FilterList = hotornot_config:filter_list(),
     lists:foldl(fun(Filter, Acc) ->
@@ -193,21 +194,29 @@ matching_rates(Rates, RateReq) ->
                ,FilterList
                ).
 
--spec sort_rates(kzd_rate:docs()) -> kzd_rate:docs().
+-spec sort_rates(kzd_rates:docs()) -> kzd_rates:docs().
 sort_rates(Rates) ->
     case hotornot_config:should_sort_by_weight() of
-        'true' -> lists:usort(fun sort_rate_by_weight/2, Rates);
-        'false' -> lists:usort(fun sort_rate_by_cost/2, Rates)
+        'true' -> sort_rates_by_weight(Rates);
+        'false' -> sort_rates_by_cost(Rates)
     end.
+
+-spec sort_rates_by_weight(kzd_rates:docs()) -> kzd_rates:docs().
+sort_rates_by_weight(Rates) ->
+    lists:usort(fun sort_rate_by_weight/2, Rates).
+
+-spec sort_rates_by_cost(kzd_rates:docs()) -> kzd_rates:docs().
+sort_rates_by_cost(Rates) ->
+    lists:usort(fun sort_rate_by_cost/2, Rates).
 
 %% Private helper functions
 
--spec matching_rate(kzd_rate:doc(), kz_term:ne_binary(), kapi_rate:req()) -> boolean().
+-spec matching_rate(kzd_rates:doc(), kz_term:ne_binary(), kapi_rate:req()) -> boolean().
 matching_rate(Rate, <<"direction">>, RateReq) ->
-    case kz_json:get_value(<<"Direction">>, RateReq) of
+    case kz_json:get_ne_binary_value(<<"Direction">>, RateReq) of
         'undefined' -> 'true';
         Direction ->
-            lists:member(Direction, kzd_rate:direction(Rate))
+            lists:member(Direction, kzd_rates:direction(Rate))
     end;
 
 matching_rate(Rate, <<"route_options">>, RateReq) ->
@@ -217,52 +226,58 @@ matching_rate(Rate, <<"route_options">>, RateReq) ->
                        'undefined' -> [];
                        AccountId -> maybe_add_resource_flag(RateReq, AccountId)
                    end,
-    options_match(kzd_rate:options(Rate), RouteOptions++RouteFlags++ResourceFlag);
+    options_match(kzd_rates:options(Rate), RouteOptions++RouteFlags++ResourceFlag);
 
 matching_rate(Rate, <<"routes">>, RateReq) ->
     E164 = knm_converters:normalize(kz_json:get_value(<<"To-DID">>, RateReq)),
     lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
-             ,kzd_rate:routes(Rate, [])
+             ,kzd_rates:routes(Rate, [])
+             );
+
+matching_rate(Rate, <<"caller_id_numbers">>, RateReq) ->
+    E164 = knm_converters:normalize(kz_json:get_value(<<"From-DID">>, RateReq)),
+    lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
+             ,kzd_rates:caller_id_numbers(Rate, [<<".">>])
              );
 
 matching_rate(Rate, <<"ratedeck_id">>, RateReq) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),
     AccountRatedeck = kz_service_ratedeck_name:get_ratedeck_name(AccountId),
-    RatedeckName = kzd_rate:ratedeck(Rate),
+    RatedeckName = kzd_rates:ratedeck_id(Rate),
     AccountRatedeck =:= RatedeckName;
 
 matching_rate(Rate, <<"reseller">>, RateReq) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),
     ResellerId = kz_services:find_reseller_id(AccountId),
-    RateAccountId = kzd_rate:account_id(Rate),
+    RateAccountId = kzd_rates:account_id(Rate),
     RateAccountId =:= ResellerId;
 
 matching_rate(Rate, <<"version">>, _RateReq) ->
-    kzd_rate:version(Rate) =:= hotornot_config:rate_version();
+    kzd_rates:rate_version(Rate) =:= hotornot_config:rate_version();
 
 matching_rate(_Rate, _FilterType, _RateReq) -> 'false'.
 
 %% Return true if RateA has lower weight than RateB
--spec sort_rate_by_weight(kzd_rate:doc(), kzd_rate:doc()) -> boolean().
+-spec sort_rate_by_weight(kzd_rates:doc(), kzd_rates:doc()) -> boolean().
 sort_rate_by_weight(RateA, RateB) ->
-    PrefixA = byte_size(kzd_rate:prefix(RateA)),
-    PrefixB = byte_size(kzd_rate:prefix(RateB)),
+    PrefixA = byte_size(kz_term:to_binary(kzd_rates:prefix(RateA))),
+    PrefixB = byte_size(kz_term:to_binary(kzd_rates:prefix(RateB))),
 
     case PrefixA =:= PrefixB of
         'true' ->
-            kzd_rate:weight(RateA, 100) < kzd_rate:weight(RateB, 100);
+            kzd_rates:weight(RateA, 100) < kzd_rates:weight(RateB, 100);
         'false' ->
             PrefixA > PrefixB
     end.
 
--spec sort_rate_by_cost(kzd_rate:doc(), kzd_rate:doc()) -> boolean().
+-spec sort_rate_by_cost(kzd_rates:doc(), kzd_rates:doc()) -> boolean().
 sort_rate_by_cost(RateA, RateB) ->
-    PrefixA = byte_size(kzd_rate:prefix(RateA)),
-    PrefixB = byte_size(kzd_rate:prefix(RateB)),
+    PrefixA = byte_size(kz_term:to_binary(kzd_rates:prefix(RateA))),
+    PrefixB = byte_size(kz_term:to_binary(kzd_rates:prefix(RateB))),
 
     case PrefixA =:= PrefixB of
         'true' ->
-            kzd_rate:rate_cost(RateA, 0.0) > kzd_rate:rate_cost(RateB, 0.0);
+            kzd_rates:rate_cost(RateA, 0.0) > kzd_rates:rate_cost(RateB, 0.0);
         'false' ->
             PrefixA > PrefixB
     end.

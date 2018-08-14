@@ -103,7 +103,7 @@ content_types_provided(Context, Id, ?ICON) ->
                 'undefined' -> Context1;
                 CT ->
                     [Type, SubType] = binary:split(CT, <<"/">>),
-                    lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
+                    lager:debug("found attachment of content type: ~s/~s~n", [Type, SubType]),
                     cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
         _ -> Context1
@@ -267,7 +267,7 @@ validate_req(Context, ?HTTP_GET) ->
 validate_blacklist(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
-    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
+    case kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId) of
         'false' -> cb_context:add_system_error('forbidden', Context);
         'true' -> load_apps_store(Context)
     end.
@@ -508,11 +508,10 @@ update(Context, Id) ->
             Data = cb_context:req_data(Context),
             AppName = kz_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
             UpdatedApps =
-                kz_json:set_value(
-                  Id
+                kz_json:set_value(Id
                                  ,kz_json:set_value(<<"name">>, AppName, Data)
                                  ,Apps
-                 ),
+                                 ),
             UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc)
     end.

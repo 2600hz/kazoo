@@ -1,6 +1,6 @@
-### Dialplans
+# Dialplans
 
-#### About Dialplans
+## About Dialplans
 
 #### Schema
 
@@ -15,7 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/dialplans
 

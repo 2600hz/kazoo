@@ -152,7 +152,7 @@ handle_cast({'update_connection', #data_connection{}=Connection}, State) ->
     'true' = ets:insert(?MODULE, Connection),
     {'noreply', State};
 handle_cast(_Msg, State) ->
-    lager:info("unhandle connection"),
+    lager:info("unhandled connection"),
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------

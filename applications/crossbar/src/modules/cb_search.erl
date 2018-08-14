@@ -85,7 +85,7 @@ authorize(Context, ?MULTI) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /skels mights load a list of skel objects
+%% /skels might load a list of skel objects
 %% /skels/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -309,6 +309,6 @@ get_end_key(_, Type, Value) ->
 %%------------------------------------------------------------------------------
 -spec next_binary_key(binary()) -> kz_term:ne_binary().
 next_binary_key(<<>>) ->
-    <<"\ufff0">>;
+    <<"Z">>;
 next_binary_key(Bin) ->
-    <<Bin/binary, "\ufff0">>.
+    <<Bin/binary, "Z">>.

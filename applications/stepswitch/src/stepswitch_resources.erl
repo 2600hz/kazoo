@@ -29,6 +29,7 @@
         ,get_resrc_gateways/1
         ,get_resrc_is_emergency/1
         ,get_resrc_require_flags/1
+        ,get_resrc_ignore_flags/1
         ,get_resrc_global/1
         ,get_resrc_format_from_uri/1
         ,get_resrc_from_uri_realm/1
@@ -56,6 +57,7 @@
         ,set_resrc_gateways/2
         ,set_resrc_is_emergency/2
         ,set_resrc_require_flags/2
+        ,set_resrc_ignore_flags/2
         ,set_resrc_global/2
         ,set_resrc_format_from_uri/2
         ,set_resrc_from_uri_realm/2
@@ -133,6 +135,7 @@
                ,gateways = [] :: list()
                ,is_emergency = 'false' :: boolean()
                ,require_flags = 'false' :: boolean()
+               ,ignore_flags = 'false' :: boolean()
                ,global = 'true' :: boolean()
                ,format_from_uri = 'false' :: boolean()
                ,from_uri_realm :: kz_term:api_binary()
@@ -195,6 +198,7 @@ resource_to_props(#resrc{}=Resource) ->
       ,{<<"From-URI-Realm">>, Resource#resrc.from_uri_realm}
       ,{<<"From-Account-Realm">>, Resource#resrc.from_account_realm}
       ,{<<"Require-Flags">>, Resource#resrc.require_flags}
+      ,{<<"Ignore-Flags">>, Resource#resrc.ignore_flags}
       ,{<<"Is-Emergency">>, Resource#resrc.is_emergency}
       ,{<<"T38">>, Resource#resrc.fax_option}
       ,{<<"Bypass-Media">>, Resource#resrc.bypass_media}
@@ -234,7 +238,7 @@ maybe_get_endpoints(Number, OffnetJObj) ->
 -spec maybe_get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
-    case kz_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
+    case kzd_accounts:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
                       ,[AccountId, HuntAccount]
@@ -431,6 +435,9 @@ resource_has_flags(Flags, Resource) ->
     lists:all(HasFlag, Flags).
 
 -spec resource_has_flag(kz_term:ne_binary(), resource()) -> boolean().
+resource_has_flag(_, #resrc{ignore_flags='true', id=_Id}) ->
+    lager:debug("resource ~s is used regardless of flags", [_Id]),
+    'true';
 resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
     case kz_term:is_empty(Flag)
         orelse lists:member(Flag, ResourceFlags)
@@ -458,7 +465,7 @@ resources_to_endpoints(Resources, Number, OffnetJObj) ->
             RuleResources = maps:get('no_classification', ResourceMap, []),
             build_endpoints_from_resources(RuleResources, Number, OffnetJObj);
         ClassifiedResources ->
-            lager:debug("found resources to satisy classifier ~s (number ~s), building against classification rules..."
+            lager:debug("found resources to satisfy classifier ~s (number ~s), building against classification rules..."
                        ,[Classification, Number]
                        ),
             FilteredClassifiedResources = [Resource || Resource <- ClassifiedResources,
@@ -698,7 +705,7 @@ gateway_to_endpoint(DestinationNumber
         ])).
 
 
--spec sip_invite_parameters(gateway(), kz_json:object()) -> kz_term:ne_binaries().
+-spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
 sip_invite_parameters(Gateway, OffnetJObj) ->
     static_sip_invite_parameters(Gateway)
         ++ dynamic_sip_invite_parameters(Gateway, OffnetJObj).
@@ -708,7 +715,8 @@ static_sip_invite_parameters(#gateway{invite_parameters='undefined'}) -> [];
 static_sip_invite_parameters(#gateway{invite_parameters=Parameters}) ->
     kz_json:get_list_value(<<"static">>, Parameters, []).
 
--spec dynamic_sip_invite_parameters(gateway(), kz_json:object()) -> kz_term:ne_binaries().
+-spec dynamic_sip_invite_parameters(gateway(), kapi_offnet_resource:req()) ->
+                                           kz_term:ne_binaries().
 dynamic_sip_invite_parameters(#gateway{invite_parameters='undefined'}, _) -> [];
 dynamic_sip_invite_parameters(#gateway{invite_parameters=Parameters}, OffnetJObj) ->
     CCVs = kz_json:normalize(kapi_offnet_resource:requestor_custom_channel_vars(OffnetJObj, kz_json:new())),
@@ -733,11 +741,11 @@ dynamic_sip_invite_parameters([JObj|Keys], CCVs, CSHs, Parameters) ->
     'true' = kz_json:is_json_object(JObj),
     Key = kz_json:get_ne_value(<<"key">>, JObj),
     Tag = kz_json:get_ne_value(<<"tag">>, JObj),
-    Seperator = kz_json:get_value(<<"seperator">>, JObj, <<"=">>),
+    Separator = kz_json:get_first_defined([<<"separator">>, <<"seperator">>], JObj, <<"=">>),
     case dynamic_sip_invite_value(Key, CCVs, CSHs) of
         'undefined' -> dynamic_sip_invite_parameters(Keys, CCVs, CSHs, Parameters);
         Value ->
-            Parameter = erlang:iolist_to_binary([Tag, Seperator, Value]),
+            Parameter = erlang:iolist_to_binary([Tag, Separator, Value]),
             lager:debug("adding dynamic invite parameter ~s", [Parameter]),
             dynamic_sip_invite_parameters(Keys, CCVs, CSHs, [Parameter|Parameters])
     end.
@@ -1048,6 +1056,7 @@ resource_from_jobj(JObj) ->
                      ,name=kz_json:get_value(<<"name">>, JObj)
                      ,flags=kz_json:get_value(<<"flags">>, JObj, [])
                      ,require_flags=kz_json:is_true(<<"require_flags">>, JObj)
+                     ,ignore_flags=kz_json:is_true(<<"ignore_flags">>, JObj)
                      ,format_from_uri=kz_json:is_true(<<"format_from_uri">>, JObj)
                      ,from_uri_realm=kz_json:get_ne_value(<<"from_uri_realm">>, JObj)
                      ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, JObj)
@@ -1263,7 +1272,6 @@ gateway_dialstring(#gateway{route=Route}, _) ->
     lager:debug("using pre-configured gateway route ~s", [Route]),
     Route.
 
-
 -spec get_resrc_id(resource()) -> kz_term:api_binary().
 get_resrc_id(#resrc{id=Id}) -> Id.
 
@@ -1303,6 +1311,9 @@ get_resrc_is_emergency(#resrc{is_emergency=IsEmergency}) -> IsEmergency.
 -spec get_resrc_require_flags(resource()) -> boolean().
 get_resrc_require_flags(#resrc{require_flags=RequireFlags}) -> RequireFlags.
 
+-spec get_resrc_ignore_flags(resource()) -> boolean().
+get_resrc_ignore_flags(#resrc{ignore_flags=IgnoreFlags}) -> IgnoreFlags.
+
 -spec get_resrc_global(resource()) -> boolean().
 get_resrc_global(#resrc{global=Global}) -> Global.
 
@@ -1338,7 +1349,6 @@ get_resrc_classifier(#resrc{classifier=Classifier}) -> Classifier.
 
 -spec get_resrc_classifier_enable(resource()) -> boolean().
 get_resrc_classifier_enable(#resrc{classifier_enable=Enabled}) -> Enabled.
-
 
 -spec set_resrc_id(resource(), kz_term:api_binary()) -> resource().
 set_resrc_id(Resource, Id) -> Resource#resrc{id=Id}.
@@ -1378,6 +1388,9 @@ set_resrc_is_emergency(Resource, IsEmergency) -> Resource#resrc{is_emergency=IsE
 
 -spec set_resrc_require_flags(resource(), boolean()) -> resource().
 set_resrc_require_flags(Resource, RequireFlags) -> Resource#resrc{require_flags=RequireFlags}.
+
+-spec set_resrc_ignore_flags(resource(), boolean()) -> resource().
+set_resrc_ignore_flags(Resource, IgnoreFlags) -> Resource#resrc{ignore_flags=IgnoreFlags}.
 
 -spec set_resrc_global(resource(), boolean()) -> resource().
 set_resrc_global(Resource, Global) -> Resource#resrc{global=Global}.

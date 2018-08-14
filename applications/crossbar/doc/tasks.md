@@ -1,8 +1,8 @@
-### Background Jobs
+# Tasks - Background Jobs
 
 Kazoo Tasks enables listing, adding, starting & removing generic background tasks.
 
-#### Schema
+## Schema
 
 Input data to go through as part of a background task
 
@@ -10,21 +10,21 @@ Input data to go through as part of a background task
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`file_name` | Human-readable name of a task's input file | `string()` |   | `false` |  
-`records` | List the rows of input data | `array(object())` |   | `false` |  
+`file_name` | Human-readable name of a task's input file | `string()` |   | `false` |
+`records` | List the rows of input data | `array(object())` |   | `false` |
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/tasks
-
-##### No such category and/or action
 
 ```shell
 curl -v -X GET \
     http://{SERVER}:8000/v2/tasks?category=services&action=blipblop
 ```
+
+**Response Error: No such category and/or action**
 
 ```json
 {
@@ -39,7 +39,7 @@ curl -v -X GET \
 }
 ```
 
-##### Success
+**Success Response**
 
 ```shell
 curl -v -X GET \
@@ -64,7 +64,7 @@ curl -v -X GET \
 ```
 
 
-#### List all tasks
+## List all tasks
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks
 
@@ -111,16 +111,14 @@ curl -v -X GET \
 }
 ```
 
-#### Add a new system task
-
-
-#### Add a new task
+## Add a new task
 
 > PUT /v2/accounts/{ACCOUNT_ID}/tasks
 
-Note: There are tasks that run against system resources, only for use by the superduper admin (like rate uploading), which can omit `/accounts/{ACCOUNT_ID}` from the URI. Leaving the account in the URI should have no impact.
+!!! note
+    There are tasks that run against system resources, only for use by the super duper admin (like rate uploading), which can omit `/accounts/{ACCOUNT_ID}` from the URI. Leaving the account in the URI should have no impact.
 
-With CSV input data:
+* With CSV input data:
 
 ```shell
 curl -v -X PUT \
@@ -130,7 +128,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}&file_name={FILE_NAME}
 ```
 
-With JSON input data:
+* With JSON input data:
 
 ```shell
 curl -v -X PUT \
@@ -139,7 +137,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 
-Without input data:
+* Without input data:
 
 ```shell
 curl -v -X PUT \
@@ -147,7 +145,9 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 
-##### Success
+### Responses
+
+**Success**
 
 ```json
 {
@@ -159,8 +159,8 @@ curl -v -X PUT \
             "action": "{ACTION}",
             "category": "{CATEGORY}",
             "id": "edfb48ea9617fa6832e43ce676c53f",
-            "submit_timestamp": 63632025993
-            "total_count": {RECORDS_COUNT}
+            "submit_timestamp": 63632025993,
+            "total_count": "{RECORDS_COUNT}"
         }
     },
     "request_id": "{REQUEST_ID}",
@@ -169,7 +169,7 @@ curl -v -X PUT \
 }
 ```
 
-##### Unknown category
+**Unknown category**
 
 ```json
 {
@@ -184,7 +184,7 @@ curl -v -X PUT \
 }
 ```
 
-##### Unknown action
+**Unknown action**
 
 ```json
 {
@@ -199,7 +199,7 @@ curl -v -X PUT \
 }
 ```
 
-##### Bad CSV format
+**Bad CSV format**
 
 ```json
 {
@@ -218,7 +218,7 @@ curl -v -X PUT \
 }
 ```
 
-##### Bad input field name
+**Bad input field name**
 
 ```json
 {
@@ -239,7 +239,7 @@ curl -v -X PUT \
 }
 ```
 
-##### Missing mandatory fields
+**Missing mandatory fields**
 
 ```json
 {
@@ -261,7 +261,7 @@ curl -v -X PUT \
 }
 ```
 
-##### Rows or records missing values for mandatory fields
+**Rows or records missing values for mandatory fields**
 
 ```json
 {
@@ -284,7 +284,7 @@ curl -v -X PUT \
 ```
 
 
-#### Remove a completed task
+## Remove a completed task
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -294,7 +294,9 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 ```
 
-##### Success
+### Responses
+
+**Success**
 
 ```json
 {
@@ -322,7 +324,7 @@ curl -v -X DELETE \
 }
 ```
 
-##### Task not found
+**Task not found**
 
 ```json
 {
@@ -337,7 +339,7 @@ curl -v -X DELETE \
 }
 ```
 
-##### Task is running
+**Task is running**
 
 ```json
 {
@@ -354,7 +356,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Get a specific task's details
+## Get a specific task's details
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -364,7 +366,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 ```
 
-##### Success
+### Responses
+
+**Success**
 
 ```json
 {
@@ -391,7 +395,7 @@ curl -v -X GET \
 }
 ```
 
-##### Task does not exist
+**Task does not exist**
 
 ```json
 {
@@ -407,7 +411,7 @@ curl -v -X GET \
 ```
 
 
-#### Start a task
+## Start a task
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -417,7 +421,9 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 ```
 
-##### Success
+### Responses
+
+**Success**
 
 ```json
 {
@@ -432,7 +438,7 @@ curl -v -X PATCH \
             "node": "whistle_apps@qwd",
             "start_timestamp": 63632456149,
             "status": "executing",
-            "submit_timestamp": 63632456101
+            "submit_timestamp": 63632456101,
             "total_count": 2
         }
     },
@@ -442,7 +448,7 @@ curl -v -X PATCH \
 }
 ```
 
-##### Task already started
+**Task already started**
 
 ```json
 {
@@ -459,7 +465,7 @@ curl -v -X PATCH \
 }
 ```
 
-##### Task does not exist
+**Task does not exist**
 
 ```json
 {
@@ -476,11 +482,11 @@ curl -v -X PATCH \
 ```
 
 
-#### Stop a running task
+## Stop a running task
 
 Tasks that are processing can be stopped.
 
-Note that they cannot be started again.
+Note that they **cannot** be started again.
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/stop
 
@@ -490,7 +496,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/stop
 ```
 
-##### Success
+**Success Response**
 
 ```json
 {
@@ -520,7 +526,7 @@ curl -v -X PATCH \
 }
 ```
 
-##### Task is not running
+**Task is not running**
 
 A task that was not yet started or that has already finished cannot be stopped.
 
@@ -545,9 +551,9 @@ A task that was not yet started or that has already finished cannot be stopped.
 
 
 
-#### Retrieve a task's CSVs
+## Retrieve a task's CSVs
 
-When you `GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}`, the JSON will include a `"csvs":[...]" array with input and output CSVs as appropriate. Use the name(s) in the array to specify which you would like to receive.
+When you `GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}`, the JSON will include a `"csvs":[...]"` array with input and output CSVs as appropriate. Use the name(s) in the array to specify which you would like to receive.
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -568,11 +574,11 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
 ```
 
-##### Success
+**Success Response**
 
 Streams back the task's input in CSV format.
 
-##### Task does not exist or did not have any input data
+**Task does not exist or did not have any input data**
 
 ```json
 {
@@ -588,7 +594,7 @@ Streams back the task's input in CSV format.
 }
 ```
 
-##### Retrieve a task's output CSV
+## Retrieve a task's output CSV
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -607,11 +613,11 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 ```
 
-##### Success
+**Success Response**
 
 Streams back the task's output in CSV format.
 
-##### Task does not exist or output not yet in database
+**Task does not exist or output not yet in database**
 
 ```json
 {

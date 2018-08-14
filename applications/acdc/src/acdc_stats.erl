@@ -340,7 +340,8 @@ handle_call_query(JObj, _Prop) ->
 -spec handle_average_wait_time_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_average_wait_time_req(JObj, _Prop) ->
     'true' = kapi_acdc_stats:average_wait_time_req_v(JObj),
-    query_average_wait_time(JObj).
+    Match = average_wait_time_build_match_spec(JObj),
+    query_average_wait_time(Match, JObj).
 
 -spec find_call(kz_term:ne_binary()) -> kz_term:api_object().
 find_call(CallId) ->
@@ -441,7 +442,7 @@ handle_info(?CLEANUP_MSG, State) ->
     _ = cleanup_data(self()),
     {'noreply', State#state{cleanup_ref=start_cleanup_timer()}};
 handle_info(_Msg, State) ->
-    lager:debug("unhandling message: ~p", [_Msg]),
+    lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
@@ -550,6 +551,38 @@ call_match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
     end;
 call_match_builder_fold(_, _, Acc) -> Acc.
 
+-spec average_wait_time_build_match_spec(kz_json:object()) -> ets:match_spec().
+average_wait_time_build_match_spec(JObj) ->
+    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj),
+    QueueId = kz_json:get_ne_binary_value(<<"Queue-ID">>, JObj),
+
+    Match = [{#call_stat{account_id=AccountId
+                        ,queue_id=QueueId
+                        ,entered_timestamp='$1'
+                        ,abandoned_timestamp='$2'
+                        ,handled_timestamp='$3'
+                        ,status='$4'
+                        ,_='_'
+                        }
+             ,[{'orelse'
+               ,{'=:=', '$4', {'const', <<"handled">>}}
+               ,{'=:=', '$4', {'const', <<"processed">>}}
+               }]
+             ,[['$1', '$2', '$3']]
+             }],
+
+    Window = kz_json:get_integer_value(<<"Window">>, JObj),
+
+    average_wait_time_build_match_spec(Match, Window).
+
+-spec average_wait_time_build_match_spec(ets:match_spec(), kz_term:api_integer()) ->
+                                                ets:match_spec().
+average_wait_time_build_match_spec(Match, 'undefined') ->
+    Match;
+average_wait_time_build_match_spec([{CallStat, Conditions, Results}], Window) ->
+    Start = kz_time:current_tstamp() - Window,
+    [{CallStat, [{'>=', '$1', {'const', Start}} | Conditions], Results}].
+
 is_valid_call_status(S) ->
     Status = kz_term:to_lower_binary(S),
     case lists:member(Status, ?VALID_STATUSES) of
@@ -592,25 +625,8 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec query_average_wait_time(kz_json:object()) -> 'ok'.
-query_average_wait_time(JObj) ->
-    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj),
-    QueueId = kz_json:get_ne_binary_value(<<"Queue-ID">>, JObj),
-    Match = [{#call_stat{account_id=AccountId
-                        ,queue_id=QueueId
-                        ,entered_timestamp='$1'
-                        ,abandoned_timestamp='$2'
-                        ,handled_timestamp='$3'
-                        ,status='$4'
-                        ,_='_'
-                        }
-             ,[{'orelse'
-               ,{'=:=', '$4', {'const', <<"handled">>}}
-               ,{'=:=', '$4', {'const', <<"processed">>}}
-               }]
-             ,[['$1', '$2', '$3']]
-             }],
-
+-spec query_average_wait_time(ets:match_spec(), kz_json:object()) -> 'ok'.
+query_average_wait_time(Match, JObj) ->
     AverageWaitTime = average_wait_time_fold(ets:select(call_table_id(), Match)),
 
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -972,8 +988,7 @@ find_call_stat(Id) ->
 -spec create_call_stat(kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 create_call_stat(Id, JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
-                     ,{'create_call', #call_stat{
-                                         id = Id
+                     ,{'create_call', #call_stat{id = Id
                                                 ,call_id = kz_json:get_value(<<"Call-ID">>, JObj)
                                                 ,account_id = kz_json:get_value(<<"Account-ID">>, JObj)
                                                 ,queue_id = kz_json:get_value(<<"Queue-ID">>, JObj)
@@ -983,7 +998,7 @@ create_call_stat(Id, JObj, Props) ->
                                                 ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, JObj)
                                                 ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, JObj)
                                                 ,caller_priority = kz_json:get_integer_value(<<"Caller-Priority">>, JObj)
-                                        }
+                                                }
                       }).
 
 -type updates() :: [{pos_integer(), any()}].
@@ -994,5 +1009,6 @@ update_call_stat(Id, Updates, Props) ->
 call_state_change(AccountId, Status, Prop) ->
     Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"call_status_change">>}
                                                ,{<<"Status">>, Status}
-                                                | Prop])),
+                                                | Prop
+                                               ])),
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

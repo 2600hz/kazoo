@@ -10,7 +10,7 @@
 %%%     account stats
 %%% /sup/compactor - stats about the compactor
 %%%
-%%% Eventaully support the idea of RPC-like AMQP requests to drill down per-node
+%%% Eventually support the idea of RPC-like AMQP requests to drill down per-node
 %%% or per-application for these stats
 %%%
 %%%
@@ -190,7 +190,7 @@ resource_exists() -> 'false'.
 
 -spec resource_exists(path_token()) -> boolean().
 resource_exists(ModuleBin) ->
-    does_resource_exist(ModuleBin, 'status', []).
+    does_resource_exist(ModuleBin, <<"status">>, []).
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists(ModuleBin, FunctionBin) ->
@@ -200,33 +200,22 @@ resource_exists(ModuleBin, FunctionBin) ->
 resource_exists(ModuleBin, FunctionBin, Args) ->
     does_resource_exist(ModuleBin, FunctionBin, Args).
 
+-spec does_resource_exist(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> boolean().
 does_resource_exist(ModuleBin, FunctionBin, Args) ->
     Arity = erlang:length(Args),
-    try {module_name(ModuleBin), kz_term:to_atom(FunctionBin)} of
-        {Module, Function} ->
-            lager:debug("checking existence of ~s:~s/~p", [Module, Function, Arity]),
-            erlang:function_exported(Module, Function, Arity)
-    catch
-        'error':'badarg' ->
-            lager:debug("failed to find ~s_maintenance:~s/~p", [ModuleBin, FunctionBin, Arity]),
-            'false'
-    end.
+    kz_module:is_exported(maintenance_module_name(ModuleBin), FunctionBin, Arity).
 
-module_name(ModuleBin) ->
-    %% NOTE: the unsafe convertion to an atom is not an issue
+-spec maintenance_module_name(kz_term:ne_binary()) -> module().
+maintenance_module_name(ModuleBin) ->
+    %% NOTE: the unsafe conversion to an atom is not an issue
     %%   in this module, despite coming from a user, because
     %%   only the system admin has access...
-    Module = kz_term:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true'),
-    try Module:module_info() of
-        _ -> Module
-    catch
-        _E:R -> exit(R)
-    end.
+    kz_term:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true').
 
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /sup mights load a list of system_stat objects
+%% /sup might load a list of system_stat objects
 %% /sup/123 might load the system_stat object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -237,15 +226,15 @@ validate(Context) -> Context.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin) ->
-    validate_sup(Context, module_name(ModuleBin), 'status', []).
+    validate_sup(Context, maintenance_module_name(ModuleBin), 'status', []).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin, FunctionBin) ->
-    validate_sup(Context, module_name(ModuleBin), kz_term:to_atom(FunctionBin), []).
+    validate_sup(Context, maintenance_module_name(ModuleBin), kz_term:to_atom(FunctionBin), []).
 
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin, FunctionBin, Args) ->
-    validate_sup(Context, module_name(ModuleBin), kz_term:to_atom(FunctionBin), Args).
+    validate_sup(Context, maintenance_module_name(ModuleBin), kz_term:to_atom(FunctionBin), Args).
 
 validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),

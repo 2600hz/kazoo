@@ -57,7 +57,7 @@
                     "description": "Inbound Email Notifications",
                     "properties": {
                         "send_to": {
-                            "description": "A list or string of email recipent(s)",
+                            "description": "A list or string of email recipient(s)",
                             "format": "email",
                             "items": {
                                 "format": "email",
@@ -99,7 +99,7 @@
             "type": "string"
         },
         "transfer_date": {
-            "description": "Requested transfer date in gregorain timestamp",
+            "description": "Requested transfer date in Gregorian timestamp",
             "type": "integer"
         }
     },

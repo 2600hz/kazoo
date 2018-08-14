@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.intercept",
-    "description": "Validator for the intercept callflow's data object",
+    "description": "Validator for the intercept callflow data object",
     "properties": {
         "approved_device_id": {
             "description": "Restrict calling device to Device",

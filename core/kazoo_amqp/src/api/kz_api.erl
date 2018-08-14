@@ -52,6 +52,7 @@
 -export([disambiguate_and_publish/3]).
 -export([error_resp/1, error_resp_v/1]).
 -export([publish_error/2, publish_error/3]).
+-export([public_fields/1]).
 
 %% Other AMQP API validators can use these helpers
 -export([build_message/3
@@ -61,7 +62,7 @@
         ,validate_message/4
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -ifdef(TEST).
 -export([has_any/2, has_all/2]).
@@ -236,7 +237,7 @@ set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
     lists:foldl(fun({_, V}, PropAcc) when is_list(V) ->
                         PropAcc;
                    ({K, _}=KV, PropAcc) ->
-                        case is_empty(props:get_value(K, Prop)) of
+                        case should_strip_from_payload(props:get_value(K, Prop)) of
                             'true' -> [ KV | PropAcc ];
                             'false' -> PropAcc
                         end
@@ -266,7 +267,7 @@ do_empty_value_removal([{?KEY_SERVER_ID,_}=KV|T], Recursive, Acc) ->
 do_empty_value_removal([{?KEY_MSG_ID,_}=KV|T], Recursive, Acc) ->
     do_empty_value_removal(T, Recursive, [KV|Acc]);
 do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
-    case is_empty(V) of
+    case should_strip_from_payload(V) of
         'true' -> do_empty_value_removal(T, Recursive, Acc);
         'false' ->
             case (kz_json:is_json_object(V)
@@ -282,11 +283,10 @@ do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
             end
     end.
 
--spec is_empty(any()) -> boolean().
-is_empty('undefined') -> 'true';
-is_empty([]) -> 'true';
-is_empty(<<>>) -> 'true';
-is_empty(_) -> 'false'.
+-spec should_strip_from_payload(any()) -> boolean().
+should_strip_from_payload('undefined') -> 'true';
+should_strip_from_payload(<<>>) -> 'true';
+should_strip_from_payload(_) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Extract just the default headers from a message
@@ -294,7 +294,7 @@ is_empty(_) -> 'false'.
 %%------------------------------------------------------------------------------
 -spec extract_defaults(kz_term:api_terms()) -> kz_term:proplist().
 extract_defaults(Prop) when is_list(Prop) ->
-    %% not measurable faster over the foldl, but cleaner (imo)
+    %% not measurable faster over the foldl, but cleaner (IMO)
     [ {H, V} || H <- ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS,
                 (V = props:get_value(H, Prop)) =/= 'undefined'
     ];
@@ -338,7 +338,26 @@ publish_error(TargetQ, JObj) ->
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(TargetQ, Error, ContentType) ->
     {'ok', Payload} = prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun error_resp/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Sanitizes generic AMQP payloads
+%% This function removes the default sensitive data that should not be
+%% exposed externally.
+%% @end
+%%------------------------------------------------------------------------------
+-spec public_fields(kz_json:object()) -> kz_json:object().
+public_fields(JObj) ->
+    Routines = [fun remove_optional_defaults/1],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
+-spec remove_optional_defaults(kz_json:object()) -> kz_json:object().
+remove_optional_defaults(JObj) ->
+    Keys = [Key || Key <- ?OPTIONAL_DEFAULT_HEADERS
+                       ,Key /= ?KEY_API_ACCOUNT_ID
+                       ,Key /= ?KEY_API_CALL_ID
+           ],
+    kz_json:delete_keys(Keys, JObj).
 
 %%%=============================================================================
 %%% Internal functions

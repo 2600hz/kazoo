@@ -1,6 +1,6 @@
-### Shared Authentication
+# Shared Authentication
 
-#### About Shared Authentication
+## About Shared Authentication
 
 #### Schema
 
@@ -14,7 +14,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/shared_auth
 
@@ -24,7 +24,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/shared_auth
 ```
 
-#### Create
+## Create
 
 > PUT /v2/shared_auth
 

@@ -75,7 +75,7 @@ resource_exists(?AUTHORIZE) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /apps_link mights load a list of skel objects
+%% /apps_link might load a list of skel objects
 %% /apps_link/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

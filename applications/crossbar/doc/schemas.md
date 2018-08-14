@@ -1,17 +1,15 @@
-### Schemas
-
-#### About Schemas
+# JSON Schema
 
 Kazoo uses [JSON Schemas](http://json-schema.org/) to validate incoming data from clients.
 
 Any fields that aren't defined in the JSON schema will be stored, unmodified, along side the validated fields (assuming all is well).
 This excludes Kazoo-managed private fields (top-level keys prefixed with `"_"` or `"pvt_"`).
 
-#### Schema
+This is the API endpoint to inspect all JSON Schemas.
 
+#### List All Available Schema
 
-
-#### Fetch
+The default fetch will retrieve only the documents meant for the APIs to operate on (doc and `system_config` schemas). Kazoo also has the internal JSON APIs available as JSON schemas, which can be fetched via `/v2/schemas?internals=true`.
 
 > GET /v2/schemas
 
@@ -23,7 +21,7 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "",
+    "auth_token": "{AUTH_TOKEN}",
     "data": [
         "access_lists",
         "account_rate_limits",
@@ -104,8 +102,6 @@ curl -v -X GET \
 }
 ```
 
-The default fetch will retrieve only the documents meant for the APIs to operate on (doc and `system_config` schemas). Kazoo also has the internal JSON APIs available as JSON schemas, which can be fetched via `/v2/schemas?internals=true`.
-
 #### Fetch the schema definitions
 
 > GET /v2/schemas/{SCHEMA_NAME}
@@ -153,7 +149,7 @@ curl -v -X GET \
             }
         },
         "required": [
-            "cird",
+            "cidr",
             "network-list-name",
             "type"
         ],

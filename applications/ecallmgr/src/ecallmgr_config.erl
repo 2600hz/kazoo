@@ -47,11 +47,6 @@ flush(Key) ->
 -spec flush(kz_term:api_binary(), api_node_specific()) -> 'ok'.
 flush(Key, 'undefined') ->
     flush(Key, <<"undefined">>);
-flush(Key, Node) when not is_binary(Key),
-                      Key =/= 'undefined' ->
-    flush(kz_term:to_binary(Key), Node);
-flush(Key, Node) when not is_binary(Node) ->
-    flush(Key, kz_term:to_binary(Node));
 flush(Key, Node) ->
     CacheKey = cache_key(Key, Node),
     kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
@@ -78,7 +73,7 @@ flush_default(Key) ->
 -ifdef(TEST).
 
 -spec get(kz_json:path()) -> kz_json:api_json_term().
-get(_) -> undefined.
+get(_) -> 'undefined'.
 
 -spec get(kz_json:path(), Default) ->
                  kz_json:json_term() | Default.
@@ -102,8 +97,6 @@ get(Key, Default) ->
                  kz_json:json_term() | Default.
 get(Key, Default, 'undefined') ->
     get(Key, Default);
-get(Key, Default, Node) when not is_binary(Key) ->
-    get(kz_term:to_binary(Key), Default, Node);
 get(Key, Default, Node) when not is_binary(Node) ->
     get(Key, Default, kz_term:to_binary(Node));
 get(Key, Default, Node) ->
@@ -261,7 +254,6 @@ get_ne_binaries(Key, Default, Node) ->
         _ -> Default
     end.
 
-
 -spec fetch(kz_json:path()) -> kz_json:api_json_term().
 fetch(Key) ->
     fetch(Key, 'undefined').
@@ -277,8 +269,6 @@ fetch(Key, Default, 'undefined') ->
     fetch(Key, Default);
 fetch(Key, Default, Timeout) when is_integer(Timeout) ->
     fetch(Key, Default, kz_term:to_binary(node()), Timeout);
-fetch(Key, Default, Node) when not is_binary(Key) ->
-    fetch(kz_term:to_binary(Key), Default, Node);
 fetch(Key, Default, Node) when not is_binary(Node) ->
     fetch(Key, Default, kz_term:to_binary(Node));
 fetch(Key, Default, <<_/binary>> = Node) ->
@@ -294,7 +284,7 @@ fetch(Key, Default, Node, RequestTimeout) ->
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    lager:debug("looking up '~s' from sysconf", [Key]),
+    lager:debug("looking up '~p' from sysconf", [Key]),
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                  ,fun kapi_sysconf:publish_get_req/1
                                  ,fun kapi_sysconf:get_resp_v/1
@@ -302,7 +292,7 @@ fetch(Key, Default, Node, RequestTimeout) ->
                                  ),
     case ReqResp of
         {'error', _R} ->
-            lager:debug("unable to get config for key '~s' failed: ~p", [Key, _R]),
+            lager:debug("unable to get config for key '~p' failed: ~p", [Key, _R]),
             Default;
         {'ok', JObj} ->
             Value = get_response_value(JObj, Default),
@@ -340,8 +330,6 @@ set_node(Key, Value, Node) ->
     set(Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec set(kz_json:path(), kz_json:json_term(), node_specific(), kz_term:proplist()) -> 'ok'.
-set(Key, Value, Node, Opt) when not is_binary(Key) ->
-    set(kz_term:to_binary(Key), Value, Node, Opt);
 set(Key, Value, Node, Opt) ->
     Props = [{<<"Category">>, <<"ecallmgr">>}
             ,{<<"Key">>, Key}

@@ -22,7 +22,7 @@ The following table outlines the configs that can be found in the `system_config
 | `pretty_metrics` | `boolean()` | `true` | Pretty-print metrics in logs |
 | `request_timeout_ms` | `integer()` | 10000 | Time, in milliseconds, for requests to timeout
 | `reset_id_size` | `integer()` | 250 | Password-reset ID length |
-| `schema_strict_validation` | `boolean()` | `false` | Toggles whether to perform type converions on client data when validating |
+| `schema_strict_validation` | `boolean()` | `false` | Toggles whether to perform type conversions on client data when validating |
 | `soft_delete_pause_ms` | `integer()` | 10000 | Time, in milliseconds, to pause between deletions |
 | `ssl_ca_cert` | `string()` | `undefined` | Path to CA cert file |
 | `ssl_cert` | `string()` | `/path/to/crossbar/priv/ssl/crossbar.crt` | Path to cert file |
@@ -32,7 +32,7 @@ The following table outlines the configs that can be found in the `system_config
 | `ssl_workers` | `integer()` | 100 | Number of SSL listeners to start |
 | `token_costs` | `integer()` | 1 | Default token cost of an API request |
 | `trace_path` | `string()` | `/tmp` | Path to put trace files when profiling API requests |
-| `use_plaintext` | `boolean()` | `true` | Whether to start unecrypted listener (port 8000 traffic, typically) |
+| `use_plaintext` | `boolean()` | `true` | Whether to start unencrypted listener (port 8000 traffic, typically) |
 | `use_ssl` | `boolean()` | `false` | Whether to start an SSL listener |
 | `user_auth_tokens` | `integer()` | 35 | Default token cost of creating an auth token via username |
 | `workers` | `integer()` | 100 | Number of TCP listeners to start |

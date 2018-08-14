@@ -1,6 +1,6 @@
-## Faxes
+# Faxes
 
-### Fax Subsystem Overview
+## Fax Subsystem Overview
 
 The Faxes API exposes lots of ways to send, receive, track and manage faxes.
 
@@ -11,7 +11,7 @@ As a general concept, faxes are either considered inbound or outbound faxes. In 
 * API calls with the term "outgoing" are used for tracking faxes currently in the process of being sent
 * API calls with the term "outbox" are used for managing faxes which have already been sent
 
-#### Schema
+## Schema
 
 Faxes API allows you to update and access fax jobs for both sending and receiving
 
@@ -19,39 +19,41 @@ Faxes API allows you to update and access fax jobs for both sending and receivin
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer()` | `0` | `false` |  
-`document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false` |  
-`document.content_type` | The content type header to be used when fetching for transmission as a post | `string()` |   | `false` |  
-`document.host` | The host header to be used when fetching for transmission | `string()` |   | `false` |  
-`document.method` | The method that should be used to reteive the document | `string('get' | 'post')` | `get` | `false` |  
-`document.referer` | The referer header to be used when fetching for transmission | `string()` |   | `false` |  
-`document.url` | The url of the fax document | `string()` |   | `true` |  
-`document` | Parameters related to the storage of a fax document | `object()` |   | `false` |  
-`from_name` | The sender name for the fax | `string()` |   | `false` |  
-`from_number` | The sender number for the fax | `string()` |   | `true` |  
-`notifications.email.send_to.[]` |   | `string()` |   | `false` |  
-`notifications.email.send_to` | A list or string of email recipent(s) | `string() | array(string())` |   | `false` |  
-`notifications.email` | Email notifications | `object()` |   | `false` |  
-`notifications.sms.send_to.[]` |   | `string()` |   | `false` |  
-`notifications.sms.send_to` | A list or string of sms recipent(s) | `string() | array(string())` |   | `false` |  
-`notifications.sms` | SMS notifications | `object()` |   | `false` |  
-`notifications` | Status notifications | `object()` |   | `false` |  
-`retries` | The number of times to retry | `integer()` | `1` | `false` |  
-`to_name` | The recipient name for the fax | `string()` |   | `false` |  
-`to_number` | The recipient number for the fax | `string()` |   | `true` |  
-`tx_result.error_message` | A description of any error that occurred | `string()` | "" | `false` |  
-`tx_result.fax_bad_rows` | The number of bad rows | `integer()` | `0` | `false` |  
-`tx_result.fax_error_correction` | True if fax error correction was used | `boolean()` | `false` | `false` |  
-`tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string()` | "" | `false` |  
-`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer()` | `0` | `false` |  
-`tx_result.pages_sent` | The number of pages transmitted | `integer()` | `0` | `false` |  
-`tx_result.success` | True if the fax transmission was successful | `boolean()` | `false` | `false` |  
-`tx_result.time_elapsed` | The amount of time from submition to completion | `integer()` | `0` | `false` |  
-`tx_result` | The result of a transmission attempt | `object()` |   | `false` |  
+`attempts` | The number of attempts made, this will be set by the system and reset automatically on put/post | `integer()` | `0` | `false` |
+`document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false` |
+`document.content_type` | The content type header to be used when fetching for transmission as a post | `string()` |   | `false` |
+`document.host` | The host header to be used when fetching for transmission | `string()` |   | `false` |
+`document.method` | The method that should be used to retrieve the document | `string('get' | 'post')` | `get` | `false` |
+`document.referer` | The referer header to be used when fetching for transmission | `string()` |   | `false` |
+`document.url` | The url of the fax document | `string()` |   | `true` |
+`document` | Parameters related to the storage of a fax document | `object()` |   | `false` |
+`from_name` | The sender name for the fax | `string()` |   | `false` |
+`from_number` | The sender number for the fax | `string()` |   | `true` |
+`notifications.email.send_to.[]` |   | `string()` |   | `false` |
+`notifications.email.send_to` | A list or string of email recipient(s) | `string() | array(string())` |   | `false` |
+`notifications.email` | Email notifications | `object()` |   | `false` |
+`notifications.sms.send_to.[]` |   | `string()` |   | `false` |
+`notifications.sms.send_to` | A list or string of sms recipient(s) | `string() | array(string())` |   | `false` |
+`notifications.sms` | SMS notifications | `object()` |   | `false` |
+`notifications` | Status notifications | `object()` |   | `false` |
+`retries` | The number of times to retry | `integer()` | `1` | `false` |
+`to_name` | The recipient name for the fax | `string()` |   | `false` |
+`to_number` | The recipient number for the fax | `string()` |   | `true` |
+`tx_result.error_message` | A description of any error that occurred | `string()` | "" | `false` |
+`tx_result.fax_bad_rows` | The number of bad rows | `integer()` | `0` | `false` |
+`tx_result.fax_error_correction` | True if fax error correction was used | `boolean()` | `false` | `false` |
+`tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string()` | "" | `false` |
+`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer()` | `0` | `false` |
+`tx_result.pages_sent` | The number of pages transmitted | `integer()` | `0` | `false` |
+`tx_result.success` | True if the fax transmission was successful | `boolean()` | `false` | `false` |
+`tx_result.time_elapsed` | The amount of time from submission to completion | `integer()` | `0` | `false` |
+`tx_result` | The result of a transmission attempt | `object()` |   | `false` |
 
 
 
-#### Create
+## Send Outgoing Fax
+
+There are two way to send outgoing fax. You can provide a URL to the document you wish or send or you can provide the the document with the same send request payload.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 
@@ -95,7 +97,7 @@ curl -v -X PUT \
 }
 ```
 
-In the second method, you can use a single PUT request and send a multipart content-type to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
+In the second method, you can use a single PUT request and send a [multi-part `content-type`](./multipart) to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
 
 ```shell
 curl -v -X PUT \
@@ -106,7 +108,7 @@ curl -v -X PUT \
      http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
 ```
 
-#### Create an outgoing fax (Alias)
+## Create an outgoing fax (Alias)
 
 This is identical to the `PUT /faxes` above.
 
@@ -118,7 +120,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 ```
 
-#### Fetch outgoing faxes and their statuses
+## Fetch outgoing faxes and their statuses
 
 This API retrieves a listing of all outgoing faxes. Use the "id" to fetch details about a particular job. Results will contain a listing of both API- and SMTP (email) - initiated outbound faxes.
 
@@ -152,7 +154,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch details of a queued outgoing fax job
+## Fetch details of a queued outgoing fax job
 
 Get all the details about a fax that is in the outgoing queue.
 
@@ -200,9 +202,9 @@ curl -v -X GET \
 }
 ```
 
-### Managing Past Outbound Faxes
+## Managing Past Outbound Faxes
 
-#### Fetch all previously sent faxes in the outbox folder
+### Fetch All Previously Sent Faxes In The Outbox Folder
 
 This API retrieves a listing of all outgoing faxes which have already been sent or attempted and are no longer in queue. Results will contain a listing of both API- and SMTP (email) - initiated outbound faxes.
 
@@ -214,7 +216,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox
 ```
 
-#### Fetch a fax from the outbox folder
+### Fetch A Fax From The Outbox Folder
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
@@ -224,7 +226,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
-#### Resubmit a fax from the outbox folder
+### Resubmit A Fax From The Outbox Folder
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
@@ -235,7 +237,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
-#### Fetch the fax payload
+### Fetch The Fax Payload
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 
@@ -246,7 +248,7 @@ curl -v -X GET \
 ```
 
 
-#### Fetch logs related to outbound faxes submitted via email
+### Fetch Logs Related To Outbound Faxes Submitted Via Email
 
 If a fax job was queued or attempted to be queued as the result of an inbound email, the SMTP log for that fax can be retrieved via this API. This is also useful for helping debug problems with inbound faxes, such as when the domain matched an account for an inbound fax, but not a specific faxbox, and thus failed to process.
 
@@ -258,7 +260,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 ```
 
-#### Fetch a specific log related to email
+### Fetch A Specific Log Related To Email
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
 
@@ -269,7 +271,7 @@ curl -v -X GET \
 ```
 
 
-#### Remove a fax from the outbox folder
+### Remove A Fax From The Outbox Folder
 
 This API allows you to delete an old fax message. For privacy reasons, this may be useful if you wish to remove all evidence of a previously sent outbound fax.
 
@@ -281,7 +283,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
-#### Remove the fax payload
+### Remove The Fax Payload
 
 In some cases, you may wish to remove the document from a fax (usually for privacy reasons) but keep evidence that the fax transmission occurred. This will remove attachments but not the metadata from a sent fax.
 
@@ -294,9 +296,9 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 ```
 
-### Managing Past Inbound Faxes
+## Managing Past Inbound Faxes
 
-#### Fetch all faxes in the inbox folder
+### Fetch All Faxes In The Inbox Folder
 
 Retrieve a list of faxes that have previously been received.
 
@@ -308,7 +310,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox
 ```
 
-#### Fetch a fax from the inbox folder
+### Fetch A Fax From The Inbox Folder
 
 Retrieve all metadata about a particular fax for which you have the fax ID.
 
@@ -320,7 +322,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 ```
 
-#### Fetch the fax payload
+### Fetch The Fax Payload
 
 Retrieve the fax document / attachments for a particular inbound fax for which you have the fax ID.
 
@@ -332,7 +334,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 ```
 
-#### Remove a fax from the inbox folder
+### Remove A Fax From The Inbox Folder
 
 Delete an old fax message. For privacy reasons, this may be useful if you wish to remove all evidence of a previously received inbound fax.
 
@@ -344,7 +346,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 ```
 
-#### Remove the fax payload
+### Remove The Fax Payload
 
 In some cases, you may wish to remove the document from a fax (usually for privacy reasons) but keep evidence that the fax receipt occurred. This will remove attachments but not the metadata from a received fax. Useful after you've done post-processing on a fax externally.
 
@@ -358,9 +360,9 @@ curl -v -X DELETE \
 
 ## APIs under active development
 
-### Receiving Inbound Faxes
+#### Receiving Inbound Faxes
 
-#### List incoming fax jobs
+##### List Incoming Fax Jobs
 
 Retrieve a list of faxes that are currently being received or attempted to be received.
 NOTE: THIS FUNCTION DOES NOT WORK YET AS OF THE WRITING OF THIS DOCUMENT. We'll update this doc once this function is complete.
@@ -373,7 +375,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming
 ```
 
-#### Fetch an incoming fax job
+##### Fetch An Incoming Fax Job
 
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}

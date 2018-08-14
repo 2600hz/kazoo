@@ -1,11 +1,11 @@
-### Access Lists
+# Access Lists
 
-SBC-level per-account and per-device access lists allow setting individual IP-based access filtering rules which
+SBC level per-account and per-device access lists allow setting individual IP-based access filtering rules which
 significantly increases security for users working on-premise.
 
 Rules can be applied at account level or at individual device level
 
-#### About Access Lists
+## About Access Lists
 
 `access_lists` API works at the level of both `accounts` and `devices` documents.
 
@@ -16,7 +16,7 @@ Sections:
     * `cidrs` - array containing IPv4 subnet addresses in CIDR notation that should be allowed or denied (CIDR array looks much like one in ecallmgr configuration document)
     * `user_agent` - regex for `user_agent` field specified in SIP packet. Useful for protecting hardware phone accounts from various brute-force attacks
 
-#### Schema
+## Schema
 
 Access Control List entries for device or account
 
@@ -24,14 +24,14 @@ Access Control List entries for device or account
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`cidrs.[]` |   | `string()` |   | `true` |  
-`cidrs` | Classless Inter-Domain Routing IP notation for use on the access lists | `array(string())` |   | `true` |  
-`order` | Allow-Deny or Deny-Allow? | `string('allow,deny' | 'deny,allow')` |   | `true` |  
-`user_agent` | RegExp to match valid user agent strings | `string()` |   | `false` |  
+`cidrs.[]` |   | `string()` |   | `true` |
+`cidrs` | Classless Inter-Domain Routing IP notation for use on the access lists | `array(string())` |   | `true` |
+`order` | Allow-Deny or Deny-Allow? | `string('allow,deny' | 'deny,allow')` |   | `true` |
+`user_agent` | Regexp to match valid user agent strings | `string()` |   | `false` |
 
 
 
-#### Fetch account-level access lists
+## Fetch account-level access lists
 
 > GET /v2/accounts/{ACCOUNT_ID}/access_lists
 
@@ -52,7 +52,7 @@ curl -v -X GET \
 ```
 
 
-#### Update account-level access lists
+## Update account-level access lists
 
 > POST /v2/accounts/{ACCOUNT_ID}/access_lists
 
@@ -79,7 +79,7 @@ curl -v -X POST \
 ```
 
 
-#### Remove account-level access lists
+## Remove account-level access lists
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/access_lists
 
@@ -90,7 +90,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Fetch device-level access lists
+## Fetch device-level access lists
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 
@@ -116,7 +116,7 @@ curl -v -X GET \
 ```
 
 
-#### Update device-level access lists
+## Update device-level access lists
 
 > POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 
@@ -143,7 +143,7 @@ curl -v -X POST \
 ```
 
 
-#### Remove device-level access lists
+## Remove device-level access lists
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 

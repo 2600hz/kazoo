@@ -1,15 +1,7 @@
-{application, kazoo
-,[
-  {description, "Kazoo Helpers"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [ ]}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , inet_cidr
-                 , observer
-
-                 , lager
-                 ]}
- ]}.
+{application,kazoo,
+             [{applications,[inet_cidr,inets,kazoo_stdlib,kernel,lager,
+                             observer,recon,stdlib]},
+              {description,"Kazoo Helpers"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

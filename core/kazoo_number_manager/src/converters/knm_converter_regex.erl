@@ -16,13 +16,14 @@
         ,get_e164_converters/1
         ]).
 
-
 -define(DEFAULT_E164_CONVERTERS
        ,kz_json:from_list_recursive(
-          [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{<<"prefix">>, <<"+1">>}]}
-          ,{<<"^011(\\d*)$|^00(\\d*)\$">>, [{<<"prefix">>, <<"+">>}]}
-          ,{<<"^[2-9]\\d{7,}\$">>, [{<<"prefix">>, <<"+">>}]}
-          ])).
+          [{<<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{<<"prefix">>, <<"+1">>}]}
+          ,{<<"^011(\\d{5,})$|^00(\\d{5,})$">>, [{<<"prefix">>, <<"+">>}]}
+          ,{<<"^[2-9]\\d{7,}$">>, [{<<"prefix">>, <<"+">>}]}
+          ]
+         )
+       ).
 
 -define(SYSTEM_E164_CONVERTERS
        ,kapps_config:get_json(?KNM_CONFIG_CAT, ?KEY_E164_CONVERTERS, ?DEFAULT_E164_CONVERTERS)
@@ -55,7 +56,7 @@ normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
 %%------------------------------------------------------------------------------
 -spec to_npan(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_npan(Num) ->
-    case re:run(Num, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{'capture', [1], 'binary'}]) of
+    case re:run(Num, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [2], 'binary'}]) of
         'nomatch' -> Num;
         {'match', [NPAN]} -> NPAN
     end.
@@ -66,7 +67,7 @@ to_npan(Num) ->
 %%------------------------------------------------------------------------------
 -spec to_1npan(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_1npan(Num) ->
-    case re:run(Num, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{'capture', [1], 'binary'}]) of
+    case re:run(Num, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [2], 'binary'}]) of
         'nomatch' -> Num;
         {'match', [NPAN]} -> <<$1, NPAN/binary>>
     end.

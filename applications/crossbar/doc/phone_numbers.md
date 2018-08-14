@@ -1,10 +1,20 @@
-### Phone Numbers
+# Phone Numbers API
 
-#### About Phone Numbers
+## About Phone Numbers
 
-The 2600hz mobile API set: manage numbers.
+The 2600Hz API for managing numbers.
 
-#### Schema
+### Per-number CRUD operations
+
+- `{PHONE_NUMBER}` has to be URL-encoded
+    * e.g. turn `+14155555555` into `%2B14155555555`
+    * Note `4123456789` is turned into `+14123456789`
+    * Note however, `41234567` is turned into `+41234567`, so be careful!
+- To add/modify numbers, either:
+    * Account document must be showing `pvt_wnm_allow_additions` as `true`
+    * Or auth must be done via master account.
+
+## Schema
 
 Schema for a number
 
@@ -12,48 +22,52 @@ Schema for a number
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`carrier_name` |   | `string(1..30)` |   | `false` |  
-`cnam.display_name` |   | `string(1..15)` |   | `false` |  
-`cnam.inbound_lookup` |   | `boolean()` |   | `false` |  
-`cnam` |   | `object()` |   | `false` |  
-`create_with_state` | The state to create numbers in | `string('aging' | 'available' | 'deleted' | 'discovery' | 'in_service' | 'port_in' | 'port_out' | 'released' | 'reserved')` |   | `false` |  
-`e911.activated_time` | The time stamp e911 was provisioned | `string()` |   | `false` |  
-`e911.caller_name` | The name that will show to emergency services | `string(3..)` |   | `false` |  
-`e911.extended_address` | The suit/floor/apt. address where the number is in service | `string()` |   | `false` |  
-`e911.latitude` | The e911 provisioning system calculated service address latitude | `string()` |   | `false` |  
-`e911.legacy_data.house_number` | The name that will show to emergency services | `string()` |   | `false` |  
-`e911.legacy_data.predirectional` | The name that will show to emergency services | `string()` |   | `false` |  
-`e911.legacy_data.streetname` | The name that will show to emergency services | `string()` |   | `false` |  
-`e911.legacy_data.suite` | The name that will show to emergency services | `string()` |   | `false` |  
-`e911.legacy_data` | Legacy E911 information | `object()` |   | `false` |  
-`e911.locality` | The locality (city) where the number is in service | `string()` |   | `true` |  
-`e911.location_id` | The e911 provisioning system internal id for this service address | `string()` |   | `false` |  
-`e911.longitude` | The e911 provisioning system calculated service address longitude | `string()` |   | `false` |  
-`e911.plus_four` | The extended zip/postal code where the number is in service | `string()` |   | `false` |  
-`e911.postal_code` | The zip/postal code where the number is in service | `string()` |   | `true` |  
-`e911.region` | The region (state) where the number is in service | `string(2)` |   | `true` |  
-`e911.status` | The e911 provisioning system status for this service address | `string('INVALID' | 'GEOCODED' | 'PROVISIONED' | 'REMOVED' | 'ERROR')` |   | `false` |  
-`e911.street_address` | The street address where the number is in service | `string()` |   | `true` |  
-`e911` |   | `object()` |   | `false` |  
-`porting.billing_account_id` | The account id the losing carrier has on file | `string()` |   | `false` |  
-`porting.billing_extended_address` | The suit/floor/apt. address the losing carrier has on file | `string()` |   | `false` |  
-`porting.billing_locality` | The locality (city) the losing carrier has on file | `string()` |   | `false` |  
-`porting.billing_name` | The name or company name the losing carrier has on file | `string()` |   | `false` |  
-`porting.billing_postal_code` | The zip/postal code the losing carrier has on file | `string()` |   | `false` |  
-`porting.billing_region` | The region (state) the losing carrier has on file | `string()` |   | `false` |  
-`porting.billing_street_address` | The street address the losing carrier has on file | `string()` |   | `false` |  
-`porting.billing_telephone_number` | The BTN of the account the number belongs to | `string()` |   | `false` |  
-`porting.comments.[]` |   | `string()` |   | `false` |  
-`porting.comments` | An array of comments | `array(string())` |   | `false` |  
-`porting.customer_contact` | The phone number that can be used to contact the owner of the number | `string()` |   | `false` |  
-`porting.port_id` | The id of the port request | `string()` |   | `false` |  
-`porting.requested_port_date` | The requested port date | `string()` |   | `false` |  
-`porting.service_provider` | The name of the losing carrier | `string()` |   | `false` |  
-`porting` | Porting (in) information for the phone number | `object()` |   | `false` |  
+`carrier_name` |   | `string(1..30)` |   | `false` |
+`cnam.display_name` |   | `string(1..15)` |   | `false` |
+`cnam.inbound_lookup` |   | `boolean()` |   | `false` |
+`cnam` |   | `object()` |   | `false` |
+`create_with_state` | The state to create numbers in | `string('aging' | 'available' | 'deleted' | 'discovery' | 'in_service' | 'port_in' | 'port_out' | 'released' | 'reserved')` |   | `false` |
+`e911.activated_time` | The time stamp e911 was provisioned | `string()` |   | `false` |
+`e911.caller_name` | The name that will show to emergency services | `string(3..)` |   | `false` |
+`e911.extended_address` | The suit/floor/apt. address where the number is in service | `string()` |   | `false` |
+`e911.latitude` | The e911 provisioning system calculated service address latitude | `string()` |   | `false` |
+`e911.legacy_data.house_number` | The name that will show to emergency services | `string()` |   | `false` |
+`e911.legacy_data.predirectional` | The name that will show to emergency services | `string()` |   | `false` |
+`e911.legacy_data.streetname` | The name that will show to emergency services | `string()` |   | `false` |
+`e911.legacy_data.suite` | The name that will show to emergency services | `string()` |   | `false` |
+`e911.legacy_data` | Legacy E911 information | `object()` |   | `false` |
+`e911.locality` | The locality (city) where the number is in service | `string()` |   | `true` |
+`e911.location_id` | The e911 provisioning system internal id for this service address | `string()` |   | `false` |
+`e911.longitude` | The e911 provisioning system calculated service address longitude | `string()` |   | `false` |
+`e911.plus_four` | The extended zip/postal code where the number is in service | `string()` |   | `false` |
+`e911.postal_code` | The zip/postal code where the number is in service | `string()` |   | `true` |
+`e911.region` | The region (state) where the number is in service | `string(2)` |   | `true` |
+`e911.status` | The e911 provisioning system status for this service address | `string('INVALID' | 'GEOCODED' | 'PROVISIONED' | 'REMOVED' | 'ERROR')` |   | `false` |
+`e911.street_address` | The street address where the number is in service | `string()` |   | `true` |
+`e911` |   | `object()` |   | `false` |
+`porting.billing_account_id` | The account id the losing carrier has on file | `string()` |   | `false` |
+`porting.billing_extended_address` | The suit/floor/apt. address the losing carrier has on file | `string()` |   | `false` |
+`porting.billing_locality` | The locality (city) the losing carrier has on file | `string()` |   | `false` |
+`porting.billing_name` | The name or company name the losing carrier has on file | `string()` |   | `false` |
+`porting.billing_postal_code` | The zip/postal code the losing carrier has on file | `string()` |   | `false` |
+`porting.billing_region` | The region (state) the losing carrier has on file | `string()` |   | `false` |
+`porting.billing_street_address` | The street address the losing carrier has on file | `string()` |   | `false` |
+`porting.billing_telephone_number` | The BTN of the account the number belongs to | `string()` |   | `false` |
+`porting.comments.[]` |   | `string()` |   | `false` |
+`porting.comments` | An array of comments | `array(string())` |   | `false` |
+`porting.customer_contact` | The phone number that can be used to contact the owner of the number | `string()` |   | `false` |
+`porting.port_id` | The id of the port request | `string()` |   | `false` |
+`porting.requested_port_date` | The requested port date | `string()` |   | `false` |
+`porting.service_provider` | The name of the losing carrier | `string()` |   | `false` |
+`porting` | Porting (in) information for the phone number | `object()` |   | `false` |
 
 
 
-#### Fetch
+## Search For Available Numbers On System
+
+- `PREFIX`: a 3-digit number prefix or an URL-encoded e164 prefix (e.g. `499` or `%2B1499`)
+- `QUANTITY`: maximum amount of numbers to be returned (e.g. `2`)
+- `OFFSET`: page number (e.g. `0`)
 
 > GET /v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}&country={COUNTRY}
 
@@ -101,8 +115,7 @@ curl -v -X GET \
 }
 ```
 
-
-#### Search for available numbers you own
+## Search for available numbers you own
 
 - `PREFIX`: a 3-digit number prefix or an URL-encoded e164 prefix (e.g. `499` or `%2B1499`)
 - `QUANTITY`: maximum amount of numbers to be returned (e.g. `2`)
@@ -138,8 +151,7 @@ curl -v -X GET \
 }
 ```
 
-
-#### See how many digits a `{PREFIX}` can take
+## See How Many Digits A `{PREFIX}` Can Take
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info
 
@@ -186,12 +198,12 @@ curl -v -X GET \
 }
 ```
 
-
-#### List an account's phone numbers
+## List Account's Phone Numbers
 
 This lists the numbers an account owns, along with their properties.
 
-Note: one can apply filters such as `?filter_state=in_service` or `?created_from=63627345744`
+!!! note
+    one can apply filters such as `?filter_state=in_service` or `?created_from=63627345744`
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers
 
@@ -205,7 +217,7 @@ curl -v -X GET \
 
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "casquade_quantity": 0,
+        "cascade_quantity": 0,
         "numbers": {
             "+14152338421": {
                 "assigned_to": "{ACCOUNT_ID}",
@@ -243,19 +255,7 @@ curl -v -X GET \
 }
 ```
 
-
-### Per-number CRUD operations
-
-- Note: `{PHONE_NUMBER}` has to be URL-encoded
-    * e.g. turn `+14155555555` into `%2B14155555555`
-    * Note `4123456789` is turned into `+14123456789`
-    * Note however, `41234567` is turned into `+41234567`, so be careful!
-- Note: to add/modify numbers, either:
-    * Account document must be showing `pvt_wnm_allow_additions` as `true`
-    * Or auth must be done via master account.
-
-
-#### Remove a number from the account owning it
+## Remove a number from the account owning it
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -265,9 +265,9 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 ```
 
-##### Response
+### Response
 
-###### Success
+**Success**
 
 ```json
 {
@@ -287,7 +287,7 @@ curl -v -X DELETE \
 }
 ```
 
-###### Number not in account
+**Number not in account**
 
 ```json
 {
@@ -304,7 +304,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Remove a number from account (admin only)
+## Remove A Number From Account (admin Only)
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -314,7 +314,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}?hard=true
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -335,7 +335,7 @@ curl -v -X DELETE \
 ```
 
 
-#### List an account's specific phone number
+## List An Account's Specific Phone Number
 
 Show the number's properties along with user-defined properties.
 
@@ -347,9 +347,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 ```
 
-##### Response
-
-###### Success
+**Success Response**
 
 ```json
 {
@@ -376,7 +374,7 @@ curl -v -X GET \
 }
 ```
 
-###### Failure
+**Failure Response**
 
 Possible reasons for failure:
 
@@ -398,9 +396,10 @@ Possible reasons for failure:
 ```
 
 
-#### Update public fields of a number
+## Update Public Fields Of A Number
 
-Note: some public fields are used to configure number features.
+!!! note
+    some public fields are used to configure number features.
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -444,8 +443,7 @@ curl -v -X POST \
 }
 ```
 
-
-#### Patch public fields of a number
+## Patch Public Fields Of A Number
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -489,14 +487,15 @@ curl -v -X PATCH \
 }
 ```
 
-
-#### Add a number to the database
+## Add a number to the database
 
 Adds a number to the database, returning its properties.
 
-Note: set field `"create_with_state"` in payload to your desired number state (defaults to `"reserved"`).
+!!! note
+    Set field `"create_with_state"` in payload to your desired number state (defaults to `"reserved"`).
 
-Note: payload is facultative.
+!!! note
+    Payload is optional.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -507,9 +506,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 ```
 
-##### Response
-
-###### Success
+### Success Response
 
 ```json
 {
@@ -530,9 +527,9 @@ curl -v -X PUT \
 }
 ```
 
-###### Failure
+### Failure Responses
 
-####### Number already exists
+**Number already exists**
 
 ```json
 {
@@ -550,7 +547,7 @@ curl -v -X PUT \
 }
 ```
 
-####### Number does not conform to E.164 format
+**Number does not conform to E.164 format**
 
 A non-conforming `{PHONE_NUMBER}`: `"+141510010+15"`.
 
@@ -570,7 +567,7 @@ A non-conforming `{PHONE_NUMBER}`: `"+141510010+15"`.
 }
 ```
 
-####### Account unauthorized
+**Account unauthorized**
 
 ```json
 {
@@ -587,7 +584,7 @@ A non-conforming `{PHONE_NUMBER}`: `"+141510010+15"`.
 ```
 
 
-#### Check availability of phone numbers
+## Check Availability Of Phone Numbers
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/check
 
@@ -605,7 +602,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/check
 ```
 
-##### Response
+**Response**
 
 ```json
 {
@@ -621,7 +618,7 @@ curl -v -X POST \
 ```
 
 
-#### Get locality information for a collection of numbers
+## Get Locality Information For A Collection Of Numbers
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 
@@ -632,9 +629,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 ```
 
-##### Responses
-
-###### Success
+**Success Response**
 
 ```json
 {
@@ -705,7 +700,7 @@ curl -v -X POST \
 }
 ```
 
-###### Backend to PhoneBook not set up
+**Backend to PhoneBook not set up**
 
 ```json
 {
@@ -719,7 +714,7 @@ curl -v -X POST \
 ```
 
 
-#### List available numbers of a given US city
+## List Available Numbers Of A Given US City
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
 
@@ -729,15 +724,13 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix?city={CITY}
 ```
 
-##### Responses
-
-###### Success
+**Success Response**
 
 ```json
 
 ```
 
-###### Country or city not found
+**Country or city not found**
 
 ```json
 {
@@ -755,7 +748,7 @@ curl -v -X GET \
 }
 ```
 
-###### Backend to PhoneBook not set up
+**Backend to PhoneBook not set up**
 
 ```json
 {
@@ -769,7 +762,7 @@ curl -v -X GET \
 ```
 
 
-#### Remove a list of numbers from the database
+## Remove a list of numbers from the database
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
@@ -821,7 +814,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Remove a list of numbers from account (admin only)
+## Remove a list of numbers from account (admin only)
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
@@ -873,7 +866,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Update public fields of a list of numbers
+## Update public fields of a list of numbers
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
@@ -918,7 +911,7 @@ curl -v -X POST \
 ```
 
 
-#### Patch public fields of a list of numbers
+## Patch public fields of a list of numbers
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
@@ -963,7 +956,7 @@ curl -v -X PATCH \
 ```
 
 
-#### Add a list of numbers to the database
+## Add a list of numbers to the database
 
 Note: set field `"create_with_state"` in payload to your desired number state (defaults to `"reserved"`).
 
@@ -976,9 +969,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 ```
 
-##### Responses
-
-###### Success
+**Success Response**
 
 ```json
 {
@@ -1020,7 +1011,7 @@ curl -v -X PUT \
 }
 ```
 
-###### Failure
+**Failure**
 
 ```json
 {
@@ -1047,7 +1038,7 @@ curl -v -X PUT \
 ```
 
 
-#### List classifiers
+## List classifiers
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
 
@@ -1101,7 +1092,7 @@ curl -v -X GET \
 ```
 
 
-#### Fix issues
+## Fix issues
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
 
@@ -1115,7 +1106,7 @@ curl -v -X POST \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "casquade_quantity": 0,
+        "cascade_quantity": 0,
         "numbers": {
             "+14152338421": {
                 "assigned_to": "{ACCOUNT_ID}",
@@ -1146,7 +1137,7 @@ curl -v -X POST \
 ```
 
 
-#### Fix `used_by` field (and others) of a specific number
+## Fix `used_by` field (and others) of a specific number
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix/{PHONE_NUMBER}
 
@@ -1200,7 +1191,7 @@ curl -v -X POST \
 ```
 
 
-#### Return which account a number belongs to
+## Return which account a number belongs to
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify
 
@@ -1210,9 +1201,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify
 ```
 
-##### Responses
-
-###### Success
+**Success Response**
 
 ```json
 {
@@ -1227,7 +1216,7 @@ curl -v -X GET \
 }
 ```
 
-###### Number not in service or account disabled
+**Number not in service or account disabled**
 
 ```json
 {
@@ -1243,7 +1232,7 @@ curl -v -X GET \
 }
 ```
 
-###### Number not found or not enough privileges
+**Number not found or not enough privileges**
 
 ```json
 {
@@ -1260,7 +1249,7 @@ curl -v -X GET \
 ```
 
 
-#### Create a number in the `port_in` state
+## Create a number in the `port_in` state
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/port
 
@@ -1304,7 +1293,7 @@ curl -v -X PUT \
 ```
 
 
-#### Move a number to the reserved state
+## Move a number to the reserved state
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve
 
@@ -1314,9 +1303,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve
 ```
 
-##### Responses
-
-###### Success
+**Success Response**
 
 ```json
 {
@@ -1336,7 +1323,7 @@ curl -v -X PUT \
 }
 ```
 
-###### Number already in reserved state
+**Number already in reserved state**
 
 ```json
 {
@@ -1353,7 +1340,7 @@ curl -v -X PUT \
 }
 ```
 
-###### Number does not exist
+**Number does not exist**
 
 ```json
 {
@@ -1370,7 +1357,7 @@ curl -v -X PUT \
 ```
 
 
-#### Buy a number once searched for
+## Buy a number once searched for
 
 Note: one is not charged if number is already in service.
 
@@ -1382,9 +1369,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/activate
 ```
 
-##### Responses
-
-###### Success
+**Success**
 
 ```json
 {
@@ -1404,7 +1389,7 @@ curl -v -X PUT \
 }
 ```
 
-###### Number was not returned in previous search results or other error
+**Number was not returned in previous search results or other error**
 
 ```json
 {
@@ -1421,7 +1406,7 @@ curl -v -X PUT \
 }
 ```
 
-###### Carrier fault
+**Carrier fault**
 
 ```json
 {
@@ -1439,7 +1424,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Classify a number
+## Classify a number
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}
 
@@ -1467,7 +1452,7 @@ curl -v -X GET \
 ```
 
 
-#### Buy a list of numbers
+## Buy a list of numbers
 
 Note: numbers must have appeared as part of the results of a numbers search.
 
@@ -1480,9 +1465,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 ```
 
-##### Responses
-
-###### Success
+**Success Response**
 
 ```json
 {
@@ -1515,7 +1498,7 @@ curl -v -X PUT \
 }
 ```
 
-###### Number not found or other error
+**Number not found or other error**
 
 ```json
 {
@@ -1535,14 +1518,11 @@ curl -v -X PUT \
 ```
 
 
-#### E911
+## E911
 
-##### Request
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 
-- Verb: `POST`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}`
-- Payload:
-
+With a sample payload like below:
 ```json
 {
     "data": {
@@ -1560,9 +1540,17 @@ curl -v -X PUT \
 }
 ```
 
-##### Response
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{_ABOVE_SAMPLE_}' \
+    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{NUMBER}'
+```
 
-###### Invalid address
+
+### Responses
+
+**Invalid address**
 
 ```json
 {
@@ -1586,7 +1574,8 @@ curl -v -X PUT \
     "status": "error"
 }
 ```
-###### Multiple choice
+
+**Multiple choice**
 
 ```json
 {
@@ -1623,7 +1612,7 @@ curl -v -X PUT \
 }
 ```
 
-###### Success
+**Success**
 
 ```json
 {

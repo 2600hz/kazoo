@@ -80,7 +80,7 @@ content_types_provided_for_provisioner(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
         {'ok', JObj} ->
             CT = kz_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>),
             [Type, SubType] = binary:split(CT, <<"/">>),
-            lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
+            lager:debug("found attachment of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end;
 content_types_provided_for_provisioner(Context, _, _, _) ->
@@ -272,14 +272,11 @@ upload_template_image(Context) ->
 
 -spec upload_template_image(cb_context:context(), req_files()) -> cb_context:context().
 upload_template_image(Context, []) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"required">>
-                                   ,kz_json:from_list([
-                                                       {<<"message">>, <<"please provide an image file">>}
-                                                      ])
+                                   ,kz_json:from_list([{<<"message">>, <<"please provide an image file">>}])
                                    ,Context
-     );
+                                   );
 upload_template_image(Context, [{_, _}]) ->
     crossbar_util:response(kz_json:new(), Context);
 upload_template_image(Context, [_|_]) ->

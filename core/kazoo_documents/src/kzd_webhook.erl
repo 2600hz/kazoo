@@ -62,13 +62,11 @@ disable(Hook) ->
 
 -spec disable(doc(), kz_term:api_binary()) -> doc().
 disable(Hook, Reason) ->
-    kz_json:set_values(
-      props:filter_undefined(
-        [{?IS_ENABLED, 'false'}
-        ,{?DISABLED_MESSAGE, Reason}
-        ])
+    kz_json:set_values([{?IS_ENABLED, 'false'}
+                       ,{?DISABLED_MESSAGE, Reason}
+                       ]
                       ,Hook
-     ).
+                      ).
 
 -spec disabled_message(doc()) -> kz_term:api_binary().
 disabled_message(Hook) ->
@@ -215,7 +213,6 @@ disable_subaccounts(Hook) ->
                      ,'false'
                      ,Hook
                      ).
-
 
 -spec include_internal_legs(doc()) -> boolean().
 include_internal_legs(Hook) ->

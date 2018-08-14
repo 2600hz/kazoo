@@ -64,11 +64,12 @@ maybe_add_id(Ledger) ->
     case kz_doc:id(Ledger) of
         'undefined' ->
             {Year, Month, _} = erlang:date(),
-            [{<<"_id">>, <<(kz_term:to_binary(Year))/binary
-                           ,(kz_date:pad_month(Month))/binary
-                           ,"-"
-                           ,(create_hash(Ledger))/binary
-                         >>}
+            [{<<"_id">>, list_to_binary([kz_term:to_binary(Year)
+                                        ,kz_date:pad_month(Month)
+                                        ,"-"
+                                        ,create_hash(Ledger)
+                                        ])
+             }
             ,{<<"pvt_created">>, kz_time:now_s()}
             ];
         _ -> []

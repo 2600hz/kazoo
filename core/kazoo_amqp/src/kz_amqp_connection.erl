@@ -21,7 +21,7 @@
         ,code_change/3
         ]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 -type state() :: kz_amqp_connection().
 
 -define(SERVER, ?MODULE).

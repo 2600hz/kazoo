@@ -1,6 +1,6 @@
-### Temporal Rules Sets
+# Temporal Rules Sets
 
-#### About Temporal Rules Sets
+## About Temporal Rules Sets
 
 #### Schema
 
@@ -10,13 +10,13 @@ Schema for a temporal rules sets
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` |  
-`temporal_rules.[]` |   | `string()` |   | `false` |  
-`temporal_rules` | Temporal Rules | `array(string())` |   | `false` |  
+`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` | `supported`
+`temporal_rules.[]` |   | `string()` |   | `false` | `supported`
+`temporal_rules` | Temporal Rules | `array(string())` |   | `false` | `supported`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
@@ -26,7 +26,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
@@ -36,7 +36,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
@@ -46,7 +46,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
@@ -56,7 +56,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
@@ -66,7 +66,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 

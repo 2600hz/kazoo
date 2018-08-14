@@ -182,11 +182,11 @@ flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 %%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
-    amqp_util:bind_q_to_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
+    kz_amqp_util:bind_q_to_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
+    kz_amqp_util:unbind_q_from_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API
@@ -194,7 +194,7 @@ unbind_q(Queue, _Props) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?DISCOVERY_EXCHANGE, ?DISCOVERY_EXCHANGE_TYPE).
+    kz_amqp_util:new_exchange(?DISCOVERY_EXCHANGE, ?DISCOVERY_EXCHANGE_TYPE).
 
 -spec publish_flush(kz_term:api_terms()) -> 'ok'.
 publish_flush(JObj) ->
@@ -203,7 +203,7 @@ publish_flush(JObj) ->
 -spec publish_flush(kz_term:api_terms(), binary()) -> 'ok'.
 publish_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DISCOVERY_FLUSH_VALUES, fun flush/1),
-    amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_FLUSH_RK, Payload, ContentType).
+    kz_amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_FLUSH_RK, Payload, ContentType).
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
@@ -212,7 +212,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DISCOVERY_REQ_VALUES, fun req/1),
-    amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_REQ_RK, Payload, ContentType).
+    kz_amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_REQ_RK, Payload, ContentType).
 
 -spec publish_number_req(kz_term:api_terms()) -> 'ok'.
 publish_number_req(JObj) ->
@@ -221,7 +221,7 @@ publish_number_req(JObj) ->
 -spec publish_number_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_number_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NUMBER_REQ_VALUES, fun number_req/1),
-    amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?NUMBER_REQ_RK, Payload, ContentType).
+    kz_amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?NUMBER_REQ_RK, Payload, ContentType).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
@@ -230,7 +230,7 @@ publish_resp(RespQ, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?DISCOVERY_RESP_VALUES, fun resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec query_id(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binary().
 query_id(Props) when is_list(Props) ->

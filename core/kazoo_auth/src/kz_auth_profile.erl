@@ -57,7 +57,6 @@ token(Token) ->
                ],
     token_fold(Token, Routines).
 
-
 %%==============================================================================
 %% Internal functions
 %%==============================================================================
@@ -80,7 +79,7 @@ token_fold(Token, [Fun | Routines]) ->
 
 -spec profile_access_verb(map()) -> 'get' | 'post'.
 profile_access_verb(Provider) ->
-    case kz_term:to_atom(kz_maps:get(profile_access_verb, Provider, 'get'), 'true') of
+    case kz_term:to_atom(kz_maps:get('profile_access_verb', Provider, 'get'), 'true') of
         'get' -> 'get';
         'post' -> 'post';
         _ -> 'get'
@@ -92,10 +91,12 @@ maybe_load_profile(#{user_map := #{<<"profile">> := Profile}} = Token) -> Token#
 maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL} = Provider
                     ,access_token := AccessToken
                     } = Token) ->
-    Options = [{headers_as_is, true}, {ssl, [{versions, ['tlsv1.2']}]}],
+    Options = [{'headers_as_is', 'true'}
+              ,{'ssl', [{'versions', ['tlsv1.2']}]}
+              ],
     URL = kz_term:to_list(profile_url(Token)),
     Verb = profile_access_verb(Provider),
-    {ok,{_,_, Host, _, _, _}} = http_uri:parse(URL),
+    {'ok',{_,_, Host, _, _, _}} = http_uri:parse(URL),
     Headers = [{<<"host">>, Host}
                | profile_authorization_headers(Token, AccessToken)
               ],
@@ -128,12 +129,12 @@ profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
     case maps:get(profile_access_auth_type, Provider, <<"token">>) of
         <<"token">> ->
             lager:debug("using profile access token authorization header"),
-            DefaultTokenType = maps:get(profile_access_token_type, Provider, <<"Bearer">>),
-            TokenType = maps:get(token_type, Token, DefaultTokenType),
+            DefaultTokenType = maps:get('profile_access_token_type', Provider, <<"Bearer">>),
+            TokenType = maps:get('token_type', Token, DefaultTokenType),
             <<TokenType/binary, " ",AccessToken/binary>>;
         <<"api_key">> ->
             lager:debug("using profile api key authorization header"),
-            list_to_binary(["API_KEY ", maps:get(profile_access_api_key, Provider, <<>>)]);
+            list_to_binary(["API_KEY ", maps:get('profile_access_api_key', Provider, <<>>)]);
         <<"url">> -> <<>>
     end.
 
@@ -148,7 +149,7 @@ profile_authorization_headers(Provider, AccessToken) ->
 profile_url(#{auth_provider := #{profile_url := ProfileURL} = Provider
              ,access_token := AccessToken
              }=Token) ->
-    case maps:get(profile_access_auth_type, Provider, <<"token">>) of
+    case maps:get('profile_access_auth_type', Provider, <<"token">>) of
         <<"token">> -> maybe_compose_profile_url(ProfileURL, Token);
         <<"api_key">> -> maybe_compose_profile_url(ProfileURL, Token);
         <<"url">> -> maybe_compose_profile_url(<<ProfileURL/binary, AccessToken/binary>>, Token)
@@ -161,17 +162,20 @@ profile_url(#{auth_provider := #{profile_url := ProfileURL} = Provider
 -spec maybe_compose_profile_url(kz_term:ne_binary(), map()) -> binary().
 maybe_compose_profile_url(Url, Token) ->
     case re:run(Url, ?PROFILE_URL_REGEX, ?PROFILE_URL_REGEX_OPTIONS) of
-        {match, [_ | _] = Fields} -> compose_profile_url(Url, lists:flatten(Fields), Token);
+        {'match', [_ | _] = Fields} -> compose_profile_url(Url, lists:flatten(Fields), Token);
         _ -> Url
     end.
 
 -spec compose_profile_url(kz_term:ne_binary(), kz_term:ne_binaries(), map()) -> binary().
 compose_profile_url(Url, Fields, Token) ->
-    Payload = maps:get(payload, Token, #{}),
+    Payload = maps:get('payload', Token, #{}),
     lists:foldl(fun(Field, Acc) ->
                         V = kz_maps:get(Field, Payload, <<>>),
                         re:replace(Acc, <<":", Field/binary>>, V, ?PROFILE_URL_REPLACE_OPTIONS)
-                end, Url, Fields).
+                end
+               ,Url
+               ,Fields
+               ).
 
 -spec maybe_add_user_identity(map()) -> map().
 maybe_add_user_identity(#{user_identity := _Identity} = Token) -> Token;
@@ -203,7 +207,10 @@ maybe_add_user_identity(#{auth_provider := #{profile_identity_fields := Fields}
             Identity = lists:foldl(fun(K, Acc) ->
                                            V = kz_term:to_binary(kz_json:get_value(K, Profile)),
                                            <<Acc/binary, "-", V/binary>>
-                                   end, V1, Others),
+                                   end
+                                  ,V1
+                                  ,Others
+                                  ),
             lager:debug("found user identity ~p", [Identity]),
             Token#{user_identity => Identity}
     end;
@@ -254,7 +261,7 @@ maybe_add_user_email(#{profile_error_code := _Error} = Token) -> Token;
 maybe_add_user_email(#{auth_provider := #{profile_email_field := Field}
                       ,profile := Profile
                       } = Token) ->
-    Payload = kz_json:from_map(maps:get(payload, Token, #{})),
+    Payload = kz_json:from_map(maps:get('payload', Token, #{})),
     case kz_json:find_first_defined([Field | ?PROFILE_EMAIL_FIELDS], [Payload, Profile]) of
         'undefined' ->
             lager:debug("user email from ~p not found", [Field]),
@@ -264,7 +271,7 @@ maybe_add_user_email(#{auth_provider := #{profile_email_field := Field}
             Token#{user_email => EMail}
     end;
 maybe_add_user_email(#{profile := Profile} = Token) ->
-    Payload = kz_json:from_map(maps:get(payload, Token, #{})),
+    Payload = kz_json:from_map(maps:get('payload', Token, #{})),
     case kz_json:find_first_defined(?PROFILE_EMAIL_FIELDS, [Payload, Profile]) of
         'undefined' ->
             lager:debug("user email from known fields not found"),
@@ -366,7 +373,9 @@ maybe_required_properties_missing(#{auth_provider := #{profile_required_props :=
     case RequiredProps -- props:get_keys(Props) of
         [] -> maybe_cache_user(Token#{user_doc => JObj
                                      ,user_map => kz_json:to_map(JObj)
-                                     }, kz_doc:id(JObj));
+                                     }
+                              ,kz_doc:id(JObj)
+                              );
         Missing ->
             lager:info("missing properties when checking user : ~p", [kz_binary:join(Missing)]),
             Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
@@ -397,38 +406,42 @@ format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
                  ,profile := Profile
                  ,user_identity := Identity
                  }=Token) ->
-    Verified = maps:get(verified_token, Token, kz_json:new()),
-    Original = maps:get(original, Token, kz_json:new()),
-    Scope = kz_json:find_first_defined([<<"scope">>], [Profile, Verified, Original], <<>>),
-    App = maps:get(auth_app, Token, #{}),
-    AppId = maps:get(name, App, 'undefined'),
-    AppAccountId = maps:get(pvt_account_id, App, 'undefined'),
-    EMail = maps:get(user_email, Token, 'undefined'),
+    Verified = maps:get('verified_token', Token, kz_json:new()),
+    Original = maps:get('original', Token, kz_json:new()),
+    Lookup = lists:filter(fun kz_json:is_json_object/1, [Profile, Verified, Original]),
+    Scope = kz_json:find_first_defined([<<"scope">>], Lookup, <<>>),
+    App = maps:get('auth_app', Token, #{}),
+    AppId = maps:get('name', App, 'undefined'),
+    AppAccountId = maps:get('pvt_account_id', App, 'undefined'),
+    EMail = maps:get('user_email', Token, 'undefined'),
 
-    Mapping = maps:get(profile_account_mapping, Provider, #{}),
+    Mapping = maps:get('profile_account_mapping', Provider, #{}),
     MapFields = maps:fold(fun(K, V, Acc) ->
                                   case kz_json:get_value(V, Profile) of
                                       'undefined' -> Acc;
                                       Value -> [{kz_term:to_binary(K), Value} | Acc]
                                   end
-                          end, [], Mapping),
+                          end
+                         ,[]
+                         ,Mapping
+                         ),
 
     Props = [{<<"email">>, EMail}
             ,{<<"verified_email">>, kz_json:get_first_defined(?TOKEN_VERIFIED_EMAIL_FIELDS, Verified)}
-            ,{<<"access_type">>, maps:get(access_type, Token, 'undefined')}
+            ,{<<"access_type">>, maps:get('access_type', Token, 'undefined')}
             ,{<<"scope">>, Scope}
             ,{<<"scopes">>, binary:split(Scope, ?SCOPE_SEPARATORS, ['global'])}
             ,{<<"profile">>, Profile}
-            ,{<<"display_name">>, maps:get(display_name, Token, 'undefined')}
-            ,{<<"photo_url">>, maps:get(photo_url, Token, 'undefined')}
+            ,{<<"display_name">>, maps:get('display_name', Token, 'undefined')}
+            ,{<<"photo_url">>, maps:get('photo_url', Token, 'undefined')}
             ,{<<"pvt_app_id">>, AppId}
             ,{<<"pvt_app_provider_id">>, ProviderId}
             ,{<<"pvt_app_account_id">>, AppAccountId}
-            ,{<<"pvt_account_id">>, maps:get(linked_account_id, Token, 'undefined')}
-            ,{<<"pvt_owner_id">>, maps:get(linked_owner_id, Token, 'undefined')}
+            ,{<<"pvt_account_id">>, maps:get('linked_account_id', Token, 'undefined')}
+            ,{<<"pvt_owner_id">>, maps:get('linked_owner_id', Token, 'undefined')}
             ,{<<"pvt_type">>, <<"user">>}
             ,{<<"pvt_user_identity">>, Identity}
-            ,{<<"pvt_refresh_token">>, maps:get(refresh_token, Token, 'undefined')}
-            ,{<<"pvt_static_token">>, maps:get(static_token, Token, 'undefined')}
+            ,{<<"pvt_refresh_token">>, maps:get('refresh_token', Token, 'undefined')}
+            ,{<<"pvt_static_token">>, maps:get('static_token', Token, 'undefined')}
             ] ++ MapFields,
     props:filter_empty(Props).

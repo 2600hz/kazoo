@@ -24,7 +24,7 @@
 
 -export([gc_pools/0, gc_pool/1]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(ASSIGNMENTS, 'kz_amqp_assignments').
 -define(CONNECTIONS, 'kz_amqp_connections').
@@ -436,14 +436,12 @@ consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(Proc
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessLower) ->
     consumer_details(NodeNumber, ProcessUpper, kz_term:to_binary(ProcessLower));
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
-    Pid = list_to_pid(
-            kz_term:to_list(
-              <<"<", NodeNumber/binary
-                ,".", ProcessUpper/binary
-                ,".", ProcessLower/binary
-                ,">"
-              >>
-             )),
+    ProtoPid = list_to_binary(["<", NodeNumber
+                              ,".", ProcessUpper
+                              ,".", ProcessLower
+                              ,">"
+                              ]),
+    Pid = list_to_pid(kz_term:to_list(ProtoPid)),
     print_consumer_details(Pid).
 
 print_consumer_details('$end_of_table') -> 'ok';

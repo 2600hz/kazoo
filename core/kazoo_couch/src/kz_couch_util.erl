@@ -9,6 +9,7 @@
 -export([retry504s/1]).
 
 -export([new_connection/1
+        ,admin_connection/1
         ,get_db/2
         ,server_url/1
         ,db_url/2
@@ -168,11 +169,13 @@ connect(#kz_couch_connection{host=Host
     connection_info(Conn).
 
 add_couch_version(<<"1.6", _/binary>>, 'undefined', #server{options=Options}=Conn) ->
-    Conn#server{options = [{driver_version, 'couchdb_1_6'} | Options]};
+    Conn#server{options = props:set_value('driver_version', 'couchdb_1_6', Options)};
+add_couch_version(<<"1.1", _/binary>>, _Bigcouch, #server{options=Options}=Conn) ->
+    Conn#server{options = props:set_value('driver_version', 'bigcouch', Options)};
 add_couch_version(_, 'undefined', #server{options=Options}=Conn) ->
-    Conn#server{options = [{driver_version, 'couchdb_2'} | Options]};
+    Conn#server{options = props:set_value('driver_version', 'couchdb_2', Options)};
 add_couch_version(_, _, #server{options=Options}=Conn) ->
-    Conn#server{options = [{driver_version, 'bigcouch'} | Options]}.
+    Conn#server{options = props:set_value('driver_version', 'bigcouch', Options)}.
 
 -spec server_info(server()) -> {'ok', kz_json:object()} |
                                {'error', any()}.
@@ -215,6 +218,11 @@ is_admin_db(<<"dbs">>, 'bigcouch') -> 'true';
 is_admin_db(<<"users">>, 'bigcouch') -> 'true';
 is_admin_db(<<"nodes">>, 'bigcouch') -> 'true';
 is_admin_db(_Db, _Driver) -> 'false'.
+
+%% loads the admin connection if possible
+-spec admin_connection(kz_data:connection()) -> kz_data:connection().
+admin_connection(Conn) ->
+    maybe_use_admin_conn(Conn).
 
 -spec maybe_use_admin_conn(kz_data:connection()) -> kz_data:connection().
 maybe_use_admin_conn(#server{options=Options}=Conn) ->
@@ -282,8 +290,15 @@ format_error('not_found') -> 'not_found';
 format_error('db_not_found') -> 'db_not_found';
 format_error({'error', 'connect_timeout'}) -> 'connect_timeout';
 format_error({'http_error', _, Msg}) -> Msg;
+format_error({'error', {'closed', _Buffer}}) ->
+    lager:warning("socket closed unexpectedly"),
+    'tcp_closed';
+format_error({'error', 'closed'}) ->
+    lager:warning("socket closed unexpectedly"),
+    'tcp_closed';
 format_error({'error', Error}) -> Error;
 format_error(<<"400: illegal_database_name">>) -> 'illegal_database_name';
+format_error('forbidden') -> 'forbidden';
 format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
     E.
@@ -325,7 +340,7 @@ connection_info(#server{url=Url}=Conn) ->
         {'ok', ConnData} ->
             CouchVersion = kz_json:get_ne_binary_value(<<"version">>, ConnData),
             BigCouchVersion = kz_json:get_ne_binary_value(<<"bigcouch">>, ConnData),
-            lager:info("connected successfully to ~s", [Url]),
+            lager:debug("connected successfully to ~s", [Url]),
             lager:debug("responding CouchDB version: ~p", [CouchVersion]),
             lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
             {'ok', add_couch_version(CouchVersion, BigCouchVersion, Conn)};

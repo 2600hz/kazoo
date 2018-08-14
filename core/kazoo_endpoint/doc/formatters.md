@@ -14,7 +14,7 @@ When a call enters Kazoo from a carrier, Stepswitch receives the route request f
 
 If the call came from a known resource, you can optionally define formatters to take the route request headers and format the values before they are replayed to the call processing applications.
 
-On the resource document, define a key `Formatters` which is a JSON object of route request headers as keys and their value being an object (or list of objects) of regexes, prefixes, and suffixes.
+On the resource document, define a key `Formatters` which is a JSON object of route request headers as keys and their value being an object (or list of objects) of regexps, prefixes, and suffixes.
 
     {"_id":"some_resource_id"
      ,...

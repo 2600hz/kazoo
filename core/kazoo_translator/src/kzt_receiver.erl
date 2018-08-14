@@ -42,8 +42,7 @@
 -spec default_on_first_fun(any()) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.
 
-
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call, FinishKey, Timeout, N) ->
     collect_dtmfs(Call
@@ -54,7 +53,7 @@ collect_dtmfs(Call, FinishKey, Timeout, N) ->
                  ,kzt_util:get_digits_collected(Call)
                  ).
 
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call
              ,FinishKey
@@ -70,7 +69,7 @@ collect_dtmfs(Call
                  ,kzt_util:get_digits_collected(Call)
                  ).
 
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function(), binary()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function(), binary()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call
              ,_FinishKey
@@ -111,7 +110,7 @@ collect_dtmfs(Call
             collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected)
     end.
 
--spec collect_dtmfs(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function(), binary(), kz_json:object()) ->
+-spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function(), binary(), kz_json:object()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
     case kz_util:get_event_type(JObj) of
@@ -130,9 +129,9 @@ collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
             collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected)
     end.
 
--spec handle_dtmf(kapps_call:call(), kz_term:api_binary(), timeout(), pos_integer(), function(), binary(), kz_term:api_binary()) ->
+-spec handle_dtmf(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function(), binary(), kz_term:api_ne_binary()) ->
                          collect_dtmfs_return().
-handle_dtmf(Call, FinishKey, _Timeout, _N, _OnFirstFun, _Collected, FinishKey) ->
+handle_dtmf(Call, FinishKey, _Timeout, _N, _OnFirstFun, _Collected, FinishKey) when is_binary(FinishKey) ->
     lager:info("finish key '~s' pressed", [FinishKey]),
     {'ok', 'dtmf_finish', Call};
 handle_dtmf(Call, _FinishKey, _Timeout, _N, _OnFirstFun, _Collected, <<>>) ->
@@ -587,45 +586,49 @@ process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
         {<<"call_event">>, <<"CHANNEL_EXECUTE">>} ->
             case kz_call_event:application_name(JObj) of
                 <<"conference">> ->
-                    lager:debug("conferencing has started to execute"),
+                    lager:info("conferencing has started to execute"),
                     wait_for_conference_events(
                       update_offnet_timers(
                         OffnetReq#dial_req{call_timeout='undefined'}
-                       ));
+                       )
+                     );
                 _App ->
+                    lager:debug("ignoring app ~s", [_App]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))
             end;
 
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case kz_call_event:application_name(JObj) of
                 <<"conference">> ->
-                    lager:debug("conferencing has ended"),
+                    lager:info("conferencing has ended"),
                     kapps_call_command:park(Call),
                     {'ok', Call};
                 _App ->
+                    lager:debug("app ~s has ended", [_App]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))
             end;
 
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("call has ended"),
+            lager:info("our call has ended"),
             {'ok', Call};
 
-        {<<"conference">>, <<"config_req">>} ->
-            ConfigName = kz_json:get_value(<<"Profile">>, JObj),
-            lager:debug("conference profile ~s requested", [ConfigName]),
-
-            Profile = kzt_util:get_conference_profile(Call),
-            Resp = [{<<"Profiles">>, kz_json:from_list([{ConfigName, Profile}])}
-                   ,{<<"Caller-Controls">>, kzt_util:get_caller_controls(Call)}
-                   ,{<<"Advertise">>, kzt_util:get_advertise(Call)}
-                   ,{<<"Chat-Permissions">>, kzt_util:get_chat_permissions(Call)}
-                   ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            kapi_conference:publish_config_resp(kz_api:server_id(JObj)
-                                               ,Resp
-                                               ),
-            wait_for_conference_events(update_offnet_timers(OffnetReq));
+        {<<"conference">>, <<"event">>} ->
+            case kz_json:get_ne_binary_value(<<"Event">>, JObj) of
+                <<"conference-create">> ->
+                    lager:info("conference has been created"),
+                    wait_for_conference_events(
+                      update_offnet_timers(
+                        OffnetReq#dial_req{call_timeout='undefined'}
+                       )
+                     );
+                <<"conference-destroy">> ->
+                    lager:info("conference has been destroyed"),
+                    kapps_call_command:park(Call),
+                    {'ok', Call};
+                _Event ->
+                    lager:debug("ignoring conference event ~s", [_Event]),
+                    wait_for_conference_events(update_offnet_timers(OffnetReq))
+            end;
         {_Cat, _Name} ->
             lager:debug("unhandled event for ~s: ~s: ~s"
                        ,[_Cat, _Name, kz_call_event:application_name(JObj)]
@@ -654,24 +657,21 @@ maybe_start_recording(#dial_req{record_call='true'
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 recording_meta(Call, MediaName) ->
-    AcctDb = kapps_call:account_db(Call),
-    MediaDoc = kz_doc:update_pvt_parameters(
-                 kz_json:from_list(
-                   [{<<"name">>, MediaName}
-                   ,{<<"description">>, <<"recording ", MediaName/binary>>}
-                   ,{<<"content_type">>, <<"audio/mp3">>}
-                   ,{<<"media_source">>, <<"recorded">>}
-                   ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
-                   ,{<<"pvt_type">>, <<"private_media">>}
-                   ,{<<"from">>, kapps_call:from(Call)}
-                   ,{<<"to">>, kapps_call:to(Call)}
-                   ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
-                   ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
-                   ,{<<"call_id">>, kapps_call:call_id(Call)}
-                   ])
-                                           ,AcctDb
-                ),
-    kz_datamgr:save_doc(AcctDb, MediaDoc).
+    AccountDb = kapps_call:account_db(Call),
+    BaseDoc = kz_json:from_list([{<<"name">>, MediaName}
+                                ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                                ,{<<"content_type">>, <<"audio/mp3">>}
+                                ,{<<"media_source">>, <<"recorded">>}
+                                ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
+                                ,{<<"pvt_type">>, <<"private_media">>}
+                                ,{<<"from">>, kapps_call:from(Call)}
+                                ,{<<"to">>, kapps_call:to(Call)}
+                                ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
+                                ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
+                                ,{<<"call_id">>, kapps_call:call_id(Call)}
+                                ]),
+    MediaDoc = kz_doc:update_pvt_parameters(BaseDoc, AccountDb),
+    kz_datamgr:save_doc(AccountDb, MediaDoc).
 
 recording_name(ALeg, BLeg) ->
     DateTime = kz_time:pretty_print_datetime(calendar:universal_time()),

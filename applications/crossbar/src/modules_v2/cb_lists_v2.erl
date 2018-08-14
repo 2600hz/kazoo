@@ -237,15 +237,15 @@ validate_req(?HTTP_PATCH, Context, [_ListId, ?ENTRIES, EntryId] = Path) ->
 validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
     Context1 = crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     JObj = cb_context:doc(Context1),
-    JProfile = kz_json:get_value(<<"profile">>, JObj),
+    JProfile = kz_json:get_json_value(<<"profile">>, JObj),
     JObj1 = kz_json:merge_jobjs(JObj, JProfile),
-    JObj2 = kz_json:set_values(
-              props:filter_empty(
-                [{<<"first_name">>, kz_json:get_value(<<"firstname">>, JObj1)}
-                ,{<<"last_name">>, kz_json:get_value(<<"lastname">>, JObj1)}
-                ,{<<"middle_name">>, kz_json:get_value(<<"middlename">>, JObj1)}
-                ,{<<"nicknames">>, [kz_json:get_value(<<"displayname">>, JObj1)]}])
-                              ,JObj1),
+    JObj2 = kz_json:set_values(props:filter_empty([{<<"first_name">>, kz_json:get_value(<<"firstname">>, JObj1)}
+                                                  ,{<<"last_name">>, kz_json:get_value(<<"lastname">>, JObj1)}
+                                                  ,{<<"middle_name">>, kz_json:get_value(<<"middlename">>, JObj1)}
+                                                  ,{<<"nicknames">>, [kz_json:get_value(<<"displayname">>, JObj1)]}
+                                                  ])
+                              ,JObj1
+                              ),
     JObj3 = set_org(JObj2, Context1),
     JObj4 = set_photo(JObj3, Context1),
     RespData = kzd_user:to_vcard(JObj4),

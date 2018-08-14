@@ -14,7 +14,8 @@ docs-build: $(LOCAL)
 	@$(shell cp $< $@)
 	@$(shell cp "$*.md" $(DOCS_ROOT)/docs/index.md)
 	@if [ -f $(DOCS_ROOT)/theme/global.yml ]; then cat $(DOCS_ROOT)/theme/global.yml >> $@ ; fi
-	@$(echo -e "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $@)
+	@if [ -f $(DOCS_ROOT)/theme/mkdocs_theme/global.yml ]; then cat $(DOCS_ROOT)/theme/mkdocs_theme/global.yml >> $@ ; fi
+	@if ! grep -Eq 'theme[a-z_]*:' $@ ; then printf "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $@ ; fi
 	@echo "building $*"
 	@mkdocs build -f $@ --clean -q --site-dir "$(DOCS_ROOT)/site/$<"
 

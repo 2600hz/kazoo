@@ -14,17 +14,22 @@
 
 -export([migrate/0, migrate/1, migrate/2]).
 -export([migrate_outbound_faxes/0, migrate_outbound_faxes/1]).
+-export([refresh_views/0]).
 -export([flush/0]).
 
 -export([restart_job/1 , update_job/2]).
 -export([account_jobs/1, account_jobs/2]).
 -export([faxbox_jobs/1, faxbox_jobs/2]).
 -export([pending_jobs/0, active_jobs/0]).
+
 -export([load_smtp_attachment/2]).
--export([versions_in_use/0]).
 
 -define(DEFAULT_MIGRATE_OPTIONS, [{'allow_old_modb_creation', 'true'}]).
--define(OVERRIDE_DOCS, ['override_existing_document' | ?DEFAULT_MIGRATE_OPTIONS]).
+-define(OVERRIDE_DOCS, ['override_existing_document'
+                       ,{'transform', fun(_, B) -> kz_json:set_value(<<"folder">>, <<"outbox">>, B) end}
+                        |?DEFAULT_MIGRATE_OPTIONS
+                       ]
+       ).
 -define(DEFAULT_BATCH_SIZE, 100).
 
 -spec migrate() -> 'ok'.
@@ -136,7 +141,6 @@ recover_private_media(AccountDb, Doc, _MediaType) ->
     {'ok', _ } = kz_datamgr:ensure_saved(AccountDb, kz_doc:set_type(Doc, <<"private_media">>)),
     'ok'.
 
-
 -spec migrate_faxes_to_modb(kz_term:ne_binary(),  kz_term:proplist()) -> 'ok'.
 migrate_faxes_to_modb(Account, Options) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
@@ -179,16 +183,27 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
     FaxMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    FaxId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_date:pad_month(Month))/binary
-              ,"-"
-              ,DocId/binary
-            >>,
+    FaxId = list_to_binary([kz_term:to_binary(Year)
+                           ,kz_date:pad_month(Month)
+                           ,"-"
+                           ,DocId
+                           ]),
     io:format("moving doc ~s/~s to ~s/~s~n",[AccountDb, DocId, AccountMODb, FaxId]),
     case kazoo_modb:move_doc(AccountDb, DocId, FaxMODb, FaxId, Options) of
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
     end.
+
+
+%%------------------------------------------------------------------------------
+%% @doc Ensures that the views are updated to enforce the media format migration.
+%% @end
+%%------------------------------------------------------------------------------
+-spec refresh_views() -> 'ok'.
+refresh_views() ->
+    Views = kapps_util:get_views_json('fax', "views"),
+    _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Flush the fax local cache
@@ -430,65 +445,9 @@ load_smtp_attachment(DocId, Filename, FileContents) ->
     CT = kz_mime:from_filename(Filename),
     case kz_datamgr:open_cache_doc(?KZ_FAXES_DB, DocId) of
         {'ok', JObj} ->
-            case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+            case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, JObj, FileContents, CT) of
                 {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
                 {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
             end;
         {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p~n", [DocId, Filename, E])
-    end.
-
--spec versions_in_use() -> no_return.
-versions_in_use() ->
-    AllCmds =
-        [?CONVERT_IMAGE_COMMAND
-        ,?CONVERT_OO_COMMAND
-        ,?CONVERT_PDF_COMMAND
-        ],
-    Executables = find_commands(AllCmds),
-    lists:foreach(fun print_cmd_version/1, Executables),
-    no_return.
-
-print_cmd_version(Exe) ->
-    Options = [exit_status
-              ,use_stdio
-              ,stderr_to_stdout
-              ,{args, ["--version"]}
-              ],
-    Port = open_port({spawn_executable, Exe}, Options),
-    listen_to_port(Port, Exe).
-
-listen_to_port(Port, Exe) ->
-    receive
-        {Port, {data, Str0}} ->
-            [Str|_] = string:tokens(Str0, "\n"),
-            io:format("* ~s:\n\t~s\n", [Exe, Str]),
-            lager:debug("version for ~s: ~s", [Exe, Str]);
-        {Port, {exit_status, 0}} -> ok;
-        {Port, {exit_status, _}} -> no_executable(Exe)
-    end.
-
-find_commands(Cmds) ->
-    Commands =
-        lists:usort(
-          [binary_to_list(hd(binary:split(Cmd, <<$\s>>)))
-           || Cmd <- Cmds
-          ]),
-    lists:usort(
-      [Exe
-       || Cmd <- Commands,
-          Exe <- [cmd_to_executable(Cmd)],
-          Exe =/= false
-      ]).
-
-no_executable(Exe) ->
-    io:format("* ~s:\n\tERROR! missing executable\n", [Exe]),
-    lager:error("missing executable: ~s", [Exe]).
-
-cmd_to_executable("/"++_=Exe) -> Exe;
-cmd_to_executable(Cmd) ->
-    case os:find_executable(Cmd) of
-        false ->
-            no_executable(Cmd),
-            false;
-        Exe -> Exe
     end.

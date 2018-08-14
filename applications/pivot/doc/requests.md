@@ -1,6 +1,6 @@
 # The Request Payload
 
-You can configure whether you receive the data as a querystring in a GET or as a url-encoded body in a POST.
+You can configure whether you receive the data as a query string in a `GET` or as a URL-encoded body in a `POST`.
 
 ## Payload
 

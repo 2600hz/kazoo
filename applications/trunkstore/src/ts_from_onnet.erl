@@ -15,6 +15,7 @@
 -export([start_link/1, init/2]).
 
 -include("ts.hrl").
+-include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -92,8 +93,8 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
         of
             {'undefined', 'undefined'} -> [];
             {ECIDName, ECIDNum} ->
-                [{<<"Emergency-Caller-ID-Name">>, ECIDName}
-                ,{<<"Emergency-Caller-ID-Number">>
+                [{?KEY_E_CALLER_ID_NAME, ECIDName}
+                ,{?KEY_E_CALLER_ID_NUMBER
                  ,ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AccountId, CustomSIPHeaders)}
 
                 ]
@@ -110,19 +111,19 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                 case kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false') of
                     'true' ->
                         ValidCID = ts_util:maybe_ensure_cid_valid('external', OriginalCIdNumber, FromUser, AccountId, CustomSIPHeaders),
-                        [{<<"Outbound-Caller-ID-Number">>, ValidCID}
-                        ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
+                        [{?KEY_OUTBOUND_CALLER_ID_NUMBER, ValidCID}
+                        ,{?KEY_OUTBOUND_CALLER_ID_NAME, OriginalCIdName}
                          | EmergencyCallerID
                         ];
                     'false' ->
-                        [{<<"Outbound-Caller-ID-Number">>, OriginalCIdNumber}
-                        ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
+                        [{?KEY_OUTBOUND_CALLER_ID_NUMBER, OriginalCIdNumber}
+                        ,{?KEY_OUTBOUND_CALLER_ID_NAME, OriginalCIdName}
                          | EmergencyCallerID
                         ]
                 end;
             {CIDName, CIDNum} ->
-                [{<<"Outbound-Caller-ID-Name">>, CIDName}
-                ,{<<"Outbound-Caller-ID-Number">>
+                [{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
+                ,{?KEY_OUTBOUND_CALLER_ID_NUMBER
                  ,ts_util:maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId, CustomSIPHeaders)}
                  | EmergencyCallerID
                 ]
@@ -131,21 +132,21 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     Command = [KV
                || {_,V}=KV <- CallerID
                       ++ EmergencyCallerID
-                      ++ [{<<"Call-ID">>, CallID}
-                         ,{<<"Resource-Type">>, <<"audio">>}
-                         ,{<<"To-DID">>, ToDID}
-                         ,{<<"Account-ID">>, AccountId}
-                         ,{<<"Application-Name">>, <<"bridge">>}
-                         ,{<<"Flags">>, get_flags(DIDOptions, ServerOptions, AccountOptions, State)}
-                         ,{<<"Media">>, MediaHandling}
-                         ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, DIDOptions)}
-                         ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, DIDOptions)}
-                         ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, DIDOptions)}
-                         ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-                         ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"hunt_account_id">>, ServerOptions)}
-                         ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
-                         ,{<<"Requestor-Custom-Channel-Vars">>, ts_callflow:get_custom_channel_vars(State)}
-                         ,{<<"Requestor-Custom-SIP-Headers">>, CustomSIPHeaders}
+                      ++ [{?KEY_CALL_ID, CallID}
+                         ,{?KEY_RESOURCE_TYPE, <<"audio">>}
+                         ,{?KEY_TO_DID, ToDID}
+                         ,{?KEY_ACCOUNT_ID, AccountId}
+                         ,{?KEY_APPLICATION_NAME, <<"bridge">>}
+                         ,{?KEY_FLAGS, get_flags(DIDOptions, ServerOptions, AccountOptions, State)}
+                         ,{?KEY_MEDIA, MediaHandling}
+                         ,{?KEY_TIMEOUT, kz_json:get_value(<<"timeout">>, DIDOptions)}
+                         ,{?KEY_IGNORE_EARLY_MEDIA, kz_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+                         ,{?KEY_RINGBACK, kz_json:get_value(<<"ringback">>, DIDOptions)}
+                         ,{?KEY_CSHS, SIPHeaders}
+                         ,{?KEY_HUNT_ACCOUNT_ID, kz_json:get_value(<<"hunt_account_id">>, ServerOptions)}
+                         ,{?KEY_CCVS, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
+                         ,{?KEY_REQUESTOR_CCVS, ts_callflow:get_custom_channel_vars(State)}
+                         ,{?KEY_REQUESTOR_CSHS, CustomSIPHeaders}
                           | kz_api:default_headers(ts_callflow:get_worker_queue(State)
                                                   ,?APP_NAME, ?APP_VERSION
                                                   )

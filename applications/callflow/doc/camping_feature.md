@@ -6,7 +6,7 @@ When you want to talk to someone but they're on the another call, you can "camp"
 
 #### Schema
 
-Validator for the camping_feature callflow's data object
+Validator for the camping_feature callflow data object
 
 
 

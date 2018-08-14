@@ -1,8 +1,8 @@
-### Query String Filters
+# Query String Filters
 
-#### About Filters
+## About Filters
 
-#### Available Filters
+## Available Filters
 
 Filter | Operates On | Description
 ------ | ----------- | -----------

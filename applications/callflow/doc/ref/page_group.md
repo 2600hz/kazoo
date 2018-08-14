@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the page_group callflow's data object
+Validator for the page_group callflow data object
 
 
 

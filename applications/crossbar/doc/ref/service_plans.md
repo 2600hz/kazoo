@@ -1,6 +1,6 @@
-### Service Plans
+# Service Plans
 
-#### About Service Plans
+## About Service Plans
 
 #### Schema
 
@@ -19,12 +19,12 @@ Key | Description | Type | Default | Required | Support Level
 `manual_recurring` | Monthly recurring items | `array(object())` |   | `false` |  
 `merge.priority` | The priority among the service plans with the merge strategy | `integer()` |   | `false` |  
 `merge.strategy` | The merge strategy, like strategies are merged together based on their priority | `string('simple' | 'cumulative')` |   | `false` |  
-`merge` | Optionally defines a strategy and priorty to merge multiple service plans together | `object()` |   | `false` |  
+`merge` | Optionally defines a strategy and priority to merge multiple service plans together | `object()` |   | `false` |  
 `name` | A friendly name for the service plan | `string(1..128)` |   | `true` |  
 `plan./.+/` | Category name | `object()` |   | `false` |  
 `plan` | Outlines the service plan for various services | `object()` |   | `true` |  
 
-##### bookkeepers
+### bookkeepers
 
 The bookkeeper modules provided by Kazoo
 
@@ -34,7 +34,7 @@ Key | Description | Type | Default | Required | Support Level
 `braintree` |   | `object()` |   | `false` |  
 `local` |   | `object()` |   | `false` |  
 
-##### service_plan.category
+### service_plan.category
 
 Describes a service plan category
 
@@ -46,7 +46,7 @@ Key | Description | Type | Default | Required | Support Level
 `_all.exceptions` | Items that are not included in this item plan | `array(string())` |   | `false` |  
 `_all` | Applies item rules to any item in this category | `object()` |   | `false` |  
 
-##### service_plan.item
+### service_plan.item
 
 Describes a service plan item
 
@@ -74,7 +74,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans
 
@@ -84,7 +84,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans
 
@@ -94,7 +94,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
@@ -104,7 +104,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
@@ -114,7 +114,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
@@ -124,7 +124,17 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```
 
-#### Fetch
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/editable
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/editable
+```
+
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/available
 
@@ -134,7 +144,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/override
 
@@ -144,7 +154,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/override
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/current
 
@@ -154,7 +164,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/current
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
 
@@ -164,7 +174,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
 
@@ -174,7 +184,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}
 

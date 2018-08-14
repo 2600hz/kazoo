@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the offnet callflow's data object
+Validator for the offnet callflow data object
 
 
 
@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required | Support Level
 `to_did` | Statically set the DID to dial | `string()` |   | `false` |  
 `use_local_resources` | Toggle whether to use the account's (or hunt_account_id's) resources vs the system resources | `boolean()` | `true` | `false` |  
 
-##### custom_sip_headers
+### custom_sip_headers
 
 Custom SIP headers applied to an INVITE
 

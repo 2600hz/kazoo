@@ -73,6 +73,7 @@
         "enabled": {
             "default": true,
             "description": "Determines if the account is currently enabled",
+            "support_level": "supported",
             "type": "boolean"
         },
         "formatters": {
@@ -80,6 +81,7 @@
         },
         "language": {
             "description": "The language for this account",
+            "support_level": "supported",
             "type": "string"
         },
         "metaflows": {
@@ -101,6 +103,7 @@
             "description": "A friendly name for the account",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "notifications": {
@@ -126,12 +129,11 @@
                     "description": "Low balance settings",
                     "properties": {
                         "enabled": {
-                            "default": true,
                             "description": "should the account be checked for this alert",
                             "type": "boolean"
                         },
                         "last_notification": {
-                            "description": "Timestamp, in gregorian seconds, of when the last low_balance alert was sent",
+                            "description": "Timestamp, in Gregorian seconds, of when the last low_balance alert was sent",
                             "type": "integer"
                         },
                         "sent_low_balance": {
@@ -169,6 +171,7 @@
             "maxLength": 253,
             "minLength": 4,
             "pattern": "^[.\\w_-]+$",
+            "support_level": "supported",
             "type": "string"
         },
         "ringtones": {
@@ -192,6 +195,7 @@
             "description": "The default timezone",
             "maxLength": 32,
             "minLength": 5,
+            "support_level": "supported",
             "type": "string"
         },
         "topup": {

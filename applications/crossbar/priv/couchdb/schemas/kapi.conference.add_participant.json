@@ -159,6 +159,9 @@
         "Presence-ID": {
             "type": "string"
         },
+        "Profile-Name": {
+            "type": "string"
+        },
         "Raw-Application-Data": {
             "type": "string"
         },

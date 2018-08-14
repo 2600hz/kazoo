@@ -497,7 +497,8 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
             ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
             ],
     Conditionals = [fun(#bt_subscription{descriptor=Descriptor}, P) when 'undefined' =/= Descriptor ->
-                            [{'descriptor', braintree_descriptor:record_to_xml(Descriptor)}|P]
+                            [{'descriptor', braintree_descriptor:record_to_xml(Descriptor)}|P];
+                       (_, P)-> P
                     end
                    ,fun(#bt_subscription{do_not_inherit=Value}, P) ->
                             update_options('do-not-inherit-add-ons-or-discounts', Value, P)

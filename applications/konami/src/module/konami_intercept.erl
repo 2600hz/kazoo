@@ -59,21 +59,19 @@ maybe_update_metaflow(Data, Call, Results, CallId) ->
 maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
     lager:debug("update ~s to ~s with ctl ~s", [kapps_call:call_id(Call), CallId, ControlQueue]),
 
-    konami_code_statem:transfer_to(
-      kapps_call:set_control_queue(ControlQueue
-                                  ,kapps_call:set_call_id(CallId, Call)
-                                  )
+    konami_code_statem:transfer_to(kapps_call:set_control_queue(ControlQueue
+                                                               ,kapps_call:set_call_id(CallId, Call)
+                                                               )
                                   ,'a'
-     ),
+                                  ),
 
     {'stop', Call};
 maybe_update_metaflow_control(_Data, Call, CallId, _ControlQueue, 'b') ->
     lager:debug("update ~s to ~s with ctl ~s", [kapps_call:other_leg_call_id(Call), CallId, _ControlQueue]),
 
-    konami_code_statem:transfer_to(
-      kapps_call:set_other_leg_call_id(CallId, Call)
+    konami_code_statem:transfer_to(kapps_call:set_other_leg_call_id(CallId, Call)
                                   ,'b'
-     ),
+                                  ),
 
     {'stop', Call}.
 
@@ -95,7 +93,9 @@ get_originate_req(Data, Call) ->
 
     Params = kz_json:set_values([{<<"source">>, ?MODULE}
                                 ,{<<"can_call_self">>, 'true'}
-                                ], Data),
+                                ]
+                               ,Data
+                               ),
 
     SourceDeviceId = find_device_id_for_leg(SourceOfDTMF),
     Endpoints = build_endpoints(TargetType, TargetId, SourceDeviceId, Params, Call),
@@ -113,20 +113,19 @@ build_endpoints(<<"device">>, DeviceId, _SourceDeviceId, Params, Call) ->
     end;
 build_endpoints(<<"user">>, OwnerId, SourceDeviceId, Params, Call) ->
     lager:debug("building endpoints for user ~s", [OwnerId]),
-    lists:foldr(
-      fun(EndpointId, Acc) when EndpointId =:= SourceDeviceId ->
-              lager:debug("skipping ~s since it matches device id", [EndpointId]),
-              Acc;
-         (EndpointId, Acc) ->
-              lager:debug("building endpoint ~s", [EndpointId]),
-              case kz_endpoint:build(EndpointId, Params, Call) of
-                  {'ok', Endpoint} -> Endpoint ++ Acc;
-                  _Else -> Acc
-              end
-      end
+    lists:foldr(fun(EndpointId, Acc) when EndpointId =:= SourceDeviceId ->
+                        lager:debug("skipping ~s since it matches device id", [EndpointId]),
+                        Acc;
+                   (EndpointId, Acc) ->
+                        lager:debug("building endpoint ~s", [EndpointId]),
+                        case kz_endpoint:build(EndpointId, Params, Call) of
+                            {'ok', Endpoint} -> Endpoint ++ Acc;
+                            _Else -> Acc
+                        end
+                end
                ,[]
                ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
-     ).
+               ).
 
 -spec build_originate(kz_json:objects(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> kz_term:proplist().
 build_originate([], _CallId, _UnbridgedOnly, _Call) -> [];
@@ -160,11 +159,11 @@ send_originate_req([], _Call) ->
     lager:debug("no origination proprs, skipping"),
     {'error', 'no_endpoints'};
 send_originate_req(OriginateProps, _Call) ->
-    kapps_util:amqp_pool_collect(OriginateProps
-                                ,fun kapi_resource:publish_originate_req/1
-                                ,fun is_resp/1
-                                ,20 * ?MILLISECONDS_IN_SECOND
-                                ).
+    kz_amqp_worker:call_collect(OriginateProps
+                               ,fun kapi_resource:publish_originate_req/1
+                               ,fun is_resp/1
+                               ,20 * ?MILLISECONDS_IN_SECOND
+                               ).
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) ->
@@ -181,13 +180,13 @@ is_originate_uuid(JObj, CallId) ->
 
 -spec find_device_id_for_leg(kz_term:ne_binary()) -> kz_term:api_binary().
 find_device_id_for_leg(CallId) ->
-    case kapps_util:amqp_pool_request([{<<"Fields">>, [<<"Authorizing-ID">>]}
-                                      ,{<<"Call-ID">>, CallId}
-                                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                      ]
-                                     ,fun kapi_call:publish_query_channels_req/1
-                                     ,fun kapi_call:query_channels_resp_v/1
-                                     )
+    case kz_amqp_worker:call([{<<"Fields">>, [<<"Authorizing-ID">>]}
+                             ,{<<"Call-ID">>, CallId}
+                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ]
+                            ,fun kapi_call:publish_query_channels_req/1
+                            ,fun kapi_call:query_channels_resp_v/1
+                            )
     of
         {'ok', RespJObj} ->
             kz_json:get_value([<<"Channels">>, CallId, <<"Authorizing-ID">>], RespJObj);

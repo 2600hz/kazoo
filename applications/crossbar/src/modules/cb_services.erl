@@ -95,7 +95,7 @@ content_types_provided(Context, ?PATH_AUDIT) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /services mights load a list of service objects
+%% /services might load a list of service objects
 %% /services/123 might load the service object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -158,7 +158,7 @@ get(Context, ?PATH_STATUS) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%------------------------------------------------------------------------------

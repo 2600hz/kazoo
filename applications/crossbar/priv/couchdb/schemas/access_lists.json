@@ -21,7 +21,7 @@
             "type": "string"
         },
         "user_agent": {
-            "description": "RegExp to match valid user agent strings",
+            "description": "Regexp to match valid user agent strings",
             "type": "string"
         }
     },

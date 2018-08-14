@@ -9,16 +9,19 @@
                 "direct_calls_only": {
                     "default": false,
                     "description": "Determines if the calls that are not directly sent to the device should be forwarded",
+                    "support_level": "supported",
                     "type": "boolean"
                 },
                 "enabled": {
                     "default": false,
                     "description": "Determines if the call forwarding should be used",
+                    "support_level": "supported",
                     "type": "boolean"
                 },
                 "failover": {
                     "default": false,
                     "description": "Enable the call-forwarding parameters if the device is offline",
+                    "support_level": "supported",
                     "type": "boolean"
                 },
                 "ignore_early_media": {
@@ -29,21 +32,25 @@
                 "keep_caller_id": {
                     "default": true,
                     "description": "Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used",
+                    "support_level": "supported",
                     "type": "boolean"
                 },
                 "number": {
                     "description": "The number to forward calls to",
                     "maxLength": 15,
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "require_keypress": {
                     "default": true,
                     "description": "Determines if the callee is prompted to press 1 to accept the call",
+                    "support_level": "supported",
                     "type": "boolean"
                 },
                 "substitute": {
                     "default": true,
                     "description": "Determines if the call forwarding replaces the device",
+                    "support_level": "supported",
                     "type": "boolean"
                 }
             },
@@ -95,10 +102,11 @@
         },
         "contact_list": {
             "default": {},
-            "description": "Contect List Parameters",
+            "description": "Contact List Parameters",
             "properties": {
                 "exclude": {
                     "description": "If set to true the device is excluded from the contact list",
+                    "support_level": "supported",
                     "type": "boolean"
                 }
             },
@@ -125,6 +133,7 @@
         "enabled": {
             "default": true,
             "description": "Determines if the device is currently enabled",
+            "support_level": "supported",
             "type": "boolean"
         },
         "exclude_from_queues": {
@@ -135,12 +144,28 @@
         "formatters": {
             "$ref": "formatters"
         },
+        "hotdesk": {
+            "description": "The hotdesk status of this device",
+            "type": "object",
+            "users": {
+                "description": "The user(s) currently hotdesked into the device",
+                "patternProperties": {
+                    "^[a-zA-Z0-9]{32}$": {
+                        "description": "user-specific hotdesk settings",
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "language": {
             "description": "The language for the device",
+            "support_level": "supported",
             "type": "string"
         },
         "mac_address": {
             "description": "The MAC Address of the device (if applicable)",
+            "support_level": "supported",
             "type": "string"
         },
         "media": {
@@ -163,15 +188,16 @@
             },
             "type": "object"
         },
-        "mwi_unsolicitated_updates": {
+        "mwi_unsolicited_updates": {
             "default": true,
-            "description": "When true enables unsolicitated mwi notifications",
+            "description": "When true enables unsolicited mwi notifications",
             "type": "boolean"
         },
         "name": {
             "description": "A friendly name for the device",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "outbound_flags": {
@@ -212,6 +238,7 @@
         },
         "presence_id": {
             "description": "Static presence ID (used instead of SIP username)",
+            "support_level": "supported",
             "type": "string"
         },
         "provision": {
@@ -359,6 +386,7 @@
                 "expire_seconds": {
                     "default": 300,
                     "description": "The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.",
+                    "support_level": "supported",
                     "type": "integer"
                 },
                 "ignore_completed_elsewhere": {
@@ -376,10 +404,12 @@
                         "route",
                         "contact"
                     ],
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "ip": {
                     "description": "IP address for this device",
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "method": {
@@ -389,6 +419,7 @@
                         "password",
                         "ip"
                     ],
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "number": {
@@ -399,6 +430,7 @@
                     "description": "SIP authentication password",
                     "maxLength": 32,
                     "minLength": 5,
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "realm": {
@@ -410,6 +442,7 @@
                 },
                 "route": {
                     "description": "The SIP URL used if the invite format is 'route'",
+                    "support_level": "supported",
                     "type": "string"
                 },
                 "static_route": {
@@ -420,6 +453,7 @@
                     "description": "SIP authentication username",
                     "maxLength": 32,
                     "minLength": 2,
+                    "support_level": "supported",
                     "type": "string"
                 }
             },
@@ -432,6 +466,7 @@
         },
         "timezone": {
             "description": "Device's timezone",
+            "support_level": "supported",
             "type": "string"
         }
     },

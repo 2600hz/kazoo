@@ -35,7 +35,7 @@
         ]).
 
 -include("jonny5.hrl").
--include_lib("kazoo_apps/include/kz_hooks.hrl").
+-include_lib("kazoo_events/include/kz_hooks.hrl").
 
 -record(state, {sync_ref :: kz_term:api_reference()
                ,sync_timer:: kz_term:api_reference()
@@ -382,10 +382,9 @@ accounts([['undefined', ResellerId]|Ids], Accounts) ->
     accounts(Ids, sets:add_element(ResellerId, Accounts));
 accounts([[AccountId, ResellerId]|Ids], Accounts) ->
     accounts(Ids
-            ,sets:add_element(
-               AccountId
+            ,sets:add_element(AccountId
                              ,sets:add_element(ResellerId, Accounts)
-              )
+                             )
             ).
 
 -spec account(kz_term:ne_binary()) -> channels().
@@ -693,13 +692,13 @@ ecallmgr_channel_ids(JObjs) ->
 -spec ecallmgr_channel_ids(kz_json:objects(), sets:set()) -> sets:set().
 ecallmgr_channel_ids([], ChannelIds) -> ChannelIds;
 ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
-    Channels = kz_json:get_value(<<"Channels">>, JObj),
-    ecallmgr_channel_ids(
-      JObjs
-                        ,lists:foldl(fun(ChannelId, Ids) ->
-                                             sets:add_element(ChannelId, Ids)
-                                     end, ChannelIds, kz_json:get_keys(Channels))
-     ).
+    UpdatedChannelIds = lists:foldl(fun(ChannelId, Ids) ->
+                                            sets:add_element(ChannelId, Ids)
+                                    end
+                                   ,ChannelIds
+                                   ,kz_json:get_keys(<<"Channels">>, JObj)
+                                   ),
+    ecallmgr_channel_ids(JObjs, UpdatedChannelIds).
 
 -spec fix_channel_disparity(sets:set(), sets:set()) -> 'ok'.
 fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds) ->
@@ -719,7 +718,8 @@ start_channel_sync_timer(State) ->
     SyncRef = make_ref(),
     TRef = erlang:send_after(?SYNC_PERIOD, self(), {'synchronize_channels', SyncRef}),
     State#state{sync_ref=SyncRef
-               ,sync_timer=TRef}.
+               ,sync_timer=TRef
+               }.
 
 -type non_neg_integers() :: [non_neg_integer()].
 

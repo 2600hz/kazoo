@@ -69,7 +69,7 @@
 -define(SYNC_RESPONSE_TIMEOUT, 5000).
 -define(SYNC_RESPONSE_MESSAGE, 'sync_response_timeout').
 
-%% We weren't able to join our brethern, how long to wait to check again
+%% We weren't able to join our brethren, how long to wait to check again
 -define(RESYNC_RESPONSE_TIMEOUT, 15000).
 -define(RESYNC_RESPONSE_MESSAGE, 'resync_response_timeout').
 
@@ -491,7 +491,7 @@ sync('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
                                        }=State) ->
     case kz_json:get_value(<<"Process-ID">>, JObj) of
         AProcId ->
-            lager:debug("recv sync req from ourself"),
+            lager:debug("recv sync req from ourselves"),
             {'next_state', 'sync', State};
         _OtherProcId ->
             lager:debug("recv sync_req from ~s (we are ~s)", [_OtherProcId, AProcId]),
@@ -619,14 +619,13 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
 
             acdc_agent_listener:monitor_call(AgentListener, Call, CDRUrl, RecordingUrl),
 
-            {'next_state', 'ringing', State#state{
-                                        wrapup_timeout=WrapupTimer
+            {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                  ,member_call_id=CallId
                                                  ,member_call_start=kz_time:now()
                                                  ,member_call_queue_id=QueueId
                                                  ,caller_exit_key=CallerExitKey
                                                  ,agent_call_id='undefined'
-                                       }}
+                                                 }}
     end;
 ready('cast', {'member_connect_req', _}, #state{max_connect_failures=Max
                                                ,connect_failures=Fails

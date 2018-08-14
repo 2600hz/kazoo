@@ -58,7 +58,7 @@ profile_config() ->
 
 -spec update_profile_config() -> map().
 update_profile_config() ->
-    lager:info("defering update profile config 1 minute"),
+    lager:info("deferring update profile config 1 minute"),
     timer:sleep(?SECONDS_IN_MINUTE),
     update_profile_config(load_profile_config()).
 

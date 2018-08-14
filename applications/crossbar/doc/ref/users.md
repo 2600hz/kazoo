@@ -1,6 +1,6 @@
-### Users
+# Users
 
-#### About Users
+## About Users
 
 #### Schema
 
@@ -14,8 +14,8 @@ Key | Description | Type | Default | Required | Support Level
 `call_forward.enabled` | Determines if the call forwarding should be used | `boolean()` | `false` | `false` |  
 `call_forward.failover` | Enable the call-forwarding parameters if the device is offline | `boolean()` | `false` | `false` |  
 `call_forward.ignore_early_media` | The option to determine if early media from the call forwarded number should ignored | `boolean()` | `true` | `false` |  
-`call_forward.keep_caller_id` | Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used | `boolean()` | `true` | `false` |  
-`call_forward.number` | The number to forward calls to | `string(0..35)` |   | `false` |  
+`call_forward.keep_caller_id` | Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used | `boolean()` | `true` | `false` | `supported`
+`call_forward.number` | The number to forward calls to | `string(0..35)` |   | `false` | `supported`
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false` |  
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean()` | `true` | `false` |  
 `call_forward` | The device call forward parameters | `object()` |   | `false` |  
@@ -25,16 +25,16 @@ Key | Description | Type | Default | Required | Support Level
 `caller_id` | The device caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false` |  
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |  
-`contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false` |  
-`contact_list` | Contect List Parameters | `object()` | `{}` | `false` |  
+`contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false` | `supported`
+`contact_list` | Contact List Parameters | `object()` | `{}` | `false` |  
 `dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |  
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object()` |   | `false` |  
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean()` |   | `false` |  
 `do_not_disturb` | DND Parameters | `object()` |   | `false` |  
-`email` | The email of the user | `string(1..254)` |   | `false` |  
-`enabled` | Determines if the user is currently enabled | `boolean()` | `true` | `false` |  
+`email` | The email of the user | `string(1..254)` |   | `false` | `supported`
+`enabled` | Determines if the user is currently enabled | `boolean()` | `true` | `false` | `supported`
 `feature_level` | The user level for assigning feature sets | `string()` |   | `false` |  
-`first_name` | The first name of the user | `string(1..128)` |   | `true` |  
+`first_name` | The first name of the user | `string(1..128)` |   | `true` | `supported`
 `formatters` |   | `object()` |   | `false` |  
 `hotdesk.enabled` | Determines if the user has hotdesking enabled | `boolean()` | `false` | `false` |  
 `hotdesk.id` | The users hotdesk id | `string(0..15)` |   | `false` |  
@@ -42,15 +42,15 @@ Key | Description | Type | Default | Required | Support Level
 `hotdesk.pin` | The users hotdesk pin number | `string(4..15)` |   | `false` |  
 `hotdesk.require_pin` | Determines if user requires a pin to change the hotdesk state | `boolean()` | `false` | `false` |  
 `hotdesk` | The user hotdesk parameters | `object()` | `{}` | `false` |  
-`language` | The language for this user | `string()` |   | `false` |  
-`last_name` | The last name of the user | `string(1..128)` |   | `true` |  
+`language` | The language for this user | `string()` |   | `false` | `supported`
+`last_name` | The last name of the user | `string(1..128)` |   | `true` | `supported`
 `media` | Configure audio/video/etc media options for this user | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |  
 `metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false` |  
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false` |  
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object()` | `{}` | `false` |  
-`password` | The GUI login password | `string()` |   | `false` |  
-`presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false` |  
-`priv_level` | The privilege level of the user | `string('user' | 'admin')` | `user` | `false` |  
+`password` | The GUI login password | `string()` |   | `false` | `supported`
+`presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false` | `supported`
+`priv_level` | The privilege level of the user | `string('user' | 'admin')` | `user` | `false` | `supported`
 `profile` | User's profile data | [#/definitions/profile](#profile) |   | `false` |  
 `pronounced_name.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false` |  
 `pronounced_name` | Name pronounced by user to introduce himself to conference members | `object()` |   | `false` |  
@@ -58,26 +58,26 @@ Key | Description | Type | Default | Required | Support Level
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false` |  
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false` |  
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false` |  
-`timezone` | User's timezone | `string()` |   | `false` |  
-`username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string(1..256)` |   | `false` |  
+`timezone` | User's timezone | `string()` |   | `false` | `supported`
+`username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string(1..256)` |   | `false` | `supported`
 `verified` | Determines if the user has been verified | `boolean()` | `false` | `false` |  
 `vm_to_email_enabled` | Determines if the user would like voicemails emailed to them | `boolean()` | `true` | `false` |  
 `voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
 `voicemail.notify` |   | `object()` |   | `false` |  
 `voicemail` |   | `object()` |   | `false` |  
 
-##### call_recording
+### call_recording
 
 endpoint recording settings
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`any` | settings for any calls to/from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`inbound` | settings for inbound calls to the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`outbound` | settings for outbound calls from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
 
-##### call_recording.parameters
+### call_recording.parameters
 
 
 Key | Description | Type | Default | Required | Support Level
@@ -91,16 +91,16 @@ Key | Description | Type | Default | Required | Support Level
 `time_limit` | Time limit, in seconds, for the recording | `integer()` |   | `false` |  
 `url` | The URL to use when sending the recording for storage | `string()` |   | `false` |  
 
-##### call_recording.source
+### call_recording.source
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`any` | settings for calls from any network | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`offnet` | settings for calls from offnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`onnet` | settings for calls from onnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
 
-##### call_waiting
+### call_waiting
 
 Parameters for server-side call waiting
 
@@ -109,7 +109,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `enabled` | Determines if server side call waiting is enabled/disabled | `boolean()` |   | `false` |  
 
-##### caller_id
+### caller_id
 
 Defines caller ID settings based on the type of call being made
 
@@ -126,7 +126,7 @@ Key | Description | Type | Default | Required | Support Level
 `internal.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
 `internal` | The default caller ID used when dialing internal extensions | `object()` |   | `false` |  
 
-##### dialplans
+### dialplans
 
 Permit local dialing by converting the dialed number to a routable form
 
@@ -136,7 +136,7 @@ Key | Description | Type | Default | Required | Support Level
 `system.[]` |   | `string()` |   | `false` |  
 `system` | List of system dial plans | `array(string())` |   | `false` |  
 
-##### endpoint.media
+### endpoint.media
 
 Schema for endpoint media options
 
@@ -158,7 +158,7 @@ Key | Description | Type | Default | Required | Support Level
 `video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false` |  
 `video` | The video media parameters | `object()` | `{}` | `false` |  
 
-##### formatters
+### formatters
 
 Schema for request formatters
 
@@ -167,7 +167,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[[:alnum:]_]+$` | Key to match in the route request JSON | `array([#/definitions/formatters.format_options](#formattersformat_options)) | [#/definitions/formatters.format_options](#formattersformat_options)` |   | `false` |  
 
-##### formatters.format_options
+### formatters.format_options
 
 Schema for formatter options
 
@@ -182,7 +182,7 @@ Key | Description | Type | Default | Required | Support Level
 `suffix` | Appends value against the result of a successful regex match | `string()` |   | `false` |  
 `value` | Replaces the current value with the static value defined | `string()` |   | `false` |  
 
-##### metaflow
+### metaflow
 
 A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
 
@@ -194,7 +194,7 @@ Key | Description | Type | Default | Required | Support Level
 `data` | The data/arguments of the metaflow module | `object()` | `{}` | `false` |  
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true` |  
 
-##### metaflows
+### metaflows
 
 Actions applied to a call outside of the normal callflow, initiated by the caller(s)
 
@@ -209,7 +209,7 @@ Key | Description | Type | Default | Required | Support Level
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `patterns` | A list of patterns with their flows | `object()` |   | `false` |  
 
-##### notify.callback
+### notify.callback
 
 Schema for a callback options
 
@@ -223,7 +223,7 @@ Key | Description | Type | Default | Required | Support Level
 `schedule` | Schedules interval between callbacks | `array(integer())` |   | `false` |  
 `timeout_s` | How long will system wait for answer to callback | `integer()` |   | `false` |  
 
-##### profile
+### profile
 
 Defines user extended properties
 
@@ -244,7 +244,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/users
 
@@ -254,7 +254,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/users
 
@@ -264,7 +264,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
@@ -274,7 +274,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
@@ -284,7 +284,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
@@ -294,7 +294,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
@@ -304,7 +304,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
 
@@ -314,7 +314,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
@@ -324,7 +324,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
@@ -334,7 +334,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 

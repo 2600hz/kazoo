@@ -7,7 +7,7 @@ cd $ROOT
 
 # from https://en.wikipedia.org/wiki/Commonly_misspelled_English_words
 FILE="$ROOT/scripts/misspellings.txt"
-CHANGED=$(git --no-pager diff --name-only HEAD origin/master -- $ROOT/applications $ROOT/core $ROOT/doc)
+CHANGED=${CHANGED:-$(git --no-pager diff --name-only HEAD origin/master -- $ROOT/applications $ROOT/core $ROOT/doc)}
 
 function check_spelling {
     correct=$(echo "$1" | cut -f1 -d"|")
@@ -16,6 +16,8 @@ function check_spelling {
     bad_sed=${bad// /\\|}
 
     while IFS= read f; do
+        [ $(basename $f) = $(basename $FILE) ] && continue
+        file %f | grep -q "ASCII text" || continue
         echo "  fixing $f with $correct"
         sed -i "s/$bad_sed/$correct/g" $f
     done < <(echo $CHANGED | xargs egrep -lw "$bad_grep" )

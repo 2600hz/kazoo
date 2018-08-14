@@ -1,6 +1,6 @@
-### Accounts
+# Accounts
 
-#### About Accounts
+## About Accounts
 
 #### Schema
 
@@ -21,18 +21,18 @@ Key | Description | Type | Default | Required | Support Level
 `dial_plan` | A list of default rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |  
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean()` |   | `false` |  
 `do_not_disturb` |   | `object()` |   | `false` |  
-`enabled` | Determines if the account is currently enabled | `boolean()` | `true` | `false` |  
+`enabled` | Determines if the account is currently enabled | `boolean()` | `true` | `false` | `supported`
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |  
-`language` | The language for this account | `string()` |   | `false` |  
+`language` | The language for this account | `string()` |   | `false` | `supported`
 `metaflows` |   | [#/definitions/metaflows](#metaflows) |   | `false` |  
 `music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..2048)` |   | `false` |  
 `music_on_hold` | The default music on hold parameters | `object()` | `{}` | `false` |  
-`name` | A friendly name for the account | `string(1..128)` |   | `true` |  
+`name` | A friendly name for the account | `string(1..128)` |   | `true` | `supported`
 `notifications.first_occurrence.sent_initial_call` | has the account made their first call | `boolean()` | `false` | `false` |  
 `notifications.first_occurrence.sent_initial_registration` | has the account registered their first device | `boolean()` | `false` | `false` |  
 `notifications.first_occurrence` | send emails on these account-firsts | `object()` |   | `false` |  
-`notifications.low_balance.enabled` | should the account be checked for this alert | `boolean()` | `true` | `false` |  
-`notifications.low_balance.last_notification` | Timestamp, in gregorian seconds, of when the last low_balance alert was sent | `integer()` |   | `false` |  
+`notifications.low_balance.enabled` | should the account be checked for this alert | `boolean()` |   | `false` |  
+`notifications.low_balance.last_notification` | Timestamp, in Gregorian seconds, of when the last low_balance alert was sent | `integer()` |   | `false` |  
 `notifications.low_balance.sent_low_balance` | has the alert been sent (avoids duplication/spamming) | `boolean()` |   | `false` |  
 `notifications.low_balance.threshold` | account balance to send alert on | `number()` |   | `false` |  
 `notifications.low_balance` | Low balance settings | `object()` |   | `false` |  
@@ -40,11 +40,11 @@ Key | Description | Type | Default | Required | Support Level
 `org` | Full legal name of the organization | `string()` |   | `false` |  
 `preflow.always` | The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request | `string()` |   | `false` |  
 `preflow` | Each property provides functionality that can be applied to calls using the callflow application | `object()` | `{}` | `false` |  
-`realm` | The realm of the account, ie: 'account1.2600hz.com' | `string(4..253)` |   | `false` |  
+`realm` | The realm of the account, ie: 'account1.2600hz.com' | `string(4..253)` |   | `false` | `supported`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false` |  
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false` |  
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false` |  
-`timezone` | The default timezone | `string(5..32)` |   | `false` |  
+`timezone` | The default timezone | `string(5..32)` |   | `false` | `supported`
 `topup.threshold` | The account balance when topup occurs | `number()` |   | `false` |  
 `topup` | Topup settings for the account | `object()` |   | `false` |  
 `voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
@@ -53,18 +53,18 @@ Key | Description | Type | Default | Required | Support Level
 `zones.home` | Which zone is considered the account's home zone | `string()` |   | `false` |  
 `zones` | The zone(s) of an account | `object()` |   | `false` |  
 
-##### call_recording
+### call_recording
 
 endpoint recording settings
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`any` | settings for any calls to/from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`inbound` | settings for inbound calls to the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`outbound` | settings for outbound calls from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
 
-##### call_recording.parameters
+### call_recording.parameters
 
 
 Key | Description | Type | Default | Required | Support Level
@@ -78,16 +78,16 @@ Key | Description | Type | Default | Required | Support Level
 `time_limit` | Time limit, in seconds, for the recording | `integer()` |   | `false` |  
 `url` | The URL to use when sending the recording for storage | `string()` |   | `false` |  
 
-##### call_recording.source
+### call_recording.source
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`any` | settings for calls from any network | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`offnet` | settings for calls from offnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`onnet` | settings for calls from onnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
 
-##### call_waiting
+### call_waiting
 
 Parameters for server-side call waiting
 
@@ -96,7 +96,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `enabled` | Determines if server side call waiting is enabled/disabled | `boolean()` |   | `false` |  
 
-##### caller_id
+### caller_id
 
 Defines caller ID settings based on the type of call being made
 
@@ -113,7 +113,7 @@ Key | Description | Type | Default | Required | Support Level
 `internal.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
 `internal` | The default caller ID used when dialing internal extensions | `object()` |   | `false` |  
 
-##### dialplans
+### dialplans
 
 Permit local dialing by converting the dialed number to a routable form
 
@@ -123,7 +123,7 @@ Key | Description | Type | Default | Required | Support Level
 `system.[]` |   | `string()` |   | `false` |  
 `system` | List of system dial plans | `array(string())` |   | `false` |  
 
-##### formatters
+### formatters
 
 Schema for request formatters
 
@@ -132,7 +132,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[[:alnum:]_]+$` | Key to match in the route request JSON | `array([#/definitions/formatters.format_options](#formattersformat_options)) | [#/definitions/formatters.format_options](#formattersformat_options)` |   | `false` |  
 
-##### formatters.format_options
+### formatters.format_options
 
 Schema for formatter options
 
@@ -147,7 +147,7 @@ Key | Description | Type | Default | Required | Support Level
 `suffix` | Appends value against the result of a successful regex match | `string()` |   | `false` |  
 `value` | Replaces the current value with the static value defined | `string()` |   | `false` |  
 
-##### metaflow
+### metaflow
 
 A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
 
@@ -159,7 +159,7 @@ Key | Description | Type | Default | Required | Support Level
 `data` | The data/arguments of the metaflow module | `object()` | `{}` | `false` |  
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true` |  
 
-##### metaflows
+### metaflows
 
 Actions applied to a call outside of the normal callflow, initiated by the caller(s)
 
@@ -174,7 +174,7 @@ Key | Description | Type | Default | Required | Support Level
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `patterns` | A list of patterns with their flows | `object()` |   | `false` |  
 
-##### notify.callback
+### notify.callback
 
 Schema for a callback options
 
@@ -190,7 +190,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Create
+## Create
 
 > PUT /v2/accounts
 
@@ -200,7 +200,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}
 
@@ -210,7 +210,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}
 
@@ -220,7 +220,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}
 
@@ -230,7 +230,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}
 
@@ -240,7 +240,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}
 
@@ -250,7 +250,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/parents
 
@@ -260,7 +260,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/tree
 
@@ -270,7 +270,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/api_key
 
@@ -280,7 +280,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/api_key
 
@@ -290,7 +290,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/siblings
 
@@ -300,7 +300,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/descendants
 
@@ -310,7 +310,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/children
 
@@ -320,7 +320,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/reseller
 
@@ -330,7 +330,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/reseller
 
@@ -340,7 +340,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/move
 

@@ -1,12 +1,12 @@
-### IP Authentication
+# IP Authentication
 
-#### About IP Authentication
+## About IP Authentication
 
-#### Schema
+## Schema
 
 
 
-#### Create
+## Create
 
 > PUT /v2/ip_auth
 

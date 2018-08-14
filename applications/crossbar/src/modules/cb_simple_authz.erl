@@ -22,7 +22,6 @@
 -define(SYS_ADMIN_MODS, [<<"acls">>
                         ,<<"global_provisioner_templates">>
                         ,<<"global_resources">>
-                        ,<<"ips">>
                         ,<<"rates">>
                         ,<<"sup">>
                         ,<<"templates">>
@@ -142,7 +141,7 @@ account_is_descendant('false', Context, AuthAccountId) ->
 allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
     case is_sys_admin_mod(Context) of
         %% if this is request is not made to a system admin module then this
-        %% function doesnt deny it
+        %% function doesn't deny it
         'false' ->
             lager:debug("authorizing, the request does not contain any system administration modules"),
             'true';

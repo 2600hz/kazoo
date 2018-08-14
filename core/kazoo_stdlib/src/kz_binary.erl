@@ -160,10 +160,12 @@ hexencode(S) ->
 
 hexencode(<<>>, Acc) -> Acc;
 hexencode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
-    hexencode(Rest, <<Acc/binary
-                      ,(kz_term:to_hex_char(Hi))
-                      ,(kz_term:to_hex_char(Lo))
-                    >>).
+    hexencode(Rest
+             ,list_to_binary([Acc
+                             ,kz_term:to_hex_char(Hi)
+                             ,kz_term:to_hex_char(Lo)
+                             ])
+             ).
 
 -spec from_hex(binary()) -> binary().
 from_hex(Bin) ->

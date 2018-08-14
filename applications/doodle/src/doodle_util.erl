@@ -431,7 +431,7 @@ fetch_mdn_result(AccountId, Num) ->
             lager:debug("~s is associated with mobile device ~s in account ~s", [Num, Id, AccountId]),
             cache_mdn_result(AccountDb, Id, OwnerId);
         {'error', _R}=E ->
-            lager:debug("coudl not fetch mdn for ~p: ~p", [Num, _R]),
+            lager:debug("could not fetch mdn for ~p: ~p", [Num, _R]),
             E
     end.
 
@@ -475,18 +475,17 @@ maybe_reschedule_sms(Code, Message, Call) ->
 maybe_reschedule_sms(Code, Message, AccountId, Call) ->
     put('call', Call),
     Rules = kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"reschedule">>, kz_json:new()),
-    Schedule = kz_json:set_values(
-                 [{<<"code">>, Code}
-                 ,{<<"reason">>, Message}
-                 ]
+    Schedule = kz_json:set_values([{<<"code">>, Code}
+                                  ,{<<"reason">>, Message}
+                                  ]
                                  ,kapps_call:kvs_fetch(<<"flow_schedule">>, kz_json:new(), Call)
-                ),
+                                 ),
     case apply_reschedule_logic(kz_json:get_values(Rules), Schedule) of
         'no_rule' ->
-            lager:debug("no rules configured for accountid ~s", [AccountId]),
+            lager:debug("no rules configured for account-id ~s", [AccountId]),
             doodle_exe:stop(set_flow_status(<<"error">>, Call));
         'end_rules' ->
-            lager:debug("end rules configured for accountid ~s", [AccountId]),
+            lager:debug("end rules configured for account-id ~s", [AccountId]),
             doodle_exe:stop(set_flow_status(<<"error">>,Call));
         NewSchedule ->
             doodle_exe:stop(kapps_call:kvs_store(<<"flow_schedule">>, NewSchedule, Call))
@@ -586,9 +585,11 @@ apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
     kz_json:set_value(<<"start_time">>, Next, JObj);
 apply_reschedule_rule(<<"report">>, V, JObj) ->
     Call = get('call'),
-    Error = <<(kz_json:get_value(<<"code">>, JObj, <<>>))/binary, " "
-              ,(kz_json:get_value(<<"reason">>, JObj, <<>>))/binary
-            >>,
+    Error = list_to_binary([kz_json:get_value(<<"code">>, JObj, <<>>)
+                           ," "
+                           ,kz_json:get_value(<<"reason">>, JObj, <<>>)
+                           ]),
+
     Props = props:filter_undefined(
               [{<<"To">>, kapps_call:to_user(Call)}
               ,{<<"From">>, kapps_call:from_user(Call)}

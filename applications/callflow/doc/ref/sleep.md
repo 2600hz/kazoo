@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the sleep callflow's data object
+Validator for the sleep callflow data object
 
 
 

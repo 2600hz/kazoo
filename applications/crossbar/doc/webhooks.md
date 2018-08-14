@@ -1,30 +1,30 @@
-### Webhooks
+# Webhooks
 
-#### About Webhooks
+## About Webhooks
 
-Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting that server of events occuring within Kazoo. Typically, events would be fired for new calls, when a call is answered, and when a call is finished, though other events will be added in the future.
+Webhooks allow Kazoo to send HTTP requests to a third-party web server, alerting that server of events occurring within Kazoo. Typically, events would be fired for new calls, when a call is answered, and when a call is finished, though other events will be added in the future.
 
-#### Schema
+## Schema
 
-Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.
+Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the URI set in the Web Hook document.
 
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`custom_data` | These properties will be added to the event and will overwrite existing values. | `object()` |   | `false` |  
-`enabled` | Is the webhook enabled and running | `boolean()` | `true` | `false` |  
-`hook` | The trigger event for a request being made to 'callback_uri'. | `string()` |   | `true` |  
-`http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post')` | `post` | `false` |  
-`include_internal_legs` | Whether to filter out call legs that are internal to the system (loopback) | `boolean()` | `true` | `false` |  
-`include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean()` |   | `false` |  
-`name` | A friendly name for the webhook | `string()` |   | `true` |  
-`retries` | Retry the request this many times (if it fails) | `integer()` | `2` | `false` |  
-`uri` | The 3rd party URI to call out to an event | `string()` |   | `true` |  
+`custom_data` | These properties will be added to the event and will overwrite existing values. | `object()` |   | `false` |
+`enabled` | Is the webhook enabled and running | `boolean()` | `true` | `false` |
+`hook` | The trigger event for a request being made to 'callback_uri'. | `string()` |   | `true` | `supported`
+`http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post')` | `post` | `false` | `supported`
+`include_internal_legs` | Whether to filter out call legs that are internal to the system (loopback) | `boolean()` | `true` | `false` |
+`include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean()` |   | `false` | `supported`
+`name` | A friendly name for the webhook | `string()` |   | `true` | `supported`
+`retries` | Retry the request this many times (if it fails) | `integer()` | `2` | `false` | `supported`
+`uri` | The 3rd party URI to call out to an event | `string()` |   | `true` | `supported`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/webhooks
 
@@ -98,7 +98,7 @@ curl -v -X GET \
 }
 ```
 
-#### List webhooks
+## List webhooks
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks
 
@@ -110,7 +110,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
-#### Create webhook
+## Create webhook
 
 > PUT /v2/accounts/{ACCOUNT_ID}/webhooks
 
@@ -128,7 +128,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
-#### Get details of the webhook
+## Get details of the webhook
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
@@ -138,7 +138,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
-#### Edit webhook
+## Edit webhook
 
 > POST /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
@@ -156,7 +156,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
-#### Patch webhook
+## Patch webhook
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
@@ -170,7 +170,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
-#### Delete a webhook
+## Delete a webhook
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
@@ -180,7 +180,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
-#### List Webhook Attempts
+## List Webhook Attempts
 
 Webhooks tracks attempts to send the hook payloads to your URIs. You can get a listing of the more recent attempts to help debug what went wrong.
 
@@ -216,7 +216,7 @@ curl -v -X GET \
     }
 ```
 
-List attempts for a specific attempt
+## List attempts for a specific attempt
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
@@ -226,7 +226,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 ```
 
-#### Re-enable auto-disabled hooks in bulk
+## Re-enable auto-disabled hooks in bulk
 
 Webhooks will auto-disable failing hooks (if Kazoo can't reach your server, or you take too long to respond with `200 OK`, for instance). Especially if you're a reseller with webhooks in your client accounts, it can be tedious to have to iterate through all your accounts and re-enable each hook. Fortunately, you can perform this bulk-enable action against an account or an account and its descendants.
 
@@ -252,15 +252,15 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/webhooks
 ```
 
-#### Hook Payload
+## Hook Payload
 
 Here's what you can expect to receive when a webhook fires to your server:
 
-**Base Payload**
+### Base Payload
 
 * hook_event: The type of hook being fired
 * call_direction: "inbound" or "outbound", relative to Kazoo
-* timestamp: gregorian timestamp of the event
+* timestamp: Gregorian timestamp of the event
 * account_id: ID of the account generating the event
 * request: SIP Request
 * to: SIP To
@@ -274,7 +274,7 @@ Here's what you can expect to receive when a webhook fires to your server:
 
 Most of these fields should be present on all payloads.
 
-**Hook Specific**
+### Hook Specific
 
 * channel_create
     * hook_event: channel_create
@@ -289,7 +289,7 @@ Most of these fields should be present on all payloads.
     * action: doc_created, doc_updated, doc_deleted
     * type: user, vmbox, callflow, account, device, faxbox, media
 
-#### Hook Specific Custom Data
+## Hook Specific Custom Data
 
 To restrict the kind of document or the action or both. You can set the custom data to:
 

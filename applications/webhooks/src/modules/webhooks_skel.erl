@@ -40,4 +40,3 @@ bindings_and_responders() ->
 handle_event(JObj, _Props) ->
     kz_util:put_callid(JObj),
     lager:debug("event handled").
-

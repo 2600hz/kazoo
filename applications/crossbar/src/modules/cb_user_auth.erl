@@ -101,26 +101,43 @@ authorize_nouns(Context
                 ]
                ,?HTTP_PUT
                ) ->
-    case cb_context:auth_account_id(Context) =/= AccountId
+    case cb_context:auth_account_id(Context) =/= 'undefined'
+        andalso cb_context:auth_user_id(Context) =/= 'undefined'
+        andalso cb_context:auth_account_id(Context) =/= AccountId
         andalso cb_context:is_superduper_admin(Context)
         andalso cb_context:is_account_admin(Context)
     of
-        'true' -> 'true';
+        'true' ->
+            lager:debug("authorizing request"),
+            'true';
         'false' ->
             lager:error("non-admin user ~s in non super-duper admin account tries to impersonate user ~s in account ~s"
                        ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context), UserId, AccountId]
                        ),
             {'stop', cb_context:add_system_error('forbidden', Context)}
     end;
-authorize_nouns(Context, _, ?HTTP_PUT) ->
+authorize_nouns(_Context, [{<<"user_auth">>, [?RECOVERY]}], Method) when Method =:= ?HTTP_POST;
+                                                                         Method =:= ?HTTP_PUT ->
+    %% allow recovery
+    lager:debug("authorizing request"),
+    'true';
+authorize_nouns(Context, [{<<"user_auth">>, []}], ?HTTP_PUT) ->
     case cb_context:req_value(Context, <<"action">>) of
-        %% do not allow if no user/account is set
+        'undefined' ->
+            %% allow user auth
+            lager:debug("authorizing request"),
+            'true';
         ?SWITCH_USER ->
-            lager:error("not authorizing user impersonation when invalid user or account are provided"),
+            %% do not allow if no user/account is set
+            lager:error("not authorizing user impersonation when no user or account are provided"),
             {'stop', cb_context:add_system_error('forbidden', Context)};
-        _ -> 'true'
+        _ ->
+            %% disallow other actions
+            'false'
     end;
-authorize_nouns(_, [{<<"user_auth">>, _}], _) -> 'true';
+authorize_nouns(_, [{<<"user_auth">>, [_AuthToken]}], ?HTTP_GET) ->
+    lager:debug("authorizing request"),
+    'true';
 authorize_nouns(_, _Nouns, _) -> 'false'.
 
 %%------------------------------------------------------------------------------
@@ -133,7 +150,6 @@ authenticate(Context) ->
 
 authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
-authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _ResetId]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%------------------------------------------------------------------------------
@@ -268,7 +284,7 @@ maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
     Credentials = kz_json:get_value(<<"credentials">>, JObj),
     Method = kz_json:get_value(<<"method">>, JObj, <<"md5">>),
-    AccountName = kz_util:normalize_account_name(kz_json:get_value(<<"account_name">>, JObj)),
+    AccountName = kzd_accounts:normalize_name(kz_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
@@ -343,10 +359,10 @@ maybe_auth_accounts(Context, Credentials, Method, [Account|Accounts]) ->
 
 -spec maybe_account_is_expired(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_account_is_expired(Context, Account) ->
-    case kz_util:is_account_expired(Account) of
+    case kzd_accounts:is_expired(Account) of
         'false' -> maybe_account_is_enabled(Context, Account);
         {'true', Expired} ->
-            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [Account]),
+            _ = kz_util:spawn(fun crossbar_util:maybe_disable_account/1, [Account]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}
@@ -360,7 +376,7 @@ maybe_account_is_expired(Context, Account) ->
 
 -spec maybe_account_is_enabled(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_account_is_enabled(Context, Account) ->
-    case kz_util:is_account_enabled(Account) of
+    case kzd_accounts:is_enabled(Account) of
         'true' -> Context;
         'false' ->
             Reason = kz_term:to_binary(io_lib:format("account ~p is disabled", [Account])),
@@ -405,7 +421,7 @@ load_md5_results(Context, JObj, _Account) ->
 -spec maybe_load_user_doc_via_creds(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_creds(Context) ->
     JObj = cb_context:doc(Context),
-    AccountName = kz_util:normalize_account_name(kz_json:get_value(<<"account_name">>, JObj)),
+    AccountName = kzd_accounts:normalize_name(kz_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of

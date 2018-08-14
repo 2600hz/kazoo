@@ -1,6 +1,6 @@
-### Vmboxes
+# Vmboxes
 
-#### About Vmboxes
+## About Vmboxes
 
 #### Schema
 
@@ -10,29 +10,29 @@ Schema for a voicemail box
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false` |  
-`delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` |  
-`is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false` |  
-`mailbox` | The voicemail box number | `string(1..30)` |   | `true` |  
-`media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false` |  
-`media` | The media (prompt) parameters | `object()` | `{}` | `false` |  
-`media_extension` | Voicemail audio format | `string('mp3' | 'mp4' | 'wav')` | `mp3` | `false` |  
-`name` | A friendly name for the voicemail box | `string(1..128)` |   | `true` |  
-`not_configurable` | Determines if the user can configure this voicemail. | `boolean()` | `false` | `false` |  
+`check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false` | `supported`
+`delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` | `supported`
+`is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false` | `supported`
+`mailbox` | The voicemail box number | `string(1..30)` |   | `true` | `supported`
+`media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false` | `supported`
+`media` | The media (prompt) parameters | `object()` | `{}` | `false` | `supported`
+`media_extension` | Voicemail audio format | `string('mp3' | 'mp4' | 'wav')` | `mp3` | `false` | `supported`
+`name` | A friendly name for the voicemail box | `string(1..128)` |   | `true` | `supported`
+`not_configurable` | Determines if the user can configure this voicemail. | `boolean()` | `false` | `false` | `supported`
 `notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
-`notify` |   | `object()` |   | `false` |  
-`notify_email_addresses.[]` |   | `string()` |   | `false` |  
-`notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` |  
-`owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false` |  
-`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` |  
-`require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` |  
-`save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` |  
-`skip_envelope` | Determines if the envelope should be skipped | `boolean()` | `false` | `false` |  
-`skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` |  
-`skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` |  
-`timezone` | The default timezone | `string(5..32)` |   | `false` |  
+`notify` |   | `object()` |   | `false` | `supported`
+`notify_email_addresses.[]` |   | `string()` |   | `false` | `supported`
+`notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` | `supported`
+`owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false` | `supported`
+`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` | `supported`
+`require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` | `supported`
+`save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` | `supported`
+`skip_envelope` | Determines if the envelope should be skipped | `boolean()` | `false` | `false` | `beta`
+`skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` | `supported`
+`skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` | `supported`
+`timezone` | The default timezone | `string(5..32)` |   | `false` | `supported`
 
-##### notify.callback
+### notify.callback
 
 Schema for a callback options
 
@@ -48,7 +48,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes
 
@@ -58,7 +58,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/vmboxes
 
@@ -68,7 +68,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -78,7 +78,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -88,7 +88,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -98,7 +98,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
@@ -108,7 +108,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/messages
 
@@ -118,7 +118,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/messages
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -128,7 +128,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -138,7 +138,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -148,7 +148,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -158,7 +158,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
@@ -168,7 +168,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
@@ -178,7 +178,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
@@ -188,7 +188,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
 
@@ -198,7 +198,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 
@@ -208,7 +208,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 

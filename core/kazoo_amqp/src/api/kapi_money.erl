@@ -26,7 +26,7 @@
         ,publish_balance_resp/2, publish_balance_resp/3
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(CREDIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
 -define(OPTIONAL_CREDIT_HEADERS, []).
@@ -142,12 +142,12 @@ balance_resp_v(JObj) ->
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Routing = routing_key(Props),
-    amqp_util:bind_q_to_configuration(Queue, Routing).
+    kz_amqp_util:bind_q_to_configuration(Queue, Routing).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Routing = routing_key(Props),
-    amqp_util:unbind_q_from_configuration(Queue, Routing).
+    kz_amqp_util:unbind_q_from_configuration(Queue, Routing).
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API
@@ -155,7 +155,7 @@ unbind_q(Queue, Props) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:configuration_exchange().
+    kz_amqp_util:configuration_exchange().
 
 routing_key(Props) ->
     list_to_binary([<<"transaction.">>
@@ -172,7 +172,7 @@ publish_credit(Req) ->
 publish_credit(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.credit.">>, props:get_value(<<"Account-ID">>, Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CREDIT_VALUES, fun credit/1),
-    amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
+    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 -spec publish_debit(kz_term:api_terms()) -> 'ok'.
 publish_debit(Req) ->
@@ -182,7 +182,7 @@ publish_debit(Req) ->
 publish_debit(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.debit.">>, props:get_value(<<"Account-ID">>, Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DEBIT_VALUES, fun debit/1),
-    amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
+    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 -spec publish_balance_req(kz_term:api_terms()) -> 'ok'.
 publish_balance_req(Req) ->
@@ -192,7 +192,7 @@ publish_balance_req(Req) ->
 publish_balance_req(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.balance.">>, props:get_value(<<"Account-ID">>, Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_REQ_VALUES, fun balance_req/1),
-    amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
+    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 -spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_balance_resp(Queue, Req) ->
@@ -201,4 +201,4 @@ publish_balance_resp(Queue, Req) ->
 -spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_balance_resp(Queue, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_RESP_VALUES, fun balance_resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).

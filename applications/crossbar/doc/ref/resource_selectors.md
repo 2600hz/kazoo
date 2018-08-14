@@ -1,6 +1,6 @@
-### Resource Selectors
+# Resource Selectors
 
-#### About Resource Selectors
+## About Resource Selectors
 
 #### Schema
 
@@ -13,13 +13,13 @@ Key | Description | Type | Default | Required | Support Level
 `name` | Selector name | `string()` |   | `true` |  
 `resource` | Resource ID | `string()` |   | `true` |  
 `selector` | Selector data | `string()` |   | `true` |  
-`start_time` | Start time (gregorian seconds) | `integer()` |   | `false` |  
-`stop_time` | Stop time (gregorian seconds) | `integer()` |   | `false` |  
+`start_time` | Start time (Gregorian seconds) | `integer()` |   | `false` |  
+`stop_time` | Stop time (Gregorian seconds) | `integer()` |   | `false` |  
 `value` | Extra selector data | `string()` |   | `false` |  
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors
 
@@ -29,7 +29,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 
@@ -39,7 +39,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 
@@ -49,7 +49,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 
@@ -59,7 +59,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource
 
@@ -69,7 +69,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name
 
@@ -79,7 +79,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
 
@@ -89,7 +89,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
 
@@ -99,7 +99,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}
 
@@ -109,7 +109,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}
 
@@ -119,7 +119,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
 
@@ -129,7 +129,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
 

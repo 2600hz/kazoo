@@ -4,7 +4,7 @@ Route the caller to external resources (typically upstream providers).
 
 ## Data Schema
 
-Validator for the resources callflow's data object
+Validator for the resources callflow data object
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------

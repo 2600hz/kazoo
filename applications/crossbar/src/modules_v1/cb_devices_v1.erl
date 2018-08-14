@@ -307,15 +307,14 @@ unique_mac_address(MacAddress, Context) ->
 -spec error_used_mac_address(cb_context:context()) -> cb_context:context().
 error_used_mac_address(Context) ->
     MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
-    cb_context:add_validation_error(
-      ?KEY_MAC_ADDRESS
+    cb_context:add_validation_error(?KEY_MAC_ADDRESS
                                    ,<<"unique">>
                                    ,kz_json:from_list(
                                       [{<<"message">>, <<"Mac address already in use">>}
                                       ,{<<"cause">>, MacAddress}
                                       ])
                                    ,Context
-     ).
+                                   ).
 
 -spec get_mac_addresses(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_mac_addresses(DbName) ->
@@ -332,9 +331,7 @@ prepare_outbound_flags(DeviceId, Context) ->
             'undefined' -> cb_context:req_data(Context);
             [] -> cb_context:req_data(Context);
             Flags when is_list(Flags) ->
-                OutboundFlags = [kz_binary:strip(Flag)
-                                 || Flag <- Flags
-                                ],
+                OutboundFlags = [kz_binary:strip(Flag) || Flag <- Flags],
                 kz_json:set_value(<<"outbound_flags">>, OutboundFlags, cb_context:req_data(Context));
             _Else ->
                 kz_json:set_value(<<"outbound_flags">>, [], cb_context:req_data(Context))
@@ -362,15 +359,14 @@ validate_device_creds(Realm, DeviceId, Context) ->
             IP = cb_context:req_value(Context, [<<"sip">>, <<"ip">>]),
             validate_device_ip(IP, DeviceId, Context);
         Else ->
-            C = cb_context:add_validation_error(
-                  [<<"sip">>, <<"method">>]
+            C = cb_context:add_validation_error([<<"sip">>, <<"method">>]
                                                ,<<"enum">>
                                                ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
                                                                   ,{<<"target">>, [<<"password">>, <<"ip">>]}
                                                                   ,{<<"cause">>, Else}
                                                                   ])
                                                ,Context
-                 ),
+                                               ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
@@ -381,14 +377,13 @@ validate_device_password(Realm, DeviceId, Context) ->
     case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
         'true' -> check_emergency_caller_id(DeviceId, Context);
         'false' ->
-            C = cb_context:add_validation_error(
-                  [<<"sip">>, <<"username">>]
+            C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
                                                ,<<"unique">>
                                                ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
                                                                   ,{<<"cause">>, Username}
                                                                   ])
                                                ,Context
-                 ),
+                                               ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
@@ -398,14 +393,13 @@ validate_device_ip(IP, DeviceId, Context) ->
     case kz_network_utils:is_ipv4(IP) of
         'true' -> validate_device_ip_unique(IP, DeviceId, Context);
         'false' ->
-            C = cb_context:add_validation_error(
-                  [<<"sip">>, <<"ip">>]
+            C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
                                                ,<<"type">>
                                                ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
                                                                   ,{<<"cause">>, IP}
                                                                   ])
                                                ,Context
-                 ),
+                                               ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
@@ -416,15 +410,13 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
         'true' ->
             check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
-            C = cb_context:add_validation_error(
-                  [<<"sip">>, <<"ip">>]
+            C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
                                                ,<<"unique">>
-                                               ,kz_json:from_list(
-                                                  [{<<"message">>, <<"SIP IP already in use">>}
-                                                  ,{<<"cause">>, IP}
-                                                  ])
+                                               ,kz_json:from_list([{<<"message">>, <<"SIP IP already in use">>}
+                                                                  ,{<<"cause">>, IP}
+                                                                  ])
                                                ,Context
-                 ),
+                                               ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
@@ -438,10 +430,7 @@ check_emergency_caller_id(DeviceId, Context) ->
                                  cb_context:context().
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
-    cb_context:validate_request_data(<<"devices">>
-                                    ,Context
-                                    ,OnSuccess
-                                    ).
+    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
 
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().
@@ -493,10 +482,10 @@ lookup_regs(AccountRealm) ->
           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
-                                     ,fun kapi_registration:publish_query_req/1
-                                     ,'ecallmgr'
-                                     )
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_registration:publish_query_req/1
+                                    ,'ecallmgr'
+                                    )
     of
         {'error', _E} ->
             lager:debug("error getting reg: ~p", [_E]),
@@ -516,14 +505,18 @@ extract_device_registrations(JObjs) ->
 -spec extract_device_registrations(kz_json:objects(), sets:set()) -> sets:set().
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
-    Fields = kz_json:get_value(<<"Fields">>, JObj, []),
-    S = lists:foldl(fun(J, S) ->
-                            case kz_json:get_ne_value(<<"Authorizing-ID">>, J) of
-                                'undefined' -> S;
-                                AuthId -> sets:add_element(AuthId, S)
-                            end
-                    end, Set, Fields),
+    S = lists:foldl(fun extract_device_registration/2
+                   ,Set
+                   ,kz_json:get_value(<<"Fields">>, JObj, [])
+                   ),
     extract_device_registrations(JObjs, S).
+
+-spec extract_device_registration(kz_json:object(), sets:set()) -> sets:set().
+extract_device_registration(JObj, Set) ->
+    case kz_json:get_ne_binary_value(<<"Authorizing-ID">>, JObj) of
+        'undefined' -> Set;
+        AuthId -> sets:add_element(AuthId, Set)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Check if the device sip creds are unique
@@ -580,7 +573,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
             {'ok', _} = kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(cb_context:doc(Context))),
-            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
@@ -600,7 +593,7 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
     case kz_datamgr:open_doc(?KZ_SIP_DB, DeviceId) of
         {'ok', JObj} ->
             _ = kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
-            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true';
         {'error', 'not_found'} -> 'false'
     end;

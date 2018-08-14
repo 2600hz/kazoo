@@ -472,7 +472,7 @@ handle_cast({'flush_node', Node}, State) ->
             lager:debug("no locally handled channels");
         LocalChannels ->
             _P = kz_util:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
-            lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
+            lager:debug("sending channel disconnects for local channels: ~p", [LocalChannels])
     end,
 
     MatchSpec = [{#channel{node = '$1', _ = '_'}
@@ -785,7 +785,7 @@ publish_channel_connection_event(#channel{uuid=UUID
             ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
             ],
-    kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
+    _ = kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
     lager:debug("published channel connection event for ~s", [UUID]).
 
 -spec channel_call_state(boolean()) -> kz_term:api_binary().

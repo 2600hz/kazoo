@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the receive_fax callflow's data object
+Validator for the receive_fax callflow data object
 
 
 

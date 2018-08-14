@@ -1,7 +1,11 @@
-#!/bin/sh
+#!/bin/bash
+
+pushd "$(dirname "$0")" >/dev/null
+
+ROOT="$(pwd -P)"/../..
 
 # look for kazoo release root directory
-DEFAULT_ROOT=${KAZOO_ROOT:-_rel/kazoo}
+DEFAULT_ROOT=${KAZOO_ROOT:-${ROOT}/_rel/kazoo}
 if [ -d "$DEFAULT_ROOT/_rel/kazoo" ]; then
     DEFAULT_ROOT="$DEFAULT_ROOT/_rel/kazoo"
 elif [ -d "$DEFAULT_ROOT/bin" ]; then
@@ -12,6 +16,7 @@ elif [ -d /opt/kazoo/bin ]; then
     DEFAULT_ROOT="/opt/kazoo"
 else
     echo "Can't find Kazoo release root directory, is the release built?"
+    echo "Checked ${DEFAULT_ROOT} for release and bin dir"
     exit -1
 fi
 echo "Release path: $DEFAULT_ROOT"
@@ -31,15 +36,9 @@ else
 fi
 echo "Kazoo config file path: $KAZOO_CONFIG"
 
-HOSTNAME=$(hostname -f)
-NODE_NAME=${NODE_NAME:-"kazoo_apps@$HOSTNAME"}
+KAZOO_NODE=${KAZOO_NODE:-"kazoo_apps"}
+NODE_NAME=${NODE_NAME:-"$KAZOO_NODE"}
 echo "Node name: $NODE_NAME"
-
-VMARGS_FILE=$(find $DEFAULT_ROOT/releases -name vm.args)
-NAME_ARG=$(egrep '^-s?name' "$VMARGS_FILE" || true)
-if [ -z "$NAME_ARG" ]; then
-    echo "-name $NODE_NAME\n" >> $VMARGS_FILE
-fi
 
 COOKIE=${COOKIE:-"change_me"}
 echo "Cookie: $COOKIE"
@@ -51,4 +50,8 @@ else
     shift
 fi
 
-RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true NODE_NAME="$NODE_NAME" COOKIE="$COOKIE" "$DEFAULT_ROOT"/bin/kazoo $CMD "$*"
+export RELX_REPLACE_OS_VARS=true
+export RELX_MULTI_NODE=true
+export KAZOO_NODE="$NODE_NAME"
+export KAZOO_COOKIE="$COOKIE"
+exec "$DEFAULT_ROOT"/bin/kazoo $CMD "$*"

@@ -132,7 +132,7 @@ authorize(Context) ->
 
 -spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
 authorize(Context, [{<<"whitelabel">>, [?DOMAINS_REQ]}], ?HTTP_POST) ->
-    %% /{VERSION}/whitelabel/domains retricted to sys-admin account
+    %% /{VERSION}/whitelabel/domains restricted to sys-admin account
     cb_context:is_superduper_admin(Context);
 authorize(_Context, [{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
     'true';
@@ -295,32 +295,23 @@ validate_attachment(Context, AttachType, ?HTTP_POST) ->
 -spec validate_attachment_post(cb_context:context(), path_token(), any()) ->
                                       cb_context:context().
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide an image file">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide an image file">>}])
                                    ,Context
-     );
+                                   );
 validate_attachment_post(Context, ?ICON_REQ, []) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide an image file">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide an image file">>}])
                                    ,Context
-     );
+                                   );
 validate_attachment_post(Context, ?WELCOME_REQ, []) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide an html file">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide an html file">>}])
                                    ,Context
-     );
+                                   );
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
@@ -328,32 +319,23 @@ validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
 validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"maxItems">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide a single image file">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide a single image file">>}])
                                    ,Context
-     );
+                                   );
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"maxItems">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Please provide a single image file">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide a single image file">>}])
                                    ,Context
-     );
+                                   );
 validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"maxItems">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"please provide a single html file">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"please provide a single html file">>}])
                                    ,Context
-     ).
+                                   ).
 
 -spec validate_upload(cb_context:context(), kz_json:object()) ->
                              cb_context:context().
@@ -381,11 +363,7 @@ content_type(FileJObj) ->
 
 -spec file_size(kz_json:object()) -> non_neg_integer().
 file_size(FileJObj) ->
-    case kz_json:get_integer_value(
-           [<<"headers">>, <<"content_length">>]
-                                  ,FileJObj
-          )
-    of
+    case kz_json:get_integer_value([<<"headers">>, <<"content_length">>], FileJObj) of
         'undefined' ->
             byte_size(kz_json:get_value(<<"contents">>, FileJObj, <<>>));
         Size -> Size
@@ -426,9 +404,7 @@ load_domains(Context, Domain, SystemDomains) ->
 missing_domain_error(Context) ->
     cb_context:add_validation_error(<<"domain">>
                                    ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"No domain found to use. Supply one on the request or create one via the whitelabel API">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"No domain found to use. Supply one on the request or create one via the whitelabel API">>}])
                                    ,Context
                                    ).
 
@@ -461,10 +437,9 @@ system_domains() ->
 -spec edit_domains(cb_context:context()) -> cb_context:context().
 edit_domains(Context) ->
     Domains = cb_context:req_data(Context),
-    PvtFields = crossbar_doc:update_pvt_parameters(
-                  kz_json:new()
+    PvtFields = crossbar_doc:update_pvt_parameters(kz_json:new()
                                                   ,Context
-                 ),
+                                                  ),
 
     lager:debug("saving domains ~p", [Domains]),
     lager:debug("with pvt fields: ~p", [PvtFields]),
@@ -486,9 +461,7 @@ edit_domains(Context) ->
 missing_schema_error(Context) ->
     cb_context:add_validation_error(<<"domains">>
                                    ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"The domains schema is missing, unable to validate request">>}]
-                                     )
+                                   ,kz_json:from_list([{<<"message">>, <<"The domains schema is missing, unable to validate request">>}])
                                    ,Context
                                    ).
 
@@ -820,21 +793,25 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 
 -spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 attachment_name(Filename, CT) ->
-    Generators = [fun(A) ->
-                          case kz_term:is_empty(A) of
-                              'true' -> kz_term:to_hex_binary(crypto:strong_rand_bytes(16));
-                              'false' -> A
-                          end
-                  end
-                 ,fun(A) ->
-                          case kz_term:is_empty(filename:extension(A)) of
-                              'false' -> A;
-                              'true' ->
-                                  <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
-                          end
-                  end
+    Generators = [fun maybe_create_basename/1
+                 ,fun(A) -> maybe_add_extension(A, CT) end
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
+
+-spec maybe_create_basename(kz_term:api_binary()) -> kz_term:ne_binary().
+maybe_create_basename(A) ->
+    case kz_term:is_empty(A) of
+        'true' -> kz_binary:rand_hex(16);
+        'false' -> A
+    end.
+
+-spec maybe_add_extension(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+maybe_add_extension(A, CT) ->
+    case kz_term:is_empty(filename:extension(A)) of
+        'false' -> A;
+        'true' ->
+            <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
+    end.
 
 -spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 attachment_name(AttachType, Filename, CT) ->

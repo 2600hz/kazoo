@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2018, 2600Hz
+%%% @copyright (C) 2017, Conversant Ltd
 %%% @doc EDR output formatter.
 %%% @author Max Lay
 %%% @end

@@ -24,7 +24,7 @@
 -include("services.hrl").
 
 -record(kz_service_plans, {vendor_id :: kz_term:api_binary()
-                          ,plans = [] :: kzd_service_plan:docs()
+                          ,plans = [] :: kzd_service_plan:docs() | kzd_service_plan:doc()
                           }).
 
 -type plan() :: #kz_service_plans{}.
@@ -106,15 +106,18 @@ get_object_plans(ServicesJObj, ServicePlans) ->
     ResellerId = find_reseller_id(ServicesJObj),
     Account = kz_doc:id(ServicesJObj),
     AccountDb = kz_util:format_account_db(Account),
-    {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/object_plans">>),
-    Props = [{PlanId, kz_json:get_value([<<"value">>, PlanId], JObj)}
-             || JObj <- JObjs
-                    ,PlanId <- kz_json:get_keys(<<"value">>, JObj)
-            ],
-    lists:foldl(get_object_plans_fold(ResellerId)
-               ,ServicePlans
-               ,Props
-               ).
+    case kz_datamgr:get_results(AccountDb, <<"services/object_plans">>) of
+        {'ok', JObjs} ->
+            Props = [{PlanId, kz_json:get_value([<<"value">>, PlanId], JObj)}
+                     || JObj <- JObjs,
+                        PlanId <- kz_json:get_keys(<<"value">>, JObj)
+                    ],
+            lists:foldl(get_object_plans_fold(ResellerId)
+                       ,ServicePlans
+                       ,Props
+                       );
+        {'error', _} -> ServicePlans
+    end.
 
 -spec get_object_plans_fold(kz_term:api_binary()) ->
                                    fun(({kz_term:ne_binary(), kz_json:object()}, plans()) ->
@@ -148,7 +151,7 @@ fetch_plan(PlanId, ResellerId, ResellerId,  Overrides) ->
         ServicePlan -> ServicePlan
     end;
 fetch_plan(PlanId, _, ResellerId, _) ->
-    lager:debug("service plan ~s doesnt belong to reseller ~s", [PlanId, ResellerId]),
+    lager:debug("service plan ~s doesn't belong to reseller ~s", [PlanId, ResellerId]),
     'undefined'.
 
 -spec append_vendor_plan(kz_json:object(), kz_term:ne_binary(), plans()) -> plans().
@@ -185,7 +188,7 @@ public_json(ServicePlans) ->
 -spec public_json(plans(), kz_json:object()) -> kzd_service_plan:doc().
 public_json([], JObj) -> kz_doc:public_fields(JObj);
 public_json([ServicesPlan|ServicesPlans], JObj) ->
-    #kz_service_plans{plans=NewJObj}=merge_plan(ServicesPlan, JObj),
+    #kz_service_plans{plans=NewJObj} = merge_plan(ServicesPlan, JObj),
     public_json(ServicesPlans, NewJObj).
 
 %%------------------------------------------------------------------------------
@@ -257,7 +260,7 @@ activation_charges(Category, Item, ServicePlans) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Given a the services on an account (and descedants) as well as the
+%% @doc Given a the services on an account (and descendants) as well as the
 %% service plans the account is subscribed to create a list of items
 %% suitable for use with the bookkeepers.
 %% @end
@@ -314,7 +317,7 @@ merge_vendors(ServicesPlans) ->
 merge_plan(ServicesPlan) ->
     merge_plan(ServicesPlan, 'false').
 
--spec merge_plan(plan(), boolean() | kz_json:object()) -> plan().
+-spec merge_plan(plan(), 'false' | kz_json:object()) -> plan().
 merge_plan(#kz_service_plans{plans=PlanJObjs}=ServicesPlan, MergeToSingle) ->
     Dict = lists:foldl(fun(PlanJObj, D) ->
                                Strategy = kzd_service_plan:merge_strategy(PlanJObj),
@@ -328,8 +331,6 @@ merge_plan(#kz_service_plans{plans=PlanJObjs}=ServicesPlan, MergeToSingle) ->
     case MergeToSingle of
         'false' ->
             ServicesPlan#kz_service_plans{plans=Merged};
-        'true' ->
-            ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, kz_json:new(), Merged)};
         Else ->
             'true' = kz_json:is_json_object(Else),
             ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, Else, Merged)}
