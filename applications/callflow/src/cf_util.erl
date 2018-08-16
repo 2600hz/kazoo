@@ -73,8 +73,13 @@ token_check(Call, Flow) ->
             'true';
         'true' ->
             {Name, Cost} = bucket_info(Call, Flow),
+            DryRun = kapps_config:get_is_true(?CF_CONFIG_CAT, <<"should_dry_run_token_restrictions">>, 'false'),
+
             case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
                 'true' -> 'true';
+                'false' when DryRun ->
+                    lager:info("dry-run: bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
+                    'true';
                 'false' ->
                     lager:warning("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
                     'false'
@@ -106,7 +111,6 @@ bucket_cost(Flow) ->
         N when N < Min -> Min;
         N -> N
     end.
-
 
 -spec presence_probe(kz_json:object(), kz_term:proplist()) -> any().
 presence_probe(JObj, _Props) ->
