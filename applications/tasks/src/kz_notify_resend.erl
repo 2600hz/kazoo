@@ -182,7 +182,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'timeout', _Ref, _Msg}, #state{}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref}=State) ->
     ViewOptions = [{'startkey', 0}
                   ,{'endkey', kz_time:now_s()}
                   ,{'limit', ?READ_LIMIT}
@@ -194,15 +194,15 @@ handle_info({'timeout', _Ref, _Msg}, #state{}=State) ->
             lager:debug("no pending notifications"),
             {'noreply', State#state{timer_ref = set_timer()}};
         {'ok', Pendings} ->
-            lager:debug("got ~b pending notifications", [length(Pendings)]),
+            lager:info("processing ~b pending notifications", [length(Pendings)]),
             _ = kz_util:spawn(fun () -> process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]) end),
             {'noreply', State#state{running=Pendings}};
         {'error', 'not_found'} ->
-            lager:debug("not finding pending view, what up with dat?"),
+            lager:error("unable to find pending view, this is not good..."),
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             {'noreply', State#state{timer_ref = set_timer()}};
         {'error', _Reason} ->
-            lager:debug("failed to find pending notifications jobs: ~p", [_Reason]),
+            lager:error("failed to find pending notifications jobs: ~p", [_Reason]),
             {'noreply', State#state{timer_ref = set_timer()}}
     end;
 handle_info(_Info, State) ->
