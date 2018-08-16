@@ -124,7 +124,6 @@ bucket_name('undefined', AccountId) ->
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
 
-
 -spec token_cost(cb_context:context()) -> non_neg_integer().
 token_cost(Context) ->
     token_cost(Context, 1).
