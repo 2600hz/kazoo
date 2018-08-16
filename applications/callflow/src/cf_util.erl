@@ -78,10 +78,10 @@ token_check(Call, Flow) ->
             case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
                 'true' -> 'true';
                 'false' when DryRun ->
-                    lager:info("dry-run: bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
+                    lager:info("dry-run: bucket ~s does not have enough tokens(~b needed) for this call", [Name, Cost]),
                     'true';
                 'false' ->
-                    lager:warning("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
+                    lager:warning("bucket ~s does not have enough tokens(~b needed) for this call", [Name, Cost]),
                     'false'
             end
     end.

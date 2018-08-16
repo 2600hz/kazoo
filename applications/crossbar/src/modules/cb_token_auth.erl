@@ -119,11 +119,10 @@ authenticate(Context) ->
 authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
 authenticate(Context, 'undefined', 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
-    case kz_buckets:consume_tokens(?APP_NAME
-                                  ,cb_modules_util:bucket_name(Context)
-                                  ,cb_modules_util:token_cost(Context)
-                                  )
-    of
+    Bucket = cb_modules_util:bucket_name(Context),
+    Cost = cb_modules_util:token_cost(Context),
+
+    case kz_buckets:consume_tokens(?APP_NAME, Bucket, Cost) of
         'true' ->
             lager:info("checking for x-auth-token"),
             check_auth_token(Context
@@ -131,7 +130,10 @@ authenticate(Context, 'undefined', 'x-auth-token') ->
                             ,cb_context:magic_pathed(Context)
                             );
         'false' ->
-            lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
+            lager:warning("bucket ~s does not have enough tokens(~b needed) for this request"
+                         ,[Bucket, Cost]
+                         ),
+            lager:info("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
             {'stop', cb_context:add_system_error('too_many_requests', Context)}
     end;
 authenticate(_Context, _AccountId, _TokenType) -> 'false'.
