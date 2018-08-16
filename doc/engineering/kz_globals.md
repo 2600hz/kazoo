@@ -47,10 +47,19 @@ When receiving the advertised registration:
 
 ## Testing
 
-There is a quickcheck model that will test the operation of the registry at `core/kazoo_globals/test/kz_globals_pqc.erl`. Compile the core lib with `make proper` and in your VM shell, issue:
+There is a quickcheck model that will test the operation of the registry at `core/kazoo_globals/test/kz_globals_pqc.erl`.
 
+Compile the core lib with `make proper`
+```bash
+$ cd path/to/kazoo/core/kz_globals
+$ make proper
+```
+
+and in your VM shell, issue:
 ```erlang
-(pdx@pdx.2600hz.com)7> proper:quickcheck(kz_globals_pqc:correct()).
+(pdx@pdx.2600hz.com)1> code:add_path("/path/to/kazoo/core/kazoo_globals/test").
+(pdx@pdx.2600hz.com)2> code:load_file(kz_globals_pqc).
+(pdx@pdx.2600hz.com)3> proper:quickcheck(kz_globals_pqc:correct()).
 ....................................................................................................
 OK: Passed 100 test(s).
 

@@ -411,6 +411,7 @@ maybe_add_zone(Zone, #state{zones=Zones}) ->
 
 -spec amqp_register(kz_global:global(), term()) -> 'ok'.
 amqp_register(Global, From) ->
+    lager:warning("~p is trying to register ~p", [From, Global]),
     Name = kz_global:name(Global),
     case lookup_name(Name) of
         Global ->
@@ -418,9 +419,13 @@ amqp_register(Global, From) ->
                 'yes' ->
                     lager:debug("amqp register ok, registering ~p locally", [Name]),
                     gen_listener:cast(?SERVER, {'register_local', Global, From});
-                'no' -> gen_listener:reply(From, 'no')
+                'no' ->
+                    lager:warning("Registration denied. From: ~p, Global: ~p" ,[From, Global]),
+                    gen_listener:reply(From, 'no')
             end;
-        _Pid -> gen_listener:reply(From, 'no')
+        _Pid ->
+            lager:warning("This global seems to be already registered somewhere else at pid: ~p", [_Pid]),
+            gen_listener:reply(From, 'no')
     end.
 
 -spec do_amqp_register(kz_global:global()) -> 'yes' | 'no'.
@@ -434,6 +439,7 @@ do_amqp_register(Global) ->
             lager:error("error '~p' calling register ~p", [Error, kz_global:name(Global)]),
             'no';
         {_, JObjs} ->
+            lager:warning("Registering Global ~p~nGotten responses: ~p", [Global, JObjs]),
             amqp_register_check_responses(JObjs, Global)
     end.
 
@@ -453,6 +459,7 @@ amqp_register_check_responses(Responses, Global) ->
 
 -spec amqp_register_check_response(kz_json:object(), kz_global:global()) -> boolean().
 amqp_register_check_response(JObj, Global) ->
+    lager:warning("Checking response: ~p", [JObj]),
     Routines = [fun amqp_register_check_valid_state/2
                ,fun amqp_register_check_pending/2
                ],
@@ -497,6 +504,7 @@ amqp_register_check_pending(JObj, Global) ->
 
 -spec register_local(kz_global:global()) -> 'yes' | 'no'.
 register_local(Global) ->
+    lager:warning("Race won, registering global locally: ~p", [Global]),
     case lookup_name(kz_global:name(Global)) of
         Global ->
             Updated = kz_global:register_local(?TAB_NAME, Global),
@@ -574,6 +582,10 @@ do_amqp_unregister(Global, Reason) ->
               ],
     lager:debug("deleting ~p", [Name]),
     ets:delete(?TAB_NAME, Name),
+    kz_util:spawn(fun() ->
+                      timer:sleep(500), % Give time to other nodes to register the name
+                      gen_listener:call(?SERVER, {'amqp_delete', Global, Reason})
+                  end),
     kz_amqp_worker:cast(Payload, ?AMQP_UNREGISTER_FUN).
 
 -spec maybe_amqp_query(kz_global:name(), term()) -> 'ok'.

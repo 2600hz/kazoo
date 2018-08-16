@@ -174,6 +174,9 @@ handle_cast('next_cycle', State) ->
 handle_cast(stop, State) ->
     lager:debug("notify resend has been stopped"),
     {stop, normal, State};
+handle_cast({'$proxy_stop', Reason}, State) ->
+    lager:debug("notify resender has been stopped with reason: ~p", [Reason]),
+    {stop, Reason, State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
