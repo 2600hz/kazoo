@@ -342,7 +342,8 @@ handle_event(JObj, #state{fetch_id=FetchId}) ->
     _ = case kz_util:get_event_type(JObj) of
             {<<"call">>, <<"command">>} -> handle_call_command(JObj);
             {<<"conference">>, <<"command">>} -> handle_conference_command(JObj);
-            {<<"call_event">>, _} -> handle_call_events(JObj, FetchId)
+            {<<"call_event">>, _} -> handle_call_events(JObj, FetchId);
+            {<<"error">>, _EvtName} -> lager:debug("ignoring error event for ~s", [_EvtName])
         end,
     'ignore'.
 

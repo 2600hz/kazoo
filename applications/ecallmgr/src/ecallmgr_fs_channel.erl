@@ -480,7 +480,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec handle_channel_req_legacy(kz_term:ne_binary(), kz_term:ne_binary(), atom(), pid()) -> 'ok'.
 handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
-    kz_amqp_channel:consumer_pid(Pid),
+    _ = kz_amqp_channel:consumer_pid(Pid),
     case fetch_channel(UUID) of
         'undefined' -> channel_not_found(Node, FetchId);
         Channel ->
@@ -492,7 +492,7 @@ handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
 
 -spec handle_channel_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), atom(), pid()) -> 'ok'.
 handle_channel_req(UUID, FetchId, Props, Node, Pid) ->
-    kz_amqp_channel:consumer_pid(Pid),
+    _ = kz_amqp_channel:consumer_pid(Pid),
     ForUUID = props:get_value(<<"refer-for-channel-id">>, Props),
     {'ok', ForChannel} = fetch(ForUUID, 'proplist'),
     case fetch_channel(UUID) of
@@ -589,7 +589,7 @@ process_event(UUID, Props, Node) ->
 -spec process_event(kz_term:api_binary(), kz_term:proplist(), atom(), pid()) -> any().
 process_event(UUID, Props, Node, Pid) ->
     kz_util:put_callid(UUID),
-    kz_amqp_channel:consumer_pid(Pid),
+    _ = kz_amqp_channel:consumer_pid(Pid),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
 
     process_specific_event(EventName, UUID, Props, Node).

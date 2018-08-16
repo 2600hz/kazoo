@@ -955,14 +955,14 @@ maybe_empty_slot(JObj) ->
 error_occupied_slot(Call) ->
     lager:info("selected slot is occupied"),
     %% Update screen with error that the slot is occupied
-    case kapps_call_command:b_answer(Call) of
-        {'error', 'timeout'} ->
-            lager:info("timed out waiting for the answer to complete");
-        {'error', 'channel_hungup'} ->
-            lager:info("channel hungup while answering");
-        _ ->
-            lager:debug("channel answered, prompting of the slot being in use"),
-            %% playback message that caller will have to try a different slot
-            kapps_call_command:b_prompt(<<"park-already_in_use">>, Call)
-    end,
+    _ = case kapps_call_command:b_answer(Call) of
+            {'error', 'timeout'} ->
+                lager:info("timed out waiting for the answer to complete");
+            {'error', 'channel_hungup'} ->
+                lager:info("channel hungup while answering");
+            _ ->
+                lager:debug("channel answered, prompting of the slot being in use"),
+                %% playback message that caller will have to try a different slot
+                kapps_call_command:b_prompt(<<"park-already_in_use">>, Call)
+        end,
     cf_exe:stop(Call).
