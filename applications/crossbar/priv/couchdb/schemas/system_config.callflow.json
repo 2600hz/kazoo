@@ -76,6 +76,11 @@
             "description": "callflow route win timeout",
             "type": "integer"
         },
+        "should_dry_run_token_restrictions": {
+            "default": false,
+            "description": "callflow should_dry_run_token_restrictions",
+            "type": "boolean"
+        },
         "singular_call_hook_url": {
             "default": "",
             "description": "callflow singular call hook url",
