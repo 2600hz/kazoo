@@ -14,6 +14,7 @@
         ,json_to_querystring/1
         ,props_to_querystring/1
         ,http_code_to_status_line/1
+        ,get_resp_header/2, get_resp_header/3
         ]).
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -390,3 +391,14 @@ http_code_to_status_line(508) -> <<"Loop Detected">>;
 http_code_to_status_line(510) -> <<"Not Extended">>;
 http_code_to_status_line(511) -> <<"Network Authentication Required">>;
 http_code_to_status_line(599) -> <<"Network Connect Timeout Error">>.
+
+-spec get_resp_header(kz_http:field(), kz_http:headers()) -> kz_http:value() | 'undefined'.
+get_resp_header(RespHeader, RespHeaders) ->
+    get_resp_header(RespHeader, RespHeaders, 'undefined').
+
+-spec get_resp_header(kz_http:field(), kz_http:headers(), Default) -> kz_http:value() | Default.
+get_resp_header(RespHeader, RespHeaders, Default) ->
+    case lists:keyfind(RespHeader, 1, RespHeaders) of
+        {_, Value} -> Value;
+        'false' -> Default
+    end.
