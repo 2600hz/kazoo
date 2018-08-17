@@ -6,13 +6,13 @@ Kazoo uses [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) to generate a re
 
 EDoc use comments at top of the module for description of module, an every comments before **exported** function as function's description and functions type declaration/definition (the `spec` tag) for data type descriptions of the function.
 
-YOu can read more about what tags are usable in EDoc at [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) official website.
+You can read more about what tags are usable in EDoc at [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) official website.
 
 ## Module-level
 
 When writing module-level documentation, we're looking for:
 
-* A very brief description of the functionality of the module as the first sentence in `@doc` tag ended with dor (`.`) followed by empty comment line
+* A very brief description of the functionality of the module as the first sentence in `@doc` tag ended with dot (`.`) followed by empty comment line
 * A full description for module
 * What module is doing, brief description of use cases, algorithm, usage
 * Example of how to use the module
@@ -22,7 +22,7 @@ When writing module-level documentation, we're looking for:
 * Links to other related module, or sites, article.
 * `@author` tag
 * `@copyright` tag
-* `@deprecated`, `@reference`, `@see` tags if applicate
+* `@deprecated`, `@reference`, `@see` tags if applicable
 
 For more EDoc tags see [EDoc Module tags](http://erlang.org/doc/apps/edoc/chapter.html#id62859)
 
@@ -170,7 +170,7 @@ Always write function type specifications. EDoc will pretty print in the documen
 %%
 %% @see new/2
 %% @see another_module:another_func/1
-%% @throws {error, unabled_to_forward}
+%% @throws {error, unable_to_forward}
 %% @end
 %%------------------------------------------------------------------------------
 -spec forward(kapps_call:call(), kz_term:proplist()) -> kz_json:object().
@@ -191,11 +191,11 @@ Write the comment immediately after the dot in type specification (you can some 
 
 ## Edocify Script
 
-Comments in Kazoo source code was not formated correctly to consume by EDoc. Since there was a lot of issues to fix, a [script](https://github.com/2600hz/kazoo/blob/master/scripts/edocify.escript) was written to find the problematic issues in the code using regex and [`ag` The Silver Searcher](https://github.com/ggreer/the_silver_searcher) and fix them.
+Comments in Kazoo source code was not formatted correctly to consume by EDoc. Since there was a lot of issues to fix, a [script](https://github.com/2600hz/kazoo/blob/master/scripts/edocify.escript) was written to find the problematic issues in the code using regex and [`ag` The Silver Searcher](https://github.com/ggreer/the_silver_searcher) and fix them.
 
 To avoid repeating the same issues again this script is running as part of CI.
 
-The script may not catch all issues but still it fixes known issues were found during formating comments.
+The script may not catch all issues but still it fixes known issues were found during formatting comments.
 
 ```shell
 $ scripts/edocify.escript

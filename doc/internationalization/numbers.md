@@ -1,6 +1,6 @@
 # International Phone Numbers
 
-By default, Kazoo includes appropriate configurations for running the system in the United States. Nothing, however, stops folks from reconfiguring the system to support other country's numbering system.
+By default, Kazoo includes appropriate configurations for running the system in the United States. Nothing, however, stops folks from re-configuring the system to support other country's numbering system.
 
 2600Hz encourages you to consider sticking with the [E.164](https://en.wikipedia.org/wiki/E.164) format for globally rout-able numbers.
 
@@ -12,7 +12,7 @@ The first thing to configure is how to tell when a number is "globally rout able
 "reconcile_regex": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d{5,}$|^00\\d{5,}$"
 ```
 
-Here is the default, which if reading regexes isn't second nature, optionally matches a `+` and a `1` (the country code for the US), followed by any 10 digits, or matches 8-or-more digit numbers (prefixed by a `+`), or the international dialing codes for the US.
+Here is the default, which if reading regexps isn't second nature, optionally matches a `+` and a `1` (the country code for the US), followed by any 10 digits, or matches 8-or-more digit numbers (prefixed by a `+`), or the international dialing codes for the US.
 
 This regex must be able to match number formats your carrier(s) will send you. In the US, it is normal to see the 10-digit number (NPA-NXX-XXXX), optionally with a `1` prepended (NPANXXXXXX), or the full E.164 version (+1NPANXXXXXX). The default `reconcile_regex` matches all of those. Internal extensions, like 100, 2504, or `*97`, will obviously fail to be matched with the `reconcile_regex` and thus be rout-able only by authorized devices within an account.
 
@@ -84,7 +84,7 @@ See [the examples](./examples/number_manager) for user-contributed samples (and 
 
 ## Classifiers
 
-This is a set of regexes to group numbers by type and are not used for routing. Classifiers are used to create groups of numbers that can be restricted, pretty print numbers in emails (like voicemail to email) and provide user friendly names in the UI.
+This is a set of regexps to group numbers by type and are not used for routing. Classifiers are used to create groups of numbers that can be restricted, pretty print numbers in emails (like voicemail to email) and provide user friendly names in the UI.
 
 ```json
 {
@@ -141,9 +141,9 @@ If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and
 
 ### Per-Account dial plans
 
-Users can dial local numbers, just as they do with the PSTN, by providing Kazoo with `dial_plan` regular expressions. These regexes will be used on the dialed numbers to correct them to properly routable numbers.
+Users can dial local numbers, just as they do with the PSTN, by providing Kazoo with `dial_plan` regular expressions. These regexps will be used on the dialed numbers to correct them to properly routable numbers.
 
-It is possible to set these regexes on an account, user, or device basis. All that needs doing is adding a `dial_plan` key at the root level of the account, user, or device document. Kazoo will then apply the regexes in order, preferring the calling device's, then user's (if the calling device has an `owner_id` set), and finally the account's dialplan. Failing any of those, the system `e164_converters` will be employed.
+It is possible to set these regexps on an account, user, or device basis. All that needs doing is adding a `dial_plan` key at the root level of the account, user, or device document. Kazoo will then apply the regexps in order, preferring the calling device's, then user's (if the calling device has an `owner_id` set), and finally the account's dialplan. Failing any of those, the system `e164_converters` will be employed.
 
 !!! warning
     It is possible that these `dial_plan` rules will interfere with extension dialing within an account. Please take common extension length into consideration when creating these `dial_plan` rules.
@@ -175,7 +175,7 @@ See [the examples](./examples/dial_plan) for user-contributed samples (and creat
 }
 ```
 
-The `dial_plan` key is a regex to match against the dialed number, with `prefix` and `suffix` rules to prepend and append to the capture group in the regex. Regexes are evaluated in order and the first regex to match is the one used.
+The `dial_plan` key is a regex to match against the dialed number, with `prefix` and `suffix` rules to prepend and append to the capture group in the regex. Regexps are evaluated in order and the first regex to match is the one used.
 
 ## Scenarios
 

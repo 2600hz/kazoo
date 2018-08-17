@@ -1,4 +1,4 @@
-.PHONY = splchk splchk-changed splchk-json splchk-code
+.PHONY = splchk splchk-docs splchk-changed splchk-json splchk-code
 
 KAZOO_DICT = .aspell.en.pws
 KAZOO_REPL = .aspell.en.prepl
@@ -11,11 +11,13 @@ $(ROOT)/$(KAZOO_REPL):
 
 splchk-init: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL)
 
+splchk: splchk-changed
+
 ifeq ($(wildcard $(CURDIR)/doc/*.md),)
-splchk: splchk-init
+splchk-docs: splchk-init
 else
-DOCS := $(shell find $(CURDIR)/doc -type f -not -path "doc/mkdocs/*" -name "*.md")
-splchk: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
+DOCS := $(shell find $(CURDIR)/doc -name "*.md" -not -path "$(CURDIR)/doc/mkdocs/docs*")
+splchk-docs: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
 endif
 
 JSON := $(wildcard $(CURDIR)/priv/couchdb/schemas/*.json)
