@@ -58,6 +58,25 @@
             "description": "If defined, use rates with this version",
             "type": "string"
         },
+        "should_publish_system_alert": {
+            "properties": {
+                "both": {
+                    "default": true,
+                    "description": "hotornot should_publish_system_alert if a rate is missing",
+                    "type": "boolean"
+                },
+                "inbound": {
+                    "default": true,
+                    "description": "hotornot should_publish_system_alert if inbound rate is missing",
+                    "type": "boolean"
+                },
+                "outbound": {
+                    "default": true,
+                    "description": "hotornot should_publish_system_alert if outbound rate is missing",
+                    "type": "boolean"
+                }
+            }
+        },
         "sort_by_weight": {
             "default": true,
             "description": "sort rates by weight (true) or cost (false)",
