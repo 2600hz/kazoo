@@ -99,7 +99,9 @@ curl -v -X POST \
 }
 ```
 
-In the above example, `"binding_digit" = "*"` is what tells Kazoo that a metaflow is starting, and "2(\\d+)" tells Kazoo to look for a 2 and then more than one digit is captured. So `*21234` would instruct Kazoo to blind-transfer the caller to extension `1234`.
+In the above example, the `binding_digit` is `*` which, when pressed on the phone's keypad, tells Kazoo that a metaflow is starting. `2(\\d+)` tells Kazoo to look for a 2 and then capture one or more digits.
+
+Thus `*21234` would instruct Kazoo to blind-transfer the caller to extension `1234`.
 
 ## Remove metaflows from the account
 
