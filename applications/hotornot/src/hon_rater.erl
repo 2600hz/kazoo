@@ -96,7 +96,7 @@ maybe_send_system_alert(RateReq, FromDID, ToDID) ->
     Direction = kapi_rate:direction(RateReq),
     case hotornot_config:should_publish_alert(Direction) of
         'true' ->
-            kz_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]);
+            kz_notify:system_alert("no ~s rate found for ~s to ~s", [Direction, FromDID, ToDID]);
         'false' ->
             lager:debug("not publishing no_rate_found alert for ~s rate", [Direction])
     end.
