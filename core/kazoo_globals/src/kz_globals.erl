@@ -150,8 +150,13 @@ where_is(Name) ->
 -spec lookup_name(kz_global:name()) -> kz_global:global() | 'undefined'.
 lookup_name(Name) ->
     case ets:lookup(?TAB_NAME, Name) of
-        [Global] -> Global;
-        [] -> 'undefined'
+        [Global] ->
+            case is_process_alive(kz_global:pid(Global)) of
+                'true' -> Global;
+                'false' -> 'undefined'
+            end;
+        [] ->
+            'undefined'
     end.
 
 -spec register_name(kz_global:name(), pid()) -> 'yes' | 'no'.
@@ -411,7 +416,6 @@ maybe_add_zone(Zone, #state{zones=Zones}) ->
 
 -spec amqp_register(kz_global:global(), term()) -> 'ok'.
 amqp_register(Global, From) ->
-    lager:warning("~p is trying to register ~p", [From, Global]),
     Name = kz_global:name(Global),
     case lookup_name(Name) of
         Global ->
@@ -420,11 +424,9 @@ amqp_register(Global, From) ->
                     lager:debug("amqp register ok, registering ~p locally", [Name]),
                     gen_listener:cast(?SERVER, {'register_local', Global, From});
                 'no' ->
-                    lager:warning("Registration denied. From: ~p, Global: ~p" ,[From, Global]),
                     gen_listener:reply(From, 'no')
             end;
         _Pid ->
-            lager:warning("This global seems to be already registered somewhere else at pid: ~p", [_Pid]),
             gen_listener:reply(From, 'no')
     end.
 
@@ -439,7 +441,6 @@ do_amqp_register(Global) ->
             lager:error("error '~p' calling register ~p", [Error, kz_global:name(Global)]),
             'no';
         {_, JObjs} ->
-            lager:warning("Registering Global ~p~nGotten responses: ~p", [Global, JObjs]),
             amqp_register_check_responses(JObjs, Global)
     end.
 
@@ -459,7 +460,6 @@ amqp_register_check_responses(Responses, Global) ->
 
 -spec amqp_register_check_response(kz_json:object(), kz_global:global()) -> boolean().
 amqp_register_check_response(JObj, Global) ->
-    lager:warning("Checking response: ~p", [JObj]),
     Routines = [fun amqp_register_check_valid_state/2
                ,fun amqp_register_check_pending/2
                ],
@@ -504,7 +504,6 @@ amqp_register_check_pending(JObj, Global) ->
 
 -spec register_local(kz_global:global()) -> 'yes' | 'no'.
 register_local(Global) ->
-    lager:warning("Race won, registering global locally: ~p", [Global]),
     case lookup_name(kz_global:name(Global)) of
         Global ->
             Updated = kz_global:register_local(?TAB_NAME, Global),

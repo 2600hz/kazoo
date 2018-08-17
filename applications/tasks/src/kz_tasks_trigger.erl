@@ -106,7 +106,7 @@ handle_cast({'cleanup_finished', Ref}, #state{browse_dbs_ref = Ref}=State) ->
     {'noreply', State#state{browse_dbs_ref = browse_dbs_timer()}, 'hibernate'};
 
 handle_cast({'$proxy_stop', Reason}, State) ->
-    lager:debug("tasks triggerer has been stopped with reason: ~p", [Reason]),
+    lager:debug("~p stopping with reason: ~p", [?MODULE, Reason]),
     {stop, Reason, State};
 
 handle_cast(_Msg, State) ->
