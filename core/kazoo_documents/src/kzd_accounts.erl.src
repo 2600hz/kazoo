@@ -14,6 +14,7 @@
 -export([caller_id/1, caller_id/2, set_caller_id/2]).
 -export([caller_id_options/1, caller_id_options/2, set_caller_id_options/2]).
 -export([caller_id_options_outbound_privacy/1, caller_id_options_outbound_privacy/2, set_caller_id_options_outbound_privacy/2]).
+-export([caller_id_options_show_rate/1, caller_id_options_show_rate/2, set_caller_id_options_show_rate/2]).
 -export([dial_plan/1, dial_plan/2, set_dial_plan/2]).
 -export([do_not_disturb/1, do_not_disturb/2, set_do_not_disturb/2]).
 -export([do_not_disturb_enabled/1, do_not_disturb_enabled/2, set_do_not_disturb_enabled/2]).
@@ -156,6 +157,18 @@ caller_id_options_outbound_privacy(Doc, Default) ->
 -spec set_caller_id_options_outbound_privacy(doc(), binary()) -> doc().
 set_caller_id_options_outbound_privacy(Doc, CallerIdOptionsOutboundPrivacy) ->
     kz_json:set_value([<<"caller_id_options">>, <<"outbound_privacy">>], CallerIdOptionsOutboundPrivacy, Doc).
+
+-spec caller_id_options_show_rate(doc()) -> kz_term:api_boolean().
+caller_id_options_show_rate(Doc) ->
+    caller_id_options_show_rate(Doc, 'undefined').
+
+-spec caller_id_options_show_rate(doc(), Default) -> boolean() | Default.
+caller_id_options_show_rate(Doc, Default) ->
+    kz_json:get_boolean_value([<<"caller_id_options">>, <<"show_rate">>], Doc, Default).
+
+-spec set_caller_id_options_show_rate(doc(), boolean()) -> doc().
+set_caller_id_options_show_rate(Doc, CallerIdOptionsShowRate) ->
+    kz_json:set_value([<<"caller_id_options">>, <<"show_rate">>], CallerIdOptionsShowRate, Doc).
 
 -spec dial_plan(doc()) -> kz_term:api_object().
 dial_plan(Doc) ->
