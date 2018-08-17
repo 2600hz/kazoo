@@ -199,7 +199,6 @@ handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref}=State) ->
             {'noreply', State#state{running=Pendings}};
         {'error', 'not_found'} ->
             lager:error("unable to find pending view, this is not good..."),
-            kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             {'noreply', State#state{timer_ref = set_timer()}};
         {'error', _Reason} ->
             lager:error("failed to find pending notifications jobs: ~p", [_Reason]),
