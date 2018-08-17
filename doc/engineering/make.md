@@ -78,7 +78,7 @@ Typically running Dialyzer on the whole project will be painful unless you have 
 
 Runs the equivalent Dialyzer run that CI runs. Just runs Dialyzer on source files that have changed, and only in batches of 5 at a time.
 
-### `make dialzye-hard`
+### `make dialyze-hard`
 
 This is a great option if you have a beefier computer available. It will take the source files changed, run a first pass to find all modules being called, and will make a second pass using all the changed and called modules together in one big run.
 
@@ -140,7 +140,7 @@ Ensures the `{APP}.app.src` has an accurate list in the `applications` key.
 
 Runs various code-checking scripts to ensure project standards are met.
 
-- No raw Erlang JSON terms are present (typically `{'struct', [...]}` and `{[...]}`). `kz_json` should be used and the datastructure should be considered opaque.
+- No raw Erlang JSON terms are present (typically `{'struct', [...]}` and `{[...]}`). `kz_json` should be used and the data structure should be considered opaque.
 - Dead-simple spell checker looking for low-hanging fruit.
 - Auto-migration of older modules/functions to newer ones (or more appropriately-named ones)
 - [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) checks

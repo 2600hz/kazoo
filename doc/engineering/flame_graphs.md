@@ -14,7 +14,7 @@ The `kz_tracers` module (in `core/whistle_apps`) starts the trace. Currently it 
 
 You can enable a trace for a crossbar request by adding a header `x-trace-request: true`.
 
-You will also need to enable tracing as a system config: `sup whapps_config set_default crossbar allow_tracing true` This has performance implications so I wouldn't leave this enabled on a production environment.
+You will also need to enable tracing as a system config: `sup kapps_config set_default crossbar allow_tracing true` This has performance implications so I wouldn't leave this enabled on a production environment.
 
 Now try your cURL request:
 

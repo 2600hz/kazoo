@@ -170,7 +170,7 @@ Always write function type specifications. EDoc will pretty print in the documen
 %%
 %% @see new/2
 %% @see another_module:another_func/1
-%% @throws {error, unabled_to_forward}
+%% @throws {error, unable_to_forward}
 %% @end
 %%------------------------------------------------------------------------------
 -spec forward(kapps_call:call(), kz_term:proplist()) -> kz_json:object().
@@ -191,11 +191,11 @@ Write the comment immediately after the dot in type specification (you can some 
 
 ## Edocify Script
 
-Comments in Kazoo source code was not formated correctly to consume by EDoc. Since there was a lot of issues to fix, a [script](https://github.com/2600hz/kazoo/blob/master/scripts/edocify.escript) was written to find the problematic issues in the code using regex and [`ag` The Silver Searcher](https://github.com/ggreer/the_silver_searcher) and fix them.
+Comments in Kazoo source code was not formatted correctly to consume by EDoc. Since there was a lot of issues to fix, a [script](https://github.com/2600hz/kazoo/blob/master/scripts/edocify.escript) was written to find the problematic issues in the code using regex and [`ag` The Silver Searcher](https://github.com/ggreer/the_silver_searcher) and fix them.
 
 To avoid repeating the same issues again this script is running as part of CI.
 
-The script may not catch all issues but still it fixes known issues were found during formating comments.
+The script may not catch all issues but still it fixes known issues were found during formatting comments.
 
 ```shell
 $ scripts/edocify.escript

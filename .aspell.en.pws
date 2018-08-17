@@ -1,7 +1,7 @@
-personal_ws-1.1 en 1119 utf-8
+personal_ws-1.1 en 1123 utf-8
 PrivateKeyInfo
-ccv
 cfg
+ccv
 CNAME
 cdr
 api
@@ -39,8 +39,8 @@ del
 asr
 htmldoc
 ast
-DES
 cli
+DES
 stepswitch
 dev
 OwnerId
@@ -76,6 +76,7 @@ CSS
 hungup
 CTO
 libncurses
+Carlsson
 csv
 Clifden
 libreoffice
@@ -127,8 +128,8 @@ Aran
 acceptors
 postmap
 unassigning
-PCMA
 Lyca
+PCMA
 rtpmap
 FSM
 CAkey
@@ -169,6 +170,7 @@ pbxs
 hrl
 ini
 misconfigured
+Fritchie's
 Sergey
 Busingen
 assertEqual
@@ -208,12 +210,12 @@ McMurdo
 unhold
 Willkommen
 LHI
-MODBs
 modbs
+MODBs
 Scalability
 IVR
-OAuth
 oauth
+OAuth
 Campo
 maxItems
 knm
@@ -230,8 +232,8 @@ enoent
 arities
 CAfile
 loa
-bigcouch
 BigCouch
+bigcouch
 telecom
 deps
 federators
@@ -343,11 +345,11 @@ sha
 ratedeck
 ptr
 rpmnew
-qos
 QoS
+qos
 Buenos
-NoCharge
 nocharge
+NoCharge
 Longford
 recv
 ROC
@@ -363,8 +365,8 @@ sla
 ROK
 Clonmel
 interdigit
-RabbitMQ
 rabbitmq
+RabbitMQ
 Kwajalein
 ibrowse
 tcplog
@@ -394,8 +396,8 @@ Ujung
 couchbeam
 cron
 milliwatt
-SBCs
 relx
+SBCs
 Aaiun
 Wysor
 sox
@@ -417,9 +419,9 @@ noreply
 wrapup
 OTP's
 SRV
+tns
 UIs
 UI's
-tns
 telco
 httplog
 maxSize
@@ -445,13 +447,13 @@ ACDc's
 vlc
 setopts
 nodedown
-tts
 sys
+tts
 bowout
 Rodionov
-uri
-vnd
 USD
+vnd
+uri
 unregister
 urlencoded
 rebar
@@ -466,8 +468,8 @@ CSVs
 wdays
 responders
 usr
-Ust
 txt
+Ust
 loopback
 stacktraces
 resampled
@@ -527,8 +529,8 @@ ratedeck's
 ratedecks
 Costa
 preflow
-gb
 El
+gb
 dialplans
 fi
 dtmf
@@ -536,15 +538,15 @@ cz
 clicktocall
 fs
 Eucla
-hk
 ja
+hk
 Ensenada
 Marino
 UNALLOCATED
 syslog
 io
-ip
 hu
+ip
 enum
 sysconf
 epmd
@@ -552,8 +554,8 @@ jp
 failover
 lookups
 noinput
-js
 md
+js
 ko
 nb
 struct
@@ -592,8 +594,8 @@ Castlebar
 Faroe
 twoway
 skel
-rx
 ui
+rx
 SU
 sv
 wednesday
@@ -601,8 +603,8 @@ kapps
 foldl
 Ballina
 ecallmgr
-vm
 tw
+vm
 tx
 rpid
 Aimonetti
@@ -807,8 +809,8 @@ cidrs
 kapi
 Hovd
 Choibalsan
-NoMoRobo
 nomorobo
+NoMoRobo
 Kapp
 frontend
 TaskId
@@ -832,8 +834,8 @@ xpath
 speex
 poolboy
 Makassar
-CallId
 callid
+CallId
 whitelist
 vmboxes
 Ponape
@@ -866,8 +868,8 @@ Defebvre
 html
 Bandon
 Araguaina
-formatters
 formatter's
+formatters
 interaccount
 gzip
 Kozlov
@@ -883,14 +885,15 @@ middleware
 unregisters
 crypto
 kerl
+RequestId
 ISAC
-ispeech
 iSpeech
+ispeech
 Korniliv
 urls
 Twilo
-twiml
 TwiML
+twiml
 dialyze
 Kolkata
 http
@@ -917,8 +920,8 @@ requestor
 Marengo
 webhooks
 faxboxes
-callflow's
 callflows
+callflow's
 uuid
 relayhost
 SAVPF
@@ -938,8 +941,8 @@ Pangnirtung
 yaml
 backoff
 programmatically
-couchdb
 CouchDB
+couchdb
 Aqtobe
 customizations
 Kuala
@@ -958,8 +961,8 @@ automata
 LYSE's
 skypopen
 DeNoronha
-vcard
 vCard
+vcard
 Portlaoise
 libexpat
 Onboarding
@@ -986,8 +989,8 @@ loadmodule
 proto
 endif
 resporg
-ACDc
 acdc
+ACDc
 pipelining
 natively
 stacktrace
@@ -1003,8 +1006,8 @@ Juba
 dialcode
 whereis
 dialplan
-numbermanager
 NumberManager
+numbermanager
 autoloaded
 symlinked
 Bator
@@ -1020,8 +1023,8 @@ BEAMs
 CApath
 json
 Metlakatla
-ACLs
 acls
+ACLs
 modparam
 Banderas
 Rioja
@@ -1051,8 +1054,8 @@ minItems
 goldrush
 ComodRivadavia
 urandom
-voicefabric
 VoiceFabric
+voicefabric
 JobId
 Qyzylorda
 Geary
@@ -1075,8 +1078,8 @@ webhook
 superduper
 BajaSur
 siptrace
-FreeSWITCH
 freeswitch
+FreeSWITCH
 usort
 Anadyr
 Minh
@@ -1097,6 +1100,7 @@ Nationaal
 SubType
 Harenson
 bcc
+UserId
 Longyearbyen
 nxdomain
 Ulaanbaatar
