@@ -12845,6 +12845,8 @@
                 },
                 "Record-Action": {
                     "enum": [
+                        "mask",
+                        "unmask",
                         "start",
                         "stop"
                     ],
@@ -23996,6 +23998,8 @@
                     "default": "toggle",
                     "description": "Whether to start/stop the recording",
                     "enum": [
+                        "mask",
+                        "unmask",
                         "start",
                         "stop",
                         "toggle"

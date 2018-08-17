@@ -1453,6 +1453,18 @@ record_call(Node, UUID, JObj) ->
     record_call(Node, UUID, Action, JObj).
 
 -spec record_call(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> fs_app().
+record_call(_Node, _UUID, <<"mask">>, JObj) ->
+    RecordingName = case kz_json:get_ne_binary_value(<<"Media-Name">>, JObj) of
+                        'undefined' -> <<"${media_recordings[0]}">>;
+                        MediaName -> ecallmgr_util:recording_filename(MediaName)
+                    end,
+    {<<"record_session_mask">>, RecordingName};
+record_call(_Node, _UUID, <<"unmask">>, JObj) ->
+    RecordingName = case kz_json:get_ne_binary_value(<<"Media-Name">>, JObj) of
+                        'undefined' -> <<"${media_recordings[0]}">>;
+                        MediaName -> ecallmgr_util:recording_filename(MediaName)
+                    end,
+    {<<"record_session_unmask">>, RecordingName};
 record_call(Node, UUID, <<"start">>, JObj) ->
     Vars = props:filter_undefined(record_call_vars(JObj)),
     Args = ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set'),

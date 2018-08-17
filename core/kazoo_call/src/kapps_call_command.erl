@@ -88,6 +88,8 @@
 -export([record_call/2, record_call/3, record_call/4, record_call/5
         ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
         ,start_record_call/2, start_record_call/3, start_record_call/4
+        ,mask_record_call/2
+        ,unmask_record_call/2
         ,stop_record_call/2
         ]).
 -export([store/3, store/4, store/5, store/6
@@ -1677,6 +1679,14 @@ start_record_call(Media, TimeLimit, Terminators, Call) ->
 -spec stop_record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
 stop_record_call(Media, Call) ->
     record_call(Media, <<"stop">>, Call).
+
+-spec mask_record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
+mask_record_call(Media, Call) ->
+    record_call(Media, <<"mask">>, Call).
+
+-spec unmask_record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
+unmask_record_call(Media, Call) ->
+    record_call(Media, <<"unmask">>, Call).
 
 -spec record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
 record_call(Media, Call) ->
