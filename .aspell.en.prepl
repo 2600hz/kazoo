@@ -17,6 +17,7 @@ playload payload
 stuture Structure
 warnins warnings
 consistant consistent
+dafault default
 binded bound
 unecrypted unencrypted
 inteval interval
@@ -118,6 +119,8 @@ carier carrier
 bigcouch's BigCouch
 informat information
 excute execute
+month-es months
+monthes months
 prolist proplist
 multipe multiple
 mailboxs mailboxes
