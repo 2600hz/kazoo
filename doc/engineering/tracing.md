@@ -39,7 +39,7 @@ Filters are 2-tuples that contain the patterns used on events to see if they mee
 
 -   \`{'module', Module}\`: Filter for calls to \`Module\`
 -   \`{'function', Function}\`: Filter for calls to \`Function\` When combined with \`{'module', Module}\`, just trace that Module:Function combo
--   \`{'pid', Pid}\`: Fitler for calls by \`Pid\`
+-   \`{'pid', Pid}\`: Filter for calls by \`Pid\`
 -   Custom metadata
     -   \`lager:warning([{request, RequestID}], "the passwords didn't match for ~s", [UserId])\` would allow a filter of \`{'request', RequestID}\`
     -   You can also associate metadata with a \`pid()\`: \`lager:md([{'zone', 'west'}])\`

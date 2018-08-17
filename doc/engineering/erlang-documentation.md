@@ -6,13 +6,13 @@ Kazoo uses [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) to generate a re
 
 EDoc use comments at top of the module for description of module, an every comments before **exported** function as function's description and functions type declaration/definition (the `spec` tag) for data type descriptions of the function.
 
-YOu can read more about what tags are usable in EDoc at [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) official website.
+You can read more about what tags are usable in EDoc at [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) official website.
 
 ## Module-level
 
 When writing module-level documentation, we're looking for:
 
-* A very brief description of the functionality of the module as the first sentence in `@doc` tag ended with dor (`.`) followed by empty comment line
+* A very brief description of the functionality of the module as the first sentence in `@doc` tag ended with dot (`.`) followed by empty comment line
 * A full description for module
 * What module is doing, brief description of use cases, algorithm, usage
 * Example of how to use the module
@@ -22,7 +22,7 @@ When writing module-level documentation, we're looking for:
 * Links to other related module, or sites, article.
 * `@author` tag
 * `@copyright` tag
-* `@deprecated`, `@reference`, `@see` tags if applicate
+* `@deprecated`, `@reference`, `@see` tags if applicable
 
 For more EDoc tags see [EDoc Module tags](http://erlang.org/doc/apps/edoc/chapter.html#id62859)
 
