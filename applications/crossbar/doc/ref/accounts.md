@@ -17,6 +17,7 @@ Key | Description | Type | Default | Required | Support Level
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false` |  
 `caller_id` | The account default caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false` |  
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
+`caller_id_options.show_rate` | Whether to show the rate | `boolean()` |   | `false` |  
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |  
 `dial_plan` | A list of default rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |  
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean()` |   | `false` |  

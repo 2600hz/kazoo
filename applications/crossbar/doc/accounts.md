@@ -25,17 +25,18 @@ Key | Description | Type | Default | Required | Support Level
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false` |
 `caller_id` | The account default caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false` |
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |
+`caller_id_options.show_rate` | Whether to show the rate | `boolean()` |   | `false` |
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |
 `dial_plan` | A list of default rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean()` |   | `false` |
 `do_not_disturb` |   | `object()` |   | `false` |
-`enabled` | Determines if the account is currently enabled | `boolean()` | `true` | `false` |
+`enabled` | Determines if the account is currently enabled | `boolean()` | `true` | `false` | `supported`
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |
-`language` | The language for this account | `string()` |   | `false` |
+`language` | The language for this account | `string()` |   | `false` | `supported`
 `metaflows` |   | [#/definitions/metaflows](#metaflows) |   | `false` |
 `music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..2048)` |   | `false` |
 `music_on_hold` | The default music on hold parameters | `object()` | `{}` | `false` |
-`name` | A friendly name for the account | `string(1..128)` |   | `true` |
+`name` | A friendly name for the account | `string(1..128)` |   | `true` | `supported`
 `notifications.first_occurrence.sent_initial_call` | has the account made their first call | `boolean()` | `false` | `false` |
 `notifications.first_occurrence.sent_initial_registration` | has the account registered their first device | `boolean()` | `false` | `false` |
 `notifications.first_occurrence` | send emails on these account-firsts | `object()` |   | `false` |
@@ -48,11 +49,11 @@ Key | Description | Type | Default | Required | Support Level
 `org` | Full legal name of the organization | `string()` |   | `false` |
 `preflow.always` | The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request | `string()` |   | `false` |
 `preflow` | Each property provides functionality that can be applied to calls using the callflow application | `object()` | `{}` | `false` |
-`realm` | The realm of the account, ie: 'account1.2600hz.com' | `string(4..253)` |   | `false` |
+`realm` | The realm of the account, ie: 'account1.2600hz.com' | `string(4..253)` |   | `false` | `supported`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false` |
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false` |
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false` |
-`timezone` | The default timezone | `string(5..32)` |   | `false` |
+`timezone` | The default timezone | `string(5..32)` |   | `false` | `supported`
 `topup.threshold` | The account balance when topup occurs | `number()` |   | `false` |
 `topup` | Topup settings for the account | `object()` |   | `false` |
 `voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |

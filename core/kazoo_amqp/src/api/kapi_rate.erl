@@ -14,6 +14,19 @@
         ,broadcast_resp/1, broadcast_resp/2
         ]).
 
+%% accessors
+-export([account_id/1
+        ,authorizing_type/1
+        ,direction/1
+        ,from_did/1
+        ,options/1
+        ,outbound_flags/1
+        ,ratedeck_id/1
+        ,resource_id/1
+        ,send_empty/1
+        ,to_did/1
+        ]).
+
 -type req()  :: kz_json:object().
 -type resp() :: kz_json:object().
 
@@ -197,3 +210,43 @@ broadcast_resp(JObj) ->
 broadcast_resp(Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
     kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_BROADCAST).
+
+-spec to_did(req()) -> kz_term:ne_binary().
+to_did(Req) ->
+    kz_json:get_ne_binary_value(<<"To-DID">>, Req).
+
+-spec from_did(req()) -> kz_term:api_ne_binary().
+from_did(Req) ->
+    kz_json:get_ne_binary_value(<<"From-DID">>, Req).
+
+-spec account_id(req()) -> kz_term:api_ne_binary().
+account_id(Req) ->
+    kz_json:get_ne_binary_value(<<"Account-ID">>, Req).
+
+-spec ratedeck_id(req()) -> kz_term:api_ne_binary().
+ratedeck_id(Req) ->
+    kz_json:get_ne_binary_value(<<"Ratedeck-ID">>, Req).
+
+-spec direction(req()) -> kz_term:api_ne_binary().
+direction(Req) ->
+    kz_json:get_ne_binary_value(<<"Direction">>, Req).
+
+-spec authorizing_type(req()) -> kz_term:api_ne_binary().
+authorizing_type(Req) ->
+    kz_json:get_ne_binary_value(<<"Authorizing-Type">>, Req).
+
+-spec send_empty(req()) -> kz_term:api_ne_binary().
+send_empty(Req) ->
+    kz_json:is_true(<<"Send-Empty">>, Req, 'false').
+
+-spec options(req()) -> kz_term:ne_binaries().
+options(Req) ->
+    kz_json:get_list_value(<<"Options">>, Req, []).
+
+-spec outbound_flags(req()) -> kz_term:ne_binaries().
+outbound_flags(Req) ->
+    kz_json:get_list_value(<<"Outbound-Flags">>, Req, []).
+
+-spec resource_id(req()) -> kz_term:ne_binary().
+resource_id(Req) ->
+    kz_json:get_ne_binary_value(<<"Resource-ID">>, Req).

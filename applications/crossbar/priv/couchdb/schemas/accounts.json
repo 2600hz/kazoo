@@ -53,6 +53,10 @@
                         "none"
                     ],
                     "type": "string"
+                },
+                "show_rate": {
+                    "description": "Whether to show the rate",
+                    "type": "boolean"
                 }
             },
             "type": "object"
