@@ -293,7 +293,7 @@ maybe_start_ts_metaflow(Call, TrunkId) ->
     case ts_util:lookup_trunk(TrunkId, AccountId) of
         {'ok', Trunk} ->
             lager:debug("trying to send metaflow for a-leg of trunk ~s", [TrunkId]),
-            kz_endpoint:maybe_start_metaflow(Call, Trunk);
+            konami_util:maybe_start_metaflow(Call, Trunk);
         {'error', _E} -> 'ok'
     end.
 
@@ -304,7 +304,7 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} ->
             lager:debug("trying to send metaflow for a-leg endpoint ~s", [EndpointId]),
-            kz_endpoint:maybe_start_metaflow(Call, Endpoint);
+            konami_util:maybe_start_metaflow(Call, Endpoint);
         {'error', _E} -> 'ok'
     end.
 
