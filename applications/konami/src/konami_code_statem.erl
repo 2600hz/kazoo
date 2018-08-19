@@ -115,6 +115,7 @@ transfer_to(Call, Leg) ->
 -spec init({kapps_call:call(), kz_json:object()}) -> {'ok', 'unarmed', state()}.
 init({Call, JObj}) ->
     ListenOn = listen_on(Call, JObj),
+    AuthorizingId = kapps_call:authorizing_id(Call),
 
     kapps_call:put_callid(Call),
 
@@ -122,9 +123,9 @@ init({Call, JObj}) ->
 
     lager:debug("starting Konami statem, listening on '~s'", [ListenOn]),
 
-    BEndpointId = b_endpoint_id(JObj, ListenOn),
+    BEndpointId = b_endpoint_id(JObj, ListenOn, AuthorizingId),
 
-    lager:debug("a endpoint: ~s b endpoint: ~s", [kapps_call:authorizing_id(Call), BEndpointId]),
+    lager:debug("a endpoint: ~s b endpoint: ~s", [AuthorizingId, BEndpointId]),
 
     ?WSD_START(),
     ?WSD_TITLE(["FSM: ", kapps_call:call_id(Call), " listen on: ", kz_term:to_list(ListenOn)]),
@@ -540,9 +541,13 @@ maybe_add_call_event_bindings(Call, 'ab') ->
     konami_event_listener:add_konami_binding(kapps_call:other_leg_call_id(Call)),
     maybe_add_call_event_bindings(Call).
 
--spec b_endpoint_id(kz_json:object(), listen_on()) -> kz_term:api_binary().
-b_endpoint_id(_JObj, 'a') -> 'undefined';
-b_endpoint_id(JObj, _ListenOn) -> kz_json:get_value(<<"Endpoint-ID">>, JObj).
+-spec b_endpoint_id(kz_json:object(), listen_on(), kz_term:ne_binary()) -> kz_term:api_binary().
+b_endpoint_id(_JObj, 'a', _AuthorizingId) -> 'undefined';
+b_endpoint_id(JObj, _ListenOn, AuthorizingId) ->
+    case kz_json:get_value(<<"Endpoint-ID">>, JObj) of
+        AuthorizingId -> 'undefined'; %% This is a-leg case
+        Value -> Value
+    end.
 
 -spec handle_channel_answer(state(), kz_term:ne_binary(), kz_json:object()) -> state().
 handle_channel_answer(#state{call_id=CallId}=State, CallId, _Evt) ->
