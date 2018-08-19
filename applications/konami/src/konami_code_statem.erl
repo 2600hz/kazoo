@@ -574,7 +574,15 @@ handle_channel_answer(#state{call_id=_CallId
     State.
 
 -spec maybe_other_leg_answered(state(), kz_term:ne_binary(), kz_term:ne_binary()) -> state().
-maybe_other_leg_answered(#state{b_endpoint_id=EndpointId
+maybe_other_leg_answered(#state{listen_on='b'
+                               ,call_id=CallId
+                               }=State
+                        ,CallId
+                        ,EndpointId
+                        ) ->
+    lager:debug("ignoring channel -s answering for endpoint ~s", [CallId, EndpointId]),
+    State;
+maybe_other_leg_answered(#state{listen_on='b'
                                ,call=Call
                                }=State
                         ,OtherLeg
