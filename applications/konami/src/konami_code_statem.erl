@@ -599,11 +599,6 @@ maybe_other_leg_answered(State, _CallId, _EndpointId) ->
 
 -spec handle_channel_bridge(state(), kz_term:ne_binary(), kz_term:ne_binary()) -> state().
 handle_channel_bridge(#state{call_id=CallId
-                            ,other_leg=OtherLeg
-                            }=State, CallId, OtherLeg) ->
-    lager:debug("joy, 'a' and 'b' legs bridged"),
-    State;
-handle_channel_bridge(#state{call_id=CallId
                             ,listen_on='a'
                             ,call=Call
                             }=State, CallId, OtherLeg) ->
@@ -611,6 +606,18 @@ handle_channel_bridge(#state{call_id=CallId
     State#state{call=kapps_call:set_other_leg_call_id(OtherLeg, Call)
                ,other_leg=OtherLeg
                };
+handle_channel_bridge(#state{call_id=CallId
+                            ,listen_on='b'
+                            }=State, CallId, _OtherLeg) ->
+    lager:debug("joy, 'b' is bridged to ~s. Removing binding to a-leg", [CallId]),
+    konami_event_listener:rm_call_binding(CallId),
+    konami_event_listener:rm_konami_binding(CallId),
+    State;
+handle_channel_bridge(#state{call_id=CallId
+                            ,other_leg=OtherLeg
+                            }=State, CallId, OtherLeg) ->
+    lager:debug("joy, 'a' and 'b' legs bridged"),
+    State;
 handle_channel_bridge(#state{other_leg='undefined'}
                      ,_CallId
                      ,_OtherLeg
