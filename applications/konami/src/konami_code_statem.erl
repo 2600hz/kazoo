@@ -595,7 +595,6 @@ handle_channel_bridge(#state{call_id=CallId
                             ,call=Call
                             }=State, CallId, OtherLeg) ->
     lager:debug("joy, 'a' is bridged to ~s", [OtherLeg]),
-    maybe_add_call_event_bindings(OtherLeg),
     State#state{call=kapps_call:set_other_leg_call_id(OtherLeg, Call)
                ,other_leg=OtherLeg
                };
