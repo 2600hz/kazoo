@@ -227,3 +227,4 @@ pages:
     - 'applications/webhooks/doc/README.md'
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
+    - 'Queues': 'applications/acdc/doc/notifications.md'
