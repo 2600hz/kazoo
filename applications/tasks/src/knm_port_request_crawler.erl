@@ -84,7 +84,7 @@ handle_cast('stop', State) ->
     {'stop', 'normal', State};
 handle_cast({'$proxy_stop', Reason}, State) ->
     lager:debug("~p stopping with reason: ~p", [?MODULE, Reason]),
-    {stop, Reason, State};
+    {'stop', Reason, State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.

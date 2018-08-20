@@ -107,7 +107,7 @@ handle_cast({'cleanup_finished', Ref}, #state{browse_dbs_ref = Ref}=State) ->
 
 handle_cast({'$proxy_stop', Reason}, State) ->
     lager:debug("~p stopping with reason: ~p", [?MODULE, Reason]),
-    {stop, Reason, State};
+    {'stop', Reason, State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
