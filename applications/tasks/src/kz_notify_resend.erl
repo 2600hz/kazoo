@@ -155,8 +155,9 @@ next() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call('trigger_timeout', _From, State) ->
-    lager:debug("triggering timeout"),
+handle_call('trigger_timeout', _From, #state{timer_ref = Ref}=State) ->
+    lager:debug("triggering timeout and canceling ref: ~p", [Ref]),
+    _ = erlang:cancel_timer(Ref),
     {'reply', 'ok', State#state{running=[], timer_ref = set_timer()}};
 handle_call('running', _From, #state{running=Running}=State) ->
     {'reply', Running, State};
@@ -171,7 +172,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('next_cycle', State) ->
     {'noreply', State#state{running=[], timer_ref = set_timer()}};
 handle_cast(stop, State) ->
-    lager:debug("notify resender has been stopped"),
+    lager:debug("notify resend has been stopped"),
     {stop, normal, State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
