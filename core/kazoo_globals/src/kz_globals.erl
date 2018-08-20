@@ -582,8 +582,8 @@ do_amqp_unregister(Global, Reason) ->
     lager:debug("deleting ~p", [Name]),
     ets:delete(?TAB_NAME, Name),
     kz_util:spawn(fun() ->
-                          ok = timer:sleep(500), % Give time to other nodes to register the name
-                          ok = gen_listener:call(?SERVER, {'amqp_delete', Global, Reason})
+                          timer:sleep(500), % Give time to other nodes to register the name
+                          gen_listener:call(?SERVER, {'amqp_delete', Global, Reason})
                   end),
     kz_amqp_worker:cast(Payload, ?AMQP_UNREGISTER_FUN).
 
