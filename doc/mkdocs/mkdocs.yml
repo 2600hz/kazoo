@@ -167,6 +167,7 @@ pages:
     - 'applications/acdc/doc/todo.md'
     - 'applications/acdc/doc/ui.md'
     - 'Call Stats': 'applications/crossbar/doc/acdc_call_stats.md'
+    - 'Webhooks': 'applications/acdc/doc/notifications.md'
   - 'Ananke':
     - 'applications/ananke/doc/README.md'
   - 'Callflows':

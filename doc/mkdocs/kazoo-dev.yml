@@ -20,6 +20,7 @@ pages:
     - 'applications/acdc/doc/architecture.md'
     - 'applications/acdc/doc/todo.md'
     - 'applications/acdc/doc/ui.md'
+    - 'Webhooks': 'applications/acdc/doc/notifications.md'
   - 'Ananke':
     - 'applications/ananke/doc/README.md'
   - 'Callflows':
