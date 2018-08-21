@@ -836,8 +836,10 @@
                             ]).
 
 %% Transfer
--define(TRANSFER_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
-                          ,<<"Transfer-Type">>, <<"Transfer-To">>
+-define(TRANSFER_HEADERS, [<<"Application-Name">>
+                          ,<<"Call-ID">>
+                          ,<<"Transfer-To">>
+                          ,<<"Transfer-Type">>
                           ]).
 -define(OPTIONAL_TRANSFER_HEADERS, [<<"Insert-At">>
                                    ,<<"Transfer-Leg">>
