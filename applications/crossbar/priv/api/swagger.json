@@ -3530,6 +3530,40 @@
             },
             "type": "object"
         },
+        "callflows.transfer": {
+            "description": "Validator for the transfer callflow data object",
+            "properties": {
+                "captures": {
+                    "default": [
+                        "no_match"
+                    ],
+                    "description": "What to default to using if no capture group is present",
+                    "type": "array"
+                },
+                "leg": {
+                    "description": "Which leg to transfer (transferee)",
+                    "enum": [
+                        "self",
+                        "bleg"
+                    ],
+                    "type": "string"
+                },
+                "target": {
+                    "description": "The target destination (extension or DID)",
+                    "type": "string"
+                },
+                "transfer_type": {
+                    "default": "blind",
+                    "description": "The type of transfer to perform",
+                    "enum": [
+                        "attended",
+                        "blind"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "callflows.tts": {
             "description": "Validator for the TTS (Text-to-speech) callflow action",
             "properties": {
