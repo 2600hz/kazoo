@@ -193,19 +193,33 @@ handle_event(JObj, #state{request_handler=RequestHandler
                      end,
             gen_listener:cast(RequestHandler, {'bridge_result', Result});
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, CallId} ->
-            <<"bridge">> = kz_json:get_value(<<"Application-Name">>, JObj),
-            lager:debug("channel execute complete for bridge"),
-            Result = case <<"SUCCESS">> =:= kz_json:get_value(<<"Disposition">>, JObj) of
-                         'true' -> bridge_success(JObj, OffnetReq);
-                         'false' -> bridge_failure(JObj, OffnetReq)
-                     end,
-            gen_listener:cast(RequestHandler, {'bridge_result', Result});
+            handle_channel_execute_complete(JObj, OffnetReq, RequestHandler);
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, CallId} ->
             OtherLeg = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             gen_listener:cast(RequestHandler, {'bridged', OtherLeg});
         _ -> 'ok'
     end,
     {'reply', []}.
+
+-spec handle_channel_execute_complete(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+handle_channel_execute_complete(JObj, OffnetReq, RequestHandler) ->
+    handle_channel_execute_complete(JObj
+                                   ,OffnetReq
+                                   ,RequestHandler
+                                   ,kz_call_event:application_name(JObj)
+                                   ).
+
+-spec handle_channel_execute_complete(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid(), kz_term:api_ne_binary()) -> 'ok'.
+handle_channel_execute_complete(JObj, OffnetReq, RequestHandler, <<"bridge">>) ->
+    lager:debug("channel execute complete for bridge"),
+    Result = case <<"SUCCESS">> =:= kz_json:get_value(<<"Disposition">>, JObj) of
+                 'true' -> bridge_success(JObj, OffnetReq);
+                 'false' -> bridge_failure(JObj, OffnetReq)
+             end,
+    gen_listener:cast(RequestHandler, {'bridge_result', Result});
+handle_channel_execute_complete(_JObj, _OffnetReq, _RequestHander, _AppName) ->
+    lager:debug("ignoring channel_execute_complete for application ~s", [_AppName]).
+
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
