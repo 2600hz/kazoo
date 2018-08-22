@@ -157,10 +157,15 @@
 -type gateway() :: #gateway{}.
 -type gateways() :: [#gateway{}].
 
+-type endpoint() :: kz_json:object().
+-type endpoints() :: [endpoint()].
+
 -export_type([resource/0
              ,resources/0
              ,gateway/0
              ,gateways/0
+             ,endpoint/0
+             ,endpoints/0
              ]).
 
 -compile({'no_auto_import', [get/0, get/1]}).
@@ -221,21 +226,21 @@ sort_resources(Resources) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+-spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 endpoints(Number, OffnetJObj) ->
     case maybe_get_endpoints(Number, OffnetJObj) of
         [] -> [];
         Endpoints -> sort_endpoints(Endpoints)
     end.
 
--spec maybe_get_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+-spec maybe_get_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 maybe_get_endpoints(Number, OffnetJObj) ->
     case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
         'undefined' -> get_global_endpoints(Number, OffnetJObj);
         HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
--spec maybe_get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+-spec maybe_get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
     case kzd_accounts:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
@@ -249,28 +254,28 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
             get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
--spec get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+-spec get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 get_local_endpoints(AccountId, Number, OffnetJObj) ->
     lager:debug("attempting to find local resources for ~s", [AccountId]),
     Flags = kapi_offnet_resource:flags(OffnetJObj, []),
     Resources = filter_resources(Flags, get(AccountId)),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
--spec get_global_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+-spec get_global_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 get_global_endpoints(Number, OffnetJObj) ->
     lager:debug("attempting to find global resources"),
     Flags = kapi_offnet_resource:flags(OffnetJObj, []),
     Resources = filter_resources(Flags, get()),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
--spec sort_endpoints(kz_json:objects()) -> kz_json:objects().
+-spec sort_endpoints(endpoints()) -> endpoints().
 sort_endpoints(Endpoints) ->
     lists:sort(fun endpoint_ordering/2, Endpoints).
 
--spec endpoint_ordering(kz_json:object(), kz_json:object()) -> boolean().
+-spec endpoint_ordering(endpoint(), endpoint()) -> boolean().
 endpoint_ordering(P1, P2) ->
-    kz_json:get_value(<<"Weight">>, P1, 1)
-        =< kz_json:get_value(<<"Weight">>, P2, 1).
+    kz_json:get_integer_value(<<"Weight">>, P1, 1)
+        =< kz_json:get_integer_value(<<"Weight">>, P2, 1).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -703,7 +708,6 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"SIP-Invite-Parameters">>, sip_invite_parameters(Gateway, OffnetJObj)}
          | maybe_get_t38(Gateway, OffnetJObj)
         ])).
-
 
 -spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
 sip_invite_parameters(Gateway, OffnetJObj) ->
