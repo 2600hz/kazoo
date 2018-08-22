@@ -161,11 +161,11 @@ hangup_code(JObj) ->
 disposition(JObj) ->
     kz_json:get_ne_binary_value(<<"Disposition">>, JObj).
 
--spec application_name(doc()) -> kz_term:api_binary().
+-spec application_name(doc()) -> kz_term:api_ne_binary().
 application_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Application-Name">>, JObj).
 
--spec application_event(doc()) -> kz_term:api_binary().
+-spec application_event(doc()) -> kz_term:api_ne_binary().
 application_event(JObj) ->
     kz_json:get_ne_binary_value(<<"Application-Event">>, JObj).
 
