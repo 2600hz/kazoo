@@ -115,43 +115,21 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({'job_status',{JobId, <<"start">>, JObj}}, #state{jobs=#{pending := Pending
-                                                                    ,running := Running
-                                                                    }=Jobs
-                                                             }=State) ->
-    ServerId = kz_api:server_id(JObj),
-    #{JobId := #{number := Number}} = Pending,
-    lager:debug("received fax start control status for ~s", [JobId]),
-    {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
-                                      ,running => Running#{JobId => #{number => Number
-                                                                     ,queue => ServerId
-                                                                     ,start => kz_time:now_ms()
-                                                                     }
-                                                          }
-                                      }
-                           }, ?POLLING_INTERVAL
-    };
-handle_cast({'job_status',{JobId, <<"end">>, JObj}}, #state{jobs=#{pending := Pending
-                                                                  ,running := Running
-                                                                  ,numbers := Numbers
-                                                                  }=Jobs
-                                                           }=State) ->
-    ServerId = kz_api:server_id(JObj),
-    #{JobId := #{queue := ServerId
-                ,number := Number
-                }
-     } = Running,
-    lager:debug("received fax end control status for ~s", [JobId]),
-    {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
-                                      ,running => maps:remove(JobId, Running)
-                                      ,numbers => maps:remove(Number, Numbers)
-                                      }
-                           }, ?POLLING_INTERVAL
-    };
-handle_cast({'job_status',{JobId, <<"error">>, JObj}}, #state{jobs=Jobs
+handle_cast({'job_status',{JobId, <<"start">>, JObj}}, #state{jobs=CurJobs
                                                              ,account_id=AccountId
                                                              }=State) ->
-    {'noreply', State#state{jobs=handle_error(JobId, AccountId, JObj, Jobs)}, ?POLLING_INTERVAL};
+    Jobs = handle_job_start(JobId, AccountId, JObj, CurJobs),
+    {'noreply', State#state{jobs=Jobs}, ?POLLING_INTERVAL};
+handle_cast({'job_status',{JobId, <<"end">>, JObj}}, #state{jobs=CurJobs
+                                                           ,account_id=AccountId
+                                                           }=State) ->
+    Jobs = handle_job_end(JobId, AccountId, JObj, CurJobs),
+    {'noreply', State#state{jobs=Jobs}, ?POLLING_INTERVAL};
+handle_cast({'job_status',{JobId, <<"error">>, JObj}}, #state{jobs=CurJobs
+                                                             ,account_id=AccountId
+                                                             }=State) ->
+    Jobs = handle_job_error(JobId, AccountId, JObj, CurJobs),
+    {'noreply', State#state{jobs=Jobs}, ?POLLING_INTERVAL};
 handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#state{queue=Queue}, ?POLLING_INTERVAL};
 handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
@@ -266,7 +244,7 @@ maybe_distribute_job(Job, #state{account_id=AccountId}=State) ->
 -spec invalidate_job(kz_json:object(), state()) -> state().
 invalidate_job(Job, #state{account_id=AccountId}=State) ->
     lager:error("fax job ~s of account ~s is invalid. removing it.", [kz_doc:id(Job), AccountId]),
-    kz_datamgr:del_doc(?KZ_FAXES_DB, kz_doc:id(Job)),
+    _ = kz_datamgr:del_doc(?KZ_FAXES_DB, kz_doc:id(Job)),
     State.
 
 -spec distribute_job(kz_term:ne_binary(), kz_json:object(), state()) -> state().
@@ -438,20 +416,6 @@ cleanup_jobs(AccountId) ->
         {'error', _R} -> lager:debug("unable to cleanup account_id ~s fax jobs: ~p", [AccountId, _R])
     end.
 
--spec handle_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
-handle_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
-    Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
-    Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
-    case kz_maps:get([JobId, job], Pending, 'undefined') of
-        'undefined' ->
-            lager:warning("received error on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
-            Jobs;
-        Job ->
-            Number = knm_converters:normalize(number(Job), AccountId),
-            lager:warning("received error for fax job ~s/~s/~s on stage ~p: ~p", [AccountId, JobId, Number, Stage, Status]),
-            maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs)
-    end.
-
 -spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
 maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, Number, _Job, Jobs) ->
     lager:debug("dropping job ~s/~s from cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
@@ -473,3 +437,76 @@ maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs) ->
          ,numbers => maps:remove(Number, Numbers)
          ,serialize => Serialize ++ [Job]
          }.
+
+-spec handle_job_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+handle_job_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
+    Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
+    Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
+    case kz_maps:get([JobId, job], Pending, 'undefined') of
+        'undefined' ->
+            lager:warning("received error on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
+            Jobs;
+        Job ->
+            Number = knm_converters:normalize(number(Job), AccountId),
+            lager:warning("received error for fax job ~s/~s/~s on stage ~p: ~p", [AccountId, JobId, Number, Stage, Status]),
+            maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs)
+    end.
+
+
+-spec handle_job_start(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+handle_job_start(JobId, AccountId, JObj, #{pending := Pending
+                                          ,running := Running
+                                          } = Jobs) ->
+    ServerId = kz_api:server_id(JObj),
+    Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
+    Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
+    case kz_maps:get([JobId, number], Pending, 'undefined') of
+        'undefined' ->
+            lager:warning("received job start on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
+            Jobs#{running => Running#{JobId => #{queue => ServerId
+                                                ,start => kz_time:now_ms()
+                                                }
+                                     }
+                 };
+        Number ->
+            Jobs#{pending => maps:remove(JobId, Pending)
+                 ,running => Running#{JobId => #{number => Number
+                                                ,queue => ServerId
+                                                ,start => kz_time:now_ms()
+                                                }
+                                     }
+                 }
+    end.
+
+-spec handle_job_end(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+handle_job_end(JobId, AccountId, JObj, #{pending := Pending
+                                        ,running := Running
+                                        ,numbers := Numbers
+                                        } = Jobs) ->
+    ServerId = kz_api:server_id(JObj),
+    Status = kz_json:get_ne_binary_value(<<"Status">>, JObj),
+    Stage = kz_json:get_ne_binary_value(<<"Stage">>, JObj),
+
+    case kz_maps:get(JobId, Running, 'undefined') of
+        'undefined' ->
+            lager:debug("received fax end control in account ~s for a not controlled job ~s : (~s) : ~s", [AccountId, JobId, Stage, Status]),
+            Jobs;
+
+        #{queue := ServerId, number := Number} ->
+            lager:debug("received fax end control status in account ~s for ~s : (~s) : ~s", [AccountId, JobId, Stage, Status]),
+            Jobs#{pending => maps:remove(JobId, Pending)
+                 ,running => maps:remove(JobId, Running)
+                 ,numbers => maps:remove(Number, Numbers)
+                 };
+        #{number := Number, queue := OurServerId} ->
+            lager:debug("received fax end control in account ~s for ~s from a different worker ~s / ~s : (~s) : ~s", [AccountId, JobId, ServerId, OurServerId, Stage, Status]),
+            Jobs#{pending => maps:remove(JobId, Pending)
+                 ,running => maps:remove(JobId, Running)
+                 ,numbers => maps:remove(Number, Numbers)
+                 };
+        _Other ->
+            lager:debug("received fax end control in account ~s for ~s from worker ~s : (~s) : ~s", [AccountId, JobId, ServerId, Stage, Status]),
+            Jobs#{pending => maps:remove(JobId, Pending)
+                 ,running => maps:remove(JobId, Running)
+                 }
+    end.
