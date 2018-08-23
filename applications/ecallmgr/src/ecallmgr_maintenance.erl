@@ -572,14 +572,14 @@ modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
 remove_acl(Name, ACLs, ConfigFun) ->
     FilteredACLs = filter_acls(ACLs),
     _ = case kz_json:get_value(Name, FilteredACLs) of
-            'undefined' -> 'ok';
+            'undefined' -> io:format("no ACL named ~s found~n", [Name]);
             ACL ->
                 io:format("removing ~s ACLs ~s(~s) from ecallmgr system config~n"
                          ,[kz_json:get_value(<<"network-list-name">>, ACL)
                           ,Name
                           ,kz_json:get_value(<<"cidr">>, ACL)
                           ]),
-                ConfigFun(<<"acls">>, kz_json:delete_key(Name, FilteredACLs))
+                ConfigFun(<<"acls">>, kz_json:set_value(Name, 'null', FilteredACLs))
         end,
     maybe_reload_acls(Name, 'remove', 4).
 
