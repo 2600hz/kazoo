@@ -78,7 +78,7 @@ init([Node, Options]) ->
     lager:info("starting new fs conference event listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
-    Events = ecallmgr_config:get_ne_binaries(<<"publish_conference_event">>, ?CONFERENCE_EVENTS),
+    Events = kapps_config:get_ne_binaries(?APP_NAME, <<"publish_conference_event">>, ?CONFERENCE_EVENTS),
     {'ok', #state{node=Node
                  ,options=Options
                  ,events=Events

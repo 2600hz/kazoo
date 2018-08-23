@@ -76,7 +76,7 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind_to_chatplan', #state{node=Node}=State) ->
-    Bindings = ecallmgr_config:get_ne_binaries(?BINDINGS_CFG_KEY, ?DEFAULT_BINDINGS, Node),
+    Bindings = kapps_config:get_ne_binaries(?APP_NAME, ?BINDINGS_CFG_KEY, ?DEFAULT_BINDINGS, Node),
     case ecallmgr_fs_router_util:register_bindings(Node, ?FETCH_SECTION, Bindings) of
         'true' -> {'noreply', State};
         'false' ->

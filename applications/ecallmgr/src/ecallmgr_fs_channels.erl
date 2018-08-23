@@ -390,7 +390,7 @@ init([]) ->
     {'ok', #state{max_channel_cleanup_ref=start_cleanup_ref()}}.
 
 -define(CLEANUP_TIMEOUT
-       ,ecallmgr_config:get_integer(<<"max_channel_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE)
+       ,kapps_config:get_integer(?APP_NAME, <<"max_channel_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE)
        ).
 
 -spec start_cleanup_ref() -> reference().
@@ -450,7 +450,7 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
                  {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R]);
                  {'ok', C} ->
                      ets:insert(?CHANNELS_TBL, C),
-                     PublishReconect = ecallmgr_config:get_boolean(<<"publish_channel_reconnect">>, 'false'),
+                     PublishReconect = kapps_config:get_boolean(?APP_NAME, <<"publish_channel_reconnect">>, 'false'),
                      handle_channel_reconnected(C, PublishReconect)
              end
          end
@@ -823,7 +823,7 @@ connection_cavs(#channel{}) -> 'undefined'.
 
 -spec max_channel_uptime() -> non_neg_integer().
 max_channel_uptime() ->
-    ecallmgr_config:get_integer(?MAX_CHANNEL_UPTIME_KEY, 0).
+    kapps_config:get_integer(?APP_NAME, ?MAX_CHANNEL_UPTIME_KEY, 0).
 
 -spec set_max_channel_uptime(non_neg_integer()) -> 'ok'.
 set_max_channel_uptime(MaxAge) ->
@@ -831,9 +831,9 @@ set_max_channel_uptime(MaxAge) ->
 
 -spec set_max_channel_uptime(non_neg_integer(), boolean()) -> 'ok'.
 set_max_channel_uptime(MaxAge, 'true') ->
-    ecallmgr_config:set_default(?MAX_CHANNEL_UPTIME_KEY, kz_term:to_integer(MaxAge));
+    kapps_config:set_default(?APP_NAME, ?MAX_CHANNEL_UPTIME_KEY, kz_term:to_integer(MaxAge));
 set_max_channel_uptime(MaxAge, 'false') ->
-    ecallmgr_config:set(?MAX_CHANNEL_UPTIME_KEY, kz_term:to_integer(MaxAge)).
+    kapps_config:set(?APP_NAME, ?MAX_CHANNEL_UPTIME_KEY, kz_term:to_integer(MaxAge)).
 
 -spec maybe_cleanup_old_channels() -> 'ok'.
 maybe_cleanup_old_channels() ->

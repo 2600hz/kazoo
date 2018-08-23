@@ -591,7 +591,7 @@ find_newest_fetched_registration(Username, Realm, JObjs) ->
 
 -spec maybe_insert_fetched_registration(kz_json:object()) -> 'ok'.
 maybe_insert_fetched_registration(JObj) ->
-    case ecallmgr_config:get_boolean(<<"insert_fetched_registration_locally">>, 'false') of
+    case kapps_config:get_boolean(?APP_NAME, <<"insert_fetched_registration_locally">>, 'false') of
         'false' -> 'ok';
         'true' -> insert_fetched_registration(JObj)
     end.

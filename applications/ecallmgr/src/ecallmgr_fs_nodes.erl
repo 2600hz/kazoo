@@ -755,7 +755,7 @@ start_preconfigured_servers() ->
 
 -spec get_configured_nodes() -> 'ok' | [node()].
 get_configured_nodes() ->
-    case ecallmgr_config:get(<<"fs_nodes">>) of
+    case kapps_config:get(?APP_NAME, <<"fs_nodes">>) of
         [] ->
             lager:info("no preconfigured servers available. Is the sysconf whapp running?");
         Nodes when is_list(Nodes) ->

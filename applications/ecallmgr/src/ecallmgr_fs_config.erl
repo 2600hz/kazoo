@@ -161,7 +161,7 @@ handle_config_req(Node, FetchId, ConfFile, FSData) ->
 
 -spec process_config_req(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist() | 'undefined') -> fs_sendmsg_ret().
 process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
-    SysconfResp = ecallmgr_config:fetch(<<"acls">>, kz_json:new(), ecallmgr_fs_node:fetch_timeout(Node)),
+    SysconfResp = kapps_config:get_json(?APP_NAME, <<"acls">>, kz_json:new()),
 
     case generate_acl_xml(SysconfResp) of
         'undefined' ->
@@ -173,8 +173,8 @@ process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
             freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXml)
     end;
 process_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
-    'true' = ecallmgr_config:is_true(<<"sofia_conf">>),
-    Profiles = ecallmgr_config:fetch(<<"fs_profiles">>, kz_json:new()),
+    'true' = kapps_config:is_true(?APP_NAME, <<"sofia_conf">>),
+    Profiles = kapps_config:get_json(?APP_NAME, <<"fs_profiles">>, kz_json:new()),
     DefaultProfiles = default_sip_profiles(Node),
     {'ok', ConfigXml} = ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)),
     lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
@@ -206,10 +206,10 @@ generate_acl_xml(SysconfResp) ->
 
 -spec default_sip_profiles(atom()) -> kz_json:object().
 default_sip_profiles(Node) ->
-    Gateways = case ecallmgr_config:is_true(<<"process_gateways">>) of
+    Gateways = case kapps_config:is_true(?APP_NAME, <<"process_gateways">>) of
                    'false' -> kz_json:new();
                    'true' ->
-                       SysconfResp = ecallmgr_config:fetch(<<"gateways">>, kz_json:new()),
+                       SysconfResp = kapps_config:get_json(?APP_NAME, <<"gateways">>, kz_json:new()),
                        _ = maybe_kill_node_gateways(SysconfResp, Node),
                        SysconfResp
                end,

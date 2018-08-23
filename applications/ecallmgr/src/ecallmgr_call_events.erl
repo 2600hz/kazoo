@@ -17,7 +17,7 @@
 -define(NODE_CHECK_PERIOD, ?MILLISECONDS_IN_SECOND).
 
 -define(DEFAULT_DEBUG_CHANNEL, 'false' ).
--define(DEBUG_CHANNEL, ecallmgr_config:get_boolean(<<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
+-define(DEBUG_CHANNEL, kapps_config:get_boolean(?APP_NAME, <<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
 
 -export([start_link/2]).
 -export([graceful_shutdown/2]).

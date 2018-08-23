@@ -88,7 +88,7 @@ handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
                 lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
                 erlang:set_cookie(Node, Cookie)
         end,
-    GracePeriod = ecallmgr_config:get_integer(<<"node_down_grace_period">>, 10 * ?MILLISECONDS_IN_SECOND),
+    GracePeriod = kapps_config:get_integer(?APP_NAME, <<"node_down_grace_period">>, 10 * ?MILLISECONDS_IN_SECOND),
     erlang:send_after(GracePeriod, self(), {'flush_channels', Node}),
     erlang:send_after(3 * ?MILLISECONDS_IN_SECOND, self(), 'check_node_status'),
     {'noreply', State};

@@ -169,7 +169,7 @@ sbc_acls(Nodes) ->
 
 -spec sbc_discovery() -> any().
 sbc_discovery() ->
-    ACLs = filter_acls(ecallmgr_config:get_json(<<"acls">>, kz_json:new(), <<"default">>)),
+    ACLs = filter_acls(kapps_config:get_json(?APP_NAME, <<"acls">>, kz_json:new(), <<"default">>)),
     CIDRs = sbc_cidrs(ACLs),
     Nodes = [sbc_node(Node) || Node <- kz_nodes:with_role(<<"Proxy">>, 'true')],
     case lists:foldl(fun(A, C) -> sbc_discover(A, CIDRs, C) end, [], Nodes) of
@@ -180,6 +180,6 @@ sbc_discovery() ->
             ToUpdate = lists:filter(fun({Node, _IPs}) -> lists:member(Node, Names) end , Nodes),
             SBCACLs = sbc_acls(ToUpdate),
             NewAcls = kz_json:set_values(SBCACLs, ACLs),
-            ecallmgr_config:set_node(<<"acls">>, NewAcls, <<"default">>),
+            kapps_config:set_node(?APP_NAME, <<"acls">>, NewAcls, <<"default">>),
             ecallmgr_maintenance:reload_acls()
     end.

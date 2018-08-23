@@ -59,7 +59,7 @@
 
 -define(HTTP_GET_PREFIX, "http_cache://").
 
--define(FS_MULTI_VAR_SEP, ecallmgr_config:get_ne_binary(<<"multivar_separator">>, <<"~">>)).
+-define(FS_MULTI_VAR_SEP, kapps_config:get_ne_binary(?APP_NAME, <<"multivar_separator">>, <<"~">>)).
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
@@ -309,7 +309,7 @@ get_orig_port(Prop) ->
 
 -spec get_sip_interface_from_db(kz_term:ne_binaries()) -> kz_term:ne_binary().
 get_sip_interface_from_db([FsPath]) ->
-    NetworkMap = ecallmgr_config:get_json(<<"network_map">>, kz_json:new()),
+    NetworkMap = kapps_config:get_json(?APP_NAME, <<"network_map">>, kz_json:new()),
     case map_fs_path_to_sip_profile(FsPath, NetworkMap) of
         'undefined' ->
             lager:debug("unable to find network map for ~s, using default interface '~s'"
@@ -485,11 +485,11 @@ varstr_to_proplist(VarStr) ->
 
 -spec get_setting(kz_json:path()) -> {'ok', any()}.
 get_setting(<<"default_ringback">>) ->
-    {'ok', ecallmgr_config:get(<<"default_ringback">>, <<"%(2000,4000,440,480)">>)};
-get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
+    {'ok', kapps_config:get(?APP_NAME, <<"default_ringback">>, <<"%(2000,4000,440,480)">>)};
+get_setting(Setting) -> {'ok', kapps_config:get(?APP_NAME, Setting)}.
 
 -spec get_setting(kz_json:path(), Default) -> {'ok', Default | any()}.
-get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
+get_setting(Setting, Default) -> {'ok', kapps_config:get(?APP_NAME, Setting, Default)}.
 
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> ecallmgr_fs_nodes:is_node_up(Node).
@@ -1170,8 +1170,8 @@ media_path(MediaName, Type, UUID, JObj) ->
 
 -spec fax_filename(kz_term:ne_binary()) -> file:filename_all().
 fax_filename(UUID) ->
-    Ext = ecallmgr_config:get_ne_binary(<<"default_fax_extension">>, <<".tiff">>),
-    filename:join([ecallmgr_config:get_ne_binary(<<"fax_file_path">>, <<"/tmp/">>)
+    Ext = kapps_config:get_ne_binary(?APP_NAME, <<"default_fax_extension">>, <<".tiff">>),
+    filename:join([kapps_config:get_ne_binary(?APP_NAME, <<"fax_file_path">>, <<"/tmp/">>)
                   ,<<(kz_amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
@@ -1192,19 +1192,19 @@ recording_filename(MediaName) ->
 
 -spec recording_directory(kz_term:ne_binary()) -> kz_term:ne_binary().
 recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
-recording_directory(_RelativePath) -> ecallmgr_config:get_ne_binary(<<"recording_file_path">>, <<"/tmp/">>).
+recording_directory(_RelativePath) -> kapps_config:get_ne_binary(?APP_NAME, <<"recording_file_path">>, <<"/tmp/">>).
 
 -spec recording_extension(kz_term:ne_binary()) -> kz_term:ne_binary().
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
         Empty when Empty =:= <<>>;
                    Empty =:= [] ->
-            ecallmgr_config:get_ne_binary(<<"default_recording_extension">>, <<".mp3">>);
+            kapps_config:get_ne_binary(?APP_NAME, <<"default_recording_extension">>, <<".mp3">>);
         <<".mp3">> = MP3 -> MP3;
         <<".mp4">> = MP4 -> MP4;
         <<".wav">> = WAV -> WAV;
         _ ->
-            ecallmgr_config:get_ne_binary(<<"default_recording_extension">>, <<".mp3">>)
+            kapps_config:get_ne_binary(?APP_NAME, <<"default_recording_extension">>, <<".mp3">>)
     end.
 
 %%------------------------------------------------------------------------------
@@ -1217,7 +1217,7 @@ get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
 -spec maybe_playback_via_vlc(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_playback_via_vlc(URI) ->
-    case ecallmgr_config:is_true(<<"use_vlc">>, 'false') of
+    case kapps_config:is_true(?APP_NAME, <<"use_vlc">>, 'false') of
         'false' -> maybe_playback_via_shout(URI);
         'true' ->
             lager:debug("media is streamed via VLC, prepending ~s", [URI]),
@@ -1227,7 +1227,7 @@ maybe_playback_via_vlc(URI) ->
 -spec maybe_playback_via_shout(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
-        andalso ecallmgr_config:is_true(<<"use_shout">>, 'false')
+        andalso kapps_config:is_true(?APP_NAME, <<"use_shout">>, 'false')
     of
         'false' -> maybe_playback_via_http_cache(URI);
         'true' ->
@@ -1240,7 +1240,7 @@ maybe_playback_via_http_cache(<<?HTTP_GET_PREFIX, _/binary>> = URI) ->
     lager:debug("media is streamed via http_cache, using ~s", [URI]),
     URI;
 maybe_playback_via_http_cache(URI) ->
-    case ecallmgr_config:is_true(<<"use_http_cache">>, 'true') of
+    case kapps_config:is_true(?APP_NAME, <<"use_http_cache">>, 'true') of
         'false' ->
             lager:debug("using straight URI ~s", [URI]),
             URI;

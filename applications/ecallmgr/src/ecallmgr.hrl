@@ -16,12 +16,12 @@
 
 -define(DEFAULT_FETCH_TIMEOUT, 2600).
 
--define(FS_NODES, ecallmgr_config:get_ne_binaries(<<"fs_nodes">>, [])).
--define(FS_NODES(Node), ecallmgr_config:get_ne_binaries(<<"fs_nodes">>, [], Node)).
+-define(FS_NODES, kapps_config:get_ne_binaries(?APP_NAME, <<"fs_nodes">>, [])).
+-define(FS_NODES(Node), kapps_config:get_ne_binaries(?APP_NAME, <<"fs_nodes">>, [], Node)).
 
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
--define(DEFAULT_FREESWITCH_CONTEXT, ecallmgr_config:get_ne_binary(<<"freeswitch_context">>, <<"context_2">>)).
+-define(DEFAULT_FREESWITCH_CONTEXT, kapps_config:get_ne_binary(?APP_NAME, <<"freeswitch_context">>, <<"context_2">>)).
 
 -define(SIP_INTERFACE, "sipinterface_1").
 -define(DEFAULT_FS_PROFILE, "sipinterface_1").
@@ -30,8 +30,8 @@
 
 -define(LOCAL_MEDIA_PATH, "/tmp/").
 
--define(DEFAULT_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_sample_rate">>, 8000)).
--define(DEFAULT_STEREO_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_stereo_sample_rate">>, 16000)).
+-define(DEFAULT_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_sample_rate">>, 8000)).
+-define(DEFAULT_STEREO_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_stereo_sample_rate">>, 16000)).
 
 -type fs_app() :: {kz_term:ne_binary(), binary() | 'noop'} |
                   {kz_term:ne_binary(), kz_term:ne_binary(), atom()}.
@@ -147,12 +147,12 @@
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
 
--define(DEFAULT_REALM, ecallmgr_config:get_ne_binary(<<"default_realm">>, <<"nodomain.com">>)).
--define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)).
+-define(DEFAULT_REALM, kapps_config:get_ne_binary(?APP_NAME, <<"default_realm">>, <<"nodomain.com">>)).
+-define(MAX_TIMEOUT_FOR_NODE_RESTART, kapps_config:get_integer(?APP_NAME, <<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)).
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
 -define(EXPIRES_DEVIATION_TIME,
-        ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180)).
+        kapps_config:get_integer(?APP_NAME, <<"expires_deviation_time">>, 180)).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
 -define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>

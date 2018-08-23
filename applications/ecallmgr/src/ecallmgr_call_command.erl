@@ -18,7 +18,7 @@
 
 -include("ecallmgr.hrl").
 
--define(RECORD_SOFTWARE, ecallmgr_config:get_ne_binary(<<"recording_software_name">>, <<"2600Hz, Inc.'s Kazoo">>)).
+-define(RECORD_SOFTWARE, kapps_config:get_ne_binary(?APP_NAME, <<"recording_software_name">>, <<"2600Hz, Inc.'s Kazoo">>)).
 
 -spec exec_cmd(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:api_pid()) ->
                       'ok' |
@@ -154,7 +154,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
             Routines = [fun(V) ->
-                                case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
+                                case kapps_config:is_true(?APP_NAME, <<"record_waste_resources">>, 'false') of
                                     'false' -> V;
                                     'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                                 end
@@ -1507,7 +1507,7 @@ record_call_vars(JObj) ->
 
 -spec maybe_waste_resources(kz_term:proplist()) -> kz_term:proplist().
 maybe_waste_resources(Acc) ->
-    case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
+    case kapps_config:is_true(?APP_NAME, <<"record_waste_resources">>, 'false') of
         'false' -> Acc;
         'true' -> [{<<"record_waste_resources">>, <<"true">>} | Acc]
     end.

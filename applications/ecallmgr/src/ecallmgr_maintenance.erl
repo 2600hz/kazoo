@@ -104,32 +104,32 @@
 -spec add_fs_node(kz_term:text()) -> 'ok'.
 add_fs_node(FSNode) ->
     FSNodes = get_fs_nodes(node()),
-    add_fs_node(FSNode, FSNodes, fun ecallmgr_config:set/2).
+    add_fs_node(FSNode, FSNodes, fun kapps_config:set/3).
 
 -spec add_fs_node(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 add_fs_node(FSNode, AsDefault) when not is_boolean(AsDefault) ->
     add_fs_node(FSNode, kz_term:is_true(AsDefault));
 add_fs_node(FSNode, 'true') ->
     FSNodes = get_fs_nodes(<<"default">>),
-    add_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_default/2);
+    add_fs_node(FSNode, FSNodes, fun kapps_config:set_default/3);
 add_fs_node(FSNode, 'false') ->
     FSNodes = get_fs_nodes(node()),
-    add_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_node/2).
+    add_fs_node(FSNode, FSNodes, fun kapps_config:set_node/4).
 
 -spec remove_fs_node(kz_term:text() | atom()) -> 'ok'.
 remove_fs_node(FSNode) ->
     FSNodes = get_fs_nodes(node()),
-    remove_fs_node(FSNode, FSNodes, fun ecallmgr_config:set/2).
+    remove_fs_node(FSNode, FSNodes, fun kapps_config:set/3).
 
 -spec remove_fs_node(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 remove_fs_node(FSNode, AsDefault) when not is_boolean(AsDefault) ->
     remove_fs_node(FSNode, kz_term:is_true(AsDefault));
 remove_fs_node(FSNode, 'true') ->
     FSNodes = get_fs_nodes(<<"default">>),
-    remove_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_default/2);
+    remove_fs_node(FSNode, FSNodes, fun kapps_config:set_default/3);
 remove_fs_node(FSNode, 'false') ->
     FSNodes = get_fs_nodes(node()),
-    remove_fs_node(FSNode, FSNodes, fun ecallmgr_config:set_node/2).
+    remove_fs_node(FSNode, FSNodes, fun kapps_config:set_node/4).
 
 -spec list_fs_nodes() -> 'no_return'.
 list_fs_nodes() ->
@@ -175,9 +175,9 @@ allow_carrier(Name, IP) -> allow_carrier(Name, IP, 'false').
 allow_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     allow_carrier(Name, IP, kz_term:is_true(AsDefault));
 allow_carrier(Name, IP, 'true') ->
-    allow_carrier(Name, IP, get_acls(<<"default">>), fun ecallmgr_config:set_default/2);
+    allow_carrier(Name, IP, get_acls(<<"default">>), fun kapps_config:set_default/3);
 allow_carrier(Name, IP, 'false') ->
-    allow_carrier(Name, IP, get_acls(), fun ecallmgr_config:set_node/2).
+    allow_carrier(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
 -spec allow_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
 allow_carrier(Name, IP, ACLs, SetterFun) ->
@@ -193,9 +193,9 @@ deny_carrier(Name, IP) -> deny_carrier(Name, IP, 'false').
 deny_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     deny_carrier(Name, IP, kz_term:is_true(AsDefault));
 deny_carrier(Name, IP, 'true') ->
-    deny_carrier(Name, IP, get_acls(<<"default">>), fun ecallmgr_config:set_default/2);
+    deny_carrier(Name, IP, get_acls(<<"default">>), fun kapps_config:set_default/3);
 deny_carrier(Name, IP, 'false') ->
-    deny_carrier(Name, IP, get_acls(), fun ecallmgr_config:set_node/2).
+    deny_carrier(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
 -spec deny_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
 deny_carrier(Name, IP, ACLs, SetterFun) ->
@@ -235,9 +235,9 @@ allow_sbc(Name, IP) -> allow_sbc(Name, IP, 'false').
 allow_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     allow_sbc(Name, IP, kz_term:is_true(AsDefault));
 allow_sbc(Name, IP, 'true') ->
-    allow_sbc(Name, IP, get_acls(<<"default">>), fun ecallmgr_config:set_default/2);
+    allow_sbc(Name, IP, get_acls(<<"default">>), fun kapps_config:set_default/3);
 allow_sbc(Name, IP, 'false') ->
-    allow_sbc(Name, IP, get_acls(), fun ecallmgr_config:set_node/2).
+    allow_sbc(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
 -spec allow_sbc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
 allow_sbc(Name, IP, ACLs, SetterFun) ->
@@ -253,9 +253,9 @@ deny_sbc(Name, IP) -> deny_sbc(Name, IP, 'false').
 deny_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     deny_sbc(Name, IP, kz_term:is_true(AsDefault));
 deny_sbc(Name, IP, 'true') ->
-    deny_sbc(Name, IP, get_acls(<<"default">>), fun ecallmgr_config:set_default/2);
+    deny_sbc(Name, IP, get_acls(<<"default">>), fun kapps_config:set_default/3);
 deny_sbc(Name, IP, 'false') ->
-    deny_sbc(Name, IP, get_acls(), fun ecallmgr_config:set_node/2).
+    deny_sbc(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
 -spec deny_sbc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
 deny_sbc(Name, IP, ACLs, SetterFun) ->
@@ -277,7 +277,7 @@ acl_summary('false') ->
 remove_acl(Name) ->
     remove_acl(kz_term:to_binary(Name)
               ,get_acls()
-              ,fun ecallmgr_config:set/2
+              ,fun kapps_config:set/3
               ).
 
 -spec remove_acl(kz_term:text(), kz_term:text() | boolean()) -> 'no_return'.
@@ -286,12 +286,12 @@ remove_acl(Name, AsDefault) when not is_boolean(AsDefault) ->
 remove_acl(Name, 'true') ->
     remove_acl(kz_term:to_binary(Name)
               ,get_acls(<<"default">>)
-              ,fun ecallmgr_config:set_default/2
+              ,fun kapps_config:set_default/3
               );
 remove_acl(Name, 'false') ->
     remove_acl(kz_term:to_binary(Name)
               ,get_acls()
-              ,fun ecallmgr_config:set_node/2
+              ,fun kapps_config:set_node/4
               ).
 
 -spec maybe_reload_acls(kz_term:text(), kz_term:text(), non_neg_integer()) -> 'no_return'.
@@ -304,7 +304,7 @@ maybe_reload_acls(_Name, _Action, 0) ->
 maybe_reload_acls(Name, Action, Tries) ->
     case has_acl(Name, Action, get_acls()) of
         'true' ->
-            ecallmgr_config:flush(<<"acls">>),
+            kapps_config:flush(?APP_NAME, <<"acls">>),
             reload_acls(),
             'no_return';
         'false' ->
@@ -348,7 +348,7 @@ acl_action(Bool) ->
 
 -spec flush_acls() -> 'ok'.
 flush_acls() ->
-    ecallmgr_config:flush(<<"acls">>).
+    kapps_config:flush(?APP_NAME, <<"acls">>).
 
 -spec node_summary() -> 'no_return'.
 node_summary() ->
@@ -512,9 +512,8 @@ add_fs_node(FSNode, FSNodes, ConfigFun) ->
     _ = case lists:member(FSNode, FSNodes) of
             'true' -> 'ok';
             'false' ->
-                io:format("adding ~s to ecallmgr system config~n"
-                         ,[FSNode]),
-                ConfigFun(<<"fs_nodes">>, [FSNode | FSNodes])
+                io:format("adding ~s to ecallmgr system config~n", [FSNode]),
+                ConfigFun(?APP_NAME, <<"fs_nodes">>, [FSNode | FSNodes])
         end,
     ecallmgr_fs_nodes:add(kz_term:to_atom(FSNode, 'true')).
 
@@ -525,9 +524,8 @@ remove_fs_node(FSNode, FSNodes, ConfigFun) ->
     _ = case lists:member(FSNode, FSNodes) of
             'false' -> 'ok';
             'true' ->
-                io:format("removing ~s from ecallmgr system config~n"
-                         ,[FSNode]),
-                ConfigFun(<<"fs_nodes">>, lists:delete(FSNode, FSNodes))
+                io:format("removing ~s from ecallmgr system config~n", [FSNode]),
+                ConfigFun(?APP_NAME, <<"fs_nodes">>, lists:delete(FSNode, FSNodes))
         end,
     ecallmgr_fs_nodes:remove(kz_term:to_atom(FSNode, 'true')).
 
@@ -565,9 +563,14 @@ modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
                        ,kz_json:get_value(<<"cidr">>, ACL)
                        ,kz_json:get_value(<<"type">>, ACL)
                        ]),
-            ConfigFun(<<"acls">>, kz_json:set_value(Name, ACL, filter_acls(ACLS))),
+            run_config_fun(ConfigFun, <<"acls">>, kz_json:set_value(Name, ACL, filter_acls(ACLS))),
             maybe_reload_acls(Name, 'modify', 4)
     end.
+
+run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 3) ->
+    ConfigFun(?APP_NAME, Key, Value);
+run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 4) ->
+    ConfigFun(?APP_NAME, Key, Value, node()).
 
 remove_acl(Name, ACLs, ConfigFun) ->
     FilteredACLs = filter_acls(ACLs),
@@ -579,7 +582,7 @@ remove_acl(Name, ACLs, ConfigFun) ->
                           ,Name
                           ,kz_json:get_value(<<"cidr">>, ACL)
                           ]),
-                ConfigFun(<<"acls">>, kz_json:set_value(Name, 'null', FilteredACLs))
+                ConfigFun(?APP_NAME, <<"acls">>, kz_json:set_value(Name, 'null', FilteredACLs))
         end,
     maybe_reload_acls(Name, 'remove', 4).
 
@@ -607,6 +610,15 @@ list_acls_sort({Network1, _}, {Network2, _}) ->
     Network1 =< Network2.
 
 maybe_print_acl('undefined', FormatString, ACL) ->
+    print_acl(FormatString, ACL);
+maybe_print_acl(Network, FormatString, ACL) ->
+    case kz_json:get_value(<<"network-list-name">>, ACL) =:= Network of
+        'true' -> print_acl(FormatString, ACL);
+        'false' -> 'ok'
+    end.
+
+-spec print_acl(string(), kz_json:object()) -> 'ok'.
+print_acl(FormatString, ACL) ->
     io:format(FormatString, [kz_json:get_value(<<"name">>, ACL)
                             ,kz_json:get_value(<<"cidr">>, ACL)
                             ,kz_json:get_value(<<"network-list-name">>, ACL)
@@ -615,27 +627,14 @@ maybe_print_acl('undefined', FormatString, ACL) ->
                             ,kz_json:get_first_defined([<<"account_id">>
                                                        ,<<"authorizing_id">>
                                                        ], ACL, <<>>)
-                            ]);
-maybe_print_acl(Network, FormatString, ACL) ->
-    case kz_json:get_value(<<"network-list-name">>, ACL) =:= Network of
-        'true' -> io:format(FormatString, [kz_json:get_value(<<"name">>, ACL)
-                                          ,kz_json:get_value(<<"cidr">>, ACL)
-                                          ,kz_json:get_value(<<"network-list-name">>, ACL)
-                                          ,kz_json:get_value(<<"type">>, ACL)
-                                          ,kz_json:get_value(<<"authorizing_type">>, ACL, <<"system_config">>)
-                                          ,kz_json:get_first_defined([<<"account_id">>
-                                                                     ,<<"authorizing_id">>
-                                                                     ], ACL, <<>>)
-                                          ]);
-        'false' -> 'ok'
-    end.
+                            ]).
 
 -spec get_acls() -> kz_json:object().
 get_acls() -> get_acls(node()).
 
 -spec get_acls(atom() | kz_term:ne_binary()) -> kz_json:object().
 get_acls(Node) ->
-    ACLs = ecallmgr_config:fetch(<<"acls">>, 'undefined', Node),
+    ACLs = kapps_config:get_ne_binary(?APP_NAME, <<"acls">>, 'undefined', Node),
     case kz_json:is_json_object(ACLs) of
         'true' -> ACLs;
         'false' ->
@@ -673,22 +672,22 @@ sbc_acl(IP, Type) ->
 
 -spec enable_authz() -> 'ok'.
 enable_authz() ->
-    ecallmgr_config:set_default(<<"authz_enabled">>, 'true'),
+    kapps_config:set_default(?APP_NAME, <<"authz_enabled">>, 'true'),
     io:format("turned on authz; calls will now require authorization~n").
 
 -spec disable_authz() -> 'ok'.
 disable_authz() ->
-    ecallmgr_config:set_default(<<"authz_enabled">>, 'false'),
+    kapps_config:set_default(?APP_NAME, <<"authz_enabled">>, 'false'),
     io:format("turned off authz; calls will no longer require authorization~n").
 
 -spec enable_local_resource_authz() -> 'ok'.
 enable_local_resource_authz() ->
-    ecallmgr_config:set_default(<<"authz_local_resources">>, 'true'),
+    kapps_config:set_default(?APP_NAME, <<"authz_local_resources">>, 'true'),
     io:format("turned on authz for local resources; calls to local resources will now require authorization~n").
 
 -spec disable_local_resource_authz() -> 'ok'.
 disable_local_resource_authz() ->
-    ecallmgr_config:set_default(<<"authz_local_resources">>, 'false'),
+    kapps_config:set_default(?APP_NAME, <<"authz_local_resources">>, 'false'),
     io:format("turned off authz for local resources; calls to local resources will no longer require authorization~n").
 
 -spec limit_channel_uptime(kz_term:ne_binary()) -> 'ok'.
