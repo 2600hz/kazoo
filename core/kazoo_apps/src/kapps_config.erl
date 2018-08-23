@@ -28,7 +28,10 @@
 -export([get_non_neg_integer/2, get_non_neg_integer/3, get_non_neg_integer/4]).
 -export([get_float/2, get_float/3, get_float/4]).
 -export([get_is_false/2, get_is_false/3, get_is_false/4]).
--export([get_is_true/2, get_is_true/3, get_is_true/4]).
+-export([get_is_true/2, get_is_true/3, get_is_true/4
+        ,is_true/2, is_true/3
+        ]).
+-export([get_boolean/2, get_boolean/3, get_boolean/4]).
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
 -export([get_ne_binaries/2, get_ne_binaries/3, get_ne_binaries/4]).
 -export([get_ne_binary_or_ne_binaries/2, get_ne_binary_or_ne_binaries/3, get_ne_binary_or_ne_binaries/4]).
@@ -309,6 +312,10 @@ get_is_false(Category, Key, Default, Node) ->
 
 -spec get_is_true(config_category(), config_key()) -> kz_term:api_boolean().
 get_is_true(Category, Key) ->
+    is_true(Category, Key).
+
+-spec is_true(config_category(), config_key()) -> kz_term:api_boolean().
+is_true(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
         Else -> kz_term:is_true(Else)
@@ -316,12 +323,37 @@ get_is_true(Category, Key) ->
 
 -spec get_is_true(config_category(), config_key(), Default) -> boolean() | Default.
 get_is_true(Category, Key, Default) ->
-    get_is_true(Category, Key, Default, kz_term:to_binary(node())).
+    is_true(Category, Key, Default).
+
+-spec is_true(config_category(), config_key(), Default) -> boolean() | Default.
+is_true(Category, Key, Default) ->
+    is_true(Category, Key, Default, kz_term:to_binary(node())).
 
 -spec get_is_true(config_category(), config_key(), Default, kz_term:ne_binary()) -> boolean() | Default.
 get_is_true(Category, Key, Default, Node) ->
+    is_true(Category, Key, Default, Node).
+
+-spec is_true(config_category(), config_key(), Default, kz_term:ne_binary()) -> boolean() | Default.
+is_true(Category, Key, Default, Node) ->
     kz_term:is_true(get(Category, Key, Default, Node)).
 
+-spec get_boolean(config_category(), config_key()) -> kz_term:api_boolean().
+get_boolean(Category, Key) ->
+    get_boolean(Category, Key, 'undefined').
+
+-spec get_boolean(config_category(), config_key(), Default) -> boolean() | Default.
+get_boolean(Category, Key, Default) ->
+    case get(Category, Key, Default) of
+        Default -> Default;
+        V -> kz_term:to_boolean(V)
+    end.
+
+-spec get_boolean(config_category(), config_key(), Default, kz_term:ne_binary()) -> boolean() | Default.
+get_boolean(Category, Key, Default, Node) ->
+    case get(Category, Key, Default, Node) of
+        Default -> Default;
+        V -> kz_term:to_boolean(V)
+    end.
 
 -spec get_ne_binary_or_ne_binaries(config_category(), config_key()) -> kz_term:api_ne_binary() | kz_term:ne_binaries().
 get_ne_binary_or_ne_binaries(Category, Key) ->
@@ -347,7 +379,6 @@ get_ne_binary_or_ne_binaries(Category, Key, Default, Node) ->
             end
     end.
 
-
 -spec get_ne_binary(config_category(), config_key()) -> kz_term:api_ne_binary().
 get_ne_binary(Category, Key) ->
     get_ne_binary(Category, Key, 'undefined').
@@ -363,7 +394,6 @@ get_ne_binary(Category, Key, Default, Node) ->
         'true' -> Default;
         'false' -> kz_term:to_binary(Value)
     end.
-
 
 -spec get_ne_binaries(config_category(), config_key()) -> kz_term:api_ne_binaries().
 get_ne_binaries(Category, Key) ->
