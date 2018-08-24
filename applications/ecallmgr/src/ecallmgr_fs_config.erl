@@ -200,9 +200,9 @@ default_sip_profiles(Node) ->
     Gateways = case kapps_config:is_true(?APP_NAME, <<"process_gateways">>) of
                    'false' -> kz_json:new();
                    'true' ->
-                       SysconfResp = kapps_config:get_json(?APP_NAME, <<"gateways">>, kz_json:new()),
-                       _ = maybe_kill_node_gateways(SysconfResp, Node),
-                       SysconfResp
+                       Gs = ecallmgr_fs_gateways:get(),
+                       _ = maybe_kill_node_gateways(Gs, Node),
+                       Gs
                end,
     JObj = kz_json:from_list([{kz_term:to_binary(?DEFAULT_FS_PROFILE)
                               ,kz_json:from_list(default_sip_profile())
