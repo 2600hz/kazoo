@@ -162,16 +162,9 @@ handle_config_req(Node, FetchId, ConfFile, FSData) ->
 -spec process_config_req(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist() | 'undefined') -> fs_sendmsg_ret().
 process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
     SysconfResp = ecallmgr_fs_acls:get(),
-
-    case generate_acl_xml(SysconfResp) of
-        'undefined' ->
-            lager:warning("failed to query for ACLs; is sysconf running?"),
-            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-            freeswitch:fetch_reply(Node, FetchId, 'configuration', Resp);
-        ConfigXml ->
-            lager:debug("sending acl XML to ~s: ~s", [Node, ConfigXml]),
-            freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXml)
-    end;
+    ConfigXML = generate_acl_xml(SysconfResp),
+    lager:debug("sending acl XML to ~s: ~s", [Node, ConfigXML]),
+    freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXml);
 process_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
     'true' = kapps_config:is_true(?APP_NAME, <<"sofia_conf">>),
     Profiles = kapps_config:get_json(?APP_NAME, <<"fs_profiles">>, kz_json:new()),
@@ -196,9 +189,7 @@ config_req_not_handled(Node, FetchId, Conf) ->
     lager:debug("ignoring conf ~s: ~s", [Conf, FetchId]),
     freeswitch:fetch_reply(Node, FetchId, 'configuration', iolist_to_binary(NotHandled)).
 
--spec generate_acl_xml(kz_term:api_object()) -> kz_term:api_ne_binary().
-generate_acl_xml('undefined') ->
-    'undefined';
+-spec generate_acl_xml(kz_json:object()) -> kz_term:ne_binary().
 generate_acl_xml(SysconfResp) ->
     'false' = kz_json:is_empty(SysconfResp),
     {'ok', ConfigXml} = ecallmgr_fs_xml:acl_xml(SysconfResp),
