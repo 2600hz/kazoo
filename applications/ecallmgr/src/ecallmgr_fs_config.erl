@@ -214,7 +214,8 @@ default_sip_profiles(Node) ->
                        SysconfResp
                end,
     JObj = kz_json:from_list([{kz_term:to_binary(?DEFAULT_FS_PROFILE)
-                              ,kz_json:from_list(default_sip_profile())}
+                              ,kz_json:from_list(default_sip_profile())
+                              }
                              ]),
     kz_json:set_value([kz_term:to_binary(?DEFAULT_FS_PROFILE), <<"Gateways">>]
                      ,Gateways
@@ -293,8 +294,10 @@ default_sip_settings() ->
     ,{<<"liberal-dtmf">>, <<"true">>}
     ].
 
+-spec default_sip_gateways() -> [].
 default_sip_gateways() -> [].
 
+-spec maybe_kill_node_gateways(kz_json:object(), atom()) -> 'ok'.
 maybe_kill_node_gateways(JObj, Node) ->
     try get_node_gateways(Node) of
         Gateways ->
@@ -306,6 +309,7 @@ maybe_kill_node_gateways(JObj, Node) ->
         _:_ -> 'ok'
     end.
 
+-spec maybe_kill_removed_gateways(kz_term:ne_binaries(), kz_json:object(), atom()) -> 'ok'.
 maybe_kill_removed_gateways([], _, _) -> 'ok';
 maybe_kill_removed_gateways([GatewayName|Names], JObj, Node) ->
     _ = case kz_json:get_value(GatewayName, JObj) of
@@ -314,13 +318,15 @@ maybe_kill_removed_gateways([GatewayName|Names], JObj, Node) ->
         end,
     maybe_kill_removed_gateways(Names, JObj, Node).
 
+-spec maybe_kill_changed_gateways(kz_term:ne_binaries(), kz_json:object(), kz_json:object(), atom()) -> 'ok'.
 maybe_kill_changed_gateways([], _, _, _) -> 'ok';
 maybe_kill_changed_gateways([GatewayName|Names], Gateways, JObj, Node) ->
-    Running =  kz_json:get_value(GatewayName, Gateways),
-    New = kz_json:get_value(GatewayName, JObj),
+    Running =  kz_json:get_json_value(GatewayName, Gateways),
+    New = kz_json:get_json_value(GatewayName, JObj),
     _ = maybe_kill_changed_gateway(GatewayName, Running, New, Node),
     maybe_kill_changed_gateways(Names, Gateways, JObj, Node).
 
+-spec maybe_kill_changed_gateway(kz_term:ne_binary(), kz_json:object(), kz_json:object(), atom()) -> 'ok'.
 maybe_kill_changed_gateway(_, 'undefined', _, _) -> 'ok';
 maybe_kill_changed_gateway(GatewayName, Running, New, Node) ->
     case compare_node_gateways(Running, New) of
@@ -328,6 +334,7 @@ maybe_kill_changed_gateway(GatewayName, Running, New, Node) ->
         'true' -> 'ok'
     end.
 
+-spec compare_node_gateways(kz_json:object(), kz_json:object()) -> boolean().
 compare_node_gateways(Running, New) ->
     NewVersion = kz_json:get_value([<<"Variables">>, <<"Gateway-Version">>], New),
     case kz_json:get_value([<<"Inbound-Variables">>, <<"Gateway-Version">>], Running) of
@@ -336,6 +343,7 @@ compare_node_gateways(Running, New) ->
         _Else -> 'false'
     end.
 
+-spec kill_gateway(kz_term:ne_binary(), atom()) -> fs_api_ret().
 kill_gateway(GatewayName, Node) ->
     Args = ["profile "
            ,?DEFAULT_FS_PROFILE
@@ -344,6 +352,7 @@ kill_gateway(GatewayName, Node) ->
            ],
     freeswitch:api(Node, 'sofia', lists:flatten(Args)).
 
+-spec get_node_gateways(atom()) -> kz_json:object().
 get_node_gateways(Node) ->
     {'ok', Response} = freeswitch:api(Node, 'sofia', "xmlstatus gateway"),
     {Xml, _} = xmerl_scan:string(kz_term:to_list(Response)),
@@ -403,9 +412,11 @@ fix_flite_tts(Profile, FSNode) ->
 conference_sounds(Profile) ->
     kz_json:foldl(fun conference_sound/3, Profile, Profile).
 
+-spec conference_sound(kz_json:key(), kz_json:ne_binary(), kz_json:object()) -> kz_json:object().
 conference_sound(Key, Value, Profile) ->
     maybe_convert_sound(kz_binary:reverse(Key), Key, Value, Profile).
 
+-spec maybe_convert_sound(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
     MediaName = ecallmgr_util:media_path(Value, 'new', kz_util:get_callid(), kz_json:new()),
     lager:debug("fixed up ~s from ~s to ~s", [Key, Value, MediaName]),
@@ -422,6 +433,7 @@ fetch_conference_config(Node, FetchId, <<"REQUEST_PARAMS">>, Data) ->
     lager:debug("request conference:~s params:~s", [ConfName, Action]),
     fetch_conference_params(Node, FetchId, Action, ConfName, Data).
 
+-spec fetch_conference_params(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> fs_sendmsg_ret().
 fetch_conference_params(Node, FetchId, <<"request-controls">>, _ConfName, Data) ->
     FSName = props:get_value(<<"Controls">>, Data),
 
