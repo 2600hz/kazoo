@@ -793,9 +793,9 @@ prepare_app_usurpers(Node, UUID) ->
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
 
-    kz_amqp_worker:cast(ControlUsurp
-                       ,fun(C) -> kapi_call:publish_usurp_control(UUID, C) end
-                       ),
+    _ = kz_amqp_worker:cast(ControlUsurp
+                           ,fun(C) -> kapi_call:publish_usurp_control(UUID, C) end
+                           ),
     kz_amqp_worker:cast(PublishUsurp
                        ,fun(C) -> kapi_call:publish_usurp_publisher(UUID, C) end
                        ).
@@ -827,9 +827,9 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
 
     case kz_json:is_true(<<"Publish-Usurp">>, JObj, 'true') of
         'true' ->
-            kz_amqp_worker:cast(ControlUsurp
-                               ,fun(C) -> kapi_call:publish_usurp_control(Target, C) end
-                               ),
+            _ = kz_amqp_worker:cast(ControlUsurp
+                                   ,fun(C) -> kapi_call:publish_usurp_control(Target, C) end
+                                   ),
             lager:debug("published control usurp for ~s", [Target]);
         'false' ->
             lager:debug("API is skipping control usurp")
@@ -867,9 +867,9 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
                    ,{<<"Fetch-ID">>, kz_binary:rand_hex(4)}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    kz_amqp_worker:cast(ControlUsurp
-                       ,fun(C) -> kapi_call:publish_usurp_control(Target, C) end
-                       ),
+    _ = kz_amqp_worker:cast(ControlUsurp
+                           ,fun(C) -> kapi_call:publish_usurp_control(Target, C) end
+                           ),
     lager:debug("published ~p for ~s~n", [ControlUsurp, Target]),
 
     _ = ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj)),
@@ -1068,16 +1068,16 @@ send_fs_store(Node, Args, 'put') ->
 send_fs_store(Node, Args, 'post') ->
     freeswitch:api(Node, 'http_post', kz_term:to_list(Args), 120 * ?MILLISECONDS_IN_SECOND).
 
--spec send_fs_bg_store(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), 'put' | 'post', 'store' | 'store_vm' | 'fax') -> fs_api_ret().
+-spec send_fs_bg_store(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), 'put', 'store' | 'store_vm') -> fs_api_ret().
 send_fs_bg_store(Node, UUID, File, Args, 'put', 'store') ->
     case freeswitch:bgapi(Node, UUID, [File], 'http_put', kz_term:to_list(Args), fun chk_store_result/6) of
         {'error', _} -> send_store_call_event(Node, UUID, <<"failure">>);
-        {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
+        {'ok', JobId} -> 'ok' = lager:debug("bgapi started ~p", [JobId])
     end;
 send_fs_bg_store(Node, UUID, File, Args, 'put', 'store_vm') ->
     case freeswitch:bgapi(Node, UUID, [File], 'http_put', kz_term:to_list(Args), fun chk_store_vm_result/6) of
         {'error', _} -> send_store_vm_call_event(Node, UUID, <<"failure">>);
-        {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
+        {'ok', JobId} -> 'ok' = lager:debug("bgapi started ~p", [JobId])
     end.
 
 -spec chk_store_result(atom(), atom(), kz_term:ne_binary(), list(), kz_term:ne_binary(), binary()) -> 'ok'.

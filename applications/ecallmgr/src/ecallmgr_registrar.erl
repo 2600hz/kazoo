@@ -399,7 +399,7 @@ handle_call(_Msg, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('registrar_sync', #state{queue=Q}=State) ->
     Payload = kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION),
-    kz_amqp_worker:cast(Payload, fun kapi_registration:publish_sync/1),
+    _ = kz_amqp_worker:cast(Payload, fun kapi_registration:publish_sync/1),
     {'noreply', State};
 handle_cast({'insert_registration', Registration}, State) ->
     kz_util:put_callid(Registration#registration.call_id),

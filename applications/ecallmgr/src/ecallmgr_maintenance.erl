@@ -672,22 +672,22 @@ sbc_acl(IP, Type) ->
 
 -spec enable_authz() -> 'ok'.
 enable_authz() ->
-    kapps_config:set_default(?APP_NAME, <<"authz_enabled">>, 'true'),
+    _ = kapps_config:set_default(?APP_NAME, <<"authz_enabled">>, 'true'),
     io:format("turned on authz; calls will now require authorization~n").
 
 -spec disable_authz() -> 'ok'.
 disable_authz() ->
-    kapps_config:set_default(?APP_NAME, <<"authz_enabled">>, 'false'),
+    _ = kapps_config:set_default(?APP_NAME, <<"authz_enabled">>, 'false'),
     io:format("turned off authz; calls will no longer require authorization~n").
 
 -spec enable_local_resource_authz() -> 'ok'.
 enable_local_resource_authz() ->
-    kapps_config:set_default(?APP_NAME, <<"authz_local_resources">>, 'true'),
+    _ = kapps_config:set_default(?APP_NAME, <<"authz_local_resources">>, 'true'),
     io:format("turned on authz for local resources; calls to local resources will now require authorization~n").
 
 -spec disable_local_resource_authz() -> 'ok'.
 disable_local_resource_authz() ->
-    kapps_config:set_default(?APP_NAME, <<"authz_local_resources">>, 'false'),
+    _ = kapps_config:set_default(?APP_NAME, <<"authz_local_resources">>, 'false'),
     io:format("turned off authz for local resources; calls to local resources will no longer require authorization~n").
 
 -spec limit_channel_uptime(kz_term:ne_binary()) -> 'ok'.

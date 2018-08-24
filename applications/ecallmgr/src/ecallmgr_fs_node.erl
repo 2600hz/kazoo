@@ -409,11 +409,11 @@ code_change(_OldVsn, State, _Extra) ->
                        {'error', 'retry'}.
 
 -spec run_start_cmds(atom(), kz_term:proplist()) -> kz_term:pid_ref().
-run_start_cmds(Node, Options) ->
+run_start_cmds(Node, Options) when is_atom(Node) ->
     kz_util:spawn_monitor(fun run_start_cmds/3, [Node, Options, self()]).
 
 -spec run_start_cmds(atom(), kz_term:proplist(), pid()) -> any().
-run_start_cmds(Node, Options, Parent) ->
+run_start_cmds(Node, Options, Parent) when is_atom(Node) ->
     kz_util:put_callid(Node),
     timer:sleep(kapps_config:get_integer(?APP_NAME, <<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
 
@@ -445,17 +445,17 @@ is_restarting_status(UP) ->
     end.
 
 -spec run_start_cmds(atom(), kz_term:proplist(), pid(), boolean() | kz_json:objects()) -> 'ok'.
-run_start_cmds(Node, Options, Parent, 'true') ->
+run_start_cmds(Node, Options, Parent, 'true') when is_atom(Node) ->
     lager:debug("node ~s is considered restarting", [Node]),
     run_start_cmds(Node, Options, Parent, ?FS_CMDS(Node));
-run_start_cmds(Node, Options, Parent, 'false') ->
+run_start_cmds(Node, Options, Parent, 'false') when is_atom(Node) ->
     lager:debug("node ~s is not considered restarting, trying reconnect cmds first", [Node]),
     Cmds = case kapps_config:get_jsons(?APP_NAME, <<"fs_reconnect_cmds">>, 'undefined') of
                'undefined' -> ?FS_CMDS(Node);
                ReconCmds -> ReconCmds
            end,
     run_start_cmds(Node, Options, Parent, Cmds);
-run_start_cmds(Node, Options, Parent, Cmds) ->
+run_start_cmds(Node, Options, Parent, Cmds) when is_atom(Node) ->
     Res = process_cmds(Node, Options, Cmds),
 
     case is_list(Res)

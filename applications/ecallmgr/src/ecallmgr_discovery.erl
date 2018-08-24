@@ -180,6 +180,6 @@ sbc_discovery() ->
             ToUpdate = lists:filter(fun({Node, _IPs}) -> lists:member(Node, Names) end , Nodes),
             SBCACLs = sbc_acls(ToUpdate),
             NewAcls = kz_json:set_values(SBCACLs, ACLs),
-            kapps_config:set_node(?APP_NAME, <<"acls">>, NewAcls, <<"default">>),
+            _ = kapps_config:set_default(?APP_NAME, <<"acls">>, NewAcls),
             ecallmgr_maintenance:reload_acls()
     end.

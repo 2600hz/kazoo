@@ -172,7 +172,7 @@ init_props(Props, Options) ->
 handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
     Props = init_props(FSProps, Options),
     Action = props:get_value(<<"Action">>, Props),
-    process_event(Action, Props, Node),
+    _ = process_event(Action, Props, Node),
     maybe_publish_event(Action, Props, Node, Events).
 
 -spec process_event(kz_term:ne_binary(), kzd_freeswitch:data(), atom()) -> any().
