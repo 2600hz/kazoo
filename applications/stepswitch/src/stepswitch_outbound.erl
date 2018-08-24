@@ -77,7 +77,7 @@ maybe_add_call_id(_, OffnetReq) -> OffnetReq.
 maybe_force_originate_outbound(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kz_json:is_true(<<"Force-Outbound">>, OffnetReq, 'false')
-        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
+        orelse kz_term:is_ne_binary(kapi_offnet_resource:hunt_account_id(OffnetReq))
     of
         'false' -> local_originate(Props, OffnetReq);
         'true' -> maybe_originate(knm_number_options:number(Props), OffnetReq)
