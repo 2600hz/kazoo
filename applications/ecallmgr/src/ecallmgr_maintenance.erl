@@ -634,7 +634,7 @@ get_acls() -> get_acls(node()).
 
 -spec get_acls(atom() | kz_term:ne_binary()) -> kz_json:object().
 get_acls(Node) ->
-    ACLs = kapps_config:get_ne_binary(?APP_NAME, <<"acls">>, 'undefined', Node),
+    ACLs = kapps_config:get_json(?APP_NAME, <<"acls">>, 'undefined', Node),
     case kz_json:is_json_object(ACLs) of
         'true' -> ACLs;
         'false' ->

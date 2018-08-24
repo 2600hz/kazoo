@@ -169,7 +169,7 @@ sbc_acls(Nodes) ->
 
 -spec sbc_discovery() -> any().
 sbc_discovery() ->
-    ACLs = filter_acls(kapps_config:get_json(?APP_NAME, <<"acls">>, kz_json:new(), <<"default">>)),
+    ACLs = filter_acls(ecallmgr_fs_acls:get(<<"default">>)),
     CIDRs = sbc_cidrs(ACLs),
     Nodes = [sbc_node(Node) || Node <- kz_nodes:with_role(<<"Proxy">>, 'true')],
     case lists:foldl(fun(A, C) -> sbc_discover(A, CIDRs, C) end, [], Nodes) of

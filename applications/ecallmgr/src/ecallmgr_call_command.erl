@@ -1012,16 +1012,16 @@ wait_for_conference(ConfName) ->
 %%------------------------------------------------------------------------------
 -spec stream_over_http(atom(), kz_term:ne_binary(), file:filename_all(), 'put' | 'post', 'store'| 'store_vm' | 'fax', kz_json:object()) -> any().
 stream_over_http(Node, UUID, File, 'put'=Method, 'store'=Type, JObj) ->
-    Url = kz_term:to_list(kz_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    Url = kz_json:get_ne_binary_value(<<"Media-Transfer-Destination">>, JObj),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-    Args = list_to_binary([Url, <<" ">>, File]),
+    Args = <<Url/binary, " ", File/binary>>,
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     send_fs_bg_store(Node, UUID, File, Args, Method, Type);
 
 stream_over_http(Node, UUID, File, 'put'=Method, 'store_vm'=Type, JObj) ->
-    Url = kz_term:to_list(kz_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    Url = kz_json:get_ne_binary_value(<<"Media-Transfer-Destination">>, JObj),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-    Args = list_to_binary([Url, <<" ">>, File]),
+    Args = <<Url/binary, " ", File/binary>>,
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     send_fs_bg_store(Node, UUID, File, Args, Method, Type);
 
@@ -1068,7 +1068,7 @@ send_fs_store(Node, Args, 'put') ->
 send_fs_store(Node, Args, 'post') ->
     freeswitch:api(Node, 'http_post', kz_term:to_list(Args), 120 * ?MILLISECONDS_IN_SECOND).
 
--spec send_fs_bg_store(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), 'put', 'store' | 'store_vm') -> fs_api_ret().
+-spec send_fs_bg_store(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), 'put', 'store' | 'store_vm') -> 'ok'.
 send_fs_bg_store(Node, UUID, File, Args, 'put', 'store') ->
     case freeswitch:bgapi(Node, UUID, [File], 'http_put', kz_term:to_list(Args), fun chk_store_result/6) of
         {'error', _} -> send_store_call_event(Node, UUID, <<"failure">>);

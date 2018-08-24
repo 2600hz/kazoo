@@ -161,7 +161,7 @@ handle_config_req(Node, FetchId, ConfFile, FSData) ->
 
 -spec process_config_req(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist() | 'undefined') -> fs_sendmsg_ret().
 process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
-    SysconfResp = kapps_config:get_json(?APP_NAME, <<"acls">>, kz_json:new()),
+    SysconfResp = ecallmgr_fs_acls:get(),
 
     case generate_acl_xml(SysconfResp) of
         'undefined' ->

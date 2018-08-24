@@ -5,7 +5,9 @@
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_acls).
 
--export([build/1]).
+-export([get/0, get/1]).
+
+-compile({'no_auto_import', [get/1]}).
 
 -include("ecallmgr.hrl").
 
@@ -16,8 +18,13 @@
 
 -type acls() :: kz_json:object().
 
--spec build(kz_term:ne_binary()) -> acls().
-build(Node) ->
+-spec get() -> acls().
+get() ->
+    Node = kz_term:to_binary(node()),
+    get(Node).
+
+-spec get(kz_term:ne_binary()) -> acls().
+get(Node) ->
     Routines = [fun offnet_resources/1
                ,fun local_resources/1
                ,fun sip_auth_ips/1
@@ -61,7 +68,7 @@ collect(ACLs, PidRefs, Timeout) ->
 
 -spec system_config_acls(kz_term:ne_binary()) -> acls().
 system_config_acls(Node) ->
-    kapps_config:get_current(<<"ecallmgr">>, <<"acls">>, kz_json:new(), Node).
+    kapps_config:get_current(?APP_NAME, <<"acls">>, kz_json:new(), Node).
 
 -spec sip_auth_ips(pid()) -> 'ok'.
 sip_auth_ips(Collector) ->
