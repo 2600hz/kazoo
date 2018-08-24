@@ -164,7 +164,7 @@ process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
     SysconfResp = ecallmgr_fs_acls:get(),
     ConfigXML = generate_acl_xml(SysconfResp),
     lager:debug("sending acl XML to ~s: ~s", [Node, ConfigXML]),
-    freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXml);
+    freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXML);
 process_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
     'true' = kapps_config:is_true(?APP_NAME, <<"sofia_conf">>),
     Profiles = kapps_config:get_json(?APP_NAME, <<"fs_profiles">>, kz_json:new()),
