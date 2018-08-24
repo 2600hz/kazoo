@@ -150,7 +150,7 @@ get_jsons(Category, Key) ->
     V = get(Category, Key),
     as_jsons_value(V, []).
 
--spec as_jsons_value(kz_json:json_term(), kz_json:objects()) -> kz_json:objects().
+-spec as_jsons_value(kz_json:json_term(), Default) -> kz_json:objects() | Default.
 as_jsons_value(V, Default) when is_list(V) ->
     case lists:all(fun kz_json:is_json_object/1, V) of
         'true' -> V;
