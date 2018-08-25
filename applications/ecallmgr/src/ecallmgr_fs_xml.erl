@@ -859,8 +859,8 @@ user_el(Props, Children) ->
 user_el_props(Number, Username, 'undefined') ->
     [{'number-alias', Number}
     ,{'cacheable', kapps_config:get_integer(?APP_NAME, <<"user_cache_time_in_ms">>
-                                              ,?DEFAULT_USER_CACHE_TIME_IN_MS
-                                              )
+                                           ,?DEFAULT_USER_CACHE_TIME_IN_MS
+                                           )
      }
      | user_el_default_props(Username)
     ];
