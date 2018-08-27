@@ -142,6 +142,9 @@ $(PLT):
 	done
 build-plt: $(PLT)
 
+clean-plt:
+	@rm -f $(PLT)
+
 dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications $(ROOT)/core -name ebin)
 dialyze-kazoo: dialyze
 dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin)
@@ -155,10 +158,10 @@ dialyze-hard: TO_DIALYZE = $(CHANGED)
 dialyze-hard: dialyze-it-hard
 
 dialyze-it: $(PLT)
-	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 dialyze-it-hard: $(PLT)
-	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(TO_DIALYZE)
+	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
