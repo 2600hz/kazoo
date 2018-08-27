@@ -21,6 +21,7 @@
 -export([get_account_external_cid/1]).
 -export([maybe_get_assigned_number/3]).
 -export([maybe_get_account_default_number/4]).
+-export([maybe_prefix_cid/5]).
 -export([get_flags/2]).
 -export([process_dynamic_flags/2
         ,process_dynamic_flags/3
@@ -176,10 +177,10 @@ maybe_normalize_cid(Number, 'undefined', Validate, Attribute, Call) ->
     lager:debug("replacing empty caller id name with SIP caller id name ~s", [Name]),
     maybe_normalize_cid(Number, Name, Validate, Attribute, Call);
 maybe_normalize_cid(Number, Name, Validate, Attribute, Call) ->
-    maybe_prefix_cid_number(kz_term:to_binary(Number), Name, Validate, Attribute, Call).
+    maybe_prefix_cid(kz_term:to_binary(Number), Name, Validate, Attribute, Call).
 
--spec maybe_prefix_cid_number(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kz_term:ne_binary(), kapps_call:call()) -> cid().
-maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
+-spec maybe_prefix_cid(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kz_term:ne_binary(), kapps_call:call()) -> cid().
+maybe_prefix_cid(Number, Name, Validate, Attribute, Call) ->
     OrigNumber = kapps_call:kvs_fetch('original_cid_number', Number, Call),
     case kapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call);
