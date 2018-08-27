@@ -20,7 +20,7 @@ function check_spelling {
         file %f | grep -q "ASCII text" || continue
         echo "  fixing $f with $correct"
         sed -i "s/$bad_sed/$correct/g" $f
-    done < <(echo $CHANGED | xargs egrep -lw "$bad_grep" )
+    done < <(echo $CHANGED | xargs egrep --no-messages -lw "$bad_grep" )
 }
 
 echo "checking spelling:"
