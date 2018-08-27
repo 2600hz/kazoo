@@ -487,6 +487,8 @@ ast_to_proplist(ASTList) ->
 
 ast_to_proplist(?EMPTY_LIST, Acc) ->
     lists:reverse(Acc);
+ast_to_proplist(?VAR(_), Acc) ->
+    lists:reverse(Acc);
 ast_to_proplist(?LIST(H, ?MOD_FUN_ARGS('props', 'delete', [ASTKey, ASTProps])), Acc) ->
     Key = kz_ast_util:binary_match_to_binary(ASTKey),
     Props = ast_to_proplist(ASTProps),
