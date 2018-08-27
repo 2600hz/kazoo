@@ -98,6 +98,17 @@ curl -v -X GET \
 }
 ```
 
+## Fetch Ledgers by source
+
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}
+```
+
+
 ## Get Ledger values
 
 List ledger values for an account with paging and filtering support
@@ -221,4 +232,14 @@ curl -v -X PUT \
     },
     "impact_reseller": true
 }
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}
 ```
