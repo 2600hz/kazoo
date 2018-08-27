@@ -250,9 +250,9 @@ handle_bookkeeper_result(Context, Transaction) ->
                                  ),
     Props = [{<<"transaction_id">>
              ,<<(kz_term:to_binary(Year))/binary
-                ,(kz_term:to_binary(Month))/binary
-                ,"-"
-                ,(kz_transaction:id(Transaction))/binary
+               ,(kz_term:to_binary(Month))/binary
+               ,"-"
+               ,(kz_transaction:id(Transaction))/binary
               >>
              }
             ],

@@ -278,11 +278,11 @@ update_addon_discount_amount(#update{item=Item
                 braintree_subscription:update_discount_quantity(Subscription, DiscountId, 0),
             Update#update{subscription=UpdatedSubscription};
         'false' ->
-            UpdatedSubscription =
-                braintree_subscription:update_discount_amount(
-                  braintree_subscription:update_discount_quantity(Subscription, DiscountId, 1)
+            UpdatedQuantity = braintree_subscription:update_discount_quantity(Subscription, DiscountId, 1),
+            UpdatedAmount =
+                braintree_subscription:update_discount_amount(UpdatedQuantity
                                                              ,DiscountId
                                                              ,Rate
-                 ),
-            Update#update{subscription=UpdatedSubscription}
+                                                             ),
+            Update#update{subscription=UpdatedAmount}
     end.

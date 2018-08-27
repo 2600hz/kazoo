@@ -526,9 +526,9 @@ pipe_services(Context, Routines, RespFunction) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_available_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+                                              kz_json:objects().
 normalize_available_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_json_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
@@ -537,7 +537,7 @@ normalize_available_view_results(JObj, Acc) ->
 -spec normalize_audit_view_results(kz_json:object(), kz_json:objects()) ->
                                           kz_json:objects().
 normalize_audit_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_json_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Check if you have the permission to update or delete service plans
@@ -545,9 +545,7 @@ normalize_audit_view_results(JObj, Acc) ->
 %%------------------------------------------------------------------------------
 -spec is_allowed(cb_context:context()) -> {'ok', kz_term:ne_binary()} | 'false'.
 is_allowed(Context) ->
-    ResellerId = kz_services_reseller:get_id(
-                   cb_context:account_id(Context)
-                  ),
+    ResellerId = kz_services_reseller:get_id(cb_context:account_id(Context)),
     AuthAccountId = cb_context:auth_account_id(Context),
     case AuthAccountId =:= ResellerId
         orelse cb_context:is_superduper_admin(Context)

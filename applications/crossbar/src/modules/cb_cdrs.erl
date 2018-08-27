@@ -563,7 +563,7 @@ reseller_cost(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_cdr(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
+load_cdr(?MATCH_MODB_PREFIX(Year, Month, _Day) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AccountDb),
