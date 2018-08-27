@@ -44,6 +44,7 @@ filter_for_erlang_files(Files) ->
                   orelse is_beam(Arg)
                   orelse is_erl(Arg)
                  )
+                andalso filelib:is_file(Arg)
     ].
 
 %% Internals
