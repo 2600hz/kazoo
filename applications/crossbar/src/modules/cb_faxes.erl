@@ -622,7 +622,7 @@ do_load_fax_binary(FaxId, Folder, Context) ->
                 {'error', Error} ->
                     crossbar_doc:handle_datamgr_errors(Error, FaxId, Context1);
                 {'ok', Content, ContentType, Doc} ->
-                    set_fax_binary(cb_context:set_doc(Context1, Doc), Content, ContentType, get_file_name(Doc, ContentType))
+                    set_fax_binary(cb_context:set_doc(Context1, Doc), Content, ContentType, get_file_name(Context1, Doc, ContentType))
             end;
         _Status -> Context1
     end.
@@ -643,13 +643,42 @@ set_fax_binary(Context, Content, ContentType, Filename) ->
                        ]
                       ).
 
--spec get_file_name(kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
-get_file_name(Doc, ContentType) ->
+-spec get_file_name(cb_context:context(), kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_file_name(Context, Doc, ContentType) ->
     Time = kz_json:get_integer_value(<<"pvt_created">>, Doc, 0),
+    Timestamp = get_timestamp(Context, calendar:gregorian_seconds_to_datetime(Time)),
     Ext = kz_mime:to_extension(ContentType),
-    FName = list_to_binary([<<"fax_document_">>, kz_time:pretty_print_datetime(Time), ".", Ext]),
-    re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+    list_to_binary([<<"fax_document_">>, Timestamp, ".", Ext]).
 
+-spec get_timestamp(cb_context:context(), kz_time:datetime()) -> kz_term:ne_binary().
+get_timestamp(Context, UtcTime) ->
+    Timezone = get_timezone(Context),
+    LocalTime = case localtime:utc_to_local(UtcTime, kz_term:to_list(Timezone)) of
+                    {{_,_,_},{_,_,_}}=LT ->
+                        lager:debug("converted to TZ: ~s", [Timezone]),
+                        LT;
+                    _ ->
+                        lager:debug("bad TZ: ~p", [Timezone]),
+                        UtcTime
+                end,
+    TimeString = kz_time:pretty_print_datetime(LocalTime),
+    re:replace(kz_term:to_lower_binary(TimeString), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+
+
+-spec get_timezone(cb_context:context()) -> kz_term:ne_binary().
+get_timezone(Context) ->
+    AccountDb = kz_util:format_account_db(cb_context:auth_account_id(Context)),
+    case kz_datamgr:open_cache_doc(AccountDb, cb_context:auth_user_id(Context)) of
+        {'ok', UserDoc} ->
+            case kzd_users:timezone(UserDoc) of
+                'undefined' ->
+                    kzd_accounts:timezone(cb_context:auth_account_id(Context));
+                <<"inherit">> ->
+                    kzd_accounts:timezone(cb_context:auth_account_id(Context));
+                Timezone -> Timezone
+            end;
+        _ -> kzd_accounts:timezone(cb_context:auth_account_id(Context))
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
