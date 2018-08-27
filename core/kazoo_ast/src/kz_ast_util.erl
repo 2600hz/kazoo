@@ -100,7 +100,9 @@ ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_call', 'optional_call_event_headers'
 ast_to_list_of_binaries(?LIST(?LIST(_, _)=H, T), Binaries) ->
     ast_to_list_of_binaries(T, [ast_to_list_of_binaries(H) | Binaries]);
 ast_to_list_of_binaries(?LIST(H, T), Binaries) ->
-    ast_to_list_of_binaries(T, [binary_match_to_binary(H) | Binaries]).
+    ast_to_list_of_binaries(T, [binary_match_to_binary(H) | Binaries]);
+ast_to_list_of_binaries(?VAR(_), Binaries) ->
+    Binaries.
 
 -spec binary_match_to_binary(erl_parse:abstract_expr()) -> binary().
 binary_match_to_binary(?ATOM(A)) -> kz_term:to_binary(A);
