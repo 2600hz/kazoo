@@ -997,11 +997,7 @@ def_path_param(<<"{TASK_ID}">>=P) ->
     ];
 
 def_path_param(<<"{ENDPOINT_ID}">>=P) ->
-    [{<<"minLength">>, 32}
-    ,{<<"maxLength">>, 32}
-    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
-     | base_path_param(P)
-    ];
+    generic_id_path_param(P);
 def_path_param(<<"{ENDPOINT_TYPE}">>=P) ->
     [{<<"enum">>, [<<"users">>, <<"devices">>]}
      | base_path_param(P)
@@ -1015,9 +1011,16 @@ def_path_param(<<"{NUMBER}">> = P) ->
     [{<<"pattern">>, <<"^\\+?[0-9]+">>}
      | base_path_param(P)
     ];
+def_path_param(<<"{AUDIT_ID}">> = P) ->
+    generic_id_path_param(P);
+def_path_param(<<"{SOURCE_SERVICE}">> = P) ->
+    base_path_param(P);
 
 def_path_param(_Param) ->
-    io:format(standard_error, "No Swagger definition of path parameter '~s'.\n", [_Param]),
+    io:format('standard_error'
+             ,"~s/" ?FILE ":~p: No Swagger definition of path parameter '~s'.\n"
+             ,[code:lib_dir('kazoo_ast'), ?LINE, _Param]
+             ),
     halt(1).
 
 filters_from_module(Module) ->
