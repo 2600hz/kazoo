@@ -8399,6 +8399,252 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.refund_req_definition": {
+            "description": "AMQP API for bookkeepers.refund_req_definition",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Amount": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "refund_req"
+                    ],
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Amount",
+                "Bookkeeper-Type",
+                "Transaction-DB",
+                "Transaction-ID",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.refund_resp_definition": {
+            "description": "AMQP API for bookkeepers.refund_resp_definition",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "refund_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status",
+                "Transaction-DB",
+                "Transaction-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.sale_req_definition": {
+            "description": "AMQP API for bookkeepers.sale_req_definition",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Amount": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "sale_req"
+                    ],
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Amount",
+                "Bookkeeper-Type",
+                "Transaction-DB",
+                "Transaction-ID",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.sale_resp_definition": {
+            "description": "AMQP API for bookkeepers.sale_resp_definition",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "sale_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status",
+                "Transaction-DB",
+                "Transaction-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.update_req_definition": {
+            "description": "AMQP API for bookkeepers.update_req_definition",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Dry-Run": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "update_req"
+                    ],
+                    "type": "string"
+                },
+                "Items": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Items",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.update_resp_definition": {
+            "description": "AMQP API for bookkeepers.update_resp_definition",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "update_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status"
+            ],
+            "type": "object"
+        },
         "kapi.call.channel_status_req": {
             "description": "AMQP API for call.channel_status_req",
             "properties": {
@@ -26231,14 +26477,6 @@
                     "description": "Whether to count quantities among all sub-accounts or just the account",
                     "type": "boolean"
                 },
-                "cumulative_discount": {
-                    "description": "Whether to give a discount based on quantities of the account and all sub-accounts",
-                    "type": "boolean"
-                },
-                "cumulative_discount_rate": {
-                    "description": "How much of a discount to apply",
-                    "type": "number"
-                },
                 "discounts": {
                     "properties": {
                         "cumulative": {
@@ -26249,6 +26487,15 @@
                                 },
                                 "rate": {
                                     "description": "The discount to apply, up to maximum Items (if applicable)",
+                                    "type": "number"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "single": {
+                            "properties": {
+                                "rate": {
+                                    "description": "A single discount amount to apply if there are more than 0 units",
                                     "type": "number"
                                 }
                             },
@@ -26286,13 +26533,25 @@
                     "description": "Tiers of rates based on quantities",
                     "type": "object"
                 },
-                "single_discount": {
-                    "description": "Whether to give a discount to the account",
-                    "type": "boolean"
-                },
-                "single_discount_rate": {
-                    "description": "How much of a discount to apply, per-item",
-                    "type": "number"
+                "taxes": {
+                    "items": {
+                        "properties": {
+                            "name": {
+                                "description": "The display name to use when generating invoices/reports",
+                                "type": "string"
+                            },
+                            "rate": {
+                                "description": "The tax rate as a percentage",
+                                "type": "number"
+                            },
+                            "tax_id": {
+                                "description": "The tax number/id (optional)",
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"
@@ -31741,6 +32000,11 @@
         "system_config.services": {
             "description": "Schema for services system_config",
             "properties": {
+                "debug_services_quantities": {
+                    "default": false,
+                    "description": "services debug_services_quantities",
+                    "type": "boolean"
+                },
                 "default_allow_updates": {
                     "default": true,
                     "description": "services default allow updates",
@@ -31758,6 +32022,7 @@
                 "merge_strategy_priority": {
                     "default": {
                         "cumulative": 20,
+                        "recursive": 25,
                         "simple": 10
                     },
                     "description": "the object keys map to merge strategies and the values are expected to be an integer defining the merge priority between strategies",
@@ -33937,15 +34202,6 @@
             "required": true,
             "type": "string"
         },
-        "ADDRESS_ID": {
-            "in": "path",
-            "maxLength": 32,
-            "minLength": 32,
-            "name": "ADDRESS_ID",
-            "pattern": "^[0-9a-f]+$",
-            "required": true,
-            "type": "string"
-        },
         "ALERT_ID": {
             "in": "path",
             "maxLength": 32,
@@ -33989,6 +34245,15 @@
             "required": true,
             "type": "string"
         },
+        "AUDIT_ID": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "AUDIT_ID",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
         "AUTH_TOKEN": {
             "in": "path",
             "maxLength": 32,
@@ -34028,15 +34293,6 @@
         "CALL_ID": {
             "in": "path",
             "name": "CALL_ID",
-            "required": true,
-            "type": "string"
-        },
-        "CARD_ID": {
-            "in": "path",
-            "maxLength": 32,
-            "minLength": 32,
-            "name": "CARD_ID",
-            "pattern": "^[0-9a-f]+$",
             "required": true,
             "type": "string"
         },
@@ -34219,12 +34475,6 @@
         "LANGUAGE": {
             "in": "path",
             "name": "LANGUAGE",
-            "required": true,
-            "type": "string"
-        },
-        "LEDGER_ENTRY_ID": {
-            "in": "path",
-            "name": "LEDGER_ENTRY_ID",
             "required": true,
             "type": "string"
         },
@@ -34448,6 +34698,12 @@
         "SOCKET_ID": {
             "in": "path",
             "name": "SOCKET_ID",
+            "required": true,
+            "type": "string"
+        },
+        "SOURCE_SERVICE": {
+            "in": "path",
+            "name": "SOURCE_SERVICE",
             "required": true,
             "type": "string"
         },
@@ -35487,300 +35743,6 @@
                     },
                     {
                         "$ref": "#/parameters/BLACKLIST_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/addresses": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ADDRESS_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ADDRESS_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ADDRESS_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/cards": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CARD_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CARD_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CARD_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/client_token": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/credits": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/customer": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/transactions": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/transactions/{TRANSACTION_ID}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/TRANSACTION_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
@@ -38507,14 +38469,14 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}": {
+        "/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}": {
             "get": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
-                        "$ref": "#/parameters/LEDGER_ID"
+                        "$ref": "#/parameters/SOURCE_SERVICE"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
@@ -38527,17 +38489,17 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}": {
+        "/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}": {
             "get": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
-                        "$ref": "#/parameters/LEDGER_ID"
+                        "$ref": "#/parameters/SOURCE_SERVICE"
                     },
                     {
-                        "$ref": "#/parameters/LEDGER_ENTRY_ID"
+                        "$ref": "#/parameters/LEDGER_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
@@ -42281,256 +42243,6 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/service_plans": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "service_plans",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service_plans"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/available": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/current": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/editable": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/override": {
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "service_plans",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service_plans"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/reconciliation": {
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "service_plans",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service_plans"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/synchronization": {
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "service_plans",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service_plans"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "service_plans",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service_plans"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/accounts/{ACCOUNT_ID}/services": {
             "get": {
                 "parameters": [
@@ -42580,7 +42292,27 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/services/plan": {
+        "/accounts/{ACCOUNT_ID}/services/audit/{AUDIT_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/AUDIT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/available": {
             "get": {
                 "parameters": [
                     {
@@ -42597,8 +42329,40 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/services/status": {
+        "/accounts/{ACCOUNT_ID}/services/editable": {
             "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/manual": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "patch": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
@@ -42617,6 +42381,176 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/overrides": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/quote": {
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/reconciliation": {
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/summary": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/synchronization": {
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/topup": {
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/{PLAN_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/PLAN_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/PLAN_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
@@ -43517,7 +43451,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/transactions/credit": {
+        "/accounts/{ACCOUNT_ID}/transactions/refund": {
             "put": {
                 "parameters": [
                     {
@@ -43534,8 +43468,8 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/transactions/current_balance": {
-            "get": {
+        "/accounts/{ACCOUNT_ID}/transactions/sale": {
+            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
@@ -43551,45 +43485,14 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/transactions/debit": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/transactions/monthly_recurring": {
+        "/accounts/{ACCOUNT_ID}/transactions/{TRANSACTION_ID}": {
             "get": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/transactions/subscriptions": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
+                        "$ref": "#/parameters/TRANSACTION_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

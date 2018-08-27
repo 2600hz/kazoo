@@ -58,7 +58,9 @@ maybe_update_schema(PrivDir, GeneratedJObj, ID) ->
                               ,GeneratedJObj
                               ),
     UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
-    case kz_json:are_equal(ExistingJObj, UpdatedSchema) of
+    case kz_json:are_equal(ExistingJObj, UpdatedSchema)
+        orelse kz_json:is_empty(kz_json:get_json_value(<<"properties">>, UpdatedSchema, kz_json:new()))
+    of
         'true' -> 'ok';
         'false' ->
             'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema))
@@ -277,7 +279,13 @@ set_kapi_schema(#acc{app_schemas=Schemas
                     ,kapi_name=KAPI
                     ,api_name=API
                     }=Acc, Schema) ->
-    Acc#acc{app_schemas=kz_json:set_value([KAPI, API], Schema, Schemas)}.
+    case kz_json:is_empty(kz_json:get_json_value(<<"properties">>, Schema, kz_json:new())) of
+        'true' ->
+            io:format("skipping empty schema for ~p:~p~n", [KAPI, API]),
+            Acc;
+        'false' ->
+            Acc#acc{app_schemas=kz_json:set_value([KAPI, API], Schema, Schemas)}
+    end.
 
 add_field([_|_]=Fields, Schema) ->
     Path = property_path(Fields),
