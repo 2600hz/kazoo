@@ -270,8 +270,8 @@ circle-pre:
 ifneq ($(PIP2),)
 ## needs root access
 	@echo $(CHANGED)
-	@$(PIP2) install --upgrade pip
-	@$(PIP2) install PyYAML mkdocs pyembed-markdown jsonschema
+	@$(PIP2) install --user --upgrade pip
+	@$(PIP2) install --user PyYAML mkdocs pyembed-markdown jsonschema
 else
 	$(error "pip/pip2 is not available, please install python2-pip package")
 endif
