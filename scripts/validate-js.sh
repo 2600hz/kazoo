@@ -42,7 +42,7 @@ def couchjs((field, js)):
         wd.write(JS)
         wd.close()
         try:
-            couchjs='/home/james/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
+            # couchjs='~/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
             code = call([couchjs, TMP])
             if code != 0:
                 print_field_js(field, js)
