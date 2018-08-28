@@ -94,7 +94,7 @@ handle(Data, Call, _Manual, CaptureGroup) ->
 handle_manual(Data, Call, CaptureGroup) ->
     case collect_cid_number(Data, Call) of
         {'ok', CIDNumber} ->
-            kapps_call_command:flush_dtmf(Call),
+            _NoopId = kapps_call_command:flush_dtmf(Call),
             update_call_and_continue(Data, Call, CIDNumber, 'no_name', CaptureGroup, <<"manual">>);
         {'error', 'channel_hungup'} ->
             lager:info("caller hungup while collecting caller id number"),
@@ -298,7 +298,7 @@ collect_cid_number(Data, Call) ->
         {'ok', Digits} ->
             case re:run(Digits, Regex) of
                 {'match', _} when byte_size(Digits) >= Min ->
-                    kapps_call_command:play(Prompts#prompts.accept_tone, Call),
+                    _NoopId = kapps_call_command:play(Prompts#prompts.accept_tone, Call),
                     {'ok', Digits};
                 _ ->
                     _ = kapps_call_command:play(Prompts#prompts.reject_tone, Call),

@@ -55,7 +55,7 @@ attempt_endpoints(JObj, Data, Call) ->
                  kz_json:find(<<"ringback">>, [JObj, Data])
                 ),
     lager:info("attempting group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    kapps_call_command:b_answer(Call),
+    _ = kapps_call_command:b_answer(Call),
     case kapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, 'undefined', IgnoreForward, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the group - call finished normally"),

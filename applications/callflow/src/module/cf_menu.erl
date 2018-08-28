@@ -378,7 +378,7 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
     case kz_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            kz_datamgr:save_doc(AccountDb, Removed),
+            _ = kz_datamgr:save_doc(AccountDb, Removed),
             lager:debug("removing attachments from ~s", [_MediaId])
     end.
 

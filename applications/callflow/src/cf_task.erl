@@ -173,7 +173,7 @@ launch_task(#state{queue=Q
 -spec task_launched(kz_term:api_binary(), kapps_call:call(), fun(), list(), pid()) -> any().
 task_launched(Q, Call, Callback, Args, Parent) ->
     kapps_call:put_callid(Call),
-    kz_amqp_channel:consumer_pid(Parent),
+    _ = kz_amqp_channel:consumer_pid(Parent),
     Funs = [{fun kapps_call:kvs_store/3, 'consumer_pid', Parent}
            ,{fun kapps_call:set_controller_queue/2, Q}
            ],

@@ -115,7 +115,7 @@ channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
 -spec eavesdrop_call(kz_json:object(), kapps_call:call()) -> 'ok'.
 eavesdrop_call(Channel, Call) ->
     UUID = kz_json:get_ne_binary_value(<<"uuid">>, Channel),
-    kapps_call_command:b_answer(Call),
+    _Answer = kapps_call_command:b_answer(Call),
     kapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
     lager:info("caller ~s is being eavesdropper", [kapps_call:caller_id_name(Call)]),
     _ = wait_for_eavesdrop_complete(Call),

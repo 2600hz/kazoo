@@ -59,7 +59,7 @@ handle(Data, Call) ->
                                      ]),
             cf_exe:branch(Flow, Call);
         'false' ->
-            cf_eavesdrop:no_permission_to_eavesdrop(Call),
+            _ = cf_eavesdrop:no_permission_to_eavesdrop(Call),
             cf_exe:stop(Call)
     end.
 

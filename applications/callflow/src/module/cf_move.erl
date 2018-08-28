@@ -18,24 +18,24 @@
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
-    case kapps_call:owner_id(Call) of
-        'undefined' ->
-            lager:warning("call has no owner_id"),
-            kapps_call_command:b_prompt(<<"cf-move-no_owner">>, Call);
-        OwnerId ->
-            Channels = get_channels(OwnerId, Call),
-            case filter_channels(Channels, Call) of
-                {'error', 'no_channel'} ->
-                    lager:warning("cannot move call no channel up"),
-                    kapps_call_command:b_prompt(<<"cf-move-no_channel">>, Call);
-                {'error', 'too_many_channels'} ->
-                    lager:warning("cannot decide which channel to move to, too many channels"),
-                    kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call);
-                {'ok', Channel} ->
-                    OtherLegId = kz_json:get_ne_binary_value(<<"other_leg">>, Channel),
-                    kapps_call_command:b_pickup(OtherLegId, Call)
-            end
-    end,
+    _ = case kapps_call:owner_id(Call) of
+            'undefined' ->
+                lager:warning("call has no owner_id"),
+                kapps_call_command:b_prompt(<<"cf-move-no_owner">>, Call);
+            OwnerId ->
+                Channels = get_channels(OwnerId, Call),
+                case filter_channels(Channels, Call) of
+                    {'error', 'no_channel'} ->
+                        lager:warning("cannot move call no channel up"),
+                        kapps_call_command:b_prompt(<<"cf-move-no_channel">>, Call);
+                    {'error', 'too_many_channels'} ->
+                        lager:warning("cannot decide which channel to move to, too many channels"),
+                        kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call);
+                    {'ok', Channel} ->
+                        OtherLegId = kz_json:get_ne_binary_value(<<"other_leg">>, Channel),
+                        kapps_call_command:b_pickup(OtherLegId, Call)
+                end
+        end,
     cf_exe:stop(Call).
 
 -spec get_channels(kz_term:ne_binary(), kapps_call:call()) -> dict:dict().

@@ -92,7 +92,7 @@ maybe_intercept(Call, Params) ->
         'true' ->
             cf_intercept:handle(kz_json:from_list(Params), Call);
         'false' ->
-            no_permission_to_intercept(Call),
+            _ = no_permission_to_intercept(Call),
             cf_exe:stop(Call)
     end.
 
