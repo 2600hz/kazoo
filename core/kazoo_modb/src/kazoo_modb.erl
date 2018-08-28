@@ -483,8 +483,13 @@ run_routines(AccountMODb) ->
 
 -spec run_routine(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 run_routine(AccountMODb, Routine) ->
-    Module = kz_term:to_atom(Routine),
-    _ = Module:modb(AccountMODb).
+    case kz_module:is_exported(Routine, 'modb', 1) of
+        'false' ->
+            lager:info("skipping routine ~s, doesn't export modb/1", [Routine]);
+        'true' ->
+            Module = kz_term:to_atom(Routine),
+            _ = Module:modb(AccountMODb)
+    end.
 
 -spec add_routine(kz_term:ne_binary() | atom()) -> 'ok'.
 add_routine(Module) ->
