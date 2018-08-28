@@ -297,13 +297,15 @@ verify_monthly_rollup_exists(Account) ->
         {'error', _} -> 'false'
     end.
 
--spec get_monthly_rollup(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} | {'error', any()}.
+-spec get_monthly_rollup(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
+                                                 {'error', any()}.
 get_monthly_rollup(Account) ->
     {CurrentYear, CurrentMonth, _} = erlang:date(),
     get_monthly_rollup(Account, CurrentYear, CurrentMonth).
 
 -spec get_monthly_rollup(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                                {'ok', kz_ledger:ledger()} | {'error', any()}.
+                                {'ok', kz_ledger:ledger()} |
+                                {'error', any()}.
 get_monthly_rollup(Account, Year, Month) ->
     case kazoo_modb:open_doc(Account, ?ROLLUP_ID, Year, Month) of
         {'ok', LedgerJObj} ->
@@ -354,13 +356,15 @@ maybe_migrate_legacy_rollup(Account, Options) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec rollup(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} | {'error', any()}.
+-spec rollup(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
+                                     {'error', any()}.
 rollup(Account) ->
     {Year, Month, _} = erlang:date(),
     rollup(Account, Year, Month).
 
 -spec rollup(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
-                    {'ok', kz_ledger:ledger()} | {'error', any()}.
+                    {'ok', kz_ledger:ledger()} |
+                    {'error', any()}.
 rollup(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),

@@ -53,7 +53,9 @@ maybe_update(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec invoices_foldl_fun(kz_services:services()) -> kz_services:invoices_foldl().
+-type invoices_acc() :: [{kz_json:object(), kz_amqp_worker:request_return()}].
+-spec invoices_foldl_fun(kz_services:services()) ->
+                                fun((kz_json:object(), invoices_acc()) -> invoices_acc()).
 invoices_foldl_fun(Services) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
@@ -67,22 +69,23 @@ invoices_foldl_fun(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec store_audit_log(kz_services:services(), kz_services_invoice:invoice(), kz_json:object()) -> 'ok'.
+-spec store_audit_log(kz_services:services(), kz_services_invoice:invoice(), kz_amqp_worker:request_result()) -> 'ok'.
 store_audit_log(Services, Invoice, {'ok', Result}) ->
     Details =
         [kz_json:normalize(JObj)
-         || JObj <- kz_json:get_value(<<"Details">>, Result, [])
+         || JObj <- kz_json:get_list_value(<<"Details">>, Result, [])
         ],
-    store_audit_log(Services, Invoice, Details);
+    store_audit_log_to_db(Services, Invoice, Details);
 store_audit_log(Services, Invoice, {'error', 'timeout'}) ->
-    Result = kz_json:from_list(
-               [{<<"status">>, <<"error">>}
-               ,{<<"reason">>, <<"timeout">>}
-               ,{<<"message">>, <<"bookkeeper did not respond to update request">>}
-               ]
-              ),
-    store_audit_log(Services, Invoice, Result);
-store_audit_log(Services, Invoice, Result) ->
+    Result = kz_json:from_list([{<<"status">>, <<"error">>}
+                               ,{<<"reason">>, <<"timeout">>}
+                               ,{<<"message">>, <<"bookkeeper did not respond to update request">>}
+                               ]
+                              ),
+    store_audit_log_to_db(Services, Invoice, Result).
+
+-spec store_audit_log_to_db(kz_services:services(), kz_services_invoice:invoice(), kz_json:object()) -> 'ok'.
+store_audit_log_to_db(Services, Invoice, Result) ->
     AccountId = kz_services:account_id(Services),
     AuditJObj = kz_services:audit_log(Services),
     InvoiceJObj = kz_services_invoice:public_json(Invoice),
@@ -130,7 +133,8 @@ notify_reseller(Services, Invoice) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services()) -> any().
+-spec update_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services()) ->
+                               kz_amqp_worker:request_return().
 update_bookkeeper(Type, Invoice, Services) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}

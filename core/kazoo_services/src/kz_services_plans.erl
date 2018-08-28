@@ -30,6 +30,7 @@
 -include("services.hrl").
 
 -opaque plans() :: dict:dict().
+
 -type plans_list() :: [kz_services_plan:plan()].
 -type fold_fun() :: fun((kz_term:ne_binary(), plans_list(), Acc) -> Acc).
 -type merge_strategy_plan() :: {non_neg_integer(), kz_json:object()}.
@@ -37,6 +38,7 @@
 -type merge_strategy_group() :: {kz_term:ne_binary(), merge_strategy_plans()}.
 -type merge_strategy_groups() :: [merge_strategy_groups()].
 -type merge_to_single() :: boolean() | kz_json:object().
+
 -export_type([plans/0
              ,plans_list/0
              ,fold_fun/0
@@ -72,7 +74,8 @@
         kz_json:set_values([{<<"as">>, kz_json:new()}
                            ,{<<"exceptions">>, kz_json:new()}
                            ]
-                          ,?ITEM_FIELDS)
+                          ,?ITEM_FIELDS
+                          )
        ).
 
 %%------------------------------------------------------------------------------
@@ -95,7 +98,7 @@ fetch(Services) ->
 
 -spec fetch(kz_services:services(), kz_json:object()) -> plans().
 fetch(_Services, ServicesJObj) ->
-    lager:debug("fetching service plan documents", []),
+    lager:debug("fetching service plan documents"),
     Routines = [fun get_services_plan/2
                ,fun get_object_plans/2
                ],
@@ -143,14 +146,10 @@ get_object_plans(ServicesJObj, FetchContext) ->
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"services/object_plans">>) of
         {'error', _Reason} ->
-            lager:info("unable to list object plans: ~p"
-                      ,[_Reason]
-                      ),
+            lager:info("unable to list object plans: ~p", [_Reason]),
             FetchContext;
         {'ok', ObjectPlans} ->
-            lager:debug("found ~p references to object plans"
-                       ,[length(ObjectPlans)]
-                       ),
+            lager:debug("found ~p references to object plans", [length(ObjectPlans)]),
             build_object_plan(ServicesJObj, FetchContext, ObjectPlans)
     end.
 
@@ -197,7 +196,8 @@ maybe_append_plan(PlanId, VendorId, Overrides, {FetchedPlans, ServicePlans}) ->
             }
     end.
 
--spec maybe_fetch_plan(kz_term:ne_binary(), kz_term:ne_binary(), dict:dict()) -> fetch_context().
+-spec maybe_fetch_plan(kz_term:ne_binary(), kz_term:ne_binary(), dict:dict()) ->
+                              {kz_services_plan:plan() | 'undefined', fetched_plans()}.
 maybe_fetch_plan(PlanId, VendorId, FetchedPlans) ->
     Key = plan_jobjs_key(VendorId, PlanId),
     case dict:find(Key, FetchedPlans) of
@@ -232,7 +232,9 @@ default_plan_vendor_id(ServicesJObj) ->
 foldl(FoldFun, Acc, Plans) ->
     lists:foldl(fun({BookkeeperHash, PlansList}, A) ->
                         FoldFun(BookkeeperHash, PlansList, A)
-                end, Acc, dict:to_list(Plans)
+                end
+               ,Acc
+               ,dict:to_list(Plans)
                ).
 
 %%------------------------------------------------------------------------------

@@ -92,15 +92,15 @@
 
 -include("kazoo_ledgers.hrl").
 
--record(ledger, {account_id :: kz_term:ne_binary()
-                ,account_name :: kz_term:ne_binary()
-                ,amount = 0 :: non_neg_integer()
+-record(ledger, {account_id :: kz_term:api_ne_binary()
+                ,account_name :: kz_term:api_ne_binary()
+                ,amount = 0 :: kz_currency:units()
                 ,description :: kz_term:api_binary()
                 ,executor_trigger :: kz_term:api_binary()
                 ,executor_module :: kz_term:api_binary()
-                ,source_id :: kz_term:ne_binary()
-                ,source_service :: kz_term:ne_binary()
-                ,usage_type :: kz_term:ne_binary()
+                ,source_id :: kz_term:api_ne_binary()
+                ,source_service :: kz_term:api_ne_binary()
+                ,usage_type :: kz_term:api_ne_binary()
                 ,usage_quantity = 0 :: non_neg_integer()
                 ,usage_unit :: kz_term:api_binary()
                 ,period_start :: kz_term:api_integer()
@@ -181,7 +181,7 @@ amount(Ledger) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec unit_amount(ledger()) -> integer().
+-spec unit_amount(ledger()) -> kz_current:units().
 unit_amount(#ledger{amount=Amount}) ->
     abs(Amount).
 
@@ -189,7 +189,7 @@ unit_amount(#ledger{amount=Amount}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec dollar_amount(ledger()) -> integer().
+-spec dollar_amount(ledger()) -> kz_currency:dollars().
 dollar_amount(#ledger{amount=Amount}) ->
     kz_currency:units_to_dollars(Amount).
 
@@ -197,7 +197,7 @@ dollar_amount(#ledger{amount=Amount}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_unit_amount(ledger(), kz_term:ne_binary()) -> ledger().
+-spec set_unit_amount(ledger(), kz_currency:units()) -> ledger().
 set_unit_amount(Ledger, Amount) ->
     Ledger#ledger{amount=abs(Amount)}.
 
@@ -205,7 +205,7 @@ set_unit_amount(Ledger, Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_dollar_amount(ledger(), kz_term:ne_binary()) -> ledger().
+-spec set_dollar_amount(ledger(), kz_currency:dollars()) -> ledger().
 set_dollar_amount(Ledger, Amount) ->
     Ledger#ledger{amount=kz_currency:dollars_to_units(Amount)}.
 
@@ -448,7 +448,8 @@ modb(#ledger{modb=MODb}) ->
 set_modb(Ledger, MODb) ->
     Ledger#ledger{modb=MODb}.
 
--spec set_modb(ledger(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> ledger().
+-spec set_modb(ledger(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                      ledger().
 set_modb(Ledger, Account, Year, Month) ->
     MODb = kazoo_modb:get_modb(Account, Year, Month),
     set_modb(Ledger, MODb).
@@ -654,12 +655,15 @@ from_json(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> ledger().
+-spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                   {'ok', ledger()} |
+                   {'error', any()}.
 fetch(Account, ?MATCH_MODB_PREFIX(Year, Month, Id)) ->
     fetch(Account, Id, Year, Month).
 
--spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                   {'ok', ledger()} | {'error', any()}.
+-spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                   {'ok', ledger()} |
+                   {'error', any()}.
 fetch(Account, Id, Year, Month) ->
     case kazoo_modb:open_doc(Account, Id, Year, Month) of
         {'error', _Reason} = Error -> Error;

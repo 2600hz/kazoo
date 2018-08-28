@@ -94,20 +94,22 @@ verify_rollups(Account) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec verify_rollups(kz_term:ne_binary() | kz_term:ne_binaries(), rollup_options()) -> 'ok'.
+-spec verify_rollups(kz_term:ne_binary(), rollup_options()) -> 'ok'.
 verify_rollups(?NE_BINARY=Account, Options) ->
     case props:get_value('all_rollups', Options) of
         'false' ->
             {Year, Month, _} = erlang:date(),
             verify_rollups(Account, Year, Month);
         'true' ->
-            verify_rollups(kazoo_modb_util:db_list(Account))
-    end;
-verify_rollups([], _Options) -> 'ok';
-verify_rollups([MODb|MODbs], Options) ->
+            verify_all_rollups(kazoo_modb_util:db_list(Account), Options)
+    end.
+
+-spec verify_all_rollups(kz_term:ne_binaries(), rollup_options()) -> 'ok'.
+verify_all_rollups([], _Options) -> 'ok';
+verify_all_rollups([MODb|MODbs], Options) ->
     {Account, Year, Month} = kazoo_modb_util:split_account_mod(MODb),
     _ = verify_rollups(Account, Year, Month),
-    verify_rollups(MODbs, Options).
+    verify_all_rollups(MODbs, Options).
 
 -spec verify_rollups(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'ok'.
 verify_rollups(AccountDb, Year, Month) ->
@@ -156,7 +158,7 @@ verify_rollups(AccountDb, Year, Month, Ledger, AvailableUnits) ->
 fix_rollups(?NE_BINARY=Account) ->
     [MODb|MODbs] = kazoo_modb_util:db_list(Account),
     {_, Year, Month} = kazoo_modb_util:split_account_mod(MODb),
-    maybe_replace_rollup(Account, Year, Month, 0),
+    _ = maybe_replace_rollup(Account, Year, Month, 0),
     fix_rollups(MODbs);
 fix_rollups([]) -> 'ok';
 fix_rollups([MODb|MODbs]) ->
@@ -187,7 +189,8 @@ fix_rollup(Account, Year, Month) ->
     end.
 
 -spec maybe_replace_rollup(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_currency:units()) ->
-                                  {'ok', kz_ledger:ledger()} | {'error', any()}.
+                                  {'ok', kz_ledger:ledger()} |
+                                  {'error', any()}.
 maybe_replace_rollup(Account, Year, Month, AvailableUnits) ->
     case kz_ledgers:get_monthly_rollup(Account, Year, Month) of
         {'error', _} ->
@@ -234,4 +237,5 @@ rollup_account_fold(Account, {Current, Total}) ->
 -spec rollup_account(kz_term:ne_binary()) -> 'ok'.
 rollup_account(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    kz_ledgers:rollup(AccountId).
+    {'ok', _} = kz_ledgers:rollup(AccountId),
+    io:format("account ~s rolled up~n", [AccountId]).

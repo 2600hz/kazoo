@@ -42,14 +42,14 @@
 %%------------------------------------------------------------------------------
 
 -spec get_results(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                         {'ok', kz_json:objects()} |
+                         {'ok', kz_json:json_terms()} |
                          {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
     MaxRetries = props:get_integer_value('max_retries', ViewOptions, ?MAX_RETRIES),
     get_results(Account, View, ViewOptions, 'first_try', MaxRetries).
 
 -spec get_results(kz_term:ne_binary(), kz_term:ne_binary(), view_options(), atom(), non_neg_integer()) ->
-                         {'ok', kz_json:objects()} |
+                         {'ok', kz_json:json_terms()} |
                          {'error', atom()}.
 get_results(_Account, _View, _ViewOptions, Reason, Retry) when Retry =< 0 ->
     lager:debug("max retries to get view ~s/~s results: ~p", [_Account, _View, Reason]),

@@ -314,14 +314,14 @@ set_changes(Item, Changes) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec taxes(item()) -> kz_term:ne_binaries().
+-spec taxes(item()) -> kz_json:object().
 taxes(#kz_service_item{taxes=Taxes}) -> Taxes.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_taxes(item(), kz_term:ne_binaries()) -> item().
+-spec set_taxes(item(), kz_json:object()) -> item().
 set_taxes(Item, Taxes) ->
     Item#kz_service_item{taxes=Taxes}.
 

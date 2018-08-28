@@ -33,7 +33,7 @@
 -record(invoice, {bookkeeper_hash :: kz_term:api_binary()
                  ,items = kz_services_items:empty() :: kz_services_items:items()
                  ,activation_charges = []
-                 ,plan_jobj = kz_json:new() :: kz_json:object()
+                 ,plan_jobj = kzd_service_plan:new() :: kzd_service_plan:doc()
                  }
        ).
 
@@ -121,7 +121,7 @@ set_activation_charges(Invoice, ActivationCharges) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec plan_jobj(invoice()) -> kz_json:object().
+-spec plan_jobj(invoice()) -> kzd_services_plan:plan().
 plan_jobj(#invoice{plan_jobj=PlanJObj}) ->
     PlanJObj.
 
@@ -201,13 +201,14 @@ sum_item_totals([ItemJObj|ItemsJObjs], Total) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec create(kz_services:services(), kz_term:ne_binary(), kz_services_plans:plans_list()) -> invoice().
-create(Services, BookkeeperHash, PlansJObj) ->
+-spec create(kz_services:services(), kz_term:ne_binary(), kzd_service_plan:doc()) ->
+                    invoice().
+create(Services, BookkeeperHash, PlanJObj) ->
     lager:debug("generating invoice for bookkeeper ~s", [BookkeeperHash]),
-    Items = kz_services_items:create(Services, PlansJObj),
+    Items = kz_services_items:create(Services, PlanJObj),
     Setters = [{fun set_bookkeeper_hash/2, BookkeeperHash}
               ,{fun set_items/2, Items}
-              ,{fun set_plan_jobj/2, PlansJObj}
+              ,{fun set_plan_jobj/2, PlanJObj}
               ],
     setters(Setters).
 

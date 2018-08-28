@@ -67,7 +67,7 @@ legacy_total(Account) ->
     {Year, Month, _} = erlang:date(),
     legacy_total(Account, Year, Month).
 
--spec legacy_total(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
+-spec legacy_total(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
                           kz_currency:available_units_return().
 legacy_total(Account, Year, Month) ->
     View = <<"transactions/legacy_total">>,
@@ -80,7 +80,7 @@ legacy_total(Account, Year, Month) ->
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'error', _Reason} = Error -> Error;
-        {'ok', [Total]} -> {'ok', Total};
+        {'ok', [Total]} when is_integer(Total) -> {'ok', Total};
         {'ok', []} -> {'error', 'no_legacy_transactions'}
     end.
 
@@ -118,4 +118,3 @@ get_ranged(View, Options, [MODb|MODbs], Results) ->
                            ],
             get_ranged(View, Options, MODbs, Transactions ++ Results)
     end.
-

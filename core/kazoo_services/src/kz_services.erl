@@ -96,8 +96,8 @@
 -include("services.hrl").
 
 -record(kz_services, {account_id :: kz_term:api_binary()
-                     ,services_jobj = kz_json:new() :: kz_json:object()
-                     ,current_services_jobj = kz_json:new() :: kz_json:object()
+                     ,services_jobj = kzd_services:new() :: kzd_services:doc()
+                     ,current_services_jobj = kzd_services:new() :: kzd_services:doc()
                      ,plans = 'undefined' ::  'undefined' | kz_services_plans:plans()
                      ,account_quantities = 'undefined' :: kz_json:api_object()
                      ,cascade_quantities = 'undefined' :: kz_json:api_object()
@@ -120,13 +120,25 @@
 -type setter_fun() :: {fun((services(), Value) -> services()), Value}.
 -type setter_funs() :: [setter_fun()].
 -type plans_foldl() :: fun((services(), kz_term:ne_binary(), kz_json:objects(), Acc) -> Acc).
--type invoices_foldl() :: fun((services(), kz_term:ne_binary(), kz_json:objects(), Acc) -> Acc).
+-type invoices_foldl() :: fun((services(), kz_json:objects(), Acc) -> Acc).
+
+-type fetch_option() :: 'skip_cache' |
+                        'hydrate_plans' |
+                        'hydrate_account_quantities' |
+                        'hydrate_cascade_quantities' |
+                        'hydrate_manual_quantities' |
+                        'hydrate_invoices' |
+                        {'updates', kz_term:ne_binary(), kz_services_quantities:billables(), kz_services_quantities:billables()} |
+                        {'audit_log', kz_json:object()}.
+-type fetch_options() :: [fetch_option()].
+
 -export_type([services/0
              ,plans_foldl/0
              ,invoices_foldl/0
              ,setter_fun/0
              ,setter_funs/0
              ,bookkeeper/0
+             ,fetch_options/0
              ]).
 
 %%------------------------------------------------------------------------------
@@ -141,11 +153,11 @@ account_id(#kz_services{account_id=AccountId}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec services_jobj(services()) -> kz_json:object().
+-spec services_jobj(services()) -> kzd_services:doc().
 services_jobj(#kz_services{services_jobj=ServicesJObj}) ->
     ServicesJObj.
 
--spec set_services_jobj(services(), kz_json:object()) -> services().
+-spec set_services_jobj(services(), kzd_services:doc()) -> services().
 set_services_jobj(#kz_services{}=Services, ServicesJObj) ->
     Services#kz_services{services_jobj=ServicesJObj
                         ,account_id=kz_doc:id(ServicesJObj)
@@ -155,11 +167,11 @@ set_services_jobj(#kz_services{}=Services, ServicesJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec current_services_jobj(services()) -> kz_json:object().
+-spec current_services_jobj(services()) -> kzd_services:doc().
 current_services_jobj(#kz_services{current_services_jobj=CurrentServicesJObj}) ->
     CurrentServicesJObj.
 
--spec set_current_services_jobj(services(), kz_json:object()) -> services().
+-spec set_current_services_jobj(services(), kzd_services:doc()) -> services().
 set_current_services_jobj(#kz_services{}=Services, CurrentServicesJObj) ->
     Services#kz_services{current_services_jobj=CurrentServicesJObj}.
 
@@ -372,7 +384,7 @@ invoices_foldl(FoldFun, Acc, Services) ->
                       end,
     kz_services_invoices:foldl(ServicesFoldFun, Acc, invoices(Services)).
 
--spec hydrate_invoices(services()) -> services.
+-spec hydrate_invoices(services()) -> services().
 hydrate_invoices(#kz_services{}=Services) ->
     Invoices = kz_services_invoices:create(Services),
     Services#kz_services{invoices=Invoices}.
@@ -404,7 +416,7 @@ is_deleted(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec ratedeck_id(services()) -> kz_term:api_binary().
+-spec ratedeck_id(services()) -> kz_term:api_ne_binary().
 ratedeck_id(Services) ->
     %% TODO: these are here for backward compatability
     %% but the ratedeck integration on services and
@@ -416,7 +428,7 @@ ratedeck_id(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec ratedeck_name(services()) -> kz_term:api_binary().
+-spec ratedeck_name(services()) -> kz_term:api_ne_binary().
 ratedeck_name(Services) ->
     %% TODO: these are here for backward compatability
     %% but the ratedeck integration on services and
@@ -506,7 +518,7 @@ empty() ->
         _Else -> #kz_services{}
     end.
 
--spec empty_services_jobj(kz_term:ne_binary()) -> kz_json:object().
+-spec empty_services_jobj(kz_term:ne_binary()) -> kzd_services:doc().
 empty_services_jobj(ResellerId) ->
     Setters = [{fun kzd_services:set_status/2, kzd_services:status_good()}
               ,{fun kzd_services:set_reseller_id/2, ResellerId}
@@ -544,13 +556,13 @@ setters(Services, Routines) ->
 public_json(Services) ->
     public_json(Services, 'undefined').
 
--spec public_json(services(), fun((kz_json:object()) -> kz_json:api_json_term())) -> kz_json:api_json_term().
+-type getter_fun() :: fun((kz_json:object()) -> kz_json:api_json_term()).
+
+-spec public_json(services(), getter_fun() | 'undefined') -> kz_json:api_json_term().
+public_json(Services, 'undefined') ->
+    kz_doc:public_fields(services_jobj(Services));
 public_json(Services, GetterFunction) ->
-    ServicesJObj = kz_doc:public_fields(services_jobj(Services)),
-    case GetterFunction =:= 'undefined' of
-        'true' -> ServicesJObj;
-        'false'  -> GetterFunction(ServicesJObj)
-    end.
+    GetterFunction(kz_doc:public_fields(services_jobj(Services))).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -597,36 +609,36 @@ summary(Services) ->
 fetch(Account) ->
     fetch(Account, []).
 
--spec fetch(kz_term:api_binary(), kz_term:proplist()) -> services().
+-spec fetch(kz_term:api_binary(), fetch_options()) -> services().
 fetch('undefined', Options) ->
     handle_fetch_options(empty(), Options);
 fetch(Account=?NE_BINARY, Options) ->
     AccountId = kz_util:format_account_id(Account),
-    OpenDocFun = case props:is_true('skip_cache', Options, 'false') of
-                     'false' ->
-                         lager:debug("fetching services doc for ~s (with cache)"
-                                    ,[AccountId]
-                                    ),
-                         fun kz_datamgr:open_cache_doc/2;
-                     'true' ->
-                         lager:debug("fetching services doc for ~s (without cache)"
-                                    ,[AccountId]
-                                    ),
-                         fun kz_datamgr:open_doc/2
-                 end,
+    OpenDocFun = choose_open_doc_fun(Options),
     Setters = case OpenDocFun(?KZ_SERVICES_DB, AccountId) of
                   {'ok', ServicesJObj} ->
                       [{fun set_services_jobj/2, ServicesJObj}
                       ,{fun set_current_services_jobj/2, ServicesJObj}
                       ];
-                   {'error', 'not_found'} ->
-                       %% TODO: hydrate cascade and account quantities
-                       ServicesJObj = create(AccountId),
+                  {'error', 'not_found'} ->
+                      %% TODO: hydrate cascade and account quantities
+                      ServicesJObj = create(AccountId),
                       [{fun set_services_jobj/2, ServicesJObj}
                       ,{fun set_current_services_jobj/2, ServicesJObj}
                       ]
-               end,
+              end,
     handle_fetch_options(setters(Setters), Options).
+
+-spec choose_open_doc_fun(fetch_options()) -> fun((kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', 'not_found'}).
+choose_open_doc_fun(Options) ->
+    case props:is_true('skip_cache', Options, 'false') of
+        'false' ->
+            lager:debug("fetching services doc (with cache)"),
+            fun kz_datamgr:open_cache_doc/2;
+        'true' ->
+            lager:debug("fetching services doc (without cache)"),
+            fun kz_datamgr:open_doc/2
+    end.
 
 -spec create(kz_term:ne_binary()) -> kz_json:api_object().
 create(AccountId) ->
@@ -713,9 +725,7 @@ commit_updates(Services, FetchOptions) ->
 -spec cascade_commit_updates(kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 cascade_commit_updates(_FetchOptions, []) -> 'ok';
 cascade_commit_updates(FetchOptions, [Account|Accounts]) ->
-    commit_account(
-      fetch(Account, FetchOptions)
-     ),
+    #kz_services{} = commit_account(fetch(Account, FetchOptions)),
     cascade_commit_updates(FetchOptions, Accounts).
 
 %%------------------------------------------------------------------------------
@@ -801,7 +811,7 @@ maybe_save_services_jobj(Services) ->
                               ,ProposedServicesJObj
                               );
         'true' ->
-            lager:debug("services document is unchanged", []),
+            lager:debug("services document is unchanged"),
             Services
     end.
 
@@ -809,7 +819,7 @@ maybe_save_services_jobj(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec commit_quantities(services()) -> kz_json:object().
+-spec commit_quantities(services()) -> services().
 commit_quantities(Services) ->
     Routines = [fun commit_cascade_quantities/1
                ,fun commit_account_quantities/1
@@ -852,7 +862,7 @@ commit_manual_quantities(Services) ->
 save_services_jobj(Services) ->
     save_services_jobj(Services, services_jobj(Services)).
 
--spec save_services_jobj(services(), kz_json:object()) -> services().
+-spec save_services_jobj(services(), kzd_services:doc()) -> services().
 save_services_jobj(Services, ProposedJObj) ->
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, ProposedJObj) of
         {'ok', UpdatedJObj} ->
@@ -888,7 +898,7 @@ delete(#kz_services{}=Services) ->
 %%------------------------------------------------------------------------------
 -spec reconcile(kz_term:ne_binary()) -> services().
 reconcile(Account) ->
-    reconcile(Account, []).
+    reconcile(Account, kz_json:new()).
 
 -spec reconcile(kz_term:ne_binary(), kz_json:object()) -> services().
 reconcile(Account, AuditLog) ->
@@ -916,13 +926,13 @@ is_services(_) -> 'false'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec apps(services()) -> services().
+-spec apps(services()) -> kz_json:object().
 apps(Services) ->
-    Apps = kz_services_plans:foldl(fun apps_foldl/3
+    AppsDict = kz_services_plans:foldl(fun apps_foldl/3
                                   ,dict:new()
                                   ,plans(Services)
                                   ),
-    kz_json:from_list(dict:to_list(Apps)).
+    kz_json:from_list(dict:to_list(AppsDict)).
 
 -spec apps_foldl(kz_term:ne_binary(), kz_services_plans:plans_list(), dict:dict()) -> dict:dict().
 apps_foldl(_BookkeeperHash, PlansList, Apps) ->

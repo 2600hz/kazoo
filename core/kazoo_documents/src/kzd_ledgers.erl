@@ -275,7 +275,7 @@ set_unit_amount(Doc, Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec dollar_amount(doc()) -> kz_term:api_integer().
+-spec dollar_amount(doc()) -> kz_currency:dollars() | 'undefined'.
 dollar_amount(Doc) ->
     dollar_amount(Doc, 'undefined').
 

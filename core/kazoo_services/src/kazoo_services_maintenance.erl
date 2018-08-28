@@ -72,10 +72,10 @@ flush() ->
 %%------------------------------------------------------------------------------
 -spec db_init() -> 'ok'.
 db_init() ->
-    kz_datamgr:del_doc(?KZ_DATA_DB, <<"account-kazoo_apps-services">>),
+    _ = kz_datamgr:del_doc(?KZ_DATA_DB, <<"account-kazoo_apps-services">>),
     kz_datamgr:db_create(?KZ_SERVICES_DB),
     kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views"),
-    kz_datamgr:register_view('account', 'kazoo_services', {<<"_design/services">>, js_design_doc()}),
+    _ = kz_datamgr:register_view('account', 'kazoo_services', {<<"_design/services">>, js_design_doc()}),
     'ok'.
 
 -spec js_design_doc() -> kz_json:object().
@@ -275,7 +275,7 @@ migrate_bookkeepers(AccountDb, JObj, Keys) ->
 migrate_bookkeepers(_AccountDb, _JObj, [], BraintreeId) -> BraintreeId;
 migrate_bookkeepers(AccountDb, JObj, [Key|Keys], BraintreeId) ->
     Mappings = kz_json:get_ne_json_value([<<"bookkeepers">>, Key], JObj, kz_json:new()),
-    ViewOptions = [{<<"key">>, Key}
+    ViewOptions = [{'key', Key}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"services/bookkeepers">>, ViewOptions) of
@@ -343,7 +343,7 @@ store_migrated_services_plan(AccountDb, JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec migrate_services() -> 'no_return'.
+-spec migrate_services() -> 'ok'.
 migrate_services() ->
     ViewOptions = ['descending'],
     {'ok', JObjs} = kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/by_tree">>, ViewOptions),
@@ -652,20 +652,22 @@ maybe_open_app(VendorId, Id, PlanApp) ->
 
 -spec maybe_find_app(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:proplist().
 maybe_find_app(_VendorId, 'undefined') -> [];
-maybe_find_app(VendorId, Name) ->
-    ViewOptions = [{<<"key">>, Name}],
+maybe_find_app(?NE_BINARY = VendorId, Name) ->
+    ViewOptions = [{'key', Name}],
     VendorDb = kz_util:format_account_db(VendorId),
     case kz_datamgr:get_results(VendorDb, <<"apps_store/crossbar_listing">>, ViewOptions) of
         {'ok', [App|_]} ->
             Id = kz_doc:id(App),
             io:format("  correcting invalid application ~s with ~s/~s~n"
-                     ,[Name, VendorId, Id]),
+                     ,[Name, VendorId, Id]
+                     ),
             [{[Id, <<"name">>], Name}
             ,{[Id, <<"vendor_id">>], VendorId}
             ];
         _Else ->
             io:format("  unable to find valid application for ~s in vendor ~s~n"
-                     ,[Name, VendorId]),
+                     ,[Name, VendorId]
+                     ),
             []
     end.
 
@@ -822,7 +824,7 @@ rebuild_services_db(JObjs) ->
     io:format("rebuilding services database views~n", []),
     kapps_maintenance:refresh(?KZ_SERVICES_DB),
     io:format("restoring service documents~n", []),
-    kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
+    _ = kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
     io:format("rebuild complete~n", []).
 
 -spec compare_services_backup() -> boolean().
@@ -902,7 +904,7 @@ maybe_remove_orphan(ViewResult, Count) ->
 %%------------------------------------------------------------------------------
 -spec enable_topup() -> 'ok'.
 enable_topup() ->
-    kapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'true'),
+    _ = kapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'true'),
     io:format("auto top up enabled ~n").
 
 %%------------------------------------------------------------------------------
@@ -911,7 +913,7 @@ enable_topup() ->
 %%------------------------------------------------------------------------------
 -spec disable_topup() -> 'ok'.
 disable_topup() ->
-    kapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'false'),
+    _ = kapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'false'),
     io:format("auto top up disabled ~n", []).
 
 %%------------------------------------------------------------------------------
