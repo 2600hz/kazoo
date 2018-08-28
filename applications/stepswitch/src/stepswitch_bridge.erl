@@ -29,7 +29,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {endpoints = [] :: kz_json:objects()
+-record(state, {endpoints = [] :: stepswitch_resources:endpoints()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: kz_term:api_pid()
                ,control_queue :: kz_term:api_binary()
@@ -45,18 +45,20 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(CALL_BINDING(CallId), {'call', [{'callid', CallId}
-                                       ,{'restrict_to',
-                                         [<<"CHANNEL_DESTROY">>
-                                         ,<<"CHANNEL_REPLACED">>
-                                         ,<<"CHANNEL_TRANSFEROR">>
-                                         ,<<"CHANNEL_EXECUTE_COMPLETE">>
-                                         ,<<"CHANNEL_BRIDGE">>
-                                         ,<<"dialplan">>
-                                         ]
-                                        }
-                                       ]
-                              }).
+-define(CALL_BINDING(CallId)
+       ,{'call', [{'callid', CallId}
+                 ,{'restrict_to',
+                   [<<"CHANNEL_DESTROY">>
+                   ,<<"CHANNEL_REPLACED">>
+                   ,<<"CHANNEL_TRANSFEROR">>
+                   ,<<"CHANNEL_EXECUTE_COMPLETE">>
+                   ,<<"CHANNEL_BRIDGE">>
+                   ,<<"dialplan">>
+                   ]
+                  }
+                 ]
+        }
+       ).
 
 -define(SHOULD_ENSURE_E911_CID_VALID
        ,kapps_config:get_is_true(?SS_CONFIG_CAT, <<"ensure_valid_emergency_cid">>, 'false')
@@ -70,18 +72,22 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(kz_json:objects(), kapi_offnet_resource:req()) -> kz_types:startlink_ret().
+-spec start_link(stepswitch_resources:endpoints(), kapi_offnet_resource:req()) ->
+                        kz_types:startlink_ret().
 start_link(Endpoints, OffnetReq) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
     Bindings = [?CALL_BINDING(CallId)
                ,{'self', []}
                ],
-    gen_listener:start_link(?SERVER, [{'bindings', Bindings}
-                                     ,{'responders', ?RESPONDERS}
-                                     ,{'queue_name', ?QUEUE_NAME}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Endpoints, OffnetReq]).
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', Bindings}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                            ]
+                           ,[Endpoints, OffnetReq]
+                           ).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -91,7 +97,8 @@ start_link(Endpoints, OffnetReq) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([kz_json:objects() | kapi_offnet_resource:req()]) -> {'ok', state()}.
+-spec init([stepswitch_resources:endpoints() | kapi_offnet_resource:req()]) ->
+                  {'ok', state()}.
 init([Endpoints, OffnetReq]) ->
     kapi_offnet_resource:put_callid(OffnetReq),
     case kapi_offnet_resource:control_queue(OffnetReq) of
@@ -165,47 +172,94 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, #state{request_handler=RequestHandler
-                         ,resource_req=OffnetReq
-                         ,call_id=CallId
-                         }) ->
-    case get_event_type(JObj) of
-        {<<"error">>, _, _} ->
-            <<"bridge">> = kz_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
-            lager:debug("channel execution error while waiting for bridge: ~s"
-                       ,[kz_term:to_binary(kz_json:encode(JObj))]
-                       ),
-            gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(JObj, OffnetReq)});
+-spec handle_event(kz_call_event:doc(), state()) -> gen_listener:handle_event_return().
+handle_event(CallEvt, #state{request_handler=RequestHandler
+                            ,resource_req=OffnetReq
+                            ,call_id=CallId
+                            }) ->
+    case get_event_type(CallEvt) of
+        {<<"error">>, _EvtName, CallId} ->
+            handle_error_event(CallEvt, OffnetReq, RequestHandler);
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>, _} ->
-            Transferor = kz_call_event:other_leg_call_id(JObj),
-            gen_listener:cast(RequestHandler, {'replaced', Transferor}),
-            gen_listener:add_binding(RequestHandler, ?CALL_BINDING(Transferor));
+            handle_channel_transferor(CallEvt, RequestHandler);
         {<<"call_event">>, <<"CHANNEL_REPLACED">>, _} ->
-            ReplacedBy = kz_call_event:replaced_by(JObj),
-            gen_listener:cast(RequestHandler, {'replaced', ReplacedBy}),
-            gen_listener:add_binding(RequestHandler, ?CALL_BINDING(ReplacedBy));
+            handle_channel_replaced(CallEvt, RequestHandler);
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, CallId} ->
-            lager:debug("channel was destroyed while waiting for bridge"),
-            Result = case <<"SUCCESS">> =:= kz_json:get_value(<<"Disposition">>, JObj) of
-                         'true' -> bridge_success(JObj, OffnetReq);
-                         'false' -> bridge_failure(JObj, OffnetReq)
-                     end,
-            gen_listener:cast(RequestHandler, {'bridge_result', Result});
+            handle_channel_destroy(CallEvt, OffnetReq, RequestHandler);
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, CallId} ->
-            <<"bridge">> = kz_json:get_value(<<"Application-Name">>, JObj),
-            lager:debug("channel execute complete for bridge"),
-            Result = case <<"SUCCESS">> =:= kz_json:get_value(<<"Disposition">>, JObj) of
-                         'true' -> bridge_success(JObj, OffnetReq);
-                         'false' -> bridge_failure(JObj, OffnetReq)
-                     end,
-            gen_listener:cast(RequestHandler, {'bridge_result', Result});
+            handle_channel_execute_complete(CallEvt, OffnetReq, RequestHandler);
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, CallId} ->
-            OtherLeg = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-            gen_listener:cast(RequestHandler, {'bridged', OtherLeg});
+            handle_channel_bridge(CallEvt, RequestHandler);
         _ -> 'ok'
     end,
     {'reply', []}.
+
+-spec handle_channel_bridge(kz_call_event:doc(), kz_term:api_pid()) -> 'ok'.
+handle_channel_bridge(CallEvt, RequestHandler) ->
+    OtherLeg = kz_call_event:other_leg_call_id(CallEvt),
+    gen_listener:cast(RequestHandler, {'bridged', OtherLeg}).
+
+-spec handle_channel_transferor(kz_call_event:doc(), kz_term:api_pid()) -> 'ok'.
+handle_channel_transferor(CallEvt, RequestHandler) ->
+    Transferor = kz_call_event:other_leg_call_id(CallEvt),
+    lager:info("channel_transferor to ~s", [Transferor]),
+    follow_call_id(RequestHandler, Transferor).
+
+-spec handle_channel_replaced(kz_call_event:doc(), kz_term:api_pid()) -> 'ok'.
+handle_channel_replaced(CallEvt, RequestHandler) ->
+    ReplacedBy = kz_call_event:replaced_by(CallEvt),
+    lager:info("channel_replaced to ~s", [ReplacedBy]),
+    follow_call_id(RequestHandler, ReplacedBy).
+
+-spec follow_call_id(kz_term:api_pid(), kz_term:ne_binary()) -> 'ok'.
+follow_call_id(RequestHandler, CallId) ->
+    gen_listener:cast(RequestHandler, {'replaced', CallId}),
+    gen_listener:add_binding(RequestHandler, ?CALL_BINDING(CallId)).
+
+-spec handle_error_event(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+handle_error_event(CallEvt, OffnetReq, RequestHandler) ->
+    handle_error_event(CallEvt
+                      ,OffnetReq
+                      ,RequestHandler
+                      ,kapi_dialplan:application_name(kz_call_event:request(CallEvt))
+                      ).
+
+-spec handle_error_event(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid(), kz_term:ne_binary()) -> 'ok'.
+handle_error_event(CallEvt, OffnetReq, RequestHandler, <<"bridge">>) ->
+    lager:info("channel execution error while waiting for bridge: ~s"
+              ,[kz_term:to_binary(kz_json:encode(CallEvt))]
+              ),
+    gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(CallEvt, OffnetReq)});
+handle_error_event(_CallEvt, _OffnetReq, _RequestHandler, _EvtName) ->
+    lager:debug("ignoring execution error of ~s", [_EvtName]).
+
+-spec handle_channel_destroy(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+handle_channel_destroy(CallEvt, OffnetReq, RequestHandler) ->
+    lager:debug("channel was destroyed while waiting for bridge"),
+    handle_bridge_result(CallEvt, OffnetReq, RequestHandler).
+
+-spec handle_channel_execute_complete(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+handle_channel_execute_complete(CallEvt, OffnetReq, RequestHandler) ->
+    handle_channel_execute_complete(CallEvt
+                                   ,OffnetReq
+                                   ,RequestHandler
+                                   ,kz_call_event:application_name(CallEvt)
+                                   ).
+
+-spec handle_channel_execute_complete(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid(), kz_term:api_ne_binary()) -> 'ok'.
+handle_channel_execute_complete(CallEvt, OffnetReq, RequestHandler, <<"bridge">>) ->
+    lager:debug("channel execute complete for bridge"),
+    handle_bridge_result(CallEvt, OffnetReq, RequestHandler);
+handle_channel_execute_complete(_CallEvt, _OffnetReq, _RequestHander, _AppName) ->
+    lager:debug("ignoring channel_execute_complete for application ~s", [_AppName]).
+
+-spec handle_bridge_result(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+handle_bridge_result(CallEvt, OffnetReq, RequestHandler) ->
+    Result = case <<"SUCCESS">> =:= kz_call_event:disposition(CallEvt) of
+                 'true' -> bridge_success(CallEvt, OffnetReq);
+                 'false' -> bridge_failure(CallEvt, OffnetReq)
+             end,
+    gen_listener:cast(RequestHandler, {'bridge_result', Result}).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
@@ -283,19 +337,26 @@ maybe_deny_emergency_bridge(#state{resource_req=OffnetReq}=State, 'undefined', N
             Number = default_emergency_number(kz_privacy:anonymous_caller_id_number(AccountId)),
             maybe_deny_emergency_bridge(State, Number, Name)
     end;
-maybe_deny_emergency_bridge(#state{control_queue=ControlQ}=State, Number, Name) ->
-    State0 = update_endpoint_emergency_cid(State, Number, Name),
-    kapi_dialplan:publish_command(ControlQ, build_bridge(State0, Number, Name)),
+maybe_deny_emergency_bridge(#state{control_queue=ControlQ
+                                  ,endpoints=Endpoints
+                                  }=State, Number, Name) ->
+    UpdatedEndpoints = update_endpoints_emergency_cid(Endpoints, Number, Name),
+    kapi_dialplan:publish_command(ControlQ
+                                 ,build_bridge(State#state{endpoints=UpdatedEndpoints}, Number, Name)
+                                 ),
     lager:debug("sent bridge command to ~s", [ControlQ]).
 
--spec update_endpoint_emergency_cid(state() | kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) -> state().
-update_endpoint_emergency_cid(#state{endpoints=Endpoints}=State, Number, Name) ->
-    State#state{endpoints=[update_endpoint_emergency_cid(Endpoint, Number, Name)
-                           || Endpoint <- Endpoints
-                          ]};
+-spec update_endpoints_emergency_cid(stepswitch_resources:endpoints(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+                                            stepswitch_resources:endpoints().
+update_endpoints_emergency_cid(Endpoints, Number, Name) ->
+    [update_endpoint_emergency_cid(Endpoint, Number, Name)
+     || Endpoint <- Endpoints
+    ].
+
+-spec update_endpoint_emergency_cid(stepswitch_resources:endpoint(), kz_term:ne_binary(), kz_term:api_binary()) -> stepswitch_resources:endpoint().
 update_endpoint_emergency_cid(Endpoint, Number, Name) ->
-    case {kz_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, Number)
-         ,kz_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, Name)
+    case {kz_json:get_ne_binary_value(<<"Outbound-Caller-ID-Number">>, Endpoint, Number)
+         ,kz_json:get_ne_binary_value(<<"Outbound-Caller-ID-Name">>, Endpoint, Name)
          }
     of
         {Number, Name} -> Endpoint;
@@ -308,14 +369,15 @@ update_endpoint_emergency_cid(Endpoint, Number, Name) ->
             kz_json:set_values(Props, Endpoint)
     end.
 
--spec outbound_flags(kz_json:object()) -> kz_term:api_binary().
-outbound_flags(JObj) ->
-    case kapi_offnet_resource:flags(JObj) of
+-spec outbound_flags(kapi_offnet_resource:req()) -> kz_term:api_binary().
+outbound_flags(OffnetReq) ->
+    case kapi_offnet_resource:flags(OffnetReq) of
         [] -> 'undefined';
         Flags -> kz_binary:join(Flags, <<"|">>)
     end.
 
--spec build_bridge(state(), kz_term:api_binary(), kz_term:api_binary()) -> kz_term:proplist().
+-spec build_bridge(state(), kz_term:api_binary(), kz_term:api_binary()) ->
+                          kz_term:proplist().
 build_bridge(#state{endpoints=Endpoints
                    ,resource_req=OffnetReq
                    ,queue=Q
@@ -326,13 +388,13 @@ build_bridge(#state{endpoints=Endpoints
     lager:debug("set outbound caller id to ~s '~s'", [Number, Name]),
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
     CCVs =
-        kz_json:set_values(props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
-                                                  ,{<<"Account-ID">>, AccountId}
-                                                  ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
-                                                  ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
-                                                  ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
-                                                  ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
-                                                  ])
+        kz_json:set_values([{<<"Ignore-Display-Updates">>, <<"true">>}
+                           ,{<<"Account-ID">>, AccountId}
+                           ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
+                           ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
+                           ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                           ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
+                           ]
                           ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())
                           ),
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
@@ -419,7 +481,7 @@ find_emergency_number(OffnetReq) ->
             bridge_emergency_cid_number(OffnetReq)
     end.
 
--spec ensure_valid_emergency_number(kapi_offnet_resource:req()) -> kz_term:api_binary().
+-spec ensure_valid_emergency_number(kapi_offnet_resource:req()) -> kz_term:api_ne_binary().
 ensure_valid_emergency_number(OffnetReq) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
     lager:debug("ensuring emergency caller is valid for account ~s", [AccountId]),
@@ -440,9 +502,9 @@ ensure_valid_emergency_number(OffnetReq) ->
             find_valid_emergency_number(Numbers)
     end.
 
--spec find_valid_emergency_number(kz_term:ne_binaries()) -> kz_term:api_binary().
+-spec find_valid_emergency_number(kz_term:ne_binaries()) -> kz_term:api_ne_binary().
 find_valid_emergency_number([]) ->
-    lager:info("no alternative e911 enabled numbers available", []),
+    lager:info("no alternative e911 enabled numbers available"),
     'undefined';
 find_valid_emergency_number([Number|_]) ->
     lager:info("found alternative emergency caller id number ~s", [Number]),
@@ -455,15 +517,17 @@ default_emergency_number(Requested) ->
         Else -> Else
     end.
 
--spec contains_emergency_endpoints(kz_json:objects()) -> boolean().
-contains_emergency_endpoints([]) -> 'false';
-contains_emergency_endpoints([Endpoint|Endpoints]) ->
-    case kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint) of
-        'true' ->
-            lager:debug("endpoints contain an emergency resource", []),
-            'true';
-        'false' -> contains_emergency_endpoints(Endpoints)
-    end.
+-spec contains_emergency_endpoints(stepswitch_resources:endpoints()) -> boolean().
+contains_emergency_endpoints(Endpoints) ->
+    lists:any(fun is_emergency_endpoint/1, Endpoints).
+
+-spec is_emergency_endpoint(boolean() | stepswitch_resources:endpoint()) -> boolean().
+is_emergency_endpoint('true') ->
+    lager:debug("endpoints contain an emergency resource"),
+    'true';
+is_emergency_endpoint('false') -> 'false';
+is_emergency_endpoint(Endpoint) ->
+    is_emergency_endpoint(kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint)).
 
 -spec bridge_timeout(kapi_offnet_resource:req()) -> kz_term:proplist().
 bridge_timeout(OffnetReq) ->
@@ -477,43 +541,49 @@ bridge_timeout(OffnetReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
-bridge_error(JObj, OffnetReq) ->
-    lager:debug("error during outbound request: ~s", [kz_term:to_binary(kz_json:encode(JObj))]),
+-spec bridge_error(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
+bridge_error(CallEvt, OffnetReq) ->
+    lager:debug("error during outbound request: ~s", [kz_json:encode(CallEvt)]),
+
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
     ,{<<"Response-Code">>, <<"sip:500">>}
-    ,{<<"Error-Message">>, kz_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
+    ,{<<"Error-Message">>, kz_call_event:error_message(CallEvt, <<"failed to process request">>)}
     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_success(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
-bridge_success(JObj, OffnetReq) ->
+-spec bridge_success(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
+bridge_success(CallEvt, OffnetReq) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, <<"SUCCESS">>}
     ,{<<"Response-Code">>, <<"sip:200">>}
-    ,{<<"Resource-Response">>, JObj}
+    ,{<<"Resource-Response">>, CallEvt}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_failure(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
-bridge_failure(JObj, OffnetReq) ->
+-spec bridge_failure(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
+bridge_failure(CallEvt, OffnetReq) ->
     lager:debug("resources for outbound request failed: ~s"
-               ,[kz_json:get_value(<<"Disposition">>, JObj)]
+               ,[kz_call_event:disposition(CallEvt)]
                ),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
-    ,{<<"Response-Message">>, kz_json:get_first_defined([<<"Application-Response">>
-                                                        ,<<"Hangup-Cause">>
-                                                        ], JObj)}
-    ,{<<"Response-Code">>, kz_json:get_value(<<"Hangup-Code">>, JObj)}
-    ,{<<"Resource-Response">>, JObj}
+    ,{<<"Response-Message">>, response_message(CallEvt)}
+    ,{<<"Response-Code">>, kz_call_event:hangup_code(CallEvt)}
+    ,{<<"Resource-Response">>, CallEvt}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec response_message(kz_call_event:doc()) -> kz_term:api_ne_binary().
+response_message(CallEvt) ->
+    case kz_call_event:application_response(CallEvt) of
+        'undefined' -> kz_call_event:hangup_cause(CallEvt);
+        AppResp -> AppResp
+    end.
 
 -spec bridge_not_configured(kapi_offnet_resource:req()) -> kz_term:proplist().
 bridge_not_configured(OffnetReq) ->
@@ -565,7 +635,8 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
                                       ),
     kz_call_response:send(CallId, ControlQ, Code, Cause, Media).
 
--spec get_event_type(kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
-get_event_type(JObj) ->
-    {C, E} = kz_util:get_event_type(JObj),
-    {C, E, kz_call_event:call_id(JObj)}.
+-spec get_event_type(kz_call_event:doc()) ->
+                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+get_event_type(CallEvt) ->
+    {Cat, Name} = kz_util:get_event_type(CallEvt),
+    {Cat, Name, kz_call_event:call_id(CallEvt)}.

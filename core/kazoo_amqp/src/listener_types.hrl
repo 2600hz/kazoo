@@ -6,7 +6,8 @@
 
 -type binding_module() :: atom() | kz_term:ne_binary().
 
--type binding_property() :: {'restrict_to', list()}.
+-type binding_property() :: {'restrict_to', list()} |
+                            {'callid', kz_term:ne_binary()}.
 -type binding_properties() :: [binding_property()].
 
 -type binding() :: {binding_module(), binding_properties()}.

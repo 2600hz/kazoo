@@ -323,9 +323,9 @@ rm_responder(Srv, Responder, Keys) ->
 
 -spec add_binding(kz_types:server_ref(), binding() | kz_term:ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) when is_list(Props)
-                                        ,(is_atom(Binding)
-                                          orelse is_binary(Binding)
-                                         ) ->
+                                        andalso (is_atom(Binding)
+                                                 orelse is_binary(Binding)
+                                                ) ->
     gen_server:cast(Srv, {'add_binding', kz_term:to_binary(Binding), Props});
 add_binding(Srv, Binding) when is_binary(Binding)
                                orelse is_atom(Binding) ->
