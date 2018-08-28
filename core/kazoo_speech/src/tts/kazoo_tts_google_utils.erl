@@ -70,9 +70,9 @@ getJson(#synthesisInput{}=Record) ->
         {'error', _Message} -> {'error', _Message};
         {'ok'} ->
             Proplist=props:filter_undefined(
-              [{<<"text">>, Record#synthesisInput.text}
-              ,{<<"ssml">>, Record#synthesisInput.ssml}
-              ]),
+                       [{<<"text">>, Record#synthesisInput.text}
+                       ,{<<"ssml">>, Record#synthesisInput.ssml}
+                       ]),
             Ret=kz_json:from_list(Proplist),
             Ret
     end;
@@ -81,10 +81,10 @@ getJson(#voiceSelectionParams{}=Record) ->
         {'error', _Message} -> {'error', _Message};
         {'ok'} ->
             Proplist=props:filter_undefined(
-              [{<<"languageCode">>, Record#voiceSelectionParams.languageCode}
-              ,{<<"name">>, Record#voiceSelectionParams.name}
-              ,{<<"ssmlGender">>, Record#voiceSelectionParams.ssmlGender}
-              ]),
+                       [{<<"languageCode">>, Record#voiceSelectionParams.languageCode}
+                       ,{<<"name">>, Record#voiceSelectionParams.name}
+                       ,{<<"ssmlGender">>, Record#voiceSelectionParams.ssmlGender}
+                       ]),
             kz_json:from_list(Proplist)
     end;
 getJson(#audioConfig{}=Record) ->
@@ -92,11 +92,11 @@ getJson(#audioConfig{}=Record) ->
         {'error', _Message} -> {'error', _Message};
         {'ok'} ->
             Proplist=props:filter_undefined(
-              [{<<"audioEncoding">>, Record#audioConfig.audioEncoding}
-              ,{<<"speakingRate">>, Record#audioConfig.speakingRate}
-              ,{<<"pitch">>, Record#audioConfig.pitch}
-              ,{<<"volumeGainDb">>, Record#audioConfig.volumeGainDb}
-              ,{<<"sampleRateHertz">>, Record#audioConfig.sampleRateHertz}
-              ]),
+                       [{<<"audioEncoding">>, Record#audioConfig.audioEncoding}
+                       ,{<<"speakingRate">>, Record#audioConfig.speakingRate}
+                       ,{<<"pitch">>, Record#audioConfig.pitch}
+                       ,{<<"volumeGainDb">>, Record#audioConfig.volumeGainDb}
+                       ,{<<"sampleRateHertz">>, Record#audioConfig.sampleRateHertz}
+                       ]),
             kz_json:from_list(Proplist)
     end.

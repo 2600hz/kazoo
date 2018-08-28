@@ -18,10 +18,10 @@ set_api_key(Key) ->
 
 -spec get_supported_voices() -> [voice_desc()].
 get_supported_voices() ->
-[#voice_desc{voice_name='en-US-Wavenet-C'
-    ,language_code='en-US'
-    ,gender='female'
-}].
+    [#voice_desc{voice_name='en-US-Wavenet-C'
+                ,language_code='en-US'
+                ,gender='female'
+                }].
 
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> create_resp().
 create(Text, Voice, Format, Options) ->
@@ -37,19 +37,20 @@ create(Text, Voice, Format, Options) ->
 
 -spec getMappedVoice(kz_term:ne_binary()) -> kz_term:api_binary().
 getMappedVoice(Voice) ->
-    case lists:keymember(Voice, #voiceDesc.name, ?GOOGLE_TTS_VOICE_MAPPINGS) orelse binary:match(Voice, <<"/">>) of
+    case lists:keymember(Voice, #voiceDesc.name, ?GOOGLE_TTS_VOICE_MAPPINGS)
+        orelse binary:match(Voice, <<"/">>) of
         true -> Voice;
         'nomatch' -> {'error'};
         _ ->
             [Gender, Language] = binary:split(kz_term:to_lower_binary(Voice), <<"/">>),
             VoiceFiltered = lists:filter(fun(VoiceDesc) ->
-                               case kz_term:to_lower_binary(VoiceDesc#voiceDesc.ssmlGender) == Gender andalso 
-                                  lists:filter(fun(LangCode) -> Language == kz_term:to_lower_binary(LangCode) end , VoiceDesc#voiceDesc.languageCodes) of
-                                   false -> false;
-                                   [] -> false;
-                                   [_] -> true
-                               end
-                            end, ?GOOGLE_TTS_VOICE_MAPPINGS),
+                                                 case kz_term:to_lower_binary(VoiceDesc#voiceDesc.ssmlGender) == Gender
+                                                     andalso lists:filter(fun(LangCode) -> Language == kz_term:to_lower_binary(LangCode) end , VoiceDesc#voiceDesc.languageCodes) of
+                                                     false -> false;
+                                                     [] -> false;
+                                                     [_] -> true
+                                                 end
+                                         end, ?GOOGLE_TTS_VOICE_MAPPINGS),
             case VoiceFiltered of
                 [] -> 'undefined';
                 [VoiceToReturn | _] -> VoiceToReturn#voiceDesc.name
@@ -64,7 +65,7 @@ make_request(Text, Voice, GoogleFormat, Options, EngineData) ->
     Headers = [{"Content-Type", "application/json; charset=UTF-8"}
               ,{"X-Goog-Api-Key", ?GOOGLE_TTS_KEY}
               ,{"User-Agent", kz_term:to_list(node())}
-    ],
+              ],
     VoiceDesc = lists:keyfind(Voice, #voiceDesc.name, ?GOOGLE_TTS_VOICE_MAPPINGS),
     [LanguageCode | _] = VoiceDesc#voiceDesc.languageCodes,
 
@@ -87,7 +88,7 @@ make_request(Text, Voice, GoogleFormat, Options, EngineData) ->
     end.
 
 -spec decode_responce(kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
-decode_responce(Content, EngineData) -> 
+decode_responce(Content, EngineData) ->
     {BinaryContent, NewRequestMeta} = decode_responce(Content, EngineData, []),
     ContentType = kz_json:get_binary_value(<<"content_type">>, NewRequestMeta),
     {BinaryContent, ContentType}.
@@ -98,7 +99,7 @@ decode_responce(Content, EngineData, RequestMeta) ->
     ContentType = kz_json:get_binary_value(<<"content_type">>, EngineData),
     NewRequestMeta = kz_json:set_value(<<"content_type">>, ContentType, RequestMeta),
     {base64:decode(Base64Result), NewRequestMeta}.
-    
+
 -spec create_response(kz_http:ret(), kz_json:object()) ->
                              kz_http:req_id() |
                              {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |

@@ -3541,8 +3541,8 @@
                     "description": "What TTS engine to use",
                     "enum": [
                         "flite",
-                        "ispeech",
                         "google",
+                        "ispeech",
                         "voicefabric"
                     ],
                     "type": "string"
@@ -32045,6 +32045,16 @@
                 "asr_url": {
                     "default": "https://speech.googleapis.com/v1/speech:recognize",
                     "description": "Google Cloud Speech API url",
+                    "type": "string"
+                },
+                "tts_api_key": {
+                    "default": "",
+                    "description": "speech google tts_api_key",
+                    "type": "string"
+                },
+                "tts_url": {
+                    "default": "https://texttospeech.googleapis.com/v1/text:synthesize",
+                    "description": "speech google tts_url",
                     "type": "string"
                 }
             },
