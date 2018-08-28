@@ -45,7 +45,7 @@ empty() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec create(kz_services:services(), kz_json:object()) -> kz_json:object().
+-spec create(kz_services:services(), kzd_service_plan:doc()) -> [kz_services_item:item()].
 create(Services, PlanJObj) ->
     lists:foldl(fun({CategoryName, ItemName}, Items) ->
                         ItemPlan = get_item_plan(PlanJObj, CategoryName, ItemName),
@@ -159,7 +159,7 @@ annotate(CurrentItems, [ProposedItem|ProposedItems], Reason, Items) ->
             annotate(RemainingCurrentItems, ProposedItems, Reason, [Item|Items])
     end.
 
--spec maybe_annotate(kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary(), kz_services_item:item()) -> kz_services_item:item().
+-spec maybe_annotate(kz_term:ne_binary(), kz_term:api_proplist(), kz_term:api_binary(), kz_services_item:item()) -> kz_services_item:item().
 maybe_annotate(_Type, [], _Reason, Item) -> Item;
 maybe_annotate(Type, Difference, Reason, Item) ->
     lager:debug("update ~s the item ~s/~s"

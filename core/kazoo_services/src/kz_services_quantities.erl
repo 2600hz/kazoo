@@ -296,15 +296,15 @@ calculate_updates(Services, JObj) ->
             end
     end.
 
--spec sum_updates(kz_json:objects(), kz_json:object()) -> kz_json:object().
+-spec sum_updates(kz_json:objects(), kz_term:proplist()) -> kz_json:object().
 sum_updates([], Updates) -> Updates;
 sum_updates([{Key, Value}|Props], Updates) ->
-    case proplists:get_value(Key, Updates) of
+    case props:get_value(Key, Updates) of
         'undefined' ->
             sum_updates(Props, [{Key, Value} | Updates]);
         CurrentValue ->
             Sum = Value + CurrentValue,
-            Update = [{Key, Sum} | proplists:delete(Key, Updates)],
+            Update = props:set_value(Key, Sum, Updates),
             sum_updates(Props, Update)
     end.
 
@@ -317,7 +317,7 @@ has_substitute_values([_|Updates]) -> has_substitute_values(Updates).
 substitute_values(Services, Updates) ->
     SubstituteValues = substitute_values(Services),
     lists:map(fun({Key, Value}=KV) ->
-                      case proplists:get_value(Value, SubstituteValues) of
+                      case props:get_value(Value, SubstituteValues) of
                           'undefined' -> KV;
                           Substitution -> {Key, Substitution}
                       end
@@ -533,7 +533,7 @@ compare_service_updates([], [], Updates) ->
 compare_service_updates([{K, V}|Current], [], Updates) ->
     compare_service_updates(Current, [], [{K, V * -1} | Updates]);
 compare_service_updates(Current, [{K, V}=KV|Proposed], Updates) ->
-    case proplists:get_value(K, Current) of
+    case props:get_value(K, Current) of
         'undefined' ->
             compare_service_updates(Current, Proposed, [KV|Updates]);
         CurrentValue ->
@@ -550,9 +550,9 @@ compare_service_updates(Current, [{K, V}=KV|Proposed], Updates) ->
 compare_serivce_update(Current, CurrentValue, Key, ProposedValue, Proposed, Updates) ->
     case ProposedValue - CurrentValue of
         0 ->
-            compare_service_updates(proplists:delete(Key, Current), Proposed, Updates);
+            compare_service_updates(props:delete(Key, Current), Proposed, Updates);
         Value ->
-            compare_service_updates(proplists:delete(Key, Current), Proposed, [{Key, Value}|Updates])
+            compare_service_updates(props:delete(Key, Current), Proposed, [{Key, Value}|Updates])
     end.
 
 %%------------------------------------------------------------------------------

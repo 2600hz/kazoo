@@ -114,10 +114,11 @@ do_ledgers_have_topup([Ledger|Ledgers]) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_topup(kz_term:api_binary() | kzd_accounts:doc()) ->
+-spec get_topup(kz_term:api_ne_binary() | kzd_accounts:doc()) ->
                        {'error', error()} |
                        {'ok', kz_currency:units(), kz_currency:units()}.
-get_topup(<<_/binary>> = Account) ->
+get_topup('undefined') -> {'error', 'topup_undefined'};
+get_topup(?NE_BINARY = Account) ->
     case kapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
         'false' -> {'error', 'topup_disabled'};
         'true' ->
@@ -125,14 +126,17 @@ get_topup(<<_/binary>> = Account) ->
                 {'error', _E}=Error ->
                     lager:error("could not open account ~s: ~p", [Account, _E]),
                     Error;
-                {'ok', AccountJObj} -> get_topup(AccountJObj)
+                {'ok', AccountJObj} -> get_account_topup(AccountJObj)
             end
-    end;
-get_topup('undefined') -> {'error', 'topup_undefined'};
-get_topup(JObj) ->
+    end.
+
+-spec get_account_topup(kzd_accounts:doc()) ->
+                               {'ok', kz_currency:units(), kz_currency:units()} |
+                               {'error', error()}.
+get_account_topup(AccountJObj) ->
     case
-        {kzd_accounts:topup_amount(JObj)
-        ,kzd_accounts:topup_threshold(JObj)
+        {kzd_accounts:topup_amount(AccountJObj)
+        ,kzd_accounts:topup_threshold(AccountJObj)
         }
     of
         {'undefined', _} -> {'error', 'amount_undefined'};

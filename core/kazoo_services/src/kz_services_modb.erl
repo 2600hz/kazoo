@@ -38,7 +38,7 @@ modb(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
 -spec save_services_to_modb(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 save_services_to_modb(AccountMODb, ServicesJObj, Id) ->
     MODbDoc = update_pvts(AccountMODb, ServicesJObj, Id),
-    kazoo_modb:save_doc(AccountMODb, MODbDoc),
+    {'ok', _} = kazoo_modb:save_doc(AccountMODb, MODbDoc),
     'ok'.
 
 -spec maybe_save_to_previous_modb(kz_term:ne_binary(), kz_json:object()) -> 'ok'.

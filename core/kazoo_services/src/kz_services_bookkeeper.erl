@@ -84,7 +84,7 @@ store_audit_log(Services, Invoice, {'error', 'timeout'}) ->
                               ),
     store_audit_log_to_db(Services, Invoice, Result).
 
--spec store_audit_log_to_db(kz_services:services(), kz_services_invoice:invoice(), kz_json:object()) -> 'ok'.
+-spec store_audit_log_to_db(kz_services:services(), kz_services_invoice:invoice(), kz_json:object() | kz_json:objects()) -> 'ok'.
 store_audit_log_to_db(Services, Invoice, Result) ->
     AccountId = kz_services:account_id(Services),
     AuditJObj = kz_services:audit_log(Services),

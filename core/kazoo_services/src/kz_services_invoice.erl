@@ -129,7 +129,7 @@ plan_jobj(#invoice{plan_jobj=PlanJObj}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_plan_jobj(invoice(), kz_services_plan:plan()) -> invoice().
+-spec set_plan_jobj(invoice(), kzd_service_plan:doc()) -> invoice().
 set_plan_jobj(Invoice, PlanJObj) ->
     Invoice#invoice{plan_jobj=PlanJObj}.
 
