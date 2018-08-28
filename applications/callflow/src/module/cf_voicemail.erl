@@ -1240,8 +1240,7 @@ overwrite_temporary_unavailable_greeting(AttachmentName
 %% @doc Deletes current temporary greeting.
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_temporary_unavailable_greeting(mailbox(), kapps_call:call()) ->
-                                                   'ok' | mailbox().
+-spec delete_temporary_unavailable_greeting(mailbox(), kapps_call:call()) -> mailbox().
 delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=Box, _Call) ->
     Box;
 delete_temporary_unavailable_greeting(Box, Call) ->
