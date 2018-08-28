@@ -1140,10 +1140,7 @@ handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}
                        ,Selection
                        ) ->
     lager:info("caller chose to delete their temporary unavailable greeting"),
-    case delete_temporary_unavailable_greeting(Box, Call) of
-        'ok' -> 'ok';
-        Box1 -> config_menu(Box1, Call)
-    end;
+    delete_temporary_unavailable_greeting(Box, Call);
 handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
                        ,_Call
                        ,_Loop
@@ -1235,10 +1232,9 @@ overwrite_temporary_unavailable_greeting(AttachmentName
 %% @doc Deletes current temporary greeting.
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_temporary_unavailable_greeting(mailbox(), kapps_call:call()) ->
-                                                   'ok' | mailbox().
-delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=_Box, _Call) ->
-    'ok';
+-spec delete_temporary_unavailable_greeting(mailbox(), kapps_call:call()) -> mailbox().
+delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=Box, _Call) ->
+    Box;
 delete_temporary_unavailable_greeting(Box, Call) ->
     'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'null', Box, Call),
     _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
