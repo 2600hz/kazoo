@@ -250,6 +250,7 @@ pages:
     - 'Menu (IVR)': 'applications/callflow/doc/menu.md'
     - 'Custom Webhook': 'applications/callflow/doc/webhook.md'
     - 'Channel Move': 'applications/callflow/doc/move.md'
+    - 'Transfer': 'applications/callflow/doc/transfer.md'
     - 'Sleep': 'applications/callflow/doc/sleep.md'
     - 'After Bridge': 'applications/callflow/doc/after_bridge.md'
     - 'Set': 'applications/callflow/doc/set.md'

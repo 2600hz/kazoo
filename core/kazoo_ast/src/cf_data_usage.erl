@@ -482,6 +482,7 @@ arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
     {M, F, length(As)};
+arg_to_key(?FUN_ARGS(_F, _As)) -> 'undefined';
 arg_to_key(?VAR(_Arg)) -> 'undefined';
 arg_to_key(?INTEGER(I)) -> I;
 arg_to_key(?FLOAT(F)) -> F;
