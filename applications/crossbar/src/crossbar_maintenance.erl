@@ -613,20 +613,26 @@ validate_user(JObj, Context) ->
 -spec create_account(cb_context:context()) -> {'ok', cb_context:context()}.
 create_account(Context) ->
     Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.accounts">>, [Context]),
+    AccountId = cb_context:account_id(Context1),
+    AccountDb = cb_context:account_db(Context1),
     case cb_context:resp_status(Context1) of
-        'success' ->
+        'success' when AccountId =/= 'undefined' ->
             io:format("created new account '~s' in db '~s'~n"
-                     ,[cb_context:account_id(Context1)
-                      ,cb_context:account_db(Context1)
-                      ]
+                     ,[AccountId, AccountDb]
                      ),
             {'ok', Context1};
+        'success' ->
+            AccountIdFromDb = kz_util:format_account_id(AccountDb),
+            io:format("created new account '~s' in db '~s'~n"
+                     ,[AccountIdFromDb, AccountDb]
+                     ),
+            {'ok', cb_context:set_account_id(Context1, AccountIdFromDb)};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
-            AccountId = kz_doc:id(cb_context:req_data(Context)),
-            kz_datamgr:db_delete(kz_util:format_account_db(AccountId)),
+            DocAccountId = kz_doc:id(cb_context:req_data(Context)),
+            kz_datamgr:db_delete(kz_util:format_account_db(DocAccountId)),
 
-            io:format("failed to create the account: ~p ~s", [_Code, _Msg]),
+            io:format("failed to create the account ~s: ~p ~s", [DocAccountId, _Code, _Msg]),
             throw(Errors)
     end.
 
@@ -1322,6 +1328,8 @@ db_init() ->
     _ = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, ?APP, <<"views/pending_notify.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, ?APP, <<"views/webhooks.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, <<"views/resources.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),
+
     _ = kz_datamgr:register_view('ratedeck', 'crossbar', <<"views/rates.json">>),
     kz_datamgr:enable_change_notice(),
     lager:debug("database views updated").
