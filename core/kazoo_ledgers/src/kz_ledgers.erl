@@ -107,6 +107,11 @@ get_sources_total(Account, Options) ->
             {'error', 'missing_ledgers'};
         {'ok', JObjs} ->
             sum_sources(Account, Options, JObjs);
+        {'error', 'db_not_found'}=Error ->
+            lager:info("unable to get balance for ~s, database does not exist (~p)"
+                      ,[Account, ViewOptions]
+                      ),
+            Error;
         {'error', _Reason} = Error ->
             {DefaultYear, DefaultMonth, _} = erlang:date(),
             Year = props:get_value('year', Options, DefaultYear),
