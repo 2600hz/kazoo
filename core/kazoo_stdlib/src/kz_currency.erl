@@ -190,8 +190,8 @@ rollup(Account, Year, Month) ->
 
 -spec rollup(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), units()) ->
                     available_units_return().
-rollup(Account, Year, Month, Account) ->
-    kz_ledgers:rollup(Account, Year, Month, Account).
+rollup(Account, Year, Month, Units) ->
+    kz_ledgers:rollup(Account, Year, Month, Units).
 
 %%------------------------------------------------------------------------------
 %% @doc
