@@ -628,10 +628,17 @@ fetch(Account=?NE_BINARY, Options) ->
                end,
     handle_fetch_options(setters(Setters), Options).
 
--spec create(kz_term:ne_binary()) -> kz_json:object().
+-spec create(kz_term:ne_binary()) -> kz_json:api_object().
 create(AccountId) ->
-    lager:debug("creating new services doc for ~s", [AccountId]),
-    {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
+    lager:debug("trying to create new services doc for ~s", [AccountId]),
+    create(AccountId, kzd_accounts:fetch(AccountId)).
+
+-spec create(kz_term:ne_binary(), {'error', 'not_found'} | {'ok', kz_json:object()}) ->
+                    kz_json:api_object().
+create(_AccountId, {'error', 'not_found'}) ->
+    lager:error("failed to find account database for ~s", [_AccountId]),
+    'undefined';
+create(AccountId, {'ok', AccountJObj}) ->
     ResellerId = kz_services_reseller:find_id(AccountId),
     BaseJObj = kz_doc:update_pvt_parameters(kz_json:new()
                                            ,kz_util:format_account_db(AccountId)
@@ -868,6 +875,8 @@ save_services_jobj(Services, ProposedJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete(services()) -> services().
+delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    delete(fetch(AccountId));
 delete(#kz_services{}=Services) ->
     %% TODO: cancel services with all bookkeepers...
     {'ok', _} = kz_datamgr:del_doc(?KZ_SERVICES_DB, services_jobj(Services)),
