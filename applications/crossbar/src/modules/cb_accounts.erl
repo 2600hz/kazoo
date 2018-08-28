@@ -28,6 +28,8 @@
         ,is_unique_account_name/2
         ]).
 
+-export([delete_account/1]).
+
 %% needed for API docs in cb_api_endpoints
 -export([allowed_methods_on_account/2]).
 
@@ -318,6 +320,8 @@ put(Context) ->
 put(Context, PathAccountId) ->
     JObj = cb_context:doc(Context),
     NewAccountId = kz_doc:id(JObj, kz_datamgr:get_uuid()),
+
+    lager:info("creating new account with id ~s", [NewAccountId]),
     try create_new_account_db(prepare_context(NewAccountId, Context)) of
         C ->
             Tree = kzd_accounts:tree(JObj),
@@ -364,6 +368,19 @@ put(Context, AccountId, ?RESELLER) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec delete_account(kz_term:ne_binary()) -> 'ok' | 'error'.
+delete_account(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    Context = prepare_context(AccountId, cb_context:new()),
+    lager:info("attempting to delete ~s(~s)", [cb_context:account_id(Context)
+                                              ,cb_context:account_db(Context)
+                                              ]),
+    Context1 = delete(Context, AccountId),
+    case cb_context:resp_status(Context1) of
+        'success' -> lager:info("deleted account ~s", [AccountId]);
+        _Resp ->
+            lager:info("failed to delete account ~s", [AccountId]),
+            'error'
+    end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
@@ -1461,10 +1478,11 @@ notify_new_account(Context, _AuthDoc) ->
 %%------------------------------------------------------------------------------
 -spec delete_remove_services(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_services(Context) ->
-    case kz_services:delete(cb_context:account_id(Context)) of
-        {'ok', _} -> delete_free_numbers(Context);
-        _Err ->
-            lager:error("failed to delete services: ~p", [_Err]),
+    try kz_services:delete(cb_context:account_id(Context)) of
+        _S -> delete_free_numbers(Context)
+    catch
+        _E:_R ->
+            lager:error("failed to delete services: ~s: ~p", [_E, _R]),
             crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
     end.
 
