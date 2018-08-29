@@ -318,7 +318,7 @@ set_bookkeeper_vendor_id(Transaction, VendorId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper_results(transaction()) -> kz_term:api_binary().
+-spec bookkeeper_results(transaction()) -> kz_json:object().
 bookkeeper_results(#transaction{bookkeeper_results=Results}) ->
     Results.
 
