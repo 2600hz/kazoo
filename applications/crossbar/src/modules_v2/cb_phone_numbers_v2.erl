@@ -1041,7 +1041,7 @@ has_tokens(Context, Count) ->
             'false'
     end.
 
--spec default_knm_options(cb_context:context()) -> kz_term:proplist().
+-spec default_knm_options(cb_context:context()) -> knm_number_options:option().
 default_knm_options(Context) ->
     [{'crossbar', [{'services', crossbar_services:fetch(Context)}
                   ,{'account_id', cb_context:account_id(Context)}
