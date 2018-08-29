@@ -38,7 +38,7 @@ validate_request(JObj) ->
     Publisher = fun(P) -> kapi_bookkeepers:publish_sale_resp(ServerId, P) end,
     kz_amqp_worker:cast(Resp, Publisher).
 
--spec do_request(kz_term:ne_binary(), kz_currency:dollars()) -> 'ok'.
+-spec do_request(kz_term:ne_binary(), kz_currency:dollars()) -> kz_term:proplist().
 do_request(AccountId, DollarAmount) ->
     try braintree_transaction:quick_sale(AccountId, DollarAmount) of
         Transaction ->
