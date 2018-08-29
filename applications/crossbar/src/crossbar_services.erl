@@ -88,7 +88,7 @@ update_subscriptions(Context, CurrentJObj, ProposedJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec reconcile(kz_term:ne_binary()) -> 'ok'.
+-spec reconcile(kz_term:ne_binary() | cb_context:context()) -> 'ok' | kz_services:services().
 reconcile(Account=?NE_BINARY) ->
     kz_services:reconcile(Account);
 reconcile(Context) ->
