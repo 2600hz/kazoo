@@ -1099,7 +1099,11 @@ maybe_privacy_cid(#clid{caller_name=CallerName
     case kz_privacy:maybe_cid_privacy(kapps_call:custom_channel_vars(Call), {CallerName, CallerNumber}) of
         {CallerName, CallerNumber} -> Clid;
         %% Ensure prepend is applied after privacy
-        {Name, Number} -> kz_attributes:maybe_prefix_cid(Name, Number, 'false', Type, Call)
+        {Name, Number} ->
+            {NewName, NewNumber} = kz_attributes:maybe_prefix_cid(Name, Number, 'false', Type, Call),
+            Clid#clid{caller_number=NewNumber
+                     ,caller_name=NewName
+                     }
     end.
 
 -spec create_sip_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
