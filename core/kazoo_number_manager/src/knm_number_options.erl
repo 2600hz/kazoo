@@ -44,12 +44,13 @@
 -type option() :: {'assign_to', kz_term:ne_binary()} |
                   {'auth_by', kz_term:ne_binary()} |
                   {'batch_run', boolean()} |
+                  {'crossbar', kz_term:proplist()} |
+                  {'dry_run', boolean()} |
                   {'mdn_run', boolean()} |
                   {'module_name', kz_term:ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
-                  {'state', kz_term:ne_binary()} |
-                  {'crossbar', kz_term:proplist()}.
+                  {'state', kz_term:ne_binary()}.
 
 -type options() :: [option()].
 

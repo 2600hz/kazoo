@@ -139,30 +139,30 @@ find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
 
 find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
     <<_:1/binary, Wildcard/binary>> = Prefix,
-    Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
-               "&enableTNDetail=true&quantity=", quantity_uri_param(Quantity)
+    Params = ["tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
+              "&enableTNDetail=true&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Num, Params),
     process_tollfree_search_response(Result, Options);
 
 find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
-    Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
-               "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
+    Params = ["tollFreeWildCardPattern=", binary_to_list(Prefix),
+              "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Num, Params),
     process_tollfree_search_response(Result, Options);
 
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
-    Params = [ "areaCode=", binary_to_list(NPA)
-             , "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
+    Params = ["areaCode=", binary_to_list(NPA)
+             ,"&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(NPA, Params),
     process_search_response(Result, Options);
 
 find_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_binary:truncate_right(Search, 6),
-    Params = [ "npaNxx=", binary_to_list(NpaNxx)
-             , "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
+    Params = ["npaNxx=", binary_to_list(NpaNxx)
+             ,"&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Search, Params),
     process_search_response(Result, Options).
@@ -226,7 +226,7 @@ acquire_number(Number) ->
             end
     end.
 
--spec check_order(kz_term:api_binary(), kz_term:api_binary(), kz_types:xml_el(), knm_number:knm_number(), knm_number:knm_number()) -> knm_number:knm_number().
+-spec check_order(kz_term:api_binary(), kz_term:ne_binary(), kz_types:xml_el(), knm_phone_number:knm_phone_number(), knm_number:knm_number()) -> knm_number:knm_number().
 check_order(OrderId, <<"RECEIVED">>, _Response, PhoneNumber, Number) ->
     timer:sleep(?BW2_ORDER_POLL_INTERVAL),
     Url = ["orders/", kz_term:to_list(OrderId)],
@@ -253,8 +253,7 @@ check_order(_OrderId, <<"FAILED">>, _Response, PhoneNumber, _Number) ->
     knm_errors:by_carrier(?MODULE, Error, Num);
 
 check_order(_OrderId, OrderStatus, _Response, PhoneNumber, _Number) ->
-    Reason = OrderStatus,
-    Error = <<"Unable to acquire number: ", (kz_term:to_binary(Reason))/binary>>,
+    Error = <<"Unable to acquire number: ", (kz_term:to_binary(OrderStatus))/binary>>,
     Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
     knm_errors:by_carrier(?MODULE, Error, Num).
 
