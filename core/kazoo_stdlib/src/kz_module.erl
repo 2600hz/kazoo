@@ -9,10 +9,8 @@
 -export([ensure_loaded/1]).
 -export([application_integrations/1]).
 
--type integration() :: {module(), module(), function()} |
-                       {kz_term:ne_binary(), module(), function()} |
-                       {module(), module(), function(), boolean()} |
-                       {kz_term:ne_binary(), module(), function(), boolean()} |
+-type integration() :: {kz_term:ne_binary() | module(), module(), atom()} |
+                       {kz_term:ne_binary() | module(), module(), atom(), boolean()} |
                        module().
 -type integrations() :: [integration()].
 -export_type([integration/0
