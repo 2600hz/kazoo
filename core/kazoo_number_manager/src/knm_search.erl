@@ -315,7 +315,7 @@ create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
                                  ]),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
--spec create_discovery(kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
+-spec create_discovery(kz_json:object(), knm_number_options:options()) -> knm_number:knm_number().
 create_discovery(JObj, Options) ->
     PhoneNumber = knm_phone_number:from_json_with_options(JObj, Options),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
@@ -410,7 +410,7 @@ local_discovery(Num, Options) ->
     end.
 -endif.
 
--spec remote_discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec remote_discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
 remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.

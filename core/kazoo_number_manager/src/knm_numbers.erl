@@ -462,7 +462,9 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 %%% Internal functions
 %%%=============================================================================
 
--type reason_t() :: atom() | fun((num())-> knm_errors:error()).
+-type reason_t() :: atom() |
+                    fun((num()) -> knm_errors:error()) |
+                    knm_errors:error().
 
 -spec new(knm_number_options:options(), nums()) -> t().
 new(Options, ToDos) -> new(Options, ToDos, []).
@@ -782,8 +784,7 @@ to_reserved(T) ->
          ,fun save_numbers/1
          ]).
 
--spec fail_if_assign_to_is_not_an_account_id(t()) -> t();
-                                            (t_pn()) -> t_pn().
+-spec fail_if_assign_to_is_not_an_account_id(t() | t_pn()) -> t() | t_pn().
 fail_if_assign_to_is_not_an_account_id(T=#{'todo' := NsOrPNs, 'options' := Options}) ->
     case knm_number_options:assign_to(Options) of
         ?MATCH_ACCOUNT_RAW(_) -> ok(NsOrPNs, T);

@@ -776,7 +776,7 @@ from_json_with_options(JObj, Options)
               ],
     {'ok', PN} = setters(from_json(JObj), Updates),
     PN;
-from_json_with_options(JObj, PN) ->
+from_json_with_options(JObj, #knm_phone_number{}=PN) ->
     Options = [{'dry_run', dry_run(PN)}
               ,{'batch_run', batch_run(PN)}
               ,{'mdn_run', mdn_run(PN)}
@@ -1364,7 +1364,7 @@ is_dirty(#knm_phone_number{is_dirty = IsDirty}) -> IsDirty.
 
 -ifdef(TEST).
 -spec set_is_dirty(knm_phone_number(), boolean()) -> knm_phone_number().
-set_is_dirty(PN, IsDirty=false) -> PN#knm_phone_number{is_dirty = IsDirty}.
+set_is_dirty(PN, IsDirty='false') -> PN#knm_phone_number{is_dirty = IsDirty}.
 -endif.
 
 %%------------------------------------------------------------------------------
