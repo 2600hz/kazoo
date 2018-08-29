@@ -1699,7 +1699,7 @@ get_mailbox_doc(Db, Id, Data, Call) ->
     case kz_term:is_empty(Id) of
         'false' ->
             lager:info("opening ~s", [Id]),
-            kz_datamgr:open_doc(Db, Id);
+            maybe_pvt_deleted(kz_datamgr:open_doc(Db, Id));
         'true' when not CGIsEmpty ->
             lager:info("capture group not empty: ~s", [CaptureGroup]),
             Opts = [{'key', CaptureGroup}
@@ -1714,6 +1714,21 @@ get_mailbox_doc(Db, Id, Data, Call) ->
         'true' ->
             get_user_mailbox_doc(Data, Call)
     end.
+
+-spec maybe_pvt_deleted({'ok', kz_json:object()}|{'error', any()}) ->
+                               {'ok', kz_json:object()} | {'error',  any()}.
+maybe_pvt_deleted({'error', _}=Error) ->
+    Error;
+maybe_pvt_deleted({'ok', Doc}=Ok) ->
+    case kz_json:get_boolean_value(<<"pvt_deleted">>, Doc) of
+        'true' ->
+            lager:info("tried to access a voicemail box document that is deleted"),
+            {'error', "pvt_deleted voicemail box" };
+        _ -> Ok
+    end.
+
+
+
 
 -spec get_user_mailbox_doc(kz_json:object(), kapps_call:call()) ->
                                   {'ok', kz_json:object()} |
