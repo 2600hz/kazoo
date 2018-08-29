@@ -802,7 +802,7 @@ is_phone_number(_) -> 'false'.
 
 setters(T0, Routines) when is_map(T0) ->
     setters_collection(T0, Routines);
-setters(PN, Routines) ->
+setters(#knm_phone_number{}=PN, Routines) ->
     setters_pn(PN, Routines).
 
 -spec setters_pn(knm_phone_number(), set_functions()) -> knm_phone_number_return().

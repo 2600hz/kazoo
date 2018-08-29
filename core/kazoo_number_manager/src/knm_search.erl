@@ -302,7 +302,8 @@ next(Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -ifndef(TEST).
--spec create_discovery(kz_term:ne_binary(), module(), kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
+-spec create_discovery(kz_term:ne_binary(), module(), kz_json:object(), knm_number_options:options()) ->
+                              knm_number:knm_number().
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
               ,{'module_name', kz_term:to_binary(Carrier)}
@@ -390,14 +391,14 @@ is_local(QID) ->
 discovery(Num) ->
     discovery(Num, []).
 
--spec discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
 discovery(Num, Options) ->
     case local_discovery(Num, Options) of
         {'ok', _}=OK -> OK;
         {'error', 'not_found'} -> remote_discovery(Num, Options)
     end.
 
--spec local_discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec local_discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
 local_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
