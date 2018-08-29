@@ -52,8 +52,14 @@
 -type oks() :: [ok()].
 -type ko() :: knm_errors:error() | atom().
 -type kos() :: #{num() => ko()}.
+
+-type quotes() :: kz_json:api_object().
+
 -type ret() :: #{'ok' => oks()
                 ,'ko' => kos()
+                ,'todo' => nums() | oks()
+                ,'quotes' => quotes()
+                ,'options' => options()
                 }.
 
 -export_type([ret/0
@@ -68,6 +74,7 @@
                         ,'ok' => OKs
                         ,'ko' => kos()
                         ,'options' => options()
+                        ,'quotes' => quotes()
                         }.
 
 -type t_pn() :: t(knm_phone_number:knm_phone_number()).
@@ -268,7 +275,7 @@ move(Nums, MoveTo) ->
 
 -spec move(kz_term:ne_binaries(), kz_term:ne_binary(), knm_number_options:options()) -> ret().
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
-    Options = [{'assign_to', MoveTo} | Options0],
+    Options = props:set_value('assign_to', MoveTo, Options0),
     {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
     Updates = knm_number_options:to_phone_number_setters(Options0),
     TUpdated = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound),
@@ -482,8 +489,7 @@ new(Options, ToDos, KOs, Reason) ->
 %% Exported ONLY for inside-app use.
 %% @end
 %%------------------------------------------------------------------------------
--spec pipe(t(), appliers()) -> t();
-          (t_pn(), appliers(t_pn())) -> t_pn().
+-spec pipe(t() | t_pn(), appliers() | appliers(t_pn())) -> t() | t_pn().
 pipe(T, []) -> T;
 pipe(T=#{'todo' := [], 'ok' := []}, _) -> T;
 pipe(T=#{'todo' := [], 'ok' := OK}, Fs) ->
@@ -685,7 +691,7 @@ dry_run_services(T=#{todo := Numbers}, CrossbarOptions) ->
         'false' -> ok(Numbers, T);
         'true' ->
             JObj = kz_services_invoices:public_json(Quotes),
-            ok(Numbers, T#{quotes => JObj})
+            ok(Numbers, T#{'quotes' => JObj})
     end.
 
 -spec services_group_numbers(knm_number:knm_numbers()) -> kz_json:object().
@@ -713,7 +719,7 @@ services_group_numbers([Number|Numbers], Updates) ->
                                ),
     services_group_numbers(Numbers, UpdatedGroups).
 
--spec services_group_number(knm_number:knm_number(), kz_term:api_binary(), kz_term:api_binary()) -> kz_term:proplist().
+-spec services_group_number(knm_phone_number:knm_phone_number(), kz_term:api_binary(), kz_term:api_binary()) -> kz_term:proplist().
 services_group_number(_PhoneNumber, 'undefined', 'undefined') -> [];
 services_group_number(PhoneNumber, 'undefined', PrevAssignedTo) ->
     ProposedJObj = kz_json:new(),

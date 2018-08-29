@@ -78,23 +78,22 @@ default() ->
 
 -spec mdn_options() -> options().
 mdn_options() ->
-    [{'mdn_run', 'true'}
-     |default()
-    ].
+    props:set_value('mdn_run', 'true', default()).
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
 to_phone_number_setters(Options) ->
-    [case Option of
-         'public_fields' ->
-             {fun knm_phone_number:reset_doc/2, Value};
-         _ ->
-             FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
-             {fun knm_phone_number:FName/2, Value}
-     end
+    [{setter_fun(Option), Value}
      || {Option, Value} <- kz_util:uniq(Options)
             ,is_atom(Option)
             ,Option =/= 'crossbar'
     ].
+
+-spec setter_fun(atom()) -> fun().
+setter_fun('public_fields') ->
+    fun knm_phone_number:reset_doc/2;
+setter_fun(Option) ->
+    FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
+    fun knm_phone_number:FName/2.
 
 -spec dry_run(options()) -> boolean().
 dry_run(Options) ->

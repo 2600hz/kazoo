@@ -60,25 +60,30 @@
 -type lookup_account_return() :: {'ok', kz_term:ne_binary(), knm_number_options:extra_options()} |
                                  {'error', lookup_error()}.
 
--define(KNM_NUMBERS_CLAUSES(Num),
-        {'false', #{'ok' := [Number]}} ->
+-define(KNM_NUMBERS_CLAUSES(Num)
+       ,{'false', #{'ok' := [Number]}} ->
                {'ok', Number};
             {'true', #{'ok' := [_Number], 'quotes' := Quotes}} ->
                {'dry_run', Quotes};
             {_, #{'ko' := ErrorM}} ->
-               {'error', hd(maps:values(ErrorM))}).
+               {'error', hd(maps:values(ErrorM))}
+                   ).
 
--define(RUN_KNM_NUMBERS_FUN(F, Num, Options),
-        case {knm_number_options:dry_run(Options)
+-define(RUN_KNM_NUMBERS_FUN(F, Num, Options)
+       ,case {knm_number_options:dry_run(Options)
              ,knm_numbers:F([Num], Options)
              }
-        of ?KNM_NUMBERS_CLAUSES(Num) end).
+        of ?KNM_NUMBERS_CLAUSES(Num)
+            end
+       ).
 
 -define(RUN_KNM_NUMBERS_FUN_ARGS(F, Num, Arg2, Options),
         case {knm_number_options:dry_run(Options)
              ,knm_numbers:F([Num], Arg2, Options)
              }
-        of ?KNM_NUMBERS_CLAUSES(Num) end).
+        of ?KNM_NUMBERS_CLAUSES(Num)
+            end
+       ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -285,7 +290,7 @@ move(Num, MoveTo) ->
     move(Num, MoveTo, knm_number_options:default()).
 
 -spec move(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
-move(Num, MoveTo, Options) ->
+move(?NE_BINARY=Num, ?NE_BINARY=MoveTo, Options) ->
     ?RUN_KNM_NUMBERS_FUN_ARGS('move', Num, MoveTo, Options).
 
 %%------------------------------------------------------------------------------
