@@ -146,7 +146,7 @@ maybe_app_docs_from_services(AccountId, ResellerId) ->
             Apps
     end.
 
--spec app_docs_from_services(kz_term:ne_binary()) -> kz_term:api_object().
+-spec app_docs_from_services(kz_term:ne_binary()) -> kz_term:api_objects().
 app_docs_from_services(AccountId) ->
     ServicesApps = kz_services:apps(
                      kz_services:fetch(AccountId)
@@ -169,7 +169,7 @@ app_docs_from_services_fold(Id, ServicesApp, AppJObjs) ->
             maybe_append_app_doc(Vendor, Id, AppJObjs)
     end.
 
--spec maybe_append_app_doc(kz_term:api_binary(), kz_term:ne_binary(), kz_json:objects()) -> kz_term:api_object().
+-spec maybe_append_app_doc(kz_term:api_binary(), kz_term:ne_binary(), kz_json:objects()) -> kz_term:api_objects().
 maybe_append_app_doc(Vendor, Id, AppJObjs) ->
     case fetch_app_doc(Vendor, Id) of
         'undefined' -> AppJObjs;
