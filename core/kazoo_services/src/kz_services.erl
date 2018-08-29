@@ -917,8 +917,7 @@ reconcile(Account, AuditLog) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_services(services()) -> 'true';
-                 (any()) -> 'false'.
+-spec is_services(services() | any()) -> boolean().
 is_services(#kz_services{}) -> 'true';
 is_services(_) -> 'false'.
 

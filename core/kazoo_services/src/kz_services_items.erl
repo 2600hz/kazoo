@@ -226,14 +226,11 @@ difference(Item1, Item2, Routines) ->
                         end
                 end, [], Routines).
 
--spec difference_simple(Value, Value) -> 'undefined';
-                    (_, Value) -> Value.
+-spec difference_simple(any(), Value) -> 'undefined' | Value.
 difference_simple(Value, Value) -> 'undefined';
 difference_simple(_, Value) -> Value.
 
--spec difference_number(Value, Value) -> 'undefined';
-                    (kz_term:api_float(), kz_term:api_float()) -> float();
-                    (kz_term:api_integer(), kz_term:api_integer()) -> integer.
+-spec difference_number(kz_term:api_float() | integer(), kz_term:api_float() | integer()) -> kz_term:api_float() | integer().
 difference_number(Value, Value) -> 'undefined';
 difference_number('undefined', Value) ->
     difference_number(0, Value);
@@ -241,8 +238,7 @@ difference_number(Value, 'undefined') ->
     difference_number(Value, 0);
 difference_number(Value1, Value2) -> Value2 - Value1.
 
--spec difference_list(Value, Value) -> 'undefined';
-                  (kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:proplist().
+-spec difference_list(kz_term:api_ne_binaries(), kz_term:api_ne_binaries()) -> kz_term:proplist() | 'undefined'.
 difference_list(List, List) -> 'undefined';
 difference_list('undefined', List) ->
     difference_list([], List);
