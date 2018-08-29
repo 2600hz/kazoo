@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(knm_number_options).
 
--export([assign_to/1, assign_to/2
+-export([assign_to/1, assign_to/2, set_assign_to/2
         ,auth_by/1, auth_by/2
         ,dry_run/1, dry_run/2
         ,batch_run/1, batch_run/2
@@ -83,12 +83,12 @@ mdn_options() ->
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
 to_phone_number_setters(Options) ->
     [{setter_fun(Option), Value}
-     || {Option, Value} <- kz_util:uniq(Options)
-            ,is_atom(Option)
-            ,Option =/= 'crossbar'
+     || {Option, Value} <- kz_util:uniq(Options),
+        is_atom(Option),
+        Option =/= 'crossbar'
     ].
 
--spec setter_fun(atom()) -> fun().
+-spec setter_fun(atom()) -> knm_phone_number:set_function().
 setter_fun('public_fields') ->
     fun knm_phone_number:reset_doc/2;
 setter_fun(Option) ->
@@ -112,14 +112,14 @@ batch_run(Options) ->
 
 -spec batch_run(options(), Default) -> boolean() | Default.
 batch_run(Options, Default) ->
-    R = props:get_is_true(batch_run, Options, Default),
+    R = props:get_is_true('batch_run', Options, Default),
     _ = R
         andalso lager:debug("batch_run-ing btw"),
     R.
 
 -spec mdn_run(options()) -> boolean().
 mdn_run(Options) ->
-    R = props:get_is_true(mdn_run, Options, false),
+    R = props:get_is_true('mdn_run', Options, 'false'),
     _ = R
         andalso lager:debug("mdn_run-ing btw"),
     R.
@@ -131,6 +131,10 @@ assign_to(Options) ->
 -spec assign_to(options(), Default) -> kz_term:ne_binary() | Default.
 assign_to(Options, Default) ->
     props:get_binary_value('assign_to', Options, Default).
+
+-spec set_assign_to(options(), kz_term:ne_binary()) -> options().
+set_assign_to(Options, AssignTo) ->
+    props:set_value('assign_to', AssignTo, Options).
 
 -spec auth_by(options()) -> kz_term:api_binary().
 auth_by(Options) ->
@@ -162,7 +166,7 @@ crossbar(Options, Default) ->
 
 -spec ported_in(options()) -> boolean().
 ported_in(Options) ->
-    props:get_is_true('ported_in', Options, false).
+    props:get_is_true('ported_in', Options, 'false').
 
 -spec module_name(options()) -> kz_term:ne_binary().
 module_name(Options) ->
