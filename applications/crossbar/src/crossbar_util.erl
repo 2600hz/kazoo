@@ -116,7 +116,7 @@ response_400(Message, Data, Context) ->
 response_401(Context) ->
     response('error', <<"invalid credentials">>, 401, Context).
 
--spec response_402(kz_json:object(), cb_context:context()) ->
+-spec response_402(kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_402(Data, Context) ->
     create_response('error', <<"accept charges">>, 402, Data, Context).
