@@ -54,13 +54,13 @@ beam_ast(Beam) ->
     case beam_lib:chunks(Beam, ['abstract_code']) of
         {'ok', {Module, [{'abstract_code', AST}]}} ->
             {Module, AST};
-        {'error', 'beam_lib', {{'unknown_chunk', File, _}}} ->
+        {'error', 'beam_lib', {'unknown_chunk', File, _}} ->
             lager:info("unknown chunk in ~s, no ast", [File]),
             'undefined';
-        {'error', 'beam_lib', {{'key_missing_or_invalid', File, _Key}}} ->
+        {'error', 'beam_lib', {'key_missing_or_invalid', File, _Key}} ->
             lager:info("key ~s missing or invalid in ~s", [_Key, File]),
             'undefined';
-        {'error', 'beam_lib', {{'file_error', File, Posix}}} ->
+        {'error', 'beam_lib', {'file_error', File, Posix}} ->
             lager:info("file error ~p on ~s", [Posix, File]),
             'undefined';
         {'error', 'beam_lib', Error} ->
