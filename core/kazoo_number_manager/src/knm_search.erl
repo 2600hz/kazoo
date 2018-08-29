@@ -416,7 +416,7 @@ remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
 remote_discovery(Number, Options) ->
     Payload = [{<<"Number">>, Number}
-              ,{<<"Account-ID">>, account_id(Options)}
+              ,{<<"Account-ID">>, knm_number_options:account_id(Options)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call(Payload
@@ -444,6 +444,7 @@ handle_flush(JObj) ->
     QID = kapi_discovery:query_id(JObj),
     gen_listener:cast(?MODULE, {'reset_search',QID}).
 
+-spec handle_search(kz_json:object()) -> 'ok'.
 handle_search(JObj) ->
     'true' = kapi_discovery:req_v(JObj),
     handle_search(JObj, is_local(kapi_discovery:query_id(JObj))).
@@ -473,7 +474,7 @@ handle_search(JObj, 'true') ->
     Publisher = fun(P) -> kapi_discovery:publish_resp(kz_api:server_id(JObj), P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
-
+-spec handle_number(kz_json:object()) -> 'ok'.
 handle_number(JObj) ->
     'true' = kapi_discovery:number_req_v(JObj),
     Number = kapi_discovery:number(JObj),
