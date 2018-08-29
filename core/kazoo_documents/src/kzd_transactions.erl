@@ -235,7 +235,7 @@ set_account_name(Doc, AccountName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec unit_amount(doc()) -> kz_term:api_integer().
+-spec unit_amount(doc()) -> kz_currency:units() | 'undefined'.
 unit_amount(Doc) ->
     unit_amount(Doc, 'undefined').
 
@@ -247,7 +247,7 @@ unit_amount(Doc, Default) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_unit_amount(doc(), integer()) -> doc().
+-spec set_unit_amount(doc(), kz_currency:units()) -> doc().
 set_unit_amount(Doc, Amount) ->
     kz_json:set_value(?AMOUNT, Amount, Doc).
 
@@ -255,7 +255,7 @@ set_unit_amount(Doc, Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec dollar_amount(doc()) -> kz_term:api_integer().
+-spec dollar_amount(doc()) -> kz_currency:dollars() | 'undefined'.
 dollar_amount(Doc) ->
     dollar_amount(Doc, 'undefined').
 
@@ -268,7 +268,7 @@ dollar_amount(Doc, Default) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_dollar_amount(doc(), integer()) -> doc().
+-spec set_dollar_amount(doc(), kz_currency:dollars()) -> doc().
 set_dollar_amount(Doc, Amount) ->
     Units = kz_currency:dollars_to_units(Amount),
     kz_json:set_value(?AMOUNT, Units, Doc).

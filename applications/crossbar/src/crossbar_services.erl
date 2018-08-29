@@ -36,19 +36,19 @@ fetch(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_dry_run(cb_context:context(), kz_services_invoices:jobjs()) -> cb_context:context() | 'ok'.
+-spec maybe_dry_run(cb_context:context(), kz_services_invoices:jobjs()) -> cb_context:context().
 maybe_dry_run(Context, ProposedJObj) ->
     CurrentJObj = cb_context:fetch(Context, 'db_doc'),
     maybe_dry_run(Context, CurrentJObj, ProposedJObj).
 
--spec maybe_dry_run(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> cb_context:context() | 'ok'.
+-spec maybe_dry_run(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> cb_context:context().
 maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     case should_dry_run(Context) of
         'true' -> dry_run(Context, CurrentJObj, ProposedJObj);
-        'false' -> 'ok'
+        'false' -> Context
     end.
 
--spec dry_run(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> cb_context:context() | 'ok'.
+-spec dry_run(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> cb_context:context().
 dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
     Services = kz_services:set_updates(fetch(Context)
@@ -61,7 +61,7 @@ dry_run(Context, CurrentJObj, ProposedJObj) ->
         'true' ->
             JObj = kz_services_invoices:public_json(Quotes),
             crossbar_util:response_402(JObj, Context);
-        'false' -> 'ok'
+        'false' -> Context
     end.
 
 -spec should_dry_run(cb_context:context()) -> boolean().

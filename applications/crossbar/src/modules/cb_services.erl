@@ -59,10 +59,10 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%------------------------------------------------------------------------------
--spec authorize(cb_context:context(), path_token()) -> boolean().
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
 authorize(Context, _) -> is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec is_authorize(cb_context:context(), req_verb(), req_nouns()) -> boolean() | {'halt', cb_context:context()}.
+-spec is_authorize(cb_context:context(), req_verb(), req_nouns()) -> 'true'.
 is_authorize(_Context, ?HTTP_GET, [{<<"services">>, ?EDITABLE}]) ->
     'true';
 is_authorize(_Context, ?HTTP_GET, [{<<"services">>, ?QUOTE}]) ->
@@ -591,13 +591,13 @@ get_plan_ids(Context) ->
     Items = kz_json:get_value(<<"add">>, ReqData, []),
     get_plan_ids(Items, []).
 
--spec get_plan_ids(cb_context:context(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+-spec get_plan_ids(kz_term:ne_binaries() | kz_json:objects(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 get_plan_ids([], Ids) -> Ids;
 get_plan_ids([Item|Items], Ids) ->
     case kz_json:is_json_object(Item) of
         'false' -> get_plan_ids(Items, maybe_add_plan_id(Item, Ids));
         'true' ->
-            Id = kz_json:get_ne_binary_value(<<"id">>, Item),
+            Id = kz_doc:id(Item),
             get_plan_ids(Items, maybe_add_plan_id(Id, Ids))
     end.
 

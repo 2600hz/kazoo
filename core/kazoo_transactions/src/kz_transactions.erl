@@ -30,7 +30,7 @@ fetch(Account) ->
     fetch(Account, []).
 
 -spec fetch(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', transactions()} | {'error', any()}.
-fetch(Account, Options) ->
+fetch(?NE_BINARY=Account, Options) ->
     ViewOptions = [{'result_key', <<"doc">>}
                   ,'include_docs'
                   ,'missing_as_error'
@@ -45,7 +45,7 @@ fetch(Account, Options) ->
 -spec fetch(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                    {'ok', transactions()} |
                    {'error', any()}.
-fetch(Account, CreatedFrom, CreatedTo)
+fetch(?NE_BINARY=Account, CreatedFrom, CreatedTo)
   when is_integer(CreatedFrom), CreatedFrom > 0,
        is_integer(CreatedTo), CreatedTo > 0 ->
     MODbs = kazoo_modb:get_range(Account, CreatedFrom, CreatedTo),

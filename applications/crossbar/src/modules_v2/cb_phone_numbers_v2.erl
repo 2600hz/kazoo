@@ -972,7 +972,7 @@ reply_number_not_found(Context) ->
 -spec collection_process(cb_context:context(), kz_term:ne_binary() | http_method()) -> knm_numbers:ret().
 collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
-    Numbers = kz_json:get_value(<<"numbers">>, ReqData),
+    Numbers = kz_json:get_list_value(<<"numbers">>, ReqData),
     Context1 = cb_context:set_req_data(Context, kz_json:delete_key(<<"numbers">>, ReqData)),
     numbers_action(Context1, Action, Numbers).
 

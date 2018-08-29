@@ -90,8 +90,8 @@
 -define(STATUS_COMPLETED, <<"completed">>).
 -define(STATUS_FAILED, <<"failed">>).
 
--record(transaction, {account_id :: kz_term:ne_binary()
-                     ,account_name :: kz_term:ne_binary()
+-record(transaction, {account_id :: kz_term:api_ne_binary()
+                     ,account_name :: kz_term:api_ne_binary()
                      ,amount = 0 :: kz_currency:units()
                      ,description :: kz_term:api_binary()
                      ,executor_trigger :: kz_term:api_binary()
@@ -105,7 +105,7 @@
                      ,status = ?STATUS_PENDING :: kz_term:api_ne_binary()
                      ,transaction_type = kzd_transactions:type_sale() :: kz_term:ne_binary()
                      ,private_fields = kz_json:new() :: kz_json:object()
-                     ,modb :: kz_term:api_binary()
+                     ,modb :: kz_term:api_ne_binary()
                      }).
 
 -type transaction() :: #transaction{}.
@@ -179,7 +179,7 @@ set_account_name(Transaction, AccountName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec amount(transaction()) -> integer().
+-spec amount(transaction()) -> kz_currency:units().
 amount(Transaction) ->
     UnitAmount = unit_amount(Transaction),
     case transaction_type(Transaction) =:= kzd_transactions:type_refund() of
@@ -191,7 +191,7 @@ amount(Transaction) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec unit_amount(transaction()) -> integer().
+-spec unit_amount(transaction()) -> kz_currency:units().
 unit_amount(#transaction{amount=Amount}) ->
     abs(Amount).
 
@@ -199,7 +199,7 @@ unit_amount(#transaction{amount=Amount}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec dollar_amount(transaction()) -> integer().
+-spec dollar_amount(transaction()) -> kz_currency:dollars().
 dollar_amount(#transaction{amount=Amount}) ->
     kz_currency:units_to_dollars(Amount).
 
@@ -207,7 +207,7 @@ dollar_amount(#transaction{amount=Amount}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_unit_amount(transaction(), kz_term:ne_binary()) -> transaction().
+-spec set_unit_amount(transaction(), kz_currency:units()) -> transaction().
 set_unit_amount(Transaction, Amount) ->
     Transaction#transaction{amount=abs(Amount)}.
 
@@ -215,7 +215,7 @@ set_unit_amount(Transaction, Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_dollar_amount(transaction(), kz_term:ne_binary()) -> transaction().
+-spec set_dollar_amount(transaction(), kz_currency:dollars()) -> transaction().
 set_dollar_amount(Transaction, Amount) ->
     Transaction#transaction{amount=kz_currency:dollars_to_units(Amount)}.
 
@@ -596,7 +596,8 @@ from_json(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> transaction().
+-spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', transaction()} |
+                                                         kz_datamgr:data_error().
 fetch(Account, ?MATCH_MODB_PREFIX(Year, Month, Id)) ->
     fetch(Account, Id, Year, Month).
 
@@ -652,12 +653,11 @@ save(Transaction, Account, Year, Month) ->
 save(Transaction) ->
     MODb = modb(Transaction),
     {AccountId, _Year, _Month} = kazoo_modb_util:split_account_mod(MODb),
-    Props =
-        props:filter_undefined(
-          [{<<"pvt_account_id">>, AccountId}]
-         ),
+    Props = [{<<"pvt_account_id">>, AccountId}],
+
     TransactionJObj = kz_json:set_values(Props, to_json(Transaction)),
     IsPending = status(Transaction) =:= ?STATUS_PENDING,
+
     case kazoo_modb:save_doc(MODb, TransactionJObj) of
         {'ok', SavedJObj} when IsPending ->
             lager:debug("created ~s transaction in ~s ~p-~p for $~w"
@@ -745,15 +745,17 @@ attempt_bookkeeper_refund(Transaction) ->
                                 ),
     handle_bookkeeper_result(Transaction, Result).
 
--spec handle_bookkeeper_result(transaction(), kz_json:object()) -> {'ok', transaction()} | {'error', any()}.
+-spec handle_bookkeeper_result(transaction(), kz_amqp_worker:request_return()) ->
+                                      {'ok', transaction()} |
+                                      {'error', any()}.
 handle_bookkeeper_result(Transaction, {'ok', Result}) ->
     RemoveKeys = [<<"Transaction-ID">>
                  ,<<"Transaction-DB">>
                  ],
     BookkeeperResult =
         kz_json:normalize(
-          kz_json:delete_keys(RemoveKeys,
-                              kz_api:remove_defaults(Result)
+          kz_json:delete_keys(RemoveKeys
+                              ,kz_api:remove_defaults(Result)
                              )
          ),
     case kz_json:get_ne_binary_value(<<"Status">>, Result, <<"fatal">>) of

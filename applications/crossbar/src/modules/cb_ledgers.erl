@@ -288,14 +288,14 @@ process_action(Context, ?DEBIT, Ledger) ->
             maybe_impact_reseller(Context, SavedLedger)
     end.
 
--spec maybe_impact_reseller(cb_context:context(), kz_json:object()) -> cb_context:context().
+-spec maybe_impact_reseller(cb_context:context(), kz_ledger:ledger()) -> cb_context:context().
 maybe_impact_reseller(Context, Ledger) ->
     ResellerId = cb_context:reseller_id(Context),
     ImpactReseller = kz_json:is_true(<<"impact_reseller">>, cb_context:req_json(Context))
         andalso ResellerId =/= cb_context:account_id(Context),
     maybe_impact_reseller(Context, Ledger, ImpactReseller, ResellerId).
 
--spec maybe_impact_reseller(cb_context:context(), kz_json:object(), boolean(), kz_term:api_binary()) -> cb_context:context().
+-spec maybe_impact_reseller(cb_context:context(), kz_ledger:ledger(), boolean(), kz_term:api_binary()) -> cb_context:context().
 maybe_impact_reseller(Context, Ledger, 'false', _ResellerId) ->
     crossbar_util:response(kz_ledger:public_json(Ledger), Context);
 maybe_impact_reseller(Context, Ledger, 'true', 'undefined') ->
@@ -336,7 +336,7 @@ build_response(AccountId, AccountResponse, ResellerId, ResellerResponse) ->
 
 -spec build_error_response(cb_context:context(), kz_term:ne_binary(), any()) -> kz_json:object().
 build_error_response(Context, AccountId, Reason) ->
-    Context1 = crossbar_doc:handle_datamgr_errors(Reason, <<>>, Context),
+    Context1 = crossbar_doc:handle_datamgr_errors(Reason, 'undefined', Context),
     kz_json:from_list(
       [{<<"error">>, cb_context:resp_data(Context1)}
       ,{<<"available_dollars">>, kz_currency:available_dollars(AccountId, 0)}

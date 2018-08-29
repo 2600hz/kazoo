@@ -30,14 +30,14 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec should_topup(kz_term:ne_binary()) -> boolean().
-should_topup(AccountId) ->
+should_topup(?NE_BINARY=AccountId) ->
     case kz_currency:available_units(AccountId) of
         {'ok', AvailableUnits} -> should_topup(AccountId, AvailableUnits);
         {'error', _} -> 'false'
     end.
 
 -spec should_topup(kz_term:ne_binary(), kz_currency:units()) -> boolean().
-should_topup(AccountId, AvailableUnits) ->
+should_topup(?NE_BINARY=AccountId, AvailableUnits) ->
     case get_topup(AccountId) of
         {'error', _} -> 'false';
         {'ok', _ReplinishUnits, ThresholdUnits} ->

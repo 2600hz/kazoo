@@ -884,7 +884,7 @@ save_services_jobj(Services, ProposedJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(services()) -> services().
+-spec delete(kz_term:ne_binary() | services()) -> services().
 delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     delete(fetch(AccountId));
 delete(#kz_services{}=Services) ->
