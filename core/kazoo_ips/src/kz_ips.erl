@@ -82,7 +82,7 @@ assigned(Account) ->
             Else
     end.
 
--spec fetch_assigned(kz_term:ne_binary()) ->
+-spec fetch_assigned(kz_datamgr:view_options()) ->
                             {'ok', kz_json:objects()} |
                             {'error', any()}.
 fetch_assigned(ViewOptions) ->
