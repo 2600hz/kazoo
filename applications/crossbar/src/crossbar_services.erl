@@ -88,7 +88,7 @@ update_subscriptions(Context, CurrentJObj, ProposedJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec reconcile(kz_term:ne_binary() | cb_context:context()) -> 'ok' | kz_services:services().
+-spec reconcile(kz_term:ne_binary() | cb_context:context()) -> kz_services:services().
 reconcile(Account=?NE_BINARY) ->
     kz_services:reconcile(Account);
 reconcile(Context) ->
@@ -100,7 +100,7 @@ reconcile(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec audit_log(cb_context:context()) -> kz_term:proplist().
+-spec audit_log(cb_context:context()) -> kz_json:object().
 audit_log(Context) ->
     kz_json:from_list_recursive(
       [{<<"crossbar_request">>, 'true'}
