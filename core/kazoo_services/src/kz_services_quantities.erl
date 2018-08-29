@@ -21,7 +21,7 @@
 
 -include("services.hrl").
 
--type billables() :: kz_json:api_object() | kz_json:objects().
+-type billables() :: kz_json:object() | kz_json:objects() | 'undefined'.
 -type quantity_kv() :: {kz_term:ne_binaries(), integer()}.
 -type quantities_prop() :: [quantity_kv()].
 -export_type([quantities_prop/0
@@ -296,7 +296,7 @@ calculate_updates(Services, JObj) ->
             end
     end.
 
--spec sum_updates(kz_json:objects(), kz_term:proplist()) -> kz_json:object().
+-spec sum_updates(kz_term:proplist(), kz_term:proplist()) -> kz_json:object().
 sum_updates([], Updates) -> Updates;
 sum_updates([{Key, Value}|Props], Updates) ->
     case props:get_value(Key, Updates) of
