@@ -569,13 +569,13 @@ save(Context, [], _Options) ->
 save(Context, [_|_]=JObjs, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
     case crossbar_services:maybe_dry_run(Context, JObjs0) of
-        'ok' -> save_jobjs(Context, JObjs0, Options);
+        Context -> save_jobjs(Context, JObjs0, Options);
         Else -> Else
     end;
 save(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case crossbar_services:maybe_dry_run(Context, JObj0) of
-        'ok' -> save_jobj(Context, JObj0, Options);
+        Context -> save_jobj(Context, JObj0, Options);
         Else -> Else
     end.
 
