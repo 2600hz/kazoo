@@ -160,9 +160,11 @@ directory_start(Call, State, CurrUsers) ->
 -spec directory_start(kapps_call:call(), directory(), directory_users(), non_neg_integer()) -> 'ok'.
 directory_start(Call, _State, _CurrUsers, 0) ->
     lager:error("maximum try to collect digits"),
-    kapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}
-                                   ,{'prompt', ?PROMPT_NO_RESULTS_FOUND}
-                                   ], Call),
+    _NoopId = kapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}
+                                             ,{'prompt', ?PROMPT_NO_RESULTS_FOUND}
+                                             ]
+                                            ,Call
+                                            ),
     cf_exe:stop(Call);
 directory_start(Call, State, CurrUsers, Loop) ->
     _ = kapps_call_command:flush_dtmf(Call),
@@ -181,7 +183,7 @@ collect_digits(Call, State, CurrUsers, DTMF) ->
             lager:error("failed to collect digits: ~p", [_E]),
             cf_exe:stop(Call);
         {'ok', <<>>} ->
-            kapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
+            _NoopId = kapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
             directory_start(Call, State, CurrUsers);
         {'ok', <<"0">>} ->
             lager:info("caller chose to return to the main menu"),
@@ -260,11 +262,8 @@ maybe_match_user(Call, U, MatchNum, Loop) ->
                     cf_exe:stop(Call)
             end;
         {'ok', DTMF} -> interpret_user_match_dtmf(DTMF);
-        {'error', 'channel_hungup'} ->
-            lager:info("channel hungup, we're done"),
-            cf_exe:stop(Call);
         {'error', _R} ->
-            lager:info("failed to collect next action: ~p", [_R]),
+            lager:info("error playing username: ~p", [_R]),
             cf_exe:stop(Call)
     end.
 

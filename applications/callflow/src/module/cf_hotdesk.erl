@@ -154,7 +154,7 @@ require_login_pin(Hotdesk, Call) ->
                                kapps_api_std_return().
 require_login_pin(_, Call, Max, Loop) when Loop > Max ->
     lager:info("maximum number of invalid hotdesk pin attempts"),
-    kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+    _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
 require_login_pin(#hotdesk{require_pin='true'
                           ,pin=Pin
@@ -196,7 +196,7 @@ get_authorizing_id(Hotdesk, Call) ->
 -spec login_authorizing_id(kz_term:api_binary(), hotdesk(), kapps_call:call()) ->
                                   kapps_api_std_return().
 login_authorizing_id('undefined', _, Call) ->
-    kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+    _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
 login_authorizing_id(AuthorizingId, #hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
     AccountDb = kapps_call:account_db(Call),
@@ -206,14 +206,14 @@ login_authorizing_id(AuthorizingId, #hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
     case update_hotdesk_endpoint(AccountDb, AuthorizingId, Fun) of
         {'ok', _} -> logged_in(Hotdesk, Call);
         {'error', _} ->
-            kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+            _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
             kapps_call_command:b_prompt(<<"vm-goodbye">>, Call)
     end.
 
 -spec logged_in(hotdesk(), kapps_call:call()) ->
                        kapps_api_std_return().
 logged_in(_, Call) ->
-    kapps_call_command:b_prompt(<<"hotdesk-logged_in">>, Call),
+    _ = kapps_call_command:b_prompt(<<"hotdesk-logged_in">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
 %%------------------------------------------------------------------------------
@@ -255,13 +255,13 @@ keep_logged_in_elsewhere(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds
             UpdatedIds = lists:delete(AuthorizingId, EndpointIds),
             logged_out(Hotdesk#hotdesk{endpoint_ids=UpdatedIds}, Call);
         {'error', _} ->
-            kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+            _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
             kapps_call_command:b_prompt(<<"vm-goodbye">>, Call)
     end.
 
 -spec logged_out(hotdesk(), kapps_call:call()) -> kapps_api_std_return().
 logged_out(_, Call) ->
-    kapps_call_command:b_prompt(<<"hotdesk-logged_out">>, Call),
+    _ = kapps_call_command:b_prompt(<<"hotdesk-logged_out">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
 %%------------------------------------------------------------------------------
@@ -280,7 +280,7 @@ get_hotdesk_profile(OwnerId, Data, Call) ->
         {'ok', JObj} -> from_json(JObj, Data, Call);
         {'error', _R}=E ->
             lager:info("failed to load hotdesking profile for user ~s: ~p", [OwnerId, _R]),
-            kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+            _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
             E
     end.
 
@@ -289,7 +289,7 @@ get_hotdesk_profile(OwnerId, Data, Call) ->
                                   {'error', any()}.
 find_hotdesk_profile(Call, _Data, Max, Loop) when Loop > Max ->
     lager:info("too many failed attempts to get the hotdesk id"),
-    kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+    _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     {'error', 'too_many_attempts'};
 find_hotdesk_profile(Call, Data, Max, Loop) ->
     kapps_call_command:answer(Call),
@@ -314,7 +314,7 @@ find_hotdesk_profile(Call, Data, Max, Loop) ->
             end;
         {'error', R}=E ->
             lager:info("failed to get owner id from caller: ~p", [R]),
-            kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
+            _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
             E
     end.
 

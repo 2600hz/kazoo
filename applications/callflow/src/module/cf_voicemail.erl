@@ -535,18 +535,18 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                 andalso review_recording(AttachmentName, 'true', Box, Call)
             of
                 'false' ->
-                    cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routins),
                     new_message(AttachmentName, Length, Box, Call);
                 {'ok', 'record'} ->
                     record_voicemail(tmp_file(Ext), Box, Call);
                 {'ok', _Selection} ->
-                    cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routins),
                     cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     _ = kapps_call_command:prompt(<<"vm-thank_you">>, Call),
                     'ok';
                 {'branch', Flow} ->
-                    cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routins),
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     {'branch', Flow}
@@ -559,7 +559,9 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec setup_mailbox(mailbox(), kapps_call:call()) -> mailbox().
+-spec setup_mailbox(mailbox(), kapps_call:call()) ->
+                           mailbox() |
+                           {'error', 'channel_hungup'}.
 setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
     lager:debug("starting voicemail configuration wizard"),
     {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
@@ -1148,10 +1150,7 @@ handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}
                        ,Selection
                        ) ->
     lager:info("caller chose to delete their temporary unavailable greeting"),
-    case delete_temporary_unavailable_greeting(Box, Call) of
-        'ok' -> 'ok';
-        Box1 -> config_menu(Box1, Call)
-    end;
+    delete_temporary_unavailable_greeting(Box, Call);
 handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
                        ,_Call
                        ,_Loop
@@ -1243,10 +1242,9 @@ overwrite_temporary_unavailable_greeting(AttachmentName
 %% @doc Deletes current temporary greeting.
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_temporary_unavailable_greeting(mailbox(), kapps_call:call()) ->
-                                                   'ok' | mailbox().
-delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=_Box, _Call) ->
-    'ok';
+-spec delete_temporary_unavailable_greeting(mailbox(), kapps_call:call()) -> mailbox().
+delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=Box, _Call) ->
+    Box;
 delete_temporary_unavailable_greeting(Box, Call) ->
     'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'null', Box, Call),
     _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
@@ -1883,7 +1881,7 @@ maybe_remove_attachments(AccountDb, MediaId, JObj) ->
     case kz_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            kz_datamgr:save_doc(AccountDb, Removed),
+            _ = kz_datamgr:save_doc(AccountDb, Removed),
             lager:debug("doc ~s has existing attachments, removing", [MediaId])
     end.
 
