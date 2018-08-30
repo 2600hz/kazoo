@@ -271,11 +271,11 @@ set_account_db(JObj, AccountDb) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec created(doc()) -> kz_term:api_integer().
+-spec created(doc()) -> kz_time:gregorian_seconds() | 'undefined'.
 created(JObj) ->
     created(JObj, 'undefined').
 
--spec created(doc(), Default) -> integer() | Default.
+-spec created(doc(), Default) -> kz_time:gregorian_seconds() | Default.
 created(JObj, Default) ->
     kz_json:get_integer_value(?KEY_CREATED, JObj, Default).
 
@@ -283,7 +283,7 @@ created(JObj, Default) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_created(doc(), pos_integer()) -> doc().
+-spec set_created(doc(), kz_time:gregorian_seconds()) -> doc().
 set_created(JObj, Timestamp) ->
     kz_json:set_value(?KEY_CREATED, Timestamp, JObj).
 
@@ -291,11 +291,11 @@ set_created(JObj, Timestamp) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec modified(doc()) -> kz_term:api_integer().
+-spec modified(doc()) -> kz_time:gregorian_seconds() | 'undefined'.
 modified(JObj) ->
     modified(JObj, 'undefined').
 
--spec modified(doc(), Default) -> integer() | Default.
+-spec modified(doc(), Default) -> kz_time:gregorian_seconds() | Default.
 modified(JObj, Default) ->
     kz_json:get_integer_value(?KEY_MODIFIED, JObj, Default).
 

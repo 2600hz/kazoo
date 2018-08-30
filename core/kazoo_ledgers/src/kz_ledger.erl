@@ -468,13 +468,13 @@ id(#ledger{private_fields=PrivateFields}) ->
 %%------------------------------------------------------------------------------
 -spec set_id(ledger(), kz_term:ne_binary()) -> ledger().
 set_id(#ledger{private_fields=PrivateFields}=Ledger, Id) ->
-    Ledger#ledger{private_fields=kz_doc:set_id(PrivateFields, Id)}.
+    Ledger#ledger{private_fields=kz_doc:set_id(PrivateFields, maybe_prefix_id(Id))}.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec created(ledger()) -> kz_term:api_binary().
+-spec created(ledger()) -> kz_time:gregorian_seconds() | 'undefined'.
 created(#ledger{private_fields=PrivateFields}) ->
     kz_doc:created(PrivateFields).
 
