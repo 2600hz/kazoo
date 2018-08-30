@@ -100,7 +100,7 @@ stop_traces() ->
         ],
     erlang:trace('all', 'false', ['call']).
 
--spec worker(kz_term:ne_binaries()) -> none().
+-spec worker(kz_term:ne_binaries()) -> no_return().
 worker(DocIds) ->
     [DocId | _] = kz_term:shuffle_list(DocIds),
 
