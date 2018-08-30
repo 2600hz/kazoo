@@ -455,7 +455,7 @@ route_resp_pre_park_action(JObj) ->
 
 -spec maybe_start_dtmf_action(kz_term:proplist()) -> 'undefined' | kz_types:xml_el().
 maybe_start_dtmf_action(Props) ->
-    case kapps_config:is_true(?APP_NAME, <<"should_detect_inband_dtmf">>) of
+    case kapps_config:is_true(?APP_NAME, <<"should_detect_inband_dtmf">>, 'false') of
         'false' -> 'undefined';
         'true' -> check_dtmf_type(Props)
     end.
