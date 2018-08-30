@@ -300,7 +300,7 @@ calculate_updates(Services, JObj) ->
             end
     end.
 
--spec sum_updates(kz_term:proplist(), kz_term:proplist()) -> kz_json:object().
+-spec sum_updates(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 sum_updates([], Updates) -> Updates;
 sum_updates([{Key, Value}|Props], Updates) ->
     case props:get_value(Key, Updates) of
