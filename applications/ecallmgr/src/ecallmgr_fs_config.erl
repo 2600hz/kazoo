@@ -161,7 +161,9 @@ handle_config_req(Node, FetchId, ConfFile, FSData) ->
 
 -spec process_config_req(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist() | 'undefined') -> fs_sendmsg_ret().
 process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
+    lager:info("fetching ACLs"),
     SysconfResp = ecallmgr_fs_acls:get(),
+    lager:debug("ACLs: ~p", [SysconfResp]),
     ConfigXML = generate_acl_xml(SysconfResp),
     lager:debug("sending acl XML to ~s: ~s", [Node, ConfigXML]),
     freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXML);

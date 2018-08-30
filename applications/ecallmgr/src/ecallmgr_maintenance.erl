@@ -327,6 +327,7 @@ has_acl(Name, Action, ACLs) ->
 reload_acls() ->
     _ = [begin
              io:format("issued reload ACLs to ~s~n", [Node]),
+             lager:info("issued reload ACLs to ~s", [Node]),
              freeswitch:bgapi(Node, 'reloadacl', "")
          end
          || Node <- ecallmgr_fs_nodes:connected()
