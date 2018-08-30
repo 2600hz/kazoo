@@ -11,8 +11,18 @@
 
 -include("ecallmgr.hrl").
 
--define(REQUEST_TIMEOUT, kapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2 * ?MILLISECONDS_IN_SECOND)).
--define(REQUEST_TIMEOUT_FUDGE, kapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_fudge_ms">>, 100)).
+-define(REQUEST_TIMEOUT
+       ,kapps_config:get_integer(?APP_NAME
+                                ,<<"acl_request_timeout_ms">>
+                                ,2 * ?MILLISECONDS_IN_SECOND
+                                )
+       ).
+-define(REQUEST_TIMEOUT_FUDGE
+       ,kapps_config:get_integer(?APP_NAME
+                                ,<<"acl_request_timeout_fudge_ms">>
+                                ,100
+                                )
+       ).
 -define(IP_REGEX, <<"^(\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}).*">>).
 -define(ACL_RESULT(IP, ACL), {'acl', IP, ACL}).
 
@@ -30,6 +40,7 @@ get(Node) ->
                ,fun sip_auth_ips/1
                ],
     PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
+    lager:debug("collecting ACLs in ~p", [PidRefs]),
     collect(system_config_acls(Node), PidRefs).
 
 -spec collect(kz_json:object(), kz_term:pid_refs()) ->
@@ -53,12 +64,15 @@ collect(ACLs, PidRefs, Timeout) ->
     Start = os:timestamp(),
     receive
         ?ACL_RESULT(IP, ACL) ->
-            lager:debug("adding acl for '~s' to ~s", [IP, kz_json:get_value(<<"network-list-name">>, ACL)]),
+            lager:info("adding acl for '~s' to ~s", [IP, kz_json:get_value(<<"network-list-name">>, ACL)]),
             collect(kz_json:set_value(IP, ACL, ACLs), PidRefs, kz_time:decr_timeout(Timeout, Start));
         {'DOWN', Ref, 'process', Pid, _Reason} ->
             case lists:keytake(Pid, 1, PidRefs) of
-                'false' -> collect(ACLs, PidRefs, kz_time:decr_timeout(Timeout, Start));
+                'false' ->
+                    lager:debug("ignoring ~p going down", [Pid]),
+                    collect(ACLs, PidRefs, kz_time:decr_timeout(Timeout, Start));
                 {'value', {Pid, Ref}, NewPidRefs} ->
+                    lager:debug("{~p, ~p} down: ~p", [Pid, Ref, _Reason]),
                     collect(ACLs, NewPidRefs, kz_time:decr_timeout(Timeout, Start))
             end
     after Timeout ->
@@ -75,7 +89,7 @@ sip_auth_ips(Collector) ->
     ViewOptions = [],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("unable to get view results for sip_auth resources: ~p", [_R]);
+            lager:info("unable to get view results for auth-by-ip devices: ~p", [_R]);
         {'ok', JObjs} ->
             {RawIPs, RawHosts} = lists:foldl(fun needs_resolving/2, {[], []}, JObjs),
             _ = [handle_sip_auth_result(Collector, JObj, IPs) || {IPs, JObj} <- RawIPs],
@@ -154,7 +168,7 @@ local_resources(Collector) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("unable to get view results for local resources: ~p", [_R]);
+            lager:debug("unable to get view results for local active resources: ~p", [_R]);
         {'ok', JObjs} ->
             handle_resource_results(Collector, JObjs)
     end.
@@ -164,7 +178,7 @@ offnet_resources(Collector) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(?KZ_OFFNET_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("Unable to get view results for offnet resources: ~p", [_R]);
+            lager:debug("Unable to get view results for offnet active resources: ~p", [_R]);
         {'ok', JObjs} ->
             handle_resource_results(Collector, JObjs)
     end.
@@ -176,7 +190,7 @@ handle_resource_results(Collector, JObjs) ->
 
 -spec handle_resource_result(pid(), kz_json:object()) -> 'ok'.
 handle_resource_result(Collector, JObj) ->
-    Doc = kz_json:get_value(<<"doc">>, JObj),
+    Doc = kz_json:get_json_value(<<"doc">>, JObj),
     InboundPidRefs = resource_inbound_ips(Collector, Doc),
     ServerPidRefs = resource_server_ips(Collector, Doc),
     wait_for_pid_refs(InboundPidRefs ++ ServerPidRefs).
