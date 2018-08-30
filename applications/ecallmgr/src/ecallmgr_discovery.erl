@@ -76,6 +76,9 @@ handle_cast(_Msg, Startup) ->
 handle_info('timeout', Startup) ->
     _ = sbc_discovery(),
     {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))};
+handle_info({'bgok', _Id, _Result}, Startup) ->
+    lager:info("background job ~s: ~s", [_Id, _Result]),
+    {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))};
 handle_info(_Msg, Startup) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))}.
@@ -177,7 +180,7 @@ sbc_acls(Nodes) ->
 sbc_discovery() ->
     lager:info("discovering SBC ACLs"),
 
-    DefaultACLs = ecallmgr_fs_acls:get(<<"default">>),
+    DefaultACLs = ecallmgr_fs_acls:system(<<"default">>),
     ACLs = filter_acls(DefaultACLs),
     CIDRs = sbc_cidrs(ACLs),
     Nodes = [sbc_node(Node) || Node <- kz_nodes:with_role(<<"Proxy">>, 'true')],
