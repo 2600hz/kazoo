@@ -32,7 +32,22 @@
                       {'ok', kz_json:object()} |
                       data_error().
 open_doc(#{server := {App, Conn}}, DbName, DocId, Options) ->
-    App:open_doc(Conn, DbName, DocId, Options).
+    handle_opened_doc(App:open_doc(Conn, DbName, DocId, Options), Options).
+
+-spec handle_opened_doc({'ok', kz_json:object()}|data_error(), kz_term:proplist()) ->
+                               {'ok', kz_json:object()} | data_error().
+handle_opened_doc({'error', _}=Error, _Options) -> Error;
+handle_opened_doc({'ok', Doc}, Options) ->
+    handle_opened_doc(Doc, kz_doc:is_soft_deleted(Doc), props:get_is_true('deleted', Options, false)).
+
+-spec handle_opened_doc({'ok', kz_json:object()}|data_error(), boolean(), boolean()) ->
+                               {'ok', kz_json:object()} |
+                               {'error', 'not_found'}.
+handle_opened_doc(Doc, 'false',  _ReturnDeleted) -> {'ok', Doc};
+handle_opened_doc(Doc, 'true', 'true') -> {'ok', Doc};
+handle_opened_doc(Doc, 'true', 'false') ->
+    lager:info("denying access to soft deleted doc: ~s", [kz_doc:id(Doc)]),
+    {'error', 'not_found'}.
 
 -spec save_doc(map(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
                       {'ok', kz_json:object()} |
