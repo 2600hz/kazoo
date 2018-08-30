@@ -5,7 +5,9 @@
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_acls).
 
--export([get/0, get/1]).
+-export([get/0, get/1
+        ,system/0, system/1
+        ]).
 
 -compile({'no_auto_import', [get/1]}).
 
@@ -28,6 +30,15 @@
 
 -type acls() :: kz_json:object().
 
+%%------------------------------------------------------------------------------
+%% @doc Fetches the ACLs
+%% 1. from system_config
+%% 2. auth-by-IP devices
+%% 3. local resources
+%% 4. global resources
+%%
+%% @end
+%%------------------------------------------------------------------------------
 -spec get() -> acls().
 get() ->
     Node = kz_term:to_binary(node()),
@@ -42,6 +53,18 @@ get(Node) ->
     PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     lager:debug("collecting ACLs in ~p", [PidRefs]),
     collect(system_config_acls(Node), PidRefs).
+
+%%------------------------------------------------------------------------------
+%% @doc Fetches just the system_config ACLs
+%% @end
+%%------------------------------------------------------------------------------
+-spec system() -> acls().
+system() ->
+    system(kz_term:to_binary(node())).
+
+-spec system(kz_term:ne_binary()) -> acls().
+system(Node) ->
+    system_config_acls(Node).
 
 -spec collect(kz_json:object(), kz_term:pid_refs()) ->
                      kz_json:object().
@@ -69,10 +92,8 @@ collect(ACLs, PidRefs, Timeout) ->
         {'DOWN', Ref, 'process', Pid, _Reason} ->
             case lists:keytake(Pid, 1, PidRefs) of
                 'false' ->
-                    lager:debug("ignoring ~p going down", [Pid]),
                     collect(ACLs, PidRefs, kz_time:decr_timeout(Timeout, Start));
                 {'value', {Pid, Ref}, NewPidRefs} ->
-                    lager:debug("{~p, ~p} down: ~p", [Pid, Ref, _Reason]),
                     collect(ACLs, NewPidRefs, kz_time:decr_timeout(Timeout, Start))
             end
     after Timeout ->
