@@ -60,12 +60,16 @@ init() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context(), path_token()) -> 'true'.
-authorize(Context, _) -> is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+authorize(Context, _Path) ->
+    is_authorized(Context
+                 ,cb_context:req_verb(Context)
+                 ,cb_context:req_nouns(Context)
+                 ).
 
--spec is_authorize(cb_context:context(), req_verb(), req_nouns()) -> 'true'.
-is_authorize(_Context, ?HTTP_GET, [{<<"services">>, ?EDITABLE}]) ->
+-spec is_authorized(cb_context:context(), req_verb(), req_nouns()) -> 'true'.
+is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?EDITABLE]}]) ->
     'true';
-is_authorize(_Context, ?HTTP_GET, [{<<"services">>, ?QUOTE}]) ->
+is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?QUOTE]}]) ->
     'true'.
 
 %%------------------------------------------------------------------------------
