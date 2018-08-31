@@ -609,27 +609,36 @@ summary(Services) ->
 fetch(Account) ->
     fetch(Account, []).
 
--spec fetch(kz_term:api_binary(), fetch_options()) -> services().
+-spec fetch(kz_term:api_ne_binary(), fetch_options()) -> services().
 fetch('undefined', Options) ->
     handle_fetch_options(empty(), Options);
 fetch(Account=?NE_BINARY, Options) ->
     AccountId = kz_util:format_account_id(Account),
     OpenDocFun = choose_open_doc_fun(Options),
-    Setters = case OpenDocFun(?KZ_SERVICES_DB, AccountId) of
-                  {'ok', ServicesJObj} ->
-                      [{fun set_services_jobj/2, ServicesJObj}
-                      ,{fun set_current_services_jobj/2, ServicesJObj}
-                      ];
-                  {'error', 'not_found'} ->
-                      %% TODO: hydrate cascade and account quantities
-                      ServicesJObj = create(AccountId),
-                      [{fun set_services_jobj/2, ServicesJObj}
-                      ,{fun set_current_services_jobj/2, ServicesJObj}
-                      ]
-              end,
+
+    handle_fetched_doc(AccountId, Options, OpenDocFun(?KZ_SERVICES_DB, AccountId)).
+
+-spec handle_fetched_doc(kz_term:ne_binary(), fetch_options(), {'ok', kz_json:object()} | {'error', 'not_found'}) ->
+                                services().
+handle_fetched_doc(_AccountId, Options, {'ok', ServicesJObj}) ->
+    Setters = [{fun set_services_jobj/2, ServicesJObj}
+              ,{fun set_current_services_jobj/2, ServicesJObj}
+              ],
+    handle_fetch_options(setters(Setters), Options);
+handle_fetched_doc(AccountId, Options, {'error', 'not_found'}) ->
+    %% TODO: hydrate cascade and account quantities
+    ServicesJObj = create(AccountId),
+    Setters = [{fun set_services_jobj/2, ServicesJObj}
+              ,{fun set_current_services_jobj/2, ServicesJObj}
+              ],
     handle_fetch_options(setters(Setters), Options).
 
--spec choose_open_doc_fun(fetch_options()) -> fun((kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', 'not_found'}).
+-type open_doc_fun() :: fun((kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                   {'ok', kz_json:object()} |
+                                   kz_datamgr:data_error() |
+                                   {'error', 'not_found'}
+                                       ).
+-spec choose_open_doc_fun(fetch_options()) -> open_doc_fun().
 choose_open_doc_fun(Options) ->
     case props:is_true('skip_cache', Options, 'false') of
         'false' ->
@@ -702,14 +711,18 @@ commit_updates(Account, Current, Proposed, AuditLog) ->
                    ,{'audit_log', add_audit_log_changes_account(AccountId, AuditLog)}
                    ],
     Services = fetch(AccountId, FetchOptions),
-    case kz_term:is_empty(account_updates(Services))
-        andalso kz_term:is_empty(cascade_updates(Services))
-        andalso kz_term:is_empty(manual_updates(Services))
-    of
+
+    case should_commit_updates(Services) of
         'true' -> Services;
         'false' ->
             commit_updates(Services, FetchOptions)
     end.
+
+-spec should_commit_updates(services()) -> boolean().
+should_commit_updates(Services) ->
+     kz_term:is_empty(account_updates(Services))
+        andalso kz_term:is_empty(cascade_updates(Services))
+        andalso kz_term:is_empty(manual_updates(Services)).
 
 -spec commit_updates(services(), kz_term:proplist()) -> services().
 commit_updates(Services, FetchOptions) ->
