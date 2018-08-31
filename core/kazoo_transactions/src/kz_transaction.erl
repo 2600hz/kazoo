@@ -318,7 +318,7 @@ set_bookkeeper_vendor_id(Transaction, VendorId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper_results(transaction()) -> kz_json:object().
+-spec bookkeeper_results(transaction()) -> kz_json:api_object().
 bookkeeper_results(#transaction{bookkeeper_results=Results}) ->
     Results.
 
@@ -601,7 +601,7 @@ from_json(JObj) ->
 fetch(Account, ?MATCH_MODB_PREFIX(Year, Month, Id)) ->
     fetch(Account, Id, Year, Month).
 
--spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
+-spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year()|kz_term:ne_binary(), kz_time:month()|kz_term:ne_binary()) ->
                    {'ok', transaction()} | {'error', any()}.
 fetch(Account, Id, Year, Month) ->
     case kazoo_modb:open_doc(Account, Id, Year, Month) of

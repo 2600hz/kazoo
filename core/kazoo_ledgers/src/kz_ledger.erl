@@ -468,7 +468,7 @@ id(#ledger{private_fields=PrivateFields}) ->
 %%------------------------------------------------------------------------------
 -spec set_id(ledger(), kz_term:ne_binary()) -> ledger().
 set_id(#ledger{private_fields=PrivateFields}=Ledger, Id) ->
-    Ledger#ledger{private_fields=kz_doc:set_id(PrivateFields, maybe_prefix_id(Id))}.
+    Ledger#ledger{private_fields=maybe_prefix_id(kz_doc:set_id(PrivateFields, Id))}.
 
 %%------------------------------------------------------------------------------
 %% @doc
