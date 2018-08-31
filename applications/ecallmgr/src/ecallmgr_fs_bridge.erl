@@ -15,7 +15,7 @@
 
 -include("ecallmgr.hrl").
 
--define(BYPASS_MEDIA_AFTER_BRIDGE, ecallmgr_config:get_boolean(<<"use_bypass_media_after_bridge">>, 'false')).
+-define(BYPASS_MEDIA_AFTER_BRIDGE, kapps_config:get_boolean(?APP_NAME, <<"use_bypass_media_after_bridge">>, 'false')).
 -define(CHANNEL_ACTIONS_KEY, [<<"Custom-Channel-Vars">>, <<"Channel-Actions">>]).
 
 -spec call_command(atom(), kz_term:ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_term:proplist()}.

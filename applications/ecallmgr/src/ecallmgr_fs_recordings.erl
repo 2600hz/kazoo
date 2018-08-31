@@ -144,7 +144,7 @@ init_props(Props, Options) ->
 handle_record_event(Node, [UUID | FSProps], Options) ->
     kz_util:put_callid(UUID),
     Props = init_props(FSProps, Options),
-    process_event(UUID, Props, Node),
+    _ = process_event(UUID, Props, Node),
     maybe_publish_record_event(Props).
 
 -spec process_event(kz_term:api_binary(), kz_term:proplist(), atom()) -> any().

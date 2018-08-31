@@ -3,18 +3,14 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(sysconf_gateways).
+-module(ecallmgr_fs_gateways).
 
--export([build/1]).
+-export([get/0]).
 
--include("sysconf.hrl").
+-include("ecallmgr.hrl").
 
--spec build(kz_term:ne_binary()) -> kz_json:object().
-build(_Node) ->
-    get_gateways().
-
--spec get_gateways() -> kz_json:object().
-get_gateways() ->
+-spec get() -> kz_json:object().
+get() ->
     Routines = [fun get_local_gateways/1
                ,fun get_offnet_gateways/1
                ],
@@ -44,7 +40,7 @@ get_offnet_gateways(Gateways) ->
 
 -spec gateway_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
 gateway_fold(JObj, Acc) ->
-    Gateway = kz_json:get_value(<<"value">>, JObj),
+    Gateway = kz_json:get_json_value(<<"value">>, JObj),
     Id = kz_doc:id(Gateway),
     kz_json:set_value(Id, format_gateway(Gateway), Acc).
 

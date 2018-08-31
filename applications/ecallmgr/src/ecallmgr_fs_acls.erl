@@ -3,27 +3,68 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(sysconf_acls).
+-module(ecallmgr_fs_acls).
 
--export([build/1]).
+-export([get/0, get/1
+        ,system/0, system/1
+        ]).
 
--include("sysconf.hrl").
+-compile({'no_auto_import', [get/1]}).
 
--define(REQUEST_TIMEOUT, kapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2 * ?MILLISECONDS_IN_SECOND)).
--define(REQUEST_TIMEOUT_FUDGE, kapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_fudge_ms">>, 100)).
+-include("ecallmgr.hrl").
+
+-define(REQUEST_TIMEOUT
+       ,kapps_config:get_integer(?APP_NAME
+                                ,<<"acl_request_timeout_ms">>
+                                ,2 * ?MILLISECONDS_IN_SECOND
+                                )
+       ).
+-define(REQUEST_TIMEOUT_FUDGE
+       ,kapps_config:get_integer(?APP_NAME
+                                ,<<"acl_request_timeout_fudge_ms">>
+                                ,100
+                                )
+       ).
 -define(IP_REGEX, <<"^(\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}\\\.\\d{1,3}).*">>).
 -define(ACL_RESULT(IP, ACL), {'acl', IP, ACL}).
 
 -type acls() :: kz_json:object().
 
--spec build(kz_term:ne_binary()) -> acls().
-build(Node) ->
+%%------------------------------------------------------------------------------
+%% @doc Fetches the ACLs
+%% 1. from system_config
+%% 2. auth-by-IP devices
+%% 3. local resources
+%% 4. global resources
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec get() -> acls().
+get() ->
+    Node = kz_term:to_binary(node()),
+    get(Node).
+
+-spec get(kz_term:ne_binary()) -> acls().
+get(Node) ->
     Routines = [fun offnet_resources/1
                ,fun local_resources/1
                ,fun sip_auth_ips/1
                ],
     PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
+    lager:debug("collecting ACLs in ~p", [PidRefs]),
     collect(system_config_acls(Node), PidRefs).
+
+%%------------------------------------------------------------------------------
+%% @doc Fetches just the system_config ACLs
+%% @end
+%%------------------------------------------------------------------------------
+-spec system() -> acls().
+system() ->
+    system(kz_term:to_binary(node())).
+
+-spec system(kz_term:ne_binary()) -> acls().
+system(Node) ->
+    system_config_acls(Node).
 
 -spec collect(kz_json:object(), kz_term:pid_refs()) ->
                      kz_json:object().
@@ -46,11 +87,12 @@ collect(ACLs, PidRefs, Timeout) ->
     Start = os:timestamp(),
     receive
         ?ACL_RESULT(IP, ACL) ->
-            lager:debug("adding acl for '~s' to ~s", [IP, kz_json:get_value(<<"network-list-name">>, ACL)]),
+            lager:info("adding acl for '~s' to ~s", [IP, kz_json:get_value(<<"network-list-name">>, ACL)]),
             collect(kz_json:set_value(IP, ACL, ACLs), PidRefs, kz_time:decr_timeout(Timeout, Start));
         {'DOWN', Ref, 'process', Pid, _Reason} ->
             case lists:keytake(Pid, 1, PidRefs) of
-                'false' -> collect(ACLs, PidRefs, kz_time:decr_timeout(Timeout, Start));
+                'false' ->
+                    collect(ACLs, PidRefs, kz_time:decr_timeout(Timeout, Start));
                 {'value', {Pid, Ref}, NewPidRefs} ->
                     collect(ACLs, NewPidRefs, kz_time:decr_timeout(Timeout, Start))
             end
@@ -61,14 +103,14 @@ collect(ACLs, PidRefs, Timeout) ->
 
 -spec system_config_acls(kz_term:ne_binary()) -> acls().
 system_config_acls(Node) ->
-    kapps_config:get_current(<<"ecallmgr">>, <<"acls">>, kz_json:new(), Node).
+    kapps_config:get_current(?APP_NAME, <<"acls">>, kz_json:new(), Node).
 
 -spec sip_auth_ips(pid()) -> 'ok'.
 sip_auth_ips(Collector) ->
     ViewOptions = [],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("unable to get view results for sip_auth resources: ~p", [_R]);
+            lager:info("unable to get view results for auth-by-ip devices: ~p", [_R]);
         {'ok', JObjs} ->
             {RawIPs, RawHosts} = lists:foldl(fun needs_resolving/2, {[], []}, JObjs),
             _ = [handle_sip_auth_result(Collector, JObj, IPs) || {IPs, JObj} <- RawIPs],
@@ -147,7 +189,7 @@ local_resources(Collector) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("unable to get view results for local resources: ~p", [_R]);
+            lager:debug("unable to get view results for local active resources: ~p", [_R]);
         {'ok', JObjs} ->
             handle_resource_results(Collector, JObjs)
     end.
@@ -157,7 +199,7 @@ offnet_resources(Collector) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(?KZ_OFFNET_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("Unable to get view results for offnet resources: ~p", [_R]);
+            lager:debug("Unable to get view results for offnet active resources: ~p", [_R]);
         {'ok', JObjs} ->
             handle_resource_results(Collector, JObjs)
     end.
@@ -169,7 +211,7 @@ handle_resource_results(Collector, JObjs) ->
 
 -spec handle_resource_result(pid(), kz_json:object()) -> 'ok'.
 handle_resource_result(Collector, JObj) ->
-    Doc = kz_json:get_value(<<"doc">>, JObj),
+    Doc = kz_json:get_json_value(<<"doc">>, JObj),
     InboundPidRefs = resource_inbound_ips(Collector, Doc),
     ServerPidRefs = resource_server_ips(Collector, Doc),
     wait_for_pid_refs(InboundPidRefs ++ ServerPidRefs).

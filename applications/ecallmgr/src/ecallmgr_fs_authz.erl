@@ -104,7 +104,7 @@ maybe_channel_recovering(Props, CallId, Node) ->
 
 -spec is_authz_enabled(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 is_authz_enabled(Props, CallId, Node) ->
-    case ecallmgr_config:is_true(<<"authz_enabled">>, 'false') of
+    case kapps_config:is_true(?APP_NAME, <<"authz_enabled">>, 'false') of
         'true' -> is_global_resource(Props, CallId, Node);
         'false' ->
             lager:info("channel is authorized because config ecallmgr.authz is disabled"),
@@ -114,7 +114,7 @@ is_authz_enabled(Props, CallId, Node) ->
 -spec is_global_resource(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 is_global_resource(Props, CallId, Node) ->
     case kzd_freeswitch:is_consuming_global_resource(Props, 'true')
-        orelse ecallmgr_config:is_true(<<"authz_local_resources">>, 'false')
+        orelse kapps_config:is_true(?APP_NAME, <<"authz_local_resources">>, 'false')
     of
         'true' -> is_consuming_resource(Props, CallId, Node);
         'false' ->
@@ -177,7 +177,7 @@ authz_response(JObj, Props, CallId, Node) ->
             AccountBilling = kz_json:get_value(<<"Account-Billing">>, JObj),
             ResellerBilling = kz_json:get_value(<<"Reseller-Billing">>, JObj),
             lager:info("channel is unauthorized: ~s/~s" ,[AccountBilling, ResellerBilling]),
-            case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
+            case kapps_config:get_boolean(?APP_NAME, <<"authz_dry_run">>, 'false') of
                 'true' -> authorize_account(JObj, Props, CallId, Node);
                 'false' ->
                     %% Set the following CCVs so that we can see why the call was barred in CDRs
@@ -279,7 +279,7 @@ rate_channel(Props, Node) ->
                                  ,fun kapi_rate:publish_req/1
                                  ,fun kapi_rate:resp_v/1
                                   %% get inbound_rate_resp_timeout or outbound_rate_resp_timeout
-                                 ,ecallmgr_config:get_integer(<<Direction/binary, "_rate_resp_timeout">>, 10 * ?MILLISECONDS_IN_SECOND)
+                                 ,kapps_config:get_integer(?APP_NAME, <<Direction/binary, "_rate_resp_timeout">>, 10 * ?MILLISECONDS_IN_SECOND)
                                  ),
     rate_channel_resp(Props, Node, ReqResp).
 
@@ -301,7 +301,7 @@ rate_channel_resp(Props, Node, {'error', _R}) ->
 maybe_kill_unrated_channel(Props, Node) ->
     Direction = kzd_freeswitch:call_direction(Props),
 
-    case ecallmgr_config:is_true(<<Direction/binary, "_rate_required">>, 'false') of
+    case kapps_config:is_true(?APP_NAME, <<Direction/binary, "_rate_required">>, 'false') of
         'false' -> 'ok';
         'true' ->
             lager:debug("no rate returned for ~s call, killing this channel", [Direction]),
@@ -311,8 +311,8 @@ maybe_kill_unrated_channel(Props, Node) ->
 -spec authz_default(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> {'ok', kz_term:ne_binary()} | boolean().
 %% TODO: fix use of authz_default
 authz_default(Props, CallId, Node) ->
-    case ecallmgr_config:get_ne_binary(<<"authz_default_action">>, <<"deny">>) =:= <<"deny">>
-        andalso ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') =/= 'false'
+    case kapps_config:get_ne_binary(?APP_NAME, <<"authz_default_action">>, <<"deny">>) =:= <<"deny">>
+        andalso kapps_config:get_boolean(?APP_NAME, <<"authz_dry_run">>, 'false') =/= 'false'
     of
         'false' -> rate_call(Props, CallId, Node);
         'true' ->

@@ -44,7 +44,9 @@ start_link() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state(), pos_integer()}.
-init([]) -> {'ok', kz_time:now_s(), ?MILLISECONDS_IN_SECOND}.
+init([]) ->
+    lager:info("starting discovery"),
+    {'ok', kz_time:now_s(), ?MILLISECONDS_IN_SECOND}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages
@@ -52,8 +54,8 @@ init([]) -> {'ok', kz_time:now_s(), ?MILLISECONDS_IN_SECOND}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
+handle_call(_Request, _From, Startup) ->
+    {'reply', {'error', 'not_implemented'}, next_timeout(kz_time:elapsed_s(Startup))}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling cast messages
@@ -73,6 +75,9 @@ handle_cast(_Msg, Startup) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('timeout', Startup) ->
     _ = sbc_discovery(),
+    {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))};
+handle_info({'bgok', _Id, _Result}, Startup) ->
+    lager:info("background job ~s: ~s", [_Id, _Result]),
     {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))};
 handle_info(_Msg, Startup) ->
     lager:debug("unhandled message: ~p", [_Msg]),
@@ -155,12 +160,14 @@ filter_acls(ACLs) ->
 
 -spec filter_acls_fun({kz_json:path(), kz_json:json_term()}) -> boolean().
 filter_acls_fun({_Name, ACL}) ->
-    kz_json:get_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
+    kz_json:get_ne_binary_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
 
 sbc_acl(IPs) ->
+    CIDRs = [kz_network_utils:to_cidr(IP) || {IP, _} <- IPs],
+
     kz_json:from_list([{<<"type">>, <<"allow">>}
                       ,{<<"network-list-name">>, ?FS_SBC_ACL_LIST}
-                      ,{<<"cidr">>, [kz_network_utils:to_cidr(IP) || {IP, _} <- IPs]}
+                      ,{<<"cidr">>, CIDRs}
                       ,{<<"ports">>, lists:flatten([Ports || {_, Ports} <- IPs])}
                       ]).
 
@@ -169,7 +176,8 @@ sbc_acls(Nodes) ->
 
 -spec sbc_discovery() -> any().
 sbc_discovery() ->
-    ACLs = filter_acls(ecallmgr_config:get_json(<<"acls">>, kz_json:new(), <<"default">>)),
+    DefaultACLs = ecallmgr_fs_acls:system(<<"default">>),
+    ACLs = filter_acls(DefaultACLs),
     CIDRs = sbc_cidrs(ACLs),
     Nodes = [sbc_node(Node) || Node <- kz_nodes:with_role(<<"Proxy">>, 'true')],
     case lists:foldl(fun(A, C) -> sbc_discover(A, CIDRs, C) end, [], Nodes) of
@@ -180,6 +188,6 @@ sbc_discovery() ->
             ToUpdate = lists:filter(fun({Node, _IPs}) -> lists:member(Node, Names) end , Nodes),
             SBCACLs = sbc_acls(ToUpdate),
             NewAcls = kz_json:set_values(SBCACLs, ACLs),
-            ecallmgr_config:set_node(<<"acls">>, NewAcls, <<"default">>),
+            _ = kapps_config:set_default(?APP_NAME, <<"acls">>, NewAcls),
             ecallmgr_maintenance:reload_acls()
     end.

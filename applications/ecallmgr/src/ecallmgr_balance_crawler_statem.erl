@@ -30,8 +30,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(IS_ENABLED, ecallmgr_config:is_true(<<"balance_crawler_enabled">>, 'false')).
--define(CRAWLER_CYCLE_MS, ecallmgr_config:get_integer(<<"balance_crawler_cycle_ms">>, ?MILLISECONDS_IN_MINUTE)).
+-define(IS_ENABLED, kapps_config:is_true(?APP_NAME, <<"balance_crawler_enabled">>, 'false')).
+-define(CRAWLER_CYCLE_MS, kapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
 -type statem_events() :: 'start_cycle' | 'worker_stop'.
 -type statem_state() :: 'idle' | 'working' | 'worker_timeout'.

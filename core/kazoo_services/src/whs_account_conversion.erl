@@ -41,9 +41,10 @@ force_promote(Account) ->
 
 -spec do_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_promote(AccountId) ->
-    _ = kzd_accounts:save(AccountId, fun kzd_accounts:promote/1),
+    {'ok', _A} = kzd_accounts:save(AccountId, fun kzd_accounts:promote/1),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'true'),
     io:format("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
+    lager:debug("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
     cascade_reseller_id(AccountId, AccountId).
 
 %%------------------------------------------------------------------------------
@@ -94,8 +95,9 @@ cascade_reseller_id(Reseller, Account) ->
             Error;
         {'ok', JObjs} ->
             _ = [set_reseller_id(ResellerId, SubAccountId)
-                 || JObj <- JObjs
-                        ,(SubAccountId = kz_doc:id(JObj)) =/= AccountId
+                 || JObj <- JObjs,
+                    SubAccountId <- [kz_doc:id(JObj)],
+                    SubAccountId =/= AccountId
                 ],
             'ok'
     end.
@@ -118,15 +120,17 @@ set_reseller_id(Reseller, Account) ->
 %%------------------------------------------------------------------------------
 -spec maybe_update_services(kz_term:ne_binary(), kz_term:ne_binary(), any()) -> {'error', _} | 'ok'.
 maybe_update_services(AccountId, Key, Value) ->
-    case kz_services:fetch_services_doc(AccountId, true) of
+    case kz_services:fetch_services_doc(AccountId, 'true') of
         {'error', _R}=Error ->
             io:format("unable to open services doc ~s: ~p~n", [AccountId, _R]),
+            lager:debug("unable to open services doc ~s: ~p", [AccountId, _R]),
             Error;
         {'ok', JObj} ->
             case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_value(Key, Value, JObj)) of
-                {'ok', _} -> 'ok';
+                {'ok', _} -> lager:debug("updated services doc successfully");
                 {'error', _R}=Error ->
                     io:format("unable to set ~s on services doc ~s: ~p~n", [Key, AccountId, _R]),
+                    lager:debug("unable to set ~s on services doc ~s: ~p", [Key, AccountId, _R]),
                     Error
             end
     end.

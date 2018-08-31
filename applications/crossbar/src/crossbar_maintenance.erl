@@ -294,8 +294,13 @@ find_account_by_id(Id) ->
 -spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
     case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_allow_number_additions(J, 'true') end) of
-        {'ok', _} -> 'ok';
-        {'error', _} -> 'failed'
+        {'ok', _A} ->
+            io:format("  account ~s allowed to add numbers: ~s~n", [AccountId, kz_json:encode(_A)]),
+            lager:debug("  account ~s allowed to add numbers: ~s", [AccountId, kz_json:encode(_A)]);
+        {'error', _R} ->
+            io:format("  failed to allow account ~s to add numbers: ~p~n", [AccountId, _R]),
+            lager:debug("  failed to allow account ~s to add numbers: ~p", [AccountId, _R]),
+            'failed'
     end.
 
 %%------------------------------------------------------------------------------
@@ -338,9 +343,12 @@ disable_account(AccountId) ->
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
     case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_superduper_admin(J, 'true') end) of
-        {'ok', _A} -> io:format("  account ~s is admin-ified", [AccountId]);
+        {'ok', _A} ->
+            io:format("  account ~s is admin-ified: ~s~n", [AccountId, kz_json:encode(_A)]),
+            lager:debug("  account ~s is admin-ified: ~s~n", [AccountId, kz_json:encode(_A)]);
         {'error', _R} ->
-            io:format("  failed to admin-ify account ~s: ~p", [AccountId, _R]),
+            io:format("  failed to admin-ify account ~s: ~p~n", [AccountId, _R]),
+            lager:debug("  failed to admin-ify account ~s: ~p~n", [AccountId, _R]),
             'failed'
     end.
 
@@ -412,6 +420,7 @@ maybe_promote_account(Context) ->
             'ok' = allow_account_number_additions(AccountId),
             'ok' = whs_account_conversion:force_promote(AccountId),
             'ok' = update_system_config(AccountId),
+            lager:info("finished promoting account"),
             {'ok', Context};
         _Else ->
             lager:debug("account ~s is not the first account in the system", [AccountId]),
@@ -441,7 +450,8 @@ create_fold(F, {'ok', C}) -> F(C).
 -spec update_system_config(kz_term:ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
     kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
-    io:format("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
+    io:format("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]),
+    lager:debug("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
 
 -spec prechecks(cb_context:context()) -> {'ok', cb_context:context()}.
 prechecks(Context) ->

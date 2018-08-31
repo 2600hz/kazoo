@@ -35,7 +35,7 @@ exec_cmd(<<"send_http">>, Args, JObj, Node, Options) ->
                   'false' -> <<"http_">>
               end,
     Method = <<HttpFun/binary, (kz_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,
-    Default = ecallmgr_config:is_true([?NODE_CMD_CONFIG, <<"send_http">>, <<"delete_on_success">>], 'false'),
+    Default = kapps_config:is_true(?APP_NAME, [?NODE_CMD_CONFIG, <<"send_http">>, <<"delete_on_success">>], 'false'),
     DeleteOnSuccess = kz_json:is_true(<<"Delete-On-Success">>, JObj, Default),
     send_http(Node, Version, File, Url, Method, JObj, DeleteOnSuccess);
 
