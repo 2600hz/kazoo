@@ -392,7 +392,7 @@ build_bridge(#state{endpoints=Endpoints
                            ,{<<"Account-ID">>, AccountId}
                            ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
                            ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
-                           ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                           ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
                            ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
                            ]
                           ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())
