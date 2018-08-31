@@ -350,8 +350,7 @@ post(Context, ?COLLECTION) ->
 post(Context, ?LOCALITY) ->
     fetch_locality(Context);
 post(Context, Number) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                | default_knm_options(Context)
               ],
     JObj = cb_context:doc(Context),
@@ -366,11 +365,11 @@ put(Context, ?COLLECTION) ->
     set_response(Results, Context, CB);
 put(Context, Number) ->
     Doc = cb_context:doc(Context),
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, Doc)}
                | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, Doc))
-              ] ++ default_knm_options(Context),
+               ++ default_knm_options(Context)
+              ],
     Result = knm_number:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Context, CB).
@@ -380,17 +379,15 @@ put(Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
     CB = fun() -> put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
     set_response(Results, Context, CB);
-put(Context, Number, ?ACTIVATE) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'public_fields', cb_context:doc(Context)}
+put(Context, ?NE_BINARY=Number, ?ACTIVATE) ->
+    Options = [{'public_fields', cb_context:doc(Context)}
                | default_knm_options(Context)
               ],
     Result = knm_number:move(Number, cb_context:account_id(Context), Options),
     CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?RESERVE) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
                | default_knm_options(Context)
               ],
@@ -398,8 +395,7 @@ put(Context, Number, ?RESERVE) ->
     CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?PORT) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
               ,{'state', ?NUMBER_STATE_PORT_IN}
                | default_knm_options(Context)
@@ -414,8 +410,7 @@ patch(Context, ?COLLECTION) ->
     CB = fun() -> ?MODULE:patch(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 patch(Context, Number) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ,{'assign_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                | default_knm_options(Context)
               ],
     JObj = cb_context:doc(Context),
@@ -427,9 +422,8 @@ delete(Context, ?COLLECTION) ->
     Results = collection_process(Context, ?HTTP_DELETE),
     set_response(Results, Context);
 delete(Context, Number) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               | default_knm_options(Context)
-              ],
+    Options = default_knm_options(Context),
+
     Releaser = pick_release_or_delete(Context, Options),
     case knm_number:Releaser(Number, Options) of
         {'error', Data}=Error ->
@@ -987,7 +981,8 @@ numbers_action(Context, ?HTTP_PUT, Numbers) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, ReqData)}
                | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
-              ] ++ default_knm_options(Context),
+               ++ default_knm_options(Context)
+              ],
     knm_numbers:create(Numbers, Options);
 numbers_action(Context, ?HTTP_POST, Numbers) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
@@ -1041,7 +1036,7 @@ has_tokens(Context, Count) ->
             'false'
     end.
 
--spec default_knm_options(cb_context:context()) -> knm_number_options:option().
+-spec default_knm_options(cb_context:context()) -> knm_number_options:options().
 default_knm_options(Context) ->
     [{'crossbar', [{'services', crossbar_services:fetch(Context)}
                   ,{'account_id', cb_context:account_id(Context)}
