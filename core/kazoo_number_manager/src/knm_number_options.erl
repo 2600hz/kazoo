@@ -41,10 +41,15 @@
 
 -include("knm.hrl").
 
--type option() :: {'assign_to', kz_term:ne_binary()} |
-                  {'auth_by', kz_term:ne_binary()} |
+-type crossbar_option() :: {'services', kz_services:services()} |
+                           {'account_id', kz_term:api_ne_binary()} |
+                           {'reseller_id', kz_term:api_ne_binary()}.
+-type crossbar_options() :: [crossbar_option()].
+
+-type option() :: {'assign_to', kz_term:api_ne_binary()} |
+                  {'auth_by', kz_term:api_ne_binary()} |
                   {'batch_run', boolean()} |
-                  {'crossbar', kz_term:proplist()} |
+                  {'crossbar', crossbar_options()} |
                   {'dry_run', boolean()} |
                   {'mdn_run', boolean()} |
                   {'module_name', kz_term:ne_binary()} |
