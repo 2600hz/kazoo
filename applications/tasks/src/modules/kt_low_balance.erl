@@ -87,10 +87,10 @@ maybe_topup_account(AccountJObj, AvailableUnits) ->
     lager:info("checking topup for account ~s with balance $~w"
               ,[AccountId, kz_currency:units_to_dollars(AvailableUnits)]),
     case kz_services_topup:maybe_topup(AccountId, AvailableUnits) of
-        {'ok', _} ->
+        {'ok', _Transaction, _Ledger} ->
             maybe_reset_low_balance_sent(AccountJObj),
             lager:info("topup successful for ~s", [AccountId]);
-        {'error', topup_disabled} -> 'ok';
+        {'error', 'topup_disabled'} -> 'ok';
         {'error', 'balance_above_threshold'} -> 'ok';
         {'error', _Error} ->
             lager:debug("topup failed for ~s: ~p", [AccountId, _Error])
