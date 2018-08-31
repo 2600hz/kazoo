@@ -53,8 +53,6 @@
 -type ko() :: knm_errors:error() | atom().
 -type kos() :: #{num() => ko()}.
 
--type quotes() :: kz_json:api_object().
-
 -type ret() :: #{'ok' => oks()
                 ,'ko' => kos()
                 ,'todo' => nums() | oks()
