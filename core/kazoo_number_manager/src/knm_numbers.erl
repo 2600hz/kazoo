@@ -634,6 +634,9 @@ save_numbers(T) ->
             ]).
 
 -spec update_services(collection()) -> collection().
+-ifdef(TEST).
+update_services(T=#{todo := Ns}) -> knm_numbers:ok(Ns, T).
+-else.
 update_services(T=#{todo := Numbers, options := Options}) ->
     case {knm_number_options:batch_run(Options)
          ,knm_number_options:dry_run(Options)
@@ -747,6 +750,7 @@ services_group_number(PhoneNumber, AssignedTo, PrevAssignedTo) ->
     ,{[PrevAssignedTo, <<"proposed">>], kz_json:new()}
     ,{[PrevAssignedTo, <<"current">>], CurrentJObj}
     ].
+-endif.
 
 reconcile_number(T0, Options) ->
     F1 = fun (T) -> update_for_reconcile(T, Options) end,
