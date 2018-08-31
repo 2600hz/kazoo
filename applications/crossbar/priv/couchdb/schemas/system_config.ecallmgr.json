@@ -368,6 +368,7 @@
             "type": "boolean"
         },
         "should_detect_inband_dtmf": {
+            "default": false,
             "description": "ecallmgr should detect inband dtmf",
             "type": "boolean"
         },
