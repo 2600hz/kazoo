@@ -1195,7 +1195,7 @@ master_account_created() ->
         'ok' ->
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             lager:info("created master account ~s", [MasterAccountId]),
-            MasterAccountDoc = kzd_accounts:fetch(MasterAccountId),
+            {'ok', MasterAccountDoc} = kzd_accounts:fetch(MasterAccountId),
             lager:debug("account: ~s", [kz_json:encode(MasterAccountDoc)]),
             'true' = kzd_accounts:is_superduper_admin(MasterAccountDoc);
         'failed' -> throw({'error', 'create_account'})
