@@ -26,7 +26,7 @@
 %% reseller otherwise returns false.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_reseller(kz_term:api_binary() | kz_services:services()) -> boolean().
+-spec is_reseller(kz_term:api_ne_binary() | kz_services:services()) -> boolean().
 is_reseller('undefined') -> 'false';
 is_reseller(Account=?NE_BINARY) ->
     AccountId = kz_util:format_account_id(Account),
@@ -44,26 +44,16 @@ is_reseller(Services) ->
 %% an 'undefined' account id returns the master account (if present)
 %% @end
 %%------------------------------------------------------------------------------
--spec get_id(kz_term:api_binary() | kz_services:services()) -> kz_json:api_binary().
+-spec get_id(kz_term:api_ne_binary() | kz_services:services()) -> kz_json:api_ne_binary().
 get_id('undefined') ->
     case kapps_util:get_master_account_id() of
         {'error', _} -> 'undefined';
         {'ok', MasterAccountId} -> MasterAccountId
     end;
 get_id(Account=?NE_BINARY) ->
-    AccountId = kz_util:format_account_id(Account),
-    case kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId) of
-        {'ok', JObj} -> kzd_services:reseller_id(JObj);
-        {'error', _} -> 'undefined'
-    end;
+    get_id(kz_services:fetch(Account));
 get_id(Services) ->
-    case kzd_services:reseller_id(
-           kz_services:services_jobj(Services)
-          )
-    of
-        'undefined' -> get_id(kz_services:account_id(Services));
-        ResellerId -> ResellerId
-    end.
+    kzd_services:reseller_id(kz_services:services_jobj(Services)).
 
 %%------------------------------------------------------------------------------
 %% @doc Ignores the reseller_id property on the services document (if any)

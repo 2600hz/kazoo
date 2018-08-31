@@ -95,7 +95,7 @@
 
 -include("services.hrl").
 
--record(kz_services, {account_id :: kz_term:api_binary()
+-record(kz_services, {account_id :: kz_term:api_ne_binary()
                      ,services_jobj = kzd_services:new() :: kzd_services:doc()
                      ,current_services_jobj = kzd_services:new() :: kzd_services:doc()
                      ,plans = 'undefined' ::  'undefined' | kz_services_plans:plans()
@@ -110,8 +110,8 @@
                      ,dirty = 'false' :: boolean()
                      }).
 
--record(bookkeeper, {type :: kz_term:ne_binary()
-                    ,vendor_id :: kz_term:api_binary()
+-record(bookkeeper, {type :: kz_term:api_ne_binary()
+                    ,vendor_id :: kz_term:api_ne_binary()
                     }
        ).
 
@@ -962,9 +962,11 @@ apps_foldl(_BookkeeperHash, PlansList, Apps) ->
 %%------------------------------------------------------------------------------
 -spec sum_quantities_updates(kz_json:object(), kz_json:object()) -> kz_json:object().
 sum_quantities_updates(Quantities, Updates) ->
-    Props = [{[CategoryName, ItemName], kz_json:get_integer_value([CategoryName, ItemName], Updates, 0)}
-             || CategoryName <- kz_json:get_keys(Updates)
-                    ,ItemName <- kz_json:get_keys(CategoryName, Updates)
+    Props = [{[CategoryName, ItemName]
+             ,kz_json:get_integer_value([CategoryName, ItemName], Updates, 0)
+             }
+             || CategoryName <- kz_json:get_keys(Updates),
+                ItemName <- kz_json:get_keys(CategoryName, Updates)
             ],
     lists:foldl(fun({Key, UpdateValue}, JObj) ->
                         CurrentValue = kz_json:get_integer_value(Key, JObj, 0),
@@ -978,7 +980,8 @@ sum_quantities_updates(Quantities, Updates) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper(kz_term:ne_binary()) -> {'ok', bookkeeper()} | {'error', any()}.
+-spec bookkeeper(kz_term:ne_binary()) -> {'ok', bookkeeper()} |
+                                         {'error', any()}.
 bookkeeper(Account) ->
     AccountId = kz_util:format_account_id(Account),
     ResellerId = kz_services_reseller:get_id(AccountId),
@@ -997,7 +1000,7 @@ bookkeeper(Account) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper_type(kz_term:ne_binary() | bookkeeper()) -> kz_term:api_binary().
+-spec bookkeeper_type(kz_term:ne_binary() | bookkeeper()) -> kz_term:api_ne_binary().
 bookkeeper_type(?NE_BINARY=Account) ->
     case bookkeeper(Account) of
         {'error', _Reason} -> 'undefined';
