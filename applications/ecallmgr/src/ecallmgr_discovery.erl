@@ -164,8 +164,6 @@ filter_acls_fun({_Name, ACL}) ->
 
 sbc_acl(IPs) ->
     CIDRs = [kz_network_utils:to_cidr(IP) || {IP, _} <- IPs],
-    lager:debug("IPs ~p", [IPs]),
-    lager:debug("CIDRs ~p", [CIDRs]),
 
     kz_json:from_list([{<<"type">>, <<"allow">>}
                       ,{<<"network-list-name">>, ?FS_SBC_ACL_LIST}
@@ -178,8 +176,6 @@ sbc_acls(Nodes) ->
 
 -spec sbc_discovery() -> any().
 sbc_discovery() ->
-    lager:info("discovering SBC ACLs"),
-
     DefaultACLs = ecallmgr_fs_acls:system(<<"default">>),
     ACLs = filter_acls(DefaultACLs),
     CIDRs = sbc_cidrs(ACLs),
