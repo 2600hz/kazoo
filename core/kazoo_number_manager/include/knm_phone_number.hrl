@@ -11,8 +11,9 @@
         {'ok', knm_phone_number:knm_phone_number()} |
         {'error', any()}.
 
--type dry_run_return() ::
-        {'dry_run', kz_services:services(), non_neg_integer()}.
+-type quotes() :: kz_json:api_object().
+
+-type dry_run_return() :: {'dry_run', quotes()}.
 
 -type knm_number_return() ::
         {'ok', knm_number:knm_number()} |
