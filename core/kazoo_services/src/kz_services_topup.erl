@@ -154,15 +154,15 @@ get_account_topup(AccountJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_topup(kz_term:api_binary()) ->
-                         {'ok', kz_json:object()} |
+-spec maybe_topup(kz_term:api_ne_binary()) ->
+                         {'ok', kz_transaction:transaction(), kz_ledger:ledger()} |
                          {'error', error()}.
 maybe_topup(Account) ->
     {'ok', AvailableUnits} = kz_currency:available_units(Account),
     maybe_topup(Account, AvailableUnits).
 
--spec maybe_topup(kz_term:api_binary(), kz_currency:units()) ->
-                         {'ok', kz_json:object()} |
+-spec maybe_topup(kz_term:api_ne_binary(), kz_currency:units()) ->
+                         {'ok', kz_transaction:transaction(), kz_ledger:ledger()} |
                          {'error', error()}.
 maybe_topup(Account, AvailableUnits) ->
     case get_topup(Account) of
@@ -178,7 +178,7 @@ maybe_topup(Account, AvailableUnits) ->
     end.
 
 -spec maybe_topup(kz_term:ne_binary(), kz_currency:units(), kz_currency:units(), kz_currency:units()) ->
-                         {'ok', kz_json:object()} |
+                         {'ok', kz_transaction:transaction(), kz_ledger:ledger()} |
                          {'error', error()}.
 maybe_topup(AccountId, AvailableUnits, ReplinishUnits, ThresholdUnits) ->
     case should_topup(AccountId, AvailableUnits, ThresholdUnits) of
@@ -190,12 +190,14 @@ maybe_topup(AccountId, AvailableUnits, ReplinishUnits, ThresholdUnits) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec topup(kz_term:ne_binary(), kz_currency:units()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec topup(kz_term:ne_binary(), kz_currency:units()) ->
+                   {'ok', kz_transaction:transaction(), kz_ledger:ledger()} |
+                   {'error', any()}.
 topup(AccountId, ReplinishUnits) ->
     topup(AccountId, ReplinishUnits, <<"automatic">>).
 
 -spec topup(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary()) ->
-                   {'ok', kz_json:object()} | {'error', any()}.
+                   {'ok', kz_transaction:transaction(), kz_ledger:ledger()} | {'error', any()}.
 topup(AccountId, ReplinishUnits, Trigger) ->
     topup(AccountId, ReplinishUnits, Trigger, 'undefined').
 
