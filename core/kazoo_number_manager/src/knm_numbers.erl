@@ -635,7 +635,7 @@ save_numbers(T) ->
 
 -spec update_services(collection()) -> collection().
 -ifdef(TEST).
-update_services(T=#{todo := Ns}) -> knm_numbers:ok(Ns, T).
+update_services(T=#{todo := Ns}) -> ok(Ns, T).
 -else.
 update_services(T=#{todo := Numbers, options := Options}) ->
     case {knm_number_options:batch_run(Options)
