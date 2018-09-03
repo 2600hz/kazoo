@@ -75,7 +75,7 @@ db_init() ->
     _ = kz_datamgr:del_doc(?KZ_DATA_DB, <<"account-kazoo_apps-services">>),
     kz_datamgr:db_create(?KZ_SERVICES_DB),
     kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views"),
-    _ = kz_datamgr:register_view('account', 'kazoo_services', {<<"_design/services">>, js_design_doc()}),
+    _ = kz_datamgr:register_view('account', {<<"_design/services">>, js_design_doc()}),
     'ok'.
 
 -spec js_design_doc() -> kz_json:object().
