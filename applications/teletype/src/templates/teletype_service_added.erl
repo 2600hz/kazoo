@@ -163,7 +163,6 @@ auth_user_data(DataJObj) ->
         'false' ->
             AccountId = kzd_audit_logs:authenticating_user_account_id(Audit),
             UserId = kzd_audit_logs:authenticating_user_id(Audit),
-%%kz_json:get_value([<<"authenticating_user">>, <<"auth_user_id">>], Audit),
             case kzd_user:fetch(AccountId, UserId) of
                 {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
                 {'error', _} -> []
