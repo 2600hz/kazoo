@@ -46,8 +46,7 @@ rename_carrier_test_() ->
     #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj1}]),
     PN2 = knm_number:phone_number(N2),
     JObj2 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"blabla">>}]),
-    #{ko := N3} = knm_numbers:update([N1], [{fun knm_phone_number:update_doc/2, JObj2}]),
-    PN3 = knm_number:phone_number(N3),
+    E3 = knm_numbers:update([N1], [{fun knm_phone_number:update_doc/2, JObj2}]),
     #{ok := [N4]} = knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, kz_json:new()}]),
     PN4 = knm_number:phone_number(N4),
     JObj3 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
@@ -56,7 +55,7 @@ rename_carrier_test_() ->
                                                                ,[{auth_by, ?RESELLER_ACCOUNT_ID}]
                                                                ),
     JObj4 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"gen_carrier">>}]),
-    #{ok := [N6]} = knm_numbers:update([N3], [{fun knm_phone_number:reset_doc/2, JObj4}]),
+    #{ok := [N6]} = knm_numbers:update([N4], [{fun knm_phone_number:reset_doc/2, JObj4}]),
     PN6 = knm_number:phone_number(N6),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify carrier name is right"
@@ -73,16 +72,11 @@ rename_carrier_test_() ->
     ,{"Verify feature is now removed"
      ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
      }
-    ,?_assert(knm_phone_number:is_dirty(PN3))
-    ,{"Verify carrier name is changed"
-     ,?_assertEqual(<<"knm_blabla">>, knm_phone_number:module_name(PN3))
+
+    ,{"Verify renamed failed"
+     ,?_assertEqual(<<"'blabla' is not known by the system">>, kz_json:get_value(<<"cause">>, kz_maps:get([ko, ?TEST_TELNYX_NUM], E3)))
      }
-    ,{"Verify local feature is not set"
-     ,?_assert(not lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN3)))
-     }
-    ,{"Verify feature is now removed"
-     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN3)))
-     }
+
     ,?_assertEqual(false, knm_phone_number:is_dirty(PN4))
     ,{"Verify local feature is still set"
      ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN4)))
