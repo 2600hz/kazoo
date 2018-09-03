@@ -172,7 +172,12 @@ handle_info({'http', {ReqID, 'stream', Bin}}, #state{kz_http_req_id=ReqID
                                    }};
         <<"application/json">> ->
             lager:debug("JSON response: ~s", [Bin]),
+            {'noreply', State, 'hibernate'};
+
+        <<"application/json; charset=UTF-8">> ->
+            lager:debug("JSON response: ~s", [Bin]),
             {'noreply', State, 'hibernate'}
+
     end;
 
 handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
