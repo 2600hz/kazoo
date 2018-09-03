@@ -44,7 +44,7 @@
         ]
        ).
 
--define(ROLLUP_ID, <<"kazoo_ledgers_monthly_rollup">>).
+-define(ROLLUP_ID(Y,M), kazoo_modb_util:modb_id(Y, M, <<"kazoo_ledgers_monthly_rollup">>)).
 -type ledgers() :: [kz_ledger:ledger()].
 -export_type([ledgers/0]).
 
@@ -307,7 +307,7 @@ get_monthly_rollup(Account) ->
                                 {'ok', kz_ledger:ledger()} |
                                 {'error', any()}.
 get_monthly_rollup(Account, Year, Month) ->
-    case kazoo_modb:open_doc(Account, ?ROLLUP_ID, Year, Month) of
+    case kazoo_modb:open_doc(Account, ?ROLLUP_ID(Year,Month), Year, Month) of
         {'ok', LedgerJObj} ->
             Ledger = kz_ledger:set_modb(kz_ledger:from_json(LedgerJObj)
                                        ,Account
@@ -389,7 +389,7 @@ rollup(Account, Year, Month, Total) ->
           ,{fun kz_ledger:set_period_start/2, kz_time:now_s()}
           ,{fun kz_ledger:set_metadata/2, metadata()}
           ,{fun kz_ledger:set_unit_amount/2, Total}
-          ,{fun kz_ledger:set_id/2, ?ROLLUP_ID}
+          ,{fun kz_ledger:set_id/2, ?ROLLUP_ID(Year,Month)}
           ,{fun kz_ledger:set_ledger_type/2, ledger_type(Total)}
           ]
          ),
