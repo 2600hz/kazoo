@@ -74,7 +74,7 @@ rename_carrier_test_() ->
      }
 
     ,{"Verify renamed failed"
-     ,?_assertEqual(<<"'blabla' is not known by the system">>, kz_json:get_value(<<"cause">>, kz_maps:get([ko, ?TEST_TELNYX_NUM], E3)))
+     ,?_assertEqual(<<"'blabla' is not known by the system">>, kz_json:get_value(<<"cause">>, kz_maps:get([ko, ?TEST_TELNYX_NUM], E3, kz_json:new())))
      }
 
     ,?_assertEqual(false, knm_phone_number:is_dirty(PN4))
