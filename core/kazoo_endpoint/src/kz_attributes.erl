@@ -683,7 +683,7 @@ process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
 
 -spec is_flag_exported(kz_term:ne_binary()) -> boolean().
 is_flag_exported(Flag) ->
-    kz_module:is_exported('kapps_call', kz_term:to_atom(Flag), 1).
+    kz_module:is_exported('kapps_call', Flag, 1).
 
 %%------------------------------------------------------------------------------
 %% @doc
