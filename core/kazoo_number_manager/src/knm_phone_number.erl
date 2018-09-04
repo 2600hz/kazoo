@@ -173,7 +173,7 @@ do_new(DID, Setters) ->
 
 -spec from_number(kz_term:ne_binary()) -> knm_phone_number().
 from_number(DID) ->
-    from_json(kz_doc:set_id(kz_json:new(), DID)).
+    from_json(kz_doc:set_id(kzd_phone_numbers:new(), DID)).
 
 -spec from_number_with_options(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number().
 from_number_with_options(DID, Options) ->
