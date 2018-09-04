@@ -9,11 +9,11 @@
 
 -include("braintree.hrl").
 
--record(update, {item :: kz_json:object()
+-record(update, {item :: kz_json:api_object()
                 ,plan_id :: kz_term:api_ne_binary()
                 ,addon_id :: kz_term:api_ne_binary()
-                ,mapping :: kz_json:object()
-                ,subscription :: braintree_subscription:subscription()
+                ,mapping :: kz_json:api_object()
+                ,subscription :: braintree_subscription:subscription() | 'undefined'
                 }).
 
 -record(request, {request_jobj = kz_json:new() :: kz_json:object()
@@ -22,7 +22,7 @@
                  ,vendor_id :: kz_term:api_ne_binary()
                  ,bookkeeper_id :: kz_term:api_ne_binary()
                  ,bookkeeper_jobj :: kz_term:api_object()
-                 ,customer :: braintree_customer:customer()
+                 ,customer :: braintree_customer:customer() | 'undefined'
                  ,updates = dict:new() :: dict:dict()
                  ,results = [] :: results()
                  }).
@@ -237,13 +237,14 @@ get_plan_subscription(PlanId, Request, #bt_customer{}=Customer) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec prepare_subscription_addon(update()) -> update().
+-spec prepare_subscription_addon(update()) -> braintree_subscription:subscription().
 prepare_subscription_addon(Update) ->
     Routines = [fun update_addon_quantity/1
                ,fun update_addon_amount/1
                ,fun update_addon_discount_amount/1
                ],
-    (lists:foldl(fun(F, U) -> F(U) end, Update, Routines))#update.subscription.
+    #update{subscription=Subscription} = lists:foldl(fun(F, U) -> F(U) end, Update, Routines),
+    Subscription.
 
 -spec update_addon_quantity(update()) -> update().
 update_addon_quantity(#update{item=Item

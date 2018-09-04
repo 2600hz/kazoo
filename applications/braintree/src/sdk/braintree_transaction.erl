@@ -169,7 +169,7 @@ credit(CustomerId, Transaction) ->
                                      ,customer_id=CustomerId
                                      }).
 
--spec quick_credit(kz_term:ne_binary(), kz_term:ne_binary()) -> bt_transaction().
+-spec quick_credit(kz_term:ne_binary(), kz_currency:dollars()) -> bt_transaction().
 quick_credit(CustomerId, Amount) ->
     credit(CustomerId, #bt_transaction{amount=kz_term:to_binary(Amount)
                                       ,settle='false'
