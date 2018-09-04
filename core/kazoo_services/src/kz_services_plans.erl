@@ -333,7 +333,10 @@ do_merge(PlansJObjs) ->
                                Priority = kzd_service_plan:merge_priority(PlanJObj),
                                JObj = kz_doc:public_fields(PlanJObj),
                                dict:append(Strategy, {Priority, JObj}, D)
-                       end, dict:new(), PlansJObjs),
+                       end
+                      ,dict:new()
+                      ,PlansJObjs
+                      ),
     Sorted = lists:sort(fun merge_strategy_sort/2
                        ,dict:to_list(Dict)
                        ),

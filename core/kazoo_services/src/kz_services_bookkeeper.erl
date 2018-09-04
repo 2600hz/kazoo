@@ -82,7 +82,9 @@ store_audit_log(Services, Invoice, {'error', 'timeout'}) ->
                                ,{<<"message">>, <<"bookkeeper did not respond to update request">>}
                                ]
                               ),
-    store_audit_log_to_db(Services, Invoice, Result).
+    store_audit_log_to_db(Services, Invoice, Result);
+store_audit_log(_Services, _Invoice, _Result) ->
+    lager:warning("failed to get bookkeeper results: ~p", [_Result]).
 
 -spec store_audit_log_to_db(kz_services:services(), kz_services_invoice:invoice(), kz_json:object() | kz_json:objects()) -> 'ok'.
 store_audit_log_to_db(Services, Invoice, Result) ->
