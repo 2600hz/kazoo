@@ -17,7 +17,7 @@
        ).
 -define(RESAMPLE_IMAGE_CMD, <<"convert $FROM "
                               "-resample 200x200 "
-                              "-units PixelsPerInch "
+                              "-page +0+0 "
                               "-compress group4 $TO"
                             >>
        ).
