@@ -242,7 +242,7 @@ migrate_service_plans(AccountDb, [JObj|JObjs]) ->
             migrate_service_plans(AccountDb, JObjs)
     end.
 
--spec migrate_service_plan(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+-spec migrate_service_plan(kz_term:ne_binary(), kz_json:object()) -> kzd_services:doc().
 migrate_service_plan(AccountDb, JObj) ->
     io:format("~s/~s requires migration~n", [AccountDb, kz_doc:id(JObj)]),
     Routines = [fun migrate_service_plans_bookkeeper/2
