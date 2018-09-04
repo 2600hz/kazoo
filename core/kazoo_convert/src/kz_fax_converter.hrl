@@ -68,7 +68,7 @@
 -define(VALIDATE_TIFF_CMD, <<"tiffinfo $FILE">>).
 
 -define(RESAMPLE_IMAGE_COMMAND
-       ,kapps_config:get_binary(?CONFIG_CAT, [<<"fax">>, <<"convert_image_command">>], ?RESAMPLE_IMAGE_CMD)).
+       ,kapps_config:get_binary(?CONFIG_CAT, [<<"fax">>, <<"resample_image_command">>], ?RESAMPLE_IMAGE_CMD)).
 -define(CONVERT_IMAGE_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, [<<"fax">>, <<"convert_image_command">>], ?CONVERT_IMAGE_CMD)).
 -define(LARGE_TIFF_COMMAND

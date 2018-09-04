@@ -74,7 +74,22 @@ Most converters are nice about exit status, but if you customize your commands, 
 
 ### Tiff Resample Command
 
-The configuration parameter for this command is `fax.convert_image_command`. This command is invoked when a conversion from any `image/*` to `image/tiff` is requested.
+The configuration parameter for this command is `fax.resample_image_command`. This command is invoked when a conversion from any `image/*` to `image/tiff` is requested.
+
+This is most commonly used to resample a tiff with unknown resolution or a resolution that is too large for faxing. When this command is used, the image is processed again after the resolution is updated to ensure it is the correct height and width for `letter` format.
+
+The default command is:
+
+```bash
+convert $FROM \
+    -resample 200x200 \
+    -units PixelsPerInch \
+    -compress group4 $TO
+```
+
+### Tiff Convert Command
+
+The configuration parameter for this command is `fax.convert_image_command`. This command is invoked when a conversion from any `image/*` to `image/tiff` is requested if the format of the image is unsuitable for faxing but the resolution is correct.
 
 This is most commonly used to resample an otherwise validly formatted tiff to ensure it is using the standard format for faxing.
 
