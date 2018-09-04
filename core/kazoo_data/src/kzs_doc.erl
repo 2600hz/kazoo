@@ -54,7 +54,8 @@ handle_opened_doc(Doc, 'true', 'false') ->
 save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:save_doc(Conn, DbName, PreparedDoc, Options) of
-        {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+        {'ok', JObj}=Ok -> kzs_cache:flush_cache_doc(DbName, JObj),
+                           kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
                            Ok;
         Else -> Else
     catch
