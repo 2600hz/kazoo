@@ -488,10 +488,10 @@ col_dialed_number(JObj, _Timestamp, _Context) -> dialed_number(JObj).
 col_calling_from(JObj, _Timestamp, _Context) -> calling_from(JObj).
 col_pretty_print(_JObj, Timestamp, Context) ->
     UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UTC_OFFSET),
-    pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
+    kz_time:pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
 col_unix_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
-col_rfc1036(_JObj, Timestamp, _Context) -> list_to_binary([$", kz_time:rfc1036(Timestamp), $"]).
-col_iso8601(_JObj, Timestamp, _Context) -> list_to_binary([$", kz_date:to_iso8601_extended(Timestamp), $"]).
+col_rfc1036(_JObj, Timestamp, _Context) -> kz_time:rfc1036(Timestamp).
+col_iso8601(_JObj, Timestamp, _Context) -> kz_date:to_iso8601_extended(Timestamp).
 col_account_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
 col_rate(JObj, _Timestamp, _Context) -> kz_term:to_binary(wht_util:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
 col_rate_name(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
@@ -508,14 +508,6 @@ col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CC
 handle_utc_time_offset(Timestamp, 'undefined') -> Timestamp;
 handle_utc_time_offset(Timestamp, UTCSecondsOffset) ->
     Timestamp + kz_term:to_number(UTCSecondsOffset).
-
--spec pretty_print_datetime(kz_time:datetime() | integer()) -> kz_term:ne_binary().
-pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
-    pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
-pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w"
-                                  ,[Y, Mo, D, H, Mi, S]
-                                  )).
 
 -spec format_recordings(kz_json:object()) -> kz_term:binaries().
 format_recordings(JObj) ->
