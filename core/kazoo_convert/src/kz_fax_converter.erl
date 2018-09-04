@@ -242,10 +242,12 @@ handle_resample(FromPath, #{<<"tmp_dir">> := TmpDir}=Options) ->
                                  {'convert', kz_term:ne_binary()} |
                                  {'resample', kz_term:ne_binary()} |
                                  'noop'.
-select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}=Map) when X =:= 0 orelse Y =:= 0 ->
+select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}=Map) when X =:= 0
+    orelse Y =:= 0 ->
     lager:debug("file is unknown dpi, re-sampling info: ~p", [Map]),
     {'resample', ?RESAMPLE_IMAGE_COMMAND};
-select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}=Map) when X > 204 orelse Y > 200 ->
+select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}=Map) when X > 204
+    orelse Y > 200 ->
     lager:debug("file is too high a dpi, re-sampling info: ~p", [Map]),
     {'resample', ?RESAMPLE_IMAGE_COMMAND};
 select_tiff_command(#{<<"length">> := Height}=Map) when Height > 2200 ->

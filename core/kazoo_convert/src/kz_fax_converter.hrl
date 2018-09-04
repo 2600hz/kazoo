@@ -16,10 +16,10 @@
         >>
        ).
 -define(RESAMPLE_IMAGE_CMD, <<"convert $FROM "
-                             "-resample 200x200 "
-                             "-units PixelsPerInch "
-                             "-compress group4 $TO"
-                           >>
+                              "-resample 200x200 "
+                              "-units PixelsPerInch "
+                              "-compress group4 $TO"
+                            >>
        ).
 -define(CONVERT_IMAGE_CMD, <<"convert $FROM "
                              "-resample 200x200 "
