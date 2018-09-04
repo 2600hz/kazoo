@@ -80,8 +80,13 @@ update_subscriptions(Context, ProposedJObj) ->
 
 -spec update_subscriptions(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> 'ok'.
 update_subscriptions(Context, CurrentJObj, ProposedJObj) ->
-    AccountId = cb_context:account_id(Context),
+    update_subscriptions(Context, CurrentJObj, ProposedJObj, cb_context:account_id(Context)).
+
+update_subscriptions(_Context, _CurrentJObj, _ProposedJObj, 'undefined') ->
+    lager:debug("not updating subscriptions on non-account-related change");
+update_subscriptions(Context, CurrentJObj, ProposedJObj, AccountId) ->
     AuditLog = audit_log(Context),
+    lager:info("committing updates to ~s", [AccountId]),
     kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog).
 
 %%------------------------------------------------------------------------------
