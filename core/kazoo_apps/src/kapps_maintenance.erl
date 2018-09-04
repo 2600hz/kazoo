@@ -88,7 +88,7 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    'true' = kz_datamgr:refresh_views(Database),
+    _ = kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -256,7 +256,6 @@ get_database_sort(Db1, Db2) ->
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    _ = kz_datamgr:refresh_views(Database),
     _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
     'ok'.
 
