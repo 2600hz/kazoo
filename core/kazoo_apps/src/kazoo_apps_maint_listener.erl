@@ -215,7 +215,7 @@ refresh_account_db(Database) ->
     AccountId = kz_util:format_account_id(Database, 'raw'),
     case ensure_account_definition(AccountDb, AccountId) of
         'deleted' -> 'ok';
-        'ok' ->       
+        'ok' ->
             _ = kz_datamgr:refresh_views(Database),
             kapps_account_config:migrate(AccountDb),
             _ = kazoo_bindings:map(kapps_maintenance:binding({'refresh_account', AccountDb}), AccountId),
