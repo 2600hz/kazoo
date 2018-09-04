@@ -773,8 +773,12 @@ do_delete(Context, JObj, CouchFun) ->
                        ,[kz_doc:id(JObj), cb_context:account_db(Context), CouchFun]
                        ),
             Context1 = handle_datamgr_success(JObj, Context),
-            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, []]),
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            _ = case kz_doc:type(JObj) =/= <<"account">> of
+                    'true' ->
+                        _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, []]),
+                        _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]);
+                    'false' -> lager:debug("not calling services/provisioner routines for deleted account")
+                end,
             Context1
     end.
 
