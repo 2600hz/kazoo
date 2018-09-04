@@ -164,6 +164,12 @@ image_to_tiff(FromPath, #{<<"from_format">> := <<"image/tiff">>, <<"tmp_dir">> :
     case select_tiff_command(Info) of
         'noop' ->
             rename_file(FromPath, filename:join(TmpDir, <<JobId/binary, ".tiff">>));
+        {'resample', Command} ->
+            case convert_file(Command, FromPath, <<".tiff">>, Options) of
+                {'ok', Converted} ->
+                    handle_resample(Converted, Options);
+                Error -> Error
+            end;
         {'convert', Command} ->
             convert_file(Command, FromPath, <<".tiff">>, Options)
     end;
@@ -223,30 +229,43 @@ run_convert_command(Command, FromPath, ToPath, TmpDir) ->
             {'error', <<"convert command failed">>}
     end.
 
+-spec handle_resample(kz_term:ne_binary(), map()) -> fax_converted().
+handle_resample(FromPath, #{<<"tmp_dir">> := TmpDir}=Options) ->
+    case rename_file(FromPath, filename:join(TmpDir, <<(kz_binary:rand_hex(32))/binary, ".tiff">>)) of
+        {'ok', NewPath} ->
+            lager:debug("resampled file to ~p, ensuring valid fax format", [NewPath]),
+            image_to_tiff(NewPath, Options);
+        Error -> Error
+    end.
 
 -spec select_tiff_command(map()) ->
                                  {'convert', kz_term:ne_binary()} |
+                                 {'resample', kz_term:ne_binary()} |
                                  'noop'.
-select_tiff_command(#{<<"length">> := Height}) when Height > 1078 ->
-    lager:debug("file is too long, resizing"),
+select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}=Map) when X =:= 0 orelse Y =:= 0 ->
+    lager:debug("file is unknown dpi, re-sampling info: ~p", [Map]),
+    {'resample', ?RESAMPLE_IMAGE_COMMAND};
+select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}=Map) when X > 204 orelse Y > 200 ->
+    lager:debug("file is too high a dpi, re-sampling info: ~p", [Map]),
+    {'resample', ?RESAMPLE_IMAGE_COMMAND};
+select_tiff_command(#{<<"length">> := Height}=Map) when Height > 2200 ->
+    lager:debug("file is too long, resizing with info: ~p", [Map]),
     {'convert', ?LARGE_TIFF_COMMAND};
-select_tiff_command(#{<<"width">> := Width}) when Width > 1728 ->
-    lager:debug("file is too wide, resizing"),
+select_tiff_command(#{<<"width">> := Width}=Map) when Width > 1728 ->
+    lager:debug("file is too wide, resizing with info: ~p", [Map]),
     {'convert', ?LARGE_TIFF_COMMAND};
-select_tiff_command(#{<<"width">> := Width}) when Width < 1728 ->
-    lager:debug("file is smaller than page, centering"),
+select_tiff_command(#{<<"width">> := Width}=Map) when Width < 1728 ->
+    lager:debug("file is smaller than page, centering with info: ~p", [Map]),
     {'convert', ?SMALL_TIFF_COMMAND};
-select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}) when X > 204
-                                                       orelse Y > 98  ->
-    lager:debug("file is wrong dpi, re-sampling"),
-    {'convert', ?CONVERT_IMAGE_COMMAND};
-select_tiff_command(#{<<"scheme">> := <<"CCITT Group 3">>, <<"has_pages">> := 'true'}) ->
+select_tiff_command(#{<<"scheme">> := <<"CCITT Group 3">>, <<"has_pages">> := 'true'}=Map) ->
+    lager:debug("file has pages and is valid format for group 3, not going to convert info: ~p", [Map]),
     'noop';
-select_tiff_command(#{<<"scheme">> := <<"CCITT Group 4">>, <<"has_pages">> := 'true'}) ->
+select_tiff_command(#{<<"scheme">> := <<"CCITT Group 4">>, <<"has_pages">> := 'true'}=Map) ->
+    lager:debug("file has pages and is valid format for group 4, not going to convert info: ~p", [Map]),
     'noop';
-select_tiff_command(#{}) ->
-    lager:debug("file has no pages, re-sampling to fix"),
-    {'convert', ?CONVERT_IMAGE_COMMAND}.
+select_tiff_command(Map) ->
+    lager:debug("file has no pages or is not ccitt fax encoding, re-sampling with info: ~p", [Map]),
+    {'resample', ?CONVERT_IMAGE_COMMAND}.
 
 %%%=============================================================================
 %%% validate functions
