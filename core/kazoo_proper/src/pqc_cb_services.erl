@@ -4,7 +4,7 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(pqc_cb_service_plans).
+-module(pqc_cb_services).
 
 -export([create_service_plan/2
         ,delete_service_plan/2
@@ -22,7 +22,11 @@ create_service_plan(_API, ServicePlan) ->
     %% No API to add service plans to master account
     %% Doing so manually for now
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
-    kz_datamgr:save_doc(MasterAccountDb, ServicePlan).
+    {'ok', OldVsn} = kz_datamgr:save_doc(MasterAccountDb, ServicePlan),
+    io:format("old: ~p~n", [OldVsn]),
+    Migrate = kazoo_services_maintenance:migrate_service_plan(MasterAccountDb, OldVsn),
+    io:format("mig: ~p~n", [Migrate]),
+    {'ok', Migrate}.
 
 -spec delete_service_plan(pqc_cb_api:state(), kz_term:ne_binary()) ->
                                  {'ok', kz_json:object()} |
@@ -59,7 +63,7 @@ available_service_plans(API, AccountId) ->
 
 -spec account_service_plan_url(kz_term:ne_binary()) -> string().
 account_service_plan_url(AccountId) ->
-    string:join([pqc_cb_accounts:account_url(AccountId), "service_plans"], "/").
+    string:join([pqc_cb_accounts:account_url(AccountId), "services"], "/").
 
 -spec cleanup() -> 'ok'.
 cleanup() ->

@@ -95,6 +95,9 @@ api_key(MasterAccountId) ->
     end.
 
 -spec create_api_state(binary(), binary(), kz_data_tracing:trace_ref()) -> state().
+create_api_state({'error', {'failed_connect', 'econnrefused'}}, _RequestId, _Trace) ->
+    lager:warning("failed to connect to Crossbar; is it running?"),
+    throw({'error', 'econnrefused'});
 create_api_state(<<_/binary>> = RespJSON, RequestId, Trace) ->
     RespEnvelope = kz_json:decode(RespJSON),
     #{'auth_token' => kz_json:get_ne_binary_value(<<"auth_token">>, RespEnvelope)

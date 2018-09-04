@@ -85,7 +85,7 @@ create_service_plan(API, RatedeckId) ->
             {'error', 'no_ratedeck'};
         _Rates ->
             ?INFO("creating service plan for ~s", [RatedeckId]),
-            case pqc_cb_service_plans:create_service_plan(API, ratedeck_service_plan(RatedeckId)) of
+            case pqc_cb_services:create_service_plan(API, ratedeck_service_plan(RatedeckId)) of
                 {'ok', _} -> 'ok';
                 {'error', 'conflict'} -> 'ok';
                 Error -> Error
@@ -100,7 +100,7 @@ assign_service_plan(_API, 'undefined', _RatedeckId) ->
 assign_service_plan(API, AccountId, RatedeckId) ->
     ?INFO("attempting to assign service plan for ~s to ~s", [RatedeckId, AccountId]),
     ServicePlanId = service_plan_id(RatedeckId),
-    pqc_cb_service_plans:assign_service_plan(API, AccountId, ServicePlanId).
+    pqc_cb_services:assign_service_plan(API, AccountId, ServicePlanId).
 
 -spec rate_account_did(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
                               kz_term:api_integer().
@@ -289,7 +289,7 @@ init() ->
 cleanup() ->
     ?INFO("CLEANUP ALL THE THINGS"),
     kz_data_tracing:clear_all_traces(),
-    pqc_cb_service_plans:cleanup(),
+    pqc_cb_services:cleanup(),
     cleanup(pqc_cb_api:authenticate()).
 
 -spec cleanup(pqc_cb_api:state()) -> any().
@@ -297,7 +297,9 @@ cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
     _ = [?MODULE:delete_rate(API, RatedeckId) || RatedeckId <- ?RATEDECK_NAMES],
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
-    _DelSPs = [pqc_cb_service_plans:delete_service_plan(API, service_plan_id(RatedeckId)) || RatedeckId <- ?RATEDECK_NAMES],
+    _DelSPs = [pqc_cb_services:delete_service_plan(API, service_plan_id(RatedeckId))
+               || RatedeckId <- ?RATEDECK_NAMES
+              ],
 
     pqc_cb_api:cleanup(API).
 
@@ -352,7 +354,7 @@ seq() ->
 
     RatedeckId = kzd_rates:ratedeck_id(RateDoc),
 
-    _Assigned = ?MODULE:assign_service_plan(API, AccountId, kzd_rates:ratedeck_id(RateDoc)),
+    _Assigned = assign_service_plan(API, AccountId, kzd_rates:ratedeck_id(RateDoc)),
     case kz_json:get_value([<<"data">>, <<"plan">>, <<"ratedeck">>, RatedeckId]
                           ,kz_json:decode(_Assigned)
                           )

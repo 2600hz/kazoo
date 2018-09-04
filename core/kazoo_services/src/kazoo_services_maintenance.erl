@@ -10,7 +10,7 @@
 -export([flush/0]).
 -export([db_init/0]).
 -export([refresh/0]).
--export([migrate_service_plans/1]).
+-export([migrate_service_plans/1, migrate_service_plan/2]).
 -export([migrate_services/0]).
 -export([fix_plan_apps/1]).
 -export([reconcile/0

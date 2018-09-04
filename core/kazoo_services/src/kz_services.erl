@@ -145,7 +145,7 @@
 %% @doc Returns the account id of the kz_services:services()
 %% @end
 %%------------------------------------------------------------------------------
--spec account_id(services()) -> kz_term:api_binary().
+-spec account_id(services()) -> kz_term:api_ne_binary().
 account_id(#kz_services{account_id=AccountId}) ->
     AccountId.
 

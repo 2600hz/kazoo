@@ -58,8 +58,8 @@ fetch_cascade(Services) ->
 fetch(Database, View, ViewOptions) ->
     case kz_datamgr:get_results(Database, View, ViewOptions) of
         {'error', _Reason} ->
-            lager:info("unable to fetch quantities from ~s: ~p"
-                      ,[Database, _Reason]
+            lager:info("unable to fetch quantities from ~s/~s: ~p"
+                      ,[Database, View, _Reason]
                       ),
             kz_json:new();
         {'ok', JObjs} ->
