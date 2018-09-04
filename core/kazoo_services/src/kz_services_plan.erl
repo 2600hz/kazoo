@@ -14,6 +14,7 @@
 -export([bookkeeper_id/1]).
 -export([bookkeeper_type/1]).
 -export([bookkeeper_vendor_id/1]).
+-export([applications/1]).
 -export([jobj/1
         ,set_jobj/2
         ]).
@@ -115,6 +116,14 @@ bookkeeper_type(Plan) ->
 -spec bookkeeper_vendor_id(plan()) -> kz_term:ne_binary().
 bookkeeper_vendor_id(Plan) ->
     kzd_service_plan:bookkeeper_vendor_id(jobj(Plan), vendor_id(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec applications(plan()) -> kz_json:object().
+applications(Plan) ->
+    kzd_service_plan:applications(jobj(Plan)).
 
 %%------------------------------------------------------------------------------
 %% @doc

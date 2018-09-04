@@ -948,12 +948,12 @@ apps(Services) ->
 
 -spec apps_foldl(kz_term:ne_binary(), kz_services_plans:plans_list(), dict:dict()) -> dict:dict().
 apps_foldl(_BookkeeperHash, PlansList, Apps) ->
-    PlansJObj = kz_services_plans:merge(PlansList, 'true'),
+    Plan = kz_services_plans:merge(PlansList),
     kz_json:foldl(fun(K, V, A) ->
                           dict:store(K, V, A)
                   end
                  ,Apps
-                 ,kzd_service_plan:applications(PlansJObj)
+                 ,kz_services_plan:applications(Plan)
                  ).
 
 %%------------------------------------------------------------------------------

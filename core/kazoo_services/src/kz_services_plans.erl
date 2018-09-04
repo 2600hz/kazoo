@@ -19,9 +19,7 @@
         ,override/3
         ]).
 
--export([merge/1
-        ,merge/2
-        ]).
+-export([merge/1]).
 
 -export([editable_fields/0
         ,editable_fields/1
@@ -37,7 +35,6 @@
 -type merge_strategy_plans() :: [merge_strategy_plan()].
 -type merge_strategy_group() :: {kz_term:ne_binary(), merge_strategy_plans()}.
 -type merge_strategy_groups() :: [merge_strategy_groups()].
--type merge_to_single() :: boolean() | kz_json:object().
 
 -export_type([plans/0
              ,plans_list/0
@@ -243,17 +240,10 @@ foldl(FoldFun, Acc, Plans) ->
 %%------------------------------------------------------------------------------
 -spec public_json(plans()) -> kz_json:object().
 public_json(Plans) ->
-    kz_json:from_list([{BookkeeperHash, public_json_plan(PlansList)}
+    kz_json:from_list([{BookkeeperHash, kz_services_plan:public_json(merge(PlansList))}
                        || {BookkeeperHash, PlansList} <- dict:to_list(Plans)
                       ]
                      ).
-
--spec public_json_plan(plans_list()) -> kz_json:object().
-public_json_plan(PlansList) ->
-    PlansJObjs = [kz_services_plan:jobj(Plan)
-                  || Plan <- PlansList
-                 ],
-    merge(PlansJObjs, 'true').
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -314,35 +304,29 @@ merge_override(ServicesJObj, Overrides) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--type mergable() :: plans() | plans_list() | kz_json:objects().
--spec merge(mergable()) -> kz_json:object() | kz_json:objects().
+-type mergable() :: plans() | plans_list().
+-spec merge(mergable()) -> kz_services_plan:plan().
+merge([Head|Tail]=Plans) when is_list(Plans) ->
+    VendorId = kz_services_plan:bookkeeper_vendor_id(Head),
+    'true' = lists:all(fun(Plan) ->
+                               VendorId =:= kz_services_plan:bookkeeper_vendor_id(Plan)
+                       end
+                      ,Tail
+                      ),
+    PlansJObjs = [kz_services_plan:jobj(Plan)
+                  || Plan <- Plans
+                 ],
+    PlanJObj = do_merge(PlansJObjs),
+    PlanId = kz_doc:id(PlanJObj),
+    kz_services_plan:create(VendorId, PlanId, PlanJObj);
 merge(Plans) ->
-    merge(Plans, 'false').
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec merge(mergable(), merge_to_single()) -> kz_json:object() | kz_json:objects().
-merge(Plans, MergeToSingle) when is_list(Plans) ->
-    case lists:all(fun kz_services_plan:is_plan/1, Plans) of
-        'true' ->
-            PlansJObjs = [kz_services_plan:jobj(Plan)
-                          || Plan <- Plans
-                         ],
-            do_merge(PlansJObjs, MergeToSingle);
-        'false' ->
-            'true' = lists:all(fun kz_json:is_json_object/1, Plans),
-            do_merge(Plans, MergeToSingle)
-    end;
-merge(Plans, MergeToSingle) ->
     PlansList = [Plan
                  || {_, Plan} <- dict:to_list(Plans)
                 ],
-    merge(PlansList, MergeToSingle).
+    merge(PlansList).
 
--spec do_merge(kz_json:objects(), merge_to_single()) -> kz_json:object() | kz_json:objects().
-do_merge(PlansJObjs, MergeToSingle) ->
+-spec do_merge(kz_json:objects()) -> kz_json:object() | kz_json:objects().
+do_merge(PlansJObjs) ->
 %%% TODO: set _all exceptions to any other keys in the category automatically
     Dict = lists:foldl(fun(PlanJObj, D) ->
                                Strategy = kzd_service_plan:merge_strategy(PlanJObj),
@@ -353,14 +337,13 @@ do_merge(PlansJObjs, MergeToSingle) ->
     Sorted = lists:sort(fun merge_strategy_sort/2
                        ,dict:to_list(Dict)
                        ),
-    MergedPlansJObjs = merge_plans_by_strategy(Sorted, []),
-    case MergeToSingle of
-        'false' -> MergedPlansJObjs;
-        'true' -> merge_to_single(MergedPlansJObjs, kz_json:new());
-        Else ->
-            'true' = kz_json:is_json_object(Else),
-            merge_to_single(MergedPlansJObjs, Else)
-    end.
+    merge_to_single(
+      merge_plans_by_strategy(Sorted, [])
+     ).
+
+-spec merge_to_single(kz_json:objects()) -> kz_json:object().
+merge_to_single(PlansJObjs) ->
+    merge_to_single(PlansJObjs, kz_json:new()).
 
 -spec merge_to_single(kz_json:objects(), kz_json:object()) -> kz_json:object().
 merge_to_single(PlansJObjs, JObj) ->

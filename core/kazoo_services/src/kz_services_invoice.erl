@@ -17,7 +17,7 @@
 -export([activation_charges/1
         ,set_activation_charges/2
         ]).
--export([plan_jobj/1]).
+-export([plan/1]).
 
 -export([empty/0]).
 -export([setters/1
@@ -33,7 +33,7 @@
 -record(invoice, {bookkeeper_hash :: kz_term:api_binary()
                  ,items = kz_services_items:empty() :: kz_services_items:items()
                  ,activation_charges = []
-                 ,plan_jobj = kzd_service_plan:new() :: kzd_service_plan:doc()
+                 ,plan = kz_services_plan:empty() :: kz_services_plan:plan()
                  }
        ).
 
@@ -66,24 +66,24 @@ set_bookkeeper_hash(Invoice, BookkeeperHash) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec bookkeeper_id(invoice()) -> kz_term:ne_binary().
-bookkeeper_id(Plan) ->
-    kzd_service_plan:bookkeeper_id(plan_jobj(Plan), <<"default">>).
+bookkeeper_id(Invoice) ->
+    kz_services_plan:bookkeeper_id(plan(Invoice)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec bookkeeper_type(invoice()) -> kz_term:ne_binary().
-bookkeeper_type(Plan) ->
-    kzd_service_plan:bookkeeper_type(plan_jobj(Plan), <<"default">>).
+bookkeeper_type(Invoice) ->
+    kz_services_plan:bookkeeper_type(plan(Invoice)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec bookkeeper_vendor_id(invoice()) -> kz_term:ne_binary().
-bookkeeper_vendor_id(Plan) ->
-    kzd_service_plan:bookkeeper_vendor_id(plan_jobj(Plan)).
+bookkeeper_vendor_id(Invoice) ->
+    kz_services_plan:bookkeeper_vendor_id(plan(Invoice)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -121,17 +121,17 @@ set_activation_charges(Invoice, ActivationCharges) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec plan_jobj(invoice()) -> kzd_services_plan:plan().
-plan_jobj(#invoice{plan_jobj=PlanJObj}) ->
-    PlanJObj.
+-spec plan(invoice()) -> kz_services_plan:plan().
+plan(#invoice{plan=Plan}) ->
+    Plan.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_plan_jobj(invoice(), kzd_service_plan:doc()) -> invoice().
-set_plan_jobj(Invoice, PlanJObj) ->
-    Invoice#invoice{plan_jobj=PlanJObj}.
+-spec set_plan(invoice(), kz_services_plan:plan()) -> invoice().
+set_plan(Invoice, Plan) ->
+    Invoice#invoice{plan=Plan}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -170,12 +170,13 @@ setters(Invoice, Routines) ->
 public_json(Invoice) ->
     %% TODO: calculate totals (taxes, activations)...
     ItemsJObjs = kz_services_items:public_json(items(Invoice)),
+    PlanJObj = kz_services_plan:jobj(plan(Invoice)),
     Props = [{<<"items">>, ItemsJObjs}
             ,{<<"activation_charges">>, []}
             ,{<<"taxes">>, []}
             ,{<<"summary">>, summary(Invoice, ItemsJObjs)}
-            ,{<<"plan">>, kzd_service_plan:plan(plan_jobj(Invoice))}
-            ,{<<"bookkeeper">>, kzd_service_plan:bookkeeper(plan_jobj(Invoice))}
+            ,{<<"plan">>, kzd_service_plan:plan(PlanJObj)}
+            ,{<<"bookkeeper">>, kzd_service_plan:bookkeeper(PlanJObj)}
             ],
     kz_json:from_list(Props).
 
@@ -201,14 +202,14 @@ sum_item_totals([ItemJObj|ItemsJObjs], Total) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec create(kz_services:services(), kz_term:ne_binary(), kzd_service_plan:doc()) ->
+-spec create(kz_services:services(), kz_term:ne_binary(), kz_services_plan:plan()) ->
                     invoice().
-create(Services, BookkeeperHash, PlanJObj) ->
+create(Services, BookkeeperHash, Plan) ->
     lager:debug("generating invoice for bookkeeper ~s", [BookkeeperHash]),
-    Items = kz_services_items:create(Services, PlanJObj),
+    Items = kz_services_items:create(Services, Plan),
     Setters = [{fun set_bookkeeper_hash/2, BookkeeperHash}
               ,{fun set_items/2, Items}
-              ,{fun set_plan_jobj/2, PlanJObj}
+              ,{fun set_plan/2, Plan}
               ],
     setters(Setters).
 

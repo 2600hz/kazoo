@@ -97,8 +97,8 @@ create_invoices(Services, Plans) ->
 -spec create_invoices_foldl(kz_services:services()) -> kz_services_plans:foldl_fun().
 create_invoices_foldl(Services) ->
     fun(BookkeeperHash, PlansList, Invoices) ->
-            PlansJObj = kz_services_plans:merge(PlansList, 'true'),
-            [kz_services_invoice:create(Services, BookkeeperHash, PlansJObj)
+            Plan = kz_services_plans:merge(PlansList),
+            [kz_services_invoice:create(Services, BookkeeperHash, Plan)
              |Invoices
             ]
     end.

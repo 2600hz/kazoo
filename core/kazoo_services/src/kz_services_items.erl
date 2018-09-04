@@ -45,18 +45,19 @@ empty() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec create(kz_services:services(), kzd_service_plan:doc()) -> [kz_services_item:item()].
-create(Services, PlanJObj) ->
+-spec create(kz_services:services(), kz_services_plan:plan()) -> items().
+create(Services, Plan) ->
     lists:foldl(fun({CategoryName, ItemName}, Items) ->
-                        ItemPlan = get_item_plan(PlanJObj, CategoryName, ItemName),
+                        ItemPlan = get_item_plan(Plan, CategoryName, ItemName),
                         [kz_services_item:create(Services, ItemPlan, CategoryName, ItemName)|Items]
                 end
                ,[]
-               ,get_plan_items(Services, PlanJObj)
+               ,get_plan_items(Services, Plan)
                ).
 
--spec get_item_plan(kzd_service_plan:doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kzd_item_plan:doc().
-get_item_plan(PlanJObj, CategoryName, ItemName) ->
+-spec get_item_plan(kz_services_plan:plan(), kz_term:ne_binary(), kz_term:ne_binary()) -> kzd_item_plan:doc().
+get_item_plan(Plan, CategoryName, ItemName) ->
+    PlanJObj = kz_services_plan:jobj(Plan),
     case kzd_service_plan:item(PlanJObj, CategoryName, ItemName) of
         'undefined' ->
             lager:info("unable to find item plan ~s/~s, using generic"
@@ -73,8 +74,9 @@ get_generic_item_plan(PlanJObj, CategoryName) ->
         ItemPlan -> ItemPlan
     end.
 
--spec get_plan_items(kz_services:services(), kzd_service_plan:doc()) -> kz_term:proplist().
-get_plan_items(_Services, PlanJObj) ->
+-spec get_plan_items(kz_services:services(), kz_services_plan:plan()) -> kz_term:proplist().
+get_plan_items(_Services, Plan) ->
+    PlanJObj = kz_services_plan:jobj(Plan),
     [{CategoryName, ItemName}
      || CategoryName <- kzd_service_plan:categories(PlanJObj),
         ItemName <- kzd_service_plan:items(PlanJObj, CategoryName)
