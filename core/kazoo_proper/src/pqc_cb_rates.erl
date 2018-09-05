@@ -353,16 +353,19 @@ seq() ->
     end,
 
     RatedeckId = kzd_rates:ratedeck_id(RateDoc),
+    ServicePlanId = service_plan_id(RatedeckId),
 
-    _Assigned = assign_service_plan(API, AccountId, kzd_rates:ratedeck_id(RateDoc)),
-    case kz_json:get_value([<<"data">>, <<"plan">>, <<"ratedeck">>, RatedeckId]
+    _Assigned = assign_service_plan(API, AccountId, RatedeckId),
+    ?INFO("assigned: ~p", [_Assigned]),
+    case kz_json:get_value([<<"data">>, ServicePlanId, <<"vendor_id">>]
                           ,kz_json:decode(_Assigned)
                           )
     of
         'undefined' ->
-            ?ERROR("failed to assign service plan for ~s to account ~s", [RatedeckId, AccountId]),
+            ?ERROR("failed to assign service plan for '~s' to account ~s", [RatedeckId, AccountId]),
+            lager:error("failed to assign service plan for ~s to account ~s: ~s", [RatedeckId, AccountId, _Assigned]),
             throw('no_plan');
-        _ ->
+        _MasterAccountId ->
             ?INFO("assigned service plan to account ~s~n", [AccountId])
     end,
 
