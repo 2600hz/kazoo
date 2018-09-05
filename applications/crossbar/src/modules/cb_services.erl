@@ -43,6 +43,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    _ = kazoo_services_maintenance:db_init(),
     cb_modules_util:bind(?MODULE
                         ,[{<<"*.authorize.services">>, 'authorize'}
                          ,{<<"*.allowed_methods.services">>, 'allowed_methods'}
