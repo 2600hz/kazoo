@@ -29,6 +29,14 @@
         ,bookkeeper_type/2
         ,set_bookkeeper_type/2
         ]).
+-export([ratedeck_id/1
+        ,ratedeck_id/2
+        ,set_ratedeck_id/2
+        ]).
+-export([ratedeck_name/1
+        ,ratedeck_name/2
+        ,set_ratedeck_name/2
+        ]).
 -export([applications/1
         ,applications/2
         ,set_applications/2
@@ -70,6 +78,9 @@
 -define(BOOKKEEPER_ID, [?BOOKKEEPER, <<"id">>]).
 -define(BOOKKEEPER_VENDOR, [?BOOKKEEPER, <<"vendor_id">>]).
 -define(BOOKKEEPER_TYPE, [?BOOKKEEPER, <<"type">>]).
+-define(RATEDECK, <<"ratedeck">>).
+-define(RATEDECK_ID, [?RATEDECK, <<"id">>]).
+-define(RATEDECK_NAME, [?RATEDECK, <<"name">>]).
 -define(APPLICATIONS, <<"applications">>).
 -define(CATEGORY, <<"category">>).
 -define(MERGE, <<"merge">>).
@@ -203,6 +214,46 @@ bookkeeper_type(JObj, Default) ->
 -spec set_bookkeeper_type(doc(), kz_term:ne_binary()) -> doc().
 set_bookkeeper_type(JObj, BookkeeperType) ->
     kz_json:set_value(?BOOKKEEPER_TYPE, BookkeeperType, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ratedeck_id(kz_json:object()) -> kz_term:api_binary().
+ratedeck_id(JObj) ->
+    ratedeck_id(JObj, 'undefined').
+
+-spec ratedeck_id(doc(), Default) -> kz_term:ne_binary() | Default.
+ratedeck_id(JObj, Default) ->
+    kz_json:get_ne_binary_value(?RATEDECK_ID, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_ratedeck_id(doc(), kz_term:ne_binary()) -> doc().
+set_ratedeck_id(JObj, RatedeckId) ->
+    kz_json:set_value(?RATEDECK_ID, RatedeckId, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ratedeck_name(kz_json:object()) -> kz_term:api_binary().
+ratedeck_name(JObj) ->
+    ratedeck_name(JObj, 'undefined').
+
+-spec ratedeck_name(doc(), Default) -> kz_term:ne_binary() | Default.
+ratedeck_name(JObj, Default) ->
+    kz_json:get_ne_binary_value(?RATEDECK_NAME, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_ratedeck_name(doc(), kz_term:ne_binary()) -> doc().
+set_ratedeck_name(JObj, RatedeckName) ->
+    kz_json:set_value(?RATEDECK_NAME, RatedeckName, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc

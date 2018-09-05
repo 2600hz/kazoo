@@ -248,6 +248,7 @@ migrate_service_plan(AccountDb, JObj) ->
     Routines = [fun migrate_service_plans_bookkeeper/2
                ,fun migrate_service_plans_apps/2
                ,fun migrate_service_plans_pvt_parameters/2
+               ,fun migrate_service_plans_ratedeck/2
                ,fun store_migrated_services_plan/2
                ],
     lists:foldl(fun(F, J) -> F(AccountDb, J) end, JObj, Routines).
@@ -332,6 +333,25 @@ migrate_service_plans_apps(_AccountDb, JObj) ->
 migrate_service_plans_pvt_parameters(_AccountDb, JObj) ->
     Options = [{'crossbar_doc_vsn', 2}],
     kz_doc:update_pvt_parameters(JObj, ?KZ_SERVICES_DB, Options).
+
+
+-spec migrate_service_plans_ratedeck(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+migrate_service_plans_ratedeck(_AccountDb, JObj) ->
+    Plan = kzd_service_plan:plan(JObj),
+    Setters = props:filter_empty(
+                [{fun kzd_service_plan:set_ratedeck_id/2
+                 ,get_ratedeck_binary(<<"ratedeck">>, Plan)
+                 }
+                ,{fun kzd_service_plan:set_ratedeck_name/2
+                 ,get_ratedeck_binary(<<"ratedeck_name">>, Plan)
+                 }
+                ]
+               ),
+    Keys = [[<<"plan">>, <<"ratedeck">>]
+           ,[<<"plan">>, <<"ratedeck_name">>]
+           ],
+    Cleaned = kz_json:delete_keys(Keys, JObj),
+    kz_doc:setters(Cleaned, Setters).
 
 -spec store_migrated_services_plan(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 store_migrated_services_plan(AccountDb, JObj) ->

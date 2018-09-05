@@ -422,7 +422,21 @@ ratedeck_id(Services) ->
     %% but the ratedeck integration on services and
     %% service_plan documents could use a revist...
     ServicesJObj = services_jobj(Services),
-    kzd_services:ratedeck_id(ServicesJObj).
+    case kzd_services:ratedeck_id(ServicesJObj) of
+        'undefined' -> plan_ratedeck_id(Services);
+        RatedeckId -> RatedeckId
+    end.
+
+-spec plan_ratedeck_id(services()) -> kz_term:api_ne_binary().
+plan_ratedeck_id(Services) ->
+    Plans = kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
+                                            PlansList ++ Plans
+                                    end
+                                   ,[]
+                                   ,plans(Services)
+                                   ),
+    Plan = kz_services_plans:merge(Plans),
+    kz_services_plan:ratedeck_id(Plan).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -434,7 +448,21 @@ ratedeck_name(Services) ->
     %% but the ratedeck integration on services and
     %% service_plan documents could use a revist...
     ServicesJObj = services_jobj(Services),
-    kzd_services:ratedeck_name(ServicesJObj).
+    case kzd_services:ratedeck_name(ServicesJObj) of
+        'undefined' -> plan_ratedeck_name(Services);
+        RatedeckName -> RatedeckName
+    end.
+
+-spec plan_ratedeck_name(services()) -> kz_term:api_ne_binary().
+plan_ratedeck_name(Services) ->
+    Plans = kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
+                                            PlansList ++ Plans
+                                    end
+                                   ,[]
+                                   ,plans(Services)
+                                   ),
+    Plan = kz_services_plans:merge(Plans),
+    kz_services_plan:ratedeck_name(Plan).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -941,9 +969,9 @@ is_services(_) -> 'false'.
 -spec apps(services()) -> kz_json:object().
 apps(Services) ->
     AppsDict = kz_services_plans:foldl(fun apps_foldl/3
-                                  ,dict:new()
-                                  ,plans(Services)
-                                  ),
+                                      ,dict:new()
+                                      ,plans(Services)
+                                      ),
     kz_json:from_list(dict:to_list(AppsDict)).
 
 -spec apps_foldl(kz_term:ne_binary(), kz_services_plans:plans_list(), dict:dict()) -> dict:dict().

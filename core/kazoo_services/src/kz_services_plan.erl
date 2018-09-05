@@ -14,6 +14,8 @@
 -export([bookkeeper_id/1]).
 -export([bookkeeper_type/1]).
 -export([bookkeeper_vendor_id/1]).
+-export([ratedeck_id/1]).
+-export([ratedeck_name/1]).
 -export([applications/1]).
 -export([jobj/1
         ,set_jobj/2
@@ -116,6 +118,22 @@ bookkeeper_type(Plan) ->
 -spec bookkeeper_vendor_id(plan()) -> kz_term:ne_binary().
 bookkeeper_vendor_id(Plan) ->
     kzd_service_plan:bookkeeper_vendor_id(jobj(Plan), vendor_id(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ratedeck_id(plan()) -> kz_term:api_ne_binary().
+ratedeck_id(Plan) ->
+    kzd_service_plan:ratedeck_id(jobj(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ratedeck_name(plan()) -> kz_term:api_ne_binary().
+ratedeck_name(Plan) ->
+    kzd_service_plan:ratedeck_name(jobj(Plan)).
 
 %%------------------------------------------------------------------------------
 %% @doc
