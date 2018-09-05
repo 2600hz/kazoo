@@ -35,6 +35,34 @@ lift_common_properties_test_() ->
                  ,kz_endpoints:lift_common_properties([CommonProperties, Merged])
                  ).
 
+lift_common_properties_blacklist_test_() ->
+    CommonProperties = kz_json:from_list([{<<"foo">>, <<"bar">>}
+                                         ,{<<"key">>, <<"value">>}
+                                         ]),
+    UniqueProperties = kz_json:from_list([{<<"bing">>, <<"bang">>}]),
+    Blacklist = [<<"foo">>],
+
+    Merged = kz_json:merge(CommonProperties, UniqueProperties),
+
+    {Common, Endpoints} = kz_endpoints:lift_common_properties([CommonProperties, Merged], Blacklist),
+
+    [?_assert(kz_json:are_equal(Common, kz_json:delete_key(Blacklist, CommonProperties)))
+    ,?_assertEqual(Endpoints
+                  ,[kz_json:from_list([{<<"foo">>, <<"bar">>}])
+                   ,kz_json:from_list([{<<"foo">>, <<"bar">>}
+                                      ,{<<"bing">>, <<"bang">>}
+                                      ])
+                   ]
+                  )
+    ].
+
+proper_findings_lift_1_test_() ->
+    JObj = {[{<<0>>,'false'}]},
+    {C, Es} = kz_endpoints:lift_common_properties([JObj, JObj], [<<0>>]),
+    [?_assert(kz_json:are_equal(kz_json:new(), C))
+     | [?_assert(kz_json:are_equal(E, JObj)) || E <- Es]
+    ].
+
 -ifdef(PROPER).
 
 %% Lifted from Erlang ML
@@ -87,6 +115,32 @@ prop_nothing_in_common() ->
                      )
            ).
 
+prop_lift_common_blacklist() ->
+    ?FORALL({CommonJObj, UniqueJObj}
+           ,common_and_unique()
+           ,?WHENFAIL(?debugFmt("~nfailed to lift out common ~p~nunique: ~p~nmerged: ~p~nblacklisted: ~p~n"
+                               ,[CommonJObj
+                                ,UniqueJObj
+                                ,kz_json:merge(UniqueJObj, CommonJObj)
+                                ,make_blacklist(kz_json:get_keys(CommonJObj))
+                                ]
+                               )
+                     ,begin
+                          Blacklist = make_blacklist(kz_json:get_keys(CommonJObj)),
+                          Merged = kz_json:merge(UniqueJObj, CommonJObj),
+                          {CommonProperties
+                          ,[UpCommon, UpUnique]
+                          } = kz_endpoints:lift_common_properties([CommonJObj, Merged], Blacklist),
+
+                          kz_json:are_equal(kz_json:delete_keys(Blacklist, CommonJObj), CommonProperties)
+                              andalso kz_json:get_value(Blacklist, UpCommon) =:= kz_json:get_value(Blacklist, CommonJObj)
+                              andalso kz_json:get_value(Blacklist, UpUnique) =:= kz_json:get_value(Blacklist, Merged)
+                      end
+                     )
+           ).
+
+make_blacklist([]) -> [];
+make_blacklist([H|_]) -> [H].
 
 common_and_unique() ->
     ?LET(Common
