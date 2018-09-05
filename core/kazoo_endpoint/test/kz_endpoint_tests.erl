@@ -37,6 +37,25 @@ lift_common_properties_test_() ->
 
 -ifdef(PROPER).
 
+%% Lifted from Erlang ML
+proper_test_() ->
+    {"Runs kz_endpoint PropEr tests"
+    ,{'timeout'
+     ,10000
+     ,[{atom_to_list(F)
+       ,fun () ->
+                ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
+                                                       ,{'numtests', 500}
+                                                       ]))
+        end
+       }
+       || {F, 0} <- ?MODULE:module_info('exports'),
+          F > 'prop_',
+          F < 'prop`'
+      ]
+     }
+    }.
+
 prop_lift_common() ->
     ?FORALL({CommonJObj, UniqueJObj}
            ,common_and_unique()
