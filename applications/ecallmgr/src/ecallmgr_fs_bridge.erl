@@ -248,25 +248,24 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     EPs = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
 
-    {_Common, _UniqueEndpoints} = kz_json:lift_common_properties(Endpoints),
+    {Common, UniqueEndpoints} = kz_json:lift_common_properties(Endpoints),
+    UpdatedJObj = kz_json:set_value(<<"Endpoints">>, UniqueEndpoints, kz_json:merge(JObj, Common)),
 
-    _UpdatedJObj = kz_json:set_value(<<"Endpoints">>, _UniqueEndpoints, kz_json:merge(JObj, _Common)),
-
-    _LiftedCmd = list_to_binary(["bridge "
-                                ,build_channels_vars(_UniqueEndpoints, _UpdatedJObj)
-                                ,try_create_bridge_string(_UniqueEndpoints, _UpdatedJObj)
-                                ]),
-
-    BridgeCmd = list_to_binary(["bridge "
-                               ,build_channels_vars(Endpoints, JObj)
-                               ,try_create_bridge_string(Endpoints, JObj)
+    LiftedCmd = list_to_binary(["bridge "
+                               ,build_channels_vars(UniqueEndpoints, UpdatedJObj)
+                               ,try_create_bridge_string(UniqueEndpoints, UpdatedJObj)
                                ]),
 
-    lager:debug("bridge: ~s", [BridgeCmd]),
-    lager:debug("lifted: ~s", [_LiftedCmd]),
-    lager:debug("b: ~p l: ~p", [byte_size(BridgeCmd), byte_size(_LiftedCmd)]),
+    _BridgeCmd = list_to_binary(["bridge "
+                                ,build_channels_vars(Endpoints, JObj)
+                                ,try_create_bridge_string(Endpoints, JObj)
+                                ]),
 
-    [{"application", BridgeCmd}|DP].
+    lager:debug("bridge: ~s", [_BridgeCmd]),
+    lager:debug("lifted: ~s", [LiftedCmd]),
+    lager:debug("b: ~p l: ~p", [byte_size(_BridgeCmd), byte_size(LiftedCmd)]),
+
+    [{"application", LiftedCmd}|DP].
 
 -spec maybe_bypass_after_bridge(boolean(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 maybe_bypass_after_bridge('false', _, _, Endpoints) ->
