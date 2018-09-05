@@ -541,7 +541,7 @@ lift_common_properties([JObj|JObjs], Unliftable, CommonProperties) ->
 intersection(CommonProperties, JObjProperties) ->
     sets:to_list(sets:intersection(sets:from_list(CommonProperties), sets:from_list(JObjProperties))).
 
--spec jobj_properties(object(), paths()) -> object().
+-spec jobj_properties(object(), paths()) -> flat_proplist().
 jobj_properties(JObj, []) ->
     lists:usort(to_proplist(flatten(JObj)));
 jobj_properties(JObj, Unliftable) ->
