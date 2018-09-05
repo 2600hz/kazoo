@@ -38,7 +38,7 @@ proper_test_() ->
 
 prop_is_object() ->
     ?FORALL(JObj
-           ,test_object()
+           ,kz_json_generators:test_object()
            ,?WHENFAIL(?debugFmt("Failed is_json_object with ~p~n", [JObj])
                      ,kz_json:is_json_object(JObj)
                      )
@@ -54,7 +54,7 @@ prop_from_list() ->
 
 prop_get_value() ->
     ?FORALL(JObj
-           ,test_object()
+           ,kz_json_generators:test_object()
            ,?WHENFAIL(?debugFmt("Failed prop_get_value with ~p~n", [JObj])
                      ,begin
                           Prop = kz_json:to_proplist(JObj),
@@ -70,7 +70,7 @@ prop_get_value() ->
 
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}
-           ,{test_object(), keys(), non_null_json_term()}
+           ,{kz_json_generators:test_object(), keys(), non_null_json_term()}
            ,?TRAPEXIT(
                ?WHENFAIL(?debugFmt("Failed prop_set_value with ~w:~w -> ~p~n"
                                   ,[Key, Value, JObj]
@@ -86,9 +86,9 @@ prop_set_value() ->
 
 prop_delete_key() ->
     ?FORALL({JObj, Key, Value}
-           ,{test_object(), keys(), non_null_json_term()}
+           ,{kz_json_generators:test_object(), key(), non_null_json_term()}
            ,?TRAPEXIT(
-               ?WHENFAIL(?debugFmt("Failed prop_set_value with ~w:~w -> ~p~n"
+               ?WHENFAIL(?debugFmt("Failed kz_json:set_value(~w, ~w, ~w)~n"
                                   ,[Key, Value, JObj]
                                   ),
                          begin
@@ -112,7 +112,7 @@ prop_to_proplist() ->
 
 prop_flatten_expand() ->
     ?FORALL(JObj
-           ,test_object()
+           ,kz_json_generators:test_object()
            ,?WHENFAIL(?debugFmt("Failed to flatten/expand: ~p~n", [JObj])
                      ,kz_json:are_equal(JObj, kz_json:expand(kz_json:flatten(JObj)))
                      )
@@ -120,7 +120,7 @@ prop_flatten_expand() ->
 
 prop_merge_right() ->
     ?FORALL({LeftJObj, RightJObj}
-           ,{test_object(), test_object()}
+           ,{kz_json_generators:test_object(), kz_json_generators:test_object()}
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_right/2, LeftJObj, RightJObj),
 
@@ -134,7 +134,7 @@ prop_merge_right() ->
 
 prop_merge_left() ->
     ?FORALL({LeftJObj, RightJObj}
-           ,{test_object(), test_object()}
+           ,{kz_json_generators:test_object(), kz_json_generators:test_object()}
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_left/2, LeftJObj, RightJObj),
 
@@ -180,25 +180,11 @@ merge_left_test_() ->
     ].
 
 prop_to_map() ->
-    ?FORALL(JObj, test_object()
+    ?FORALL(JObj, kz_json_generators:test_object()
            ,?WHENFAIL(?debugFmt("failed json->map->json on ~p~n", [JObj])
                      ,kz_json:are_equal(JObj, kz_json:from_map(kz_json:to_map(JObj)))
                      )
            ).
-
-test_object() ->
-    ?LET(JObj, object(), remove_duplicate_keys(JObj)).
-
-remove_duplicate_keys(?EMPTY_JSON_OBJECT) -> ?EMPTY_JSON_OBJECT;
-remove_duplicate_keys(?JSON_WRAPPER(_)=JObj) ->
-    kz_json:foldl(fun no_dups/3, kz_json:new(), JObj);
-remove_duplicate_keys(V) -> V.
-
-no_dups(Key, ?JSON_WRAPPER(_)=JObj, Acc) ->
-    DeDuped = remove_duplicate_keys(JObj),
-    kz_json:set_value(Key, DeDuped, Acc);
-no_dups(Key, Value, Acc) ->
-    kz_json:set_value(Key, Value, Acc).
 
 are_all_properties_found(Merged, Favored) ->
     kz_json:all(fun({K,V}) -> is_property_found(K, V, Merged) end, Favored).

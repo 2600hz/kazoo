@@ -8,7 +8,10 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_endpoints).
 
--export([by_owner_id/3, ignore_early_media/1]).
+-export([by_owner_id/3
+        ,ignore_early_media/1
+        ,lift_common_properties/1
+        ]).
 
 -include("kazoo_endpoint.hrl").
 
@@ -34,3 +37,38 @@ ignore_early_media(Endpoints) ->
         'true' -> <<"true">>;
         'false' -> 'undefined'
     end.
+
+%%%-----------------------------------------------------------------------------
+%% @doc Lifts shared key/value pairs out for use in global settings
+%%
+%% @end
+%%%-----------------------------------------------------------------------------
+-spec lift_common_properties(kz_json:objects()) ->
+                                    {kz_json:object(), kz_json:objects()}.
+lift_common_properties([]) -> {[], []};
+lift_common_properties([Endpoint]) -> {[], [Endpoint]};
+lift_common_properties([Endpoint | Endpoints]) ->
+    EndpointProperties = endpoint_properties(Endpoint),
+    CommonProperties = lift_common_properties(Endpoints, EndpointProperties),
+    {kz_json:expand(CommonProperties), remove_common_properties([Endpoint | Endpoints], CommonProperties)}.
+
+lift_common_properties(_Endpoints, []) -> kz_json:new();
+lift_common_properties([], CommonProperties) ->
+    kz_json:from_list(CommonProperties);
+lift_common_properties([Endpoint|Endpoints], CommonProperties) ->
+    EndpointProperties = endpoint_properties(Endpoint),
+    lift_common_properties(Endpoints, intersection(CommonProperties, EndpointProperties)).
+
+intersection(CommonProperties, EndpointProperties) ->
+    sets:to_list(sets:intersection(sets:from_list(CommonProperties), sets:from_list(EndpointProperties))).
+
+endpoint_properties(Endpoint) ->
+    lists:usort(kz_json:to_proplist(kz_json:flatten(Endpoint))).
+
+remove_common_properties(Endpoints, CommonProperties) ->
+    kz_json:foldl(fun remove_common_property/3, Endpoints, CommonProperties).
+
+remove_common_property(Path, _Value, Endpoints) ->
+    lists:map(fun(E) -> kz_json:delete_key(Path, E, 'prune') end
+             ,Endpoints
+             ).
