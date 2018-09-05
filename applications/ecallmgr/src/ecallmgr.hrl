@@ -151,8 +151,9 @@
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, kapps_config:get_integer(?APP_NAME, <<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)).
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
--define(EXPIRES_DEVIATION_TIME,
-        kapps_config:get_integer(?APP_NAME, <<"expires_deviation_time">>, 180)).
+-define(EXPIRES_DEVIATION_TIME
+       ,kapps_config:get_integer(?APP_NAME, <<"expires_deviation_time">>, 180)
+       ).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
 -define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>

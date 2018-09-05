@@ -582,7 +582,7 @@ create_event(EventName, Props) ->
 create_event(EventName, ApplicationName, Props) ->
     props:filter_undefined(
       [{<<"Event-Name">>, EventName}
-       |specific_call_event_props(EventName, ApplicationName, Props)
+       | specific_call_event_props(EventName, ApplicationName, Props)
        ++ generic_call_event_props(Props)
        ++ specific_call_channel_vars_props(EventName, Props)
       ]).
