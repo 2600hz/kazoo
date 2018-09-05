@@ -301,7 +301,7 @@ fetch(Key, Default, Node, RequestTimeout) ->
                                  ),
     case ReqResp of
         {'error', _R} ->
-            lager:debug("unable to get config for key '~s' failed: ~p", [Key, _R]),
+            lager:warning("unable to get config for key '~s' failed: ~p", [Key, _R]),
             Default;
         {'ok', JObj} ->
             Value = get_response_value(JObj, Default),
@@ -314,11 +314,11 @@ maybe_cache_resp(_, _ , 'null') -> 'ok';
 maybe_cache_resp(_, _ , <<"null">>) -> 'ok';
 maybe_cache_resp(Key, Node, Value) ->
     CacheProps = [{'origin', {'db', ?KZ_CONFIG_DB, <<"ecallmgr">>}}],
-    kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                        ,cache_key(Key, Node)
-                        ,Value
-                        ,CacheProps
-                        ).
+    kz_cache:store_local_async(?ECALLMGR_UTIL_CACHE
+                              ,cache_key(Key, Node)
+                              ,Value
+                              ,CacheProps
+                              ).
 
 -spec set(kz_json:path(), kz_json:json_term()) -> 'ok'.
 set(Key, Value) ->

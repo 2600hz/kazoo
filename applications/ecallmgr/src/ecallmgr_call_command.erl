@@ -1674,9 +1674,13 @@ transfer_leg(JObj) ->
 
 -spec transfer_context(kz_json:object()) -> binary().
 transfer_context(JObj) ->
-    kz_json:get_binary_value(<<"Transfer-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
+    case kz_json:get_binary_value(<<"Transfer-Context">>, JObj) of
+        'undefined' -> ?DEFAULT_FREESWITCH_CONTEXT;
+        Context -> Context
+    end.
 
--spec sound_touch(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec sound_touch(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                         {kz_term:ne_binary(), kz_term:ne_binary()}.
 sound_touch(UUID, <<"start">>, JObj) ->
     {<<"soundtouch">>, list_to_binary([UUID, " start ", sound_touch_options(JObj)])};
 sound_touch(UUID, <<"stop">>, _JObj) ->
