@@ -378,7 +378,10 @@ merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 merge_jobjs(?JSON_WRAPPER(Props1), ?JSON_WRAPPER(_)=JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->
                         set_value(K, V, JObj2Acc)
-                end, JObj2, Props1).
+                end
+               ,JObj2
+               ,Props1
+               ).
 
 -type merge_pred() :: fun((json_term(), json_term()) -> boolean()).
 
