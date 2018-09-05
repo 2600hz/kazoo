@@ -21,6 +21,7 @@ Key | Description | Type | Default | Required | Support Level
 `fax.convert_openoffice_command` | The command to convert open office documents to pdf | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `fax.convert_pdf_command` | The command to convert pdf documents to tiff | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `fax.convert_tiff_command` | The command to convert a tiff file to PDF | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
+`fax.resample_image_command` | The command to convert an image file to a faxable tiff format | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `fax.large_tiff_command` | The command to convert an oversized tiff file to a fax compatible format | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `fax.small_tiff_command` | The command to convert an undersized tiff file to a fax compatible format | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `fax.enable_openoffice` | Enables the conversion of openoffice compatible documents | `boolean()` | `true` | `false` |
