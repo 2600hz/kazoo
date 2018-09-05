@@ -53,7 +53,9 @@ call_command(Node, UUID, JObj) ->
             XferExt = lists:foldr(fun(F, DP) ->
                                           F(DP, Node, UUID, Channel, BridgeJObj)
                                   end
-                                 ,[], Routines),
+                                 ,[]
+                                 ,Routines
+                                 ),
             {<<"xferext">>, XferExt}
     end.
 
@@ -245,6 +247,12 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     BridgeProfile = kz_term:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
     EPs = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
+
+    {_Common, _UniqueEndpoints} = kz_endpoints:lift_common_properties(Endpoints),
+    lager:debug("lifting out of ~p", [Endpoints]),
+    lager:debug("common: ~p", [_Common]),
+    lager:debug("unique: ~p", [_UniqueEndpoints]),
+
     BridgeCmd = list_to_binary(["bridge "
                                ,build_channels_vars(Endpoints, JObj)
                                ,try_create_bridge_string(Endpoints, JObj)
@@ -255,12 +263,16 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
 maybe_bypass_after_bridge('false', _, _, Endpoints) ->
     [kz_json:delete_key(<<"Bypass-Media">>, Endpoint) || Endpoint <- Endpoints];
 maybe_bypass_after_bridge('true', BridgeProfile, ChannelProfile, Endpoints) ->
-    [begin
-         case kz_json:get_value(<<"SIP-Interface">>, Endpoint, BridgeProfile) of
-             ChannelProfile -> Endpoint;
-             _ -> kz_json:delete_key(<<"Bypass-Media">>, Endpoint)
-         end
-     end || Endpoint <- Endpoints].
+    [maybe_remove_endpoint_bypass(Endpoint, BridgeProfile, ChannelProfile)
+     || Endpoint <- Endpoints
+    ].
+
+-spec maybe_remove_endpoint_bypass(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+maybe_remove_endpoint_bypass(Endpoint, BridgeProfile, ChannelProfile) ->
+    case kz_json:get_ne_binary_value(<<"SIP-Interface">>, Endpoint, BridgeProfile) of
+        ChannelProfile -> Endpoint;
+        _ -> kz_json:delete_key(<<"Bypass-Media">>, Endpoint)
+    end.
 
 -spec try_create_bridge_string(kz_json:objects(), kz_json:object()) -> kz_term:ne_binary().
 try_create_bridge_string(Endpoints, JObj) ->

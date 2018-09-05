@@ -485,7 +485,8 @@ get_leg_vars([Binary|_]=Binaries)
 get_leg_vars([_|_]=Prop) ->
     ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)
-                  || V <- lists:foldr(fun get_channel_vars/2, [], Prop)]
+                  || V <- lists:foldr(fun get_channel_vars/2, [], Prop)
+                 ]
                 ,?BRIDGE_CHANNEL_VAR_SEPARATOR
                 )
     ,"]"
