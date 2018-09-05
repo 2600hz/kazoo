@@ -247,6 +247,7 @@ start_trace(RequestId) ->
     lager:md([{'request_id', RequestId}]),
     put('now', kz_time:now()),
     TraceFile = "/tmp/" ++ kz_term:to_list(RequestId) ++ ".log",
+    lager:info("tracing at ~s", [TraceFile]),
 
     {'ok', _}=OK = kz_data_tracing:trace_file([glc_ops:eq('request_id', RequestId)]
                                              ,TraceFile
