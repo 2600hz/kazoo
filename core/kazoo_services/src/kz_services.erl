@@ -497,28 +497,28 @@ add_audit_log_account(Services, AuditLog) ->
 
 -spec add_audit_log_changes_type(services(), kz_json:object()) -> kz_json:object().
 add_audit_log_changes_type(Services, AuditLog) ->
-    case {kz_json:get_ne_binary_value([<<"changes">>, <<"type">>], AuditLog) =:= 'undefined'
-         ,kz_term:is_not_empty(cascade_updates(Services))
-         ,kz_term:is_not_empty(account_updates(Services))
-         ,kz_term:is_not_empty(manual_updates(Services))
-         }
-    of
-        {'false', _, _, _} -> AuditLog;
-        {'true', 'false', 'false', 'true'} ->
-            kz_json:set_value([<<"changes">>, <<"type">>], [<<"manual">>], AuditLog);
-        {'true', 'false', 'true', 'false'} ->
-            kz_json:set_value([<<"changes">>, <<"type">>], [<<"account">>], AuditLog);
-        {'true', 'false', 'true', 'true'} ->
-            kz_json:set_value([<<"changes">>, <<"type">>], [<<"manual">>, <<"account">>], AuditLog);
-        {'true', 'true', 'false', 'false'} ->
-            kz_json:set_value([<<"changes">>, <<"type">>], [<<"cascade">>], AuditLog);
-        {'true', 'true', 'false', 'true'} ->
-            kz_json:set_value([<<"changes">>, <<"type">>], [<<"manual">>, <<"cascade">>], AuditLog);
-        {'true', 'true', 'true', 'false'} ->
-            kz_json:set_value([<<"changes">>, <<"type">>], [<<"manual">>, <<"account">>], AuditLog);
-        {'true', 'true', 'true', 'true'} ->
-            kz_json:set_value([<<"changes">>, <<"type">>], [<<"manual">>, <<"cascade">>, <<"account">>], AuditLog)
-    end.
+    add_audit_log_changes_type(Services
+                              ,AuditLog
+                              ,kz_json:get_ne_binary_value([<<"changes">>, <<"type">>], AuditLog)
+                              ).
+
+-spec add_audit_log_changes_type(services(), kz_json:object(), kz_term:api_ne_binary()) ->
+                                        kz_json:object().
+add_audit_log_changes_type(_Services, AuditLog, 'undefined') -> AuditLog;
+add_audit_log_changes_type(Services, AuditLog, _Type) ->
+    lists:foldl(fun maybe_set_change_type/2
+               ,AuditLog
+               ,[{<<"cascase">>, kz_term:is_not_empty(cascade_updates(Services))}
+                ,{<<"account">>, kz_term:is_not_empty(account_updates(Services))}
+                ,{<<"manual">>, kz_term:is_not_empty(manual_updates(Services))}
+                ]
+               ).
+
+-spec maybe_set_change_type({kz_json:key(), boolean()}, kz_json:object()) -> kz_json:object().
+maybe_set_change_type({_Type, 'false'}, AuditLog) -> AuditLog;
+maybe_set_change_type({Type, 'true'}, AuditLog) ->
+    Types = kz_json:get_list_value([<<"changes">>, <<"type">>], AuditLog, []),
+    kz_json:set_value([<<"changes">>, <<"type">>], [Type | Types], AuditLog).
 
 -spec add_audit_log_changes_account(kz_term:ne_binary() | services(), kz_json:object()) -> kz_json:object().
 add_audit_log_changes_account(?NE_BINARY=AccountId, AuditLog) ->
