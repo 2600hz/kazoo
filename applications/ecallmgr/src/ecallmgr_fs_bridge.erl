@@ -248,7 +248,7 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     EPs = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
 
-    {_Common, _UniqueEndpoints} = kz_endpoints:lift_common_properties(Endpoints),
+    {_Common, _UniqueEndpoints} = kz_json:lift_common_properties(Endpoints),
 
     _UpdatedJObj = kz_json:set_value(<<"Endpoints">>, _UniqueEndpoints, kz_json:merge(JObj, _Common)),
 
