@@ -529,22 +529,26 @@ lift_common_properties([JObj | JObjs], Unliftable) ->
     ,remove_common_properties([JObj | JObjs], CommonProperties)
     }.
 
-lift_common_properties(_JObjs, _Unliftable, []) -> kz_json:new();
+-spec lift_common_properties(objects(), paths(), flat_proplist()) -> flat_object().
+lift_common_properties(_JObjs, _Unliftable, []) -> new();
 lift_common_properties([], _Unliftable, CommonProperties) ->
     from_list(CommonProperties);
 lift_common_properties([JObj|JObjs], Unliftable, CommonProperties) ->
     JObjProperties = jobj_properties(JObj, Unliftable),
     lift_common_properties(JObjs, Unliftable, intersection(CommonProperties, JObjProperties)).
 
+-spec intersection(flat_proplist(), flat_proplist()) -> flat_proplist().
 intersection(CommonProperties, JObjProperties) ->
     sets:to_list(sets:intersection(sets:from_list(CommonProperties), sets:from_list(JObjProperties))).
 
+-spec jobj_properties(object(), paths()) -> object().
 jobj_properties(JObj, []) ->
     lists:usort(to_proplist(flatten(JObj)));
 jobj_properties(JObj, Unliftable) ->
     Properties = jobj_properties(JObj, []),
     lists:foldl(fun remove_unliftable/2, Properties, Unliftable).
 
+-spec remove_unliftable(path(), flat_proplist()) -> flat_proplist().
 remove_unliftable([_|_]=Path, Properties) ->
     lists:filter(fun(Property) -> should_remove_unliftable(Property, Path) end
                 ,Properties
@@ -552,16 +556,17 @@ remove_unliftable([_|_]=Path, Properties) ->
 remove_unliftable(Key, Properties) ->
     remove_unliftable([Key], Properties).
 
+-spec should_remove_unliftable({path(), any()}, path()) -> boolean().
 should_remove_unliftable({Path, _}, Unliftable) ->
     not lists:prefix(Unliftable, Path).
 
+-spec remove_common_properties(objects(), object()) -> objects().
 remove_common_properties(JObjs, CommonProperties) ->
     foldl(fun remove_common_property/3, JObjs, CommonProperties).
 
+-spec remove_common_property(path(), any(), objects()) -> objects().
 remove_common_property(Path, _Value, JObjs) ->
-    lists:map(fun(E) -> kz_json:delete_key(Path, E, 'prune') end
-             ,JObjs
-             ).
+    lists:map(fun(JObj) -> delete_key(Path, JObj, 'prune') end, JObjs).
 
 %% Convert a JSON object to a proplist %% only top-level conversion is supported
 
