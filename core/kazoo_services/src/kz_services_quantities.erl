@@ -57,8 +57,12 @@ fetch_cascade(Services) ->
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
 fetch(Database, View, ViewOptions) ->
     case kz_datamgr:get_results(Database, View, ViewOptions) of
+        {'error', 'not_found'} ->
+            _Refresh = kz_datamgr:refresh_views(Database),
+            lager:info("refreshing ~s: ~p", [Database, _Refresh]),
+            fetch(Database, View, ViewOptions);
         {'error', _Reason} ->
-            lager:info("unable to fetch quantities from ~s/~s: ~p"
+            lager:info("unable to fetch quantities from ~s:~s: ~p"
                       ,[Database, View, _Reason]
                       ),
             kz_json:new();
