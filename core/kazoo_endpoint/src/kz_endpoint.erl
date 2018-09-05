@@ -217,24 +217,24 @@ merge_attributes(Endpoint, Type) ->
     merge_attributes(Endpoint, Type, attributes_keys()).
 
 attributes_keys() ->
-    [<<"name">>
+    [<<"call_forward">>
+    ,<<"call_recording">>
     ,<<"call_restriction">>
-    ,<<"music_on_hold">>
-    ,<<"ringtones">>
+    ,<<"call_waiting">>
     ,<<"caller_id">>
     ,<<"caller_id_options">>
-    ,<<"do_not_disturb">>
-    ,<<"call_forward">>
     ,<<"dial_plan">>
-    ,<<"metaflows">>
-    ,<<"language">>
-    ,<<"record_call">>
-    ,<<"call_recording">>
-    ,<<"mobile">>
-    ,<<"presence_id">>
-    ,<<"call_waiting">>
+    ,<<"do_not_disturb">>
     ,<<"formatters">>
+    ,<<"language">>
+    ,<<"metaflows">>
+    ,<<"mobile">>
+    ,<<"music_on_hold">>
+    ,<<"name">>
     ,<<"outbound_flags">>
+    ,<<"presence_id">>
+    ,<<"record_call">>
+    ,<<"ringtones">>
     ,?ATTR_LOWER_KEY
     ].
 
