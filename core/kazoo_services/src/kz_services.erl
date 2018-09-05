@@ -682,10 +682,10 @@ create(AccountId) ->
     lager:debug("trying to create new services doc for ~s", [AccountId]),
     create(AccountId, kzd_accounts:fetch(AccountId)).
 
--spec create(kz_term:ne_binary(), {'error', 'not_found'} | {'ok', kz_json:object()}) ->
+-spec create(kz_term:ne_binary(), {'error', 'not_found'} | {'ok', kzd_accounts:doc()}) ->
                     kz_json:api_object().
 create(_AccountId, {'error', 'not_found'}) ->
-    lager:error("failed to find account database for ~s", [_AccountId]),
+    lager:info("failed to find account database for ~s", [_AccountId]),
     'undefined';
 create(AccountId, {'ok', AccountJObj}) ->
     ResellerId = kz_services_reseller:find_id(AccountId),
