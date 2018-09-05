@@ -113,7 +113,7 @@ handle_event(JObj, #state{counter = Counter} = State) ->
         'false' -> {'reply', []};
         'true' ->
             AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            {'reply', State#state{counter = handle_account(Counter, AccountId)}}
+            {'reply', [], State#state{counter = handle_account(Counter, AccountId)}}
     end.
 
 %%------------------------------------------------------------------------------
@@ -180,8 +180,8 @@ value(_) -> {kz_time:now_s(), 0}.
 -spec update_account_view(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> any().
 update_account_view(AccountId, From, To) ->
     Dbs = kazoo_modb:get_range(AccountId, From, To),
-    lager:info("refresh cdr view account:~p db:~p from:~p to:~p", [AccountId, Dbs, From, To]),
-    [ kz_datamgr:get_results(Db, ?VIEW_TO_UPDATE, [{startkey, From}, {endkey, To}]) || Db <- Dbs ].
+    lager:info("refresh cdr view account:~p dbs:~p", [AccountId, Dbs]),
+    [ kz_datamgr:get_results(Db, ?VIEW_TO_UPDATE, [{'limit', 1}]) || Db <- Dbs ].
 
 -spec update_accounts_view([{kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}]) -> any().
 update_accounts_view(UpdateList) ->
