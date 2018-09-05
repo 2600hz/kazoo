@@ -231,7 +231,7 @@ run_convert_command(Command, FromPath, ToPath, TmpDir) ->
 
 -spec handle_resample(kz_term:ne_binary(), map()) -> fax_converted().
 handle_resample(FromPath, #{<<"tmp_dir">> := TmpDir}=Options) ->
-    case rename_file(FromPath, filename:join(TmpDir, <<(kz_binary:rand_hex(32))/binary, ".tiff">>)) of
+    case rename_file(FromPath, filename:join(TmpDir, <<(kz_binary:rand_hex(12))/binary, ".tiff">>)) of
         {'ok', NewPath} ->
             lager:debug("resampled file to ~p, ensuring valid fax format", [NewPath]),
             image_to_tiff(NewPath, Options);
