@@ -115,8 +115,9 @@ find_source_sub_dir(Module, AppDir) ->
     end.
 
 output_raw_matches(Module, Line, 0, LineData, Matches) ->
-    Format = "~p(~p): ~s~n",
-    output(Module, Line, Matches, LineData, Format);
+    File = props:get_value(source, Module:module_info(compile), Module),
+    Format = "~s:~p: ~s~n",
+    output(File, Line, Matches, LineData, Format);
 output_raw_matches(Module, Line, _RawLines, LineData, Matches) ->
     MLen = integer_to_list(length(atom_to_list(Module))),
     Format = "~" ++ MLen ++ "s ~p : ~s~n",

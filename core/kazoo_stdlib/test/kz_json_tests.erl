@@ -316,7 +316,7 @@ lift_common_properties_blacklist_test_() ->
     ].
 
 proper_findings_lift_1_test_() ->
-    JObj = {[{<<0>>,'false'}]},
+    JObj = kz_json:from_list([{<<0>>,'false'}]),
     {C, Es} = kz_json:lift_common_properties([JObj, JObj], [<<0>>]),
     [?_assert(kz_json:are_equal(kz_json:new(), C))
      | [?_assert(kz_json:are_equal(E, JObj)) || E <- Es]

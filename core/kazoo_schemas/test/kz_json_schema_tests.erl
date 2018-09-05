@@ -189,7 +189,7 @@ did_duplication_test() ->
                              ,{<<"server_name">>,<<"BBB1">>}
                              ]
                             ),
-    SrvC = kz_json:from_list([{<<"DIDs">>,{[{<<"+78121111111">>,kz_json:new()}]}}
+    SrvC = kz_json:from_list([{<<"DIDs">>,kz_json:from_list([{<<"+78121111111">>,kz_json:new()}])}
                              ,{<<"auth">>, kz_json:from_list([{<<"auth_method">>, <<"password">>}])}
                              ,{<<"server_name">>,<<"CCC1">>}
                              ]
