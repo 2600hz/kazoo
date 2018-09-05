@@ -504,15 +504,15 @@ add_audit_log_changes_type(Services, AuditLog) ->
 
 -spec add_audit_log_changes_type(services(), kz_json:object(), kz_term:api_ne_binary()) ->
                                         kz_json:object().
-add_audit_log_changes_type(_Services, AuditLog, 'undefined') -> AuditLog;
-add_audit_log_changes_type(Services, AuditLog, _Type) ->
+add_audit_log_changes_type(Services, AuditLog, 'undefined') ->
     lists:foldl(fun maybe_set_change_type/2
                ,AuditLog
                ,[{<<"cascase">>, kz_term:is_not_empty(cascade_updates(Services))}
                 ,{<<"account">>, kz_term:is_not_empty(account_updates(Services))}
                 ,{<<"manual">>, kz_term:is_not_empty(manual_updates(Services))}
                 ]
-               ).
+               );
+add_audit_log_changes_type(_Services, AuditLog, _Type) -> AuditLog.
 
 -spec maybe_set_change_type({kz_json:key(), boolean()}, kz_json:object()) -> kz_json:object().
 maybe_set_change_type({_Type, 'false'}, AuditLog) -> AuditLog;
