@@ -105,6 +105,8 @@
 
 -export([order_by/3]).
 
+-export([lift_common_properties/1, lift_common_properties/2]).
+
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 %% %% @headerfile "kazoo_stdlib/include/kazoo_json.hrl"
@@ -501,6 +503,63 @@ order_by(Path, Ids, ListOfJObjs)
          || JObjs <- ListOfJObjs
         ],
     [erase(Id) || Id <- Ids].
+
+
+%%%-----------------------------------------------------------------------------
+%% @doc Lifts shared key/value pairs out of the list of objects
+%%
+%% @end
+%%%-----------------------------------------------------------------------------
+-spec lift_common_properties(objects()) ->
+                                    {object(), objects()}.
+lift_common_properties(JObjs) ->
+    lift_common_properties(JObjs, []).
+
+-spec lift_common_properties(objects(), paths()) ->
+                                    {object(), objects()}.
+lift_common_properties([], _Unliftable) -> {new(), []};
+lift_common_properties([JObj], _Unliftable) -> {new(), [JObj]};
+lift_common_properties([JObj | JObjs], Unliftable) ->
+    JobjProperties = jobj_properties(JObj, Unliftable),
+    CommonProperties = lift_common_properties(JObjs, Unliftable, JobjProperties),
+
+    {expand(CommonProperties)
+    ,remove_common_properties([JObj | JObjs], CommonProperties)
+    }.
+
+lift_common_properties(_JObjs, _Unliftable, []) -> kz_json:new();
+lift_common_properties([], _Unliftable, CommonProperties) ->
+    from_list(CommonProperties);
+lift_common_properties([JObj|JObjs], Unliftable, CommonProperties) ->
+    JObjProperties = jobj_properties(JObj, Unliftable),
+    lift_common_properties(JObjs, Unliftable, intersection(CommonProperties, JObjProperties)).
+
+intersection(CommonProperties, JObjProperties) ->
+    sets:to_list(sets:intersection(sets:from_list(CommonProperties), sets:from_list(JObjProperties))).
+
+jobj_properties(JObj, []) ->
+    lists:usort(to_proplist(flatten(JObj)));
+jobj_properties(JObj, Unliftable) ->
+    Properties = jobj_properties(JObj, []),
+    lists:foldl(fun remove_unliftable/2, Properties, Unliftable).
+
+remove_unliftable([_|_]=Path, Properties) ->
+    lists:filter(fun(Property) -> should_remove_unliftable(Property, Path) end
+                ,Properties
+                );
+remove_unliftable(Key, Properties) ->
+    remove_unliftable([Key], Properties).
+
+should_remove_unliftable({Path, _}, Unliftable) ->
+    not lists:prefix(Unliftable, Path).
+
+remove_common_properties(JObjs, CommonProperties) ->
+    foldl(fun remove_common_property/3, JObjs, CommonProperties).
+
+remove_common_property(Path, _Value, JObjs) ->
+    lists:map(fun(E) -> kz_json:delete_key(Path, E, 'prune') end
+             ,JObjs
+             ).
 
 %% Convert a JSON object to a proplist %% only top-level conversion is supported
 
