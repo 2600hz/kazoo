@@ -249,14 +249,23 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
 
     {_Common, _UniqueEndpoints} = kz_endpoints:lift_common_properties(Endpoints),
-    lager:debug("lifting out of ~p", [Endpoints]),
-    lager:debug("common: ~p", [_Common]),
-    lager:debug("unique: ~p", [_UniqueEndpoints]),
+
+    _UpdatedJObj = kz_json:set_value(<<"Endpoints">>, _UniqueEndpoints, kz_json:merge(JObj, _Common)),
+
+    _LiftedCmd = list_to_binary(["bridge "
+                                ,build_channels_vars(_UniqueEndpoints, _UpdatedJObj)
+                                ,try_create_bridge_string(_UniqueEndpoints, _UpdatedJObj)
+                                ]),
 
     BridgeCmd = list_to_binary(["bridge "
                                ,build_channels_vars(Endpoints, JObj)
                                ,try_create_bridge_string(Endpoints, JObj)
                                ]),
+
+    lager:debug("bridge: ~s", [BridgeCmd]),
+    lager:debug("lifted: ~s", [_LiftedCmd]),
+    lager:debug("b: ~p l: ~p", [byte_size(BridgeCmd), byte_size(_LiftedCmd)]),
+
     [{"application", BridgeCmd}|DP].
 
 -spec maybe_bypass_after_bridge(boolean(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
