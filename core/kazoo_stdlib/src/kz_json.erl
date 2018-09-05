@@ -1,4 +1,4 @@
-%%%-----------------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc proplists-like interface to json objects
 %%% @author Karl Anderson
@@ -217,7 +217,9 @@ is_valid_json_object(MaybeJObj) ->
     try
         lists:all(fun(K) ->
                           is_json_term(get_value([K], MaybeJObj))
-                  end, ?MODULE:get_keys(MaybeJObj))
+                  end
+                 ,?MODULE:get_keys(MaybeJObj)
+                 )
     catch
         'throw':_ -> 'false';
         'error':_ -> 'false'
