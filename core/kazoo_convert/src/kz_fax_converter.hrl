@@ -5,8 +5,8 @@
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o $TO $FROM">>).
 -define(CONVERT_PDF_CMD
        ,<<"/usr/bin/gs -q "
-          "-r204x98 "
-          "-g1728x1078 "
+          "-r200x200 "
+          "-g1728x2200 "
           "-dPDFFitPage "
           "-dNOPAUSE "
           "-dBATCH "

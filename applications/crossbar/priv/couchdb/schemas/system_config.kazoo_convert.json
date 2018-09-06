@@ -16,7 +16,7 @@
                     "type": "integer"
                 },
                 "convert_image_command": {
-                    "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728x1078\\! -compress group4 $TO",
+                    "default": "convert $FROM -resample 200x200 -units PixelsPerInch -resize 1728x2200 -compress group4 $TO",
                     "description": "The command to resample a tiff file to a fax compatible format or convert a supported image/* format to a tiff",
                     "type": "string"
                 },
@@ -26,7 +26,7 @@
                     "type": "string"
                 },
                 "convert_pdf_command": {
-                    "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg4 -sOutputFile=$TO -- $FROM",
+                    "default": "/usr/bin/gs -q -r200x200 -g1728x2200 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg4 -sOutputFile=$TO -- $FROM",
                     "description": "The command to convert pdf documents to tiff",
                     "type": "string"
                 },
@@ -41,7 +41,7 @@
                     "type": "boolean"
                 },
                 "large_tiff_command": {
-                    "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728\\!x1078 -compress group4 $TO",
+                    "default": "convert $FROM -resample 200x200 -units PixelsPerInch -resize 1728\\!x2200 -compress group4 $TO",
                     "description": "The command to resize large tiffs to standard dimensions",
                     "type": "string"
                 },
@@ -56,7 +56,7 @@
                     "type": "boolean"
                 },
                 "small_tiff_command": {
-                    "default": "convert $FROM -gravity center -resample 204x98 -units PixelsPerInch -extent 1728x1078 -compress group4 $TO",
+                    "default": "convert $FROM -gravity center -resample 200x200 -units PixelsPerInch -extent 1728x2200 -compress group4 $TO",
                     "description": "The command to format small tiffs to a fax compatible format",
                     "type": "string"
                 },
