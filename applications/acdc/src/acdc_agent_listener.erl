@@ -99,7 +99,7 @@
 %%% Defines for different functionality
 %%%=============================================================================
 
-%% On init, an aget process sends a sync_req and waits SYNC_TIMER_TIMEOUT ms
+%% On init, an agent process sends a sync_req and waits SYNC_TIMER_TIMEOUT ms
 %% The agent process checks its list of received
 -define(SYNC_TIMER_MESSAGE, 'sync_timeout').
 -define(SYNC_TIMER_TIMEOUT, 5000).

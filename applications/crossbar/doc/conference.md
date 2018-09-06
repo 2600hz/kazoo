@@ -127,6 +127,30 @@ Key | Description | Type | Default | Required | Support Level
 `require_moderator` | does the conference require a moderator | `boolean()` |   | `false` |  
 `wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false` |  
 
+### conferences.profile
+
+Schema for conference profiles
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`alone-sound` | Audio that plays while you are alone in the conference | `string()` |   | `false` |  
+`announce-count` | Play member count to conference when above this threshold | `integer()` |   | `false` |  
+`caller-controls` | Name of the caller control group | `string()` |   | `false` |  
+`comfort-noise` | The volume level of background white noise | `integer()` |   | `false` |  
+`energy-level` | Energy level required for audio to be sent to other users | `integer()` |   | `false` |  
+`enter-sound` | Audio to play when entering a conference | `string()` |   | `false` |  
+`exit-sound` | Audio to play when exiting a conference | `string()` |   | `false` |  
+`interval` | Milliseconds per frame | `integer()` |   | `false` |  
+`locked-sound` | Audio to play when the conference is locked | `string()` |   | `false` |  
+`max-members` | Set the maximum number of members in the conference | `integer()` |   | `false` |  
+`max-members-sound` | If max-members has been reached, audio to play to caller instead of joining the conference | `string()` |   | `false` |  
+`moderator-controls` | Name of the moderator control group to use | `string()` |   | `false` |  
+`moh-sound` | Audio to play, on a loop, while participant count is 1 | `string()` |   | `false` |  
+`muted-sound` | Audio to play when muted | `string()` |   | `false` |  
+`rate` | Audio sample rate | `integer()` |   | `false` |  
+`unmuted-sound` | Audio to play when unmuted | `string()` |   | `false` |  
+
 
 
 #### Endpoints
@@ -206,6 +230,20 @@ Value | Description
 `join_existing` | Participant may only join a running conference (won't start a conference)
 `mute` | Participant joins muted
 `video_mute` | Participant joins with video stream muted
+
+```json
+{
+    "action":"dial"
+    ,"data":{
+        "data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212",
+            "participant_flags":["deaf", "mute"]
+        }
+    }
+}
+```
 
 ### Dialing out to a dynamic conference
 
@@ -337,7 +375,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
 ```
 
-Sometimes you may get a HTTP/1.1 304 Not Modified response from crossbar for simliar API calls. If you do, add a random string filter to the end of the call to ensure the request is viewed as 'unique'. For example:
+Sometimes you may get a HTTP/1.1 304 Not Modified response from crossbar for similar API calls. If you do, add a random string filter to the end of the call to ensure the request is viewed as 'unique'. For example:
 
 ```shell
 curl -v -X PUT \
@@ -367,7 +405,7 @@ Playing a media file to everyone in a conference:
 }
 ```
 
-`{MEDIA_ID}` can be a pre-uploaded media ID or a URL to fetch media from.
+`{MEDIA_ID}` can be a pare-uploaded media ID or a URL to fetch media from.
 
 ### List of conferences example
 
@@ -465,7 +503,7 @@ The last field, `play_entry_tone`, is at the root of the document: meaning this 
 * **play_entry_tone** and **play_exit_tone**: can be either a boolean or a non-empty string.
     * `true` means play the default tone when someone joins (or leaves) the conference
     * `false` disables the tone from being played
-    * A string like a *tone string* or a *URI to a media file* can be inputed.
+    * A string like a *tone string* or a *URI to a media file* can be inputted.
 
 #### Actions
 

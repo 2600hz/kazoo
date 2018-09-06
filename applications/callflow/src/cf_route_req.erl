@@ -20,8 +20,10 @@
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    CallId = kapi_route:call_id(JObj),
+    kz_util:put_callid(CallId),
     'true' = kapi_route:req_v(JObj),
+    gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
                ],
@@ -77,49 +79,12 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
                                                              ,kapps_call:account_id(Call)
                                                              ,kapps_call:request_user(Call)
                                                              ]),
-    case has_tokens(Call, Flow) of
+    case cf_util:token_check(Call, Flow) of
         'false' -> 'ok';
         'true' ->
             ControllerQ = props:get_value('queue', Props),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
             send_route_response(Flow, JObj, NewCall)
-    end.
-
--spec has_tokens(kapps_call:call(), kz_json:object()) -> boolean().
-has_tokens(Call, Flow) ->
-    case kapps_config:get_is_true(?CF_CONFIG_CAT, <<"calls_consume_tokens">>, 'true') of
-        'false' ->
-            %% If configured to not consume tokens then don't block the call
-            'true';
-        'true' ->
-            {Name, Cost} = bucket_info(Call, Flow),
-            case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
-                'true' -> 'true';
-                'false' ->
-                    lager:warning("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
-                    'false'
-            end
-    end.
-
--spec bucket_info(kapps_call:call(), kz_json:object()) ->
-                         {kz_term:ne_binary(), pos_integer()}.
-bucket_info(Call, Flow) ->
-    case kz_json:get_value(<<"pvt_bucket_name">>, Flow) of
-        'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
-        Name -> {Name, bucket_cost(Flow)}
-    end.
-
--spec bucket_name_from_call(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
-bucket_name_from_call(Call, Flow) ->
-    <<(kapps_call:account_id(Call))/binary, ":", (kz_doc:id(Flow))/binary>>.
-
--spec bucket_cost(kz_json:object()) -> pos_integer().
-bucket_cost(Flow) ->
-    Min = kapps_config:get_integer(?CF_CONFIG_CAT, <<"min_bucket_cost">>, 5),
-    case kz_json:get_integer_value(<<"pvt_bucket_cost">>, Flow) of
-        'undefined' -> Min;
-        N when N < Min -> Min;
-        N -> N
     end.
 
 %%------------------------------------------------------------------------------
@@ -201,9 +166,27 @@ send_route_response(Flow, JObj, Call) ->
     of
         {'ok', RouteWin} ->
             lager:info("callflow has received a route win, taking control of the call"),
-            cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call));
+            NewCall = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
+            wait_for_running(NewCall, 0);
         {'error', _E} ->
             lager:info("callflow didn't received a route win, exiting : ~p", [_E])
+    end.
+
+-spec wait_for_running(kapps_call:call(), 0..5) -> 'ok'.
+wait_for_running(_Call, 5) ->
+    lager:info("callflow not ready after 5 tries, exiting");
+wait_for_running(Call, N) ->
+    FetchId = kapps_call:fetch_id(Call),
+    receive
+        {'channel_destroy', FetchId} ->
+            cf_exe:hard_stop(Call),
+            lager:info("received channel destroy while setting up callflow executor, exiting")
+    after 250 ->
+            case cf_exe:status(Call) of
+                'not_running' -> lager:info("callflow not running");
+                'running' -> lager:info("callflow up & running");
+                _ -> wait_for_running(Call, N + 1)
+            end
     end.
 
 -spec get_transfer_media(kz_json:object(), kz_json:object()) -> kz_term:api_binary().

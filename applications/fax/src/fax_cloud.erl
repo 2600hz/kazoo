@@ -237,7 +237,7 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
         {'ok', Authorization} ->
             case download_file(FileURL,Authorization) of
                 {'ok', CT, FileContents} ->
-                    case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+                    case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, JObj, FileContents, CT) of
                         {'ok', _} -> update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>);
                         {'error', E} ->
                             lager:debug("error saving attachment for JobId ~s : ~p",[JobId, E])
@@ -258,7 +258,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     AccountId = kz_doc:account_id(FaxBoxDoc),
     AccountDb = ?KZ_FAXES_DB,
     ResellerId = case kzd_services:reseller_id(FaxBoxDoc) of
-                     'undefined' -> kz_services:find_reseller_id(AccountId);
+                     'undefined' -> kz_services_reseller:get_id(AccountId);
                      TheResellerId -> TheResellerId
                  end,
     OwnerId = kz_json:get_value(<<"ownerId">>, Job),

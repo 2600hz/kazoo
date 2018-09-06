@@ -47,8 +47,25 @@ module_ast(M) ->
         'non_existing' -> 'undefined';
         'preloaded' -> 'undefined';
         Beam ->
-            {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(Beam, ['abstract_code']),
-            {Module, AST}
+            beam_ast(Beam)
+    end.
+
+beam_ast(Beam) ->
+    case beam_lib:chunks(Beam, ['abstract_code']) of
+        {'ok', {Module, [{'abstract_code', AST}]}} ->
+            {Module, AST};
+        {'error', 'beam_lib', {'unknown_chunk', File, _}} ->
+            lager:info("unknown chunk in ~s, no ast", [File]),
+            'undefined';
+        {'error', 'beam_lib', {'key_missing_or_invalid', File, _Key}} ->
+            lager:info("key ~s missing or invalid in ~s", [_Key, File]),
+            'undefined';
+        {'error', 'beam_lib', {'file_error', File, Posix}} ->
+            lager:info("file error ~p on ~s", [Posix, File]),
+            'undefined';
+        {'error', 'beam_lib', Error} ->
+            lager:info("error getting chunks for ~s: ~p", [Error]),
+            'undefined'
     end.
 
 -spec add_module_ast(module_ast(), module(), abstract_code()) -> module_ast().
@@ -83,7 +100,9 @@ ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_call', 'optional_call_event_headers'
 ast_to_list_of_binaries(?LIST(?LIST(_, _)=H, T), Binaries) ->
     ast_to_list_of_binaries(T, [ast_to_list_of_binaries(H) | Binaries]);
 ast_to_list_of_binaries(?LIST(H, T), Binaries) ->
-    ast_to_list_of_binaries(T, [binary_match_to_binary(H) | Binaries]).
+    ast_to_list_of_binaries(T, [binary_match_to_binary(H) | Binaries]);
+ast_to_list_of_binaries(?VAR(_), Binaries) ->
+    Binaries.
 
 -spec binary_match_to_binary(erl_parse:abstract_expr()) -> binary().
 binary_match_to_binary(?ATOM(A)) -> kz_term:to_binary(A);

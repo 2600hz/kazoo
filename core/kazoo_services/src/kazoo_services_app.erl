@@ -17,7 +17,9 @@
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
-    _ = kazoo_services_maintenance:refresh(),
+    kapi_bookkeepers:declare_exchanges(),
+    _ = kazoo_services_maintenance:db_init(),
+    kapps_maintenance:bind({'refresh_account', <<"*">>}, 'kazoo_services_maintenance', 'migrate_service_plans'),
     kazoo_services_sup:start_link().
 
 %%------------------------------------------------------------------------------

@@ -532,6 +532,7 @@ load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
                        ),
             Context1 = load(DocId, Context, Options),
             'success' = cb_context:resp_status(Context1),
+
             cb_context:setters(Context1
                               ,[{fun cb_context:set_resp_data/2, AttachBin}
                                ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
@@ -567,29 +568,46 @@ save(Context, [], _Options) ->
     cb_context:set_resp_status(Context, 'success');
 save(Context, [_|_]=JObjs, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
-    case kz_datamgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
-        {'error', Error} ->
-            IDs = [kz_doc:id(JObj) || JObj <- JObjs],
-            handle_datamgr_errors(Error, IDs, Context);
-        {'ok', JObj1} ->
-            Context1 = handle_datamgr_success(JObj1, Context),
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
-            Context1
+    case crossbar_services:maybe_dry_run(Context, JObjs0) of
+        Context -> save_jobjs(Context, JObjs0, Options);
+        Else -> Else
     end;
 save(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
+    case crossbar_services:maybe_dry_run(Context, JObj0) of
+        Context -> save_jobj(Context, JObj0, Options);
+        Else -> Else
+    end.
+
+-spec save_jobjs(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
+                        cb_context:context().
+save_jobjs(Context, JObjs0, Options) ->
+    case kz_datamgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
+        {'error', Error} ->
+            IDs = [kz_doc:id(JObj) || JObj <- JObjs0],
+            handle_datamgr_errors(Error, IDs, Context);
+        {'ok', JObjs1} ->
+            Context1 = handle_datamgr_success(JObjs1, Context),
+            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs0]),
+            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            Context1
+    end.
+
+-spec save_jobj(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
+                       cb_context:context().
+save_jobj(Context, JObj0, Options) ->
     case kz_datamgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
             DocId = kz_doc:id(JObj0),
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_datamgr_success(JObj1, Context),
+            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObj0]),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
 
 %%equiv ensure_saved(Context, [])
-
 -spec ensure_saved(cb_context:context()) -> cb_context:context().
 ensure_saved(Context) ->
     ensure_saved(Context, []).
@@ -616,6 +634,7 @@ ensure_saved(Context, JObj, Options) ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_datamgr_success(JObj1, Context),
+            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObj]),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
@@ -701,7 +720,7 @@ delete(Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function will attempt to remove a document from the database.
-%% If th second argument is `true' this is preformed as a soft-delete and enforced
+%% If the second argument is `true' this is preformed as a soft-delete and enforced
 %% by the views. Clean up process remove old data based on the delete
 %% flag and last modified date.
 %% If the second argument is `false', the document is hard delete from database.
@@ -754,7 +773,12 @@ do_delete(Context, JObj, CouchFun) ->
                        ,[kz_doc:id(JObj), cb_context:account_db(Context), CouchFun]
                        ),
             Context1 = handle_datamgr_success(JObj, Context),
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            _ = case kz_doc:type(JObj) =/= <<"account">> of
+                    'true' ->
+                        _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, []]),
+                        _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]);
+                    'false' -> lager:debug("not calling services/provisioner routines for deleted account")
+                end,
             Context1
     end.
 
@@ -1007,14 +1031,24 @@ handle_thing_success(Thing, Context) ->
 handle_json_success(JObj, Context) ->
     handle_json_success(JObj, Context, cb_context:req_verb(Context)).
 
+public_and_read_only(JObj) ->
+    Public = kz_doc:public_fields(JObj),
+    case kz_json:get_json_value(<<"_read_only">>, JObj) of
+        'undefined' -> Public;
+        ReadOnly -> kz_json:set_value(<<"_read_only">>, ReadOnly, Public)
+    end.
+
+add_location_header(JObj, RHs) ->
+    maps:put(<<"location">>, kz_doc:id(JObj), RHs).
+
 -spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context(), http_method()) ->
                                  cb_context:context().
 handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
-    RespData = [kz_doc:public_fields(JObj)
+    RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
-    RespHeaders = lists:foldl(fun(JObj, RHs) -> maps:put(<<"location">>, kz_doc:id(JObj), RHs) end
+    RespHeaders = lists:foldl(fun add_location_header/2
                              ,cb_context:resp_headers(Context)
                              ,JObjs
                              ),
@@ -1026,7 +1060,7 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
 handle_json_success([_|_]=JObjs, Context, _Verb) ->
-    RespData = [kz_doc:public_fields(JObj)
+    RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
@@ -1038,16 +1072,16 @@ handle_json_success([_|_]=JObjs, Context, _Verb) ->
                         | version_specific_success(JObjs, Context)
                        ]);
 handle_json_success(JObj, Context, ?HTTP_PUT) ->
-    RespHeaders = maps:put(<<"location">>, kz_doc:id(JObj), cb_context:resp_headers(Context)),
+    RespHeaders = add_location_header(JObj, cb_context:resp_headers(Context)),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
                        ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
+                       ,{fun cb_context:set_resp_data/2, public_and_read_only(JObj)}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
 handle_json_success(JObj, Context, ?HTTP_DELETE) ->
-    Public = kz_doc:public_fields(JObj),
+    Public = public_and_read_only(JObj),
     RespJObj = kz_json:set_value([<<"_read_only">>, <<"deleted">>], 'true', Public),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
@@ -1059,7 +1093,7 @@ handle_json_success(JObj, Context, _Verb) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
                        ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
+                       ,{fun cb_context:set_resp_data/2, public_and_read_only(JObj)}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ]).
 

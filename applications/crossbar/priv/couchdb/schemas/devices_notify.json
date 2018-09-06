@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "devices_notify",
-    "description": "Schema for CrossBar devices notify API",
+    "description": "Schema for Crossbar devices notify API",
     "properties": {
         "data": {
             "description": "Action-specific parameters",

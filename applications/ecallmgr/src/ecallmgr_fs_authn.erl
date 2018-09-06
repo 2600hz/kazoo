@@ -101,7 +101,7 @@ handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undef
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}, #state{node=Node}=State) ->
     kz_util:spawn(
       fun() ->
-              lager:debug("sending empyt reply for request (~s) for ~s ~s from ~s"
+              lager:debug("sending empty reply for request (~s) for ~s ~s from ~s"
                          ,[Id, _Section, _Something, Node]
                          ),
               {'ok', Resp} = ecallmgr_fs_xml:empty_response(),

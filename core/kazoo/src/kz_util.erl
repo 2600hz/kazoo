@@ -14,17 +14,6 @@
         ,format_account_modb/1, format_account_modb/2
         ,format_resource_selectors_id/1, format_resource_selectors_id/2
         ,format_resource_selectors_db/1
-        ,normalize_account_name/1
-        ,account_update/1, account_update/2
-        ]).
--export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
--export([is_system_admin/1]).
--export([is_account_enabled/1, is_account_expired/1]).
--export([maybe_disable_account/1
-        ,disable_account/1
-        ,enable_account/1
-        ,set_superduper_admin/2
-        ,set_allow_number_additions/2
         ]).
 
 -export([uri_encode/1
@@ -48,11 +37,6 @@
 -export([get_event_type/1]).
 
 -export([kazoo_version/0, write_pid/1]).
-
--export([change_console_log_level/1
-        ,change_error_log_level/1
-        ,change_syslog_log_level/1
-        ]).
 
 -export([node_name/0, node_hostname/0]).
 
@@ -121,47 +105,6 @@ log_stacktrace_mfa(M, F, Args, Info) ->
     ?LOG_ERROR("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
     lists:foreach(fun (Arg) -> ?LOG_ERROR("args: ~p", [Arg]) end, Args).
 
--define(LOG_LEVELS, ['emergency'
-                    ,'alert'
-                    ,'critical'
-                    ,'error'
-                    ,'warning'
-                    ,'notice'
-                    ,'info'
-                    ,'debug'
-                    ]).
--type log_level() :: 'emergency'
-                   | 'alert'
-                   | 'critical'
-                   | 'error'
-                   | 'warning'
-                   | 'notice'
-                   | 'info'
-                   | 'debug'
-                   | kz_term:ne_binary().
-
--spec change_console_log_level(log_level()) -> 'ok'.
-change_console_log_level(L) when is_atom(L) ->
-    lager:info("updated console_log to level ~s", [L]),
-    lager:set_loglevel('lager_console_backend', L);
-change_console_log_level(L) ->
-    change_console_log_level(kz_term:to_atom(L)).
-
--spec change_error_log_level(log_level()) -> 'ok'.
-change_error_log_level(L) when is_atom(L) ->
-    lager:info("updated error_log to level ~s", [L]),
-    lager:set_loglevel({'lager_file_backend', "log/error.log"}, L);
-change_error_log_level(L) ->
-    change_error_log_level(kz_term:to_atom(L)).
-
--spec change_syslog_log_level(log_level()) -> 'ok'.
-change_syslog_log_level(L) when is_atom(L) ->
-    lager:info("updated syslog_log to level ~s", [L]),
-    lager:set_loglevel({'lager_syslog_backend',{"2600hz",'local0'}}, L);
-change_syslog_log_level(L) ->
-    change_syslog_log_level(kz_term:to_atom(L)).
-
-
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
 
 %% @equiv format_account_id(Account, raw)
@@ -180,8 +123,8 @@ format_account_id(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
-                       (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% for MODb!
+-spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_ne_binary();
+                       (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_ne_binary(). %% for MODb!
 format_account_id('undefined', _Encoding) -> 'undefined';
 format_account_id(DbName, Timestamp)
   when is_integer(Timestamp)
@@ -391,195 +334,6 @@ format_account_modb(AccountId, 'unencoded') ->
 format_account_modb(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalize the account name by converting the name to lower case
-%% and then removing all non-alphanumeric characters.
-%%
-%% This can possibly return an empty binary.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_account_name(kz_term:api_binary()) -> kz_term:api_binary().
-normalize_account_name('undefined') -> 'undefined';
-normalize_account_name(AccountName) ->
-    << <<Char>>
-       || <<Char>> <= kz_term:to_lower_binary(AccountName),
-          is_alphanumeric(Char)
-    >>.
-
-is_alphanumeric(Char)
-  when Char >= $a,
-       Char =< $z ->
-    true;
-is_alphanumeric(Char)
-  when Char >= $0,
-       Char =< $9 ->
-    true;
-is_alphanumeric(_) ->
-    false.
-
-%% @equiv is_in_account_hierarchy(CheckFor, InAccount, false)
-
--spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
-is_in_account_hierarchy(CheckFor, InAccount) ->
-    is_in_account_hierarchy(CheckFor, InAccount, 'false').
-
-%%------------------------------------------------------------------------------
-%% @doc Determine if the given account ID/DB exists in the hierarchy of
-%% the provided account ID/DB. Optionally consider the account in
-%% its own hierarchy if third argument is `true'.
-%% @end
-%%------------------------------------------------------------------------------
-
--spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
-is_in_account_hierarchy('undefined', _, _) -> 'false';
-is_in_account_hierarchy(_, 'undefined', _) -> 'false';
-is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = format_account_id(CheckFor),
-    AccountId = format_account_id(InAccount),
-    case (IncludeSelf
-          andalso AccountId =:= CheckId
-         )
-        orelse kzd_accounts:fetch(AccountId)
-    of
-        'true' ->
-            lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
-            'true';
-        {'ok', JObj} ->
-            Tree = kzd_accounts:tree(JObj),
-            case lists:member(CheckId, Tree) of
-                'true' ->
-                    lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
-                    'true';
-                'false' ->
-                    lager:debug("account ~s was not found in the account hierarchy of ~s", [CheckId, AccountId]),
-                    'false'
-            end;
-        {'error', _R} ->
-            lager:debug("failed to get the ancestry of the account ~s: ~p", [AccountId, _R]),
-            'false'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc Determines if the given account ID is super duper admin.
-%% @end
-%%------------------------------------------------------------------------------
--spec is_system_admin(kz_term:api_binary()) -> boolean().
-is_system_admin('undefined') -> 'false';
-is_system_admin(Account) ->
-    case kzd_accounts:fetch(Account) of
-        {'ok', JObj} -> kzd_accounts:is_superduper_admin(JObj);
-        {'error', _R} ->
-            lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
-            'false'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc Checks the `pvt_enabled' flag and returns `false' only if the flag is
-%% specifically set to `false'.  If it is missing or set to anything else
-%% return `true'.  However, if we cant find the account doc then return
-%% `false'.
-%% @end
-%%------------------------------------------------------------------------------
--spec is_account_enabled(kz_term:api_binary()) -> boolean().
-is_account_enabled('undefined') -> 'false';
-is_account_enabled(Account) ->
-    case kzd_accounts:fetch(Account) of
-        {'error', _E} ->
-            lager:error("could not open account ~s", [Account]),
-            'false';
-        {'ok', JObj} ->
-            kzd_accounts:is_enabled(JObj)
-    end.
-
--spec is_account_expired(kz_term:api_binary()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
-is_account_expired('undefined') -> 'false';
-is_account_expired(Account) ->
-    case kzd_accounts:fetch(Account) of
-        {'error', _R} ->
-            lager:debug("failed to check if expired token auth, ~p", [_R]),
-            'false';
-        {'ok', JObj} ->
-            kzd_accounts:is_expired(JObj)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_disable_account(kz_term:ne_binary()) ->
-                                   {'ok', kz_json:object()} |
-                                   {'error', any()}.
-maybe_disable_account(Account) ->
-    case is_account_enabled(Account) of
-        'false' -> 'ok';
-        'true' ->
-            disable_account(Account)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec disable_account(kz_term:ne_binary()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', any()}.
-disable_account(Account) ->
-    account_update(Account, fun kzd_accounts:disable/1).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec enable_account(kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
-enable_account(Account) ->
-    account_update(Account, fun kzd_accounts:enable/1).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec set_superduper_admin(kz_term:ne_binary(), boolean()) ->
-                                  {'ok', kz_json:object()} |
-                                  {'error', any()}.
-set_superduper_admin(Account, IsAdmin) ->
-    account_update(Account, fun(J) -> kzd_accounts:set_superduper_admin(J, IsAdmin) end).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec set_allow_number_additions(kz_term:ne_binary(), boolean()) ->
-                                        {'ok', kz_json:object()} |
-                                        {'error', any()}.
-set_allow_number_additions(Account, IsAllowed) ->
-    account_update(Account, fun(J) -> kzd_accounts:set_allow_number_additions(J, IsAllowed) end).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
-
--spec account_update(kzd_accounts:doc()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
-account_update(AccountJObj) ->
-    AccountDb = kz_doc:account_db(AccountJObj),
-    case kz_datamgr:ensure_saved(AccountDb, AccountJObj) of
-        {'error', _R}=E -> E;
-        {'ok', SavedJObj} ->
-            kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, SavedJObj)
-    end.
-
--spec account_update(kz_term:ne_binary(), function()) -> 'ok' | {'error', any()}.
-account_update(Account, UpdateFun) ->
-    case kzd_accounts:fetch(Account) of
-        {'error', _R}=E -> E;
-        {'ok', AccountJObj} ->
-            account_update(UpdateFun(AccountJObj))
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Given an JSON Object extracts the `Call-ID' into the processes

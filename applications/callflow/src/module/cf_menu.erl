@@ -67,7 +67,7 @@ handle(Data, Call) ->
 %%------------------------------------------------------------------------------
 -spec menu_loop(menu(), kapps_call:call()) -> 'ok'.
 menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
-    lager:info("maxium number of retries reached"),
+    lager:info("maximum number of retries reached"),
     _ = kapps_call_command:flush_dtmf(Call),
     _ = play_exit_prompt(Menu, Call),
     case cf_exe:attempt(<<"max_retries">>, Call) of
@@ -378,7 +378,7 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
     case kz_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            kz_datamgr:save_doc(AccountDb, Removed),
+            _ = kz_datamgr:save_doc(AccountDb, Removed),
             lager:debug("removing attachments from ~s", [_MediaId])
     end.
 

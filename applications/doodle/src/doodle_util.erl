@@ -431,7 +431,7 @@ fetch_mdn_result(AccountId, Num) ->
             lager:debug("~s is associated with mobile device ~s in account ~s", [Num, Id, AccountId]),
             cache_mdn_result(AccountDb, Id, OwnerId);
         {'error', _R}=E ->
-            lager:debug("coudl not fetch mdn for ~p: ~p", [Num, _R]),
+            lager:debug("could not fetch mdn for ~p: ~p", [Num, _R]),
             E
     end.
 
@@ -482,10 +482,10 @@ maybe_reschedule_sms(Code, Message, AccountId, Call) ->
                                  ),
     case apply_reschedule_logic(kz_json:get_values(Rules), Schedule) of
         'no_rule' ->
-            lager:debug("no rules configured for accountid ~s", [AccountId]),
+            lager:debug("no rules configured for account-id ~s", [AccountId]),
             doodle_exe:stop(set_flow_status(<<"error">>, Call));
         'end_rules' ->
-            lager:debug("end rules configured for accountid ~s", [AccountId]),
+            lager:debug("end rules configured for account-id ~s", [AccountId]),
             doodle_exe:stop(set_flow_status(<<"error">>,Call));
         NewSchedule ->
             doodle_exe:stop(kapps_call:kvs_store(<<"flow_schedule">>, NewSchedule, Call))

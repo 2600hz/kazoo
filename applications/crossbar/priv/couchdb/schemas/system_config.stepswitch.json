@@ -44,7 +44,13 @@
             "type": "string"
         },
         "default_formatters": {
-            "description": "stepswitch default formatters"
+            "description": "stepswitch default formatters",
+            "items": {
+                "$ref": "formatters",
+                "description": "default formatter",
+                "type": "object"
+            },
+            "type": "array"
         },
         "default_prefix": {
             "default": "",
@@ -107,6 +113,11 @@
             "description": "stepswitch ensure valid emergency cid",
             "type": "boolean"
         },
+        "fixed_length_shortdial_correction": {
+            "description": "stepswitch fixed_length_shortdial_correction",
+            "minimum": 1,
+            "type": "integer"
+        },
         "format_from_uri": {
             "default": false,
             "description": "stepswitch format from uri",
@@ -115,11 +126,13 @@
         "max_shortdial_correction": {
             "default": 5,
             "description": "stepswitch maximum shortdial correction",
+            "minimum": 1,
             "type": "integer"
         },
         "min_shortdial_correction": {
             "default": 2,
             "description": "stepswitch minimum shortdial correction",
+            "minimum": 1,
             "type": "integer"
         },
         "route_by": {
@@ -129,7 +142,7 @@
         },
         "use_first_dedicated_proxy_only": {
             "default": true,
-            "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usally local to the call).",
+            "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usually local to the call).",
             "type": "boolean"
         }
     },

@@ -419,7 +419,7 @@ subscribe(#omnip_subscription{user=_U
                                   ,expires=_E2
                                   }
         } ->
-            lager:debug("re-subscribe ~s/~s/~s expires in ~ps(prior remaing ~ps)"
+            lager:debug("re-subscribe ~s/~s/~s expires in ~ps(prior remaining ~ps)"
                        ,[_U, _F, CallId, E1, _E2 - kz_time:elapsed_s(_T)]
                        ),
             ets:update_element(table_id(), CallId,
@@ -455,7 +455,7 @@ notify(JObj) ->
                                ]),
             gen_server:cast(self(), {'after', {'notify', {Event, User, Realm, CallId}}});
         {'error', _} ->
-            lager:debug("notify received for unexistent subscription ~s", [CallId])
+            lager:debug("notify received for nonexistent subscription ~s", [CallId])
     end.
 
 -type msg() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.

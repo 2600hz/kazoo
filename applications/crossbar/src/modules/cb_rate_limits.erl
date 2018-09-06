@@ -57,7 +57,7 @@ authorize(Context) ->
             {'ok', MasterAccount} = kapps_util:get_master_account_id(),
             AuthAccountId = cb_context:auth_account_id(Context),
             AuthAccountId =:= MasterAccount
-                orelse kz_services:is_reseller(AuthAccountId)
+                orelse kz_services_reseller:is_reseller(AuthAccountId)
     end.
 
 -type thing_type() :: kz_term:ne_binary().
@@ -71,7 +71,7 @@ thing_type_id(Context) ->
         _ReqNouns -> 'undefined'
     end.
 
--spec thing_type(cb_context:context()) -> thing_type() | 'undefiend'.
+-spec thing_type(cb_context:context()) -> thing_type() | 'undefined'.
 thing_type(Context) ->
     case thing_type_id(Context) of
         {Type, _} -> Type;
@@ -102,7 +102,7 @@ resource_exists() -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /rate_limits mights load a list of metaflow objects
+%% /rate_limits might load a list of metaflow objects
 %% /rate_limits/123 might load the metaflow object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

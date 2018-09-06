@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Token auth module
-%%% This is a simple auth mechanism, once the user has aquired an
+%%% This is a simple auth mechanism, once the user has acquired an
 %%% auth token this module will allow access.  This module should be
 %%% updated to be FAR more robust.
 %%%
@@ -119,11 +119,10 @@ authenticate(Context) ->
 authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
 authenticate(Context, 'undefined', 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
-    case kz_buckets:consume_tokens(?APP_NAME
-                                  ,cb_modules_util:bucket_name(Context)
-                                  ,cb_modules_util:token_cost(Context)
-                                  )
-    of
+    Bucket = cb_modules_util:bucket_name(Context),
+    Cost = cb_modules_util:token_cost(Context),
+
+    case kz_buckets:consume_tokens(?APP_NAME, Bucket, Cost) of
         'true' ->
             lager:info("checking for x-auth-token"),
             check_auth_token(Context
@@ -131,7 +130,10 @@ authenticate(Context, 'undefined', 'x-auth-token') ->
                             ,cb_context:magic_pathed(Context)
                             );
         'false' ->
-            lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
+            lager:warning("bucket ~s does not have enough tokens(~b needed) for this request"
+                         ,[Bucket, Cost]
+                         ),
+            lager:info("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
             {'stop', cb_context:add_system_error('too_many_requests', Context)}
     end;
 authenticate(_Context, _AccountId, _TokenType) -> 'false'.
@@ -195,10 +197,10 @@ validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
                                 {'stop', cb_context:context()}.
 is_account_expired(Context, JObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, JObj),
-    case kz_util:is_account_expired(AccountId) of
+    case kzd_accounts:is_expired(AccountId) of
         'false' -> check_as(Context, JObj);
         {'true', Expired} ->
-            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [AccountId]),
+            _ = kz_util:spawn(fun crossbar_util:maybe_disable_account/1, [AccountId]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}

@@ -323,9 +323,9 @@ rm_responder(Srv, Responder, Keys) ->
 
 -spec add_binding(kz_types:server_ref(), binding() | kz_term:ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) when is_list(Props)
-                                        ,(is_atom(Binding)
-                                          orelse is_binary(Binding)
-                                         ) ->
+                                        andalso (is_atom(Binding)
+                                                 orelse is_binary(Binding)
+                                                ) ->
     gen_server:cast(Srv, {'add_binding', kz_term:to_binary(Binding), Props});
 add_binding(Srv, Binding) when is_binary(Binding)
                                orelse is_atom(Binding) ->
@@ -1137,10 +1137,10 @@ handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
                   ,Props
                   )
     of
-        'true' ->
+        'true' when length(Props) =:= length(ExistingProps)->
             lager:debug("binding ~s with props exists", [Binding]),
             State;
-        'false' ->
+        _ ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})

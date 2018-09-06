@@ -35,7 +35,7 @@
 
 -   create a callflow
 -   set the pivot action as the child
--   set the URL to your webserver and script
+-   set the URL to your web server and script
 
 ```shell
 curl -X PUT \

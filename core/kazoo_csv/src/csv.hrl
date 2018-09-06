@@ -2,7 +2,7 @@
 
 -include("kazoo_csv.hrl").
 
--define(APP, 'kzaoo_csv').
+-define(APP, 'kazoo_csv').
 -define(APP_NAME, <<"kazoo_csv">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 

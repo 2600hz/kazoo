@@ -235,7 +235,7 @@ process_evil_specs({File, SpecMaps}) ->
     Lines = read_lines(File, false),
     save_lines(File, move_file_specs(Lines, 0, functions_new_position(Forms, SpecMaps, []))).
 
-%% First read files and create tupleList of {LineNumber, String}
+%% First read files and create tuple List of {LineNumber, String}
 %% Then loop over SpecMaps and get the position of all lines that the spec
 %% is occupied.
 remove_evil_specs(File, SpecMaps) ->
@@ -363,7 +363,7 @@ bump_copyright(Module, [<<"@copyright", Rest/binary>>|T], _, Header, Year) ->
 bump_copyright(Module, [H|T], Copyright, Header, Year) ->
     Striped = strip_right_spaces(strip_left_spaces(H)),
     case Striped =/= <<"@end">>
-        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+        andalso is_separator_chars(Striped, [<<$=>>, <<$->>])
     of
         false ->
             %% removing end tag to add it later
@@ -432,8 +432,8 @@ edocify_header(Module, [<<"@contributors", _/binary>>|T], Header) ->
                       Author <- [strip_right_spaces(strip_left_spaces(A))],
                       Author =/= <<>>,
                       <<"@end">> =/= Author,
-                      not is_seprator_char(Author, <<$->>),
-                      not is_seprator_char(Author, <<$=>>)
+                      not is_separator_char(Author, <<$->>),
+                      not is_separator_char(Author, <<$=>>)
               ],
     edocify_header(Module, [], Header ++ [<<"%%%">>] ++ Authors);
 edocify_header(Module, [<<"Contributors", Rest/binary>>|T], Header) ->
@@ -448,7 +448,7 @@ edocify_header(Module, [<<"@Contributions", Rest/binary>>|T], Header) ->
 edocify_header(Module, [H|T], Header) ->
     Striped = strip_right_spaces(strip_left_spaces(H)),
     case Striped =/= <<"@end">>
-        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+        andalso is_separator_chars(Striped, [<<$=>>, <<$->>])
     of
         false ->
             %% removing end tag to add it later
@@ -787,12 +787,12 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
             %% remove empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
         <<"@doc">> ->
-            PerCount = count_precent(Line),
+            PerCount = count_percent(Line),
             %% add doc tag in case there is no non-empty comment lines so we don't loose the doc tag
             do_move_to_doc_line(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>]);
         Rest ->
             %% this clause should only match once for the first non empty comment line
-            PerCount = count_precent(Line),
+            PerCount = count_percent(Line),
             DocTagLine = <<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>,
             NewForm = case lists:last(Formatted) of
                           DocTagLine -> lists:droplast(Formatted);
@@ -869,20 +869,20 @@ analyze_separator(<<>>, _, _) ->
 analyze_separator(<<"%", Rest/binary>>, Chars, PerCount) ->
     analyze_separator(Rest, Chars, PerCount + 1);
 analyze_separator(Rest, Chars, PerCount) ->
-    {PerCount, is_seprator_chars(strip_right_spaces(strip_left_spaces(Rest)), Chars)}.
+    {PerCount, is_separator_chars(strip_right_spaces(strip_left_spaces(Rest)), Chars)}.
 
-is_seprator_chars(_, []) -> {false, []};
-is_seprator_chars(Line, [H|T]) ->
-    case is_seprator_char(Line, H) of
+is_separator_chars(_, []) -> {false, []};
+is_separator_chars(Line, [H|T]) ->
+    case is_separator_char(Line, H) of
         true -> {true, H};
-        false -> is_seprator_chars(Line, T)
+        false -> is_separator_chars(Line, T)
     end.
 
-is_seprator_char(C, C) ->
+is_separator_char(C, C) ->
     true;
-is_seprator_char(<<C:1/binary, B/binary>>, C) ->
-    is_seprator_char(B, C);
-is_seprator_char(_, _) ->
+is_separator_char(<<C:1/binary, B/binary>>, C) ->
+    is_separator_char(B, C);
+is_separator_char(_, _) ->
     false.
 
 collect_positions_per_file([], Map) -> Map;
@@ -914,11 +914,11 @@ strip_comment(<<$%, B/binary>>) -> strip_comment(B);
 strip_comment(<<$\s, B/binary>>) -> B;
 strip_comment(A) -> A.
 
-count_precent(A) ->
-    count_precent(A, 0).
+count_percent(A) ->
+    count_percent(A, 0).
 
-count_precent(<<$%, B/binary>>, Count) -> count_precent(B, Count + 1);
-count_precent(_, Count) -> Count.
+count_percent(<<$%, B/binary>>, Count) -> count_percent(B, Count + 1);
+count_percent(_, Count) -> Count.
 
 strip_left_spaces(<<$\s, B/binary>>) -> strip_left_spaces(B);
 strip_left_spaces(A) -> A.

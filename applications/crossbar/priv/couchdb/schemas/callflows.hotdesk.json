@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.hotdesk",
-    "description": "Validator for the hotdesk callflow's data object",
+    "description": "Validator for the hotdesk callflow data object",
     "properties": {
         "action": {
             "description": "The action to take for hotdesking",

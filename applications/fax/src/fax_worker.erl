@@ -84,7 +84,6 @@
 -define(DEFAULT_RETRY_COUNT, kapps_config:get_integer(?CONFIG_CAT, <<"default_retry_count">>, 3)).
 -define(DEFAULT_COMPARE_FIELD, kapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
 
--define(COUNT_PAGES_CMD, <<"echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`">>).
 
 -define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
@@ -229,17 +228,21 @@ handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
 handle_cast({'fax_status', <<"result">>, JobId, JObj}
            ,#state{job_id=JobId
                   ,job=Job
+                  ,file=Filepath
                   }=State
            ) ->
     Data = kz_call_event:application_data(JObj),
     {Resp, Doc} = case kz_json:is_true([<<"Fax-Success">>], Data) of
                       'true' ->
-                          send_status(State, <<"Fax Successfuly sent">>, ?FAX_END, Data),
+                          lager:debug("fax status - successfully transmitted fax ~s", [JobId]),
+                          send_status(State, <<"Fax Successfully sent">>, ?FAX_END, Data),
                           release_successful_job(JObj, Job);
                       'false' ->
+                          lager:debug("fax status - error transmitting fax ~s", [JobId]),
                           send_status(State, <<"Error sending fax">>, ?FAX_ERROR, Data),
                           release_failed_job('fax_result', JObj, Job)
                   end,
+    _ = file:delete(Filepath),
     gen_server:cast(self(), 'stop'),
     {'noreply', State#state{job=Doc, resp = Resp}};
 handle_cast({'fax_status', Event, JobId, _}, State) ->
@@ -288,52 +291,20 @@ handle_cast('prepare_job', #state{job_id=JobId
                                  ,job=JObj
                                  }=State) ->
     send_status(State, <<"fetching document to send">>, ?FAX_PREPARE, 'undefined'),
-    case fetch_document(JObj) of
-        {'ok', 200, RespHeaders, RespContent} ->
-            send_status(State, <<"preparing document to send">>, ?FAX_PREPARE, 'undefined'),
-            case prepare_contents(JobId, RespHeaders, RespContent) of
-                {'error', Cause} ->
-                    send_error_status(State, Cause),
-                    {Resp, Doc} = release_failed_job('bad_file', Cause, JObj),
-                    gen_server:cast(self(), 'stop'),
-                    {'noreply', State#state{job=Doc, resp = Resp}};
-                {'ok', OutputFile} ->
-                    gen_server:cast(self(), 'count_pages'),
-                    {'noreply', State#state{file=OutputFile}}
-            end;
-        {'ok', Status, _, _} ->
-            lager:debug("failed to fetch file for job: http response ~p", [Status]),
-            _ = send_error_status(State, integer_to_binary(Status)),
-            {Resp, Doc} = release_failed_job('fetch_failed', Status, JObj),
+    case write_document(JObj, JobId) of
+        {'ok', Filepath, Doc} ->
+            send_status(State, <<"prepared document for send">>, ?FAX_PREPARE, 'undefined'),
+            gen_server:cast(self(), 'send'),
+            {'noreply', State#state{job=Doc
+                                   ,file=Filepath
+                                   ,pages=kz_json:get_integer_value(<<"pvt_pages">>, Doc)
+                                   }};
+        {'error', Message} ->
+            send_error_status(State, kz_term:to_binary(Message)),
+            {Resp, Doc} = release_failed_job('bad_file', Message, JObj),
             gen_server:cast(self(), 'stop'),
-            {'noreply', State#state{job=Doc, resp = Resp}};
-        {'error', Reason} ->
-            lager:debug("failed to fetch file for job: ~p", [Reason]),
-            send_error_status(State, <<"failed to fetch file for job">>),
-            {Resp, Doc} = release_failed_job('fetch_error', Reason, JObj),
-            gen_server:cast(self(), 'stop'),
-            {'noreply', State#state{job=Doc, resp = Resp}}
+            {'noreply', State#state{job=Doc, resp=Resp}}
     end;
-handle_cast('count_pages', #state{file=File
-                                 ,job=JObj
-                                 }=State) ->
-    {NumberOfPages, FileSize} = get_sizes(File),
-    Values = [{<<"pvt_pages">>, NumberOfPages}
-             ,{<<"pvt_size">>, FileSize}
-             ],
-    NewState = case NumberOfPages of
-                   Num when Num == 0 ->
-                       State#state{job = kz_json:set_values(Values, JObj)
-                                  ,pages = Num
-                                  ,status = <<"unknown">>
-                                  };
-                   _ ->
-                       State#state{job=kz_json:set_values(Values, JObj)
-                                  ,pages=NumberOfPages
-                                  }
-               end,
-    gen_server:cast(self(), 'send'),
-    {'noreply', NewState};
 handle_cast('send', #state{job_id=JobId
                           ,job=JObj
                           ,queue_name=Q
@@ -483,58 +454,7 @@ attempt_to_acquire_job(JObj, _Q, Status) ->
     {'error', 'job_not_available'}.
 
 -spec release_failed_job(atom(), any(), kz_json:object()) -> release_ret().
-release_failed_job('fetch_failed', Status, JObj) ->
-    Msg = <<"could not retrieve file, http response ~p", (integer_to_binary(Status))/binary>>,
-    Result = [{<<"success">>, 'false'}
-             ,{<<"result_code">>, 0}
-             ,{<<"result_text">>, Msg}
-             ,{<<"pages_sent">>, 0}
-             ,{<<"time_elapsed">>, elapsed_time(JObj)}
-             ,{<<"fax_bad_rows">>, 0}
-             ,{<<"fax_speed">>, 0}
-             ,{<<"fax_receiver_id">>, <<>>}
-             ,{<<"fax_error_correction">>, 'false'}
-             ],
-    release_job(Result, JObj);
 release_failed_job('bad_file', Msg, JObj) ->
-    Result = [{<<"success">>, 'false'}
-             ,{<<"result_code">>, 0}
-             ,{<<"result_text">>, Msg}
-             ,{<<"pages_sent">>, 0}
-             ,{<<"time_elapsed">>, elapsed_time(JObj)}
-             ,{<<"fax_bad_rows">>, 0}
-             ,{<<"fax_speed">>, 0}
-             ,{<<"fax_receiver_id">>, <<>>}
-             ,{<<"fax_error_correction">>, 'false'}
-             ],
-    release_job(Result, JObj);
-release_failed_job('fetch_error', {'conn_failed', _}, JObj) ->
-    Result = [{<<"success">>, 'false'}
-             ,{<<"result_code">>, 0}
-             ,{<<"result_text">>, <<"could not connect to document URL">>}
-             ,{<<"pages_sent">>, 0}
-             ,{<<"time_elapsed">>, elapsed_time(JObj)}
-             ,{<<"fax_bad_rows">>, 0}
-             ,{<<"fax_speed">>, 0}
-             ,{<<"fax_receiver_id">>, <<>>}
-             ,{<<"fax_error_correction">>, 'false'}
-             ],
-    release_job(Result, JObj);
-release_failed_job('fetch_error', {Cause, _}, JObj) ->
-    Msg = kz_term:to_binary(io_lib:format("could not connect to document URL: ~s", [Cause])),
-    Result = [{<<"success">>, 'false'}
-             ,{<<"result_code">>, 0}
-             ,{<<"result_text">>, Msg}
-             ,{<<"pages_sent">>, 0}
-             ,{<<"time_elapsed">>, elapsed_time(JObj)}
-             ,{<<"fax_bad_rows">>, 0}
-             ,{<<"fax_speed">>, 0}
-             ,{<<"fax_receiver_id">>, <<>>}
-             ,{<<"fax_error_correction">>, 'false'}
-             ],
-    release_job(Result, JObj);
-release_failed_job('fetch_error', Error, JObj) ->
-    Msg = kz_term:to_binary(io_lib:format("could not connect to document URL: ~s", [Error])),
     Result = [{<<"success">>, 'false'}
              ,{<<"result_code">>, 0}
              ,{<<"result_text">>, Msg}
@@ -812,126 +732,17 @@ elapsed_time(JObj) ->
     Created = kz_doc:created(JObj, Now),
     Now - Created.
 
--spec fetch_document(kz_json:object()) -> kz_http:ret().
-fetch_document(JObj) ->
-    case kz_doc:attachment_names(JObj) of
-        [] -> fetch_document_from_url(JObj);
-        AttachmentNames -> fetch_document_from_attachment(JObj, AttachmentNames)
+-spec write_document(kz_json:object(), kz_term:ne_binary()) ->
+                            {'ok', kz_term:ne_binary(), kz_json:object()} |
+                            {'error', any()}.
+write_document(JObj, JobId) ->
+    case kz_fax_attachment:fetch_faxable(?KZ_FAXES_DB, JObj) of
+        {'ok', Content, _ContentType, Doc} ->
+            Filepath = filename:join(?TMP_DIR, <<JobId/binary, ".tiff">>),
+            kz_util:write_file(Filepath, Content),
+            {'ok', Filepath, Doc};
+        Error -> Error
     end.
-
--spec fetch_document_from_attachment(kz_json:object(), kz_term:ne_binaries()) -> kz_http:ret().
-fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
-    DefaultContentType = kz_mime:from_extension(filename:extension(AttachmentName)),
-    ContentType = kz_doc:attachment_content_type(JObj, AttachmentName, DefaultContentType),
-    Props = [{"content-type", ContentType}],
-    {'ok', Contents} = kz_datamgr:fetch_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), AttachmentName),
-    {'ok', 200, Props, Contents}.
-
--spec fetch_document_from_url(kz_json:object()) -> kz_http:ret().
-fetch_document_from_url(JObj) ->
-    FetchRequest = kz_json:get_value(<<"document">>, JObj),
-    Url = kz_json:get_string_value(<<"url">>, FetchRequest),
-    Method = kz_term:to_atom(kz_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
-    Headers = props:filter_undefined(
-                [{"Host", kz_json:get_string_value(<<"host">>, FetchRequest)}
-                ,{"Referer", kz_json:get_string_value(<<"referer">>, FetchRequest)}
-                ,{"User-Agent", kz_json:get_string_value(<<"user_agent">>, FetchRequest, kz_term:to_list(node()))}
-                ,{"Content-Type", kz_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
-                ]),
-    Body = kz_json:get_string_value(<<"content">>, FetchRequest, ""),
-    lager:debug("making ~s request to '~s'", [Method, Url]),
-    kz_http:req(Method, Url, Headers, Body).
-
--spec prepare_contents(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
-                              {'ok', kz_term:ne_binary()} |
-                              {'error', kz_term:ne_binary()}.
-prepare_contents(JobId, RespHeaders, RespContent) ->
-    lager:debug("preparing fax contents"),
-    CT = props:get_value("content-type", RespHeaders, <<"application/octet-stream">>),
-    ContentType = fax_util:normalize_content_type(CT),
-    TmpDir = kapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
-    case prepare_contents(ContentType, JobId, RespContent, TmpDir) of
-        {'ok', OutputFile} -> validate_tiff(OutputFile);
-        {'error', _}=Error -> Error
-    end.
-
--spec prepare_contents(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', kz_term:ne_binary()} |
-                              {'error', kz_term:ne_binary()}.
-prepare_contents(<<"image/tiff">>, JobId, RespContent, TmpDir) ->
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(OutputFile, RespContent),
-    {'ok', OutputFile};
-
-prepare_contents(<<"application/pdf">>, JobId, RespContent, TmpDir) ->
-    InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(InputFile, RespContent),
-    Cmd = io_lib:format(?CONVERT_PDF_COMMAND, [OutputFile, InputFile]),
-    lager:debug("attempting to convert pdf: ~s", [Cmd]),
-    try "success" = os:cmd(Cmd) of
-        "success" -> {'ok', OutputFile}
-    catch
-        Type:Exception ->
-            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-            {'error', <<"can not convert file, try uploading a tiff">>}
-    end;
-
-prepare_contents(<<"image/", SubType/binary>>, JobId, RespContent, TmpDir) ->
-    InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(InputFile, RespContent),
-    Cmd = io_lib:format(?CONVERT_IMAGE_COMMAND, [InputFile, OutputFile]),
-    lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
-    try "success" = os:cmd(Cmd) of
-        "success" -> {'ok', OutputFile}
-    catch
-        Type:Exception ->
-            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-            {'error', <<"can not convert file, try uploading a tiff">>}
-    end;
-
-prepare_contents(<<?OPENXML_MIME_PREFIX, _/binary>> = CT, JobId, RespContent, TmpDir) ->
-    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-
-prepare_contents(CT, JobId, RespContent, TmpDir)
-  when ?OPENOFFICE_COMPATIBLE(CT) ->
-    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-
-prepare_contents(CT, _JobId, _RespContent, _TmpDir) ->
-    lager:debug("unsupported file type: ~p", [CT]),
-    {'error', list_to_binary(["file type '", CT, "' is unsupported"])}.
-
--spec convert_openoffice_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                         {'ok', kz_term:ne_binary()} |
-                                         {'error', kz_term:ne_binary()}.
-convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
-    Extension = kz_mime:to_extension(CT),
-    InputFile = list_to_binary([TmpDir, JobId, ".", Extension]),
-    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-    kz_util:write_file(InputFile, RespContent),
-    OpenOfficeServer = kapps_config:get_binary(?CONFIG_CAT, <<"openoffice_server">>, <<"'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'">>),
-    Cmd = io_lib:format(?CONVERT_OO_COMMAND, [OpenOfficeServer, InputFile, OutputFile]),
-    lager:debug("attemting to convert openoffice document: ~s", [Cmd]),
-    try "success" = os:cmd(Cmd) of
-        "success" -> {'ok', OutputFile}
-    catch
-        Type:Exception ->
-            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-            {'error', <<"can not convert file, try uploading a tiff">>}
-    end.
-
--spec get_sizes(kz_term:ne_binary()) -> {integer(), non_neg_integer()}.
-get_sizes(OutputFile) when is_binary(OutputFile) ->
-    CmdCount = kapps_config:get_binary(?CONFIG_CAT, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
-    Cmd = io_lib:format(CmdCount, [OutputFile]),
-    NumberOfPages = try Result = os:cmd(kz_term:to_list(Cmd)),
-                         kz_term:to_integer(Result)
-                    catch
-                        _:_ -> 0
-                    end,
-    FileSize = filelib:file_size(kz_term:to_list(OutputFile)),
-    {NumberOfPages, FileSize}.
 
 -spec send_fax(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
@@ -1129,36 +940,3 @@ send_control_error(JobId, CtrlQ, Stage, Reason) ->
               ],
     Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
     kz_amqp_worker:cast(Payload, Publisher).
-
--spec validate_tiff(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', kz_term:ne_binary()}.
-validate_tiff(Filename) ->
-    case file:read_file_info(Filename) of
-        {'ok', _} ->
-            lager:info("file ~s exists, validating", [Filename]),
-            validate_tiff_content(Filename);
-        {'error', Reason} ->
-            lager:info("could not get file info for ~s : ~p", [Filename, Reason]),
-            {'error', <<"could not convert input file">>}
-    end.
-
--spec validate_tiff_content(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', kz_term:ne_binary()}.
-validate_tiff_content(Filename) ->
-    case os:find_executable("tiff2pdf") of
-        'false' ->
-            lager:info("tiff2pdf not found when trying to validate tiff file, assuming ok."),
-            {'ok', Filename};
-        Exe ->
-            Dir = filename:dirname(Filename),
-            OutputFile = filename:join(Dir, <<(kz_binary:rand_hex(16))/binary, ".pdf">>),
-            Cmd = io_lib:format("~s -o ~s ~s", [Exe, OutputFile, Filename]),
-            catch(os:cmd(Cmd)),
-            case file:read_file_info(OutputFile) of
-                {'ok', _} ->
-                    lager:info("tiff check succeeded converting to pdf"),
-                    catch(file:delete(OutputFile)),
-                    {'ok', Filename};
-                {'error', _} ->
-                    lager:info("tiff check failed to convert to pdf"),
-                    {'error', <<"tiff check failed to convert to pdf">>}
-            end
-    end.

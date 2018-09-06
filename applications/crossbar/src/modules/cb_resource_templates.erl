@@ -144,7 +144,7 @@ determine_template_database(Context) ->
 
 -spec reseller_template_database(cb_context:context()) -> cb_context:context().
 reseller_template_database(Context) ->
-    case kz_services:find_reseller_id(cb_context:account_id(Context)) of
+    case kz_services_reseller:get_id(cb_context:account_id(Context)) of
         'undefined' -> Context;
         ResellerId ->
             ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
@@ -154,7 +154,7 @@ reseller_template_database(Context) ->
 -spec local_template_database(cb_context:context()) -> cb_context:context().
 local_template_database(Context) ->
     AccountId = cb_context:auth_account_id(Context),
-    case kz_services:is_reseller(AccountId) of
+    case kz_services_reseller:is_reseller(AccountId) of
         'false' -> reseller_template_database(Context);
         'true' ->
             AccountDb = kz_util:format_account_id(AccountId, 'encoded'),

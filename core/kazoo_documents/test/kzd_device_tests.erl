@@ -15,7 +15,7 @@
 -define(DEVICE_2_ID, <<"device00000000000000000000000002">>).
 
 kz_device_test_() ->
-    {setup
+    {'setup'
     ,fun kzd_test_fixtures:setup/0
     ,fun kzd_test_fixtures:cleanup/1
     ,fun(_) ->
@@ -36,7 +36,10 @@ kz_device_test_() ->
     }.
 
 test_invalid_parameters() ->
-    [?_assertMatch({'error', 'invalid_parameters'}, kzd_devices:fetch(?FIXTURE_MASTER_ACCOUNT_ID, 256))].
+    [?_assertMatch({'error', 'invalid_parameters'}
+                  ,kzd_devices:fetch(?FIXTURE_MASTER_ACCOUNT_ID, 256)
+                  )
+    ].
 
 test_validate_fixtures() ->
     {'ok', Schema} = kz_json_schema:fload(<<"devices">>),
@@ -245,7 +248,7 @@ test_device_param_setting() ->
             ,{<<"fax_machine">>, fun kzd_devices:set_device_type/2, fun kzd_devices:device_type/1}
             ,{<<"user0000000000000000000000000002">>, fun kzd_devices:set_owner_id/2, fun kzd_devices:owner_id/1}
             ,{'false', fun kzd_devices:set_enabled/2, fun kzd_devices:enabled/1}
-            ,{'false', fun kzd_devices:set_mwi_unsolicitated_updates/2, fun kzd_devices:mwi_unsolicitated_updates/1}
+            ,{'false', fun kzd_devices:set_mwi_unsolicited_updates/2, fun kzd_devices:mwi_unsolicited_updates/1}
             ],
 
     [?_assertEqual(Value, Get(Set(Device, Value))) || {Value, Set, Get} <- Setup].

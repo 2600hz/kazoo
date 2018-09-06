@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the skel callflow's data object
+Validator for the skel callflow data object
 
 
 

@@ -7,11 +7,17 @@
 
 -include("kazoo_modb.hrl").
 
--export([prev_year_month/1, prev_year_month/2
+-export([prev_year_month/1
+        ,prev_year_month/2
         ,prev_year_month_mod/1
-        ,split_account_mod/1
-        ,modb_id/0, modb_id/1, modb_id/2, modb_id/3
         ]).
+-export([split_account_mod/1]).
+-export([modb_id/0
+        ,modb_id/1
+        ,modb_id/2
+        ,modb_id/3
+        ]).
+-export([db_list/1]).
 
 -spec prev_year_month(kz_term:ne_binary()) -> {kz_time:year(), kz_time:month()}.
 prev_year_month(AccountMod) ->
@@ -100,3 +106,19 @@ modb_id(Year, Month, Id) ->
                    ,"-"
                    ,kz_term:to_binary(Id)
                    ]).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec db_list(kz_term:ne_binary()) -> kz_term:ne_binaries().
+db_list(Account) ->
+    db_list(kazoo_modb:get_modb(Account), []).
+
+-spec db_list(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+db_list(MODb, MODbs) ->
+    case kz_datamgr:db_exists(MODb) of
+        'false' -> MODbs;
+        'true' ->
+            db_list(prev_year_month_mod(MODb), [MODb|MODbs])
+    end.

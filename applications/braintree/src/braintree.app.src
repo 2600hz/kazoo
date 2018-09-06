@@ -1,0 +1,11 @@
+{application,braintree,
+             [{applications,[crossbar,kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+                             kazoo_documents,kazoo_services,kazoo_stdlib,
+                             kazoo_web,kazoo_xml,kernel,lager,ssl,stdlib,
+                             xmerl]},
+              {description,"Integration with the Braintree service"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{braintree_app,[]}},
+              {modules,[]},
+              {registered,[braintree_sup]},
+              {vsn,"4.0.0"}]}.

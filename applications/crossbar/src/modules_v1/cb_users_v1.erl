@@ -18,7 +18,6 @@
         ,validate_resource/1, validate_resource/2, validate_resource/3
         ,authenticate/1
         ,authorize/1
-        ,billing/1
         ,validate/1, validate/2, validate/3
         ,put/1
         ,post/2, post/3
@@ -47,7 +46,7 @@ create_user(Context) ->
         _Status -> Context1
     end.
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
@@ -55,14 +54,12 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.validate_resource.users">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.users">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.users">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.users">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.patch.users">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -168,25 +165,6 @@ validate_user_id(UserId, Context, Doc) ->
                                ,{fun cb_context:set_resp_status/2, 'success'}
                                ])
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc Ensure we will be able to bill for users
-%% @end
-%%------------------------------------------------------------------------------
--spec billing(cb_context:context()) -> cb_context:context().
-billing(Context) ->
-    process_billing(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
-
-process_billing(Context, [{<<"users">>, _}|_], ?HTTP_GET) ->
-    Context;
-process_billing(Context, [{<<"users">>, _}|_], _Verb) ->
-    try kz_services:allow_updates(cb_context:account_id(Context)) of
-        'true' -> Context
-    catch
-        'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
-    end;
-process_billing(Context, _Nouns, _Verb) -> Context.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -303,10 +281,10 @@ get_channels(Context) ->
           ,{<<"Usernames">>, Usernames}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
-                                     ,fun kapi_call:publish_query_user_channels_req/1
-                                     ,{'ecallmgr', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_call:publish_query_user_channels_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),

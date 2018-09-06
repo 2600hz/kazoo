@@ -22,7 +22,7 @@ If you want this endpoint to load by default, modify the crossbar doc in the `sy
 Remember that SUP commands follow the format of:
 
 ```shell
-sup module_maintenace function [arg1, arg2,...]
+sup module_maintenance function [arg1, arg2,...]
 ```
 
 The Crossbar URL is similarly constructed:

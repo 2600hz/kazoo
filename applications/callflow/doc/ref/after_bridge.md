@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the after_bridge callflow's data object
+Validator for the after_bridge callflow data object
 
 
 

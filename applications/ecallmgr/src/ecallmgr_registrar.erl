@@ -78,9 +78,9 @@
                       ,realm :: kz_term:api_ne_binary() | '_' | '$1'
                       ,network_port :: kz_term:api_ne_binary() | '_'
                       ,network_ip :: kz_term:api_ne_binary() | '_'
-                      ,to_host = ?DEFAULT_REALM :: kz_term:ne_binary() | '_'
+                      ,to_host :: kz_term:api_ne_binary() | '_'
                       ,to_user = <<"nouser">> :: kz_term:ne_binary() | '_'
-                      ,from_host = ?DEFAULT_REALM :: kz_term:ne_binary() | '_'
+                      ,from_host :: kz_term:api_ne_binary() | '_'
                       ,from_user = <<"nouser">> :: kz_term:ne_binary() | '_'
                       ,call_id :: kz_term:api_ne_binary() | '_'
                       ,user_agent :: kz_term:api_ne_binary() | '_'
@@ -399,7 +399,7 @@ handle_call(_Msg, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('registrar_sync', #state{queue=Q}=State) ->
     Payload = kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION),
-    kz_amqp_worker:cast(Payload, fun kapi_registration:publish_sync/1),
+    _ = kz_amqp_worker:cast(Payload, fun kapi_registration:publish_sync/1),
     {'noreply', State};
 handle_cast({'insert_registration', Registration}, State) ->
     kz_util:put_callid(Registration#registration.call_id),
@@ -591,7 +591,7 @@ find_newest_fetched_registration(Username, Realm, JObjs) ->
 
 -spec maybe_insert_fetched_registration(kz_json:object()) -> 'ok'.
 maybe_insert_fetched_registration(JObj) ->
-    case ecallmgr_config:get_boolean(<<"insert_fetched_registration_locally">>, 'false') of
+    case kapps_config:get_boolean(?APP_NAME, <<"insert_fetched_registration_locally">>, 'false') of
         'false' -> 'ok';
         'true' -> insert_fetched_registration(JObj)
     end.
@@ -824,9 +824,9 @@ create_registration(JObj) ->
                                          ,initial_registration=kz_json:get_integer_value(<<"Initial-Registration">>, JObj, Reg#registration.initial_registration)
                                          ,network_port=kz_json:get_value(<<"Network-Port">>, JObj, Reg#registration.network_port)
                                          ,network_ip=kz_json:get_value(<<"Network-IP">>, JObj, Reg#registration.network_ip)
-                                         ,to_host=kz_json:get_value(<<"To-Host">>, JObj, Reg#registration.to_host)
+                                         ,to_host=get_realm(<<"To-Host">>, JObj)
                                          ,to_user=kz_json:get_value(<<"To-User">>, JObj, Reg#registration.to_user)
-                                         ,from_host=kz_json:get_value(<<"From-Host">>, JObj, Reg#registration.from_host)
+                                         ,from_host=get_realm(<<"From-Host">>, JObj)
                                          ,from_user=kz_json:get_value(<<"From-User">>, JObj, Reg#registration.from_user)
                                          ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, Reg#registration.call_id)
                                          ,user_agent=kz_json:get_value(<<"User-Agent">>, JObj, Reg#registration.user_agent)
@@ -836,6 +836,13 @@ create_registration(JObj) ->
                                          }
                         ,JObj
                         ).
+
+-spec get_realm(kz_json:key(), kz_json:object()) -> kz_json:ne_binary().
+get_realm(Key, JObj) ->
+    case kz_json:get_ne_binary_value(Key, JObj) of
+        'undefined' -> ?DEFAULT_REALM;
+        Realm -> Realm
+    end.
 
 -spec augment_registration(registration(), kz_json:object()) -> registration().
 augment_registration(Reg, JObj) ->

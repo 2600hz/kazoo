@@ -368,7 +368,7 @@ handle_event(_JObj, #state{uuid=UUID}) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{control_pid=CtrlPid}) when is_pid(CtrlPid) ->
-    lager:debug("stop abandoned call controll process ~p", [CtrlPid]),
+    lager:debug("stop abandoned call control process ~p", [CtrlPid]),
     ecallmgr_call_control:stop(CtrlPid),
     lager:debug("originate termination: ~p", [_Reason]);
 terminate(_Reason, _State) ->

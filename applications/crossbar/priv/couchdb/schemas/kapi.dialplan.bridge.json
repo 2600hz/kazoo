@@ -120,6 +120,12 @@
             ],
             "type": "string"
         },
+        "Export-Bridge-Variables": {
+            "type": "string"
+        },
+        "Export-Variables": {
+            "type": "string"
+        },
         "Fail-On-Single-Reject": {
             "type": "string"
         },

@@ -126,7 +126,7 @@ count_by_owner(AccountId, OwnerId) ->
             {0, 0};
         {'ok', Boxes} ->
             BoxIds = [kz_json:get_value(<<"value">>, Box) || Box <- Boxes],
-            lager:debug("found ~p vociemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
+            lager:debug("found ~p voicemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
             sum_owner_mailboxes(AccountId, BoxIds, {0, 0});
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),
@@ -299,7 +299,7 @@ fetch(AccountId, MsgIds) ->
 -spec fetch(AccountId, MsgIds, BoxId) ->
                    kz_json:object() when AccountId :: kz_term:ne_binary(),
                                          MsgIds :: kz_term:ne_binaries(),
-                                         BoxId :: kz_term:ne_binary().
+                                         BoxId :: kz_term:api_ne_binary().
 fetch(AccountId, MsgIds, BoxId) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     bulk_result(fetch(AccountId, MsgIds, BoxId, RetenTimestamp)).
@@ -312,7 +312,7 @@ fetch(AccountId, MsgIds, BoxId, RetenTimestamp) ->
           end,
     maps:fold(Fun, #{succeeded => [], failed => []}, DbsRange).
 
--spec fetch_fun(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries(), bulk_map(), kz_time:gregorian_seconds()) -> bulk_map().
+-spec fetch_fun(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries(), bulk_map(), kz_time:gregorian_seconds()) -> bulk_map().
 fetch_fun(Db, BoxId, Ids, ResultMap, RetenTimestamp) ->
     case kz_datamgr:db_exists(Db)
         andalso kz_datamgr:open_docs(Db, Ids)

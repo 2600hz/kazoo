@@ -92,7 +92,7 @@
             "type": "string"
         },
         "routes": {
-            "description": "List of regexs that match valid DIDs for this rate",
+            "description": "List of regexps that match valid DIDs for this rate",
             "items": {
                 "type": "string"
             },

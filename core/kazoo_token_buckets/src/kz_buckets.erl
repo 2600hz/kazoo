@@ -361,7 +361,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{table_id=Tbl}=State) 
             ],
     case ets:select_delete(Tbl, Match) of
         N when N > 0 -> lager:debug("bucket ~p down: ~p", [Pid, _Reason]);
-        0 -> lager:debug("unknown procress ~p(~p) down: ~p", [Pid, Ref, _Reason])
+        0 -> lager:debug("unknown process ~p(~p) down: ~p", [Pid, Ref, _Reason])
     end,
     {'noreply', State};
 handle_info(?INACTIVITY_MSG, #state{inactivity_timer_ref=_OldRef}=State) ->

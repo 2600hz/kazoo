@@ -110,7 +110,6 @@ fetch_rates_from_ratedeck(RatedeckDb, Keys) ->
                            ]
                           ).
 
-
 -ifdef(TEST).
 
 -spec account_ratedeck(kz_term:api_ne_binary()) -> kz_term:ne_binary().
@@ -132,10 +131,10 @@ account_ratedeck('undefined', <<_/binary>> = RatedeckId) ->
     lager:info("using supplied ratedeck ~s", [RatedeckId]),
     kzd_ratedeck:format_ratedeck_db(RatedeckId);
 account_ratedeck(AccountId, _RatedeckId) ->
-    case kz_service_ratedeck:get_ratedeck(AccountId) of
+    case kz_services:ratedeck_id(kz_services:fetch(AccountId)) of
         'undefined' ->
             lager:debug("failed to find account ~s ratedeck, checking reseller", [AccountId]),
-            reseller_ratedeck(AccountId, kz_services:find_reseller_id(AccountId));
+            reseller_ratedeck(AccountId, kz_services_reseller:get_id(AccountId));
         RatedeckId ->
             lager:info("using account ratedeck ~s for account ~s", [RatedeckId, AccountId]),
             kzd_ratedeck:format_ratedeck_db(RatedeckId)
@@ -149,7 +148,7 @@ reseller_ratedeck(ResellerId, ResellerId) ->
     lager:debug("account ~s is own reseller, using system setting", [ResellerId]),
     hotornot_config:default_ratedeck();
 reseller_ratedeck(_AccountId, ResellerId) ->
-    case kz_service_ratedeck:get_ratedeck(ResellerId) of
+    case kz_services:ratedeck_id(kz_services:fetch(ResellerId)) of
         'undefined' ->
             lager:debug("failed to find reseller ~s ratedeck, using default", [_AccountId]),
             hotornot_config:default_ratedeck();
@@ -213,42 +212,44 @@ sort_rates_by_cost(Rates) ->
 
 -spec matching_rate(kzd_rates:doc(), kz_term:ne_binary(), kapi_rate:req()) -> boolean().
 matching_rate(Rate, <<"direction">>, RateReq) ->
-    case kz_json:get_ne_binary_value(<<"Direction">>, RateReq) of
+    case kapi_rate:direction(RateReq) of
         'undefined' -> 'true';
         Direction ->
             lists:member(Direction, kzd_rates:direction(Rate))
     end;
 
 matching_rate(Rate, <<"route_options">>, RateReq) ->
-    RouteOptions = kz_json:get_value(<<"Options">>, RateReq, []),
-    RouteFlags   = kz_json:get_value(<<"Outbound-Flags">>, RateReq, []),
-    ResourceFlag = case kz_json:get_value(<<"Account-ID">>, RateReq) of
+    RouteOptions = kapi_rate:options(RateReq),
+    RouteFlags   = kapi_rate:outbound_flags(RateReq),
+    ResourceFlag = case kapi_rate:account_id(RateReq) of
                        'undefined' -> [];
                        AccountId -> maybe_add_resource_flag(RateReq, AccountId)
                    end,
     options_match(kzd_rates:options(Rate), RouteOptions++RouteFlags++ResourceFlag);
 
 matching_rate(Rate, <<"routes">>, RateReq) ->
-    E164 = knm_converters:normalize(kz_json:get_value(<<"To-DID">>, RateReq)),
+    ToDID = kapi_rate:to_did(RateReq),
+    E164 = knm_converters:normalize(ToDID),
     lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
              ,kzd_rates:routes(Rate, [])
              );
 
 matching_rate(Rate, <<"caller_id_numbers">>, RateReq) ->
-    E164 = knm_converters:normalize(kz_json:get_value(<<"From-DID">>, RateReq)),
+    FromDID = kapi_rate:from_did(RateReq),
+    E164 = knm_converters:normalize(FromDID),
     lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
              ,kzd_rates:caller_id_numbers(Rate, [<<".">>])
              );
 
 matching_rate(Rate, <<"ratedeck_id">>, RateReq) ->
-    AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),
-    AccountRatedeck = kz_service_ratedeck_name:get_ratedeck_name(AccountId),
+    AccountId = kapi_rate:account_id(RateReq),
+    AccountRatedeck = kz_services:ratedeck_name(kz_services:fetch(AccountId)),
     RatedeckName = kzd_rates:ratedeck_id(Rate),
     AccountRatedeck =:= RatedeckName;
 
 matching_rate(Rate, <<"reseller">>, RateReq) ->
-    AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    AccountId = kapi_rate:account_id(RateReq),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     RateAccountId = kzd_rates:account_id(Rate),
     RateAccountId =:= ResellerId;
 
@@ -300,7 +301,7 @@ options_match(RateOptions, RouteOptions) ->
 maybe_add_resource_flag(RateReq, AccountId) ->
     case hotornot_config:should_account_filter_by_resource(AccountId) of
         'true' ->
-            case kz_json:get_ne_binary_value(<<"Resource-ID">>, RateReq) of
+            case kapi_rate:resource_id(RateReq) of
                 'undefined' -> [];
                 ResourceId -> [ResourceId]
             end;

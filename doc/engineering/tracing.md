@@ -23,7 +23,7 @@ Starting a trace is straight-forward:
     {'ok', Ref2}
     3> {'ok', Trace3} = kz_data_tracing:trace_file(Filters, Filename).
     {'ok', Ref3}
-    4> {'ok', Trace4} = kz_data_tracing:trace_file(Fitlers, Filename, Format).
+    4> {'ok', Trace4} = kz_data_tracing:trace_file(Filters, Filename, Format).
     {'ok', Ref4}
 
 SUP-provided examples:
@@ -39,9 +39,9 @@ Filters are 2-tuples that contain the patterns used on events to see if they mee
 
 -   \`{'module', Module}\`: Filter for calls to \`Module\`
 -   \`{'function', Function}\`: Filter for calls to \`Function\` When combined with \`{'module', Module}\`, just trace that Module:Function combo
--   \`{'pid', Pid}\`: Fitler for calls by \`Pid\`
+-   \`{'pid', Pid}\`: Filter for calls by \`Pid\`
 -   Custom metadata
-    -   \`lager:warning([{request, RequestID}], "the passwords didn't match for ~s", [UserId])\` would allow a filter of \`{'request', RequestID}\`
+    -   \`lager:warning([{request, RequestId}], "the passwords didn't match for ~s", [UserId])\` would allow a filter of \`{'request', RequestId}\`
     -   You can also associate metadata with a \`pid()\`: \`lager:md([{'zone', 'west'}])\`
 
 You can also use \`'\*'\` in the second element to match all of that class of filter.

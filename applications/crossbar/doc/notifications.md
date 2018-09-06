@@ -780,7 +780,7 @@ send_account_update(AccountId) ->
 -spec build_customer_update_payload(ne_binary()) -> kz_proplist().
 build_customer_update_payload(AccountId) ->
     props:filter_empty(
-      [{<<"Account-ID">>, kz_services:find_reseller_id(AccountId)}
+      [{<<"Account-ID">>, kz_services_reseller:get_id(AccountId)}
       ,{<<"Recipient-ID">>, AccountId}
       %% DataBag is useful if you have a customized template and wants to pass some your info from your app
       ,{<<"DataBag">>, kz_json:from_list([{<<"field1">>,<<"value1">>},{<<"field2">>,{[{<<"subfield1">>,<<"subvalue1">>},{<<"subfield2">>,<<"subvalue2">>}]}}])}

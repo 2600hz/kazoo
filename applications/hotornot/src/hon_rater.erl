@@ -22,7 +22,7 @@ handle_req(RateReq, _Props) ->
     'true' = kapi_rate:req_v(RateReq),
     _ = kz_util:put_callid(RateReq),
     lager:debug("valid rating request"),
-    case get_rate_data(RateReq, kz_json:get_ne_value(<<"Authorizing-Type">>, RateReq)) of
+    case get_rate_data(RateReq, kapi_rate:authorizing_type(RateReq)) of
         {'error', 'no_rate_found'} ->
             maybe_publish_no_rate_found(RateReq);
         {'ok', Resp} ->
@@ -33,7 +33,7 @@ handle_req(RateReq, _Props) ->
 
 -spec maybe_publish_no_rate_found(kapi_rate:req()) -> 'ok'.
 maybe_publish_no_rate_found(RateReq) ->
-    case kz_json:is_true(<<"Send-Empty">>, RateReq, 'false') of
+    case kapi_rate:send_empty(RateReq) of
         'true' -> publish_no_rate_found(RateReq);
         'false' -> 'ok'
     end.
@@ -51,7 +51,7 @@ publish_no_rate_found(RateReq) ->
 
 -spec maybe_empty_mobile_log(kapi_rate:req()) -> string().
 maybe_empty_mobile_log(RateReq) ->
-    case kz_json:get_ne_value(<<"Authorizing-Type">>, RateReq) of
+    case kapi_rate:authorizing_type(RateReq) of
         <<"mobile">> -> "mobile ";
         _ -> ""
     end.
@@ -60,8 +60,8 @@ maybe_empty_mobile_log(RateReq) ->
                            {'ok', kz_term:api_terms()} |
                            {'error', 'no_rate_found'}.
 get_rate_data(RateReq, <<"mobile">>) ->
-    ToDID = kz_json:get_value(<<"To-DID">>, RateReq),
-    FromDID = kz_json:get_value(<<"From-DID">>, RateReq),
+    ToDID = kapi_rate:to_did(RateReq),
+    FromDID = kapi_rate:from_did(RateReq),
 
     case hotornot_config:mobile_rate() of
         'undefined' ->
@@ -71,24 +71,34 @@ get_rate_data(RateReq, <<"mobile">>) ->
             {'ok', rate_resp(Rate, RateReq)}
     end;
 get_rate_data(RateReq, _AuthType) ->
-    ToDID = kz_json:get_value(<<"To-DID">>, RateReq),
-    FromDID = kz_json:get_value(<<"From-DID">>, RateReq),
-    AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),
-    RatedeckId = kz_json:get_value(<<"Ratedeck-ID">>, RateReq),
+    ToDID = kapi_rate:to_did(RateReq),
+    FromDID = kapi_rate:from_did(RateReq),
+    AccountId = kapi_rate:account_id(RateReq),
+    RatedeckId = kapi_rate:ratedeck_id(RateReq),
 
     case hon_util:candidate_rates(ToDID, AccountId, RatedeckId) of
         {'ok', []} ->
-            kz_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
+            maybe_send_system_alert(RateReq, FromDID, ToDID),
             lager:debug("no rates found for ~s to ~s", [FromDID, ToDID]),
             {'error', 'no_rate_found'};
         {'error', _E} ->
-            kz_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
+            maybe_send_system_alert(RateReq, FromDID, ToDID),
             lager:debug("rate lookup error for ~s to ~s: ~p"
                        ,[FromDID, ToDID, _E]
                        ),
             {'error', 'no_rate_found'};
         {'ok', Rates} ->
             get_rate_data(RateReq, ToDID, FromDID, Rates)
+    end.
+
+-spec maybe_send_system_alert(kapi_rate:req(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+maybe_send_system_alert(RateReq, FromDID, ToDID) ->
+    Direction = kapi_rate:direction(RateReq),
+    case hotornot_config:should_publish_alert(Direction) of
+        'true' ->
+            kz_notify:system_alert("no ~s rate found for ~s to ~s", [Direction, FromDID, ToDID]);
+        'false' ->
+            lager:debug("not publishing no_rate_found alert for ~s rate", [Direction])
     end.
 
 -spec get_rate_data(kapi_rate:req(), kz_term:ne_binary(), kz_term:api_binary(), kz_json:objects()) ->
@@ -113,13 +123,13 @@ get_rate_data_from_sorted(_RateReq, ToDID, FromDID, []) ->
     {'error', 'no_rate_found'};
 get_rate_data_from_sorted(RateReq, _ToDID, _FromDID, [Rate|_]) ->
     lager:debug("using rate ~s for ~s to ~s"
-               ,[kz_json:get_value(<<"rate_name">>, Rate), _FromDID, _ToDID]
+               ,[kzd_rates:rate_name(Rate), _FromDID, _ToDID]
                ),
     {'ok', rate_resp(Rate, RateReq)}.
 
 -spec maybe_get_rate_discount(kapi_rate:req()) -> kz_term:api_binary().
 maybe_get_rate_discount(RateReq) ->
-    maybe_get_rate_discount(RateReq, kz_json:get_value(<<"Account-ID">>, RateReq)).
+    maybe_get_rate_discount(RateReq, kapi_rate:account_id(RateReq)).
 
 -spec maybe_get_rate_discount(kapi_rate:req(), kz_term:api_binary()) -> kz_term:api_binary().
 maybe_get_rate_discount(_RateReq, 'undefined') -> 'undefined';
@@ -130,7 +140,7 @@ maybe_get_rate_discount(RateReq, AccountId) ->
             lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),
             'undefined';
         {'ok', Def} ->
-            Number = kz_json:get_value(<<"To-DID">>, RateReq),
+            Number = kapi_rate:to_did(RateReq),
             Classification = knm_converters:classify(Number),
             lager:debug("~s number discount percentage: ~p", [Classification, Def]),
             kz_json:get_value([<<"pvt_discounts">>, Classification, <<"percentage">>], Def)
@@ -138,10 +148,10 @@ maybe_get_rate_discount(RateReq, AccountId) ->
 
 -spec rate_resp(kz_json:object(), kapi_rate:req()) -> kz_term:proplist().
 rate_resp(Rate, RateReq) ->
-    RateCost = wht_util:dollars_to_units(kzd_rates:rate_cost(Rate, 0.0)),
-    RateSurcharge = wht_util:dollars_to_units(kzd_rates:rate_surcharge(Rate, 0.0)),
+    RateCost = kz_currency:dollars_to_units(kzd_rates:rate_cost(Rate, 0.0)),
+    RateSurcharge = kz_currency:dollars_to_units(kzd_rates:rate_surcharge(Rate, 0.0)),
     RateMinimum = kzd_rates:rate_minimum(Rate, hotornot_config:default_minimum()),
-    BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
+    BaseCost = kapps_call_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
     PrivateCost = kzd_rates:private_cost(Rate),
     lager:debug("base cost for a call: ~p", [BaseCost]),
     ShouldUpdateCalleeId = should_update_callee_id(RateReq),
@@ -170,7 +180,7 @@ rate_resp(Rate, RateReq) ->
 should_update_callee_id(?NE_BINARY = AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', AccountDoc} ->
-            kz_json:is_true([<<"caller_id_options">>, <<"show_rate">>], AccountDoc, 'false');
+            kzd_accounts:caller_id_options_show_rate(AccountDoc, 'false');
         {'error', _R} ->
             lager:debug("failed to load account ~p for update callee id ~p", [AccountId, _R]),
             'false'

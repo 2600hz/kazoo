@@ -28,11 +28,13 @@
         ,size/1, size/2
         ,pages/1, pages/2
         ,retry_after/1, retry_after/2
-        ]).
+        ]
+       ).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
+
 -export_type([doc/0]).
 
 -define(KEY_FAXBOX_ID, <<"faxbox_id">>).
@@ -226,3 +228,4 @@ retry_after(FaxDoc) ->
 -spec retry_after(doc(), Default) -> integer() | Default.
 retry_after(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_RETRY_AFTER, FaxDoc, Default).
+

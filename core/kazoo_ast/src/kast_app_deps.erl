@@ -45,7 +45,7 @@ dot_file(App) ->
 create_dot_file(Name, Markup) ->
     Filename = <<"/tmp/", (kz_term:to_binary(Name))/binary, ".dot">>,
     'ok' = file:write_file(Filename
-                          ,["digraph kast_app_deps {\n"
+                          ,["strict digraph kast_app_deps {\n"
                            ,Markup
                            ,"}\n"
                            ]
@@ -53,17 +53,16 @@ create_dot_file(Name, Markup) ->
     io:format("wrote DOT file to ~s~n", [Filename]).
 
 create_dot_markup(App, AppDeps) ->
-    RemoteApps = lists:usort([A || {_Module, A} <- AppDeps]),
+    RemoteApps = lists:usort([A || {_Module, A} <- AppDeps, is_kazoo_app(A)]),
     app_markup(App, RemoteApps).
 
 app_markup(App, RemoteApps) ->
-    M = [ [$", kz_term:to_binary(App), $"
-          ," -> "
-          ,$", kz_term:to_binary(RemoteApp), $"
-          ," [weight=1];\n"
-          ]
-          || RemoteApp <- RemoteApps
+    M = [$", kz_term:to_binary(App), $"
+        ," -> {"
+        ,$", kz_binary:join(RemoteApps, <<"\" \"">>), $"
+        ,"} [weight=1];\n"
         ],
+
     ?DEBUG("adding '~s'~n", [M]),
     M.
 
@@ -85,7 +84,12 @@ fix_app_deps(App) ->
 
 -spec configured_dep_apps(atom()) -> [atom()].
 configured_dep_apps(App) ->
-    {'application', App, Properties} = read_app_src(App),
+    configured_dep_apps(App, read_app_src(App)).
+
+configured_dep_apps(_App, 'undefined') ->
+    ?DEBUG("failed to find configured dep apps, no .app for ~s", [_App]),
+    [];
+configured_dep_apps(App, {'application', App, Properties}) ->
     lists:usort(props:get_value('applications', Properties)).
 
 fix_app_deps(App, Missing, Unneeded) ->
@@ -106,22 +110,36 @@ fix_app_deps(App, Missing, Unneeded) ->
             io:format(".");
         UpdatedApps ->
             ?DEBUG("updated ~s apps to ~p~n", [App, UpdatedApps]),
-            {'application', App, Properties} = read_app_src(App),
-
-            write_app_src(App
-                         ,{'application'
-                          ,App
-                          ,props:set_value('applications', UpdatedApps, Properties)
-                          }
-                         ),
-            io:format("x")
+            update_app_src(App, UpdatedApps)
     end.
+
+update_app_src(App, UpdatedApps) ->
+    update_app_src(App, UpdatedApps, read_app_src(App)).
+
+update_app_src(_App, _UpdatedApps, 'undefined') ->
+    ?DEBUG("error reading .app file ~s", [_App]),
+    io:format("!");
+update_app_src(App, UpdatedApps, {'application', App, Properties}) ->
+    write_app_src(App
+                 ,{'application'
+                  ,App
+                  ,props:set_value('applications', UpdatedApps, Properties)
+                  }
+                 ),
+    io:format("x").
 
 read_app_src(App) ->
     File = app_src_filename(App),
     ?DEBUG("reading app file ~s~n", [File]),
-    {'ok', [Config]} = file:consult(kz_term:to_list(File)),
-    Config.
+    read_app_file(File).
+
+read_app_file(File) ->
+    read_app_file(File, file:consult(kz_term:to_list(File))).
+
+read_app_file(_File, {'ok', [Config]}) -> Config;
+read_app_file(_File, _Error) ->
+    ?DEBUG("error reading ~s: ~p", [_File, _Error]),
+    'undefined'.
 
 write_app_src(App, Config) ->
     File = app_src_filename(App),
@@ -133,18 +151,48 @@ app_src_filename(App) ->
                   ,<<AppBin/binary, ".app.src">>
                   ]).
 
--spec circles() -> [{atom(), [atom()]}].
+-spec circles() -> 'ok'.
 circles() ->
     io:format("finding circular dependencies "),
-    Circles = [circles(App)
-               || App <- kz_ast_util:project_apps()
-              ],
+
+    {Graph, Verticies} = lists:foldl(fun add_app_to_graph/2
+                                    ,{digraph:new(), []}
+                                    ,kz_ast_util:project_apps()
+                                    ),
     io:format(" done~n"),
-    Circles.
+    lists:foreach(fun(App) -> print_cycle(App, Graph) end
+                 ,lists:usort(Verticies)
+                 ).
+
+print_cycle(App, Graph) ->
+    case digraph:get_short_cycle(Graph, App) of
+        'false' -> 'ok';
+        Vs ->
+            io:format("cycle through ~p: ~p~n", [App, Vs])
+    end.
+
+add_app_to_graph(App, {Graph, Verticies}) ->
+    AppVertex = digraph:add_vertex(Graph, App, App),
+    {Graph
+    ,lists:foldl(fun(Remote, Vs) ->
+                         RemoteVertex = digraph:add_vertex(Graph, Remote, Remote),
+                         digraph:add_edge(Graph, AppVertex, RemoteVertex),
+                         [Remote | Vs]
+                 end
+                ,[App | Verticies]
+                ,remote_app_list(App)
+                )
+    }.
+
+%% Circles = [circles(App)
+%%            || App <- kz_ast_util:project_apps()
+%%           ],
+%% io:format(" done~n"),
+%% Circles.
 
 -spec start_cache() -> {'ok', pid()}.
 start_cache() ->
-    {'ok', _Cache} = kz_cache:start_link(?MODULE).
+    {'ok', _Cache} = kz_cache_sup:start_link(?MODULE).
 
 -spec stop_cache() -> 'ok'.
 stop_cache() ->
@@ -152,7 +200,8 @@ stop_cache() ->
 
 -spec stop_cache(kz_types:server_ref()) -> 'ok'.
 stop_cache(Cache) ->
-    kz_cache:stop_local(Cache).
+    kz_cache:stop_local(Cache),
+    'ok'.
 
 -spec circles(atom()) -> {atom(), [atom()]}.
 circles(App) ->
@@ -219,7 +268,7 @@ is_kazoo_app(Path) when is_list(Path) ->
 -type apps_deps() :: [app_deps()].
 -spec process_project() -> apps_deps().
 process_project() ->
-    {'ok', Cache} = kz_cache:start_link(?MODULE),
+    {'ok', Cache} = kz_cache_sup:start_link(?MODULE),
     io:format("processing application dependencies: "),
     Discrepencies = lists:foldl(fun process_app/2
                                ,[]
@@ -278,9 +327,15 @@ remote_calls_from_module(Module) ->
     remote_calls_from_module(Module, []).
 
 remote_calls_from_module(Module, Acc) ->
+    remote_calls_from_module(Module, Acc, kz_ast_util:module_ast(Module)).
+
+remote_calls_from_module(_Module, Acc, 'undefined') ->
+    io:format("!"),
+    ?DEBUG("failed to get AST for ~s", [_Module]),
+    Acc;
+remote_calls_from_module(Module, Acc, {M, AST}) ->
     io:format("."),
     ?DEBUG("remote calls from ~s~n", [Module]),
-    {M, AST} = kz_ast_util:module_ast(Module),
     #module_ast{functions=Fs} = kz_ast_util:add_module_ast(#module_ast{}, M, AST),
     try remote_calls_from_functions(Fs, Acc) of
         Modules -> ?DEBUG("  ~p~n", [Module]), lists:delete(M, Modules)

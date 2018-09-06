@@ -197,7 +197,7 @@
     "music_on_hold": {
         "media_id": "media000000000000000000000000004"
     },
-    "mwi_unsolicitated_updates": true,
+    "mwi_unsolicited_updates": true,
     "name": "Test Device 4",
     "outbound_flags": [
         "device_old_static_flag"

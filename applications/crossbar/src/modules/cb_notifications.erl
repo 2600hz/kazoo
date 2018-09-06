@@ -222,7 +222,7 @@ content_types_accepted_for_upload(Context, _Verb) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /notifications mights load a list of skel objects
+%% /notifications might load a list of skel objects
 %% /notifications/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -476,7 +476,7 @@ build_preview_payload(Context, Notification) ->
 handle_preview_response(Context, Resp) ->
     case kz_json:get_value(<<"Status">>, Resp) of
         <<"failed">> ->
-            lager:debug("failed notificaiton preview: ~p", [Resp]),
+            lager:debug("failed notification preview: ~p", [Resp]),
             CleansedResp = kz_json:normalize(kz_api:remove_defaults(Resp)),
             crossbar_util:response_invalid_data(CleansedResp, Context);
         _Status ->
@@ -1266,7 +1266,7 @@ normalize_available_port(Value, Acc, Context) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
 
-    case kz_services:is_reseller(AuthAccountId)
+    case kz_services_reseller:is_reseller(AuthAccountId)
         andalso cb_port_requests:authority(AccountId)
     of
         'false' -> Acc;

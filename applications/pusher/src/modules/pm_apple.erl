@@ -23,6 +23,13 @@
 -record(state, {tab :: ets:tid()}).
 -type state() :: #state{}.
 
+-define(APNS_MAP, [{<<"Alert-Key">>, [<<"aps">>, <<"alert">>, <<"loc-key">>]}
+                  ,{<<"Alert-Params">>, [<<"aps">>, <<"alert">>, <<"loc-args">>]}
+                  ,{<<"Sound">>, [<<"aps">>, <<"sound">>]}
+                  ,{<<"Call-ID">>, [<<"aps">>, <<"call-id">>]}
+                  ,{<<"Payload">>, fun kz_json:merge/2}
+                  ]).
+
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [],[]).
@@ -38,6 +45,7 @@ handle_call(_Request, _From, State) ->
 
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
+    kz_util:put_callid(JObj),
     TokenApp = kz_json:get_value(<<"Token-App">>, JObj),
     maybe_send_push_notification(get_apns(TokenApp, ETS), JObj),
     {'noreply', State};
@@ -61,20 +69,24 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_send_push_notification('undefined', _) -> 'ok';
 maybe_send_push_notification(Pid, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
-    Sender = kz_json:get_value(<<"Alert-Body">>, JObj),
-    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    APNsTopic = apns_topic(JObj),
-    apns:push_notification(Pid
-                          ,TokenID
-                          ,#{aps => #{alert => #{'loc-key' => <<"IC_MSG">>
-                                                ,'loc-args' => [Sender]
-                                                }
-                                     ,sound => <<"ring.caf">>
-                                     }
-                            ,'call-id' => CallId
-                            }
-                          ,#{apns_topic => APNsTopic}
-                          ).
+    Topic = apns_topic(JObj),
+    TopicArg = #{apns_topic => Topic},
+    Msg = build_payload(JObj),
+    lager:debug_unsafe("pushing topic ~s for token-id ~s : ~s", [Topic, TokenID, kz_json:encode(kz_json:from_map(Msg), ['pretty'])]),
+    {Result, _Props, _Ignore} = apns:push_notification(Pid, TokenID, Msg, TopicArg),
+    lager:debug("apns result for ~s : ~B", [Topic, Result]).
+
+-spec build_payload(kz_json:object()) -> map().
+build_payload(JObj) ->
+    kz_json:to_map(kz_json:foldl(fun map_key/3, kz_json:new(), JObj)).
+
+-spec map_key(term(), term(), kz_json:object()) -> kz_json:object().
+map_key(K, V, JObj) ->
+    case lists:keyfind(K, 1, ?APNS_MAP) of
+        'false' -> JObj;
+        {_, Fun} when is_function(Fun, 2) -> Fun(V, JObj);
+        {_, K1} -> kz_json:set_value(K1, V, JObj)
+    end.
 
 -spec get_apns(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
 get_apns('undefined', _) -> 'undefined';
@@ -96,7 +108,8 @@ maybe_load_apns(App, _, 'undefined', _) ->
     'undefined';
 maybe_load_apns(App, ETS, CertBin, Host) ->
     {Key, Cert} = pusher_util:binary_to_keycert(CertBin),
-    Connection = #{name => 'undefined'
+    lager:debug("starting apple push connection for ~s : ~s", [App, Host]),
+    Connection = #{name => kz_term:to_atom(App, 'true')
                   ,apple_host => kz_term:to_list(Host)
                   ,apple_port => 443
                   ,certdata => Cert

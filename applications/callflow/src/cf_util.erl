@@ -47,6 +47,8 @@
 
 -export([normalize_capture_group/1, normalize_capture_group/2]).
 
+-export([token_check/2]).
+
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
@@ -63,6 +65,53 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec token_check(kapps_call:call(), kz_json:object()) -> boolean().
+token_check(Call, Flow) ->
+    case kapps_config:get_is_true(?CF_CONFIG_CAT, <<"calls_consume_tokens">>, 'true') of
+        'false' ->
+            %% If configured to not consume tokens then don't block the call
+            'true';
+        'true' ->
+            {Name, Cost} = bucket_info(Call, Flow),
+            DryRun = kapps_config:get_is_true(?CF_CONFIG_CAT, <<"should_dry_run_token_restrictions">>, 'false'),
+
+            case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
+                'true' -> 'true';
+                'false' when DryRun ->
+                    lager:info("dry-run: bucket ~s does not have enough tokens(~b needed) for this call", [Name, Cost]),
+                    'true';
+                'false' ->
+                    lager:warning("bucket ~s does not have enough tokens(~b needed) for this call", [Name, Cost]),
+                    'false'
+            end
+    end.
+
+-spec bucket_info(kapps_call:call(), kz_json:object()) ->
+                         {kz_term:ne_binary(), pos_integer()}.
+bucket_info(Call, Flow) ->
+    case kz_json:get_value(<<"pvt_bucket_name">>, Flow) of
+        'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
+        Name -> {Name, bucket_cost(Flow)}
+    end.
+
+-spec bucket_name_from_call(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
+bucket_name_from_call(Call, Flow) ->
+    FlowId = case kz_doc:id(Flow) of
+                 'undefined' -> <<"cf_exe_", (kz_term:to_binary(self()))/binary>>;
+                 FlowIdVal   -> FlowIdVal
+             end,
+
+    <<(kapps_call:account_id(Call))/binary, ":", (FlowId)/binary>>.
+
+-spec bucket_cost(kz_json:object()) -> pos_integer().
+bucket_cost(Flow) ->
+    Min = kapps_config:get_integer(?CF_CONFIG_CAT, <<"min_bucket_cost">>, 5),
+    case kz_json:get_integer_value(<<"pvt_bucket_cost">>, Flow) of
+        'undefined' -> Min;
+        N when N < Min -> Min;
+        N -> N
+    end.
+
 -spec presence_probe(kz_json:object(), kz_term:proplist()) -> any().
 presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
@@ -541,10 +590,10 @@ find_channels(Usernames, Call) ->
           ,{<<"Usernames">>, Usernames}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_call:publish_query_user_channels_req/1
-                                     ,fun kapi_call:query_user_channels_resp_v/1
-                                     )
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_call:publish_query_user_channels_req/1
+                            ,fun kapi_call:query_user_channels_resp_v/1
+                            )
     of
         {'ok', Resp} -> kz_json:get_value(<<"Channels">>, Resp, []);
         {'error', _E} ->

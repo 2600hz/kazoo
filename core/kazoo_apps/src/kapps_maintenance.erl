@@ -25,7 +25,7 @@
 -export([blocking_refresh/0
         ,blocking_refresh/1
         ]).
--export([remove_depreciated_databases/0]).
+-export([remove_deprecated_databases/0]).
 -export([ensure_aggregate_devices/0
         ,ensure_aggregate_device/1
         ]).
@@ -54,13 +54,13 @@
 -export([flush_getby_cache/0
         ,flush_account_views/0
         ,get_all_account_views/0
+        ,read_all_account_views/0
         ]).
 
--export([init_system/0, init_dbs/0]).
+-export([init_system/0, init_dbs/0, register_account_views/0]).
 
 -export([check_release/0]).
 
--include_lib("kazoo_caches/include/kazoo_caches.hrl").
 -include("kazoo_apps.hrl").
 
 -type bind() :: 'migrate' | 'refresh' | 'refresh_account'.
@@ -88,7 +88,7 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    kz_datamgr:refresh_views(Database),
+    _ = kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -110,13 +110,10 @@ rebuild_token_auth(Pause) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec migrate_to_4_0() -> no_return.
+-spec migrate_to_4_0() -> 'no_return'.
 migrate_to_4_0() ->
-    %% Number migration
-    kazoo_number_manager_maintenance:migrate(),
-    %% Voicemail migration
-    kazoo_voicemail_maintenance:migrate(),
-    no_return.
+    _ = kazoo_bindings:map(binding({'migrate', <<"4.0">>}), []),
+    'no_return'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -134,9 +131,7 @@ migrate(Pause) ->
     Databases = get_databases(),
     _ = migrate(Pause, Databases),
 
-    %% Migrate settings for kazoo_media
-    io:format("running media migrations...~n"),
-    _ = kazoo_media_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding('migrate'), []),
 
     'no_return'.
 
@@ -149,11 +144,10 @@ migrate(Pause, Databases) ->
     io:format("updating dbs...~n"),
     _ = refresh(Databases, Pause),
 
-    %% Remove depreciated dbs
-    io:format("removing depreciated databases...~n"),
-    _  = remove_depreciated_databases(Databases),
+    io:format("removing deprecated databases...~n"),
+    _  = remove_deprecated_databases(Databases),
 
-    kazoo_bindings:map(binding('migrate'), [Accounts]),
+    _ = kazoo_bindings:map(binding('migrate'), [Accounts]),
 
     'no_return'.
 
@@ -204,9 +198,7 @@ parallel_migrate_worker(Ref, Pause, Databases, Parent) ->
 
 -spec wait_for_parallel_migrate(kz_term:references()) -> 'no_return'.
 wait_for_parallel_migrate([]) ->
-    %% Migrate settings for kazoo_media
-    io:format("running media migrations...~n"),
-    _ = kazoo_media_maintenance:migrate(),
+    _ = kazoo_bindings:map(binding('migrate'), []),
     'no_return';
 wait_for_parallel_migrate([Ref|Refs]) ->
     receive
@@ -244,7 +236,8 @@ refresh(Databases, Pause) ->
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
-             ,[self(), length(Databases) + 1, Total, Database]),
+             ,[self(), length(Databases) + 1, Total, Database]
+             ),
     _ = refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
@@ -263,21 +256,21 @@ get_database_sort(Db1, Db2) ->
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    kz_datamgr:refresh_views(Database),
+    _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
     'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec remove_depreciated_databases() -> 'ok'.
-remove_depreciated_databases() ->
+-spec remove_deprecated_databases() -> 'ok'.
+remove_deprecated_databases() ->
     Databases = get_databases(),
-    remove_depreciated_databases(Databases).
+    remove_deprecated_databases(Databases).
 
--spec remove_depreciated_databases(kz_term:ne_binaries()) -> 'ok'.
-remove_depreciated_databases([]) -> 'ok';
-remove_depreciated_databases([Database|Databases]) ->
+-spec remove_deprecated_databases(kz_term:ne_binaries()) -> 'ok'.
+remove_deprecated_databases([]) -> 'ok';
+remove_deprecated_databases([Database|Databases]) ->
     _ = case kz_datamgr:db_classification(Database) of
             'deprecated' ->
                 io:format("    archive and remove depreciated database ~s~n", [Database]),
@@ -285,7 +278,7 @@ remove_depreciated_databases([Database|Databases]) ->
                 maybe_delete_db(Database);
             _Else -> 'ok'
         end,
-    remove_depreciated_databases(Databases).
+    remove_deprecated_databases(Databases).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -304,7 +297,7 @@ cleanup_aggregated_accounts([JObj|JObjs]) ->
     _ = case kz_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
             AccountId ->
-                io:format("    verifing ~s doc ~s~n", [?KZ_ACCOUNTS_DB, AccountId]),
+                io:format("    verifying ~s doc ~s~n", [?KZ_ACCOUNTS_DB, AccountId]),
                 cleanup_aggregated_account(AccountId)
         end,
     cleanup_aggregated_accounts(JObjs).
@@ -343,7 +336,7 @@ cleanup_aggregated_devices([JObj|JObjs]) ->
     _ = case kz_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
             DocId ->
-                io:format("    verifing ~s doc ~s~n", [?KZ_SIP_DB, DocId]),
+                io:format("    verifying ~s doc ~s~n", [?KZ_SIP_DB, DocId]),
                 cleanup_aggregated_device(DocId)
         end,
     cleanup_aggregated_devices(JObjs).
@@ -409,7 +402,7 @@ get_messages(Account) ->
         {'ok', ViewRes} ->
             lists:foldl(fun extract_messages/2, [], ViewRes);
         {'error', _E} ->
-            lager:error("coumd not load view ~p: ~p", [?VMBOX_VIEW, _E]),
+            lager:error("could not load view ~p: ~p", [?VMBOX_VIEW, _E]),
             []
     end.
 
@@ -501,7 +494,7 @@ clean_trunkstore_docs(_, [], Trunks, InboundTrunks) ->
     {Trunks, InboundTrunks};
 clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    %% if there are no servers and it was created by jonny5 softdelete the doc
+    %% if there are no servers and it was created by jonny5 soft-delete the doc
     _ = case kz_json:get_ne_value(<<"servers">>, Doc) =:= 'undefined'
             andalso kz_json:get_ne_value(<<"pvt_created_by">>, Doc) =:= <<"jonny5">>
         of
@@ -735,8 +728,8 @@ maybe_update_attachment(AccountDb, Id, {OrigAttach, _CT1}, {NewAttach, CT}) ->
     %% 1. Get the current attachment
     %% 2. Fix the name and content type then put the new attachment on the doc
     %% 3. Save the old attachment content (I am paranoid) to disk
-    %% 4. Remove the original (erronous) attachment
-    %% However, if it failes at any of those stages it will leave the media doc with multiple
+    %% 4. Remove the original (erroneous) attachment
+    %% However, if it fails at any of those stages it will leave the media doc with multiple
     %%    attachments and require manual intervention
     Updaters = [fun(_) -> try_load_attachment(AccountDb, Id, OrigAttach) end
                ,fun(Content1) ->
@@ -765,7 +758,7 @@ maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
     Options = [{'content_type', CT}
               ,{'rev', Rev}
               ],
-    %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
+    %% BigCouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
     %%   so rather than check the put return fetch the new attachment and compare it to the old
     Result = kz_datamgr:put_attachment(AccountDb, Id, NewAttach, Content1, Options),
     {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
@@ -891,7 +884,7 @@ purge_doc_type(Type, Account, ChunkSize) ->
         {'ok', []} -> 'ok';
         {'ok', Ds} ->
             lager:debug("deleting up to ~p documents of type ~p", [ChunkSize, Type]),
-            kz_datamgr:del_docs(Db, [kz_json:get_value(<<"doc">>, D) || D <- Ds]),
+            _ = kz_datamgr:del_docs(Db, [kz_json:get_value(<<"doc">>, D) || D <- Ds]),
             purge_doc_type(Type, Account, ChunkSize)
     end.
 
@@ -904,10 +897,10 @@ call_id_status(CallId, Verbose) ->
     Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
            | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_call:publish_channel_status_req/1
-                                     ,fun kapi_call:channel_status_resp_v/1
-                                     )
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_call:publish_channel_status_req/1
+                            ,fun kapi_call:channel_status_resp_v/1
+                            )
     of
         {'ok', Resp} ->
             show_status(CallId, kz_term:is_true(Verbose), Resp);
@@ -1025,8 +1018,10 @@ cleanup_system_config(Id) ->
 
 -spec error_keys(kz_json_schema:validation_errors()) -> kz_json:paths().
 error_keys(Errors) ->
-    [binary:split(kz_json:get_keys(ErrorJObj), <<".">>)
-     || {_Code, _Message, ErrorJObj} <- Errors
+    io:format("errors: ~p~n", [Errors]),
+    [binary:split(ErrorKey, <<".">>)
+     || {_Code, _Message, ErrorJObj} <- Errors,
+        ErrorKey <- kz_json:get_keys(ErrorJObj)
     ].
 
 -spec cleanup_system_configs() -> [{'ok', kz_json:object() | kz_json:objects()}].
@@ -1042,18 +1037,40 @@ flush_getby_cache() ->
 flush_account_views() ->
     put('account_views', 'undefined').
 
+%%------------------------------------------------------------------------------
+%% @doc Returns all views related to account database by first trying fetching
+%% from process dictionary otherwise reads from file system.
+%%
+%% If account's views were read from file system, it put them inside
+%% `account_view' process dictionary.
+%% @see read_all_account_views/0
+%% @see flush_account_views/0
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_all_account_views() -> kz_datamgr:views_listing().
 get_all_account_views() ->
     case get('account_views') of
         'undefined' ->
-            Views = fetch_all_account_views(),
+            Views = read_all_account_views(),
             put('account_views', Views),
             Views;
         Views -> Views
     end.
-
--spec fetch_all_account_views() -> kz_datamgr:views_listing().
-fetch_all_account_views() ->
+%%------------------------------------------------------------------------------
+%% @doc Returns all account related views from file system.
+%%
+%% Currently reads account's related views from these apps:
+%% <ul>
+%% <li>{@link kazoo_apps}</li>
+%% <li>{@link conference}</li>
+%% <li>{@link webhooks}</li>
+%% <li>{@link crossbar}</li>
+%% <li>{@link callflow}</li>>
+%% </ul>
+%% @end
+%%------------------------------------------------------------------------------
+-spec read_all_account_views() -> kz_datamgr:views_listing().
+read_all_account_views() ->
     [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
     ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
     ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
@@ -1061,6 +1078,19 @@ fetch_all_account_views() ->
      ++ kapps_util:get_views_json('callflow', "views")
     ].
 
+%%------------------------------------------------------------------------------
+%% @doc Initialize and update core database views from file system.
+%%
+%% This includes reading views from file system and revise below views docs:
+%% <ul>
+%% <li>`maintenance' view in `sip_auth' database</li>
+%% <li>`accounts', `maintenance' and `search' views for `accounts' database</li>
+%% <li>`dedicated_ips' database views</li>
+%% </ul>
+%%
+%% This function is always called by {@link init_system/0} during system startup.
+%% @end
+%%------------------------------------------------------------------------------
 -spec init_dbs() -> 'ok'.
 init_dbs() ->
     SipViews = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)],
@@ -1073,11 +1103,35 @@ init_dbs() ->
     _ = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB, 'kazoo_ips', "views"),
     'ok'.
 
+%%------------------------------------------------------------------------------
+%% @doc Read all account and account's MODB views from file system and put/update
+%% them `system_data' database to be read by refresh views later.
+%%
+%% This function reads all account and account's MODB related views from various
+%% application and classify each view and creates and updates them in
+%% `system_data' database. Refreshing views will read account's views from this
+%% this database.
+%%
+%% This function is always called by {@link init_system/0} during system startup.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_account_views() -> 'ok'.
 register_account_views() ->
     kazoo_modb_maintenance:register_views(),
-    Views = fetch_all_account_views(),
+    Views = read_all_account_views(),
     kz_datamgr:register_views('account', Views).
 
+%%------------------------------------------------------------------------------
+%% @doc Initialize and update core database views and register account's views.
+%%
+%% This function is always called by {@link kapps_controller} during system
+%% startup to update core views and register account views.
+%%
+%% @see kapps_controller:start_link/0. `kapps_controller' for system startup
+%% @see crossbar_maintenance:db_init/0. `crossbar_maintenance:db_init/0' for
+%% updating other system databases views and system schema.
+%% @end
+%%------------------------------------------------------------------------------
 -spec init_system() -> 'ok'.
 init_system() ->
     init_dbs(),
@@ -1086,6 +1140,7 @@ init_system() ->
 
 -spec check_release() -> 'ok' | 'error'.
 check_release() ->
+    kz_util:put_callid('check_release'),
     Checks = [fun kapps_started/0
              ,fun master_account_created/0
              ,fun migration_4_0_ran/0
@@ -1093,18 +1148,23 @@ check_release() ->
              ,fun kazoo_proper_maintenance:run_seq_modules/0
              ],
     try lists:foreach(fun(F) -> F() end, Checks) of
-        'ok' -> lager:info("check_release/0 succeeded"), init:stop()
+        'ok' ->
+            lager:info("check_release/0 succeeded"),
+            init:stop()
     catch
         'throw':Error ->
             lager:error("check_release/0 failed: ~p", [Error]),
-            halt(1);
+            init:stop(1);
         _E:_R ->
+            ST = erlang:get_stacktrace(),
             lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
-            halt(1)
+            kz_util:log_stacktrace(ST),
+            init:stop(1)
     end.
 
 -spec kapps_started() -> boolean().
 kapps_started() ->
+    lager:info("checking that kapps have started"),
     kapps_started(180 * ?MILLISECONDS_IN_SECOND).
 
 -spec kapps_started(integer()) -> 'true'.
@@ -1120,6 +1180,7 @@ kapps_started(_Timeout) ->
 
 -spec master_account_created() -> 'true'.
 master_account_created() ->
+    lager:info("trying to create the master account"),
     case rpc:call(node()
                  ,'crossbar_maintenance'
                  ,'create_account'
@@ -1130,14 +1191,21 @@ master_account_created() ->
                   ]
                  )
     of
-        'ok' -> 'true';
+        'ok' ->
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            lager:info("created master account ~s", [MasterAccountId]),
+            {'ok', MasterAccountDoc} = kzd_accounts:fetch(MasterAccountId),
+            lager:debug("account: ~s", [kz_json:encode(MasterAccountDoc)]),
+            'true' = kzd_accounts:is_superduper_admin(MasterAccountDoc);
         'failed' -> throw({'error', 'create_account'})
     end.
 
 -spec migration_4_0_ran() -> boolean().
 migration_4_0_ran() ->
+    lager:info("migrating to 4.x"),
     'no_return' =:= migrate_to_4_0().
 
 -spec migration_ran() -> boolean().
 migration_ran() ->
+    lager:info("migrating"),
     'no_return' =:= migrate().

@@ -48,7 +48,7 @@ new() ->
 account_id(Doc) ->
     kz_doc:account_id(Doc).
 
--spec allowed_users(doc()) -> kz_term:api_binary().
+-spec allowed_users(doc()) -> kz_term:api_ne_binary().
 allowed_users(Doc) ->
     allowed_users(Doc, 'undefined').
 

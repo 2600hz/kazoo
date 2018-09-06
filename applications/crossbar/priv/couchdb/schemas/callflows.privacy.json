@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.privacy",
-    "description": "Validator for the privacy callflow's data object",
+    "description": "Validator for the privacy callflow data object",
     "properties": {
         "endpoint_strategy": {
             "default": "overwrite",

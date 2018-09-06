@@ -133,7 +133,7 @@
                                         "type": "object"
                                     },
                                     "type": {
-                                        "description": "The formatter module to be used (eg. json refers to edr_fmt_json.erl)",
+                                        "description": "The formatter module to be used (e.g. json refers to edr_fmt_json.erl)",
                                         "enum": [
                                             "json"
                                         ],
@@ -146,7 +146,7 @@
                         "type": "object"
                     },
                     "type": {
-                        "description": "The backend module to be used (eg. amqp refers to edr_be_amqp.erl)",
+                        "description": "The backend module to be used (e.g. amqp refers to edr_be_amqp.erl)",
                         "enum": [
                             "amqp",
                             "file",

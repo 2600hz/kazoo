@@ -99,23 +99,20 @@ jobs:
     - run: make build-ci-release
     - run: ${PWD}/scripts/check-unstaged.bash
     - run: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
-    - run: |
-        if [[ $(grep -c -v -F 'exit with reason shutdown' ${PWD}/_rel/kazoo/log/error.log) -gt 0 ]]; then
-          cat ${PWD}/_rel/kazoo/log/error.log
-          exit 1
-        fi
-    # This is based on your 1.0 configuration file or project settings
-    - run: mkdir $CIRCLE_ARTIFACTS/logs
-    - run: mv ${PWD}/_rel/kazoo/log/* $CIRCLE_ARTIFACTS/logs/
     - run: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
     - run: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
+    - store_artifacts:
+        path: /tmp/circleci-artifacts
+    - run: |
+        if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+          cat ${CIRCLE_ARTIFACTS}/log/error.log
+          exit 1
+        fi
     # Teardown
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # Save test results
     - store_test_results:
         path: /tmp/circleci-test-results
     # Save artifacts
-    - store_artifacts:
-        path: /tmp/circleci-artifacts
     - store_artifacts:
         path: /tmp/circleci-test-results

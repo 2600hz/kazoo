@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the call_waiting callflow's data object
+Validator for the call_waiting callflow data object
 
 
 

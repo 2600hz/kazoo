@@ -5,7 +5,7 @@
     "properties": {
         "dialog_subscribed_mwi_prefix": {
             "default": "*98",
-            "description": "prefix used when subsribing vm updates for dialog",
+            "description": "prefix used when subscribing vm updates for dialog",
             "type": "string"
         }
     },

@@ -240,7 +240,7 @@ matches([<<"#">>], [_]) -> 'true';
 matches([<<"#">>, <<"#">> | Bs], Rs) ->
     matches([<<"#">> | Bs], Rs);
 matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
-    matches(Bs, []);           % so keep checking by stipping of the first #
+    matches(Bs, []);           % so keep checking by stripping of the first #
 
 %% if one runs out without a wildcard, no matchy
 matches([], [_|_]) -> 'false'; % foo.*   foo

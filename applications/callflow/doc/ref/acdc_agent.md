@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the acdc_agent callflow's data object
+Validator for the acdc_agent callflow data object
 
 
 
@@ -14,6 +14,3 @@ Key | Description | Type | Default | Required
 `presence_id` | Static presence ID to send BLF updates to | `string()` |   | `false`
 `presence_state` | Custom presence state to send | `string('early' | 'confirmed' | 'terminated' | 'red_flash' | 'red_solid' | 'green')` |   | `false`
 `timeout` | Time, in seconds, for 'paused' state | `integer()` |   | `false`
-
-
-

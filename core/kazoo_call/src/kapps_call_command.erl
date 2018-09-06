@@ -216,7 +216,7 @@
         ]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), kz_term:binaries()} |
-                              {'prompt', binary()} | {'prompt', binary(), kz_term:ne_binaries()} |
+                              {'prompt', binary()} | {'prompt', binary(), kz_term:ne_binaries()} | {'prompt', binary(), binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} |
                               {'say', binary(), binary(), binary(), binary()} |
@@ -247,6 +247,9 @@
 
 -define(EXTRA_BRIDGE_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, <<"bridge_timeout_extended_ms">>, 20 * ?MILLISECONDS_IN_SECOND)).
 -define(BRIDGE_DEFAULT_TIMEOUT, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S * ?MILLISECONDS_IN_SECOND).
+
+-define(BRIDGE_EXPORT_VARS, kapps_config:get_ne_binaries(?CONFIG_CAT, <<"export_bridge_variables">>, ?BRIDGE_DEFAULT_EXPORT_VARS)).
+-define(BRIDGE_DEFAULT_EXPORT_VARS, [<<"hold_music">>]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1126,6 +1129,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
     ,{<<"Dial-Endpoint-Method">>, Strategy}
     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
     ,{<<"Ignore-Forward">>, IgnoreForward}
+    ,{<<"Export-Bridge-Variables">>, ?BRIDGE_EXPORT_VARS}
     ].
 
 -spec bridge(kz_json:objects(), kapps_call:call()) -> 'ok'.
@@ -1284,7 +1288,7 @@ soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
 
 -spec build_moh_keys(kz_term:api_binary(), kz_term:api_binary()) ->
                             kz_term:proplist_kv(kz_term:ne_binary(), kz_term:api_binary()).
-build_moh_keys('undefiend', _) -> [];
+build_moh_keys('undefined', _) -> [];
 build_moh_keys(AMOH, BMOH) ->
     [{<<"A-MOH">>, AMOH}
     ,{<<"B-MOH">>, BMOH}

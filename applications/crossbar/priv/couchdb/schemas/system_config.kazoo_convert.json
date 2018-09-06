@@ -3,59 +3,83 @@
     "_id": "system_config.kazoo_convert",
     "description": "Schema for kazoo_convert system_config",
     "properties": {
-        "convert_command_timeout": {
-            "default": 120000,
-            "description": "kazoo_convert convert_command_timeout",
-            "type": "integer"
-        },
-        "convert_image_command": {
-            "default": "convert $FROM -resample 204x98 -units PixelsPerInch -compress group4 -size 1728x1078 $TO",
-            "description": "kazoo_convert convert_image_command",
-            "type": "string"
-        },
-        "convert_openoffice_command": {
-            "default": "libreoffice --headless --convert-to pdf $FROM --outdir $WORKDIR  2>&1 |egrep 'parser error|Error' && exit 1 || exit 0",
-            "description": "kazoo_convert convert_openoffice_command",
-            "type": "string"
-        },
-        "convert_pdf_command": {
-            "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg4 -sOutputFile=$TO -- $FROM",
-            "description": "kazoo_convert convert_pdf_command",
-            "type": "string"
-        },
-        "convert_tiff_command": {
-            "default": "tiff2pdf -o $TO $FROM",
-            "description": "kazoo_convert convert_tiff_command",
-            "type": "string"
-        },
-        "enable_openoffice": {
-            "default": true,
-            "description": "kazoo_convert enable_openoffice",
-            "type": "boolean"
+        "fax": {
+            "properties": {
+                "attachment_format": {
+                    "default": "pdf",
+                    "description": "Format to use for receipt email messages and api responses",
+                    "type": "string"
+                },
+                "convert_command_timeout": {
+                    "default": 120000,
+                    "description": "Timeout value in ms for how long a convert command can run before being killed",
+                    "type": "integer"
+                },
+                "convert_image_command": {
+                    "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728x1078\\! -compress group4 $TO",
+                    "description": "The command to resample a tiff file to a fax compatible format or convert a supported image/* format to a tiff",
+                    "type": "string"
+                },
+                "convert_openoffice_command": {
+                    "default": "libreoffice --headless --convert-to pdf $FROM --outdir $WORKDIR  2>&1 |egrep 'parser error|Error' && exit 1 || exit 0",
+                    "description": "The command to convert open office documents to pdf",
+                    "type": "string"
+                },
+                "convert_pdf_command": {
+                    "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg4 -sOutputFile=$TO -- $FROM",
+                    "description": "The command to convert pdf documents to tiff",
+                    "type": "string"
+                },
+                "convert_tiff_command": {
+                    "default": "tiff2pdf -o $TO $FROM",
+                    "description": "The command to convert a tiff file to PDF",
+                    "type": "string"
+                },
+                "enable_openoffice": {
+                    "default": true,
+                    "description": "Enables the conversion of openoffice compatible documents",
+                    "type": "boolean"
+                },
+                "large_tiff_command": {
+                    "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728\\!x1078 -compress group4 $TO",
+                    "description": "The command to resize large tiffs to standard dimensions",
+                    "type": "string"
+                },
+                "resample_image_command": {
+                    "default": "convert $FROM -resample 200x200 -page +0+0 -compress group4 $TO",
+                    "description": "The command to resample an image file into a fax compliant formatted tiff",
+                    "type": "string"
+                },
+                "serialize_openoffice": {
+                    "default": true,
+                    "description": "Enable Serialization of openoffice compatible document conversions",
+                    "type": "boolean"
+                },
+                "small_tiff_command": {
+                    "default": "convert $FROM -gravity center -resample 204x98 -units PixelsPerInch -extent 1728x1078 -compress group4 $TO",
+                    "description": "The command to format small tiffs to a fax compatible format",
+                    "type": "string"
+                },
+                "validate_pdf_command": {
+                    "default": "gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FILE",
+                    "description": "The command to verify a PDF file is valid",
+                    "type": "string"
+                },
+                "validate_tiff_command": {
+                    "default": "tiffinfo $FILE",
+                    "description": "The command to verify a TIFF file is valid",
+                    "type": "string"
+                }
+            }
         },
         "fax_converter": {
             "default": "fax_converter",
-            "description": "kazoo_convert fax_converter",
+            "description": "Module to use for fax related file conversions",
             "type": "string"
         },
         "file_cache_path": {
             "default": "/tmp/",
-            "description": "kazoo_convert file_cache_path",
-            "type": "string"
-        },
-        "serialize_openoffice": {
-            "default": true,
-            "description": "kazoo_convert serialize_openoffice",
-            "type": "boolean"
-        },
-        "validate_pdf_command": {
-            "default": "gs -dNOPAUSE -dBATCH -sDEVICE=nullpage $FROM",
-            "description": "kazoo_convert validate_pdf_command",
-            "type": "string"
-        },
-        "validate_tiff_command": {
-            "default": "tiff2pdf -o $TO $FROM",
-            "description": "kazoo_convert validate_tiff_command",
+            "description": "The default working directory to use when converting files",
             "type": "string"
         }
     },

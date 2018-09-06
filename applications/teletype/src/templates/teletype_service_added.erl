@@ -136,7 +136,7 @@ sub_account_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'true' -> teletype_util:account_params(DataJObj);
         'false' ->
-            AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
+            AccountId = lists:last(kz_json:get_value(<<"tree">>, Audit)),
             teletype_util:find_account_params(AccountId)
     end.
 
@@ -161,8 +161,8 @@ auth_user_data(DataJObj) ->
                 {'error', _} -> []
             end;
         'false' ->
-            AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
-            UserId = kz_json:get_value([<<"authenticating_user">>, <<"auth_user_id">>], Audit),
+            AccountId = kzd_audit_logs:authenticating_user_account_id(Audit),
+            UserId = kzd_audit_logs:authenticating_user_id(Audit),
             case kzd_user:fetch(AccountId, UserId) of
                 {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
                 {'error', _} -> []

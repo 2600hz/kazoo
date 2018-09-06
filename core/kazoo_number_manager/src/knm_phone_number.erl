@@ -45,6 +45,7 @@
         ,mdn_run/1, set_mdn_run/2
         ,locality/1, set_locality/2
         ,doc/1, update_doc/2, reset_doc/2, reset_doc/1
+        ,current_doc/1
         ,modified/1, set_modified/2
         ,created/1, set_created/2
         ]).
@@ -68,9 +69,9 @@
 -define(DEFAULT_FEATURES_ALLOWED, []).
 -define(DEFAULT_FEATURES_DENIED, []).
 
-%% The '%%%' suffixes show what Dialyzer requires for that one record instanciation in from_json/1.
+%% The '%%%' suffixes show what Dialyzer requires for that one record instantiation in from_json/1.
 %% Without 'undefined' there, Dialyzer outputs 'false' positives.
-%% It has trouble infering what is happening in from_json/1's setters.
+%% It has trouble inferring what is happening in from_json/1's setters.
 %% And all this is because we need to set is_dirty reliably.
 -record(knm_phone_number, {number :: kz_term:api_ne_binary()             %%%
                           ,number_db :: kz_term:api_ne_binary()          %%%
@@ -92,13 +93,14 @@
                           ,mdn_run = 'false' :: boolean()
                           ,locality :: kz_term:api_object()
                           ,doc :: kz_term:api_object()
+                          ,current_doc :: kz_term:api_object()
                           ,modified :: kz_time:api_seconds()             %%%
                           ,created :: kz_time:api_seconds()              %%%
                           ,is_dirty = 'false' :: boolean()
                           ,features_allowed :: kz_term:api_ne_binaries() %%%
                           ,features_denied :: kz_term:api_ne_binaries()  %%%
                           }).
--opaque knm_phone_number() :: #knm_phone_number{}.
+-type knm_phone_number() :: #knm_phone_number{}.
 
 -type knm_phone_numbers() :: [knm_phone_number(), ...].
 
@@ -154,8 +156,8 @@ new(T=#{todo := Nums, options := Options}) ->
              ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
              }
         of
-            {true,false} -> [{module_name, ?PORT_IN_MODULE_NAME} | Options];
-            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            {'true', 'false'} -> [{'module_name', ?PORT_IN_MODULE_NAME} | Options];
+            {_, 'true'} ->       [{'module_name', ?CARRIER_LOCAL} | Options];
             _ -> Options
         end).
 -endif.
@@ -171,7 +173,7 @@ do_new(DID, Setters) ->
 
 -spec from_number(kz_term:ne_binary()) -> knm_phone_number().
 from_number(DID) ->
-    from_json(kz_doc:set_id(kz_json:new(), DID)).
+    from_json(kz_doc:set_id(kzd_phone_numbers:new(), DID)).
 
 -spec from_number_with_options(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number().
 from_number_with_options(DID, Options) ->
@@ -182,8 +184,9 @@ from_number_with_options(DID, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec fetch(kz_term:ne_binary()) -> knm_phone_number_return();
-           (knm_numbers:collection()) -> knm_numbers:collection().
+-spec fetch(kz_term:ne_binary() | knm_numbers:collection()) ->
+                   knm_phone_number_return() |
+                   knm_numbers:collection().
 fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
@@ -360,7 +363,7 @@ fetch(Num, Options) ->
     end.
 
 test_fetch(?TEST_CREATE_NUM) ->
-    {'error', not_found};
+    {'error', 'not_found'};
 test_fetch(?TEST_AVAILABLE_NUM) ->
     {'ok', ?AVAILABLE_NUMBER};
 test_fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM) ->
@@ -416,7 +419,7 @@ test_fetch(?TEST_PORT_IN2_NUM) ->
     {'ok', ?PORT_IN2_NUMBER};
 test_fetch(?TEST_PORT_IN3_NUM) -> {'ok', ?PORT_IN3_NUMBER};
 test_fetch(_DID=?NE_BINARY) ->
-    {'error', not_found}.
+    {'error', 'not_found'}.
 -else.
 
 -spec fetch(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
@@ -430,6 +433,9 @@ fetch(Num=?NE_BINARY, Options) ->
             Error
     end.
 
+-spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) ->
+                   {'ok', kz_json:object()} |
+                   {'error', any()}.
 fetch(NumberDb, NormalizedNum, Options) ->
     case knm_number_options:batch_run(Options) of
         'true' -> kz_datamgr:open_doc(NumberDb, NormalizedNum);
@@ -437,7 +443,8 @@ fetch(NumberDb, NormalizedNum, Options) ->
     end.
 -endif.
 
--spec handle_fetch(kz_json:object(), knm_number_options:options()) -> {'ok', knm_phone_number()}.
+-spec handle_fetch(kz_json:object(), knm_number_options:options()) ->
+                          {'ok', knm_phone_number()}.
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
     case state(PN) =:= ?NUMBER_STATE_AVAILABLE
@@ -631,6 +638,7 @@ from_json(JObj) ->
                 ,{fun set_created/2, kz_doc:created(JObj)}
 
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
+                ,{fun set_current_doc/2, JObj}
                 ,{fun maybe_migrate_features/2, kz_json:get_ne_value(?PVT_FEATURES, JObj)}
 
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
@@ -645,7 +653,7 @@ from_json(JObj) ->
                 ,fun ensure_features_defined/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
 
-                 |props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
+                 | props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
                 ]),
     PN.
 
@@ -744,7 +752,7 @@ features_fold(?LEGACY_TELNYX_E911=Feature, Acc, JObj) ->
 features_fold(FeatureKey, Acc, JObj) ->
     %% Encompasses at least: ?FEATURE_PORT
     Data = kz_json:get_ne_value(FeatureKey, JObj, kz_json:new()),
-    ?LOG_DEBUG("emcompassed ~p ~s", [FeatureKey, kz_json:encode(Data)]),
+    ?LOG_DEBUG("encompassed ~p ~s", [FeatureKey, kz_json:encode(Data)]),
     kz_json:set_value(FeatureKey, Data, Acc).
 
 %%------------------------------------------------------------------------------
@@ -753,6 +761,13 @@ features_fold(FeatureKey, Acc, JObj) ->
 %%------------------------------------------------------------------------------
 -spec from_json_with_options(kz_json:object(), knm_phone_number() | knm_number_options:options()) ->
                                     knm_phone_number().
+from_json_with_options(JObj, #knm_phone_number{}=PN) ->
+    Options = [{'dry_run', dry_run(PN)}
+              ,{'batch_run', batch_run(PN)}
+              ,{'mdn_run', mdn_run(PN)}
+              ,{'auth_by', auth_by(PN)}
+              ],
+    from_json_with_options(JObj, Options);
 from_json_with_options(JObj, Options)
   when is_list(Options) ->
     Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
@@ -767,14 +782,7 @@ from_json_with_options(JObj, Options)
                 end
               ],
     {'ok', PN} = setters(from_json(JObj), Updates),
-    PN;
-from_json_with_options(JObj, PN) ->
-    Options = [{'dry_run', dry_run(PN)}
-              ,{'batch_run', batch_run(PN)}
-              ,{'mdn_run', mdn_run(PN)}
-              ,{'auth_by', auth_by(PN)}
-              ],
-    from_json_with_options(JObj, Options).
+    PN.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -788,28 +796,26 @@ is_phone_number(_) -> 'false'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec setters(knm_phone_number(), set_functions()) -> knm_phone_number_return();
-             (knm_numbers:collection(), set_functions()) -> knm_numbers:collection().
-setters(T0=#{todo := PNs}, Routines) ->
-    F = fun (PN, T) ->
-                case setters(PN, Routines) of
-                    {'ok', NewPN} -> knm_numbers:ok(NewPN, T);
-                    {'error', R} -> knm_numbers:ko(number(PN), R, T)
-                end
-        end,
-    lists:foldl(F, T0, PNs);
-setters(PN, Routines) ->
+-spec setters(knm_phone_number() | knm_numbers:collection(), set_functions()) ->
+                     knm_phone_number_return() |
+                     knm_numbers:collection().
+
+setters(#knm_phone_number{}=PN, Routines) ->
+    setters_pn(PN, Routines);
+setters(T0, Routines) when is_map(T0) ->
+    setters_collection(T0, Routines).
+
+-spec setters_pn(knm_phone_number(), set_functions()) -> knm_phone_number_return().
+setters_pn(PN, Routines) ->
     try lists:foldl(fun setters_fold/2, PN, Routines) of
-        {'ok', _N}=Ok -> Ok;
-        {'error', _R}=Error -> Error;
-        Result -> {'ok', Result}
+        #knm_phone_number{}=NewPN -> {'ok', NewPN}
     catch
         'throw':{'stop', Error} -> Error;
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
             {FName, Arg} =
                 case ST of
-                    [{lists, foldl, [Name|_aPN], Arg2}|_] -> {Name, Arg2};
+                    [{'lists', 'foldl', [Name|_aPN], Arg2}|_] -> {Name, Arg2};
                     [{_M, Name, [_aPN,Arg2|_], _Info}|_] -> {Name, Arg2}
                 end,
             ?LOG_ERROR("~s failed, argument: ~p", [FName, Arg]),
@@ -819,6 +825,16 @@ setters(PN, Routines) ->
             kz_util:log_stacktrace(),
             {'error', Reason}
     end.
+
+-spec setters_collection(knm_numbers:collection(), set_functions()) -> knm_numbers:collection().
+setters_collection(T0=#{todo := PNs}, Routines) ->
+    F = fun (#knm_phone_number{}=PN, T) ->
+                case setters(PN, Routines) of
+                    {'ok', #knm_phone_number{}=NewPN} -> knm_numbers:ok(NewPN, T);
+                    {'error', R} -> knm_numbers:ko(number(PN), R, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs).
 
 -type set_function() :: fun((knm_phone_number()) -> setter_acc()) |
                         fun((knm_phone_number(), V) -> setter_acc()) |
@@ -830,7 +846,7 @@ setters(PN, Routines) ->
 -type setter_acc() :: knm_phone_number_return() |
                       knm_phone_number().
 
--spec setters_fold(set_function(), setter_acc()) -> setter_acc().
+-spec setters_fold(set_function(), knm_phone_number()) -> knm_phone_number().
 setters_fold(_, {'error', _R}=Error) ->
     throw({'stop', Error});
 setters_fold({Fun, Key, Value}, PN) when is_function(Fun, 3) ->
@@ -840,7 +856,7 @@ setters_fold({Fun, Value}, PN) when is_function(Fun, 2) ->
 setters_fold(Fun, PN) when is_function(Fun, 1) ->
     setters_fold_apply(Fun, [PN]).
 
--spec setters_fold_apply(set_function(), nonempty_list()) -> setter_acc().
+-spec setters_fold_apply(set_function(), nonempty_list()) -> knm_phone_number().
 setters_fold_apply(Fun, [{'ok',PN}|Args]) ->
     setters_fold_apply(Fun, [PN|Args]);
 setters_fold_apply(Fun, Args) ->
@@ -1160,8 +1176,9 @@ push_reserve_history(T=#{todo := PNs, options := Options}) ->
     NewPNs = [add_reserve_history(AssignTo, PN) || PN <- PNs],
     knm_numbers:ok(NewPNs, T).
 
--spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number();
-                            (knm_numbers:collection()) -> knm_numbers:collection().
+-spec unwind_reserve_history(knm_numbers:collection() | knm_phone_number()) ->
+                                    knm_phone_number() |
+                                    knm_numbers:collection().
 unwind_reserve_history(T=#{todo := PNs}) ->
     NewPNs = [unwind_reserve_history(PN) || PN <- PNs],
     knm_numbers:ok(NewPNs, T);
@@ -1333,7 +1350,7 @@ is_admin(?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),
     'true';
 is_admin(AuthBy) ->
-    kz_util:is_system_admin(AuthBy).
+    kzd_accounts:is_superduper_admin(AuthBy).
 -endif.
 
 %%------------------------------------------------------------------------------
@@ -1345,7 +1362,7 @@ is_dirty(#knm_phone_number{is_dirty = IsDirty}) -> IsDirty.
 
 -ifdef(TEST).
 -spec set_is_dirty(knm_phone_number(), boolean()) -> knm_phone_number().
-set_is_dirty(PN, IsDirty=false) -> PN#knm_phone_number{is_dirty = IsDirty}.
+set_is_dirty(PN, IsDirty='false') -> PN#knm_phone_number{is_dirty = IsDirty}.
 -endif.
 
 %%------------------------------------------------------------------------------
@@ -1449,6 +1466,19 @@ reset_doc(PN) ->
 doc_from_public_fields(JObj) ->
     maybe_rename_public_features(
       sanitize_public_fields(JObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec current_doc(knm_phone_number()) -> kz_json:object().
+current_doc(#knm_phone_number{current_doc=Doc}) -> Doc.
+
+-spec set_current_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
+set_current_doc(PN=#knm_phone_number{}, JObj) ->
+    %% Only during from_json/1
+    'true' = kz_json:is_json_object(JObj),
+    PN#knm_phone_number{current_doc = JObj}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1576,8 +1606,9 @@ sanitize_public_fields(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_authorized(knm_numbers:collection()) -> knm_numbers:collection();
-                   (knm_phone_number()) -> boolean().
+-spec is_authorized(knm_phone_number() | knm_numbers:collection()) ->
+                           knm_numbers:collection() |
+                           boolean().
 is_authorized(T) when is_map(T) -> is_authorized_collection(T);
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),
@@ -1599,8 +1630,9 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                }) ->
     is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
 
--spec is_reserved_from_parent(knm_numbers:collection()) -> knm_numbers:collection();
-                             (knm_phone_number()) -> boolean().
+-spec is_reserved_from_parent(knm_phone_number() | knm_numbers:collection()) ->
+                                     knm_numbers:collection() |
+                                     boolean().
 is_reserved_from_parent(T) when is_map(T) -> is_reserved_from_parent_collection(T);
 is_reserved_from_parent(#knm_phone_number{assigned_to = ?MATCH_ACCOUNT_RAW(AssignedTo)
                                          ,auth_by = AuthBy
@@ -1639,7 +1671,7 @@ is_in_account_hierarchy(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID) -> 'true';
 is_in_account_hierarchy(_, _) -> 'false'.
 -else.
 is_in_account_hierarchy(AuthBy, AccountId) ->
-    kz_util:is_in_account_hierarchy(AuthBy, AccountId, 'true').
+    kzd_accounts:is_in_account_hierarchy(AuthBy, AccountId, 'true').
 -endif.
 
 -spec is_authorized_collection(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
@@ -1742,7 +1774,7 @@ save_to(SplitBy, ErrorF, T0) ->
                         handle_bulk_change(Db, JObjs, PNs, T, ErrorF);
                     {'error', 'not_found'} when IsNumberDb ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:debug("creating new numberdb '~s' for numbers ~p", [Db, Nums]),
+                        lager:debug("creating new number db '~s' for numbers ~p", [Db, Nums]),
                         'true' = kz_datamgr:db_create(Db),
                         {'ok', _} = kz_datamgr:revise_doc_from_file(Db, ?APP, <<"views/numbers.json">>),
                         FF(Db, PNs, T);
@@ -1790,7 +1822,7 @@ delete_docs(?NE_BINARY, Ids) ->
                          {'ok', kz_json:objects()} |
                          {'error', kz_data:data_errors()}.
 delete_docs(Db, Ids) ->
-    %% Note: deleting unexisting docs returns ok.
+    %% Note: deleting nonexistent docs returns ok.
     kz_datamgr:del_docs(Db, Ids).
 
 -spec save_docs(kz_term:ne_binary(), kz_json:objects()) ->

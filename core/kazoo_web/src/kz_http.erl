@@ -29,9 +29,14 @@
                   'put' |
                   'trace'.
 
+-type field() :: string().
+-type value() :: string().
+-type header() :: {field(), value()}.
+-type headers() :: [header()].
+
 -type http_body() :: iodata().
 
--type httpc_result() :: {any(), kz_term:proplist(), http_body()} |
+-type httpc_result() :: {any(), headers(), http_body()} |
                         {string(), string() | binary()} |
                         reference().
 
@@ -42,20 +47,22 @@
                       any()
                      }.
 
--type httpc_request() :: {string(), kz_term:proplist()} |
-                         {string(), kz_term:proplist(), string(), http_body()}.
+-type httpc_request() :: {string(), headers()} |
+                         {string(), headers(), string(), http_body()}.
 
 -type req_id() :: {'http_req_id', reference()} |
                   {'ok', reference()} |
                   reference().
 
--type ret() :: {'ok', pos_integer(), kz_term:proplist(), kz_term:text()} |
+-type ret() :: {'ok', pos_integer(), headers(), kz_term:text()} |
                {'ok', 'saved_to_file'} |
                {'error', any()} |
                req_id().
 
--export_type([ret/0]).
--export_type([req_id/0]).
+-export_type([ret/0
+             ,req_id/0
+             ,field/0, value/0, header/0, headers/0
+             ]).
 
 -define(REQ_URL_INDEX, 1).
 
@@ -333,7 +340,7 @@ build_request(Method, Url, Headers, Body) when Method =:= 'post';
 ensure_string_headers(Headers) ->
     [{kz_term:to_list(K), kz_term:to_list(V)} || {K,V} <- Headers].
 %%------------------------------------------------------------------------------
-%% @doc Get options out of a propslist based on options type
+%% @doc Get options out of a proplist based on options type
 %% Two <code>HTTP_OPTIONS</code> and <code>OPTIONS</code> macros are specify
 %% which type of options should be returned.
 %% @end

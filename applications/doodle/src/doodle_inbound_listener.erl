@@ -116,9 +116,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'send_outbound', Payload}, State) ->
-    kapi_sms:publish_outbound(Payload),
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("inbound listener unhandled info: ~p", [_Info]),
     {'noreply', State}.

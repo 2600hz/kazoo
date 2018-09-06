@@ -124,7 +124,7 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
 %%------------------------------------------------------------------------------
 %% @doc Check collect digits to be not empty, if empty collect again
 %% (e.g. if previous callflow crashed during collecting digits before receiving pound
-%% FreeSwitch still thinks it's collecting for the previous callflow, and collect digits
+%% FreeSWITCH still thinks it's collecting for the previous callflow, and collect digits
 %% for this module will be resulted to an empty binary)
 %% @end
 %%------------------------------------------------------------------------------

@@ -112,7 +112,7 @@
             "type": "string"
         },
         "start": {
-            "description": "start timestamp, in gregorian seconds",
+            "description": "start timestamp, in Gregorian seconds",
             "name": "start",
             "type": "integer"
         },

@@ -30,9 +30,10 @@ migrate() ->
     _ = process_flag('trap_exit', 'true'),
     {'ok', Pid} = kvm_migrate_crawler:start(self()),
     link(Pid),
+    io:format("started and linked to crawler at ~p~n", [Pid]),
     receive
-        'done' -> 'ok';
-        {'EXIT', Pid, 'normal'} -> 'ok';
+        'done' -> io:format("~nmigration finished~n");
+        {'EXIT', Pid, 'normal'} -> io:format("~nmigration finished~n");
         {'EXIT', Pid, _Reason} ->
             io:format("~n********** migration process died with reason:~n~p~n", [_Reason])
     end.

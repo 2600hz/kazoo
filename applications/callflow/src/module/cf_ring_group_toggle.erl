@@ -91,7 +91,7 @@ alter_endpoints(Module, Call, DisableUntil) ->
                 {'true', _} ->
                     kapps_call:get_prompt(Call, <<"agent-logged_out">>)
             end,
-    kapps_call_command:play(Media, Call),
+    _ = kapps_call_command:play(Media, Call),
     kz_json:set_value(EndpointsPath, EndPoints, Module).
 
 -spec maybe_alter_disable_until(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), integer()) -> {boolean(), kz_json:object()}.

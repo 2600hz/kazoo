@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.cidlistmatch",
-    "description": "Validator for the cidlistmatch callflow's data object",
+    "description": "Validator for the cidlistmatch callflow data object",
     "properties": {
         "id": {
             "description": "CallerID List ID",

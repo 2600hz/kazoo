@@ -274,14 +274,13 @@ route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
     LogEl = route_resp_log_winning_node(),
     RingbackEl = route_resp_ringback(JObj),
     TransferEl = route_resp_transfer_ringback(JObj),
-    ExportEl   = route_resp_export_vars(JObj),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(fun route_resp_fold/2, {1, []}, Routes),
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
     Context = hunt_context(Props),
-    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl, ExportEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
+    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
@@ -434,10 +433,6 @@ route_cavs_list(CAVs) ->
         ],
     <<"^^|", (kz_term:to_binary(string:join(L, "|")))/binary>>.
 
--spec route_resp_export_vars(kz_json:object()) -> kz_types:xml_el().
-route_resp_export_vars(_JObj) ->
-    action_el(<<"set">>, <<"export_vars=hold_music">>).
-
 -spec route_resp_transfer_ringback(kz_json:object()) -> kz_types:xml_el().
 route_resp_transfer_ringback(JObj) ->
     case kz_json:get_value(<<"Transfer-Media">>, JObj) of
@@ -460,7 +455,7 @@ route_resp_pre_park_action(JObj) ->
 
 -spec maybe_start_dtmf_action(kz_term:proplist()) -> 'undefined' | kz_types:xml_el().
 maybe_start_dtmf_action(Props) ->
-    case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
+    case kapps_config:is_true(?APP_NAME, <<"should_detect_inband_dtmf">>, 'false') of
         'false' -> 'undefined';
         'true' -> check_dtmf_type(Props)
     end.
@@ -595,7 +590,7 @@ get_channel_vars({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
      | Vars
     ];
 
-get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
+get_channel_vars({AMQPHeader, V}, Vars) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
         {_, Prefix} ->
@@ -629,7 +624,7 @@ sip_headers_fold(K, V, Vars0) ->
                           ,{<<"{reseller_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Reseller-ID}">>}
                           ,{<<"{billing_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Billing-ID}">>}
                           ])).
--define(EXPANDABLE_MACROS, ecallmgr_config:get_json(<<"expandable_macros">>, ?DEFAULT_EXPANDABLE_MACROS)).
+-define(EXPANDABLE_MACROS, kapps_config:get_json(?APP_NAME, <<"expandable_macros">>, ?DEFAULT_EXPANDABLE_MACROS)).
 
 -spec maybe_expand_macro(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_expand_macro(HeaderValue) ->
@@ -863,9 +858,9 @@ user_el(Props, Children) ->
 -spec user_el_props(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_term:proplist().
 user_el_props(Number, Username, 'undefined') ->
     [{'number-alias', Number}
-    ,{'cacheable', ecallmgr_config:get_integer(<<"user_cache_time_in_ms">>
-                                              ,?DEFAULT_USER_CACHE_TIME_IN_MS
-                                              )
+    ,{'cacheable', kapps_config:get_integer(?APP_NAME, <<"user_cache_time_in_ms">>
+                                           ,?DEFAULT_USER_CACHE_TIME_IN_MS
+                                           )
      }
      | user_el_default_props(Username)
     ];

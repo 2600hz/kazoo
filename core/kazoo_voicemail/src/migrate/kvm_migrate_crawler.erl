@@ -113,7 +113,7 @@ init(Pid) ->
         Ids ->
             ?SUP_LOG_WARNING(":: BEGINNING MIGRATING VOICEMAIL FOR ~b ACCOUNTS", [length(Ids)]),
             AccountIds = kz_term:shuffle_list(Ids),
-            %% first start migrating messages in retention durations
+            %% first start migrating messages in retention duration
             Queue = populate_queue(AccountIds, kz_time:now_s()),
             {'ok', #state{account_ids = AccountIds
                          ,total_account = length(AccountIds)

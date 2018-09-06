@@ -6,9 +6,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_conference).
 
--include("kapps_call_command.hrl").
--include("kapps_conference.hrl").
-
 -export([new/0]).
 -export([from_conference_doc/1, from_conference_doc/2]).
 -export([to_json/1, from_json/1, from_json/2]).
@@ -22,7 +19,7 @@
 -export([moderator_controls/1, set_moderator_controls/2]).
 -export([caller_controls/1, set_caller_controls/2]).
 -export([controls/2, set_controls/2]).
--export([profile_name/1, set_profile_name/2]).
+-export([profile_name/1, profile_name/2, set_profile_name/2]).
 -export([profile/1, set_profile/2]).
 -export([focus/1, set_focus/2]).
 -export([language/1, set_language/2]).
@@ -75,6 +72,9 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
+-include("kapps_call_command.hrl").
+-include("kapps_conference.hrl").
+
 -define(BRIDGE_USER, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_username">>, kz_binary:rand_hex(12))).
 -define(BRIDGE_PWD, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_password">>, kz_binary:rand_hex(12))).
 
@@ -105,7 +105,7 @@
 %%  conference_doc           the complete conference doc used to create the record (when and if)
 %%  app_name                 The application name used during kapps_conference_command
 %%  app_version              The application version used during kapps_conference_command
-%%  kvs                      allows conferences to set values that propogate to children
+%%  kvs                      allows conferences to set values that propagate to children
 %%  call                     kapps_call object
 %%  account_id               %% account id
 %%  moderator_controls       moderator controls (config settings)
@@ -166,7 +166,9 @@ from_json(JObj) -> from_json(JObj, #kapps_conference{}).
 from_json(JObj, Conference) ->
     case kz_json:get_json_value(<<"Conference-Doc">>, JObj) of
         'undefined' -> do_from_json(JObj, Conference);
-        Doc -> from_conference_doc(Doc, do_from_json(JObj, Conference))
+        Doc ->
+            FromJObj = do_from_json(JObj, Conference),
+            from_conference_doc(Doc, FromJObj)
     end.
 
 -spec do_from_json(kz_json:object(), conference()) -> conference().
@@ -178,7 +180,7 @@ do_from_json(JObj, Conference) ->
             Id -> Id
         end,
 
-    lager:debug("building conference ~s(~s) from JSON", [ConferenceName, ConferenceId]),
+    lager:debug("building conference ~s(id:~s) from JSON", [ConferenceName, ConferenceId]),
 
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Conference#kapps_conference{id = ConferenceId
@@ -241,40 +243,40 @@ to_json(#kapps_conference{}=Conference) ->
 
 -spec to_proplist(conference()) -> kz_term:proplist().
 to_proplist(#kapps_conference{}=Conference) ->
-    [{<<"Conference-ID">>, id(Conference)}
-    ,{<<"Conference-Name">>, name(Conference)}
-    ,{<<"Profile-Name">>, profile_name(Conference)}
-    ,{<<"Profile">>, profile(Conference)}
-    ,{<<"Focus">>, focus(Conference)}
-    ,{<<"Language">>, language(Conference)}
-    ,{<<"Domain">>, domain(Conference)}
-    ,{<<"Controller-Queue">>, controller_queue(Conference)}
-    ,{<<"Bridge-Username">>, bridge_username(Conference)}
+    [{<<"Account-ID">>, account_id(Conference)}
     ,{<<"Bridge-Password">>, bridge_password(Conference)}
-    ,{<<"Member-Pins">>, member_pins(Conference)}
-    ,{<<"Moderator-Pins">>, moderator_pins(Conference)}
-    ,{<<"Moderator">>, moderator(Conference)}
-    ,{<<"Member-Join-Muted">>, member_join_muted(Conference)}
-    ,{<<"Member-Join-Deaf">>, member_join_deaf(Conference)}
-    ,{<<"Moderator-Join-Muted">>, moderator_join_muted(Conference)}
-    ,{<<"Moderator-Join-Deaf">>, moderator_join_deaf(Conference)}
-    ,{<<"Max-Participants">>, max_participants(Conference)}
+    ,{<<"Bridge-Username">>, bridge_username(Conference)}
+    ,{<<"Call">>, kapps_call:to_json(call(Conference))}
+    ,{<<"Caller-Controls">>, caller_controls(Conference)}
+    ,{<<"Conference-Doc">>, conference_doc(Conference)}
+    ,{<<"Conference-ID">>, id(Conference)}
+    ,{<<"Conference-Name">>, name(Conference)}
+    ,{<<"Controller-Queue">>, controller_queue(Conference)}
+    ,{<<"Controls">>, raw_controls(Conference)}
+    ,{<<"Discovery-Request">>, discovery_request(Conference)}
+    ,{<<"Domain">>, domain(Conference)}
+    ,{<<"Focus">>, focus(Conference)}
+    ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
+    ,{<<"Language">>, language(Conference)}
     ,{<<"Max-Members-Media">>, max_members_media(Conference)}
+    ,{<<"Max-Participants">>, max_participants(Conference)}
+    ,{<<"Member-Join-Deaf">>, member_join_deaf(Conference)}
+    ,{<<"Member-Join-Muted">>, member_join_muted(Conference)}
+    ,{<<"Member-Pins">>, member_pins(Conference)}
+    ,{<<"Moderator">>, moderator(Conference)}
+    ,{<<"Moderator-Controls">>, moderator_controls(Conference)}
+    ,{<<"Moderator-Join-Deaf">>, moderator_join_deaf(Conference)}
+    ,{<<"Moderator-Join-Muted">>, moderator_join_muted(Conference)}
+    ,{<<"Moderator-Pins">>, moderator_pins(Conference)}
+    ,{<<"Play-Entry-Prompt">>, play_entry_prompt(Conference)}
+    ,{<<"Play-Entry-Tone">>, play_entry_tone(Conference)}
+    ,{<<"Play-Exit-Tone">>, play_exit_tone(Conference)}
+    ,{<<"Play-Name-On-Join">>, play_name_on_join(Conference)}
+    ,{<<"Play-Welcome">>, play_welcome(Conference)}
+    ,{<<"Profile">>, profile(Conference)}
+    ,{<<"Profile-Name">>, profile_name(Conference)}
     ,{<<"Require-Moderator">>, require_moderator(Conference)}
     ,{<<"Wait-For-Moderator">>, wait_for_moderator(Conference)}
-    ,{<<"Play-Name-On-Join">>, play_name_on_join(Conference)}
-    ,{<<"Play-Entry-Prompt">>, play_entry_prompt(Conference)}
-    ,{<<"Play-Exit-Tone">>, play_exit_tone(Conference)}
-    ,{<<"Play-Entry-Tone">>, play_entry_tone(Conference)}
-    ,{<<"Play-Welcome">>, play_welcome(Conference)}
-    ,{<<"Conference-Doc">>, conference_doc(Conference)}
-    ,{<<"Discovery-Request">>, discovery_request(Conference)}
-    ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
-    ,{<<"Call">>, kapps_call:to_json(call(Conference))}
-    ,{<<"Account-ID">>, account_id(Conference)}
-    ,{<<"Controls">>, raw_controls(Conference)}
-    ,{<<"Moderator-Controls">>, moderator_controls(Conference)}
-    ,{<<"Caller-Controls">>, caller_controls(Conference)}
     ].
 
 -spec is_conference(any()) -> boolean().
@@ -290,7 +292,7 @@ from_conference_doc(JObj, Conference) ->
     ConferenceName = kzd_conferences:name(JObj, name(Conference)),
     ConferenceId = kz_doc:id(JObj, ConferenceName),
 
-    lager:debug("building conference ~s(~s) from config", [ConferenceName, ConferenceId]),
+    lager:debug("building conference ~s(id:~s) from config", [ConferenceName, ConferenceId]),
 
     Conference#kapps_conference{id = ConferenceId
                                ,name = ConferenceName
@@ -357,27 +359,35 @@ set_account_id(AccountId, Conference) when is_binary(AccountId) ->
     Conference#kapps_conference{account_id=AccountId}.
 
 -spec account_id(conference()) -> kz_term:api_ne_binary().
+account_id(#kapps_conference{account_id='undefined'
+                            ,call='undefined'
+                            }) ->
+    'undefined';
+account_id(#kapps_conference{account_id='undefined'
+                             ,call=Call
+                             }) ->
+    kapps_call:account_id(Call);
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec controls(conference(), kz_term:ne_binary()) -> kz_json:object().
+-spec controls(conference(), kz_term:ne_binary()) -> kz_json:objects().
 controls(#kapps_conference{controls=Controls}, _) when Controls =/= 'undefined' -> Controls;
 controls(#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME) ->
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
+    kapps_config:get(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
 controls(#kapps_conference{account_id=AccountId}=Conference, ?DEFAULT_PROFILE_NAME) ->
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME]) of
         'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME);
         Controls -> Controls
     end;
 controls(#kapps_conference{account_id='undefined'}, ?PAGE_PROFILE_NAME) ->
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]);
+    kapps_config:get(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]);
 controls(#kapps_conference{account_id=AccountId}=Conference, ?PAGE_PROFILE_NAME) ->
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]) of
         'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ?PAGE_PROFILE_NAME);
         Controls -> Controls
     end;
 controls(#kapps_conference{account_id='undefined'}, ControlsName) ->
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]);
+    kapps_config:get(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]);
 controls(#kapps_conference{account_id=AccountId}=Conference, ControlsName) ->
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]) of
         'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ControlsName);
@@ -408,8 +418,11 @@ caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
 -spec profile_name(conference()) -> kz_term:ne_binary().
-profile_name(#kapps_conference{profile_name='undefined'}) -> ?DEFAULT_PROFILE_NAME;
-profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
+profile_name(Conference) -> profile_name(Conference, ?DEFAULT_PROFILE_NAME).
+
+-spec profile_name(conference(), Default) -> kz_term:ne_binary() | Default.
+profile_name(#kapps_conference{profile_name='undefined'}, Default) -> Default;
+profile_name(#kapps_conference{profile_name=Profile}, _Default) -> Profile.
 
 -spec set_profile_name(kz_term:api_ne_binary(), conference()) -> conference().
 set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
@@ -488,7 +501,8 @@ build_account_profile(Conference) ->
         {'undefined', 'undefined'} -> {ProfileName, DefaultProfile};
         {'undefined', Profile} -> {ProfileName, Profile};
         {LanguageProfile, 'undefined'} -> {ProfileName, LanguageProfile};
-        {LanguageProfile, Profile} -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
+        {LanguageProfile, Profile} ->
+            {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
 -spec build_system_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
@@ -506,7 +520,8 @@ build_system_profile(Conference) ->
                               )
     of
         'undefined' -> {ProfileName, LanguageProfile};
-        Profile -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
+        Profile ->
+            {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
 -spec build_system_page_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.

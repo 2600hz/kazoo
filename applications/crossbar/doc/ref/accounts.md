@@ -17,6 +17,7 @@ Key | Description | Type | Default | Required | Support Level
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false` |  
 `caller_id` | The account default caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false` |  
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
+`caller_id_options.show_rate` | Whether to show the rate | `boolean()` |   | `false` |  
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |  
 `dial_plan` | A list of default rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |  
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean()` |   | `false` |  
@@ -32,7 +33,7 @@ Key | Description | Type | Default | Required | Support Level
 `notifications.first_occurrence.sent_initial_registration` | has the account registered their first device | `boolean()` | `false` | `false` |  
 `notifications.first_occurrence` | send emails on these account-firsts | `object()` |   | `false` |  
 `notifications.low_balance.enabled` | should the account be checked for this alert | `boolean()` |   | `false` |  
-`notifications.low_balance.last_notification` | Timestamp, in gregorian seconds, of when the last low_balance alert was sent | `integer()` |   | `false` |  
+`notifications.low_balance.last_notification` | Timestamp, in Gregorian seconds, of when the last low_balance alert was sent | `integer()` |   | `false` |  
 `notifications.low_balance.sent_low_balance` | has the alert been sent (avoids duplication/spamming) | `boolean()` |   | `false` |  
 `notifications.low_balance.threshold` | account balance to send alert on | `number()` |   | `false` |  
 `notifications.low_balance` | Low balance settings | `object()` |   | `false` |  
@@ -60,9 +61,9 @@ endpoint recording settings
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
-`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`any` | settings for any calls to/from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`inbound` | settings for inbound calls to the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
+`outbound` | settings for outbound calls from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |  
 
 ### call_recording.parameters
 
@@ -83,9 +84,9 @@ Key | Description | Type | Default | Required | Support Level
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
-`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`any` | settings for calls from any network | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`offnet` | settings for calls from offnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
+`onnet` | settings for calls from onnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
 
 ### call_waiting
 

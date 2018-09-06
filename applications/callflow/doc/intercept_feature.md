@@ -6,7 +6,7 @@ Feature code to intercept a call (uses capture group to determine what the targe
 
 #### Schema
 
-Validator for the intercept_feature callflow's data object
+Validator for the intercept_feature callflow data object
 
 
 

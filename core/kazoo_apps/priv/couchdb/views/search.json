@@ -24,7 +24,7 @@
                 "  if (doc.pvt_deleted)",
                 "    return;",
                 "  for (i in doc.pvt_tree) {",
-                "    var name;",
+                "    var name = '';",
                 "    if (doc.pvt_alphanum_name) {",
                 "      name = doc.pvt_alphanum_name;",
                 "    } if (doc.name) {",

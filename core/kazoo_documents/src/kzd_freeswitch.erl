@@ -23,6 +23,7 @@
         ,disposition/1
         ,event_name/1
         ,from_network_ip/1, from_network_port/1
+        ,from_user/1, from_realm/1
         ,from_tag/1, to_tag/1
         ,hangup_code/1, hangup_cause/1
         ,hostname/1, hostname/2
@@ -36,10 +37,11 @@
         ,other_leg_call_id/1
         ,outbound_flags/1
         ,presence_id/1, presence_direction/1
+        ,request_realm/1
         ,reseller_id/1, reseller_billing/1, reseller_trunk_usage/1
         ,resource_id/1
         ,resource_type/1, resource_type/2
-        ,to_did/1
+        ,to_did/1, to_realm/1
         ,transfer_history/1
         ,transfer_source/1
         ,user_agent/1
@@ -233,6 +235,26 @@ to_did(Props) ->
                            ,Props
                            ).
 
+-spec to_realm(data()) -> kz_term:api_ne_binary().
+to_realm(Props) ->
+    case ccv(Props, <<"Realm">>) of
+        'undefined' -> props:get_value(<<"variable_sip_to_host">>, Props);
+        Realm -> Realm
+    end.
+
+-spec request_realm(data()) -> kz_term:api_ne_binary().
+request_realm(Props) ->
+    case ccv(Props, <<"Realm">>) of
+        'undefined' ->
+            props:get_first_defined([<<"variable_sip_auth_realm">>
+                                    ,<<"variable_sip_to_host">>
+                                    ,<<"variable_sip_req_host">>
+                                    ]
+                                   ,Props
+                                   );
+        Realm -> Realm
+    end.
+
 -spec ccv(data(), kz_term:ne_binary()) -> kz_term:api_binary() | kz_term:ne_binaries().
 ccv(Props, Key) ->
     ccv(Props, Key, 'undefined').
@@ -408,6 +430,23 @@ update_referred_to_ccv(ReferredTo, CCVs) ->
                    ,kz_http_util:urldecode(ReferredTo)
                    ,CCVs
                    ).
+
+-spec from_user(data()) -> kz_term:ne_binary().
+from_user(Props) ->
+    props:get_value(<<"sip_from_user">>, Props, <<"nouser">>).
+
+-spec from_realm(data()) -> kz_term:api_ne_binary().
+from_realm(Props) ->
+    case ccv(Props, <<"Realm">>) of
+        'undefined' ->
+            props:get_first_defined([<<"variable_sip_auth_realm">>
+                                    ,<<"variable_sip_from_host">>
+                                    ,<<"sip_from_host">>
+                                    ]
+                                   ,Props
+                                   );
+        Realm -> Realm
+    end.
 
 -spec from_tag(data()) -> kz_term:api_binary().
 from_tag(Props) ->

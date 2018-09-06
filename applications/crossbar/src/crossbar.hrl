@@ -95,8 +95,9 @@
                          ,'cb_metaflows'
                          ,'cb_multi_factor'
                          ,'cb_notifications'
-                         ,'cb_pivot'
+                         ,'cb_parked_calls'
                          ,'cb_phone_numbers'
+                         ,'cb_pivot'
                          ,'cb_port_requests'
                          ,'cb_presence'
                          ,'cb_quickcall'
@@ -107,7 +108,6 @@
                          ,'cb_schemas'
                          ,'cb_search'
                          ,'cb_security'
-                         ,'cb_service_plans'
                          ,'cb_services'
                          ,'cb_simple_authz'
                          ,'cb_sms'
@@ -125,7 +125,6 @@
                          ,'cb_webhooks'
                          ,'cb_websockets'
                          ,'cb_whitelabel'
-                         ,'cb_parked_calls'
                          ]).
 
 -define(DEPRECATED_MODULES, ['cb_local_resources'
@@ -137,7 +136,7 @@
                     ,content_types_accepted = [] :: crossbar_content_handlers()
                     ,allowed_methods = ?ALLOWED_METHODS :: http_methods()
                     ,allow_methods = ?ALLOWED_METHODS :: http_methods()
-                    ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: kz_term:ne_binaries() %% english by default
+                    ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: kz_term:ne_binaries() %% English by default
                     ,charsets_provided = [<<"iso-8859-1">>] :: kz_term:ne_binaries() %% all charsets provided
                     ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: kz_term:ne_binaries() %% gzip and identity
                     ,auth_token = 'undefined' :: kz_term:api_ne_binary()

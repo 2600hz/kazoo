@@ -25,6 +25,10 @@
             "support_level": "supported",
             "type": "array"
         },
+        "enabled": {
+            "description": "Whether the rule is enabled",
+            "type": "boolean"
+        },
         "interval": {
             "default": 1,
             "description": "The recurrence interval for this rule",
@@ -67,6 +71,13 @@
             "type": "integer"
         },
         "time_window_start": {
+            "description": "Seconds from the start of a day to consider this rule valid",
+            "maximum": 86400,
+            "minimum": 0,
+            "support_level": "supported",
+            "type": "integer"
+        },
+        "time_window_stop": {
             "description": "Seconds from the start of a day to stop considering this rule valid",
             "maximum": 86400,
             "minimum": 0,

@@ -92,7 +92,7 @@ Class2 - 60
 Class3 - 180
 ```
 
-As result next call wil have this free seconds:
+As result next call will have this free seconds:
 
 ```
 Class1 - 60 (300 Class1 + 60 Class2 + 180 Class3 = 540, 600-540 = 60)

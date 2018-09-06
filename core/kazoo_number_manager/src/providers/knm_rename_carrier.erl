@@ -26,15 +26,15 @@ save(N) ->
     Value = kz_json:get_ne_value(?KEY, Doc),
     Carrier = maybe_prefix_carrier(Value),
     case is_valid(Carrier, PN) of
-        false ->
+        'false' ->
             Msg = <<"'", Value/binary, "' is not known by the system">>,
             knm_errors:invalid(N, Msg);
-        true ->
+        'true' ->
             NewDoc = kz_json:delete_key(?KEY, Doc),
             Updates = [{fun knm_phone_number:set_module_name/2, Carrier}
                       ,{fun knm_phone_number:reset_doc/2, NewDoc}
                       ],
-            {ok, NewPN} = knm_phone_number:setters(PN, Updates),
+            {'ok', NewPN} = knm_phone_number:setters(PN, Updates),
             knm_number:set_phone_number(N, NewPN)
     end.
 
@@ -46,14 +46,20 @@ save(N) ->
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(N) -> N.
 
+-spec maybe_prefix_carrier(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_prefix_carrier(<<"knm_", Carrier/binary>>) -> maybe_prefix_carrier(Carrier);
 maybe_prefix_carrier(<<"wnm_", Carrier/binary>>) -> maybe_prefix_carrier(Carrier);
 maybe_prefix_carrier(Carrier=?NE_BINARY) -> <<"knm_", Carrier/binary>>.
 
-is_valid(Carrier, PN) ->
+-spec is_valid(kz_term:ne_binary(), knm_phone_number:knm_phone_number()) -> boolean().
+is_valid(CarrierModule, PN) ->
     case knm_phone_number:is_admin(PN) of
-        false -> knm_errors:unauthorized();
-        true ->
-            ?LOG_DEBUG("allowing setting carrier to ~p", [Carrier]),
-            true
+        'false' -> knm_errors:unauthorized();
+        'true' ->
+            case kz_module:ensure_loaded(CarrierModule) of
+                'false' -> 'false';
+                _M ->
+                    ?LOG_DEBUG("allowing setting carrier to ~p", [CarrierModule]),
+                    'true'
+            end
     end.

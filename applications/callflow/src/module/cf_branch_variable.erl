@@ -9,7 +9,7 @@
 %%%
 %%%   <dt>`scope'</dt>
 %%%   <dd><strong>Optional: </strong>The scope which is `variable' is defined.
-%%%   Possible scopes are `custome_channel_vars', `device', `user', `account'
+%%%   Possible scopes are `custom_channel_vars', `device', `user', `account'
 %%%   and `merged'.
 %%%   </dd>
 %%% </dl>
@@ -52,7 +52,7 @@ maybe_branch_to_named_child(ChildName, Call) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Try to find callflow branch name out of variable's value in the Scope.
-%% If scope sets to other values than custome_channel_vars, account,
+%% If scope sets to other values than custom_channel_vars, account,
 %% user and device, it search in merged attributes in endpoint.
 %% @end
 %%------------------------------------------------------------------------------
@@ -146,10 +146,26 @@ find_child_in_branch(ChildName, Call, Keys) ->
 device_owner(Call) ->
     DeviceId = kapps_call:authorizing_id(Call),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of
-        {'ok', JObj} -> kzd_devices:owner_id(JObj);
+        {'ok', JObj} ->
+            maybe_hotdesked_device(JObj);
+
         _Else ->
             lager:debug("failed to open device doc ~s in account ~s", [DeviceId, kapps_call:account_id(Call)]),
             'undefined'
+    end.
+
+-spec maybe_hotdesked_device(kz_json:object()) -> kz_term:ne_binary().
+maybe_hotdesked_device(Doc) ->
+    case kzd_devices:is_hotdesked(Doc) of
+        'true' ->
+            [UseId|_] = kzd_devices:hotdesk_ids(Doc),
+            lager:info("using hotdesked id ~p", [UseId]),
+            UseId;
+
+        'false' ->
+            Owner = kzd_devices:owner_id(Doc),
+            lager:info("using owner id ~p", [Owner]),
+            Owner
     end.
 
 %%------------------------------------------------------------------------------

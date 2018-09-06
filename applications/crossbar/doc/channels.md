@@ -4,6 +4,8 @@
 
 The Channels API allows queries to find active channels for an account, a user, or a device. Given a call-id for a channel, a limited set of commands are allowed to be executed against that channel (such as hangup, transfer, or play media).
 
+NOTE: Konami is an outdated and unsupported 2600Hz module. If you need support on this module, please ensure you are signed up for Konami Pro.
+
 ## Fetch active channels system wide.
 
 !!! note
@@ -91,7 +93,7 @@ curl -v -X GET \
 ## Execute an application against a Channel
 
 !!! note
-    This API requires Konami (or Konami Pro) to be running and metaflows to be enabled on the call
+    This API requires Konami Pro to be running and metaflows to be enabled on the call
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -125,7 +127,7 @@ Key | Description | Type | Default
 ## Put a feature (metaflow) on a channel
 
 !!! note
-    This API requires Konami (or Konami Pro) to be running and metaflows to be enabled on the call
+    This API requires Konami Pro to be running and metaflows to be enabled on the call
 
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 

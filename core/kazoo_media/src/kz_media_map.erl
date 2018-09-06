@@ -92,7 +92,7 @@ prompt_path(AccountId, PromptId, L) ->
             default_prompt_path(PromptId, Language);
         'undefined' ->
             lager:debug("failed to find prompt ~s in ~p", [PromptId, language_keys(Language)]),
-            case kz_services:find_reseller_id(AccountId) of
+            case kz_services_reseller:get_id(AccountId) of
                 AccountId -> default_prompt_path(PromptId, Language);
                 ResellerId -> prompt_path(ResellerId, PromptId, L)
             end;

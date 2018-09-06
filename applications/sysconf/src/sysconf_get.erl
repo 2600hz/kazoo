@@ -50,10 +50,6 @@ format_key(Keys)
     kz_binary:join(Keys, <<".">>).
 
 -spec get_value(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries(), any(), kz_term:ne_binary()) -> any().
-get_value(_, <<"acls">>, _, Node) ->
-    sysconf_acls:build(Node);
-get_value(_, <<"gateways">>, _, Node) ->
-    sysconf_gateways:build(Node);
 get_value(Category, Key, Default, Node) ->
     kapps_config:get_current(Category, Key, Default, Node).
 

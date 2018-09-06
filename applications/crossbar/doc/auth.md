@@ -524,7 +524,7 @@ curl -v -X PUT \
 }
 ```
 
-## Fetch a SSO Provider Informations
+## Fetch a SSO Provider Information
 
 > GET /v2/auth/providers/{PROVIDER_ID}
 

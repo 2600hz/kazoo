@@ -75,6 +75,8 @@
         ,<<"Timeout">>
         ,<<"Simplify-Loopback">>
         ,<<"Loopback-Bowout">>
+        ,<<"Export-Variables">>
+        ,<<"Export-Bridge-Variables">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
@@ -834,8 +836,10 @@
                             ]).
 
 %% Transfer
--define(TRANSFER_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
-                          ,<<"Transfer-Type">>, <<"Transfer-To">>
+-define(TRANSFER_HEADERS, [<<"Application-Name">>
+                          ,<<"Call-ID">>
+                          ,<<"Transfer-To">>
+                          ,<<"Transfer-Type">>
                           ]).
 -define(OPTIONAL_TRANSFER_HEADERS, [<<"Insert-At">>
                                    ,<<"Transfer-Leg">>

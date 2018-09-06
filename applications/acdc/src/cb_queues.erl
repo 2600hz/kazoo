@@ -371,7 +371,7 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -410,11 +410,11 @@ default_eavesdrop_req(Context) ->
 
 -spec eavesdrop_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 eavesdrop_req(Context, Prop) ->
-    case kapps_util:amqp_pool_request(props:filter_undefined(Prop)
-                                     ,fun kapi_resource:publish_eavesdrop_req/1
-                                     ,fun kapi_resource:eavesdrop_resp_v/1
-                                     ,2 * ?MILLISECONDS_IN_SECOND
-                                     )
+    case kz_amqp_worker:call(props:filter_undefined(Prop)
+                            ,fun kapi_resource:publish_eavesdrop_req/1
+                            ,fun kapi_resource:eavesdrop_resp_v/1
+                            ,2 * ?MILLISECONDS_IN_SECOND
+                            )
     of
         {'ok', Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
         {'error', 'timeout'} ->
@@ -439,7 +439,7 @@ filter_response_fields(JObj) ->
                      ).
 
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%------------------------------------------------------------------------------
@@ -462,7 +462,7 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
 patch(Context, Id) ->
     post(Context, Id).
 %%------------------------------------------------------------------------------
-%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -712,10 +712,10 @@ fetch_ranged_queue_stats(Context, From, To, 'false') ->
 
 -spec fetch_from_amqp(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 fetch_from_amqp(Context, Req) ->
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_acdc_stats:publish_current_calls_req/1
-                                     ,fun kapi_acdc_stats:current_calls_resp_v/1
-                                     )
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_acdc_stats:publish_current_calls_req/1
+                            ,fun kapi_acdc_stats:current_calls_resp_v/1
+                            )
     of
         {'error', _E} ->
             lager:debug("failed to recv resp from AMQP: ~p", [_E]),
@@ -737,7 +737,7 @@ summary(Context) ->
                           ).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the resuts of a view
+%% @doc Normalizes the results of a view
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

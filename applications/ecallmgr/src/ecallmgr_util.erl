@@ -59,7 +59,7 @@
 
 -define(HTTP_GET_PREFIX, "http_cache://").
 
--define(FS_MULTI_VAR_SEP, ";").
+-define(FS_MULTI_VAR_SEP, kapps_config:get_ne_binary(?APP_NAME, <<"multivar_separator">>, <<"~">>)).
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
@@ -135,7 +135,7 @@ send_cmd(Node, UUID, "conference", Args) ->
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
     freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args1));
 send_cmd(Node, _UUID, "transfer", Args) ->
-    lager:debug("transfering on ~s: ~s", [Node, Args]),
+    lager:debug("transferring on ~s: ~s", [Node, Args]),
     freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args));
 send_cmd(Node, _UUID, "uuid_" ++ _ = API, Args) ->
     lager:debug("using api for ~s command ~s: ~s", [API, Node, Args]),
@@ -211,7 +211,7 @@ get_interface_properties(Node, Interface) ->
     end.
 
 %% retrieves the sip address for the 'to' field
--spec get_sip_to(kz_term:proplist()) -> kz_term:ne_binary().
+-spec get_sip_to(kzd_freeswitch:data()) -> kz_term:ne_binary().
 get_sip_to(Props) ->
     get_sip_to(Props, kzd_freeswitch:original_call_direction(Props)).
 
@@ -220,19 +220,30 @@ get_sip_to(Props, <<"outbound">>) ->
         'undefined' ->
             Number = props:get_first_defined([<<"Other-Leg-Callee-ID-Number">>
                                              ,<<"variable_sip_to_user">>
-                                             ], Props, <<"nouser">>),
-            Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                            ,<<"variable_sip_to_host">>
-                                            ], Props, ?DEFAULT_REALM),
+                                             ]
+                                            ,Props
+                                            ,<<"nouser">>
+                                            ),
+            Realm = get_sip_to_realm(Props),
             <<Number/binary, "@", Realm/binary>>;
         PresenceId -> PresenceId
     end;
 get_sip_to(Props, _) ->
     case props:get_first_defined([<<"variable_sip_to_uri">>
                                  ,<<"variable_sip_req_uri">>
-                                 ], Props) of
+                                 ]
+                                ,Props
+                                )
+    of
         'undefined' -> get_sip_request(Props);
         ToUri -> ToUri
+    end.
+
+-spec get_sip_to_realm(kzd_freeswitch:data()) -> kz_term:ne_binary().
+get_sip_to_realm(Props) ->
+    case kzd_freeswitch:to_realm(Props) of
+        'undefined' -> ?DEFAULT_REALM;
+        Realm -> Realm
     end.
 
 %% retrieves the sip address for the 'from' field
@@ -247,22 +258,17 @@ get_sip_from(Props, <<"outbound">>) ->
                                   ,<<"Other-Leg-Caller-ID-Number">>
                                   ,<<"variable_sip_from_user">>
                                   ,<<"variable_sip_from_uri">>
-                                  ], Props, <<"nouser">>),
+                                  ]
+                                 ,Props
+                                 ,<<"nouser">>
+                                 ),
     [Number | _] = binary:split(Num, <<"@">>, ['global']),
-    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                    ,<<"variable_sip_auth_realm">>
-                                    ], Props, ?DEFAULT_REALM),
+    Realm = get_sip_from_realm(Props),
     <<Number/binary, "@", Realm/binary>>;
 get_sip_from(Props, _) ->
-    Default = list_to_binary([props:get_value(<<"sip_from_user">>, Props, <<"nouser">>)
+    Default = list_to_binary([kzd_freeswitch:from_user(Props)
                              ,"@"
-                             ,props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                                      ,<<"variable_sip_from_host">>
-                                                      ,<<"sip_from_host">>
-                                                      ]
-                                                     ,Props
-                                                     ,?DEFAULT_REALM
-                                                     )
+                             ,get_sip_from_realm(Props)
                              ]),
 
     props:get_first_defined([<<"Channel-Presence-ID">>
@@ -272,8 +278,14 @@ get_sip_from(Props, _) ->
                            ,Default
                            ).
 
+get_sip_from_realm(Props) ->
+    case kzd_freeswitch:from_realm(Props) of
+        'undefined' -> ?DEFAULT_REALM;
+        Realm -> Realm
+    end.
+
 %% retrieves the sip address for the 'request' field
--spec get_sip_request(kz_term:proplist()) -> kz_term:ne_binary().
+-spec get_sip_request(kzd_freeswitch:data()) -> kz_term:ne_binary().
 get_sip_request(Props) ->
     U = props:get_first_defined([<<"Hunt-Destination-Number">>
                                 ,<<"variable_sip_req_uri">>
@@ -285,15 +297,15 @@ get_sip_request(Props) ->
                                ,<<"nouser">>
                                ),
     [User | _] = binary:split(U, <<"@">>, ['global']),
-    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                    ,<<"variable_sip_auth_realm">>
-                                    ,<<"variable_sip_to_host">>
-                                    ,<<"variable_sip_req_host">>
-                                    ]
-                                   ,Props
-                                   ,?DEFAULT_REALM
-                                   ),
+    Realm = get_sip_request_realm(Props),
     <<User/binary, "@", Realm/binary>>.
+
+-spec get_sip_request_realm(kzd_freeswitch:data()) -> kz_term:ne_binary().
+get_sip_request_realm(Props) ->
+    case kzd_freeswitch:request_realm(Props) of
+        'undefined' -> ?DEFAULT_REALM;
+        Realm -> Realm
+    end.
 
 -spec get_orig_ip(kz_term:proplist()) -> kz_term:api_binary().
 get_orig_ip(Prop) ->
@@ -309,7 +321,7 @@ get_orig_port(Prop) ->
 
 -spec get_sip_interface_from_db(kz_term:ne_binaries()) -> kz_term:ne_binary().
 get_sip_interface_from_db([FsPath]) ->
-    NetworkMap = ecallmgr_config:get_json(<<"network_map">>, kz_json:new()),
+    NetworkMap = kapps_config:get_json(?APP_NAME, <<"network_map">>, kz_json:new()),
     case map_fs_path_to_sip_profile(FsPath, NetworkMap) of
         'undefined' ->
             lager:debug("unable to find network map for ~s, using default interface '~s'"
@@ -485,11 +497,11 @@ varstr_to_proplist(VarStr) ->
 
 -spec get_setting(kz_json:path()) -> {'ok', any()}.
 get_setting(<<"default_ringback">>) ->
-    {'ok', ecallmgr_config:get(<<"default_ringback">>, <<"%(2000,4000,440,480)">>)};
-get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
+    {'ok', kapps_config:get(?APP_NAME, <<"default_ringback">>, <<"%(2000,4000,440,480)">>)};
+get_setting(Setting) -> {'ok', kapps_config:get(?APP_NAME, Setting)}.
 
 -spec get_setting(kz_json:path(), Default) -> {'ok', Default | any()}.
-get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
+get_setting(Setting, Default) -> {'ok', kapps_config:get(?APP_NAME, Setting, Default)}.
 
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> ecallmgr_fs_nodes:is_node_up(Node).
@@ -505,7 +517,7 @@ is_node_up(Node, UUID) ->
 %%------------------------------------------------------------------------------
 -spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
 multi_set_args(Node, UUID, KVs) ->
-    multi_set_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
+    multi_set_args(Node, UUID, KVs, ?FS_MULTI_VAR_SEP).
 
 -spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> binary().
 multi_set_args(Node, UUID, KVs, Separator) ->
@@ -517,7 +529,7 @@ multi_set_args(Node, UUID, KVs, Separator, Prefix) ->
 
 -spec multi_unset_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
 multi_unset_args(Node, UUID, KVs) ->
-    multi_unset_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
+    multi_unset_args(Node, UUID, KVs, ?FS_MULTI_VAR_SEP).
 
 -spec multi_unset_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> binary().
 multi_unset_args(Node, UUID, KVs, Separator) ->
@@ -531,7 +543,7 @@ multi_unset_args(Node, UUID, KVs, Separator, Prefix) ->
 fs_args_to_binary([_]=Args) ->
     list_to_binary(Args);
 fs_args_to_binary(Args) ->
-    fs_args_to_binary(Args, <<?FS_MULTI_VAR_SEP>>).
+    fs_args_to_binary(Args, ?FS_MULTI_VAR_SEP).
 
 -spec fs_args_to_binary(list(), kz_term:ne_binary()) -> binary().
 fs_args_to_binary(Args, Sep) ->
@@ -654,6 +666,10 @@ maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Callee-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
+maybe_sanitize_fs_value(<<"Export-Bridge-Variables">>, Val) ->
+    kz_binary:join(Val, <<",">>);
+maybe_sanitize_fs_value(<<"Export-Variables">>, Val) ->
+    kz_binary:join(Val, <<",">>);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
     maybe_sanitize_fs_value(kz_term:to_binary(Key), Val);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
@@ -664,7 +680,7 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% @doc takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
 %% and create the dial string ([origination_caller_id_name=Name
 %%                              ,origination_caller_id_number=Num]Endpoint)
-%% joined by the optional seperator.  Saves time by not spawning
+%% joined by the optional separator.  Saves time by not spawning
 %% endpoints with the invite format of "route" (about 100ms per endpoint)
 %% @end
 %%------------------------------------------------------------------------------
@@ -679,13 +695,12 @@ build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
-build_bridge_string(Endpoints, Seperator) ->
-    %% De-dup the bridge strings by matching those with the same
+build_bridge_string(Endpoints, Separator) ->
+    %% De-dupe the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
     BridgeStrings = build_bridge_channels(Endpoints),
-    %% NOTE: dont use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Seperator).
-
+    %% NOTE: don't use binary_join here as it will crash on an empty list...
+    kz_binary:join(lists:reverse(BridgeStrings), Separator).
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
 endpoint_jobjs_to_records(Endpoints) ->
@@ -830,7 +845,7 @@ build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint
         {'error', _} -> build_bridge_channels(Endpoints, Channels);
         {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
     end;
-%% If this does not have an explicted sip route and we have no ip address, lookup the registration
+%% If this does not have an explicit sip route and we have no ip address, lookup the registration
 build_bridge_channels([#bridge_endpoint{ip_address='undefined'}=Endpoint|Endpoints], Channels) ->
     S = self(),
     Pid = kz_util:spawn(fun() -> S ! {self(), build_channel(Endpoint)} end),
@@ -1167,8 +1182,8 @@ media_path(MediaName, Type, UUID, JObj) ->
 
 -spec fax_filename(kz_term:ne_binary()) -> file:filename_all().
 fax_filename(UUID) ->
-    Ext = ecallmgr_config:get_ne_binary(<<"default_fax_extension">>, <<".tiff">>),
-    filename:join([ecallmgr_config:get_ne_binary(<<"fax_file_path">>, <<"/tmp/">>)
+    Ext = kapps_config:get_ne_binary(?APP_NAME, <<"default_fax_extension">>, <<".tiff">>),
+    filename:join([kapps_config:get_ne_binary(?APP_NAME, <<"fax_file_path">>, <<"/tmp/">>)
                   ,<<(kz_amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
@@ -1189,19 +1204,19 @@ recording_filename(MediaName) ->
 
 -spec recording_directory(kz_term:ne_binary()) -> kz_term:ne_binary().
 recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
-recording_directory(_RelativePath) -> ecallmgr_config:get_ne_binary(<<"recording_file_path">>, <<"/tmp/">>).
+recording_directory(_RelativePath) -> kapps_config:get_ne_binary(?APP_NAME, <<"recording_file_path">>, <<"/tmp/">>).
 
 -spec recording_extension(kz_term:ne_binary()) -> kz_term:ne_binary().
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
         Empty when Empty =:= <<>>;
                    Empty =:= [] ->
-            ecallmgr_config:get_ne_binary(<<"default_recording_extension">>, <<".mp3">>);
+            kapps_config:get_ne_binary(?APP_NAME, <<"default_recording_extension">>, <<".mp3">>);
         <<".mp3">> = MP3 -> MP3;
         <<".mp4">> = MP4 -> MP4;
         <<".wav">> = WAV -> WAV;
         _ ->
-            ecallmgr_config:get_ne_binary(<<"default_recording_extension">>, <<".mp3">>)
+            kapps_config:get_ne_binary(?APP_NAME, <<"default_recording_extension">>, <<".mp3">>)
     end.
 
 %%------------------------------------------------------------------------------
@@ -1214,7 +1229,7 @@ get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
 -spec maybe_playback_via_vlc(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_playback_via_vlc(URI) ->
-    case ecallmgr_config:is_true(<<"use_vlc">>, 'false') of
+    case kapps_config:is_true(?APP_NAME, <<"use_vlc">>, 'false') of
         'false' -> maybe_playback_via_shout(URI);
         'true' ->
             lager:debug("media is streamed via VLC, prepending ~s", [URI]),
@@ -1224,7 +1239,7 @@ maybe_playback_via_vlc(URI) ->
 -spec maybe_playback_via_shout(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
-        andalso ecallmgr_config:is_true(<<"use_shout">>, 'false')
+        andalso kapps_config:is_true(?APP_NAME, <<"use_shout">>, 'false')
     of
         'false' -> maybe_playback_via_http_cache(URI);
         'true' ->
@@ -1237,13 +1252,13 @@ maybe_playback_via_http_cache(<<?HTTP_GET_PREFIX, _/binary>> = URI) ->
     lager:debug("media is streamed via http_cache, using ~s", [URI]),
     URI;
 maybe_playback_via_http_cache(URI) ->
-    case ecallmgr_config:is_true(<<"use_http_cache">>, 'true') of
+    case kapps_config:is_true(?APP_NAME, <<"use_http_cache">>, 'true') of
         'false' ->
             lager:debug("using straight URI ~s", [URI]),
             URI;
         'true' ->
             lager:debug("media is streamed via http_cache, using ~s", [URI]),
-            <<"${http_get ", URI/binary, "}">>
+            <<"http_cache://", URI/binary>>
     end.
 
 %% given a proplist of a FS event, return the Kazoo-equivalent app name(s).

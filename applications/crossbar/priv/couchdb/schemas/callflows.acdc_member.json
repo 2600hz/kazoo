@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.acdc_member",
-    "description": "Validator for the acdc_member callflow's data object",
+    "description": "Validator for the acdc_member callflow data object",
     "properties": {
         "id": {
             "description": "ID of the ACDc Queue",

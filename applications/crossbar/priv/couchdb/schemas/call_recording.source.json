@@ -4,13 +4,16 @@
     "additionalProperties": false,
     "properties": {
         "any": {
-            "$ref": "call_recording.parameters"
+            "$ref": "call_recording.parameters",
+            "description": "settings for calls from any network"
         },
         "offnet": {
-            "$ref": "call_recording.parameters"
+            "$ref": "call_recording.parameters",
+            "description": "settings for calls from offnet networks"
         },
         "onnet": {
-            "$ref": "call_recording.parameters"
+            "$ref": "call_recording.parameters",
+            "description": "settings for calls from onnet networks"
         }
     },
     "type": "object"

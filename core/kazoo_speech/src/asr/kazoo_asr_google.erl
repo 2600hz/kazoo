@@ -13,10 +13,11 @@
 
 -include("kazoo_speech.hrl").
 
--define(GOOGLE_ASR_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url_google">>, <<"https://speech.googleapis.com/v1/speech:recognize">>)).
--define(GOOGLE_ASR_KEY, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key_google">>, <<"">>)).
--define(GOOGLE_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"asr_profanity_filter_google">>)).
--define(GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"asr_enable_word_time_offsets_google">>)).
+-define(GOOGLE_CONFIG_CAT, <<(?MOD_CONFIG_CAT)/binary, ".google">>).
+-define(GOOGLE_ASR_URL, kapps_config:get_string(?GOOGLE_CONFIG_CAT, <<"asr_url">>, <<"https://speech.googleapis.com/v1/speech:recognize">>)).
+-define(GOOGLE_ASR_KEY, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_api_key">>, <<"">>)).
+-define(GOOGLE_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_profanity_filter">>)).
+-define(GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_word_time_offsets">>)).
 
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
 commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
@@ -65,11 +66,13 @@ handle_response({'http_req_id', ReqID}) ->
     {'ok', ReqID};
 handle_response({'ok', 200, _Headers, Content2}) ->
     lager:debug("ASR of media succeeded: ~s", [Content2]),
-    [Results|_] = kz_json:get_list_value(<<"results">>, kz_json:decode(Content2)),
-    [Alternatives|_] = kz_json:get_list_value(<<"alternatives">>, Results),
-    Text = kz_json:get_value(<<"transcript">>, Alternatives),
+    Results = kz_json:get_list_value(<<"results">>, kz_json:decode(Content2)),
+    Alternatives = lists:map(fun(Alternative) -> [Value|_] = kz_json:get_list_value(<<"alternatives">>, Alternative)
+                                                     ,Value
+                             end, Results),
+    Sentences = lists:map(fun(Sentence) -> kz_json:get_value(<<"transcript">>, Sentence) end, Alternatives),
     Props = [{<<"result">>, <<"success">>}
-            ,{<<"text">>, Text}
+            ,{<<"text">>, list_to_binary(Sentences)}
             ],
     {'ok', kz_json:from_list(Props)};
 handle_response({'ok', _Code, _Hdrs, Content2}) ->

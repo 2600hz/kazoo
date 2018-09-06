@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Token auth module
-%%% This is a simple auth mechanism, once the user has aquired an
+%%% This is a simple auth mechanism, once the user has acquired an
 %%% auth token this module will allow access.  This module should be
 %%% updated to be FAR more robust.
 %%%
@@ -254,7 +254,7 @@ allowed_accounts(?AUTH_ACCOUNT_ID, ?ACCOUNT_ID = AccountId) ->
 allowed_accounts('undefined', _AccountId) -> [?CATCH_ALL];
 allowed_accounts(_AuthAccountId, 'undefined') -> [?CATCH_ALL];
 allowed_accounts(AuthAccountId, AccountId) ->
-    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
+    case kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId) of
         'true' -> [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>];
         'false' -> [?CATCH_ALL, AccountId]
     end.

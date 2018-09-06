@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.flush_dtmf",
-    "description": "Validator for the flush_dtmf callflow's data object",
+    "description": "Validator for the flush_dtmf callflow data object",
     "properties": {
         "collection_name": {
             "default": "default",

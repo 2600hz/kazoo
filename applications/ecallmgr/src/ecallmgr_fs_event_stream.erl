@@ -78,7 +78,7 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
-    PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
+    PacketType = kapps_config:get_integer(?APP_NAME, <<"tcp_packet_type">>, 2),
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
                                    ,{'packet', PacketType}
                                    ])
@@ -305,7 +305,7 @@ maybe_bind(Node, Bindings, Attempts) ->
 
 -spec idle_alert_timeout() -> timeout().
 idle_alert_timeout() ->
-    case ecallmgr_config:get_integer(<<"event_stream_idle_alert">>, 0) of
+    case kapps_config:get_integer(?APP_NAME, <<"event_stream_idle_alert">>, 0) of
         Timeout when Timeout =< 30 -> 'infinity';
         Else -> Else * ?MILLISECONDS_IN_SECOND
     end.

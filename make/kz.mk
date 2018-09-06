@@ -1,6 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES)
+.PHONY: compile compile-lean json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES) splchk
 
 ## Platform detection.
 ifeq ($(PLATFORM),)
@@ -74,6 +74,9 @@ endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
+
+compile-lean: ERLC_OPTS := $(filter-out +debug_info,$(ERLC_OPTS))
+compile-lean: compile
 
 ebin/$(PROJECT).app:
 	@mkdir -p ebin/
@@ -165,6 +168,9 @@ dialyze: TO_DIALYZE ?= $(abspath ebin)
 dialyze: $(PLT) compile
 	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
+dialyze-hard: TO_DIALYZE ?= $(abspath ebin)
+dialyze-hard: $(PLT) compile
+	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(TO_DIALYZE)
 
 REBAR=$(ROOT)/deps/.erlang.mk/rebar/rebar
 
@@ -192,3 +198,5 @@ fixture_shell: NODE_NAME ?= fixturedb
 fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
 		erl -name '$(NODE_NAME)' -s reloader "$$@"
+
+include $(ROOT)/make/splchk.mk

@@ -1,0 +1,16 @@
+{application, kazoo_fax,
+ [
+  {description, "Kazoo fax provides core helper functions for handling fax attachments"},
+  {vsn,"4.3.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , kazoo
+                 , kazoo_convert
+                 , kazoo_data
+                 , kazoo_config
+                 , lager
+                 ]}
+ ]}.

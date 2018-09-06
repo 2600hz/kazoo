@@ -95,7 +95,7 @@
         ,host_url/1, set_host_url/2
         ,set_pretty_print/2
         ,set_port/2
-        ,set_raw_path/2
+        ,raw_path/1, set_raw_path/2
         ,raw_qs/1, set_raw_qs/2
         ,profile_id/1 ,set_profile_id/2
 
@@ -235,7 +235,7 @@ is_authenticated(#cb_context{}) -> 'true'.
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
     lager:debug("checking for superduper admin: ~s", [AccountId]),
-    case kz_util:is_system_admin(AccountId) of
+    case kzd_accounts:is_superduper_admin(AccountId) of
         'true' ->
             lager:debug("the requestor is a superduper admin"),
             'true';
@@ -668,6 +668,9 @@ host_url(#cb_context{host_url = Value}) -> Value.
 set_pretty_print(#cb_context{}=Context, Value) ->
     Context#cb_context{pretty_print = Value}.
 
+-spec raw_path(context()) -> binary().
+raw_path(#cb_context{raw_path = Value}) -> Value.
+
 -spec set_raw_path(context(), binary()) -> context().
 set_raw_path(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_path = Value}.
@@ -858,7 +861,7 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
             lager:debug("validation errors when strictly validating"),
             validate_failed(SchemaJObj, Context, Errors, OnFailure);
         {'error', Errors} ->
-            lager:debug("validation errors but not stricly validating, trying to fix request"),
+            lager:debug("validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
         'error':'function_clause' ->
@@ -1152,5 +1155,5 @@ system_error(Context, Error) ->
                ,{<<"Account-ID">>, auth_account_id(Context)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
+    _ = kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
     add_system_error(Error, Context).

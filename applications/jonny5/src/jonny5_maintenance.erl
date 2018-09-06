@@ -97,7 +97,7 @@ authz_details_cost(Props, Timestamp) ->
         Answered ->
             BillingSeconds = Timestamp - Answered,
             JObj = kz_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | Props]),
-            wht_util:units_to_dollars(wht_util:call_cost(JObj))
+            kz_currency:units_to_dollars(kapps_call_util:call_cost(JObj))
     end.
 
 -spec authz_details_duration(kz_term:ne_binary(), kz_term:proplist(), non_neg_integer()) -> iolist().
@@ -169,7 +169,7 @@ limits_summary_postpay(Limit) ->
         'false' -> "disabled";
         'true' ->
             kz_term:to_list(
-              wht_util:units_to_dollars(
+              kz_currency:units_to_dollars(
                 j5_limits:max_postpay(Limit)
                )
              )
@@ -197,8 +197,8 @@ limits_details(Account) ->
     pretty_print_field("  Enabled", props:get_value('enabled', Props)),
     pretty_print_field("  Prepay Allowed", props:get_value('allow_prepay', Props)),
     pretty_print_field("  Postpay Allowed", props:get_value('allow_postpay', Props)),
-    pretty_print_field("  Max Postpay Amount", wht_util:units_to_dollars(props:get_value('max_postpay_amount', Props))),
-    pretty_print_field("  Reserve Amount", wht_util:units_to_dollars(props:get_value('reserve_amount', Props))),
+    pretty_print_field("  Max Postpay Amount", kz_currency:units_to_dollars(props:get_value('max_postpay_amount', Props))),
+    pretty_print_field("  Reserve Amount", kz_currency:units_to_dollars(props:get_value('reserve_amount', Props))),
     pretty_print_field("  Soft Limit Inbound", props:get_value('soft_limit_inbound', Props)),
     pretty_print_field("  Soft Limit Outbound", props:get_value('soft_limit_outbound', Props)),
     io:format("Limits:~n", []),
@@ -239,7 +239,7 @@ pretty_print_field(Name, Value) ->
 
 -spec current_balance(kz_term:ne_binary()) -> iolist().
 current_balance(AccountId) ->
-    case wht_util:current_balance(AccountId) of
-        {'ok', Balance} -> kz_term:to_list(wht_util:units_to_dollars(Balance));
+    case kz_currency:available_dollars(AccountId) of
+        {'ok', Dollars} -> kz_term:to_list(Dollars);
         {'error', _R} -> kz_term:to_list(io_lib:format("not known at the moment: ~p", [_R]))
     end.

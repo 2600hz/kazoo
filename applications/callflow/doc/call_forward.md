@@ -6,7 +6,7 @@ Configure call forwarding for your device from your phone!
 
 #### Schema
 
-Validator for the call_forward callflow's data object
+Validator for the call_forward callflow data object
 
 
 

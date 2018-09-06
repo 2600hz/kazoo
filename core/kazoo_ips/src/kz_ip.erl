@@ -27,6 +27,8 @@
 -type ip() :: kz_json:object().
 -export_type([ip/0]).
 
+-type std_return() :: {'ok', ip()} | {'error', any()}.
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -46,8 +48,7 @@ from_json(JObj) -> JObj.
 %% @end
 %%------------------------------------------------------------------------------
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                    {'ok', ip()} |
-                    {'error', any()}.
+                    std_return().
 create(IP, Zone, Host) ->
     Timestamp = kz_time:now_s(),
     JObj = kz_json:from_list(
@@ -80,9 +81,7 @@ create(IP, Zone, Host) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_term:ne_binary()) ->
-                   {'ok', ip()} |
-                   {'error', any()}.
+-spec fetch(kz_term:ne_binary()) -> std_return().
 fetch(IP) ->
     case kz_datamgr:open_cache_doc(?KZ_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> {'ok', from_json(JObj)};
@@ -97,9 +96,7 @@ fetch(IP) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec assign(kz_term:ne_binary(), kz_term:ne_binary() | ip()) ->
-                    {'ok', ip()} |
-                    {'error', any()}.
+-spec assign(kz_term:ne_binary(), kz_term:ne_binary() | ip()) -> std_return().
 assign(Account, <<_/binary>> = RawIP) ->
     case fetch(RawIP) of
         {'ok', IPDoc} -> assign(Account, IPDoc);
@@ -117,16 +114,22 @@ assign(Account, IPDoc) ->
                     ,{<<"pvt_modified">>, kz_time:now_s()}
                     ,{<<"pvt_status">>, ?ASSIGNED}
                     ],
-            save(kz_json:set_values(Props, IPJObj))
+            JObj = kz_json:set_values(Props, IPJObj),
+            maybe_save_in_account(AccountId, JObj, save(JObj))
     end.
+
+-spec maybe_save_in_account(kz_term:ne_binary(), kz_json:object(), std_return()) -> std_return().
+maybe_save_in_account(AccountId, JObj, {'ok', _}=Ok) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    _ = kz_datamgr:ensure_saved(AccountDb, JObj),
+    Ok;
+maybe_save_in_account(_, _, Return) -> Return.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec release(kz_term:ne_binary() | ip()) ->
-                     {'ok', ip()} |
-                     {'error', any()}.
+-spec release(kz_term:ne_binary() | ip()) -> std_return().
 release(<<_/binary>> = Ip) ->
     case fetch(Ip) of
         {'ok', IP} -> release(IP);
@@ -138,16 +141,26 @@ release(IP) ->
     Props = [{<<"pvt_status">>, ?AVAILABLE}
             ,{<<"pvt_modified">>, kz_time:now_s()}
             ],
-    JObj = to_json(IP),
-    save(kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, JObj))).
+    IPJObj = to_json(IP),
+    AccountId = kz_json:get_ne_value(<<"pvt_assigned_to">>, IPJObj),
+    JObj = kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, IPJObj)),
+    maybe_remove_from_account(AccountId, save(JObj)).
+
+-spec maybe_remove_from_account(kz_term:ne_binary(), std_return()) -> std_return().
+maybe_remove_from_account(AccountId, {'ok', IP}=Ok) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    _ = case kz_datamgr:open_doc(AccountDb, ip(IP)) of
+            {'ok', JObj} -> kz_datamgr:del_doc(AccountDb, JObj);
+            {'error', _} -> 'ok'
+        end,
+    Ok;
+maybe_remove_from_account(_, Return) -> Return.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(kz_term:ne_binary() | ip()) ->
-                    {'ok', ip()} |
-                    {'error', any()}.
+-spec delete(kz_term:ne_binary() | ip()) -> std_return().
 delete(<<_/binary>> = IP) ->
     case kz_datamgr:open_doc(?KZ_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> delete(from_json(JObj));
@@ -224,9 +237,7 @@ is_available(IP) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec save(kz_json:object()) ->
-                  {'ok', ip()} |
-                  {'error', any()}.
+-spec save(kz_json:object()) -> std_return().
 save(JObj) ->
     case kz_datamgr:save_doc(?KZ_DEDICATED_IP_DB, JObj) of
         {'ok', J} -> {'ok', from_json(J)};

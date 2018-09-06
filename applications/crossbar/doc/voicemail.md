@@ -419,7 +419,7 @@ curl -v -X DELETE \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "suceeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
+        "succeeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
         "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
     },
     "revision": "{REVISION}",
@@ -502,7 +502,7 @@ curl -v -X POST \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "suceeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
+        "succeeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
         "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
     },
     "revision": "{REVISION}",
@@ -516,7 +516,7 @@ curl -v -X POST \
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
 
-You can provide a list of voicemail message ID in the playload and get raw audio of them in a single ZIP file.
+You can provide a list of voicemail message ID in the payload and get raw audio of them in a single ZIP file.
 
 ```shell
 curl -v -X POST \

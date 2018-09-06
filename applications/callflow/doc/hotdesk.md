@@ -6,7 +6,7 @@ Dynamically assign a device to a user.
 
 #### Schema
 
-Validator for the hotdesk callflow's data object
+Validator for the hotdesk callflow data object
 
 
 

@@ -55,7 +55,7 @@ handle_req(Resources, Number, OffnetJObj, DB, Params) ->
                  ,sets:set()
                  ,kz_term:ne_binary()
                  ) -> boolean().
-filter_list(Set, Set, <<"axact">>) -> 'true';
+filter_list(Set, Set, <<"exact">>) -> 'true';
 filter_list(SetA, SetB, <<"subset">>) -> sets:is_subset(SetA, SetB);
 filter_list(SetA, SetB, <<"ne_subset">>) ->
     sets:size(SetA) > 0

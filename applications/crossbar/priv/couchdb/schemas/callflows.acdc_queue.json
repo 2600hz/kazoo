@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.acdc_queue",
-    "description": "Validator for the acdc_queue callflow's data object",
+    "description": "Validator for the acdc_queue callflow data object",
     "properties": {
         "action": {
             "description": "What action to perform on the agent for this queue",

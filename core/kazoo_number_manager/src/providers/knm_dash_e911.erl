@@ -67,7 +67,7 @@ delete(Number) ->
             lager:debug("removing e911 information from ~s"
                        ,[knm_phone_number:number(knm_number:phone_number(Number))]),
             _ = remove_number(Number),
-            knm_services:deactivate_feature(Number, ?FEATURE_E911)
+            knm_providers:deactivate_feature(Number, ?FEATURE_E911)
     end.
 
 %%%=============================================================================
@@ -96,7 +96,7 @@ maybe_update_e911(N) ->
         'true' ->
             lager:debug("information has been removed, updating upstream"),
             _ = remove_number(N),
-            knm_services:deactivate_feature(N, ?FEATURE_E911);
+            knm_providers:deactivate_feature(N, ?FEATURE_E911);
         'false' when NotChanged  ->
             N;
         'false' ->
@@ -106,7 +106,7 @@ maybe_update_e911(N) ->
             NewDoc = kz_json:set_value(?FEATURE_E911, NewE911, knm_phone_number:doc(PN)),
             NewPN = knm_phone_number:reset_doc(PN, NewDoc),
             NewN = knm_number:set_phone_number(N, NewPN),
-            knm_services:activate_feature(NewN, {?FEATURE_E911, NewE911})
+            knm_providers:activate_feature(NewN, {?FEATURE_E911, NewE911})
     end.
 
 -spec maybe_update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
@@ -274,8 +274,8 @@ remove_number(Number) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Make a REST request to dash e911 emergency provisiong API to preform
-%% the given verb (validatelocation, addlocation, ect).
+%% @doc Make a REST request to dash e911 emergency provisioning API to preform
+%% the given verb (validatelocation, addlocation, etc).
 %% @end
 %%------------------------------------------------------------------------------
 -type emergency_provisioning_error() :: 'authentication' |

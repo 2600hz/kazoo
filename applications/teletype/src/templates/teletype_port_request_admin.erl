@@ -155,7 +155,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
 find_port_authority(MasterAccountId, AccountId) ->
     case kzd_whitelabel:fetch(AccountId) of
         {'error', _R} ->
-            ResellerId = kz_services:get_reseller_id(AccountId),
+            ResellerId = kz_services_reseller:get_id(AccountId),
             lager:debug("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
             find_port_authority(MasterAccountId, ResellerId);
         {'ok', JObj} ->

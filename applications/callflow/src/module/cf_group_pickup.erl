@@ -80,10 +80,10 @@ maybe_belongs_to_group(GroupId, Call) ->
 
 -spec connect_to_ringing_channel(kz_term:ne_binaries(), kapps_call:call()) -> 'ok'.
 connect_to_ringing_channel(DeviceIds, Call) ->
-    case find_channels(DeviceIds) of
-        [] -> no_channels_ringing(Call);
-        Channels -> connect_to_a_channel(Channels, Call)
-    end,
+    _ = case find_channels(DeviceIds) of
+            [] -> no_channels_ringing(Call);
+            Channels -> connect_to_a_channel(Channels, Call)
+        end,
     'ok'.
 
 -spec connect_to_a_channel(kz_json:objects(), kapps_call:call()) -> 'ok'.
@@ -156,7 +156,7 @@ intercept_call(UUID, Call) ->
             lager:debug("failed to pickup ~s: ~p", [UUID, _E]);
         'ok' ->
             lager:debug("call picked up"),
-            kapps_call_command:wait_for_hangup(),
+            _ = kapps_call_command:wait_for_hangup(),
             lager:debug("hangup recv")
     end.
 
@@ -199,10 +199,10 @@ find_channels(DeviceIds) ->
           ,{<<"Active-Only">>, 'false'}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
-                                     ,fun kapi_call:publish_query_user_channels_req/1
-                                     ,{'ecallmgr', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_call:publish_query_user_channels_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _E} ->
             lager:debug("failed to get channels: ~p", [_E]),

@@ -11,7 +11,7 @@ display the exchange between the different legs into a ladder diagram.
 ## Components
 
 The call_inspector application retrieves SIP packets in two ways:
-1. by parsing FreeSwitch and/or Kamailio log files (slower)
+1. by parsing FreeSWITCH and/or Kamailio log files (slower)
     * Note: if you want this app to parse Kamailio logs, they have to have the following format (note the timestamp formatting and [the presence of **cseq**](http://www.kamailio.org/wiki/cookbooks/4.0.x/pseudovariables#cseq))
     ```
     Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|start|received ws request REGISTER sip:wefwefwefwef.2600hz.com
@@ -25,18 +25,18 @@ The call_inspector application retrieves SIP packets in two ways:
     Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|authenticating sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com via cached SIP creds
     Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|end|successful registration with contact <sip:7l7upikd@192.168.11.43:33278;transport=ws;fs_path=<sip:192.168.11.50:5060;lr;received='sip:192.168.11.43:33278;transport=ws'>>
     ```
-1. by listening for [HEP packets](https://2600hz.atlassian.net/wiki/display/docs/Homer+and+Kazoo#HomerandKazoo-C.haveKamailioandorFreeswitchcapture.) sent directly by FreeSwitch and/or Kamailio
+1. by listening for [HEP packets](https://2600hz.atlassian.net/wiki/display/docs/Homer+and+Kazoo#HomerandKazoo-C.haveKamailioandorFreeswitchcapture.) sent directly by FreeSWITCH and/or Kamailio
 
-The packets are then stored by **callid** in plain text files that can be log-rotated.
+The packets are then stored by **call-id** in plain text files that can be log-rotated.
 These files are stored in `/var/log/kazoo/call_inspector/{ID}` where `{ID}` is
-an md5 hash of the **callid**.
+an md5 hash of the **call-id**.
 
 At this point the packets inside these files are either **chunks** or **analysis**.
 
 ### Chunks
 
 A **chunk** is the app's representation of a SIP packet.
-It contains the decoded packet and extracted information such as **callid**,
+It contains the decoded packet and extracted information such as **call-id**,
 source & destination port & IP address, timestamps (one set by the originating node and one by
 the app's), and more.
 
@@ -147,14 +147,14 @@ modparam("siptrace", "trace_flag", 22)
 modparam("siptrace", "trace_on", 1)
 ```
 
-#### Start a Kamailio or FreeSwitch logs parser
+#### Start a Kamailio or FreeSWITCH logs parser
 
     sup call_inspector_maintenance start_kamailio_parser {LOGFILE} {IP} {PORT}
     sup call_inspector_maintenance start_freeswitch_parser {LOGFILE} {IP} {PORT}
 
-`{IP}` & `{PORT}` are the Kamailio or FreeSwitch's IP address & port.
+`{IP}` & `{PORT}` are the Kamailio or FreeSWITCH IP address & port.
 This information is used to fill up the `"src"` or `"dst"` fields of chunks as these fields would otherwise be incomplete.
-`{LOGFILE}` is an absolute path to either a Kamailio or FreeSwitch log file.
+`{LOGFILE}` is an absolute path to either a Kamailio or FreeSWITCH log file.
 
 Example:
 
@@ -167,7 +167,7 @@ Example:
     '/var/log/freeswitch/debug.log'
 
 Note that when a log parser is started the whole log file will get parsed.
-While this should not take much resources, it can take a while before currently occuring calls are accessible through this app.
+While this should not take much resources, it can take a while before currently occurring calls are accessible through this app.
 
 Likewise, if the **call_inspector** app crashes its parser processes are restarted.
 This means that for log parsers the whole log file will get parsed again.
@@ -201,9 +201,9 @@ Example:
 To investigate a failing call one used to have to `grep` through different log files on multiple machines
 then make sense of the skewed timestamps.
 
-This application does all this for you and uses a clever algorithm to **reorder the dialogue** that makes up the multileg SIP exchange.
+This application does all this for you and uses a clever algorithm to **reorder the dialogue** that makes up the multi-leg SIP exchange.
 
-Dialogues are fetchable by **callid** only:
+Dialogues are fetchable by **call-id** only:
 
     sup call_inspector_maintenance callid_details {CALLID}
     sup call_inspector_maintenance inspect_call_id {CALLID}
@@ -247,7 +247,7 @@ Example:
           "Call-ID: 5dca43e524c680cf-13867@10.26.0.182",
           "CSeq: 10 OPTIONS",
           "Contact: <sip:10.26.0.182:11000>",
-          "User-Agent: 2600hz",
+          "User-Agent: 2600Hz",
           "Accept: application/sdp",
           "Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE",
           "Supported: path, replaces",
@@ -263,7 +263,7 @@ Example:
 
 ### Flushing chunks
 
-To remove one particular stored callid:
+To remove one particular stored call-id:
 
     $ sup call_inspector_maintenance flush '5dca43e524c680cf-13867@10.26.0.182'
     ok

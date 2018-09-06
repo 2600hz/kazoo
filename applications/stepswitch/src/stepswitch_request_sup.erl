@@ -44,7 +44,8 @@ outbound_child_name(OffnetReq) ->
                    ,"-", kz_binary:rand_hex(3)
                    ]).
 
--spec bridge(kz_json:objects(), kapi_offnet_resource:req()) -> kz_types:sup_startchild_ret().
+-spec bridge(stepswitch_resources:endpoints(), kapi_offnet_resource:req()) ->
+                    kz_types:sup_startchild_ret().
 bridge(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
@@ -65,7 +66,7 @@ local_extension(Props, OffnetReq) ->
                                                  )
                           ).
 
--spec originate(kz_json:objects(), kapi_offnet_resource:req()) -> kz_types:sup_startchild_ret().
+-spec originate(stepswitch_resources:endpoints(), kapi_offnet_resource:req()) -> kz_types:sup_startchild_ret().
 originate(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                           ,?WORKER_NAME_ARGS_TYPE(outbound_child_name(OffnetReq)
@@ -75,7 +76,7 @@ originate(Endpoints, OffnetReq) ->
                                                  )
                           ).
 
--spec sms(kz_json:objects(), kapi_offnet_resource:req()) -> kz_types:sup_startchild_ret().
+-spec sms(stepswitch_resources:endpoints(), kapi_offnet_resource:req()) -> kz_types:sup_startchild_ret().
 sms(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)

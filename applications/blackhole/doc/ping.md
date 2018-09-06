@@ -1,13 +1,13 @@
 # Ping (pong)
 
-This module recieves a ping, and responds with a pong. It takes no arguments.
+This module receives a ping, and responds with a pong. It takes no arguments.
 This can be used to test a socket is up, or keep it alive by preventing it from becoming idle.
 
-## Example Javascript
+## Example JavaScript
 
 ```javascript
-// Put your Blackhole url here
-var socket = new WebSocket(url)
+// Put your Blackhole URL here
+var socket = new WebSocket(URL)
 var socketResponseListeners = {};
 
 // From https://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
@@ -18,7 +18,7 @@ function getUUID() {
   });
 }
 
-// Ping the websocket, if we don't get a pong within a second then reopen the websocket
+// Ping the Websocket, if we don't get a pong within a second then reopen the websocket
 function checkOpen() {
   var receivedResponse = false;
   var data = {

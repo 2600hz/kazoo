@@ -16,6 +16,7 @@
         ,to_list/1
         ,to_binary/1
         ,to_api_binary/1
+        ,to_api_term/1
         ,to_atom/1, to_atom/2
         ,to_boolean/1
         ,to_date/1
@@ -325,6 +326,13 @@ to_binary(X) ->
 to_api_binary('undefined') -> 'undefined';
 to_api_binary(Arg) -> to_binary(Arg).
 
+-spec to_api_term(Arg) -> 'undefined' | Arg.
+to_api_term(Arg) ->
+    case is_empty(Arg) of
+        'true' -> 'undefined';
+        'false' -> Arg
+    end.
+
 %% the safer version, won't let you leak atoms
 -spec to_atom(text() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
@@ -493,7 +501,7 @@ to_upper_char(C) -> C.
 
 -spec to_lower_char(char()) -> char().
 to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
-%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
+%% Converts Latin capital letters to lowercase, skipping 16#D7 (extended ASCII 215) "multiplication sign: x"
 to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.

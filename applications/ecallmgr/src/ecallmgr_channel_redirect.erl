@@ -15,7 +15,7 @@
 -spec redirect(kz_term:ne_binary(), atom() | kz_term:ne_binary()) -> ecallmgr_util:send_cmd_ret().
 redirect(UUID, DestinationNode) ->
     URL = ecallmgr_fs_node:sip_url(DestinationNode),
-    case ecallmgr_config:get_boolean(<<"redirect_via_proxy">>, 'true') of
+    case kapps_config:get_boolean(?APP_NAME, <<"redirect_via_proxy">>, 'true') of
         'true' -> redirect_via_proxy(URL, UUID);
         'false' -> redirect_via_endpoint(URL, UUID)
     end.
@@ -24,7 +24,7 @@ redirect(UUID, DestinationNode) ->
 redirect_remote(UUID, ChannelStatusJObj) ->
     URL = kz_json:get_value(<<"Switch-URL">>, ChannelStatusJObj),
 
-    case ecallmgr_config:get_boolean(<<"redirect_via_proxy">>, 'true') of
+    case kapps_config:get_boolean(?APP_NAME, <<"redirect_via_proxy">>, 'true') of
         'true' -> redirect_via_proxy(URL, UUID);
         'false' -> redirect_via_endpoint(URL, UUID)
     end.

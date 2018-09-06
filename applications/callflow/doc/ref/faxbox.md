@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the faxbox callflow's data object
+Validator for the faxbox callflow data object
 
 
 

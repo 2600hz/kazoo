@@ -28,7 +28,7 @@ Key | Description | Type | Default | Required | Support Level
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false` |
-`contact_list` | Contect List Parameters | `object()` | `{}` | `false` |
+`contact_list` | Contact List Parameters | `object()` | `{}` | `false` |
 `dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object()` |   | `false` |
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean()` |   | `false` |
@@ -75,9 +75,9 @@ endpoint recording settings
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
-`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
-`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
+`any` | settings for any calls to/from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
+`inbound` | settings for inbound calls to the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
+`outbound` | settings for outbound calls from the endpoint | [#/definitions/call_recording.source](#call_recordingsource) |   | `false` |
 
 ### call_recording.parameters
 
@@ -98,9 +98,9 @@ Key | Description | Type | Default | Required | Support Level
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |
-`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |
-`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |
+`any` | settings for calls from any network | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |
+`offnet` | settings for calls from offnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |
+`onnet` | settings for calls from onnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |
 
 ### call_waiting
 

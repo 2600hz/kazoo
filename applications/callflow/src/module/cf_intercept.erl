@@ -27,9 +27,9 @@
 
 -behaviour(gen_cf_action).
 
--include("callflow.hrl").
-
 -export([handle/2]).
+
+-include("callflow.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module sends an arbitrary response back to the
@@ -172,10 +172,10 @@ find_group_endpoints(GroupId, Call) ->
 
 -spec connect_to_channel(kz_term:ne_binaries(), kapps_call:call()) -> 'ok'.
 connect_to_channel(Usernames, Call) ->
-    case cf_util:find_channels(Usernames, Call) of
-        [] -> no_channels(Call);
-        Channels -> connect_to_a_channel(Channels, Call)
-    end,
+    _ = case cf_util:find_channels(Usernames, Call) of
+            [] -> no_channels(Call);
+            Channels -> connect_to_a_channel(Channels, Call)
+        end,
     'ok'.
 
 -spec connect_to_a_channel(kz_json:objects(), kapps_call:call()) -> 'ok'.
@@ -243,7 +243,7 @@ intercept_call(UUID, Call) ->
             lager:debug("failed to intercept ~s: ~p", [UUID, _E]);
         'ok' ->
             lager:debug("call intercepted"),
-            kapps_call_command:wait_for_hangup(),
+            _ = kapps_call_command:wait_for_hangup(),
             lager:debug("hangup recv")
     end.
 

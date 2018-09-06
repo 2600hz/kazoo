@@ -6,7 +6,7 @@ Use a feature code to determine what call to eavesdrop on
 
 #### Schema
 
-Validator for the eavesdrop_feature callflow's data object
+Validator for the eavesdrop_feature callflow data object
 
 
 

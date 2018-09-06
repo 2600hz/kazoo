@@ -9,7 +9,9 @@
 
 -include("kapps_sms_command.hrl").
 
--export([send_sms/2, send_sms/3]).
+-export([send_sms/2, send_sms/3
+        ,send_amqp_sms/1, send_amqp_sms/2
+        ]).
 -export([b_send_sms/2, b_send_sms/3, b_send_sms/4]).
 
 -export([default_collect_timeout/0
@@ -32,6 +34,16 @@
 
 -define(ATOM(X), kz_term:to_atom(X, 'true')).
 -define(SMS_POOL(A,B,C), ?ATOM(<<A/binary, "_", B/binary, "_", C/binary>>) ).
+
+-define(SMS_DEFAULT_OUTBOUND_OPTIONS
+       ,kz_json:from_list([{<<"delivery_mode">>, 2}
+                          ,{<<"mandatory">>, 'true'}
+                          ])
+       ).
+-define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
+-define(SMS_OUTBOUND_OPTIONS
+       ,kapps_config:get_json(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)
+       ).
 
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
@@ -84,7 +96,7 @@ send(<<"single">>, API, [Endpoint | Others]) ->
                 ,{<<"To-DID">>, kz_json:get_value(<<"To-DID">>, Endpoint)}
                  | kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
                 ], API),
-    case kapps_util:amqp_pool_send(Payload, fun kapi_sms:publish_message/1) of
+    case kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1) of
         'ok' -> 'ok';
         {'error', _R}=Err when Others =:= [] ->
             lager:info("received error while sending msg ~s: ~-800p", [CallId, _R]),
@@ -123,7 +135,7 @@ send(<<"sip">>, API, Endpoint, Timeout) ->
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
     CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
-    kapps_util:amqp_pool_send(Payload, fun kapi_sms:publish_message/1),
+    kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
 send(<<"amqp">>, API, Endpoint, _Timeout) ->
     CallId = props:get_value(<<"Call-ID">>, API),
@@ -186,14 +198,32 @@ amqp_exchange_options(JObj) ->
      || {K, V} <- kz_json:to_proplist(JObj)
     ].
 
+-spec send_amqp_sms(kz_term:proplist()) -> 'ok' | {'error', any()}.
+send_amqp_sms(Payload) ->
+    send_amqp_sms(Payload, kz_amqp_worker:worker_pool()).
+
 -spec send_amqp_sms(kz_term:proplist(), atom()) -> 'ok' | {'error', any()}.
 send_amqp_sms(Payload, Pool) ->
-    case kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1, Pool) of
+    case kz_amqp_worker:cast(Payload, fun publish_outbound/1, Pool) of
         'ok' -> 'ok';
         {'error', _}=E -> E;
         {'returned', _JObj, Deliver} ->
             {'error', kz_json:get_value(<<"message">>, Deliver, <<"unknown">>)}
     end.
+
+publish_outbound(Payload) ->
+    AMQPOptions = amqp_options(),
+    kapi_sms:publish_outbound(Payload, ?DEFAULT_CONTENT_TYPE, AMQPOptions).
+
+amqp_options() ->
+    amqp_options(?SMS_OUTBOUND_OPTIONS).
+
+-spec amqp_options(kz_term:api_object()) -> kz_term:proplist().
+amqp_options('undefined') -> [];
+amqp_options(JObj) ->
+    [{kz_term:to_atom(K, 'true'), V}
+     || {K, V} <- kz_json:to_proplist(JObj)
+    ].
 
 -spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
@@ -218,7 +248,7 @@ create_sms(Call) ->
                    ,{<<"From-User">>, kapps_call:from_user(Call)}
                    ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
                    ,{<<"From-URI">>, kapps_call:from(Call)}
-                   ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                   ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
                    ]),
     [{<<"Message-ID">>, kapps_call:kvs_fetch(<<"Message-ID">>, Call)}
     ,{<<"Call-ID">>, kapps_call:call_id(Call)}
@@ -264,10 +294,10 @@ lookup_reg(Username, Realm) ->
           ,{<<"Fields">>, [<<"Registrar-Node">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req
-                                     ,fun kapi_registration:publish_query_req/1
-                                     ,{'ecallmgr', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_registration:publish_query_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _E}=E ->
             lager:debug("error getting registration: ~p", [_E]),

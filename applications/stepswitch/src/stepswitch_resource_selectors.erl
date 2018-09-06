@@ -101,7 +101,7 @@ maybe_get_hunt_account(OffnetJObj) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case kz_term:is_not_empty(HuntAccountId)
-        andalso kz_util:is_in_account_hierarchy(HuntAccountId, AccountId, 'true')
+        andalso kzd_accounts:is_in_account_hierarchy(HuntAccountId, AccountId, 'true')
     of
         'true' -> HuntAccountId;
         'false' -> MasterAccountId

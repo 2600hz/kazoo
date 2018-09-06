@@ -30,8 +30,26 @@
 %%------------------------------------------------------------------------------
 -spec refresh() -> 'no_return'.
 refresh() ->
-    kz_ip_utils:refresh_database(),
-    'no_return'.
+    _ = kz_ip_utils:refresh_database(),
+    refresh_assigned().
+
+-spec refresh_assigned() -> 'no_return'.
+refresh_assigned() ->
+    case kz_ips:assigned() of
+        {'ok', IPs} ->
+            refresh_assigned(IPs);
+        _Else ->
+            'no_return'
+    end.
+
+-spec refresh_assigned(kz_json:objects()) -> 'no_return'.
+refresh_assigned([]) -> 'no_return';
+refresh_assigned([IP|IPs]) ->
+    AssignedTo = kz_ip:assigned_to(IP),
+    AccountDb = kz_util:format_account_db(AssignedTo),
+    JObj = kz_json:delete_key(<<"_rev">>, kz_ip:to_json(IP)),
+    _ = kz_datamgr:save_doc(AccountDb, JObj),
+    refresh_assigned(IPs).
 
 %%------------------------------------------------------------------------------
 %% @doc

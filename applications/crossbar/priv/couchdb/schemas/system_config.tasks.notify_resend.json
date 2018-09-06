@@ -56,7 +56,7 @@
         },
         "retry_after_fudge_s": {
             "default": 600000,
-            "description": "Constant time in seconds which would be multipy with attemtps to set retry time",
+            "description": "Constant time in seconds which would be multiplied with attempts to set retry time",
             "type": "integer"
         }
     },

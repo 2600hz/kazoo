@@ -333,7 +333,7 @@ upload_csv(Context) ->
     {'ok', {Count, Rates}} = process_upload_file(Context),
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_time:elapsed_ms(Now)]),
     _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
-    lager:debug("it took ~b milli to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
+    lager:debug("it took ~b ms to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
                                  {'ok', {non_neg_integer(), kz_json:objects()}}.
@@ -594,6 +594,6 @@ normalize_fields(Rate) ->
 -spec normalize_field(kz_json:path(), kz_json:json_term()) ->
                              {kz_json:path(), kz_json:json_term()}.
 normalize_field(<<"Base-Cost">> = K, BaseCost) ->
-    {K, wht_util:units_to_dollars(BaseCost)};
+    {K, kz_currency:units_to_dollars(BaseCost)};
 normalize_field(K, V) ->
     {K, V}.

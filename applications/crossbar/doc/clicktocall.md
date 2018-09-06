@@ -10,7 +10,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `auth_required` | Determines if this click to call requires valid auth-tokens when invoked | `boolean()` | `true` | `false` |
 `caller_id_number` | Explicitly set caller id number | `string()` |   | `false` |
-`dial_first` | Determinates what will be dialed first: extension or contact | `string('extension' | 'contact')` |   | `false` |
+`dial_first` | Determines what will be dialed first: extension or contact | `string('extension' | 'contact')` |   | `false` |
 `extension` | The extension to connect to when the click to call is invoked | `string()` |   | `true` |
 `name` | A friendly name for the click to call | `string(1..128)` |   | `true` |
 `outbound_callee_id_name` | Callee ID Name of the device calling out to the contact number | `string()` |   | `false` |

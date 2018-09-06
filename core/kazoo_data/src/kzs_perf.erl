@@ -58,7 +58,7 @@ profile_config() ->
 
 -spec update_profile_config() -> map().
 update_profile_config() ->
-    lager:info("defering update profile config 1 minute"),
+    lager:info("deferring update profile config 1 minute"),
     timer:sleep(?SECONDS_IN_MINUTE),
     update_profile_config(load_profile_config()).
 
@@ -84,14 +84,15 @@ do_profile({Mod, Fun, _Arity}, Args, PD) ->
     From = kz_util:calling_process(),
     FromList = [{kz_term:to_atom(<<"from_", (kz_term:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
     MD = FromList ++ maps:to_list(maps:merge(Plan, PD)),
-    data:debug([{'mod', Mod}
-               ,{'func', Fun}
-               ,{'plan', Plan}
-               ,{'duration', Time}
-               ,{'database', DbName}
-               ,{'from', From}
-                | MD
-               ],
-               "execution of {~s:~s} in database ~s with args ~p took ~b μs",
-               [Mod, Fun, DbName, Others, Time]),
+    _ = data:debug([{'mod', Mod}
+                   ,{'func', Fun}
+                   ,{'plan', Plan}
+                   ,{'duration', Time}
+                   ,{'database', DbName}
+                   ,{'from', From}
+                    | MD
+                   ]
+                  ,"execution of {~s:~s} in database ~s with args ~p took ~b μs"
+                  ,[Mod, Fun, DbName, Others, Time]
+                  ),
     Result.

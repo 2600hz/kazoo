@@ -62,7 +62,7 @@
 %% See also {@link start_end_keys/3}.
 
 -type range_keymap_fun() :: fun((kz_time:gregorian_seconds()) -> api_range_key()).
-%% A function of arity 1. The timestamp from `create_ftom' or `created_to' will pass to this function
+%% A function of arity 1. The timestamp from `create_from' or `created_to' will pass to this function
 %% to construct the start or end key.
 -type range_keymap() :: 'nil' | api_range_key() | range_keymap_fun().
 %% Creates a start/key key for ranged queries. A binary or integer or a list of binary or integer
@@ -85,6 +85,7 @@
                    [{'databases', kz_term:ne_binaries()} |
                     {'mapper', user_mapper_fun()} |
                     {'max_range', pos_integer()} |
+                    {'no_filter', boolean()} |
 
                     %% for non-ranged query
                     {'end_keymap', keymap()} |
@@ -188,7 +189,10 @@ load_modb(Context, View, Options) ->
 build_load_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
         #{direction := Direction}=LoadMap ->
-            HasQSFilter = crossbar_filter:is_defined(Context),
+            HasQSFilter = not props:get_is_true('no_filter', Options, 'false')
+                andalso crossbar_filter:is_defined(Context),
+
+            lager:debug("has qs filter: ~s", [HasQSFilter]),
 
             UserMapper = props:get_value('mapper', Options),
 
@@ -223,8 +227,10 @@ build_load_range_params(Context, View, Options) ->
             TimeFilterKey = props:get_ne_binary_value('range_key_name', Options, <<"created">>),
             UserMapper = props:get_value('mapper', Options),
 
-            HasQSFilter = crossbar_filter:is_defined(Context)
+            HasQSFilter = not props:get_is_true('no_filter', Options, 'false')
+                andalso crossbar_filter:is_defined(Context)
                 andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+
             lager:debug("has qs filter: ~s", [HasQSFilter]),
 
             case time_range(Context, Options, TimeFilterKey) of
@@ -553,6 +559,7 @@ load_view(#{is_chunked := 'true'
            ,has_qs_filter := HasQSFilter
            }=LoadMap, Context) ->
     Setters = [{fun cb_context:set_doc/2, []}
+              ,{fun cb_context:set_resp_data/2, []}
               ,{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:store/3, 'is_chunked', 'true'}
               ,{fun cb_context:store/3, 'next_chunk_fun', fun next_chunk/1}
@@ -566,6 +573,7 @@ load_view(#{direction := Direction
            ,has_qs_filter := HasQSFilter
            }=LoadMap, Context) ->
     Setters = [{fun cb_context:set_doc/2, []}
+              ,{fun cb_context:set_resp_data/2, []}
               ,{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:store/3, 'view_direction', Direction}
               ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
@@ -920,7 +928,7 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Generates general corssbar_view options map for querying view.
+%% @doc Generates general crossbar_view options map for querying view.
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_general_load_params(cb_context:context(), kz_term:ne_binary(), options()) -> load_params() | cb_context:context().

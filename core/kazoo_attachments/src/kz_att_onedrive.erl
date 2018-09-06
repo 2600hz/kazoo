@@ -212,13 +212,13 @@ handle_http_error_response({'ok', RespCode, RespHeaders, RespBody} = _E, Routine
     lager:error("onedrive error: ~p (code: ~p)", [_E, RespCode]),
     kz_att_error:new(Reason, NewRoutines);
 handle_http_error_response({'error', {'failed_connect', Reason}} = _E, Routines) ->
-    lager:error("ondrive failed to connect: ~p", [_E]),
+    lager:error("onedrive failed to connect: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_http_error_response({'error', {Reason, _}} = _E, Routines) when is_atom(Reason) ->
-    lager:error("ondrive request error: ~p", [_E]),
+    lager:error("onedrive request error: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_http_error_response(Reason, Routines) when is_atom(Reason) ->
-    lager:error("ondrive request error: ~p", [Reason]),
+    lager:error("onedrive request error: ~p", [Reason]),
     kz_att_error:new(Reason, Routines);
 handle_http_error_response(_E, Routines) ->
     lager:error("dropbox request error: ~p", [_E]),

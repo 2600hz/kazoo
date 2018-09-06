@@ -20,7 +20,9 @@ handle_req(DiscoveryReq, _Options) ->
             conf_participant:set_discovery_event(DiscoveryReq, Srv),
             conf_participant:consume_call_events(Srv),
             kapps_call_command:answer(Call),
-            maybe_welcome_to_conference(Srv, create_conference(DiscoveryReq, Call));
+            Conference = create_conference(DiscoveryReq, Call),
+            conf_config_req:cache_profile(Conference),
+            maybe_welcome_to_conference(Srv, Conference);
         _Else -> discovery_failed(Call, 'undefined')
     end.
 
@@ -31,16 +33,18 @@ create_conference(DiscoveryReq, Call) ->
 -spec create_conference(kapi_conference:discovery_req(), kapps_call:call(), kz_term:api_ne_binary()) -> kapps_conference:conference().
 create_conference(DiscoveryReq, Call, 'undefined') ->
     lager:debug("using discovery to build conference"),
-    kapps_conference:set_call(Call, kapps_conference:from_json(DiscoveryReq));
+    Conference = kapps_conference:set_call(Call, kapps_conference:new()),
+    kapps_conference:from_json(DiscoveryReq, Conference);
 create_conference(DiscoveryReq, Call, ConferenceId) ->
+    Conference = kapps_conference:set_call(Call, kapps_conference:new()),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), ConferenceId) of
         {'ok', Doc} ->
             lager:debug("discovery request contained a valid conference id, building object"),
             WithConferenceDoc = kz_json:set_value(<<"Conference-Doc">>, Doc, DiscoveryReq),
-            kapps_conference:set_call(Call, kapps_conference:from_json(WithConferenceDoc));
+            kapps_conference:from_json(WithConferenceDoc, Conference);
         _Else ->
             lager:debug("could not find specified conference id ~s: ~p", [ConferenceId, _Else]),
-            kapps_conference:set_call(Call, kapps_conference:from_json(cleanup_conference_doc(DiscoveryReq)))
+            kapps_conference:from_json(cleanup_conference_doc(DiscoveryReq), Conference)
     end.
 
 -spec cleanup_conference_doc(kapi_conference:discovery_req()) -> kapi_conference:discovery_req().
@@ -54,7 +58,7 @@ cleanup_conference_doc(DiscoveryReq, ConferenceDoc) ->
 
 -spec maybe_welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
 maybe_welcome_to_conference(Srv, Conference) ->
-    lager:debug("starting discovery process for conference ~s(~s)"
+    lager:debug("starting discovery process for conference ~s(id:~s)"
                ,[kapps_conference:name(Conference)
                 ,kapps_conference:id(Conference)
                 ]
@@ -127,7 +131,7 @@ validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
     case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
-            Doc = kz_json:get_value(<<"doc">>, JObj),
+            Doc = kz_json:get_json_value(<<"doc">>, JObj),
             valid_conference_id(Srv, kapps_conference:from_conference_doc(Doc, Conference), Digits);
         _Else ->
             lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
@@ -268,11 +272,11 @@ handle_search_error(Conference, Call, Srv) ->
     Arbitrator = kz_amqp_connections:arbitrator_broker(),
     Queue = kapps_conference:id(Conference),
     kz_amqp_channel:remove_consumer_pid(),
-    kz_amqp_channel:consumer_broker(Arbitrator),
+    _ = kz_amqp_channel:consumer_broker(Arbitrator),
     _ = kz_amqp_util:new_queue(Queue),
     try kz_amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
-            lager:debug("initial participant creating conference on switch nodename '~p'", [kapps_call:switch_hostname(Call)]),
+            lager:debug("initial participant creating conference on switch nodename '~s'", [kapps_call:switch_hostname(Call)]),
             conf_participant:set_conference(Conference, Srv),
             maybe_play_name(Conference, Call, Srv),
             conf_participant:join_local(Srv),
@@ -350,7 +354,7 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
     _ = maybe_play_name(Conference, Call, Srv),
 
     SwitchHostname = kapps_call:switch_hostname(Call),
-    lager:debug("participant switch nodename ~p", [SwitchHostname]),
+    lager:debug("participant switch nodename ~s", [SwitchHostname]),
 
     case kz_json:get_first_defined([<<"Switch-Hostname">>, <<"Media-Server">>], JObj) of
         SwitchHostname ->

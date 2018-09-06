@@ -251,13 +251,13 @@ get_default_limit(Key, Default) ->
 get_limit_units(Key, JObj, Default) ->
     case kz_json:get_float_value(<<"pvt_", Key/binary>>, JObj) of
         'undefined' -> get_default_limit_units(Key, Default);
-        Value -> wht_util:dollars_to_units(abs(Value))
+        Value -> kz_currency:dollars_to_units(abs(Value))
     end.
 
 -spec get_default_limit_units(kz_term:ne_binary(), float()) -> non_neg_integer().
 get_default_limit_units(Key, Default) ->
     Value = kapps_config:get_float(?APP_NAME, <<"default_", Key/binary>>, Default),
-    wht_util:dollars_to_units(abs(Value)).
+    kz_currency:dollars_to_units(abs(Value)).
 
 %%------------------------------------------------------------------------------
 %% @doc

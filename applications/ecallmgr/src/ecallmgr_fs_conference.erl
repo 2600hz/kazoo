@@ -78,7 +78,7 @@ init([Node, Options]) ->
     lager:info("starting new fs conference event listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
-    Events = ecallmgr_config:get_ne_binaries(<<"publish_conference_event">>, ?CONFERENCE_EVENTS),
+    Events = kapps_config:get_ne_binaries(?APP_NAME, <<"publish_conference_event">>, ?CONFERENCE_EVENTS),
     {'ok', #state{node=Node
                  ,options=Options
                  ,events=Events
@@ -172,7 +172,7 @@ init_props(Props, Options) ->
 handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
     Props = init_props(FSProps, Options),
     Action = props:get_value(<<"Action">>, Props),
-    process_event(Action, Props, Node),
+    _ = process_event(Action, Props, Node),
     maybe_publish_event(Action, Props, Node, Events).
 
 -spec process_event(kz_term:ne_binary(), kzd_freeswitch:data(), atom()) -> any().
@@ -253,7 +253,7 @@ conference_event(Action, Conference, Props) ->
     CAVs = ecallmgr_util:custom_application_vars(Props),
     ConfVars = ecallmgr_util:conference_channel_vars(Props),
 
-    lager:debug("publising conference event action ~s", [Action]),
+    lager:debug("publishing conference event action ~s", [Action]),
 
     props:filter_undefined(
       [{<<"Account-ID">>, Conference#conference.account_id}

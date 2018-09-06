@@ -806,14 +806,14 @@ get_binary_boolean(Key, JObj, Default) ->
         Value -> kz_term:to_binary(kz_term:is_true(Value))
     end.
 
--spec get_keys(object() | flat_object()) -> keys() | [keys(),...] | [].
+-spec get_keys(object() | flat_object()) -> keys() | [keys(),...].
 get_keys(JObj) -> get_keys1(JObj).
 
--spec get_keys(path(), object() | flat_object()) -> keys() | [keys(),...] | [].
+-spec get_keys(path(), object() | flat_object()) -> keys() | [keys(),...].
 get_keys([], JObj) -> get_keys1(JObj);
 get_keys(Keys, JObj) -> get_keys1(get_json_value(Keys, JObj, new())).
 
--spec get_keys1(list() | object() | flat_object()) -> keys() | [keys(),...] | [].
+-spec get_keys1(list() | object() | flat_object()) -> keys() | [keys(),...].
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1, length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
@@ -1047,7 +1047,7 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
             %% replaced so continue looping the keys creating the necessary json as we go
             ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new())}));
         'false' when T == [] ->
-            %% This is the final key and doesnt already exist, just add it to this
+            %% This is the final key and doesn't already exist, just add it to this
             %% objects existing properties
             ?JSON_WRAPPER(Props ++ [{Key1, Value}]);
         'false' ->
@@ -1268,7 +1268,7 @@ normalize_key(Key) when is_binary(Key) ->
 -spec normalize_key_char(char()) -> char().
 normalize_key_char($-) -> $_;
 normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
-%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
+%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ASCII 215) "multiplication sign: x"
 normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.

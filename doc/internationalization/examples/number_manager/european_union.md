@@ -10,7 +10,7 @@ Configuring the `system_config/number_manager` document for European Union-based
 }
 ```
 
-#### E164 Convertors
+#### E164 Converters
 
 ```json
 {

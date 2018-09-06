@@ -1,18 +1,8 @@
-{application, kazoo_caches,
- [
-  {description, "Caches - Make sure system caches are available for system processes"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [kazoo_caches_sup, kapps_config_cache, kapps_call_cache, kapps_getby_cache]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]},
-  {mod, {kazoo_caches_app, []}}
- ]}.
+{application,kazoo_caches,
+             [{applications,[kazoo,kazoo_amqp,kazoo_globals,kazoo_stdlib,
+                             kernel,lager,stdlib]},
+              {description,"Caches - Make sure system caches are available for system processes"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kazoo_caches_sup]},
+              {mod,{kazoo_caches_app,[]}}]}.

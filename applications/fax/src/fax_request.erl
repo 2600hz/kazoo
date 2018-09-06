@@ -289,9 +289,7 @@ get_fax_storage(Call) ->
                            ,"-"
                            ,kz_binary:rand_hex(16)
                            ]),
-    AttachmentId = kz_binary:rand_hex(16),
-    Ext = kapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
-    FaxAttachmentId = <<AttachmentId/binary, Ext/binary>>,
+    FaxAttachmentId = <<"received_file_", FaxId/binary, ".tiff" >>,
 
     #fax_storage{id=FaxId
                 ,db=FaxDb
@@ -308,8 +306,10 @@ maybe_update_fax_settings(#state{call=Call
         {'ok', JObj} ->
             lager:debug("updating fax settings from user ~s", [OwnerId]),
             update_fax_settings(Call, kzd_user:fax_settings(JObj)),
-            UserEmail = kz_json:get_value(<<"email">>, JObj),
-            Notify = kz_json:set_value([<<"email">>,<<"send_to">>], [UserEmail] , kz_json:new()),
+            Notify = case kz_json:get_value(<<"email">>, JObj) of
+                         'undefined' -> kz_json:new();
+                         UserEmail -> kz_json:set_value([<<"email">>, <<"send_to">>], [UserEmail], kz_json:new())
+                     end,
             State#state{fax_notify=Notify};
         {'error', _} ->
             maybe_update_fax_settings_from_account(State)
@@ -418,8 +418,11 @@ overridden_fax_identity(Call, JObj) ->
 end_receive_fax(JObj, #state{call=Call}=State) ->
     kapps_call_command:hangup(Call),
     case kz_json:is_true([<<"Application-Data">>,<<"Fax-Success">>], JObj, 'false') of
-        'true' -> end_receive_fax(State#state{fax_result=JObj});
+        'true' ->
+            lager:debug("fax status - successfully received fax"),
+            end_receive_fax(State#state{fax_result=JObj});
         'false' ->
+            lager:debug("fax status - receive fax failed"),
             notify_failure(JObj, State),
             {'stop', 'normal', State}
     end.
@@ -458,7 +461,9 @@ store_attachment(#state{}=State) ->
 
 -spec store_attachment(pid(), state()) -> 'ok'.
 store_attachment(Pid, #state{call=Call
-                            ,storage=#fax_storage{attachment_id=AttachmentId}
+                            ,storage=#fax_storage{attachment_id=AttachmentId
+                                                 ,db=FaxDb
+                                                 }
                             ,fax_doc=FaxDoc
                             ,fax_id=FaxId
                             }=State) ->
@@ -468,7 +473,34 @@ store_attachment(Pid, #state{call=Call
         'ok' ->
             lager:debug("fax attachment stored successfully into ~s / ~s / ~s", [kz_doc:account_db(FaxDoc), FaxId, AttachmentId]),
             gen_server:cast(Pid, 'success');
-        {'error', _} -> gen_server:cast(Pid, 'store_attachment')
+        {'error', _} ->
+            case check_fax_attachment(FaxDb, FaxId, AttachmentId) of
+                {'ok', _} ->
+                    lager:debug("fax attachment stored successfully despite error into ~s / ~s / ~s", [kz_doc:account_db(FaxDoc), FaxId, AttachmentId]),
+                    gen_server:cast(Pid, 'success');
+                {'missing', _} ->
+                    lager:warning("missing fax attachment on fax id ~s",[FaxId]),
+                    timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
+                    gen_server:cast(Pid, 'store_attachment');
+                {'error', _R} ->
+                    lager:debug("error '~p' saving fax attachment on fax id ~s",[_R, FaxId]),
+                    timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
+                    gen_server:cast(Pid, 'store_attachment')
+            end
+    end.
+
+-spec check_fax_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary())->
+                                  {'ok', kz_json:object()} |
+                                  {'missing', kz_json:object()} |
+                                  {'error', any()}.
+check_fax_attachment(Modb, DocId, Name) ->
+    case kz_datamgr:open_doc(Modb, DocId) of
+        {'ok', JObj} ->
+            case kz_doc:attachment(JObj, Name) of
+                'undefined' -> {'missing', JObj};
+                _Else -> {'ok', JObj}
+            end;
+        {'error', _}=E -> E
     end.
 
 -spec get_fs_filename(state()) -> kz_term:ne_binary().
@@ -600,7 +632,7 @@ notify_success(#state{call=Call
                      ,storage=#fax_storage{id=FaxId, db=FaxDb}
                      }=State) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
-    Status = <<"Fax Successfuly received">>,
+    Status = <<"Fax Successfully received">>,
     send_status(State, Status, ?FAX_END, Data),
 
     Message = props:filter_undefined(

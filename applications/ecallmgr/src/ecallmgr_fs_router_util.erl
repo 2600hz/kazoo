@@ -23,7 +23,7 @@
 -spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) ->
                               search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props) ->
-    Authz = ecallmgr_config:is_true(<<"authz_enabled">>, 'false'),
+    Authz = kapps_config:is_true(?APP_NAME, <<"authz_enabled">>, 'false'),
     search_for_route(Section, Node, FetchId, CallId, Props, Authz).
 
 -spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), boolean()) ->

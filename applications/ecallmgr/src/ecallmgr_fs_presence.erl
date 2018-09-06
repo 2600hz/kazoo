@@ -255,7 +255,12 @@ build_presence_event(_Node, UUID, Props) ->
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     lager:debug("sending presence ~s to ~s/~s in realm ~s", [State, FromUser, ToUser, Realm]),
+    _ = maybe_delay(State),
     kz_amqp_worker:cast(Payload, fun kapi_presence:publish_dialog/1).
+
+maybe_delay(<<"terminated">>) ->
+    timer:sleep(?MILLISECONDS_IN_SECOND);
+maybe_delay(_) -> 'ok'.
 
 -spec direction(kz_term:proplist()) -> kz_term:ne_binary().
 direction(Props) ->

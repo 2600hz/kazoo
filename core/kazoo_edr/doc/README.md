@@ -1,9 +1,3 @@
-/*
-Section: Kazoo Edr
-Title: Kazoo Edr
-Language: en-US
-*/
-
 # Kazoo EDR
 
 EDR is an extension of logging and events in Kazoo, making it easy to add new events, and consume
@@ -15,7 +9,7 @@ take these events and distribute them to applications outside of Kazoo (or acros
 
 ## edr.hrl
 
-A header file containing records and types that are used throughtout the EDR ecosystem. It
+A header file containing records and types that are used throughout the EDR ecosystem. It
 contains:
   - #edr_event{}:
     A record representing an event. This is passed around the EDR ecosystem. This aims to capture

@@ -4,7 +4,7 @@ Single play stream
 
 ECALLMGR         MEDIA MGR
 media_req    --> media_listener
-                   verfiy media exists
+                   verify media exists
                    generate URL to SHOUT server
 call_control <--   media_resp
                    prefetch attachment if not cached locally

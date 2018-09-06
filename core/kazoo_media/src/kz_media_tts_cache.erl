@@ -38,6 +38,7 @@
                ,kz_http_req_id :: kz_http:req_id()
                ,reqs :: [{pid(), reference()}]
                ,meta :: kz_json:object()
+               ,engine_data = kz_json:new() :: kz_json:object()
                ,timer_ref :: reference()
                ,id :: kz_term:ne_binary() %% used in publishing doc_deleted
                }).
@@ -85,7 +86,7 @@ init([Id, JObj]) ->
     Format = kz_json:get_value(<<"Format">>, JObj, <<"wav">>),
     Engine = kz_json:get_value(<<"Engine">>, JObj),
 
-    {'ok', ReqID} = kazoo_tts:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
+    {'ok', ReqID, EngineData} = kazoo_tts:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
 
     lager:debug("text '~s' has id '~s'", [Text, Id]),
 
@@ -96,6 +97,7 @@ init([Id, JObj]) ->
     {'ok', #state{kz_http_req_id = ReqID
                  ,status = 'streaming'
                  ,meta = Meta
+                 ,engine_data = EngineData
                  ,contents = <<>>
                  ,reqs = []
                  ,timer_ref = start_timer()
@@ -124,7 +126,7 @@ handle_call('single', _From, #state{meta=Meta
 handle_call('single', From, #state{reqs=Reqs
                                   ,status='streaming'
                                   }=State) ->
-    lager:debug("file not ready for ~p, queueing", [From]),
+    lager:debug("file not ready for ~p, queuing", [From]),
     {'noreply', State#state{reqs=[From | Reqs]}};
 handle_call('continuous', _From, #state{}=State) ->
     {'reply', 'ok', State}.
@@ -170,6 +172,10 @@ handle_info({'http', {ReqID, 'stream', Bin}}, #state{kz_http_req_id=ReqID
             {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>
                                    ,timer_ref=start_timer()
                                    }};
+        <<"application/json; charset=UTF-8">> ->
+            {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>
+                                   ,timer_ref=start_timer()
+                                   }};
         <<"application/json">> ->
             lager:debug("JSON response: ~s", [Bin]),
             {'noreply', State, 'hibernate'}
@@ -185,16 +191,20 @@ handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_i
 handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
                                                                   ,contents=Contents
                                                                   ,meta=Meta
+                                                                  ,engine_data=EngineData
                                                                   ,reqs=Reqs
                                                                   ,timer_ref=TRef
                                                                   }=State) ->
     _ = stop_timer(TRef),
-    Res = {Meta, Contents},
+    {BinaryContents, NewMeta} = kazoo_tts_google:decode_responce(Contents, EngineData, Meta),
+    Res = {NewMeta, BinaryContents},
     _ = [gen_server:reply(From, Res) || From <- Reqs],
 
     lager:debug("finished receiving file contents: ~p", [kz_util:pretty_print_bytes(byte_size(Contents))]),
     {'noreply', State#state{status=ready
                            ,timer_ref=start_timer()
+                           ,contents=BinaryContents
+                           ,meta=NewMeta
                            }
     ,'hibernate'
     };

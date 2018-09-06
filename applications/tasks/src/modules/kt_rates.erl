@@ -11,7 +11,7 @@
 -export([init/0
         ,help/1, help/2, help/3
         ,output_header/1
-        ,cleanup/2
+        ,finish/2
         ]).
 
 %% Verifiers
@@ -50,7 +50,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".direction">>, ?MODULE, 'direction'),
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".cleanup">>, ?MODULE, 'cleanup'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".finish">>, ?MODULE, 'finish'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 -spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
@@ -231,12 +231,12 @@ delete(_ExtraArgs, State, Args) ->
             }
     end.
 
--spec cleanup(kz_term:ne_binary(), any()) -> any().
-cleanup(<<"import">>, Dict) ->
+-spec finish(kz_term:ne_binary(), any()) -> any().
+finish(<<"import">>, Dict) ->
     _Size = dict:size(Dict),
-    lager:debug("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
+    lager:info("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
     _ = dict:map(fun import_rates_into_ratedeck/2, Dict);
-cleanup(<<"delete">>, State) ->
+finish(<<"delete">>, State) ->
     Db = props:get_value('db', State),
     Keys = props:get_value('keys', State),
     Dict = props:get_value('dict', State),
@@ -244,7 +244,7 @@ cleanup(<<"delete">>, State) ->
     kz_datamgr:enable_change_notice(),
     kzs_publish:publish_db(Db, <<"edited">>).
 
--spec import_rates_into_ratedeck(kz_term:ne_binary(), {non_neg_integer(), kz_json:objects()}) -> 'ok'.
+-spec import_rates_into_ratedeck(kz_term:ne_binary(), {non_neg_integer(), kz_json:objects()}) -> 'true'.
 import_rates_into_ratedeck(Ratedeck, {0, []}) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     kz_datamgr:enable_change_notice(),
@@ -289,7 +289,7 @@ is_allowed(ExtraArgs) ->
     AccountId = maps:get('account_id', ExtraArgs),
     {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
     {'ok', AuthAccountDoc} = kzd_accounts:fetch(AuthAccountId),
-    kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+    kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
     %% Serve request for reseller rates
         andalso kzd_accounts:is_reseller(AccountDoc)
     %% or serve requests from SuperAdmin
@@ -408,7 +408,7 @@ maybe_delete_rate(JObj, Dict) ->
         'false' -> 'false'
     end.
 
--spec maybe_default(kz_transaction:units(), kz_transaction:units()) -> kz_transaction:units().
+-spec maybe_default(kz_currency:units(), kz_currency:units()) -> kz_currency:units().
 maybe_default(0, Default) -> Default;
 maybe_default(Value, _Default) -> Value.
 
@@ -450,13 +450,13 @@ maybe_generate_weight(RateJObj, 'undefined') ->
                    );
 maybe_generate_weight(_RateJObj, Weight) -> kzd_rates:constrain_weight(Weight).
 
--spec generate_weight(kz_term:ne_binary() | pos_integer(), kz_transaction:units(), kz_transaction:units()) ->
+-spec generate_weight(kz_term:ne_binary() | pos_integer(), kz_currency:units(), kz_currency:units()) ->
                              kzd_rates:weight_range().
 generate_weight(Prefix, UnitCost, UnitIntCost) when is_integer(Prefix) ->
     generate_weight(kz_term:to_binary(Prefix), UnitCost, UnitIntCost);
 generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
     UnitCostToUse = maybe_default(UnitIntCost, UnitCost),
-    CostToUse = wht_util:units_to_dollars(UnitCostToUse),
+    CostToUse = kz_currency:units_to_dollars(UnitCostToUse),
 
     Weight = (byte_size(Prefix) * 10) - trunc(CostToUse * 100),
     kzd_rates:constrain_weight(Weight).

@@ -31,6 +31,7 @@
                              ]
                    }
                   ,{'self', []}
+                  ,{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
                   ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -101,8 +102,14 @@ handle_info(_Info, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(JObj, _State) ->
+    case kz_api:event_name(JObj) of
+        <<"CHANNEL_DESTROY">> ->
+            CallId = kz_call_event:call_id(JObj),
+            gproc:send({'p', 'l', {'route_req', CallId}}, {'channel_destroy', kz_call_event:fetch_id(JObj)}),
+            'ignore';
+        _ -> {'reply', []}
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_listener' when it is about to
@@ -114,7 +121,7 @@ handle_event(_JObj, _State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), any()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:info("callflow listner ~p termination", [_Reason]).
+    lager:info("callflow listener ~p termination", [_Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.

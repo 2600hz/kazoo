@@ -472,7 +472,7 @@ send_update(RespQ, MsgId, Status, Msg, Metadata) ->
 -spec find_account_rep_email(kz_term:api_object() | kz_term:ne_binary()) -> kz_term:api_binaries().
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(?NE_BINARY=AccountId) ->
-    case kz_services:is_reseller(AccountId) of
+    case kz_services_reseller:is_reseller(AccountId) of
         'true' ->
             lager:debug("finding admin email for reseller account ~s", [AccountId]),
             find_account_admin_email(AccountId);
@@ -524,7 +524,7 @@ extract_admin_emails(Users) ->
     ].
 
 -spec find_reseller_id(kz_term:ne_binary()) -> kz_term:ne_binary().
-find_reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
+find_reseller_id(AccountId) -> kz_services_reseller:get_id(AccountId).
 
 -spec find_account_admin(kz_term:api_binary()) -> kz_term:api_object().
 find_account_admin('undefined') -> 'undefined';
@@ -636,8 +636,11 @@ is_notice_enabled_default(TemplateKey) ->
 get_parent_account_id(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} -> kzd_accounts:parent_account_id(JObj);
+        {'error', 'not_found'} ->
+            lager:info("account ~s no longer exists, no parent account", [AccountId]),
+            'undefined';
         {'error', _E} ->
-            lager:error("failed to find parent account for ~s", [AccountId]),
+            lager:error("failed to find parent account for ~s: ~p", [AccountId, _E]),
             'undefined'
     end.
 
@@ -709,14 +712,21 @@ get_address_value(Key, Path, [JObj|JObjs]) ->
 -spec check_address_value(binary() | kz_term:binaries() | kz_json:object() | 'undefined') -> kz_term:api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';
-check_address_value(<<_/binary>> = Email) -> [Email];
+check_address_value(<<_/binary>> = Email) -> check_address_value([Email]);
 check_address_value(Emails) when is_list(Emails) ->
-    case [E || E <- Emails, not kz_term:is_empty(E)] of
+    case [E || E <- Emails,
+               kz_term:is_ne_binary(E),
+               length(binary:split(E, <<"@">>, ['global'])) == 2
+         ]
+    of
         [] -> 'undefined';
         Es -> Es
     end;
-check_address_value(JObj) ->
-    check_address_value(kz_json:get_value(<<"email_addresses">>, JObj)).
+check_address_value(Emails) ->
+    case kz_json:is_json_object(Emails) of
+        'true' -> check_address_value(kz_json:get_value(<<"email_addresses">>, Emails));
+        'false' -> 'undefined'
+    end.
 
 -spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_json:path()) ->
                                kz_term:api_ne_binaries().

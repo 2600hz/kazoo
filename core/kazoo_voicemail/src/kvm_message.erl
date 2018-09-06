@@ -402,7 +402,7 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs) ->
                ),
 
     Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns ++ Funs) end}
-           ,{max_retries, 3}
+           ,{'max_retries', 3}
            ],
     case kazoo_modb:move_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
         {'ok', _} = OK -> OK;
@@ -526,10 +526,10 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
     case do_copy(AccountId, FromId, ToId, TransformFuns ++ Funs) of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
-            maps:update_with(succeeded, fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
+            maps:update_with('succeeded', fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
         {'error', R} ->
             IdReason = {FromId, kz_term:to_binary(R)},
-            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
+            maps:update_with('failed', fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
     end.
 
 -spec do_copy(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), update_funs()) -> db_ret().
@@ -542,7 +542,7 @@ do_copy(AccountId, ?NE_BINARY = FromId, ToId, Funs) ->
                ),
 
     Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, Funs) end}
-           ,{max_retries, 3}
+           ,{'max_retries', 3}
            ],
     case kazoo_modb:copy_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
         {'ok', _} = OK -> OK;
@@ -661,7 +661,7 @@ try_save_document(_Call, MsgJObj, 0) ->
             {'error', 'max_save_retries'}
     end;
 try_save_document(Call, MsgJObj, Loop) ->
-    case kazoo_modb:save_doc(kz_doc:account_db(MsgJObj), MsgJObj, [{max_retries, 3}]) of
+    case kazoo_modb:save_doc(kz_doc:account_db(MsgJObj), MsgJObj, [{'max_retries', 3}]) of
         {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
             RetryFun = fun(J) -> try_save_document(Call, J, Loop - 1) end,
@@ -860,7 +860,8 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
         {'error', _R} ->
             AccountId = kapps_call:account_id(Call),
             lager:debug("failed to send new voicemail notification for message ~s in account ~s: ~p"
-                       ,[MediaId, AccountId, _R]),
+                       ,[MediaId, AccountId, _R]
+                       ),
             maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
@@ -869,17 +870,17 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
 %% Otherwise return action 'nothing' to store the message as new voicemail.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_notified_successfully(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), notify_action()) -> notify_action().
+-spec is_notified_successfully(kapps_call:call(), kz_term:ne_binary(), kz_json:objects(), notify_action()) -> notify_action().
 is_notified_successfully(Call, _MediaId, [], _) ->
     lager:debug("failed to send new voicemail notification for message ~s in account ~s: timeout", [_MediaId, kapps_call:account_id(Call)]),
     'nothing';
 is_notified_successfully(Call, MediaId, [JObj|JObjs], NotifyAction) ->
-    case kz_json:get_value(<<"Status">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"Status">>, JObj) of
         <<"completed">> -> NotifyAction;
         <<"disabled">> -> 'nothing';
         <<"ignored">> -> 'nothing';
         <<"failed">> -> 'nothing';
-        _ -> is_notified_successfully(Call, MediaId, JObjs, NotifyAction)
+        _Status -> is_notified_successfully(Call, MediaId, JObjs, NotifyAction)
     end.
 
 -spec maybe_update_meta(pos_integer(), notify_action(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kapps_call:call()}.
@@ -959,7 +960,7 @@ check_for_collision(Call, JObj, SavedJObj, DieAnotherDay) ->
 give_me_another_id(?MATCH_MODB_PREFIX(Year, Month, _)) ->
     kazoo_modb_util:modb_id(Year, Month).
 
--spec send_system_alert(kapps_call:call() | 'undefined', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec send_system_alert(kapps_call:call() | 'undefined', kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_system_alert('undefined', AccountId, Subject, Msg) ->
     Notify = [{<<"Message">>, Msg}
              ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}

@@ -153,21 +153,21 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     PoolSize =
-        case kz_config:get(?CONFIG_SECTION, 'pool_size') of
+        case kz_config:get_integer(?CONFIG_SECTION, 'pool_size') of
             [] -> kz_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_SIZE);
-            [Size|_] -> kz_term:to_integer(Size)
+            [Size|_] -> Size
         end,
 
     PoolOverflow =
-        case kz_config:get(?CONFIG_SECTION, 'pool_overflow') of
+        case kz_config:get_integer(?CONFIG_SECTION, 'pool_overflow') of
             [] -> kz_config:get_integer(?CONFIG_SECTION, 'pool_overflow', ?DEFAULT_POOL_OVERFLOW);
-            [Overflow|_] -> kz_term:to_integer(Overflow)
+            [Overflow|_] -> Overflow
         end,
 
     PoolThreshold =
-        case kz_config:get(?CONFIG_SECTION, 'pool_threshold') of
+        case kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold') of
             [] -> ?POOL_THRESHOLD;
-            [Threshold|_] -> kz_term:to_integer(Threshold)
+            [Threshold|_] -> Threshold
         end,
 
     PoolArgs = [{'worker_module', 'kz_amqp_worker'}

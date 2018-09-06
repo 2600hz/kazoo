@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz
-%%% @doc HML helper functions for Kazoo
+%%% @doc HTML helper functions for Kazoo
 %%% @author Mark Magnusson
 %%% @end
 %%%-----------------------------------------------------------------------------

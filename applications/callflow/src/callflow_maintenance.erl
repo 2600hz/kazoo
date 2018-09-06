@@ -148,7 +148,7 @@ do_recorded_name_migration(Db, VMBox) ->
         'undefined' -> lager:info("vm box ~s has no recorded name to migrate", [VMBoxId]);
         MediaId ->
             lager:info("vm box ~s has recorded name in doc ~s", [VMBoxId, MediaId]),
-            do_recorded_name_migration(Db, MediaId, kz_json:get_value(<<"owner_id">>, VMBox)),
+            _ = do_recorded_name_migration(Db, MediaId, kz_json:get_value(<<"owner_id">>, VMBox)),
             {'ok', _} = kz_datamgr:save_doc(Db, kz_json:delete_key(?RECORDED_NAME_KEY, VMBox))
     end.
 
@@ -264,12 +264,12 @@ update_doc(Key, Value, Id, Db) ->
 
 -spec account_set_classifier_inherit(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 account_set_classifier_inherit(Classifier, Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
     set_account_classifier_action(<<"inherit">>, Classifier, AccountDb).
 
 -spec account_set_classifier_deny(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 account_set_classifier_deny(Classifier, Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
     set_account_classifier_action(<<"deny">>, Classifier, AccountDb).
 
 -spec all_accounts_set_classifier_inherit(kz_term:ne_binary()) -> 'ok'.
@@ -290,8 +290,8 @@ set_account_classifier_action(Action, Classifier, AccountDb) ->
     io:format("found account: ~p", [kzd_accounts:fetch_name(AccountDb)]),
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
 
-    kz_datamgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-    kz_datamgr:update_doc(<<"accounts">>, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    _ = kz_datamgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    _ = kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
 
     kz_endpoint:flush_account(AccountDb),
 
@@ -337,7 +337,7 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     Options = [{'key', User}],
     {'ok', [DeviceDoc]} = kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
     DeviceId = kz_doc:id(DeviceDoc),
-    kz_datamgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    _ = kz_datamgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
     kz_endpoint:flush(AccountDb, DeviceId).
 
 %%------------------------------------------------------------------------------
@@ -365,7 +365,7 @@ is_classifier(Classifier) ->
 %%------------------------------------------------------------------------------
 -spec list_account_restrictions(kz_term:ne_binary()) -> 'ok'.
 list_account_restrictions(Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
     DbNameEncoded = kz_util:format_account_id(AccountDb,'encoded'),
     io:format("\nAccount level classifiers:\n\n"),
     print_call_restrictions(DbNameEncoded, kz_util:format_account_id(AccountDb,'raw')),

@@ -161,7 +161,7 @@ handle_fetch(Pid, {'ok', _Bin}=OK) ->
     ftp:close(Pid),
     OK;
 handle_fetch(Pid, {'error', _Reason}=Err) ->
-    lager:debug("error transfering file from ftp server : ~p", [_Reason]),
+    lager:debug("error transferring file from ftp server : ~p", [_Reason]),
     ftp:close(Pid),
     Err.
 

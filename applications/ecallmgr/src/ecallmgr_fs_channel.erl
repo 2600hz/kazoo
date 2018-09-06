@@ -480,7 +480,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec handle_channel_req_legacy(kz_term:ne_binary(), kz_term:ne_binary(), atom(), pid()) -> 'ok'.
 handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
-    kz_amqp_channel:consumer_pid(Pid),
+    _ = kz_amqp_channel:consumer_pid(Pid),
     case fetch_channel(UUID) of
         'undefined' -> channel_not_found(Node, FetchId);
         Channel ->
@@ -492,7 +492,7 @@ handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
 
 -spec handle_channel_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), atom(), pid()) -> 'ok'.
 handle_channel_req(UUID, FetchId, Props, Node, Pid) ->
-    kz_amqp_channel:consumer_pid(Pid),
+    _ = kz_amqp_channel:consumer_pid(Pid),
     ForUUID = props:get_value(<<"refer-for-channel-id">>, Props),
     {'ok', ForChannel} = fetch(ForUUID, 'proplist'),
     case fetch_channel(UUID) of
@@ -589,7 +589,7 @@ process_event(UUID, Props, Node) ->
 -spec process_event(kz_term:api_binary(), kz_term:proplist(), atom(), pid()) -> any().
 process_event(UUID, Props, Node, Pid) ->
     kz_util:put_callid(UUID),
-    kz_amqp_channel:consumer_pid(Pid),
+    _ = kz_amqp_channel:consumer_pid(Pid),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
 
     process_specific_event(EventName, UUID, Props, Node).
@@ -644,14 +644,14 @@ process_specific_event(_EventName, _UUID, _Props, _Node) -> 'ok'.
 -spec maybe_publish_channel_state(kz_term:proplist(), atom()) -> 'ok'.
 maybe_publish_channel_state(Props, Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
-    %%   becomes disconnected any calls it previsouly controlled will not produce
+    %%   becomes disconnected any calls it previously controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
     Event = ecallmgr_call_events:get_event_name(Props),
     case props:is_true(<<"Publish-Channel-State">>, Props, 'true')
-        andalso ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true', Node) of
+        andalso kapps_config:get_boolean(?APP_NAME, <<"publish_channel_state">>, 'true', Node) of
         'false' -> lager:debug("not publishing channel state ~s", [Event]);
         'true' ->
-            case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
+            case kapps_config:get_boolean(?APP_NAME, <<"restrict_channel_state_publisher">>, 'false') of
                 'false' -> ecallmgr_call_events:process_channel_event(Props);
                 'true' -> maybe_publish_restricted(Props)
             end

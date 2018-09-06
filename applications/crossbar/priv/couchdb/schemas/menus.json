@@ -66,7 +66,7 @@
                     "type": "string"
                 },
                 "invalid_media": {
-                    "description": "When the collected digits dont result in a match or hunt this media can be played",
+                    "description": "When the collected digits don't result in a match or hunt this media can be played",
                     "maxLength": 2048,
                     "minLength": 3,
                     "support_level": "supported",
@@ -118,7 +118,7 @@
             "type": "boolean"
         },
         "timeout": {
-            "description": "The amount of time (in milliseconds) to wait for the caller to beging entering digits",
+            "description": "The amount of time (in milliseconds) to wait for the caller to begin entering digits",
             "maximum": 60000,
             "minimum": 1,
             "support_level": "supported",

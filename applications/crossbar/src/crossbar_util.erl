@@ -44,7 +44,7 @@
 -export([get_descendants/1]).
 -export([get_tree/1]).
 -export([replicate_account_definition/1]).
--export([disable_account/1
+-export([disable_account/1, maybe_disable_account/1
         ,enable_account/1
         ,change_pvt_enabled/2
         ]).
@@ -116,7 +116,7 @@ response_400(Message, Data, Context) ->
 response_401(Context) ->
     response('error', <<"invalid credentials">>, 401, Context).
 
--spec response_402(kz_json:object(), cb_context:context()) ->
+-spec response_402(kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_402(Data, Context) ->
     create_response('error', <<"accept charges">>, 402, Data, Context).
@@ -158,7 +158,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function loads the response vars in Context, soon it will
-%% make smarter choices about formating resp_data and filtering
+%% make smarter choices about formatting resp_data and filtering
 %% other parameters.
 %% @end
 %%------------------------------------------------------------------------------
@@ -308,7 +308,7 @@ flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
+    kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registrations(Context) ->
     flush_registrations(kzd_accounts:fetch_realm(cb_context:account_id(Context))).
 
@@ -321,8 +321,8 @@ flush_registration(Username, <<_/binary>> = Realm) ->
                ,{<<"Username">>, Username}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_switch:publish_notify/1),
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
+    _ = kz_amqp_worker:cast(FlushCmd, fun kapi_switch:publish_notify/1),
+    kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
     Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     flush_registration(Username, Realm).
@@ -428,11 +428,11 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
         {'ok', _} ->
-            NewResellerId = kz_services:find_reseller_id(ToAccount),
+            NewResellerId = kz_services_reseller:get_id(ToAccount),
             {'ok', _} = replicate_account_definition(JObj1),
             {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
-            {'ok', _} = kz_services:mark_dirty(AccountId),
-            move_service(AccountId, ToTree, NewResellerId, 'true')
+            Services = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
+            {'ok', kz_services:services_jobj(Services)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -486,31 +486,9 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
                 {'ok', NewAccountJObj} ->
                     {'ok', _} = replicate_account_definition(NewAccountJObj),
                     AccountId = kz_util:format_account_id(Descendant),
-                    {'ok', _} = move_service(AccountId, ToTree, NewResellerId, 'undefined'),
+                    _ = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
             end
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec move_service(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:api_boolean()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', any()}.
-move_service(AccountId, NewTree, NewResellerId, Dirty) ->
-    case kz_services:fetch_services_doc(AccountId, true) of
-        {'error', _E}=Error -> Error;
-        {'ok', JObj} ->
-            Props = props:filter_undefined(
-                      [{?SERVICES_PVT_TREE, NewTree}
-                      ,{?SERVICES_PVT_TREE_PREVIOUSLY, kzd_accounts:tree(JObj)}
-                      ,{?SERVICES_PVT_IS_DIRTY, Dirty}
-                      ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
-                      ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
-                      ]),
-            %%FIXME: do something about setting pvt_auth_*_id
-            kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj))
     end.
 
 %%------------------------------------------------------------------------------
@@ -567,12 +545,21 @@ disable_account(AccountId) ->
             E
     end.
 
+-spec maybe_disable_account(kz_types:ne_binary()) -> any().
+maybe_disable_account(AccountId) ->
+    {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
+    case kzd_accounts:is_enabled(AccountJObj) of
+        'false' -> 'ok';
+        'true' ->
+            kzd_accounts:save(kzd_accounts:disable(AccountJObj))
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc Flag all descendants of the account id as enabled.
 %% @end
 %%------------------------------------------------------------------------------
 -spec enable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
-enable_account('undefined') -> ok;
+enable_account('undefined') -> 'ok';
 enable_account(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
@@ -617,8 +604,8 @@ populate_resp(JObj, AccountId, UserId) ->
               [{<<"apps">>, load_apps(AccountId, UserId, Language)}
               ,{<<"language">>, Language}
               ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
-              ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
-              ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+              ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+              ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
               ]),
     kz_json:set_values(Props, JObj).
 
@@ -832,7 +819,7 @@ create_auth_token(Context, AuthModule, JObj) ->
 -spec get_token_restrictions(atom(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                     kz_term:api_object().
 get_token_restrictions(AuthModule, AccountId, OwnerId) ->
-    case kz_util:is_system_admin(AccountId) of
+    case kzd_accounts:is_superduper_admin(AccountId) of
         'true' -> 'undefined';
         'false' ->
             Restrictions =

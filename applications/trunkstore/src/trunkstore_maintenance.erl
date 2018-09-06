@@ -95,7 +95,7 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->
     Credit = kz_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
-    Units = wht_util:dollars_to_units(kz_term:to_float(Credit)),
+    Units = kz_currency:dollars_to_units(kz_term:to_float(Credit)),
     lager:info("Putting ~p units", [Units]),
     Transaction = kz_json:from_list([{<<"amount">>, Units}
                                     ,{<<"pvt_type">>, <<"credit">>}

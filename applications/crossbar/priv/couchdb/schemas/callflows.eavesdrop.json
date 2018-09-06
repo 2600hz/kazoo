@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.eavesdrop",
-    "description": "Validator for the eavesdrop callflow's data object",
+    "description": "Validator for the eavesdrop callflow data object",
     "properties": {
         "approved_device_id": {
             "description": "Restricts the calling device to this Device",

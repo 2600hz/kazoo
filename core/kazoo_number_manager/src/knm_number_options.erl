@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(knm_number_options).
 
--export([assign_to/1, assign_to/2
+-export([assign_to/1, assign_to/2, set_assign_to/2
         ,auth_by/1, auth_by/2
         ,dry_run/1, dry_run/2
         ,batch_run/1, batch_run/2
@@ -16,6 +16,7 @@
         ,ported_in/1
         ,public_fields/1
         ,state/1, state/2
+        ,crossbar/1, crossbar/2
 
         ,default/0
         ,mdn_options/0
@@ -40,11 +41,17 @@
 
 -include("knm.hrl").
 
--type option() :: {'assign_to', kz_term:ne_binary()} |
-                  {'auth_by', kz_term:ne_binary()} |
-                  {'dry_run', boolean()} |
+-type crossbar_option() :: {'services', kz_services:services()} |
+                           {'account_id', kz_term:api_ne_binary()} |
+                           {'reseller_id', kz_term:api_ne_binary()}.
+-type crossbar_options() :: [crossbar_option()].
+
+-type option() :: {'assign_to', kz_term:api_ne_binary()} |
+                  {'auth_by', kz_term:api_ne_binary()} |
                   {'batch_run', boolean()} |
-                  {mdn_run, boolean()} |
+                  {'crossbar', crossbar_options()} |
+                  {'dry_run', boolean()} |
+                  {'mdn_run', boolean()} |
                   {'module_name', kz_term:ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
@@ -71,29 +78,28 @@
 -spec default() -> options().
 default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-    ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
-    ,{mdn_run, false}
+    ,{'mdn_run', 'false'}
     ].
 
 -spec mdn_options() -> options().
 mdn_options() ->
-    [{mdn_run, true}
-     |default()
-    ].
+    props:set_value('mdn_run', 'true', default()).
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
 to_phone_number_setters(Options) ->
-    [case Option of
-         'public_fields' ->
-             {fun knm_phone_number:reset_doc/2, Value};
-         _ ->
-             FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
-             {fun knm_phone_number:FName/2, Value}
-     end
+    [{setter_fun(Option), Value}
      || {Option, Value} <- kz_util:uniq(Options),
-        is_atom(Option)
+        is_atom(Option),
+        Option =/= 'crossbar'
     ].
+
+-spec setter_fun(atom()) -> knm_phone_number:set_function().
+setter_fun('public_fields') ->
+    fun knm_phone_number:reset_doc/2;
+setter_fun(Option) ->
+    FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
+    fun knm_phone_number:FName/2.
 
 -spec dry_run(options()) -> boolean().
 dry_run(Options) ->
@@ -112,14 +118,14 @@ batch_run(Options) ->
 
 -spec batch_run(options(), Default) -> boolean() | Default.
 batch_run(Options, Default) ->
-    R = props:get_is_true(batch_run, Options, Default),
+    R = props:get_is_true('batch_run', Options, Default),
     _ = R
         andalso lager:debug("batch_run-ing btw"),
     R.
 
 -spec mdn_run(options()) -> boolean().
 mdn_run(Options) ->
-    R = props:get_is_true(mdn_run, Options, false),
+    R = props:get_is_true('mdn_run', Options, 'false'),
     _ = R
         andalso lager:debug("mdn_run-ing btw"),
     R.
@@ -131,6 +137,10 @@ assign_to(Options) ->
 -spec assign_to(options(), Default) -> kz_term:ne_binary() | Default.
 assign_to(Options, Default) ->
     props:get_binary_value('assign_to', Options, Default).
+
+-spec set_assign_to(options(), kz_term:ne_binary()) -> options().
+set_assign_to(Options, AssignTo) ->
+    props:set_value('assign_to', AssignTo, Options).
 
 -spec auth_by(options()) -> kz_term:api_binary().
 auth_by(Options) ->
@@ -152,9 +162,17 @@ state(Options) ->
 state(Options, Default) ->
     props:get_binary_value('state', Options, Default).
 
+-spec crossbar(options()) -> kz_term:api_proplist().
+crossbar(Options) ->
+    crossbar(Options, 'undefined').
+
+-spec crossbar(options(), Default) -> kz_term:api_proplist() | Default.
+crossbar(Options, Default) ->
+    props:get_value('crossbar', Options, Default).
+
 -spec ported_in(options()) -> boolean().
 ported_in(Options) ->
-    props:get_is_true('ported_in', Options, false).
+    props:get_is_true('ported_in', Options, 'false').
 
 -spec module_name(options()) -> kz_term:ne_binary().
 module_name(Options) ->

@@ -102,7 +102,7 @@
         },
         "contact_list": {
             "default": {},
-            "description": "Contect List Parameters",
+            "description": "Contact List Parameters",
             "properties": {
                 "exclude": {
                     "description": "If set to true the device is excluded from the contact list",
@@ -144,6 +144,20 @@
         "formatters": {
             "$ref": "formatters"
         },
+        "hotdesk": {
+            "description": "The hotdesk status of this device",
+            "type": "object",
+            "users": {
+                "description": "The user(s) currently hotdesked into the device",
+                "patternProperties": {
+                    "^[a-zA-Z0-9]{32}$": {
+                        "description": "user-specific hotdesk settings",
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "language": {
             "description": "The language for the device",
             "support_level": "supported",
@@ -174,9 +188,9 @@
             },
             "type": "object"
         },
-        "mwi_unsolicitated_updates": {
+        "mwi_unsolicited_updates": {
             "default": true,
-            "description": "When true enables unsolicitated mwi notifications",
+            "description": "When true enables unsolicited mwi notifications",
             "type": "boolean"
         },
         "name": {

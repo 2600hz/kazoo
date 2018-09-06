@@ -41,7 +41,12 @@ all_docs(#{server := {App, Conn}}, DbName, Options) ->
                          {'ok', kz_json:objects() | kz_json:path()} |
                          data_error().
 get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
-    App:get_results(Conn, DbName, DesignDoc, ViewOptions).
+    ResultKey = props:get_value('result_key', ViewOptions),
+    case App:get_results(Conn, DbName, DesignDoc, ViewOptions) of
+        {'ok', JObjs} when is_binary(ResultKey) ->
+            {'ok', [kz_json:get_value(ResultKey, JObj) || JObj <- JObjs]};
+        Other -> Other
+    end.
 
 %% This function assumes a "reduce" function that returns the count of docs exists
 %% Need to see how to get couchbeam to return the "rows" property instead of the result

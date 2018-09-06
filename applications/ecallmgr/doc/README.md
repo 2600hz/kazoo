@@ -1,3 +1,3 @@
 
-# eCallMgr *Erlang Call Manager*
-Manging your calls from Erlang
+# ecallmgr *Erlang Call Manager*
+Managing your calls from Erlang

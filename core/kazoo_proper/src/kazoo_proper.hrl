@@ -28,6 +28,5 @@
        ,data:error(pqc_log:log_info(), Fmt, Args)
        ).
 
-
 -define(KAZOO_PROPER_HRL, 'true').
 -endif.

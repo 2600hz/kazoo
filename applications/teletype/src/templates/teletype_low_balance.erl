@@ -111,14 +111,14 @@ macros(DataJObj) ->
 get_current_balance(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case current_account_dollars(AccountId) of
-        {'ok', Dollars} -> wht_util:pretty_print_dollars(Dollars);
+        {'ok', Dollars} -> kz_currency:pretty_print_dollars(Dollars);
         {'error', _R} -> <<"not known at the moment">>
     end.
 
 -spec get_balance_threshold(kz_json:object()) -> kz_term:ne_binary().
 get_balance_threshold(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    wht_util:pretty_print_dollars(kzd_accounts:low_balance_threshold(AccountId)).
+    kz_currency:pretty_print_dollars(kzd_accounts:low_balance_threshold(AccountId)).
 
 -spec build_macro_data(kz_json:object()) -> kz_term:proplist().
 build_macro_data(DataJObj) ->
@@ -161,5 +161,5 @@ get_user(DataJObj) ->
 current_account_dollars(_) -> {ok, 3.6592}.
 -else.
 current_account_dollars(AccountId) ->
-    wht_util:current_account_dollars(AccountId).
+    kz_currency:available_dollars(AccountId).
 -endif.

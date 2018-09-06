@@ -266,6 +266,8 @@ kzd_accessors() {
     kz_device_to_kzd_devices
     echo "  * kz_account->kzd_accounts"
     kz_account_to_kzd_accounts
+    echo "  * kz_util->kzd_accounts"
+    kz_util_to_kzd_accounts
 }
 
 kz_device_to_kzd_devices() {
@@ -282,6 +284,19 @@ kz_account_to_kzd_accounts() {
     for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
         replace_call $FROM $TO '' '' "$FILE"
     done
+}
+
+kz_util_to_kzd_accounts() {
+    FROM_MOD=kz_util
+    TO_MOD=kzd_accounts
+
+    # replace FROM_MOD FROM_FUN TO_MOD TO_FUN
+    replace $FROM_MOD "is_in_account_hierarchy" $TO_MOD "is_in_account_hierarchy"
+    replace $FROM_MOD "is_system_admin" $TO_MOD "is_superduper_admin"
+    replace $FROM_MOD "is_account_expired" $TO_MOD "is_expired"
+    replace $FROM_MOD "is_account_enabled" $TO_MOD "is_enabled"
+    replace $FROM_MOD "account_update" $TO_MOD "save"
+    replace $FROM_MOD "normalize_account_name" $TO_MOD "normalize_name"
 }
 
 amqp_util_to_kz_amqp_util() {
@@ -488,6 +503,13 @@ kz_type_modules() {
     removing_kz_prefix_from_types "kz_time" kz_time[@]
 }
 
+kapps_util_amqp() {
+    replace "kapps_util" "amqp_pool_send" "kz_amqp_worker" "cast"
+    replace "kapps_util" "amqp_pool_collect" "kz_amqp_worker" "call_collect"
+    replace "kapps_util" "amqp_pool_request_custom" "kz_amqp_worker" "call_custom"
+    replace "kapps_util" "amqp_pool_request" "kz_amqp_worker" "call"
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -516,7 +538,9 @@ echo "ensuring kz_types migration to module is performed"
 kz_type_modules
 echo "updating kazoo document accessors"
 kzd_accessors
-echo "updating amqp_util  to kz_amqp_util"
+echo "updating amqp_util to kz_amqp_util"
 amqp_util_to_kz_amqp_util
+echo "updating kapps_util amqp to kz_amqp_worker"
+kapps_util_amqp
 
 popd >/dev/null

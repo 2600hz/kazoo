@@ -11,10 +11,13 @@
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include("kapps_call_command.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?SUPER('kzc_recordings_sup')]).
+-define(CHILDREN, [?CACHE(?KAPPS_CALL_CACHE)
+                  ,?SUPER('kzc_recordings_sup')
+                  ]).
 
 %%==============================================================================
 %% API functions

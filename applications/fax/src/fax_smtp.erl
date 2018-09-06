@@ -210,13 +210,13 @@ handle_VRFY(_Address, State) ->
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
 -spec handle_other(binary(), binary(), state()) ->
-                          {iodata() | 'noreply', state()}.
+                          {string() | 'noreply', state()}.
 handle_other(<<"PROXY">>, Args, State) ->
     {'noreply', State#state{proxy=Args}};
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
-    lager:debug("500 Error: command not recognized : '~s ~s'",[Verb,Args]),
-    {["500 Error: command not recognized : '", Verb, "'"], State}.
+    lager:info("500 Error: command not recognized : '~s ~s'", [Verb, Args]),
+    {lists:flatten(["500 Error: command not recognized : '", kz_term:to_list(Verb), "'"]), State}.
 
 -spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, state()) ->
                          'error'.
@@ -257,18 +257,30 @@ handle_message(#state{filename=Filename
                      ,errors=[]
                      }=State) ->
     lager:debug("checking file ~s", [Filename]),
+    ContentType = kz_mime:from_filename(Filename),
     case file:read_file(Filename) of
-        {'ok', FileContents} ->
-            CT = kz_mime:from_filename(Filename),
-            case fax_util:save_fax_docs([Doc], FileContents, CT) of
-                'ok' ->
-                    lager:debug("smtp fax document saved"),
-                    kz_util:delete_file(Filename);
-                {'error', Error} -> maybe_faxbox_log(State#state{errors=[Error]})
+        {'ok', Content} ->
+            case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, Doc, Content, ContentType) of
+                {'ok', NewDoc} ->
+                    Updates = [{<<"pvt_job_status">>, <<"pending">>}
+                              ,{<<"pvt_modified">>, kz_time:now_s()}
+                              ],
+                    case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, NewDoc)) of
+                        {'ok', NewerDoc} ->
+                            lager:debug("fax jobid ~s set to pending", [kz_doc:id(NewerDoc)]);
+                        {'error', Error} ->
+                            lager:debug("error ~p setting fax jobid ~s to pending",[Error, kz_doc:id(NewDoc)]),
+                            maybe_faxbox_log(State#state{errors=[Error]})
+                    end;
+                {'error', Error} ->
+                    lager:error("failed converting attachment with error: ~p", [Error]),
+                    Message = kz_term:to_binary(io_lib:format("error converting attachment ~s", [Filename])),
+                    maybe_faxbox_log(State#state{errors=[Message]})
             end;
-        _Else ->
-            Error = kz_term:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
-            maybe_faxbox_log(State#state{errors=[Error]})
+        {'error', Error} ->
+            lager:error("failed to read file: ~s with error: ~p", [Filename, Error]),
+            Message = kz_term:to_binary(io_lib:format("error reading file ~s", [Filename])),
+            maybe_faxbox_log(State#state{errors=[Message]})
     end.
 
 -spec maybe_system_report(state()) -> 'ok'.
@@ -629,7 +641,7 @@ maybe_faxbox_by_rules([], #state{account_id=AccountId
                                 ,from=From
                                 ,errors=Errors
                                 }=State) ->
-    Error = <<"no mathing rules in account ", AccountId/binary, " for ", From/binary >>,
+    Error = <<"no matching rules in account ", AccountId/binary, " for ", From/binary >>,
     lager:debug(Error),
     State#state{errors=[Error | Errors]};
 maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
@@ -653,7 +665,7 @@ add_fax_document(#state{from=From
     AccountId = kz_doc:account_id(FaxBoxDoc),
     AccountDb = ?KZ_FAXES_DB,
     ResellerId = case kzd_services:reseller_id(FaxBoxDoc) of
-                     'undefined' -> kz_services:find_reseller_id(AccountId);
+                     'undefined' -> kz_services_reseller:get_id(AccountId);
                      TheResellerId -> TheResellerId
                  end,
 
@@ -745,7 +757,7 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                |Parts
               ], State) ->
     {_ , NewState}
-        = maybe_process_part(fax_util:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
+        = maybe_process_part(kz_mime:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
                             ,Parameters
                             ,BodyPart
                             ,State

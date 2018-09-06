@@ -15,7 +15,7 @@
 
 -include("ecallmgr.hrl").
 
--define(BYPASS_MEDIA_AFTER_BRIDGE, ecallmgr_config:get_boolean(<<"use_bypass_media_after_bridge">>, 'false')).
+-define(BYPASS_MEDIA_AFTER_BRIDGE, kapps_config:get_boolean(?APP_NAME, <<"use_bypass_media_after_bridge">>, 'false')).
 -define(CHANNEL_ACTIONS_KEY, [<<"Custom-Channel-Vars">>, <<"Channel-Actions">>]).
 
 -spec call_command(atom(), kz_term:ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_term:proplist()}.
@@ -26,7 +26,7 @@ call_command(Node, UUID, JObj) ->
         'true' when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
         'true' ->
             %% if we are intending to ring multiple device simultaneously then
-            %% execute ring_ready so we dont leave the caller hanging with dead air.
+            %% execute ring_ready so we don't leave the caller hanging with dead air.
             %% this does not test how many are ACTUALLY dialed (registered)
             %% since that is one of the things we want to be ringing during
 
@@ -267,7 +267,7 @@ try_create_bridge_string(Endpoints, JObj) ->
     DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
     case ecallmgr_util:build_bridge_string(Endpoints, DialSeparator) of
         <<>> ->
-            lager:warning("bridge string resulted in no enpoints"),
+            lager:warning("bridge string resulted in no endpoints"),
             throw(<<"registrar returned no endpoints">>);
         BridgeString -> BridgeString
     end.

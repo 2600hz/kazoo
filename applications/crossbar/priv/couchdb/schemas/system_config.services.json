@@ -3,9 +3,18 @@
     "_id": "system_config.services",
     "description": "Schema for services system_config",
     "properties": {
+        "debug_services_quantities": {
+            "default": false,
+            "description": "services debug_services_quantities",
+            "type": "boolean"
+        },
         "default_allow_updates": {
             "default": true,
             "description": "services default allow updates",
+            "type": "boolean"
+        },
+        "get_items_from_quantities": {
+            "description": "services get_items_from_quantities",
             "type": "boolean"
         },
         "master_account_bookkeeper": {
@@ -16,6 +25,7 @@
         "merge_strategy_priority": {
             "default": {
                 "cumulative": 20,
+                "recursive": 25,
                 "simple": 10
             },
             "description": "the object keys map to merge strategies and the values are expected to be an integer defining the merge priority between strategies",

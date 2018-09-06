@@ -9,7 +9,11 @@
             "type": "string"
         },
         "endpoints": {
-            "description": "number_manager.other endpoints"
+            "description": "number_manager.other endpoints",
+            "type": [
+                "string",
+                "array"
+            ]
         },
         "phonebook_url": {
             "description": "number_manager.other phonebook url",

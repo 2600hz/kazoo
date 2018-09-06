@@ -173,7 +173,7 @@
             "type": "string"
         },
         "timestamp": {
-            "description": "UTC timestamp, in gregorian seconds, of when the CDR was generated",
+            "description": "UTC timestamp, in Gregorian seconds, of when the CDR was generated",
             "type": "string"
         },
         "to": {

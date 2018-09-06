@@ -18,7 +18,7 @@ A task has to bind to `tasks.Category.help`, `tasks.Category.help.Action` & `tas
 ### A task's metadata
 
 * `description` (`string()`): short sentence explaining the tasks input & outputs.
-* `doc` (`string()`): multiline paragraph explaining `description` further.
+* `doc` (`string()`): multi-line paragraph explaining `description` further.
 * `expected_content` (`"text/csv" | undefined`): MIME type of input data. Either CSV or no input data.
 * `mandatory` (`[string()]`): list of CSV fields that must be defined in the input data. List can be empty.
 * `optional` (`[string()]`): the rest of the CSV fields. Can be empty too.

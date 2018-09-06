@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.user",
-    "description": "Validator for the user callflow's data object",
+    "description": "Validator for the user callflow data object",
     "properties": {
         "can_call_self": {
             "description": "Toggle whether devices of this use can call each other",

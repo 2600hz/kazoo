@@ -2,6 +2,7 @@ ROOT = $(shell cd "$(dirname '.')" && pwd -P)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter/fmt.sh
+TAGS = $(ROOT)/TAGS
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -76,7 +77,15 @@ core:
 apps: core
 	@$(MAKE) -j$(JOBS) -C applications/ all
 
-kazoo: apps
+kazoo: apps $(TAGS)
+
+tags: $(TAGS)
+
+$(TAGS):
+	ERL_LIBS=deps:core:applications ./scripts/tags.escript $(TAGS)
+
+clean-tags:
+	$(if $(wildcard $(TAGS)), rm $(TAGS))
 
 $(RELX):
 	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
@@ -122,16 +131,19 @@ DIALYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
-$(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
+$(PLT): DEPS_EBIN ?= $(shell find $(ROOT)/deps -name ebin -type d -not -path "*/.erlang.mk/*" )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
-	@$(DIALYZER) --build_plt --output_plt $(PLT) \
+	@-$(DIALYZER) --build_plt --output_plt $(PLT) \
 	    --apps $(OTP_APPS) \
-	    -r $(DEPS_SRCS)
+	    -r $(DEPS_EBIN)
 	@for ebin in $(CORE_EBINS); do \
 	    $(DIALYZER) --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
 	done
 build-plt: $(PLT)
+
+clean-plt:
+	@rm -f $(PLT)
 
 dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications $(ROOT)/core -name ebin)
 dialyze-kazoo: dialyze
@@ -142,8 +154,14 @@ dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
+dialyze-hard: TO_DIALYZE = $(CHANGED)
+dialyze-hard: dialyze-it-hard
+
 dialyze-it: $(PLT)
-	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+
+dialyze-it-hard: $(PLT)
+	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -255,8 +273,8 @@ circle-pre:
 ifneq ($(PIP2),)
 ## needs root access
 	@echo $(CHANGED)
-	@$(PIP2) install --upgrade pip
-	@$(PIP2) install PyYAML mkdocs pyembed-markdown jsonschema
+	@$(PIP2) install --user --upgrade pip
+	@$(PIP2) install --user PyYAML mkdocs pyembed-markdown jsonschema
 else
 	$(error "pip/pip2 is not available, please install python2-pip package")
 endif
@@ -303,3 +321,5 @@ circle-release:
 
 circle: circle-pre circle-fmt circle-build circle-codechecks circle-docs circle-schemas circle-dialyze circle-release
 	@$(if $(git status --porcelain | wc -l), $(MAKE) circle-unstaged)
+
+include make/splchk.mk

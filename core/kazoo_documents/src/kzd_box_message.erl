@@ -274,7 +274,7 @@ update_media_id(MediaId, JObj) ->
     Metadata = set_media_id(MediaId, metadata(JObj)),
     set_metadata(Metadata, JObj).
 
--spec metadata(doc()) -> doc().
+-spec metadata(doc()) -> doc() | 'undefined'.
 metadata(JObj) ->
     metadata(JObj, 'undefined').
 
@@ -282,7 +282,7 @@ metadata(JObj) ->
 metadata(JObj, Default) ->
     kz_json:get_value(?KEY_METADATA, JObj, Default).
 
--spec set_metadata(doc(), doc()) -> doc().
+-spec set_metadata(kz_json:object(), doc()) -> doc().
 set_metadata(Metadata, JObj) ->
     kz_json:set_value(?KEY_METADATA, Metadata, JObj).
 

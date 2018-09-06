@@ -277,7 +277,11 @@ set_kapi_schema(#acc{app_schemas=Schemas
                     ,kapi_name=KAPI
                     ,api_name=API
                     }=Acc, Schema) ->
-    Acc#acc{app_schemas=kz_json:set_value([KAPI, API], Schema, Schemas)}.
+    case kz_json:is_empty(kz_json:get_json_value(<<"properties">>, Schema, kz_json:new())) of
+        'true' -> Acc;
+        'false' ->
+            Acc#acc{app_schemas=kz_json:set_value([KAPI, API], Schema, Schemas)}
+    end.
 
 add_field([_|_]=Fields, Schema) ->
     Path = property_path(Fields),
@@ -486,6 +490,8 @@ ast_to_proplist(ASTList) ->
     ast_to_proplist(ASTList, []).
 
 ast_to_proplist(?EMPTY_LIST, Acc) ->
+    lists:reverse(Acc);
+ast_to_proplist(?VAR(_), Acc) ->
     lists:reverse(Acc);
 ast_to_proplist(?LIST(H, ?MOD_FUN_ARGS('props', 'delete', [ASTKey, ASTProps])), Acc) ->
     Key = kz_ast_util:binary_match_to_binary(ASTKey),

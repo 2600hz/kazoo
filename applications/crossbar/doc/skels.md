@@ -7,7 +7,7 @@ Language: en-US
 ### Skels
 
 * [Description](#description)
-* [Stuture](#structure)
+* [Structure](#structure)
     * [Default Properties](#default-properties)
     * [Conditional Properties](#conditional-properties)
 * [Crossbar](#crossbar)
@@ -48,7 +48,7 @@ http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/skels
                 "stuff1"
             ],
             "age": 30,
-            "city": "San francisco",
+            "city": "San Francisco",
             "zipcode": 94109
         },
         {
@@ -58,7 +58,7 @@ http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/skels
                 "stuff2"
             ],
             "age": 28,
-            "city": "San francisco",
+            "city": "San Francisco",
             "zipcode": 94109
         }
     ],
@@ -83,7 +83,7 @@ curl -v -X PUT \
         "email": "Jane@email.com",
         "stuff": ["stuff2"],
         "age": 28,
-        "city": "San francisco",
+        "city": "San Francisco",
         "zipcode": 94109
         }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/skels
@@ -98,7 +98,7 @@ curl -v -X PUT \
             "stuff2"
         ],
         "age": 28,
-        "city": "San francisco",
+        "city": "San Francisco",
         "zipcode": 94109
     },
     "request_id": "{REQUEST_ID}",
@@ -149,7 +149,7 @@ curl -v -X GET \
             "stuff2"
         ],
         "age": 28,
-        "city": "San francisco",
+        "city": "San Francisco",
         "zipcode": 94109
     },
     "request_id": "{REQUEST_ID}",
@@ -174,7 +174,7 @@ curl -v -X POST \
         "email": "jane@email.com",
         "stuff": ["some new stuff"],
         "age": 29,
-        "city": "San francisco",
+        "city": "San Francisco",
         "zipcode": 94109
         }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/skels/{THING}
@@ -189,7 +189,7 @@ curl -v -X POST \
             "some new stuff"
         ],
         "age": 29,
-        "city": "San francisco",
+        "city": "San Francisco",
         "zipcode": 94109
     },
     "request_id": "{REQUEST_ID}",

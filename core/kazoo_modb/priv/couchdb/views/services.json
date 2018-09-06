@@ -2,11 +2,8 @@
     "_id": "_design/services",
     "language": "javascript",
     "views": {
-        "audit_logs_by_account": {
-            "map": "function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'audit_log') return; var account = doc.tree[doc.tree.length-1]; emit([account, doc.pvt_created], null); }"
-        },
         "audit_logs_by_creation": {
-            "map": "function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'audit_log') return; emit(doc.pvt_created, null); }"
+            "map": "function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'audit_log') return; emit(doc.pvt_created, {id: doc._id, status: doc.status, reason: doc.reason, message: doc.message, type: doc.audit.changes.type, summary: doc.invoice.summary}); }"
         }
     }
 }

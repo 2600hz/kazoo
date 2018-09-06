@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc Receive call events from freeSWITCH, publish to the call's event queue
+%%% @doc Receive call events from FreeSWITCH, publish to the call's event queue
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
@@ -17,7 +17,7 @@
 -define(NODE_CHECK_PERIOD, ?MILLISECONDS_IN_SECOND).
 
 -define(DEFAULT_DEBUG_CHANNEL, 'false' ).
--define(DEBUG_CHANNEL, ecallmgr_config:get_boolean(<<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
+-define(DEBUG_CHANNEL, kapps_config:get_boolean(?APP_NAME, <<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
 
 -export([start_link/2]).
 -export([graceful_shutdown/2]).
@@ -417,7 +417,7 @@ handle_info('timeout', #state{node=Node
                              ,failed_node_checks=FNC
                              }=State) ->
     erlang:monitor_node(Node, 'true'),
-    %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
+    %% TODO: die if there is already a event producer on the AMQP queue... ping/pong?
     case freeswitch:api(Node, 'uuid_exists', CallId) of
         {'error', 'timeout'} ->
             lager:warning("timeout trying to find call on node ~s, trying again", [Node]),
@@ -582,7 +582,7 @@ create_event(EventName, Props) ->
 create_event(EventName, ApplicationName, Props) ->
     props:filter_undefined(
       [{<<"Event-Name">>, EventName}
-       |specific_call_event_props(EventName, ApplicationName, Props)
+       | specific_call_event_props(EventName, ApplicationName, Props)
        ++ generic_call_event_props(Props)
        ++ specific_call_channel_vars_props(EventName, Props)
       ]).

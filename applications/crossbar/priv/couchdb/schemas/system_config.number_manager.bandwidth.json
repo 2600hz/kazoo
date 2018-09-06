@@ -19,7 +19,11 @@
             "type": "boolean"
         },
         "endpoints": {
-            "description": "number_manager.bandwidth endpoints"
+            "description": "number_manager.bandwidth endpoints",
+            "type": [
+                "string",
+                "array"
+            ]
         },
         "numbers_api_url": {
             "default": "https://api.bandwidth.com/public/v2/numbers.api",

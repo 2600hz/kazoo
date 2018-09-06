@@ -36,34 +36,9 @@
             "description": "fax cloud registration pool interval",
             "type": "integer"
         },
-        "conversion_image_command": {
-            "default": "convert -density 204x98 -units PixelsPerInch -size 1728x1078 ~s ~s > /dev/null && echo -n success",
-            "description": "fax conversion image command",
-            "type": "string"
-        },
-        "conversion_openoffice_document_command": {
-            "default": "unoconv -c ~s -f pdf --stdout ~s | /usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s - > /dev/null&& echo -n success",
-            "description": "fax conversion openoffice document command",
-            "type": "string"
-        },
-        "conversion_pdf_command": {
-            "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s > /dev/null && echo -n success",
-            "description": "fax conversion pdf command",
-            "type": "string"
-        },
-        "count_pages_command": {
-            "default": "echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`",
-            "description": "fax count pages command",
-            "type": "string"
-        },
         "default_compare_field": {
             "default": "result_cause",
             "description": "fax default compare field",
-            "type": "string"
-        },
-        "default_fax_extension": {
-            "default": ".tiff",
-            "description": "fax default fax extension",
             "type": "string"
         },
         "default_retry_count": {
@@ -78,7 +53,7 @@
         },
         "default_smtp_domain": {
             "default": "fax.kazoo.io",
-            "description": "fax defaultsmtp domain",
+            "description": "fax default SMTP domain",
             "type": "string"
         },
         "delete_empty_faxes": {
@@ -161,11 +136,6 @@
             "description": "fax maximum storage retry",
             "type": "integer"
         },
-        "openoffice_server": {
-            "default": "'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'",
-            "description": "fax openoffice server",
-            "type": "string"
-        },
         "port": {
             "default": 30950,
             "description": "fax port",
@@ -193,7 +163,7 @@
         },
         "serialize_outbound_numbers": {
             "default": true,
-            "description": "fax serialize_outbound_numbers",
+            "description": "Serialize fax transmissions by outbound number globally",
             "type": "boolean"
         },
         "smtp_max_msg_size": {
@@ -210,6 +180,21 @@
             "default": 50,
             "description": "fax smtp sessions",
             "type": "integer"
+        },
+        "store_fax_pdf": {
+            "default": true,
+            "description": "store the post processed fax document",
+            "type": "boolean"
+        },
+        "store_fax_tiff": {
+            "default": true,
+            "description": "store a pdf copy of the post processed fax document",
+            "type": "boolean"
+        },
+        "store_url_document": {
+            "default": true,
+            "description": "store the document url result in the database",
+            "type": "boolean"
         },
         "wait_for_fax_timeout_ms": {
             "default": 3600000,

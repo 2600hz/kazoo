@@ -2,7 +2,9 @@
 
 ## About Metaflows
 
-Metaflows allow functionality to be executed on an in-progress call, triggered by DTMFs from the caller/callee. For instance, a callee could setup a metaflow on their user doc such that when they receive a call, they can press `*9` to initiate a recording of the call.
+Metaflows allow functionality to be executed on an in-progress call, triggered by DTMFs from the caller/callee or an API call.
+
+For instance, a callee could setup a metaflow on their user doc such that when they receive a call, they can press `*9` to initiate a recording of the call.
 
 ## Schema
 
@@ -34,7 +36,9 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-## Fetch
+## Fetch account-level metaflows
+
+These are available to all users and devices within the account
 
 > GET /v2/accounts/{ACCOUNT_ID}/metaflows
 
@@ -44,17 +48,62 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 ```
 
-## Change
+### No metaflows assigned
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {},
+    "node": "{NODE_HASH}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.2.42"
+}
+```
+
+## Set metaflows on the account
 
 > POST /v2/accounts/{ACCOUNT_ID}/metaflows
 
 ```shell
 curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
+    -H "X-Auth-Token: $AUTH_TOKEN" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows \
+    -d '{"data":{"binding_digit":"*", "patterns":{"2(\\d+)":{"module":"transfer", "data":{"takeback_dtmf":"*1"}}}}}'
+```
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "binding_digit": "*",
+        "patterns": {
+            "2(\\d+)": {
+                "data": {
+                    "captures": [
+                        "no_match"
+                    ],
+                    "takeback_dtmf": "*1",
+                    "transfer_type": "blind"
+                },
+                "module": "transfer"
+            }
+        }
+    },
+    "node": "{NODE_HASH}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.2.42"
+}
 ```
 
-## Remove
+In the above example, the `binding_digit` is `*` which, when pressed on the phone's keypad, tells Kazoo that a metaflow is starting. `2(\\d+)` tells Kazoo to look for a 2 and then capture one or more digits.
+
+Thus `*21234` would instruct Kazoo to blind-transfer the caller to extension `1234`.
+
+## Remove metaflows from the account
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/metaflows
 
@@ -63,3 +112,27 @@ curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 ```
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {},
+    "node": "{NODE_HASH}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.2.42"
+}
+```
+
+## Users and devices
+
+If you want to assign metaflows to a particular user or device, the API commands are the same except you need to include the user or device in the URI:
+
+- Account: `/v2/accounts/{ACCOUNT_ID}/metaflows`
+- User: `/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/metaflows`
+- Device: `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/metaflows`
+
+## Metaflow actions
+
+To see what actions can be set in a metaflow, look at the relevant documentation in [Konami](/applications/konami/doc/README.md)

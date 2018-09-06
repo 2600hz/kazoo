@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.call_forward",
-    "description": "Validator for the call_forward callflow's data object",
+    "description": "Validator for the call_forward callflow data object",
     "properties": {
         "action": {
             "description": "What action to perform on the caller's call forwarding",

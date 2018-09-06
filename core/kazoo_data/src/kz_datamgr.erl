@@ -208,14 +208,14 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
                               data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
-        true -> ensure_saved(DbName, JObj);
-        false -> {'ok', JObj}
+        'true' -> ensure_saved(DbName, JObj);
+        'false' -> {'ok', JObj}
     end.
 
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
         {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
-        _ -> true
+        _ -> 'true'
     end.
 
 %%------------------------------------------------------------------------------
@@ -264,7 +264,8 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
                 lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
             {'error', 'not_found'} ->
                 lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
-                save_doc(DbName, FixJObj);
+                _ = save_doc(DbName, FixJObj),
+                lager:debug("saved fixture");
             {'error', _Reason} ->
                 lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
         end
@@ -390,7 +391,8 @@ db_view_update(DbName, Views) ->
 db_view_update(DbName, Views0, Remove) when ?VALID_DBNAME(DbName) ->
     case lists:keymap(fun maybe_adapt_multilines/1, 2, Views0) of
         [] -> 'false';
-        Views ->  kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
+        Views ->
+            kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
     end;
 db_view_update(DbName, Views, Remove) ->
     case maybe_convert_dbname(DbName) of
@@ -1086,7 +1088,7 @@ attachment_url(DbName, DocId, AttachmentId) ->
     attachment_url(DbName, DocId, AttachmentId, []).
 
 -spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_term:ne_binary()} |
+                            kz_term:ne_binary() |
                             {'proxy', tuple()} |
                             {'error', any()}.
 attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNAME(DbName) ->
@@ -1202,8 +1204,7 @@ get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME(DbName) ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     Plan = kzs_plan:plan(DbName, Opts),
     case kzs_view:get_results(Plan, DbName, DesignDoc, Options) of
-        {'error', 'not_found'} ->
-            maybe_create_view(DbName, Plan, DesignDoc, Options);
+        {'error', 'not_found'} ->  maybe_create_view(DbName, Plan, DesignDoc, Options);
         Other -> Other
     end;
 get_results(DbName, DesignDoc, Options) ->
@@ -1539,20 +1540,21 @@ register_views_from_folder(Classification, App, Folder) ->
 -spec refresh_views(kz_term:ne_binary()) -> boolean() | {'error', 'invalid_db_name'}.
 refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     suppress_change_notice(),
-    Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
+    Classification = kzs_util:db_classification(DbName),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
-    Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
-                  {'error', _} -> 'false';
-                  {'ok', JObjs} ->
-                      ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
-                      Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],
+    Updated = case view_definitions(Classification) of
+                  [] -> 'false';
+                  Views ->
                       Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
                       db_view_update(Database, Views)
               end,
+
     _ = case Updated of
-            'true' -> lager:debug("~s:~s views updated", [Classification, DbName]),
-                      kzs_publish:publish_db(DbName, 'edited');
-            'false' -> lager:debug("~s:~s no views needed updating", [Classification, DbName])
+            'true' ->
+                lager:debug("~s:~s views updated", [Classification, DbName]),
+                kzs_publish:publish_db(DbName, 'edited');
+            'false' ->
+                lager:debug("~s:~s no views updated", [Classification, DbName])
         end,
     enable_change_notice(),
     Updated;
@@ -1561,3 +1563,15 @@ refresh_views(DbName) ->
         {'ok', Db} -> refresh_views(Db);
         {'error', _}=E -> E
     end.
+
+-spec view_definitions(atom() | kz_term:ne_binary()) -> views_listing().
+view_definitions(Classification) when is_atom(Classification) ->
+    case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [kz_term:to_binary(Classification)]) of
+        {'error', _} -> [];
+        {'ok', JObjs} ->
+            ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
+            [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs]
+    end;
+view_definitions(DbName) ->
+    view_definitions(kzs_util:db_classification(DbName)).
+

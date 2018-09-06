@@ -46,7 +46,8 @@ authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
 authorize(Context, [{<<"ips">>, _}]) ->
-    cb_context:is_superduper_admin(Context).
+    cb_context:is_superduper_admin(Context);
+authorize(_Context, _Nouns) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
@@ -89,7 +90,7 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /dedicated_ips mights load a list of skel objects
+%% /dedicated_ips might load a list of skel objects
 %% /dedicated_ips/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -141,10 +142,7 @@ post(Context) ->
         end,
     ReqData = cb_context:req_data(Context),
     IPs = kz_json:get_value(<<"ips">>, ReqData, []),
-    Props = [{<<"type">>, <<"ips">>}
-            ,{<<"dedicated">>, erlang:length(IPs)}
-            ],
-    crossbar_services:maybe_dry_run(Context, Callback, Props).
+    maybe_dry_run(Context, IPs, Callback).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, IP) ->
@@ -155,7 +153,7 @@ post(Context, IP) ->
                     _ -> Context
                 end
         end,
-    crossbar_services:maybe_dry_run(Context, Callback, <<"ips">>).
+    maybe_dry_run(Context, [IP], Callback).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, IP) ->
@@ -370,7 +368,7 @@ assign_ips(Context) ->
 
 -spec reconcile_services([kz_term:api_ne_binary()]) -> 'ok'.
 reconcile_services(AccountIds) ->
-    _ = [kz_services:reconcile(AccountId, <<"ips">>)
+    _ = [crossbar_services:reconcile(AccountId)
          || AccountId <- AccountIds,
             'undefined' =/= AccountId
         ],
@@ -468,3 +466,14 @@ clean_ip(JObj) ->
       ,{<<"type">>, kz_doc:type(JObj)}
       ,{<<"assigned_to">>, kz_json:get_value(<<"pvt_assigned_to">>, JObj)}
       ]).
+
+-type callback() :: fun(() -> cb_context:context()).
+-spec maybe_dry_run(cb_context:context(), kz_term:ne_binaries(), callback()) -> cb_context:context().
+maybe_dry_run(Context, IPs, _Callback) ->
+    ProposedJObjs = [kz_json:from_list([{<<"_id">>, IP}
+                                       ,{<<"pvt_type">>, <<"dedicated_ip">>}
+                                       ]
+                                      )
+                     || IP <- IPs
+                    ],
+    crossbar_services:maybe_dry_run(Context, [], ProposedJObjs).

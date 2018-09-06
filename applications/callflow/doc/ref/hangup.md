@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the hangup callflow's data object
+Validator for the hangup callflow data object
 
 
 

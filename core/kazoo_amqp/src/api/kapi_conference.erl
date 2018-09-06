@@ -104,10 +104,18 @@
 
 %% Conference Search Response
 -define(SEARCH_RESP_HEADERS, [ [<<"Conferences">>, <<"Conference-ID">>] ]).
--define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
-                                      ,<<"Run-Time">>, <<"Start-Time">>, <<"Participants">>, <<"Locked">>
-                                      ,<<"Switch-Hostname">>, <<"Switch-URL">>, <<"Switch-External-IP">>
+-define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Answered">>
+                                      ,<<"Dynamic">>
+                                      ,<<"Locked">>
                                       ,<<"Participant-Count">>
+                                      ,<<"Participants">>
+                                      ,<<"Run-Time">>
+                                      ,<<"Running">>
+                                      ,<<"Start-Time">>
+                                      ,<<"Switch-External-IP">>
+                                      ,<<"Switch-Hostname">>
+                                      ,<<"Switch-URL">>
+                                      ,<<"UUID">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"search_resp">>}
@@ -116,10 +124,14 @@
 
 %% Conference Discovery Request
 -define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
--define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
-                                        ,<<"Conference-Doc">>, <<"Play-Welcome">>
+-define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-Doc">>
+                                        ,<<"Conference-ID">>
+                                        ,<<"Conference-Name">>
+                                        ,<<"Moderator">>
+                                        ,<<"Play-Entry-Tone">>
+                                        ,<<"Play-Exit-Tone">>
+                                        ,<<"Play-Welcome">>
                                         ,<<"Play-Welcome-Media">>
-                                        ,<<"Play-Exit-Tone">>, <<"Play-Entry-Tone">>
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                               ,{<<"Event-Name">>, <<"discovery_req">>}

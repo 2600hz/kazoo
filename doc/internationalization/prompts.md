@@ -79,7 +79,7 @@ You can also set it on the account doc with something like:
 ```bash
 curl -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data":{"langauge":"es-es"}}' \
+    -d '{"data":{"language":"es-es"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 

@@ -21,9 +21,15 @@
                      ]).
 
 %% Helper macro for declaring children of supervisor
+-ifdef(TEST).
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, [])
+                  ,?WORKER('kz_services_modb')
+                  ]).
+-else.
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?WORKER('kz_services_modb')
                   ]).
+-endif.
 
 %%==============================================================================
 %% API functions

@@ -103,7 +103,7 @@ content_types_provided(Context, Id, ?ICON) ->
                 'undefined' -> Context1;
                 CT ->
                     [Type, SubType] = binary:split(CT, <<"/">>),
-                    lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
+                    lager:debug("found attachment of content type: ~s/~s~n", [Type, SubType]),
                     cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
         _ -> Context1
@@ -267,7 +267,7 @@ validate_req(Context, ?HTTP_GET) ->
 validate_blacklist(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
-    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
+    case kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId) of
         'false' -> cb_context:add_system_error('forbidden', Context);
         'true' -> load_apps_store(Context)
     end.
@@ -303,29 +303,19 @@ validate_app(Context, Id, ?HTTP_GET) ->
 validate_app(Context, Id, ?HTTP_PUT) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            Callback =
-                fun() ->
-                        install(Context1, Id)
-                end,
-            crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
+        'success' -> prepare_install(Context1, Id);
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_DELETE) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' -> uninstall(Context1, Id);
+        'success' -> prepare_uninstall(Context1, Id);
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_POST) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            Callback =
-                fun() ->
-                        update(Context1, Id)
-                end,
-            crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
+        'success' -> prepare_update(Context1, Id);
         _ -> Context1
     end.
 
@@ -456,8 +446,8 @@ bad_app_error(Context, AppId) ->
 %% @doc install a new app on the account
 %% @end
 %%------------------------------------------------------------------------------
--spec install(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-install(Context, Id) ->
+-spec prepare_install(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+prepare_install(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
     case kz_json:get_value(Id, Apps) of
@@ -480,8 +470,8 @@ install(Context, Id) ->
 %% valid
 %% @end
 %%------------------------------------------------------------------------------
--spec uninstall(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-uninstall(Context, Id) ->
+-spec prepare_uninstall(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+prepare_uninstall(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
     case kz_json:get_value(Id, Apps) of
@@ -497,8 +487,8 @@ uninstall(Context, Id) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-update(Context, Id) ->
+-spec prepare_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+prepare_update(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
     case kz_json:get_value(Id, Apps) of

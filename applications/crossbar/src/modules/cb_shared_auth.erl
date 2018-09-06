@@ -104,7 +104,7 @@ authenticate(_, _) -> 'false'.
 %%     IE: Create (PUT) a local auth token
 %% This request bypasses authentication, test the 'shared_token' against our
 %% authoritative server.  Basically preform a normal 'get' to this module with the
-%% shared token as the auth token.  If it succeeds we will send 'ourself' the
+%% shared token as the auth token.  If it succeeds we will send 'ourselves' the
 %% account id, otherwise the token was not known to the auth server.
 %%
 %% The Authority (GET):

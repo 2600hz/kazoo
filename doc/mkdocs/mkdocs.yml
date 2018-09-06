@@ -167,6 +167,7 @@ pages:
     - 'applications/acdc/doc/todo.md'
     - 'applications/acdc/doc/ui.md'
     - 'Call Stats': 'applications/crossbar/doc/acdc_call_stats.md'
+    - 'Webhooks': 'applications/acdc/doc/notifications.md'
   - 'Ananke':
     - 'applications/ananke/doc/README.md'
   - 'Callflows':
@@ -249,6 +250,7 @@ pages:
     - 'Menu (IVR)': 'applications/callflow/doc/menu.md'
     - 'Custom Webhook': 'applications/callflow/doc/webhook.md'
     - 'Channel Move': 'applications/callflow/doc/move.md'
+    - 'Transfer': 'applications/callflow/doc/transfer.md'
     - 'Sleep': 'applications/callflow/doc/sleep.md'
     - 'After Bridge': 'applications/callflow/doc/after_bridge.md'
     - 'Set': 'applications/callflow/doc/set.md'
@@ -280,11 +282,9 @@ pages:
     - 'applications/ecallmgr/doc/config.md'
   - 'Fax':
     - 'applications/fax/doc/README.md'
+    - 'Virtual Fax Machine (FaxBox)': 'applications/fax/doc/faxbox.md'
     - 'Postfix Settings': 'applications/fax/doc/postfix.md'
-    - 'SMTP Settings': 'applications/fax/doc/smtp.md'
     - 'HAProxy Settings': 'applications/fax/doc/haproxy.md'
-    - 'DNS Settings': 'applications/fax/doc/dns.md'
-    - 'Google Cloud Printer': 'applications/fax/doc/gcp.md'
     - 'Internet Fax for Office 2010': 'applications/fax/doc/user.md'
   - 'Frontier':
     - 'applications/frontier/doc/README.md'
@@ -352,6 +352,9 @@ pages:
   - 'Trunkstore':
     - 'applications/trunkstore/doc/README.md'
 - 'Core':
+  - 'Kazoo Caches':
+      - 'core/kazoo_caches/doc/README.md'
+      - 'Caching Strategy Load Tests': 'core/kazoo_data/doc/loadtest.md'
   - 'Kazoo Endpoints':
     - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
     - 'CallerID Privacy': 'core/kazoo_endpoint/doc/privacy-cid.md'
@@ -360,6 +363,9 @@ pages:
     - 'core/kazoo_ips/doc/maintenance.md'
   - 'Kazoo Media':
     - 'core/kazoo_media/doc/README.md'
+  - 'Kazoo Convert':
+    - 'core/kazoo_convert/doc/README.md'
+    - 'core/kazoo_convert/doc/fax_converter.md'
   - 'Kazoo Apps':
     - 'core/kazoo_apps/doc/README.md'
     - 'core/kazoo_apps/doc/kapps_notify_publisher.md'
@@ -443,6 +449,8 @@ pages:
 - 'Engineering':
   - 'Announcements': 'doc/announcements.md'
   - 'Install/Build Kazoo': 'doc/installation.md'
+  - 'The Makefile': 'doc/engineering/make.md'
+  - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
   - 'Call Recording': 'doc/engineering/call_recording.md'
   - 'Caller ID Formatting': 'doc/reference/caller_id_formatting.md'
   - 'Documentation':
@@ -456,6 +464,7 @@ pages:
   - 'Loopback Channels': 'doc/engineering/loopback.md'
   - 'Kazoo Scripts': 'scripts/README.md'
   - 'Running Dev Shells': 'scripts/dev/README.md'
+  - 'Testing': 'doc/engineering/testing.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
   - 'Webhooks': 'doc/engineering/webhooks.md'
   - 'Attachments': 'core/kazoo_attachments/README.md'

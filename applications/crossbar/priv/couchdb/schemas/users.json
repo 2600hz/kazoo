@@ -97,7 +97,7 @@
         },
         "contact_list": {
             "default": {},
-            "description": "Contect List Parameters",
+            "description": "Contact List Parameters",
             "properties": {
                 "exclude": {
                     "description": "If set to true the device is excluded from the contact list",

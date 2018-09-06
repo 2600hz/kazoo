@@ -5,6 +5,7 @@ import sys
 import json
 from subprocess import call
 import os
+import shutil
 
 if len(sys.argv) < 2:
     print 'Usage: ' + sys.argv[0] + ' file.json+'
@@ -39,19 +40,28 @@ def couchjs((field, js)):
     TMP = '_'
     with open(TMP, 'w') as wd:
         wd.write(JS)
-    try:
-        code = call(['couchjs', TMP])
-        if code != 0:
-            print 'Key:', field
-            print 'Code:'
-            if list == type(js):
-                for line in js:
-                    print line
-            else:
-                print js
-            exit(1)
-    finally:
-        os.remove(TMP)
+        wd.close()
+        try:
+            # couchjs_exe='~/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
+            couchjs_exe='couchjs'
+            code = call([couchjs_exe, TMP])
+            if code != 0:
+                print_field_js(field, js)
+                exit(1)
+        except Exception as e:
+            print 'failed running: ', couchjs, TMP
+            raise e
+        finally:
+            os.remove(TMP)
+
+def print_field_js(field, js):
+    print 'Key:', field
+    print 'Code:'
+    if list == type(js):
+        for line in js:
+            print line
+    else:
+        print js
 
 
 def basename2(file_name):
@@ -66,7 +76,7 @@ def check_name(file_name, JSON_name):
         print '\t', fname, u' ≠ ', jname
         exit(1)
 
-
+exit_code = 0
 for fn in sys.argv[1:]:
     if not os.path.isfile(fn):
         continue
@@ -79,8 +89,14 @@ for fn in sys.argv[1:]:
         continue
     if 'swagger.json' in exploded:
         continue
-    print 'checking ' + fn
     with open(fn) as rd:
         data = json.load(rd)
         check_name(fn, data['_id'])
-        fmap(couchjs, data)
+        try:
+            fmap(couchjs, data)
+        except Exception as e:
+            print 'failed to process', fn
+            print e
+            exit_code=1
+
+exit(exit_code)

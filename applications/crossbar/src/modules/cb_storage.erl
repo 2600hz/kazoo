@@ -95,11 +95,11 @@ do_authorize(Context, {'reseller_plan', _PlanId, _AccountId}) ->
     kzd_accounts:is_reseller(cb_context:account_doc(Context));
 do_authorize(Context, {'account', AccountId}) ->
     cb_context:is_superduper_admin(Context)
-        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
+        orelse kz_services_reseller:get_id(AccountId) =:= cb_context:auth_account_id(Context)
         orelse AccountId =:= cb_context:auth_account_id(Context);
 do_authorize(Context, {'user', UserId, AccountId}) ->
     cb_context:is_superduper_admin(Context)
-        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
+        orelse kz_services_reseller:get_id(AccountId) =:= cb_context:auth_account_id(Context)
         orelse ( (AccountId =:= cb_context:auth_account_id(Context)
                   andalso cb_context:is_account_admin(Context)
                  )
@@ -149,7 +149,7 @@ resource_exists(?PLANS_TOKEN, _PlanId) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /storage mights load a list of storage objects
+%% /storage might load a list of storage objects
 %% /storage/123 might load the storage object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -426,7 +426,7 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     AName = <<Random/binary, "_test_credentials_file.txt">>,
     AccountId = cb_context:account_id(ContextAcc),
     %% Create dummy document where the attachment(s) will be attached to.
-    %% TODO: move this tmpdoc creation to maybe_check_storage_settings function.
+    %% TODO: move this tmp doc creation to maybe_check_storage_settings function.
     TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
                                ,<<"pvt_type">> => <<"storage_settings_probe">>
                                }),

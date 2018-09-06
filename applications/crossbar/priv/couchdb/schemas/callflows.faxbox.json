@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.faxbox",
-    "description": "Validator for the faxbox callflow's data object",
+    "description": "Validator for the faxbox callflow data object",
     "properties": {
         "faxbox_id": {
             "description": "ID of the faxbox",

@@ -38,6 +38,7 @@
 
 -export_type([state/0
              ,response/0
+             ,expectations/0
              ]).
 
 -spec cleanup(state()) -> any().
@@ -94,6 +95,9 @@ api_key(MasterAccountId) ->
     end.
 
 -spec create_api_state(binary(), binary(), kz_data_tracing:trace_ref()) -> state().
+create_api_state({'error', {'failed_connect', 'econnrefused'}}, _RequestId, _Trace) ->
+    lager:warning("failed to connect to Crossbar; is it running?"),
+    throw({'error', 'econnrefused'});
 create_api_state(<<_/binary>> = RespJSON, RequestId, Trace) ->
     RespEnvelope = kz_json:decode(RespJSON),
     #{'auth_token' => kz_json:get_ne_binary_value(<<"auth_token">>, RespEnvelope)
@@ -141,27 +145,41 @@ default_request_headers(RequestId) ->
      | default_request_headers()
     ].
 
--type expected_codes() :: [integer()].
+-type expected_code() :: 200..600.
+-type expected_codes() :: [expected_code()].
+-type expected_headers() :: [{string(), string()}].
+-type expectations() :: #{'response_codes' => expected_codes()
+                         ,'response_headers' => expected_headers()
+                         }.
+
 -type response() :: binary() |
                     {'error', binary()}.
 
 -type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
 -type fun_3() :: fun((string(), kz_term:proplist(), iodata()) -> kz_http:ret()).
 
--spec make_request(expected_codes(), fun_2(), string(), kz_term:proplist()) ->
+-spec make_request(expectations() | expected_code() | expected_codes(), fun_2(), string(), kz_term:proplist()) ->
                           response().
-make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
+make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
+    make_request(#{'response_codes' => [Code]}, HTTP, URL, RequestHeaders);
+make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
+    make_request(#{'response_codes' => Codes}, HTTP, URL, RequestHeaders);
+make_request(Expectations, HTTP, URL, RequestHeaders) ->
     ?INFO("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
-    handle_response(ExpectedCodes, HTTP(URL, RequestHeaders)).
+    handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
--spec make_request(expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
+-spec make_request(expectations() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
                           response().
-make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
+make_request(Code, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
+    make_request(#{'response_codes' => [Code]}, HTTP, URL, RequestHeaders, RequestBody);
+make_request([Code|_]=Codes, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
+    make_request(#{'response_codes' => Codes}, HTTP, URL, RequestHeaders, RequestBody);
+make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
     ?INFO("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
     ?DEBUG("body: ~s", [RequestBody]),
-    handle_response(ExpectedCodes, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
+    handle_response(Expectations, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
 
 -spec create_envelope(kz_json:json_term()) ->
                              kz_json:object().
@@ -173,37 +191,63 @@ create_envelope(Data) ->
 create_envelope(Data, Envelope) ->
     kz_json:set_value(<<"data">>, Data, Envelope).
 
--spec handle_response(expected_codes(), kz_http:ret()) -> response().
-handle_response(ExpectedCode, {'ok', ExpectedCode, _RespHeaders, RespBody}) ->
-    ?DEBUG("recv expected ~p: ~s", [ExpectedCode, RespBody]),
-    RespBody;
-handle_response(ExpectedCodes, {'ok', ActualCode, _RespHeaders, RespBody})
-  when is_list(ExpectedCodes) ->
-    case lists:member(ActualCode, ExpectedCodes) of
+-spec handle_response(expectations(), kz_http:ret()) -> response().
+handle_response(Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
+    case expectations_met(Expectations, ActualCode, RespHeaders) of
         'true' ->
-            ?DEBUG("recv expected ~p: ~s", [ActualCode, RespBody]),
+            ?DEBUG("resp headers: ~p", [RespHeaders]),
             RespBody;
         'false' ->
-            ?ERROR("failed to get any ~w: ~p: ~s"
-                  ,[ExpectedCodes, ActualCode, RespBody]
-                  ),
             {'error', RespBody}
     end;
-handle_response(_ExtectedCode, {'error','socket_closed_remotely'}=E) ->
+handle_response(_Expectations, {'error','socket_closed_remotely'}=E) ->
     ?ERROR("~nwe broke crossbar!"),
     throw(E);
-handle_response(_ExpectedCode, {'ok', _ActualCode, _RespHeaders, RespBody}) ->
-    ?ERROR("failed to get ~w: ~p: ~s", [_ExpectedCode, _ActualCode, RespBody]),
-    {'error', RespBody};
 handle_response(_ExpectedCode, {'error', _}=E) ->
-    ?ERROR("broked req: ~p", [E]),
+    ?ERROR("broken req: ~p", [E]),
     E.
+
+expectations_met(Expectations, RespCode, RespHeaders) ->
+    response_code_matches(Expectations, RespCode)
+        andalso response_headers_match(Expectations, RespHeaders).
+
+response_code_matches(#{'response_codes' := ResponseCodes}, ResponseCode) ->
+    case lists:member(ResponseCode, ResponseCodes) of
+        'true' -> 'true';
+        'false' ->
+            ?ERROR("failed expectation: code ~p but expected ~p"
+                  ,[ResponseCode, ResponseCodes]
+                  ),
+            'false'
+    end;
+response_code_matches(_Expectations, _Code) -> 'true'.
+
+response_headers_match(#{'response_headers' := ExpectedHeaders}, RespHeaders) ->
+    lists:all(fun(ExpectedHeader) -> response_header_matches(ExpectedHeader, RespHeaders) end
+             ,ExpectedHeaders
+             );
+response_headers_match(_Expectations, _RespHeaders) -> 'true'.
+
+
+response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
+    case props:get_value(ExpectedHeader, RespHeaders) of
+        ExpectedValue -> 'true';
+        'undefined' ->
+            ?ERROR("failed expectation: header ~s missing from response", [ExpectedHeader]),
+            'false';
+        _ActualValue ->
+            ?ERROR("failed expectation: header ~s is not ~p but ~p"
+                  ,[ExpectedHeader, ExpectedValue, _ActualValue]
+                  ),
+            'false'
+    end.
 
 -spec start_trace(kz_term:ne_binary()) -> {'ok', kz_data_tracing:trace_ref()}.
 start_trace(RequestId) ->
     lager:md([{'request_id', RequestId}]),
     put('now', kz_time:now()),
     TraceFile = "/tmp/" ++ kz_term:to_list(RequestId) ++ ".log",
+    lager:info("tracing at ~s", [TraceFile]),
 
     {'ok', _}=OK = kz_data_tracing:trace_file([glc_ops:eq('request_id', RequestId)]
                                              ,TraceFile

@@ -14,6 +14,7 @@
 -export([authenticating_user_first_name/1, authenticating_user_first_name/2, set_authenticating_user_first_name/2]).
 -export([authenticating_user_last_name/1, authenticating_user_last_name/2, set_authenticating_user_last_name/2]).
 -export([authenticating_user_user_id/1, authenticating_user_user_id/2, set_authenticating_user_user_id/2]).
+-export([authenticating_user_id/1, authenticating_user_id/2, set_authenticating_user_id/2]).
 -export([tree/1, tree/2, set_tree/2]).
 
 
@@ -135,3 +136,17 @@ tree(Doc, Default) ->
 -spec set_tree(doc(), kz_term:ne_binaries()) -> doc().
 set_tree(Doc, Tree) ->
     kz_json:set_value([<<"tree">>], Tree, Doc).
+
+-spec authenticating_user_id(doc()) -> kz_term:api_binary().
+authenticating_user_id(Doc) ->
+    authenticating_user_id(Doc, 'undefined').
+
+-spec authenticating_user_id(doc(), Default) -> binary() | Default.
+authenticating_user_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"authenticating_user">>, <<"auth_user_id">>], Doc, Default).
+
+-spec set_authenticating_user_id(doc(), binary()) -> doc().
+set_authenticating_user_id(Doc, AuthenticatingUserUserId) ->
+    kz_json:set_value([<<"authenticating_user">>, <<"auth_user_id">>], AuthenticatingUserUserId, Doc).
+
+

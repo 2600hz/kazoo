@@ -218,9 +218,9 @@ on_successful_validation(Context) ->
 is_allowed(Context) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsSystemAdmin = kz_util:is_system_admin(AuthAccountId),
+    IsSystemAdmin = kzd_accounts:is_superduper_admin(AuthAccountId),
     {'ok', MasterAccount} = kapps_util:get_master_account_id(),
-    case kz_services:find_reseller_id(AccountId) of
+    case kz_services_reseller:get_id(AccountId) of
         AuthAccountId ->
             lager:debug("allowing reseller to update allotments"),
             'true';

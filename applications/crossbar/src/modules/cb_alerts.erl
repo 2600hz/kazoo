@@ -70,7 +70,7 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /alerts mights load a list of alert objects
+%% /alerts might load a list of alert objects
 %% /alerts/123 might load the alert object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
@@ -257,7 +257,7 @@ view_keys(Context) ->
                    (K) -> [[AccountId, OwnerId]|K]
                 end
                ,fun(K) ->
-                        case kz_services:is_reseller(AccountId) of
+                        case kz_services_reseller:is_reseller(AccountId) of
                             'false' -> K;
                             'true' -> [[<<"resellers">>, <<"all">>], [<<"resellers">>, <<"users">>]|K]
                         end

@@ -141,8 +141,8 @@ transaction_data(DataJObj, 'false') ->
 -spec get_balance(kz_json:object()) -> kz_term:ne_binary().
 get_balance(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    case wht_util:current_account_dollars(AccountId) of
-        {'ok', Amount} -> wht_util:pretty_print_dollars(Amount);
+    case kz_currency:available_dollars(AccountId) of
+        {'ok', Amount} -> kz_currency:pretty_print_dollars(Amount);
         {'error', _} -> <<"\"not known at the moment\"">>
     end.
 

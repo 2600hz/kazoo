@@ -4,7 +4,7 @@
 
 #### Schema
 
-Validator for the fax_detect callflow's data object
+Validator for the fax_detect callflow data object
 
 
 
