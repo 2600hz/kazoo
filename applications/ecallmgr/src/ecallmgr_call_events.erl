@@ -1089,9 +1089,9 @@ get_billing_seconds(Props) ->
 -spec get_ringing_seconds(kz_term:proplist()) -> kz_term:ne_binary().
 get_ringing_seconds(Props) ->
     RingingSeconds =
-      props:get_integer_value(<<"variable_duration">>, Props) -
-      get_billing_seconds(Props) -
-      props:get_integer_value(<<"variable_progresssec">>, Props),
+        props:get_integer_value(<<"variable_duration">>, Props)
+        - get_billing_seconds(Props)
+        - props:get_integer_value(<<"variable_progresssec">>, Props),
     kz_term:to_binary(RingingSeconds).
 
 -spec swap_call_legs(kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
