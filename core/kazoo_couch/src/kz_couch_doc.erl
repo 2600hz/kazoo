@@ -123,7 +123,6 @@ handle_conflict(Db, Doc, Opts, {'ok', CurrentDoc}) ->
 
     do_ensure_saved(Db, NewDoc, Opts).
 
-
 -spec do_fetch_rev(couchbeam_db(), kz_term:ne_binary()) ->
                           kz_term:ne_binary() |
                           couchbeam_error().
