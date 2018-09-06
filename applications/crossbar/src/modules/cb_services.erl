@@ -151,7 +151,7 @@ content_types_provided(Context, _) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /services mights load a list of service_plan objects
+%% /services might load a list of service_plan objects
 %% /services/123 might load the service_plan object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

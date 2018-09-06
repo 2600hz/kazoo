@@ -231,7 +231,7 @@ get_service_props(Request, Account, ConfigCat) ->
     DefaultName = kz_json:get_ne_value(<<"service_name">>, Request
                                       ,kapps_config:get_ne_binary(ConfigCat, <<"default_service_name">>, <<"VOIP Services">>)),
     DefaultProvider = kz_json:get_ne_value(<<"service_provider">>, Request
-                                          ,kapps_config:get_ne_binary(ConfigCat, <<"default_service_provider">>, <<"2600hz">>)),
+                                          ,kapps_config:get_ne_binary(ConfigCat, <<"default_service_provider">>, <<"2600Hz">>)),
     DefaultNumber = kz_json:get_ne_value(<<"support_number">>, Request
                                         ,kapps_config:get_ne_binary(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
     DefaultEmail = kz_json:get_ne_value(<<"support_email">>, Request
@@ -342,7 +342,7 @@ find_admin([AcctId|Tree]) ->
                 [Admin|_] -> Admin
             end;
         _E ->
-            lager:debug("faild to find users in ~s: ~p", [AccountDb, _E]),
+            lager:debug("failed to find users in ~s: ~p", [AccountDb, _E]),
             find_admin(Tree)
     end;
 find_admin(Account) ->

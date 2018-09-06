@@ -418,7 +418,7 @@ is_deleted(Services) ->
 %%------------------------------------------------------------------------------
 -spec ratedeck_id(services()) -> kz_term:api_ne_binary().
 ratedeck_id(Services) ->
-    %% TODO: these are here for backward compatability
+    %% TODO: these are here for backward compatibility
     %% but the ratedeck integration on services and
     %% service_plan documents could use a revist...
     ServicesJObj = services_jobj(Services),
@@ -444,7 +444,7 @@ plan_ratedeck_id(Services) ->
 %%------------------------------------------------------------------------------
 -spec ratedeck_name(services()) -> kz_term:api_ne_binary().
 ratedeck_name(Services) ->
-    %% TODO: these are here for backward compatability
+    %% TODO: these are here for backward compatibility
     %% but the ratedeck integration on services and
     %% service_plan documents could use a revist...
     ServicesJObj = services_jobj(Services),

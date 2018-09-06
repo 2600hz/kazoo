@@ -476,7 +476,7 @@ send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
     UrlString = req_uri('devices', AccountId, MACAddress),
-    lager:debug("unprovisioning via ~s", [UrlString]),
+    lager:debug("deprovisioning via ~s", [UrlString]),
     Resp = kz_http:delete(UrlString, Headers),
     handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_delete', _, AuthToken, AccountId, _) ->
