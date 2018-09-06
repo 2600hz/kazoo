@@ -751,7 +751,8 @@ do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
     case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
             Updates = [{<<"pvt_job_status">>, <<"pending">>}],
-            {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, Updates),
+            UpdateOptions = [{'update', Updates}],
+            {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, UpdateOptions),
             cb_context:set_resp_data(Context, kz_doc:public_fields(UpdatedDoc));
         {'error', Error} ->
             lager:error("error resubmitting fax : ~p", [Error]),
@@ -767,7 +768,8 @@ do_put_action(Context, ?INBOX, ?INBOX_ACTION_FORWARD, Id) ->
     case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
             Updates = [{<<"pvt_job_status">>, <<"pending">>}],
-            {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, Updates),
+            UpdateOptions = [{'update', Updates}],
+            {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, UpdateOptions),
             cb_context:set_resp_data(Context, kz_doc:public_fields(UpdatedDoc));
         {'error', Error} ->
             lager:error("error resubmitting fax : ~p", [Error]),

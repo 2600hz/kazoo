@@ -43,7 +43,6 @@
 -export([move_account/2]).
 -export([get_descendants/1]).
 -export([get_tree/1]).
--export([replicate_account_definition/1]).
 -export([disable_account/1, maybe_disable_account/1
         ,enable_account/1
         ,change_pvt_enabled/2
@@ -418,18 +417,17 @@ move_account(?MATCH_ACCOUNT_RAW(AccountId), ToAccount=?NE_BINARY) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_account(AccountId, JObj, ToAccount, ToTree) ->
-    AccountDb = kz_util:format_account_db(AccountId),
     PreviousTree = kzd_accounts:tree(JObj),
-    JObj1 = kz_json:set_values([{?SERVICES_PVT_TREE, ToTree}
-                               ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
-                               ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
-                               ], JObj),
+    Updates = [{?SERVICES_PVT_TREE, ToTree}
+              ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
+              ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
+              ],
+
     %%FIXME: do something about setting pvt_auth_*_id
-    case kz_datamgr:save_doc(AccountDb, JObj1) of
+    case kzd_accounts:update(AccountId, Updates) of
         {'error', _E}=Error -> Error;
-        {'ok', _} ->
+        {'ok', _AccountDoc} ->
             NewResellerId = kz_services_reseller:get_id(ToAccount),
-            {'ok', _} = replicate_account_definition(JObj1),
             {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
             Services = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
             {'ok', kz_services:services_jobj(Services)}
@@ -475,16 +473,15 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
             %% Preserve tree below and including common ancestor
             {_, Tail} = lists:splitwith(fun(X) -> X =/= MovedAccountId end, PreviousTree),
             ToTree = Tree ++ Tail,
-            Values = [{?SERVICES_PVT_TREE, ToTree}
-                     ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
-                     ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
-                     ],
-            AccountDb = kz_util:format_account_db(Descendant),
+            Updates = [{?SERVICES_PVT_TREE, ToTree}
+                      ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
+                      ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
+                      ],
             %%FIXME: do something about setting pvt_auth_*_id
-            case kz_datamgr:save_doc(AccountDb, kz_json:set_values(Values, AccountJObj)) of
+            case kzd_accounts:update(Descendant, Updates) of
                 {'error', _E}=Error -> Error;
-                {'ok', NewAccountJObj} ->
-                    {'ok', _} = replicate_account_definition(NewAccountJObj),
+                {'ok', _DescendantAccountJObj} ->
+
                     AccountId = kz_util:format_account_id(Descendant),
                     _ = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
@@ -513,20 +510,6 @@ get_tree(<<_/binary>> = Account) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec replicate_account_definition(kz_json:object()) ->
-                                          {'ok', kz_json:object()} |
-                                          {'error', any()}.
-replicate_account_definition(JObj) ->
-    AccountId = kz_doc:id(JObj),
-    case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
-        {'ok', Rev} -> kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj, Rev));
-        _Else       -> kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj))
-    end.
-
-%%------------------------------------------------------------------------------
 %% @doc Flag all descendants of the account id as disabled.
 %% @end
 %%------------------------------------------------------------------------------
@@ -551,7 +534,8 @@ maybe_disable_account(AccountId) ->
     case kzd_accounts:is_enabled(AccountJObj) of
         'false' -> 'ok';
         'true' ->
-            kzd_accounts:save(kzd_accounts:disable(AccountJObj))
+            Update = [{kzd_accounts:path_enabled(), 'false'}],
+            kzd_accounts:update(AccountId, Update)
     end.
 
 %%------------------------------------------------------------------------------
@@ -645,27 +629,19 @@ format_app(Lang, AppJObj) ->
 %% @doc Update all descendants of the account id pvt_enabled flag with State.
 %% @end
 %%------------------------------------------------------------------------------
--spec change_pvt_enabled(boolean(), kz_term:api_ne_binary()) -> ok | {error, any()}.
+-spec change_pvt_enabled(boolean(), kz_term:api_ne_binary()) ->
+                                'ok' | {'error', any()}.
 change_pvt_enabled(_, 'undefined') -> 'ok';
-change_pvt_enabled(State, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+change_pvt_enabled(IsEnabled, AccountId) ->
     try
-        {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, AccountId),
-        lager:debug("set pvt_enabled to ~s on account ~s", [State, AccountId]),
-        JObj2 = case State of
-                    true -> kzd_accounts:enable(JObj1);
-                    false -> kzd_accounts:disable(JObj1)
-                end,
-        {'ok', JObj3} = kz_datamgr:ensure_saved(AccountDb, JObj2),
-        case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
-            {'ok', Rev} ->
-                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj3, Rev));
-            _Else ->
-                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj3))
-        end
+        lager:debug("set pvt_enabled to ~s on account ~s", [IsEnabled, AccountId]),
+
+        Update = [{kzd_accounts:path_enabled(), IsEnabled}],
+        {'ok', _UpdatedAccountDoc} = kzd_accounts:update(AccountId, Update),
+        lager:debug("account ~s update successful", [AccountId])
     catch
         _:R ->
-            lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [State, AccountId, R]),
+            lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [IsEnabled, AccountId, R]),
             {'error', R}
     end.
 
@@ -1128,19 +1104,19 @@ maybe_update_descendants_count(AccountId, NewCount, Try) ->
     case kzd_accounts:fetch(AccountId) of
         {'error', _E} ->
             io:format("could not load account ~s: ~p~n", [AccountId, _E]);
-        {'ok', JObj} ->
-            maybe_update_descendants_count(AccountId, JObj, NewCount, Try)
+        {'ok', AccountJObj} ->
+            maybe_update_descendants_count(AccountId, AccountJObj, NewCount, Try)
     end.
 
--spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer()) -> 'ok'.
-maybe_update_descendants_count(AccountId, JObj, NewCount, Try) ->
-    OldCount = kz_json:get_integer_value(<<"descendants_count">>, JObj),
-    maybe_update_descendants_count(AccountId, JObj, NewCount, OldCount, Try).
+-spec maybe_update_descendants_count(kz_term:ne_binary(), kzd_accounts:doc(), integer(), integer()) -> 'ok'.
+maybe_update_descendants_count(AccountId, AccountJObj, NewCount, Try) ->
+    OldCount = kz_json:get_integer_value(<<"descendants_count">>, AccountJObj),
+    compare_descendants_count(AccountId, NewCount, OldCount, Try).
 
--spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer(), integer()) -> 'ok'.
-maybe_update_descendants_count(_, _, Count, Count, _) -> 'ok';
-maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
-    case update_descendants_count(AccountId, JObj, NewCount) of
+-spec compare_descendants_count(kz_term:ne_binary(), integer(), integer(), integer()) -> 'ok'.
+compare_descendants_count(_, Count, Count, _) -> 'ok';
+compare_descendants_count(AccountId, NewCount, _, Try) ->
+    case update_descendants_count(AccountId, NewCount) of
         'ok' -> 'ok';
         'error' ->
             maybe_update_descendants_count(AccountId, NewCount, Try-1)
@@ -1150,14 +1126,10 @@ maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer()) -> 'ok' | 'error'.
-update_descendants_count(AccountId, JObj, NewCount) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Doc = kz_json:set_value(<<"descendants_count">>, NewCount, JObj),
-    %%FIXME: do something about setting pvt_auth_*_id
-    case kz_datamgr:save_doc(AccountDb, Doc) of
+-spec update_descendants_count(kz_term:ne_binary(), integer()) -> 'ok' | 'error'.
+update_descendants_count(AccountId, NewCount) ->
+    Update = [{<<"descendants_count">>, NewCount}],
+    case kzd_accounts:update(AccountId, Update) of
         {'error', _E} -> 'error';
-        {'ok', NewDoc} ->
-            _ = replicate_account_definition(NewDoc),
-            'ok'
+        {'ok', _AccountDoc} -> 'ok'
     end.

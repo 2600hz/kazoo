@@ -226,7 +226,7 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling
 -spec add_views(map(), kz_term:ne_binary(), kz_term:ne_binaries(), views_listing()) -> kz_term:api_ne_binaries().
 add_views(Server, Db, Add, NewViews) ->
     Views = [props:get_value(Id, NewViews) || Id <- Add],
-    [lager:debug("saving view ~s / ~s", [Db, Id]) || Id <- Add],
+    _ = [lager:debug("saving view ~s / ~s", [Db, Id]) || Id <- Add],
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
     [Id || JObj <- JObjs, {Id, <<"conflict">>} <- [log_save_view_error(JObj)] ].
 

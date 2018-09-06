@@ -286,27 +286,30 @@ recursive_from_list(X) when is_float(X) -> X;
 recursive_from_list(X) when is_integer(X) -> X;
 recursive_from_list(X) when is_atom(X) -> X;
 recursive_from_list(X) when is_list(X) ->
-    case io_lib:printable_unicode_list(X) of
+    case lists:all(fun kz_term:is_ascii_code/1, X) of
         'true' -> kz_term:to_binary(X);
         'false' -> [recursive_from_list(Xn) || Xn <- X]
     end;
 recursive_from_list(X) when is_binary(X) -> X;
 recursive_from_list({_Y, _M, _D}=Date) -> kz_date:to_iso8601_extended(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
-recursive_from_list(_Else) -> null.
+recursive_from_list(?JSON_WRAPPER(_)=JObj) -> JObj;
+recursive_from_list(_Else) -> 'null'.
 
 %% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
 
 -spec merge(objects()) -> object().
-merge([JObjInit | JObjs]) ->
-    lists:foldl(fun(JObj, Acc) -> merge(Acc, JObj) end
-               ,JObjInit
-               ,JObjs
-               ).
+merge(JObjs) ->
+    merge(fun merge_right/2, JObjs).
 
--spec merge(object(), object()) -> object().
-merge(JObj1, JObj2) ->
-    merge(fun merge_right/2, JObj1, JObj2).
+-spec merge(object() | merge_fun(), object() | objects()) -> object().
+merge(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
+    merge(fun merge_right/2, JObj1, JObj2);
+merge(MergeFun, [LeftJObj | RightJObjs]) when is_function(MergeFun, 2) ->
+    lists:foldl(fun(Right, Left) -> merge(MergeFun, Left, Right) end
+               ,LeftJObj
+               ,RightJObjs
+               ).
 
 -type merge_arg_2() :: {'left' | 'right', json_term()} | {'both', json_term(), json_term()}.
 -type merge_fun_result() :: 'undefined' | {'ok', json_term()}.
@@ -1394,11 +1397,13 @@ flatten_key(K, V) -> [{[K], V}].
 expand(?JSON_WRAPPER(L)) when is_list(L) ->
     lists:foldl(fun({K,V}, JObj) -> set_value(K, V, JObj) end, new(), L).
 
+%% @doc What is in J1 that is not in J2?
 -spec diff(object(), object()) -> object().
 diff(J1, J2) ->
     ?JSON_WRAPPER(L1) = flatten(J1),
     ?JSON_WRAPPER(L2) = flatten(J2),
-    expand(from_list(L1 -- L2)).
+    UniqueSet1 = sets:subtract(sets:from_list(L1), sets:from_list(L2)),
+    expand(from_list(sets:to_list(UniqueSet1))).
 
 -type exec_fun_1() :: fun((object()) -> object()).
 -type exec_fun_2() :: {fun((_, object()) -> object()), _}.

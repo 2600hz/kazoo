@@ -540,11 +540,17 @@ oauth_req(Doc, OAuthRefresh, Context) ->
 -spec faxbox_doc_save(cb_context:context()) -> cb_context:context().
 faxbox_doc_save(Context) ->
     Ctx2 = crossbar_doc:save(Context),
-    Ctx3 = crossbar_doc:ensure_saved(
-             cb_context:set_doc(
-               cb_context:set_account_db(Ctx2, ?KZ_FAXES_DB),
-               kz_doc:delete_revision(cb_context:doc(Ctx2))
-              )),
+
+    Updates = [{kz_doc:path_account_db(), ?KZ_FAXES_DB}
+              ,{kz_doc:path_revision(), 'null'}
+              ],
+
+    DocId = kz_doc:id(cb_context:doc(Ctx2)),
+    Ctx3 = crossbar_doc:update(cb_context:set_account_db(Ctx2, ?KZ_FAXES_DB)
+                              ,DocId
+                              ,Updates
+                              ),
+
     case cb_context:resp_status(Ctx3) of
         'success' -> Ctx2;
         _ -> Ctx3

@@ -40,7 +40,6 @@
 maybe_migrate(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
-        {'ok', []} -> 'ok';
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
     end.
@@ -48,13 +47,17 @@ maybe_migrate(Account) ->
 -spec migrate(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate(AccountDb, [List | Lists]) ->
     ListJObj = kz_json:get_json_value(<<"doc">>, List),
-    OldEntries = kz_json:get_value(<<"entries">>, ListJObj, kz_json:new()),
 
-    Entries = kz_json:map(fun(Id, EntryJObj) -> migrate_to_entry_doc(AccountDb, Id, EntryJObj, ListJObj) end, OldEntries),
+    Entries = kz_json:foldl(fun(Id, EntryJObj, Acc) ->
+                                    [migrate_to_entry_doc(AccountDb, Id, EntryJObj, ListJObj) | Acc]
+                            end
+                           ,[]
+                           ,kz_json:get_json_value(<<"entries">>, ListJObj, kz_json:new())
+                           ),
 
-    {ok, _} = kz_datamgr:save_docs(AccountDb, Entries),
+    {'ok', _} = kz_datamgr:save_docs(AccountDb, Entries),
     migrate_old_entry_docs(AccountDb, List),
-    {ok, _} = kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"entries">>, ListJObj)),
+    {'ok', _} = kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"entries">>, ListJObj)),
     migrate(AccountDb, Lists);
 migrate(_AccountDb, []) ->
     'ok'.
@@ -65,8 +68,10 @@ migrate(_AccountDb, []) ->
 migrate_old_entry_docs(AccountDb, ListJObj) ->
     case kz_datamgr:get_results(AccountDb, ?ENTRIES_VIEW, ['include_docs']) of
         {'ok', Entries} ->
-            Updated = [migrate_old_entry_doc(AccountDb, ListJObj, kz_json:get_value(<<"doc">>, Entry)) || Entry <- Entries],
-            {'ok', _} = kz_datamgr:open_doc(AccountDb, Updated),
+            Updated = [migrate_old_entry_doc(AccountDb, ListJObj, kz_json:get_json_value(<<"doc">>, Entry))
+                       || Entry <- Entries
+                      ],
+            {'ok', _} = kz_datamgr:save_docs(AccountDb, Updated),
             'ok';
         {'error', _Reason} ->
             lager:debug("failed to fetch and migrate old entries to new format: ~p", [_Reason])
@@ -75,7 +80,7 @@ migrate_old_entry_docs(AccountDb, ListJObj) ->
 %% @doc Migrate old entry document to the new format, e.g. set capture_group_length (old length value),
 %% capture_group_key (old cid_key) and move cid_name/cid_number to name/number
 %% @end
--spec migrate_old_entry_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+-spec migrate_old_entry_doc(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
 migrate_old_entry_doc(AccountDb, ListJObj, EntryJObj) ->
     case kz_json:get_first_defined([<<"capture_group_key">>, <<"cid_key">>, <<"list_entry_old_id">>], EntryJObj) of
         'undefined' ->
@@ -84,19 +89,28 @@ migrate_old_entry_doc(AccountDb, ListJObj, EntryJObj) ->
         EntryId -> migrate_to_entry_doc(AccountDb, EntryId, EntryJObj, ListJObj)
     end.
 
--spec migrate_to_entry_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec migrate_to_entry_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
+                                  kz_json:object().
 migrate_to_entry_doc(AccountDb, EntryId, EntryJObj, ListJObj) ->
-    Doc = kz_json:set_values(
-            [{<<"name">>, kz_json:get_first_defined([<<"cid_name">>, <<"name">>], EntryJObj)}
-            ,{<<"number">>, kz_json:get_first_defined([<<"cid_number">>, <<"number">>], EntryJObj)}
-            ,{<<"capture_group_key">>, kz_json:get_first_defined([<<"capture_group_key">>, <<"cid_key">>, <<"list_entry_old_id">>]
-                                                                ,EntryJObj
-                                                                ,EntryId
-                                                                )
-             }
-            ,{<<"capture_group_length">>, kz_term:to_integer(kz_json:get_first_defined([<<"capture_group_length">>, <<"length">>], ListJObj))}
-            ,{<<"list_id">>, kz_doc:id(ListJObj)}
-            ], kz_json:delete_keys([<<"cid_name">>, <<"cid_number">>, <<"length">>, <<"list_entry_old_id">>], EntryJObj)),
+    CaptureGroupKey = kz_json:get_first_defined([<<"capture_group_key">>, <<"cid_key">>, <<"list_entry_old_id">>]
+                                               ,EntryJObj
+                                               ,EntryId
+                                               ),
+    CaptureGroupLength = kz_json:get_first_defined([<<"capture_group_length">>, <<"length">>]
+                                                  ,ListJObj
+                                                  ),
+
+    CleanedUpEntry = kz_json:delete_keys([<<"cid_name">>, <<"cid_number">>, <<"length">>, <<"list_entry_old_id">>]
+                                        ,EntryJObj
+                                        ),
+
+    Updates = [{<<"name">>, kz_json:get_first_defined([<<"cid_name">>, <<"name">>], EntryJObj)}
+              ,{<<"number">>, kz_json:get_first_defined([<<"cid_number">>, <<"number">>], EntryJObj)}
+              ,{<<"capture_group_key">>, CaptureGroupKey}
+              ,{<<"capture_group_length">>, kz_term:to_integer(CaptureGroupLength)}
+              ,{<<"list_id">>, kz_doc:id(ListJObj)}
+              ],
+    Doc = kz_json:set_values(Updates, CleanedUpEntry),
     kz_doc:update_pvt_parameters(Doc, AccountDb, [{<<"type">>, ?TYPE_LIST_ENTRY}]).
 
 -spec init() -> any().
@@ -267,7 +281,7 @@ delete(Context, _ListId, ?ENTRIES) ->
     Docs = [kz_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
     AccountDb = kz_util:format_account_id(cb_context:account_db(Context), 'encoded'),
     %% do we need 'soft' delete as in crossbar_doc?
-    kz_datamgr:del_docs(AccountDb, Docs),
+    _ = kz_datamgr:del_docs(AccountDb, Docs),
     Context.
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().

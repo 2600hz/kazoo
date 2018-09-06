@@ -238,11 +238,14 @@ update_kazoo_secret(#{auth_db := Db
     lager:debug("generating new kazoo signing secret for ~s/~s", [Db, Key]),
     update_kazoo_secret(Token, generate_new_kazoo_signing_secret()).
 
--spec update_kazoo_secret(map(), kz_term:ne_binary()) -> map() | {'error', any()}.
+-spec update_kazoo_secret(map(), kz_term:ne_binary()) ->
+                                 map() | kz_datamgr:data_error().
 update_kazoo_secret(#{auth_db := Db
                      ,auth_db_id := Key
                      }=Token, Secret) ->
-    case kz_datamgr:update_doc(Db, Key, [{?PVT_SIGNING_SECRET, Secret}]) of
+    Updates = [{?PVT_SIGNING_SECRET, Secret}],
+    UpdateOptions = [{'update', Updates}],
+    case kz_datamgr:update_doc(Db, Key, UpdateOptions) of
         {'ok', _} -> Token#{identity_secret => Secret};
         {'error', _Reason}=Error ->
             lager:info("unable to store the kazoo signing secret on ~s/~s: ~p", [Db, Key, _Reason]),

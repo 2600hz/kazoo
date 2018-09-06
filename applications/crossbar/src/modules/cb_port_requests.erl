@@ -65,7 +65,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    knm_port_request:init(),
+    _ = knm_port_request:init(),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.port_requests">>, ?MODULE, 'content_types_provided'),
@@ -404,12 +404,12 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Options = [{'content_type', CT} | ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)],
-    case kz_doc:attachment(cb_context:doc(Context), AttachmentId) of
-        'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
-        _AttachmentMeta ->
-            lager:debug("deleting old attachment ~s", [AttachmentId]),
-            kz_datamgr:delete_attachment(cb_context:account_db(Context), Id, AttachmentId)
-    end,
+    _ = case kz_doc:attachment(cb_context:doc(Context), AttachmentId) of
+            'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
+            _AttachmentMeta ->
+                lager:debug("deleting old attachment ~s", [AttachmentId]),
+                kz_datamgr:delete_attachment(cb_context:account_db(Context), Id, AttachmentId)
+        end,
     crossbar_doc:save_attachment(Id, AttachmentId, Contents, Context, Options).
 
 %%------------------------------------------------------------------------------

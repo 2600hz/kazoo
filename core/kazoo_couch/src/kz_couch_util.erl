@@ -164,7 +164,7 @@ connect(#kz_couch_connection{host=Host
                ,options => Options
                },
     Opts = [{'connection_map', ConnMap} | maybe_add_auth(User, Pass, check_options(Options))],
-    Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, "", Opts),
+    Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, <<>>, Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     connection_info(Conn).
 

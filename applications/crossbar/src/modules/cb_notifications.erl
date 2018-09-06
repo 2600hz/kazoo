@@ -833,13 +833,9 @@ migrate_template_to_account(Context, Id) ->
     lager:debug("saving template ~s from system config to account ~s", [Id, cb_context:account_id(Context)]),
 
     Template = cb_context:fetch(Context, 'db_doc'),
+    Updates = kz_notification:base_properties(kz_doc:public_fields(Template), Id),
 
-    Context1 =
-        crossbar_doc:ensure_saved(
-          cb_context:set_doc(Context
-                            ,kz_notification:set_base_properties(kz_doc:public_fields(Template), Id)
-                            )
-         ),
+    Context1 = crossbar_doc:update(Context, Id, Updates),
     case cb_context:resp_status(Context1) of
         'success' ->
             lager:debug("saved template ~s to account ~s", [Id, cb_context:account_db(Context1)]),
@@ -934,27 +930,29 @@ masquerade(Context, AccountId) ->
 
 -spec maybe_set_teletype_as_default(cb_context:context()) -> 'ok'.
 maybe_set_teletype_as_default(Context) ->
-    AccountDb = cb_context:account_db(Context),
-    case kzd_accounts:fetch(AccountDb) of
+    AccountId = cb_context:account_id(Context),
+    case kzd_accounts:fetch(AccountId) of
         {'error', _E} -> lager:debug("failed to note preference: ~p", [_E]);
-        {'ok', AccountJObj} ->
-            maybe_set_teletype_as_default(Context, AccountDb, AccountJObj)
+        {'ok', AccountDoc} ->
+            maybe_set_teletype_as_default(Context, AccountDoc)
     end.
 
--spec maybe_set_teletype_as_default(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-maybe_set_teletype_as_default(Context, AccountDb, AccountJObj) ->
-    case kzd_accounts:notification_preference(AccountJObj) of
-        'undefined' -> set_teletype_as_default(Context, AccountDb, AccountJObj);
+-spec maybe_set_teletype_as_default(cb_context:context(), kzd_accounts:doc()) -> 'ok'.
+maybe_set_teletype_as_default(Context, AccountDoc) ->
+    case kzd_accounts:notification_preference(AccountDoc) of
+        'undefined' -> set_teletype_as_default(Context, AccountDoc);
         <<"teletype">> -> lager:debug("account already prefers teletype");
-        _Pref -> set_teletype_as_default(Context, AccountDb, AccountJObj)
+        _Pref -> set_teletype_as_default(Context, AccountDoc)
     end.
 
--spec set_teletype_as_default(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-set_teletype_as_default(Context, AccountDb, AccountJObj) ->
-    JObj = kzd_accounts:set_notification_preference(AccountJObj, <<"teletype">>),
-    case kz_datamgr:save_doc(AccountDb, crossbar_doc:update_pvt_parameters(JObj, Context)) of
-        {'ok', UpdatedAccountJObj} ->
-            _ = cb_accounts:replicate_account_definition(UpdatedAccountJObj),
+-spec set_teletype_as_default(cb_context:context(), kzd_accounts:doc()) -> 'ok'.
+set_teletype_as_default(Context, AccountDoc) ->
+    Updates = [{kzd_accounts:path_notification_preference(), <<"teletype">>}
+               | crossbar_doc:pvt_updates(AccountDoc, Context)
+              ],
+
+    case kzd_accounts:update(cb_context:account_id(Context), Updates) of
+        {'ok', _UpdatedAccountJObj} ->
             lager:debug("updated pref for account");
         {'error', _E} ->
             lager:debug("failed to note preference: ~p", [_E])

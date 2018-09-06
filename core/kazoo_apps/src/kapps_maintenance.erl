@@ -1147,7 +1147,7 @@ check_release() ->
              ,fun migration_ran/0
              ,fun kazoo_proper_maintenance:run_seq_modules/0
              ],
-    try lists:foreach(fun(F) -> F() end, Checks) of
+    try lists:foreach(fun(F) -> run_check(F) end, Checks) of
         'ok' ->
             lager:info("check_release/0 succeeded"),
             init:stop()
@@ -1160,6 +1160,23 @@ check_release() ->
             lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             init:stop(1)
+    end.
+
+-spec run_check(fun()) -> 'ok'.
+run_check(CheckFun) ->
+    {Pid, Ref} = kz_util:spawn_monitor(CheckFun, []),
+    wait_for_check(Pid, Ref).
+
+-spec wait_for_check(pid(), reference()) -> 'ok'.
+wait_for_check(Pid, Ref) ->
+    receive
+        {'DOWN', Ref, 'process', Pid, 'normal'} -> 'ok';
+        {'DOWN', Ref, 'process', Pid, Reason} ->
+            lager:error("check in ~p failed to run: ~p", [Pid, Reason]),
+            throw(Reason)
+    after 5 * ?MILLISECONDS_IN_MINUTE ->
+            lager:error("check in ~p timed out", [Pid]),
+            throw('timeout')
     end.
 
 -spec kapps_started() -> boolean().

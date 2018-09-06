@@ -40,6 +40,7 @@
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1, is_ne_list/1
         ,is_pos_integer/1
+        ,is_ascii_code/1
         ,identity/1
         ,always_true/1, always_false/1
         ]).
@@ -467,6 +468,11 @@ is_ne_list(_) -> 'false'.
 is_pos_integer(X) ->
     is_integer(X)
         andalso X > 0.
+
+-spec is_ascii_code(non_neg_integer()) -> boolean().
+is_ascii_code(X) ->
+    X >= 0
+        andalso X =< 127.
 
 -spec identity(X) -> X.
 identity(X) -> X.

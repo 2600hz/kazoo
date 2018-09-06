@@ -274,16 +274,17 @@ migrate_histories(AccountId, AccountDb, C2Cs) ->
 
 -spec migrate_history(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 migrate_history(AccountId, AccountDb, C2C) ->
-    case kz_json:get_value(<<"pvt_history">>, C2C, []) of
+    case kz_json:get_list_value(<<"pvt_history">>, C2C, []) of
         [] -> 'ok';
         History ->
             Id = kz_doc:id(C2C),
             _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
-            _Resp = kz_datamgr:ensure_saved(AccountDb, kz_json:delete_key(<<"pvt_history">>, C2C)),
-            lager:debug("removed history from c2c ~s in ~s: ~p", [Id
-                                                                 ,AccountId
-                                                                 ,_Resp
-                                                                 ])
+            Update = [{<<"pvt_history">>, 'null'}],
+            UpdateOptions = [{'update', Update}],
+            _Resp = kz_datamgr:update_doc(AccountDb, Id, UpdateOptions),
+            lager:debug("removed history from c2c ~s in ~s: ~p"
+                       ,[Id, AccountId, _Resp]
+                       )
     end.
 
 -spec save_history_item(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> any().

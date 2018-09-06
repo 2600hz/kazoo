@@ -492,8 +492,8 @@ filter_test_() ->
     ,?_assertEqual(?D3_FILTERED, kz_json:filter(fun({_, V}) when is_number(V) -> 'false'; (_) -> 'true' end, ?D3, [<<"sub_docs">>, 2]))
     ].
 
-new_test() ->
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:new()).
+new_test_() ->
+    [?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:new())].
 
 is_json_object_test_() ->
     [?_assertEqual('false', kz_json:is_json_object('foo'))
@@ -610,7 +610,7 @@ get_value_test_() ->
     ,?_assertEqual(3.14,      kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4))
      %% Get the value in an object in an array in another object that is part of
      %% an array of objects, but change the default return if it is not present.
-     %% Also tests the ability to have indexs represented as strings
+     %% Also tests the ability to have indexes represented as strings
     ,?_assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], [], <<"not">>))
     ,?_assertEqual(3.14,      kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4, <<"not">>))
      %% Reading from non JObj should not be okay
@@ -643,7 +643,7 @@ set_value_object_test_() ->
 -define(D5,   [?JSON_WRAPPER([{<<"k1">>, <<"v1">>}]), ?JSON_WRAPPER([{<<"k2">>, <<"v2">>}])]).
 -define(T3R1, [?JSON_WRAPPER([{<<"k1">>, <<"test">>}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}])]).
 -define(T3R2, [?JSON_WRAPPER([{<<"k1">>, <<"v1">>},{<<"pi">>, 3.14}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}])]).
--define(T3R3, [?JSON_WRAPPER([{<<"k1">>,<<"v1">>},{<<"callerid">>,?JSON_WRAPPER([{<<"name">>,<<"2600hz">>}])}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}])]).
+-define(T3R3, [?JSON_WRAPPER([{<<"k1">>,<<"v1">>},{<<"callerid">>,?JSON_WRAPPER([{<<"name">>,<<"2600Hz">>}])}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}])]).
 -define(T3R4, [?JSON_WRAPPER([{<<"k1">>,<<"v1">>}]),?JSON_WRAPPER([{<<"k2">>,<<"updated">>}])]).
 -define(T3R5, [?JSON_WRAPPER([{<<"k1">>,<<"v1">>}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}]),?JSON_WRAPPER([{<<"new_key">>,<<"added">>}])]).
 
@@ -653,7 +653,7 @@ set_value_multiple_object_test_() ->
      %% Set a non-existing key in the first kz_json:object()
     ,?_assertEqual(?T3R2, kz_json:set_value([1, <<"pi">>], 3.14, ?D5))
      %% Set a non-existing key followed by another nonexistent key in the first kz_json:object()
-    ,?_assertEqual(?T3R3, kz_json:set_value([1, <<"callerid">>, <<"name">>], <<"2600hz">>, ?D5))
+    ,?_assertEqual(?T3R3, kz_json:set_value([1, <<"callerid">>, <<"name">>], <<"2600Hz">>, ?D5))
      %% Set an existing key in the second kz_json:object()
     ,?_assertEqual(?T3R4, kz_json:set_value([2, <<"k2">>], <<"updated">>, ?D5))
      %% Set a non-existing key in a non-existing kz_json:object()
@@ -860,7 +860,7 @@ order_by_test_() ->
     ,?_assertEqual(InOrder, kz_json:order_by([<<"a">>, <<"k">>], Ids, [[H1,H2], T]))
     ].
 
-from_list_recursive_test() ->
+from_list_recursive_test_() ->
     Obj1 = kz_json:from_list([{<<"send_to">>, [<<"someone@somedomain.com">>]}]),
     Obj2 = kz_json:from_list([{<<"email">>, Obj1}]),
     L1 = [{<<"fax_hangup_codes">>, [200, 201, 202]}
@@ -876,20 +876,60 @@ from_list_recursive_test() ->
                              ]),
     JObj1 = kz_json:from_list([{<<"fax">>, Obj3}]),
     JObj2 = kz_json:from_list_recursive(L3),
-    Key1 = [<<"fax">>, <<"info">>, <<"fax_hangup_code">>],
+
+    Key1 = [<<"fax">>, <<"info">>, <<"fax_hangup_codes">>],
     Key2 = [<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>],
-    [?_assertEqual(kz_json:get_integer_value(Key1, JObj1), kz_json:get_integer_value(Key1, JObj2))
+
+    [?_assertEqual(kz_json:get_list_value(Key1, JObj1), kz_json:get_list_value(Key1, JObj2))
     ,?_assertEqual(kz_json:get_ne_binary_value(Key2, JObj1), kz_json:get_ne_binary_value(Key2, JObj2))
     ,?_assertEqual('true', kz_json:are_equal(JObj1, JObj2))
     ].
 
-flatten_expand_diff_test() ->
+flatten_expand_diff_test_() ->
+    Add = [{<<"k20">>, <<"v20">>}],
     X = kz_json:set_value([<<"k10">>, <<"k11">>, <<"k12">>], <<"v10">>, kz_json:new()),
-    X2 = kz_json:set_value(<<"k20">>, <<"v20">>, X),
-    Delta = kz_json:set_value(<<"k20">>, <<"v20">>, X),
-    [
-     ?_assertEqual(kz_json:expand(kz_json:flatten(X2)), X2)
-    ,?_assertEqual(kz_json:diff(X, X2), Delta)
+    X2 = kz_json:set_values(Add, X),
+
+    Delta = kz_json:from_list(Add),
+    Empty = kz_json:new(),
+
+    [?_assertEqual(X2, kz_json:expand(kz_json:flatten(X2)))
+    ,?_assertEqual(Delta, kz_json:diff(X2, X))
+    ,?_assertEqual(Empty, kz_json:diff(X, X2))
+    ].
+
+diff_test_() ->
+    Empty = kz_json:new(),
+
+    AJObj = kz_json:from_list([{<<"a">>, <<"1">>}]),
+    BJObj = kz_json:from_list([{<<"b">>, <<"2">>}]),
+    B0JObj = kz_json:from_list([{<<"b">>, Empty}]),
+
+    CzJObj = kz_json:from_list([{<<"c">>, kz_json:from_list([{<<"z">>, <<"26">>}])}]),
+    CyJObj = kz_json:from_list([{<<"c">>, kz_json:from_list([{<<"y">>, <<"25">>}])}]),
+    C0JObj = kz_json:from_list([{<<"c">>, Empty}]),
+
+    BothAB = kz_json:merge(AJObj, BJObj),
+
+    [?_assertEqual(Empty, kz_json:diff(Empty, Empty))
+
+     %% top-level keys
+    ,?_assertEqual(Empty, kz_json:diff(AJObj, AJObj))
+    ,?_assertEqual(AJObj, kz_json:diff(AJObj, BJObj))
+    ,?_assertEqual(BJObj, kz_json:diff(BJObj, AJObj))
+    ,?_assertEqual(AJObj, kz_json:diff(BothAB, BJObj))
+    ,?_assertEqual(BJObj, kz_json:diff(BothAB, AJObj))
+
+    ,?_assertEqual(B0JObj, kz_json:diff(B0JObj, BJObj))
+    ,?_assertEqual(BJObj, kz_json:diff(BJObj, B0JObj))
+
+     %% nested keys
+    ,?_assertEqual(Empty, kz_json:diff(CzJObj, CzJObj))
+    ,?_assertEqual(CzJObj, kz_json:diff(CzJObj, CyJObj))
+    ,?_assertEqual(CyJObj, kz_json:diff(CyJObj, CzJObj))
+
+    ,?_assertEqual(C0JObj, kz_json:diff(C0JObj, CzJObj))
+    ,?_assertEqual(CzJObj, kz_json:diff(CzJObj, C0JObj))
     ].
 
 -define(REQUEST, kz_json:from_list([{<<"a">>, 1}

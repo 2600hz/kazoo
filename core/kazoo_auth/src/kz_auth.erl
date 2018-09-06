@@ -196,22 +196,26 @@ authenticate_fold(Token, [Fun | Routines]) ->
             authenticate_fold(Token, Routines)
     end.
 
--spec link(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
+-spec link(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                  'ok' | kz_datamgr:data_error().
 link(AccountId, OwnerId, AuthId) ->
-    Props = [{<<"pvt_account_id">>, AccountId}
-            ,{<<"pvt_owner_id">>, OwnerId}
-            ],
-    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, Props) of
+    Updates = [{<<"pvt_account_id">>, AccountId}
+              ,{<<"pvt_owner_id">>, OwnerId}
+              ],
+    UpdateOptions = [{'update', Updates}],
+    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of
         {'ok', _JObj} -> 'ok';
         Error -> Error
     end.
 
--spec unlink(kz_term:ne_binary()) -> 'ok' | {'error', any()}.
+-spec unlink(kz_term:ne_binary()) ->
+                    'ok' | kz_datamgr:data_error().
 unlink(AuthId) ->
-    Props = [{<<"pvt_account_id">>, null}
-            ,{<<"pvt_owner_id">>, null}
-            ],
-    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, Props) of
+    Updates = [{<<"pvt_account_id">>, 'null'}
+              ,{<<"pvt_owner_id">>, 'null'}
+              ],
+    UpdateOptions = [{'update', Updates}],
+    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of
         {'ok', _JObj} -> 'ok';
         Error -> Error
     end.

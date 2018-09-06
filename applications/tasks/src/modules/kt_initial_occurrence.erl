@@ -14,10 +14,12 @@
 -include("tasks.hrl").
 
 -define(CATEGORY, "account_crawler").
--define(SHOULD_CRAWL_FOR_FIRST_OCCURRENCE,
-        kapps_config:get_is_true(?CONFIG_CAT,
-                                 <<"should_crawl_for_first_occurrence">>,
-                                 'true')).
+-define(SHOULD_CRAWL_FOR_FIRST_OCCURRENCE
+       ,kapps_config:get_is_true(?CONFIG_CAT
+                                ,<<"should_crawl_for_first_occurrence">>
+                                ,'true'
+                                )
+       ).
 
 %%%=============================================================================
 %%% API
@@ -29,9 +31,10 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY>>,
-                            ?MODULE,
-                            'maybe_test_for_initial_occurrences').
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY>>
+                           ,?MODULE
+                           ,'maybe_test_for_initial_occurrences'
+                           ).
 
 %% Triggerables
 -spec maybe_test_for_initial_occurrences(kz_term:ne_binary(), kzd_accounts:doc()) -> 'ok'.
@@ -89,8 +92,9 @@ handle_initial_registration(AccountId) ->
 
 -spec notify_initial_registration(kzd_accounts:doc()) -> 'ok'.
 notify_initial_registration(AccountJObj) ->
-    UpdatedAccountJObj = kzd_accounts:set_initial_registration_sent(AccountJObj, 'true'),
-    _ = kzd_accounts:save(UpdatedAccountJObj),
+    Update = [{kzd_accounts:path_initial_registration_sent(), 'true'}],
+    {'ok', _} = kzd_accounts:update(kz_doc:id(AccountJObj), Update),
+
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"registration">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -128,8 +132,9 @@ handle_initial_call(AccountId) ->
 
 -spec notify_initial_call(kzd_accounts:doc()) -> 'ok'.
 notify_initial_call(AccountJObj) ->
-    UpdatedAccountJObj = kzd_accounts:set_initial_call_sent(AccountJObj, 'true'),
-    _ = kzd_accounts:save(UpdatedAccountJObj),
+    Update = [{kzd_accounts:path_initial_call_sent(), 'true'}],
+    _ = kzd_accounts:update(kz_doc:id(AccountJObj), Update),
+
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"call">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

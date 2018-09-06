@@ -22,6 +22,7 @@
         ,id/1, db_id/1, resp_id/1
 
         ,set_base_properties/1, set_base_properties/2
+        ,base_properties/1, base_properties/2
         ,pvt_type/0, pvt_type/1
 
         ,is_enabled/1, is_enabled/2
@@ -181,9 +182,18 @@ set_base_properties(JObj) ->
 
 -spec set_base_properties(doc(), kz_term:api_binary()) -> doc().
 set_base_properties(JObj, Id) ->
-    kz_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
-                       ,{<<"_id">>, db_id(Id)}
-                       ], JObj).
+    WithId = kz_doc:set_id(JObj, db_id(Id)),
+    kz_doc:set_type(WithId, ?PVT_TYPE).
+
+-spec base_properties(doc()) -> kz_json:flat_proplist().
+base_properties(JObj) ->
+    base_properties(JObj, id(JObj)).
+
+-spec base_properties(doc(), kz_term:ne_binary()) -> kz_json:flat_proplist().
+base_properties(_JObj, Id) ->
+    [{kz_doc:path_id(), db_id(Id)}
+    ,{kz_doc:path_type(), ?PVT_TYPE}
+    ].
 
 -spec pvt_type() -> kz_term:ne_binary().
 pvt_type() -> ?PVT_TYPE.

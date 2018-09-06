@@ -106,7 +106,8 @@ force_promote(Account) ->
 
 -spec do_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_promote(AccountId) ->
-    {'ok', _A} = kzd_accounts:save(AccountId, fun kzd_accounts:promote/1),
+    Update = [{kzd_accounts:path_reseller(), 'true'}],
+    {'ok', _A} = kzd_accounts:update(AccountId, Update),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'true'),
     io:format("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
     lager:debug("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
@@ -136,7 +137,8 @@ force_demote(Account) ->
 
 -spec do_demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_demote(AccountId) ->
-    _ = kzd_accounts:save(AccountId, fun kzd_accounts:demote/1),
+    Update = [{kzd_accounts:path_reseller(), 'false'}],
+    _ = kzd_accounts:update(AccountId, Update),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'false'),
     ResellerId = find_id(AccountId),
     io:format("demoting reseller status for account ~s, and now belongs to reseller ~s~n", [AccountId, ResellerId]),
@@ -176,7 +178,10 @@ set_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ResellerId = kz_util:format_account_id(Reseller, 'raw'),
     io:format("setting account ~s reseller id to ~s~n", [AccountId, ResellerId]),
-    _ = kzd_accounts:save(AccountId, fun(JObj) -> kzd_accounts:set_reseller_id(JObj, ResellerId) end),
+
+    Update = [{kzd_accounts:path_reseller_id(), ResellerId}],
+
+    _ = kzd_accounts:update(AccountId, Update),
     maybe_update_services(AccountId, ?SERVICES_PVT_RESELLER_ID, ResellerId).
 
 %%------------------------------------------------------------------------------

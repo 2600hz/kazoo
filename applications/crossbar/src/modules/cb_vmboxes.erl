@@ -428,7 +428,12 @@ patch(Context, _Id) ->
 %%------------------------------------------------------------------------------
 -spec add_pvt_auth_funs(cb_context:context()) -> [fun((kz_json:object()) -> kz_json:object())].
 add_pvt_auth_funs(Context) ->
-    [fun(JObj) -> crossbar_doc:add_pvt_auth(JObj, Context) end].
+    [fun(JObj) -> add_pvt_auth(JObj, Context) end].
+
+-spec add_pvt_auth(kz_json:object(), cb_context:context()) -> kz_json:object().
+add_pvt_auth(JObj, Context) ->
+    AuthUpdates = crossbar_doc:add_pvt_auth(JObj, [], Context),
+    kz_json:set_values(AuthUpdates, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc disallow vmbox messages array changing.

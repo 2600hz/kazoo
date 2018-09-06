@@ -37,11 +37,19 @@ handle(Data, Call) ->
 
 -spec update_presence(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 update_presence(<<"idle">>, PresenceId, Call) ->
-    _ = kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"terminated">>}]),
-    kapps_call_command:presence(<<"terminated">>, PresenceId, kz_term:to_hex_binary(crypto:hash(md5, PresenceId)));
+    _ = update_doc(Call, PresenceId, <<"terminated">>),
+    kapps_call_command:presence(<<"terminated">>, PresenceId, kz_term:to_hex_binary(crypto:hash('md5', PresenceId)));
 update_presence(<<"ringing">>, PresenceId, Call) ->
-    _ = kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"early">>}]),
-    kapps_call_command:presence(<<"early">>, PresenceId, kz_term:to_hex_binary(crypto:hash(md5, PresenceId)));
+    _ = update_doc(Call, PresenceId, <<"early">>),
+    kapps_call_command:presence(<<"early">>, PresenceId, kz_term:to_hex_binary(crypto:hash('md5', PresenceId)));
 update_presence(<<"busy">>, PresenceId, Call) ->
-    _ = kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"confirmed">>}]),
-    kapps_call_command:presence(<<"confirmed">>, PresenceId, kz_term:to_hex_binary(crypto:hash(md5, PresenceId))).
+    _ = update_doc(Call, PresenceId, <<"confirmed">>),
+    kapps_call_command:presence(<<"confirmed">>, PresenceId, kz_term:to_hex_binary(crypto:hash('md5', PresenceId))).
+
+-spec update_doc(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                        {'ok', kz_json:object()} |
+                        kz_datamgr:data_error().
+update_doc(Call, PresenceId, State) ->
+    Update = [{PresenceId, State}],
+    UpdateOptions = [{'update', Update}],
+    kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, UpdateOptions).

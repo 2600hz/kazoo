@@ -379,7 +379,7 @@ offset(Options) ->
 account_id(Options) ->
     props:get_value('account_id', Options).
 
--spec reseller_id(options()) -> kz_term:ne_binary().
+-spec reseller_id(options()) -> kz_term:api_ne_binary().
 reseller_id(Options) ->
     props:get_value('reseller_id', Options).
 
