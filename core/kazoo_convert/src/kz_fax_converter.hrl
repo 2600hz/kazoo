@@ -15,25 +15,31 @@
           "-sOutputFile=$TO -- $FROM"
         >>
        ).
+-define(RESAMPLE_IMAGE_CMD, <<"convert $FROM "
+                              "-resample 200x200 "
+                              "-page +0+0 "
+                              "-compress group4 $TO"
+                            >>
+       ).
 -define(CONVERT_IMAGE_CMD, <<"convert $FROM "
-                             "-resample 204x98 "
+                             "-resample 200x200 "
                              "-units PixelsPerInch "
-                             "-size 1728x1078 "
+                             "-size 1728x2200 "
                              "-compress group4 $TO"
                            >>
        ).
 -define(RESIZE_TIFF_CMD, <<"convert $FROM "
-                           "-resample 204x98 "
+                           "-resample 200x200 "
                            "-units PixelsPerInch "
-                           "-resize 1728\\!x1078 "
+                           "-resize 1728\\!x2200 "
                            "-compress group4 $TO"
                          >>
        ).
 -define(EMBIGGEN_TIFF_CMD, <<"convert $FROM "
                              "-gravity center "
-                             "-resample 204x98 "
+                             "-resample 200x200 "
                              "-units PixelsPerInch "
-                             "-extent 1728x1078 "
+                             "-extent 1728x2200 "
                              "-compress group4 $TO"
                            >>
        ).
@@ -61,6 +67,8 @@
 
 -define(VALIDATE_TIFF_CMD, <<"tiffinfo $FILE">>).
 
+-define(RESAMPLE_IMAGE_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, [<<"fax">>, <<"resample_image_command">>], ?RESAMPLE_IMAGE_CMD)).
 -define(CONVERT_IMAGE_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, [<<"fax">>, <<"convert_image_command">>], ?CONVERT_IMAGE_CMD)).
 -define(LARGE_TIFF_COMMAND
@@ -85,7 +93,7 @@
        ,kapps_config:get_is_true(?CONFIG_CAT, [<<"fax">>, <<"enable_openoffice">>], true)).
 
 -define(CONVERT_TIMEOUT
-       ,kapps_config:get_integer(?CONFIG_CAT, [<<"fax">>, <<"convert_command_timeout">>], 120 * ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_integer(?CONFIG_CAT, [<<"fax">>, <<"convert_command_timeout">>], 180 * ?MILLISECONDS_IN_SECOND)).
 
 -define(KZ_FAX_CONVERTER_HRL, 'true').
 -endif.

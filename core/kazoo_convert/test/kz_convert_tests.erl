@@ -51,7 +51,6 @@ fax_test_() ->
              ,test_openoffice_to_tiff_to_filename()
              ,test_tiff_to_tiff_read_metadata()
              ,test_tiff_to_tiff_small_file_read_metadata()
-             ,test_tiff_to_tiff_legal_file_read_metadata()
              ,test_pdf_to_tiff_read_metadata()
              ,test_openoffice_to_tiff_read_metadata()
              ,test_read_metadata()
@@ -549,28 +548,6 @@ test_tiff_to_tiff_small_file_read_metadata() ->
                                  )
                   )
     ].
-
-test_tiff_to_tiff_legal_file_read_metadata() ->
-    JobId = kz_binary:rand_hex(16),
-    From = read_test_file("legal.tiff"),
-    Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
-    [?_assertMatch({'ok', Expected
-                   ,[{<<"page_count">>, 2}
-                    ,{<<"size">>, _}
-                    ,{<<"mimetype">>, <<"image/tiff">>}
-                    ,{<<"filetype">>, <<"tiff">>}
-                    ]
-                   }
-                  ,kz_convert:fax(<<"image/tiff">>
-                                 ,<<"image/tiff">>
-                                 ,From
-                                 ,[{<<"job_id">>, JobId}
-                                  ,{<<"read_metadata">>, true}
-                                  ]
-                                 )
-                  )
-    ].
-
 
 test_pdf_to_tiff_read_metadata() ->
     JobId = kz_binary:rand_hex(16),

@@ -11,9 +11,9 @@ Ultimately, faxes are just an antiquated method to exchange tiff files, which ar
 
 ### Tiff File Format
 
-In order to ensure maximum compatibility, and a higher chance of a successful delivery of a fax, by default, the `fax_converter` will format all files received into tiff files following a standards compliant fax compatible format. All documents are converted using `CCITT Group 4 compression`, with dimensions of `1728x1078` at a resolution of `204x98` PPI. This is done on every conversion to tiff format. This behavior is configurable via the converter commands configurations.
+In order to ensure maximum compatibility, and a higher chance of a successful delivery of a fax, by default, the `fax_converter` will format all files received into tiff files following a standards compliant fax compatible format. All documents are converted using `CCITT Group 4 compression`, with dimensions of `1728x2200` at a resolution of `200x200` PPI. This is done on every conversion to tiff format. This behavior is configurable via the converter commands configurations.
 
-Because a user submitted tiff file could be in any format, the converter will check tiff files and read their metadata when conversion from tiff to tiff is requested. The converter will check the resolution and dimensions values, as well as the compression method and do a conversion conditionally on the state of the file. This conversion will guarantee a normalized fax compatible tiff is returned. This means if the resolution is in legal size (8.5 x 14 in.) or has any oversized dimension, it will be resized to fit on an A4 (8.5 x 11 in.) page using the `Large Tiff Command`. If a document is smaller than an A4 document, its dimensions will be preserved will be centered on an A4 page using the `Small Tiff Command`. If the PPI is larger than 204x98, it will be resampled. If the compression is not group3 or group4, it will be resampled using the `Tiff Resample Command`.
+Because a user submitted tiff file could be in any format, the converter will check tiff files and read their metadata when conversion from tiff to tiff is requested. The converter will check the resolution and dimensions values, as well as the compression method and do a conversion conditionally on the state of the file. This conversion will guarantee a normalized fax compatible tiff is returned. This means if the resolution is in legal size (8.5 x 14 in.) or has any oversized dimension, it will be resized to fit on an A4 (8.5 x 11 in.) page using the `Large Tiff Command`. If a document is smaller than an A4 document, its dimensions will be preserved will be centered on an A4 page using the `Small Tiff Command`. If the PPI is larger than 200x200, it will be resampled. If the compression is not group3 or group4, it will be resampled using the `Tiff Resample Command`.
 
 ## Default Convert Commands
 
@@ -39,8 +39,8 @@ So for example, if your command to convert PDF to TIFF formats was:
 
 ```bash
 /usr/bin/gs -q \
-     -r204x98 \
-     -g1728x1078 \
+     -r200x200 \
+     -g1728x2200 \
      -dNOPAUSE \
      -dBATCH \
      -dSAFER \
@@ -54,8 +54,8 @@ the equivalent `fax_converter` command would be:
 
 ```bash
 /usr/bin/gs -q \
-     -r204x98 \
-     -g1728x1078 \
+     -r200x200 \
+     -g1728x2200 \
      -dNOPAUSE \
      -dBATCH \
      -dSAFER \
@@ -74,7 +74,22 @@ Most converters are nice about exit status, but if you customize your commands, 
 
 ### Tiff Resample Command
 
-The configuration parameter for this command is `fax.convert_image_command`. This command is invoked when a conversion from any `image/*` to `image/tiff` is requested.
+The configuration parameter for this command is `fax.resample_image_command`. This command is invoked when a conversion from any `image/*` to `image/tiff` is requested.
+
+This is most commonly used to resample a tiff with unknown resolution or a resolution that is too large for faxing. When this command is used, the image is processed again after the resolution is updated to ensure it is the correct height and width for `letter` format.
+
+The default command is:
+
+```bash
+convert $FROM \
+    -resample 200x200 \
+    -page +0+0 \
+    -compress group4 $TO
+```
+
+### Tiff Convert Command
+
+The configuration parameter for this command is `fax.convert_image_command`. This command is invoked when a conversion from any `image/*` to `image/tiff` is requested if the format of the image is unsuitable for faxing but the resolution is correct.
 
 This is most commonly used to resample an otherwise validly formatted tiff to ensure it is using the standard format for faxing.
 
@@ -82,9 +97,9 @@ The default command is:
 
 ```bash
 convert $FROM \
-    -resample 204x98 \
+    -resample 200x200 \
     -units PixelsPerInch \
-    -size 1728x1078 \
+    -size 1728x2200 \
     -compress group4 $TO
 ```
 
@@ -92,15 +107,15 @@ convert $FROM \
 
 The configuration parameter for this command is `fax.large_tiff_command`. This command is invoked when a conversion from `image/*` to `image/tiff` is requested.
 
-This is used when a tiff is larger than 1728x1078 to resize it to fit on the page.
+This is used when a tiff is larger than 1728x2200 to resize it to fit on the page.
 
 The default command is:
 
 ```bash
 convert $FROM \
-    -resample 204x98 \
+    -resample 200x200 \
     -units PixelsPerInch \
-    -resize 1728\!x1078 \
+    -resize 1728\!x2200 \
     -compress group4 $TO
 ```
 
@@ -108,16 +123,16 @@ convert $FROM \
 
 The configuration parameter for this command is `fax.small_tiff_command`. This command is invoked when a conversion from `image/*` to `image/tiff` is requested.
 
-Convert command to handle case where the tiff is smaller than 1728x1078 ensure it is in the standard format for faxing.
+Convert command to handle case where the tiff is smaller than 1728x2200 ensure it is in the standard format for faxing.
 
 The default command is:
 
 ```bash
 convert $FROM \
     -gravity center \
-    -resample 204x98 \
+    -resample 200x200 \
     -units PixelsPerInch \
-    -extent 1728x1078 \
+    -extent 1728x2200 \
     -compress group4 $TO
 ```
 
@@ -148,8 +163,8 @@ The default command is:
 ```bash
 /usr/bin/gs \
     -q \
-    -r204x98 \
-    -g1728x1078 \
+    -r200x200 \
+    -g1728x2200 \
     -dNOPAUSE \
     -dBATCH \
     -dSAFER \

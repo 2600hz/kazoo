@@ -30092,7 +30092,12 @@
                         },
                         "large_tiff_command": {
                             "default": "convert $FROM -resample 204x98 -units PixelsPerInch -resize 1728\\!x1078 -compress group4 $TO",
-                            "description": "The command to convert large tiffs to standard dimensions",
+                            "description": "The command to resize large tiffs to standard dimensions",
+                            "type": "string"
+                        },
+                        "resample_image_command": {
+                            "default": "convert $FROM -resample 200x200 -page +0+0 -compress group4 $TO",
+                            "description": "The command to resample an image file into a fax compliant formatted tiff",
                             "type": "string"
                         },
                         "serialize_openoffice": {
@@ -30102,7 +30107,7 @@
                         },
                         "small_tiff_command": {
                             "default": "convert $FROM -gravity center -resample 204x98 -units PixelsPerInch -extent 1728x1078 -compress group4 $TO",
-                            "description": "The command to convert small tiffs to a fax compatible format",
+                            "description": "The command to format small tiffs to a fax compatible format",
                             "type": "string"
                         },
                         "validate_pdf_command": {
