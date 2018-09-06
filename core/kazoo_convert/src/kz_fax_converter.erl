@@ -259,9 +259,6 @@ select_tiff_command(#{<<"width">> := Width}=Map) when Width > 1728 ->
 select_tiff_command(#{<<"width">> := Width}=Map) when Width < 1728 ->
     lager:debug("file is smaller than page, centering with info: ~p", [Map]),
     {'convert', ?SMALL_TIFF_COMMAND};
-select_tiff_command(#{<<"scheme">> := <<"CCITT Group 3">>, <<"has_pages">> := 'true'}=Map) ->
-    lager:debug("file has pages and is valid format for group 3, not going to convert info: ~p", [Map]),
-    'noop';
 select_tiff_command(#{<<"scheme">> := <<"CCITT Group 4">>, <<"has_pages">> := 'true'}=Map) ->
     lager:debug("file has pages and is valid format for group 4, not going to convert info: ~p", [Map]),
     'noop';
