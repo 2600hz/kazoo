@@ -200,18 +200,16 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_timelimit(kz_term:api_object() | integer()) -> pos_integer().
+-spec get_timelimit(kz_term:api_integer()) -> pos_integer().
 get_timelimit('undefined') ->
     kz_media_util:max_recording_time_limit();
 get_timelimit(TL) when is_integer(TL) ->
-    Max = kz_media_util:max_recording_time_limit(),
-    case Max > TL of
-        'true' -> TL;
-        'false' when Max > 0 -> Max;
-        'false' -> Max
-    end;
-get_timelimit(Data) ->
-    get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)).
+    get_timelimit(TL, kz_media_util:max_recording_time_limit()).
+
+-spec get_timelimit(non_neg_integer(), integer()) -> pos_integer().
+get_timelimit(TL, Max) when Max > TL -> TL;
+get_timelimit(_TL, Max) when Max > 0 -> Max;
+get_timelimit(_TL, Max) -> Max.
 
 -spec get_format(kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_format('undefined') -> kz_media_config:call_recording_extension();
