@@ -507,7 +507,7 @@ add_audit_log_changes_type(Services, AuditLog) ->
 add_audit_log_changes_type(Services, AuditLog, 'undefined') ->
     lists:foldl(fun maybe_set_change_type/2
                ,AuditLog
-               ,[{<<"cascase">>, kz_term:is_not_empty(cascade_updates(Services))}
+               ,[{<<"cascade">>, kz_term:is_not_empty(cascade_updates(Services))}
                 ,{<<"account">>, kz_term:is_not_empty(account_updates(Services))}
                 ,{<<"manual">>, kz_term:is_not_empty(manual_updates(Services))}
                 ]
