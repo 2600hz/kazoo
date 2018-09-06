@@ -1088,7 +1088,7 @@ get_billing_seconds(Props) ->
 
 -spec get_ringing_seconds(kz_term:proplist()) -> kz_term:ne_binary().
 get_ringing_seconds(Props) ->
-    RingingSeconds = 
+    RingingSeconds =
       props:get_integer_value(<<"variable_duration">>, Props) -
       get_billing_seconds(Props) -
       props:get_integer_value(<<"variable_progresssec">>, Props),
