@@ -101,14 +101,26 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
     case do_save_doc(Db, Doc, Opts) of
         {'ok', _}=Ok -> Ok;
         {'error', 'conflict'} ->
-            case do_fetch_rev(Db, kz_doc:id(Doc)) of
-                {'error', 'not_found'} ->
-                    do_ensure_saved(Db, kz_doc:delete_revision(Doc), Opts);
-                Rev ->
-                    do_ensure_saved(Db, kz_doc:set_revision(Doc, Rev), Opts)
-            end;
+            handle_conflict(Db, Doc, Opts);
         {'error', _}=E -> E
     end.
+
+-spec handle_conflict(couchbeam_db(), kz_json:object(), kz_term:proplist()) ->
+                             {'ok', kz_json:object()} |
+                             couchbeam_error().
+handle_conflict(Db, Doc, Opts) ->
+    {'ok', UpdatedDoc} = do_fetch_doc(Db, kz_doc:id(Doc), Opts),
+
+    Diff = kz_json:diff(Doc, UpdatedDoc), % should have Doc's changes
+
+    lager:debug("conflict saving ~s: diff: ~p", [kz_doc:id(Doc), Diff]),
+
+    NewDoc = kz_json:merge(fun kz_json:merge_left/2
+                          ,kz_json:delete_key(<<"_rev">>, Diff)
+                          ,UpdatedDoc
+                          ),
+
+    do_ensure_saved(Db, NewDoc, Opts).
 
 -spec do_fetch_rev(couchbeam_db(), kz_term:ne_binary()) ->
                           kz_term:ne_binary() |
