@@ -210,13 +210,13 @@ handle_VRFY(_Address, State) ->
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
 -spec handle_other(binary(), binary(), state()) ->
-                          {iodata() | 'noreply', state()}.
+                          {string() | 'noreply', state()}.
 handle_other(<<"PROXY">>, Args, State) ->
     {'noreply', State#state{proxy=Args}};
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
-    lager:debug("500 Error: command not recognized : '~s ~s'",[Verb,Args]),
-    {["500 Error: command not recognized : '", Verb, "'"], State}.
+    lager:info("500 Error: command not recognized : '~s ~s'", [Verb, Args]),
+    {lists:flatten(["500 Error: command not recognized : '", kz_term:to_list(Verb), "'"]), State}.
 
 -spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, state()) ->
                          'error'.
@@ -665,7 +665,7 @@ add_fax_document(#state{from=From
     AccountId = kz_doc:account_id(FaxBoxDoc),
     AccountDb = ?KZ_FAXES_DB,
     ResellerId = case kzd_services:reseller_id(FaxBoxDoc) of
-                     'undefined' -> kz_services:find_reseller_id(AccountId);
+                     'undefined' -> kz_services_reseller:get_id(AccountId);
                      TheResellerId -> TheResellerId
                  end,
 

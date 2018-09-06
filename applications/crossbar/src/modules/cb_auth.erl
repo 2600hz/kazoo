@@ -471,11 +471,11 @@ account_id(Context) ->
     AccountId = hd(lists:filter(fun(undefined) -> false;
                                    (_Id) -> true
                                 end, Source)),
-    case kz_services:is_reseller(AccountId)
+    case kz_services_reseller:is_reseller(AccountId)
         orelse AccountId =:= Master
     of
         'true' -> AccountId;
-        'false' -> kz_services:get_reseller_id(AccountId)
+        'false' -> kz_services_reseller:get_id(AccountId)
     end.
 
 -spec add_app(cb_context:context()) -> cb_context:context().

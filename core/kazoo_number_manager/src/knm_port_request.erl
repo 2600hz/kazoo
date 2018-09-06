@@ -18,7 +18,6 @@
         ,transition_to_complete/2
         ,maybe_transition/3
         ,compatibility_transition/2
-        ,charge_for_port/1, charge_for_port/2
         ,assign_to_app/3
         ,send_submitted_requests/0
         ,migrate/0
@@ -343,22 +342,6 @@ get_user_name(AuthAccountId, UserId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
--spec charge_for_port(kz_json:object()) -> 'ok' | 'error'.
-charge_for_port(JObj) ->
-    charge_for_port(JObj, kz_doc:account_id(JObj)).
-
--spec charge_for_port(kz_json:object(), kz_term:ne_binary()) -> 'ok' | 'error'.
-charge_for_port(_JObj, AccountId) ->
-    Services = kz_services:fetch(AccountId),
-    Cost = kz_services:activation_charges(<<"number_services">>, ?FEATURE_PORT, Services),
-    Transaction = kz_transaction:debit(AccountId, wht_util:dollars_to_units(Cost)),
-    kz_services:commit_transactions(Services, [Transaction]).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
                            {'ok', kz_json:object()} |
                            {'error', any()}.
@@ -419,12 +402,8 @@ migrate() ->
 %%------------------------------------------------------------------------------
 -spec completed_port(kz_json:object()) -> transition_response().
 completed_port(PortReq) ->
-    case charge_for_port(PortReq) of
-        'error' -> throw({'error', 'failed_to_charge'});
-        'ok' ->
-            lager:debug("successfully charged for port, transitioning numbers to active"),
-            transition_numbers(PortReq)
-    end.
+    lager:debug("transitioning numbers to active"),
+    transition_numbers(PortReq).
 
 -spec completed_portin(kz_term:ne_binary(), kz_term:ne_binary(), transition_metadata()) -> 'ok' | {'error', any()}.
 completed_portin(Num, AccountId, #{optional_reason := OptionalReason}) ->

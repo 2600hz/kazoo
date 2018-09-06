@@ -85,7 +85,7 @@ create_service_plan(API, RatedeckId) ->
             {'error', 'no_ratedeck'};
         _Rates ->
             ?INFO("creating service plan for ~s", [RatedeckId]),
-            case pqc_cb_service_plans:create_service_plan(API, ratedeck_service_plan(RatedeckId)) of
+            case pqc_cb_services:create_service_plan(API, ratedeck_service_plan(RatedeckId)) of
                 {'ok', _} -> 'ok';
                 {'error', 'conflict'} -> 'ok';
                 Error -> Error
@@ -100,7 +100,7 @@ assign_service_plan(_API, 'undefined', _RatedeckId) ->
 assign_service_plan(API, AccountId, RatedeckId) ->
     ?INFO("attempting to assign service plan for ~s to ~s", [RatedeckId, AccountId]),
     ServicePlanId = service_plan_id(RatedeckId),
-    pqc_cb_service_plans:assign_service_plan(API, AccountId, ServicePlanId).
+    pqc_cb_services:assign_service_plan(API, AccountId, ServicePlanId).
 
 -spec rate_account_did(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
                               kz_term:api_integer().
@@ -289,7 +289,7 @@ init() ->
 cleanup() ->
     ?INFO("CLEANUP ALL THE THINGS"),
     kz_data_tracing:clear_all_traces(),
-    pqc_cb_service_plans:cleanup(),
+    pqc_cb_services:cleanup(),
     cleanup(pqc_cb_api:authenticate()).
 
 -spec cleanup(pqc_cb_api:state()) -> any().
@@ -297,7 +297,9 @@ cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
     _ = [?MODULE:delete_rate(API, RatedeckId) || RatedeckId <- ?RATEDECK_NAMES],
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
-    _DelSPs = [pqc_cb_service_plans:delete_service_plan(API, service_plan_id(RatedeckId)) || RatedeckId <- ?RATEDECK_NAMES],
+    _DelSPs = [pqc_cb_services:delete_service_plan(API, service_plan_id(RatedeckId))
+               || RatedeckId <- ?RATEDECK_NAMES
+              ],
 
     pqc_cb_api:cleanup(API).
 
@@ -316,11 +318,11 @@ seq() ->
 
     RateDoc = rate_doc(<<"custom">>, 1.0),
 
-    RateCost = wht_util:units_to_dollars(
-                 wht_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
-                                        ,kzd_rates:rate_minimum(RateDoc, 60)
-                                        ,kzd_rates:rate_surcharge(RateDoc)
-                                        )
+    RateCost = kz_currency:units_to_dollars(
+                 kapps_call_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
+                                               ,kzd_rates:rate_minimum(RateDoc, 60)
+                                               ,kzd_rates:rate_surcharge(RateDoc)
+                                               )
                 ),
     ?INFO("rate cost from doc: ~p", [RateCost]),
 
@@ -351,16 +353,19 @@ seq() ->
     end,
 
     RatedeckId = kzd_rates:ratedeck_id(RateDoc),
+    ServicePlanId = service_plan_id(RatedeckId),
 
-    _Assigned = ?MODULE:assign_service_plan(API, AccountId, kzd_rates:ratedeck_id(RateDoc)),
-    case kz_json:get_value([<<"data">>, <<"plan">>, <<"ratedeck">>, RatedeckId]
+    _Assigned = assign_service_plan(API, AccountId, RatedeckId),
+    ?INFO("assigned: ~p", [_Assigned]),
+    case kz_json:get_value([<<"data">>, ServicePlanId, <<"vendor_id">>]
                           ,kz_json:decode(_Assigned)
                           )
     of
         'undefined' ->
-            ?ERROR("failed to assign service plan for ~s to account ~s", [RatedeckId, AccountId]),
+            ?ERROR("failed to assign service plan for '~s' to account ~s", [RatedeckId, AccountId]),
+            lager:error("failed to assign service plan for ~s to account ~s: ~s", [RatedeckId, AccountId, _Assigned]),
             throw('no_plan');
-        _ ->
+        _MasterAccountId ->
             ?INFO("assigned service plan to account ~s~n", [AccountId])
     end,
 
@@ -573,9 +578,9 @@ matches_service_plan_cost(Model, AccountId, DID, APIResult) ->
     case pqc_kazoo_model:has_service_plan_rate_matching(Model, AccountId, DID) of
         {'true', Cost} when is_number(APIResult) ->
             ?INFO("model rates ~s against account ~s as ~p, got ~p in API"
-                 ,[DID, AccountId, Cost, wht_util:dollars_to_units(APIResult)]
+                 ,[DID, AccountId, Cost, kz_currency:dollars_to_units(APIResult)]
                  ),
-            Cost =:= wht_util:dollars_to_units(APIResult);
+            Cost =:= kz_currency:dollars_to_units(APIResult);
         {'true', _Cost} ->
             ?INFO("model rates ~s against account ~s as ~p, but got ~p in API"
                  ,[DID, AccountId, _Cost, APIResult]
@@ -592,9 +597,9 @@ matches_cost(Model, RatedeckId, DID, APIResult) ->
     case pqc_kazoo_model:has_rate_matching(Model, RatedeckId, DID) of
         {'true', Cost} when is_number(APIResult) ->
             ?INFO("model rates ~s as ~p, got ~p in API"
-                 ,[DID, Cost, wht_util:dollars_to_units(APIResult)]
+                 ,[DID, Cost, kz_currency:dollars_to_units(APIResult)]
                  ),
-            Cost =:= wht_util:dollars_to_units(APIResult);
+            Cost =:= kz_currency:dollars_to_units(APIResult);
         {'true', _Cost} ->
             ?INFO("model rates ~s as ~p, but got ~p in API"
                  ,[DID, _Cost, APIResult]

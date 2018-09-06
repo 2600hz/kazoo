@@ -5,206 +5,404 @@
 %%%-----------------------------------------------------------------------------
 -module(kzd_service_plan).
 
--export([new/0
-        ,type/0
-        ,account_id/1, account_id/2
-        ,overrides/1, overrides/2
+-export([all_items_key/0
         ,merge_overrides/2
-
-        ,plan/1, plan/2
+        ]).
+-export([new/0]).
+-export([type/0
+        ,type/1
+        ,set_type/1
+        ]).
+-export([bookkeeper/1
+        ,bookkeeper/2
+        ,set_bookkeeper/2
+        ]).
+-export([bookkeeper_vendor_id/1
+        ,bookkeeper_vendor_id/2
+        ,set_bookkeeper_vendor_id/2
+        ]).
+-export([bookkeeper_id/1
+        ,bookkeeper_id/2
+        ,set_bookkeeper_id/2
+        ]).
+-export([bookkeeper_type/1
+        ,bookkeeper_type/2
+        ,set_bookkeeper_type/2
+        ]).
+-export([ratedeck_id/1
+        ,ratedeck_id/2
+        ,set_ratedeck_id/2
+        ]).
+-export([ratedeck_name/1
+        ,ratedeck_name/2
+        ,set_ratedeck_name/2
+        ]).
+-export([applications/1
+        ,applications/2
+        ,set_applications/2
+        ]).
+-export([grouping_category/1
+        ,grouping_category/2
+        ,set_grouping_category/2
+        ]).
+-export([merge_strategy/1
+        ,merge_strategy/2
+        ,set_merge_strategy/2
+        ]).
+-export([merge_priority/1
+        ,merge_priority/2
+        ,set_merge_priority/2
+        ]).
+-export([plan/1
+        ,plan/2
         ,set_plan/2
-
-        ,item_plan/3, item_plan/4
-        ,category_plan/2, category_plan/3
-
-        ,item_activation_charge/3, item_activation_charge/4
-        ,category_activation_charge/2, category_activation_charge/3
-
-        ,item_minimum/3, item_minimum/4
-        ,item_name/3
-        ,item_exceptions/3
-
-        ,categories/1, category/2, category/3
-        ,items/2, item/3
-
-        ,bookkeepers/1, bookkeeper/2, bookkeeper_ids/1
-        ,grouping_category/1, grouping_category/2
-
-        ,all_items_key/0
-
-        ,merge_strategy/1
-        ,merge_priority/1
+        ]).
+-export([categories/1
+        ,category/2
+        ,category/3
+        ,category_plan/1
+        ,category_plan/2
+        ]).
+-export([items/2
+        ,item/3
+        ,item/4
         ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--type docs() :: [doc()].
--type api_doc() :: kz_term:api_object().
--export_type([doc/0
-             ,api_doc/0
-             ,docs/0
-             ]).
+-export_type([doc/0]).
 
--define(PLAN, <<"plan">>).
--define(ACTIVATION_CHARGE, <<"activation_charge">>).
 -define(ALL, <<"_all">>).
--define(BOOKKEEPERS, <<"bookkeepers">>).
+-define(BOOKKEEPER, <<"bookkeeper">>).
+-define(BOOKKEEPER_ID, [?BOOKKEEPER, <<"id">>]).
+-define(BOOKKEEPER_VENDOR, [?BOOKKEEPER, <<"vendor_id">>]).
+-define(BOOKKEEPER_TYPE, [?BOOKKEEPER, <<"type">>]).
+-define(RATEDECK, <<"ratedeck">>).
+-define(RATEDECK_ID, [?RATEDECK, <<"id">>]).
+-define(RATEDECK_NAME, [?RATEDECK, <<"name">>]).
+-define(APPLICATIONS, <<"applications">>).
+-define(CATEGORY, <<"category">>).
 -define(MERGE, <<"merge">>).
 -define(MERGE_STRATEGY, [?MERGE, <<"strategy">>]).
 -define(MERGE_PRIORITY, [?MERGE, <<"priority">>]).
+-define(PLAN, <<"plan">>).
+
+-define(PVT_TYPE, <<"service_plan">>).
 
 -define(DEFAULT_MERGE_PRIORITY, 0).
+-define(DEFAULT_MERGE_STRATEGY, <<"simple">>).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec all_items_key() -> kz_term:ne_binary().
+all_items_key() -> ?ALL.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec merge_overrides(doc(), kz_json:object()) -> doc().
+merge_overrides(JObj, Overrides) ->
+    kz_json:merge(JObj, kz_json:from_list([{?PLAN, Overrides}])).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
     kz_doc:set_type(kz_json:new(), type()).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec type() -> kz_term:ne_binary().
-type() -> <<"service_plan">>.
+type() -> ?PVT_TYPE.
 
--spec all_items_key() -> kz_term:ne_binary().
-all_items_key() -> ?ALL.
+-spec type(kz_json:object()) -> kz_term:ne_binary().
+type(JObj) ->
+    kz_doc:type(JObj, type()).
 
--spec account_id(doc()) -> kz_term:api_binary().
-account_id(Plan) ->
-    account_id(Plan, 'undefined').
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_type(doc()) -> doc().
+set_type(JObj) ->
+    kz_doc:set_type(JObj, type()).
 
--spec account_id(doc(), Default) -> kz_term:ne_binary() | Default.
-account_id(Plan, Default) ->
-    kz_json:get_value(<<"account_id">>, Plan, Default).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper(doc()) -> kz_term:api_object().
+bookkeeper(JObj) ->
+    bookkeeper(JObj, 'undefined').
 
--spec overrides(doc()) -> kz_json:object().
-overrides(Plan) ->
-    overrides(Plan, kz_json:new()).
+-spec bookkeeper(doc(), Default) -> kz_json:object() | Default.
+bookkeeper(JObj, Default) ->
+    kz_json:get_ne_json_value(?BOOKKEEPER, JObj, Default).
 
--spec overrides(doc(), Default) -> kz_json:object() | Default.
-overrides(Plan, Default) ->
-    kz_json:get_json_value(<<"overrides">>, Plan, Default).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper(doc(), kz_json:object()) -> doc().
+set_bookkeeper(JObj, Bookkeeper) ->
+    kz_json:set_value(?BOOKKEEPER, Bookkeeper, JObj).
 
--spec merge_overrides(doc(), kz_json:object()) -> doc().
-merge_overrides(Plan, Overrides) ->
-    kz_json:merge(Plan, kz_json:from_list([{?PLAN, Overrides}])).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_vendor_id(doc()) -> kz_term:api_binary().
+bookkeeper_vendor_id(JObj) ->
+    bookkeeper_vendor_id(JObj, 'undefined').
 
--spec item_activation_charge(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> float().
-item_activation_charge(Plan, Category, Item) ->
-    item_activation_charge(Plan, Category, Item, 0.0).
+-spec bookkeeper_vendor_id(doc(), Default) -> kz_term:ne_binary() | Default.
+bookkeeper_vendor_id(JObj, Default) ->
+    kz_json:get_ne_binary_value(?BOOKKEEPER_VENDOR, JObj, Default).
 
--spec item_activation_charge(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> float() | Default.
-item_activation_charge(Plan, Category, Item, Default) ->
-    Path = [?PLAN, Category, Item],
-    ItemConfig = kz_json:get_json_value(Path, Plan, kz_json:new()),
-    kzd_item_plan:activation_charge(ItemConfig, Default).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_vendor_id(doc(), kz_term:ne_binary()) -> doc().
+set_bookkeeper_vendor_id(JObj, VendorId) ->
+    kz_json:set_value(?BOOKKEEPER_VENDOR, VendorId, JObj).
 
--spec category_activation_charge(doc(), kz_term:ne_binary()) -> float().
-category_activation_charge(Plan, Category) ->
-    category_activation_charge(Plan, Category, 0.0).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_id(doc()) -> kz_term:ne_binary().
+bookkeeper_id(JObj) ->
+    bookkeeper_id(JObj, 'undefined').
 
--spec category_activation_charge(doc(), kz_term:ne_binary(), Default) -> float() | Default.
-category_activation_charge(Plan, Category, Default) ->
-    item_activation_charge(Plan, Category, ?ALL, Default).
+-spec bookkeeper_id(doc(), Default) -> Default | kz_term:ne_binary().
+bookkeeper_id(JObj, Default) ->
+    kz_json:get_ne_binary_value(?BOOKKEEPER_ID, JObj, Default).
 
--spec categories(doc()) -> kz_term:ne_binaries().
-categories(Plan) ->
-    kz_json:get_keys(?PLAN, Plan).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_id(doc(), kz_term:ne_binary()) -> doc().
+set_bookkeeper_id(JObj, BookkeeperId) ->
+    kz_json:set_value(?BOOKKEEPER_ID, BookkeeperId, JObj).
 
--spec category(doc(), kz_term:ne_binary()) -> kz_term:api_object().
-category(Plan, CategoryId) ->
-    category(Plan, CategoryId, 'undefined').
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_type(doc()) -> kz_term:ne_binary().
+bookkeeper_type(JObj) ->
+    bookkeeper_type(JObj, 'undefined').
 
--spec category(doc(), kz_term:ne_binary(), Default) -> kz_term:api_object() | Default.
-category(Plan, CategoryId, Default) ->
-    kz_json:get_json_value([?PLAN, CategoryId], Plan, Default).
+-spec bookkeeper_type(doc(), Default) -> Default | kz_term:ne_binary().
+bookkeeper_type(JObj, Default) ->
+    kz_json:get_ne_binary_value(?BOOKKEEPER_TYPE, JObj, Default).
 
--spec items(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
-items(Plan, Category) ->
-    kz_json:get_keys([?PLAN, Category], Plan).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_type(doc(), kz_term:ne_binary()) -> doc().
+set_bookkeeper_type(JObj, BookkeeperType) ->
+    kz_json:set_value(?BOOKKEEPER_TYPE, BookkeeperType, JObj).
 
--spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
-item(Plan, CategoryId, ItemId) ->
-    item(Plan, CategoryId, ItemId, 'undefined').
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ratedeck_id(kz_json:object()) -> kz_term:api_binary().
+ratedeck_id(JObj) ->
+    ratedeck_id(JObj, 'undefined').
 
--spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
-item(Plan, CategoryId, ItemId, Default) ->
-    kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, Default).
+-spec ratedeck_id(doc(), Default) -> kz_term:ne_binary() | Default.
+ratedeck_id(JObj, Default) ->
+    kz_json:get_ne_binary_value(?RATEDECK_ID, JObj, Default).
 
--spec bookkeepers(doc()) -> kz_json:object().
-bookkeepers(Plan) ->
-    kz_json:get_json_value(?BOOKKEEPERS, Plan, kz_json:new()).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_ratedeck_id(doc(), kz_term:ne_binary()) -> doc().
+set_ratedeck_id(JObj, RatedeckId) ->
+    kz_json:set_value(?RATEDECK_ID, RatedeckId, JObj).
 
--spec bookkeeper_ids(doc()) -> kz_term:ne_binaries().
-bookkeeper_ids(Plan) ->
-    kz_json:get_keys(?BOOKKEEPERS, Plan).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ratedeck_name(kz_json:object()) -> kz_term:api_binary().
+ratedeck_name(JObj) ->
+    ratedeck_name(JObj, 'undefined').
 
--spec bookkeeper(doc(), kz_term:ne_binary()) -> kz_json:object().
-bookkeeper(Plan, BookkeeperId) ->
-    kz_json:get_json_value(BookkeeperId, bookkeepers(Plan), kz_json:new()).
+-spec ratedeck_name(doc(), Default) -> kz_term:ne_binary() | Default.
+ratedeck_name(JObj, Default) ->
+    kz_json:get_ne_binary_value(?RATEDECK_NAME, JObj, Default).
 
--spec item_minimum(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
-item_minimum(Plan, CategoryId, ItemId) ->
-    item_minimum(Plan, CategoryId, ItemId, 0).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_ratedeck_name(doc(), kz_term:ne_binary()) -> doc().
+set_ratedeck_name(JObj, RatedeckName) ->
+    kz_json:set_value(?RATEDECK_NAME, RatedeckName, JObj).
 
--spec item_minimum(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> integer() | Default.
-item_minimum(Plan, CategoryId, ItemId, Default) ->
-    kzd_item_plan:minimum(item(Plan, CategoryId, ItemId, kz_json:new())
-                         ,Default
-                         ).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec applications(doc()) -> kz_json:object().
+applications(JObj) ->
+    applications(JObj, kz_json:new()).
 
--spec item_name(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
-item_name(Plan, CategoryId, ItemId) ->
-    kzd_item_plan:name(item(Plan, CategoryId, ItemId, kz_json:new())).
+-spec applications(doc(), Default) -> Default | kz_json:object().
+applications(JObj, Default) ->
+    kz_json:get_ne_json_value(?APPLICATIONS, JObj, Default).
 
--spec item_exceptions(doc(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             kz_term:ne_binaries().
-item_exceptions(Plan, CategoryId, ItemId) ->
-    item_exceptions(Plan, CategoryId, ItemId, []).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_applications(doc(), kz_json:object()) -> doc().
+set_applications(JObj, Applications) ->
+    kz_json:set_value(?APPLICATIONS, Applications, JObj).
 
--spec item_exceptions(doc(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                             kz_term:ne_binaries().
-item_exceptions(Plan, CategoryId, ItemId, Default) ->
-    Item = item(Plan, CategoryId, ItemId, kz_json:new()),
-    kzd_item_plan:exceptions(Item, Default).
-
--spec item_plan(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
-item_plan(Plan, CategoryId, ItemId) ->
-    item_plan(Plan, CategoryId, ItemId, kz_json:new()).
-
--spec item_plan(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
-item_plan(Plan, CategoryId, ItemId, Default) ->
-    kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, Default).
-
--spec category_plan(doc(), kz_term:ne_binary()) -> kz_json:object().
-category_plan(Plan, CategoryId) ->
-    category_plan(Plan, CategoryId, kz_json:new()).
-
--spec category_plan(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
-category_plan(Plan, CategoryId, Default) ->
-    item_plan(Plan, CategoryId, ?ALL, Default).
-
--spec plan(doc()) -> kz_json:object().
-plan(Plan) ->
-    plan(Plan, kz_json:new()).
-
--spec plan(doc(), Default) -> kz_json:object() | Default.
-plan(Plan, Default) ->
-    kz_json:get_json_value(?PLAN, Plan, Default).
-
--spec set_plan(doc(), kz_json:object()) -> doc().
-set_plan(Plan, P) ->
-    kz_json:set_value(?PLAN, P, Plan).
-
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec grouping_category(doc()) -> kz_term:api_ne_binary().
-grouping_category(ServicePlan) ->
-    grouping_category(ServicePlan, 'undefined').
+grouping_category(JObj) ->
+    grouping_category(JObj, 'undefined').
 
 -spec grouping_category(doc(), Default) -> kz_term:ne_binary() | Default.
-grouping_category(ServicePlan, Default) ->
-    kz_json:get_ne_binary_value(<<"category">>, ServicePlan, Default).
+grouping_category(JObj, Default) ->
+    kz_json:get_ne_binary_value(?CATEGORY, JObj, Default).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_grouping_category(doc(), kz_term:ne_binary()) -> doc().
+set_grouping_category(JObj, Category) ->
+    kz_json:set_value(?CATEGORY, Category, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec merge_strategy(doc()) -> kz_term:ne_binary().
-merge_strategy(ServicePlan) ->
-    kz_json:get_ne_binary_value(?MERGE_STRATEGY, ServicePlan).
+merge_strategy(JObj) ->
+    merge_strategy(JObj, ?DEFAULT_MERGE_STRATEGY).
 
--spec merge_priority(doc()) -> kz_term:ne_binary().
-merge_priority(ServicePlan) ->
-    kz_json:get_integer_value(?MERGE_PRIORITY, ServicePlan, ?DEFAULT_MERGE_PRIORITY).
+-spec merge_strategy(doc(), Default) -> kz_term:ne_binary() | Default.
+merge_strategy(JObj, Default) ->
+    kz_json:get_ne_binary_value(?MERGE_STRATEGY, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_merge_strategy(doc(), kz_term:ne_binary()) -> doc().
+set_merge_strategy(JObj, Strategy) ->
+    kz_json:set_value(?MERGE_STRATEGY, Strategy, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec merge_priority(doc()) -> kz_term:api_integer().
+merge_priority(JObj) ->
+    merge_priority(JObj, 'undefined').
+
+-spec merge_priority(doc(), Default) -> integer() | Default.
+merge_priority(JObj, Default) ->
+    kz_json:get_integer_value(?MERGE_PRIORITY, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_merge_priority(doc(), integer()) -> doc().
+set_merge_priority(JObj, Priority) ->
+    kz_json:set_value(?MERGE_PRIORITY, Priority, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec plan(doc()) -> kz_json:object().
+plan(JObj) ->
+    plan(JObj, kz_json:new()).
+
+-spec plan(doc(), Default) -> kz_json:object() | Default.
+plan(JObj, Default) ->
+    kz_json:get_json_value(?PLAN, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_plan(doc(), kz_json:object()) -> doc().
+set_plan(JObj, Plan) ->
+    kz_json:set_value(?PLAN, Plan, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec categories(doc()) -> kz_term:ne_binaries().
+categories(JObj) ->
+    kz_json:get_keys(?PLAN, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec category(doc(), kz_term:ne_binary()) -> kz_term:api_object().
+category(JObj, CategoryId) ->
+    category(JObj, CategoryId, 'undefined').
+
+-spec category(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
+category(JObj, CategoryId, Default) ->
+    kz_json:get_json_value([?PLAN, CategoryId], JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec category_plan(doc()) -> kz_term:api_object().
+category_plan(JObj) ->
+    category_plan(JObj, 'undefined').
+
+-spec category_plan(doc(), Default) -> kz_json:object() | Default.
+category_plan(JObj, Default) ->
+    category(JObj, ?ALL, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec items(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+items(JObj, Category) ->
+    kz_json:get_keys([?PLAN, Category], JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
+item(JObj, CategoryId, ItemId) ->
+    item(JObj, CategoryId, ItemId, 'undefined').
+
+-spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
+item(JObj, CategoryId, ItemId, Default) ->
+    kz_json:get_json_value([?PLAN, CategoryId, ItemId], JObj, Default).

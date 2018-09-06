@@ -123,8 +123,8 @@ format_account_id(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
-                       (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% for MODb!
+-spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_ne_binary();
+                       (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_ne_binary(). %% for MODb!
 format_account_id('undefined', _Encoding) -> 'undefined';
 format_account_id(DbName, Timestamp)
   when is_integer(Timestamp)

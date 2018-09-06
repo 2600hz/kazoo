@@ -83,7 +83,7 @@ handle_req(MaintJObj, _Props) ->
                   ).
 
 handle_refresh(MaintJObj, <<"refresh_views">>, Database, <<"modb">>) ->
-    kazoo_modb:refresh_views(Database),
+    _ = kz_datamgr:refresh_views(Database),
     send_resp(MaintJObj, 'true');
 handle_refresh(MaintJObj, <<"refresh_views">>, Database, <<"account">>) ->
     refresh_account_db(Database),
@@ -213,42 +213,31 @@ code_change(_OldVsn, State, _Extra) ->
 refresh_account_db(Database) ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
-    _ = remove_depreciated_account_views(AccountDb),
-    _ = ensure_account_definition(AccountDb, AccountId),
-    %% ?VIEW_NUMBERS_ACCOUNT gets updated/created in KNM maintenance
-    AccountViews =
-        case kz_datamgr:open_doc(AccountDb, ?VIEW_NUMBERS_ACCOUNT) of
-            {error,_} ->
-                lists:keydelete(?VIEW_NUMBERS_ACCOUNT, 1, kapps_maintenance:get_all_account_views());
-            {ok, ViewJObj} ->
-                ViewListing = {?VIEW_NUMBERS_ACCOUNT, ViewJObj},
-                lists:keyreplace(?VIEW_NUMBERS_ACCOUNT, 1, kapps_maintenance:get_all_account_views(), ViewListing)
-        end,
-    _ = kapps_util:update_views(AccountDb, AccountViews, 'true'),
-    kapps_account_config:migrate(AccountDb),
-    _ = kazoo_bindings:map(kapps_maintenance:binding({'refresh_account', AccountDb}), AccountId),
-    'ok'.
+    case ensure_account_definition(AccountDb, AccountId) of
+        'deleted' -> 'ok';
+        'ok' ->
+            _ = kz_datamgr:refresh_views(Database),
+            kapps_account_config:migrate(AccountDb),
+            _ = kazoo_bindings:map(kapps_maintenance:binding({'refresh_account', AccountDb}), AccountId),
+            'ok'
+    end.
 
--spec remove_depreciated_account_views(kz_term:ne_binary()) -> 'ok'.
-remove_depreciated_account_views(AccountDb) ->
-    _ = kz_datamgr:del_doc(AccountDb, <<"_design/limits">>),
-    _ = kz_datamgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
-    'ok'.
-
--spec ensure_account_definition(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec ensure_account_definition(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'deleted'.
 ensure_account_definition(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} -> get_definition_from_accounts(AccountDb, AccountId);
         {'ok', _} -> 'ok'
     end.
 
--spec get_definition_from_accounts(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec get_definition_from_accounts(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'deleted'.
 get_definition_from_accounts(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} -> kz_datamgr:ensure_saved(AccountDb, kz_doc:delete_revision(JObj));
+        {'ok', JObj} -> kz_datamgr:ensure_saved(AccountDb, kz_doc:delete_revision(JObj)),
+                        'ok';
         {'error', 'not_found'} ->
             io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
                      ,[AccountId]),
             _ = kz_datamgr:db_archive(AccountDb),
-            kapps_maintenance:maybe_delete_db(AccountDb)
+            kapps_maintenance:maybe_delete_db(AccountDb),
+            'deleted'
     end.

@@ -95,11 +95,11 @@ do_authorize(Context, {'reseller_plan', _PlanId, _AccountId}) ->
     kzd_accounts:is_reseller(cb_context:account_doc(Context));
 do_authorize(Context, {'account', AccountId}) ->
     cb_context:is_superduper_admin(Context)
-        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
+        orelse kz_services_reseller:get_id(AccountId) =:= cb_context:auth_account_id(Context)
         orelse AccountId =:= cb_context:auth_account_id(Context);
 do_authorize(Context, {'user', UserId, AccountId}) ->
     cb_context:is_superduper_admin(Context)
-        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
+        orelse kz_services_reseller:get_id(AccountId) =:= cb_context:auth_account_id(Context)
         orelse ( (AccountId =:= cb_context:auth_account_id(Context)
                   andalso cb_context:is_account_admin(Context)
                  )

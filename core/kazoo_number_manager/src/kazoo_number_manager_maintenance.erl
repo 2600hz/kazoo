@@ -8,6 +8,8 @@
 
 -include("knm.hrl").
 
+-export([generate_js_classifiers/1]).
+
 -export([app_using/2]).
 -export([carrier_module_usage/0
         ,carrier_module_usage/1
@@ -196,12 +198,8 @@ refresh_numbers_db(_Thing) ->
 update_number_services_view(?MATCH_ACCOUNT_RAW(AccountId)) ->
     update_number_services_view(kz_util:format_account_db(AccountId));
 update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
-    ClassifiersJObj = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
-    Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], ClassifiersJObj)}
-             || Classification <- kz_json:get_keys(ClassifiersJObj)
-            ],
-    {Classifications, Regexs} = lists:unzip(Pairs),
-    MapView = number_services_map(Classifications, Regexs),
+    FunMatchBlock = fun(Class) -> ["    resC['", Class, "'] = resM;"] end,
+    MapView = number_services_map(FunMatchBlock),
     RedView = number_services_red(),
     ViewName = <<"_design/numbers">>,
     View = case kz_datamgr:open_doc(AccountDb, ViewName) of
@@ -517,6 +515,7 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec escape(kz_term:ne_binary()) -> kz_term:ne_binary().
 escape(?NE_BINARY=Bin0) ->
     StartSz = byte_size(Start= <<"<<">>),
     EndSz   = byte_size(End  = <<">>">>),
@@ -525,23 +524,17 @@ escape(?NE_BINARY=Bin0) ->
     <<Start:StartSz/binary, Escaped:SizeOfWhatIWant/binary, End:EndSz/binary>> = Bin,
     Escaped.
 
--spec number_services_map(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:ne_binary().
-number_services_map(Classifications, Regexs) ->
+-type js_match_block() :: fun((kz_term:ne_binary()) -> iolist()).
+-spec number_services_map(js_match_block()) -> kz_term:ne_binary().
+number_services_map(FunMatchBlock) ->
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
-       "  var e164 = doc._id;"
-       %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
        "  var resM = {};"
        "  resM[doc.pvt_module_name] = 1;"
        "  var resC = {};"
-       "  if (false) return;"
-      ,[["  else if (e164.match(", escape(R), "))"
-         "    resC['", Class, "'] = resM;"
-        ]
-        || {Class, R} <- lists:zip(Classifications, Regexs)
-       ]
-      ,"  var resF = {};"
+      ,generate_js_classifiers(FunMatchBlock),
+       "  var resF = {};"
        "  var used = doc.pvt_features || {};"
        "  for (var feature in used)"
        "    if (used.hasOwnProperty(feature))"
@@ -549,6 +542,26 @@ number_services_map(Classifications, Regexs) ->
        "  emit(doc._id, {'classifications':resC, 'features':resF});"
        "}"
       ]).
+
+-spec generate_js_classifiers(js_match_block()) -> iolist().
+generate_js_classifiers(FunMatchBlock) ->
+    ClassifiersJObj = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
+    Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], ClassifiersJObj)}
+             || Classification <- kz_json:get_keys(ClassifiersJObj)
+            ],
+    {Classifications, Regexs} = lists:unzip(Pairs),
+    generate_js_classifiers(Classifications, Regexs, FunMatchBlock).
+
+-spec generate_js_classifiers(kz_term:ne_binaries(), kz_term:ne_binaries(), js_match_block()) -> iolist().
+generate_js_classifiers(Classifications, Regexs, FunMatchBlock) ->
+    ["  var e164 = doc._id;"
+     "  if (false) return;"
+    ,[["  else if (e164.match(", escape(Regex), "))"
+      ,FunMatchBlock(Class)
+      ]
+      || {Class, Regex} <- lists:zip(Classifications, Regexs)
+     ]
+    ].
 
 -spec number_services_red() -> kz_term:ne_binary().
 number_services_red() ->
@@ -910,7 +923,7 @@ remove_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
 feature_permissions_on_reseller_of(?MATCH_ACCOUNT_RAW(AccountId)) ->
     Allowed = empty_list_when_undefined(?FEATURES_ALLOWED_RESELLER(AccountId)),
     Denied = empty_list_when_undefined(?FEATURES_DENIED_RESELLER(AccountId)),
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     io:format("Feature permissions on reseller of ~s (~s):\n", [AccountId, ResellerId]),
     print_feature_permissions(Allowed, Denied).
 
@@ -925,7 +938,7 @@ edit_allowed_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
         'true' ->
             Allowed = empty_list_when_undefined(?FEATURES_ALLOWED_RESELLER(AccountId)),
             NewFeatures = lists:usort(Fun(Feature, Allowed)),
-            ResellerId = kz_services:find_reseller_id(AccountId),
+            ResellerId = kz_services_reseller:get_id(AccountId),
             _ = kapps_account_config:set(ResellerId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, NewFeatures),
             feature_permissions_on_reseller_of(AccountId)
     end.
@@ -937,7 +950,7 @@ edit_denied_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
         'true' ->
             Denied = empty_list_when_undefined(?FEATURES_DENIED_RESELLER(AccountId)),
             NewFeatures = lists:usort(Fun(Feature, Denied)),
-            ResellerId = kz_services:find_reseller_id(AccountId),
+            ResellerId = kz_services_reseller:get_id(AccountId),
             _ = kapps_account_config:set(ResellerId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY, NewFeatures),
             feature_permissions_on_reseller_of(AccountId)
     end.

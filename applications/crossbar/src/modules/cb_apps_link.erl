@@ -96,8 +96,8 @@ account_info(Context) ->
       [{<<"account_id">>, AccountId}
       ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
       ,{<<"language">>, crossbar_util:get_language(AccountId)}
-      ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
-      ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+      ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+      ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
       ,{<<"is_master">>, AccountId =:= MasterAccountId}
       ]).
 
@@ -114,8 +114,8 @@ auth_info(Context) ->
       ,{<<"method">>, kz_json:get_value(<<"method">>, JObj)}
       ,{<<"created">>, kz_doc:created(JObj)}
       ,{<<"language">>, crossbar_util:get_language(AccountId, OwnerId)}
-      ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
-      ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+      ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+      ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
       ,{<<"apps">>, crossbar_util:load_apps(AccountId, OwnerId)}
       ,{<<"is_master">>, AccountId =:= MasterAccountId}
       ]).

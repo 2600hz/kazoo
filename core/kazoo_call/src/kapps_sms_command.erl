@@ -248,7 +248,7 @@ create_sms(Call) ->
                    ,{<<"From-User">>, kapps_call:from_user(Call)}
                    ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
                    ,{<<"From-URI">>, kapps_call:from(Call)}
-                   ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                   ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
                    ]),
     [{<<"Message-ID">>, kapps_call:kvs_fetch(<<"Message-ID">>, Call)}
     ,{<<"Call-ID">>, kapps_call:call_id(Call)}

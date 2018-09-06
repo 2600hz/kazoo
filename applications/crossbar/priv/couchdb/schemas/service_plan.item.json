@@ -15,14 +15,6 @@
             "description": "Whether to count quantities among all sub-accounts or just the account",
             "type": "boolean"
         },
-        "cumulative_discount": {
-            "description": "Whether to give a discount based on quantities of the account and all sub-accounts",
-            "type": "boolean"
-        },
-        "cumulative_discount_rate": {
-            "description": "How much of a discount to apply",
-            "type": "number"
-        },
         "discounts": {
             "properties": {
                 "cumulative": {
@@ -33,6 +25,15 @@
                         },
                         "rate": {
                             "description": "The discount to apply, up to maximum Items (if applicable)",
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
+                "single": {
+                    "properties": {
+                        "rate": {
+                            "description": "A single discount amount to apply if there are more than 0 units",
                             "type": "number"
                         }
                     },
@@ -76,13 +77,25 @@
             },
             "type": "object"
         },
-        "single_discount": {
-            "description": "Whether to give a discount to the account",
-            "type": "boolean"
-        },
-        "single_discount_rate": {
-            "description": "How much of a discount to apply, per-item",
-            "type": "number"
+        "taxes": {
+            "items": {
+                "properties": {
+                    "name": {
+                        "description": "The display name to use when generating invoices/reports",
+                        "type": "string"
+                    },
+                    "rate": {
+                        "description": "The tax rate as a percentage",
+                        "type": "number"
+                    },
+                    "tax_id": {
+                        "description": "The tax number/id (optional)",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "type": "array"
         }
     },
     "type": "object"

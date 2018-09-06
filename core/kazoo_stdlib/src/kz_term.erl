@@ -16,6 +16,7 @@
         ,to_list/1
         ,to_binary/1
         ,to_api_binary/1
+        ,to_api_term/1
         ,to_atom/1, to_atom/2
         ,to_boolean/1
         ,to_date/1
@@ -324,6 +325,13 @@ to_binary(X) ->
 -spec to_api_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> api_binary().
 to_api_binary('undefined') -> 'undefined';
 to_api_binary(Arg) -> to_binary(Arg).
+
+-spec to_api_term(Arg) -> 'undefined' | Arg.
+to_api_term(Arg) ->
+    case is_empty(Arg) of
+        'true' -> 'undefined';
+        'false' -> Arg
+    end.
 
 %% the safer version, won't let you leak atoms
 -spec to_atom(text() | integer() | float()) -> atom().

@@ -196,7 +196,7 @@ filter_account_resellers([], _Res, Acc) ->
 -spec get_resellers(list(), list()) -> list().
 get_resellers([H|T], Acc) ->
     Account = kz_json:get_value(<<"id">>, H),
-    case kz_services:is_reseller(Account) of
+    case kz_services_reseller:is_reseller(Account) of
         'true'  -> get_resellers(T, [Account|Acc]);
         'false' -> get_resellers(T, Acc)
     end;

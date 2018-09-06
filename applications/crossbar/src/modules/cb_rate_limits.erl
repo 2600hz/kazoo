@@ -57,7 +57,7 @@ authorize(Context) ->
             {'ok', MasterAccount} = kapps_util:get_master_account_id(),
             AuthAccountId = cb_context:auth_account_id(Context),
             AuthAccountId =:= MasterAccount
-                orelse kz_services:is_reseller(AuthAccountId)
+                orelse kz_services_reseller:is_reseller(AuthAccountId)
     end.
 
 -type thing_type() :: kz_term:ne_binary().

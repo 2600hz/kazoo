@@ -85,7 +85,7 @@ get_allotment_seconds(BillingSeconds, Allotment) ->
     Increment = kz_json:get_integer_value(<<"increment">>, Allotment, 1),
     Minimum = kz_json:get_integer_value(<<"minimum">>, Allotment, 0),
     case BillingSeconds > NoConsumeTime of
-        'true' -> wht_util:calculate_cost(60, Increment, Minimum, 0, BillingSeconds);
+        'true' -> kapps_call_util:calculate_cost(60, Increment, Minimum, 0, BillingSeconds);
         'false' -> 0
     end.
 

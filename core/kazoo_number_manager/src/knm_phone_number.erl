@@ -45,6 +45,7 @@
         ,mdn_run/1, set_mdn_run/2
         ,locality/1, set_locality/2
         ,doc/1, update_doc/2, reset_doc/2, reset_doc/1
+        ,current_doc/1
         ,modified/1, set_modified/2
         ,created/1, set_created/2
         ]).
@@ -92,6 +93,7 @@
                           ,mdn_run = 'false' :: boolean()
                           ,locality :: kz_term:api_object()
                           ,doc :: kz_term:api_object()
+                          ,current_doc :: kz_term:api_object()
                           ,modified :: kz_time:api_seconds()             %%%
                           ,created :: kz_time:api_seconds()              %%%
                           ,is_dirty = 'false' :: boolean()
@@ -154,8 +156,8 @@ new(T=#{todo := Nums, options := Options}) ->
              ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
              }
         of
-            {true,false} -> [{module_name, ?PORT_IN_MODULE_NAME} | Options];
-            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            {'true', 'false'} -> [{'module_name', ?PORT_IN_MODULE_NAME} | Options];
+            {_, 'true'} ->       [{'module_name', ?CARRIER_LOCAL} | Options];
             _ -> Options
         end).
 -endif.
@@ -171,7 +173,7 @@ do_new(DID, Setters) ->
 
 -spec from_number(kz_term:ne_binary()) -> knm_phone_number().
 from_number(DID) ->
-    from_json(kz_doc:set_id(kz_json:new(), DID)).
+    from_json(kz_doc:set_id(kzd_phone_numbers:new(), DID)).
 
 -spec from_number_with_options(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number().
 from_number_with_options(DID, Options) ->
@@ -636,6 +638,7 @@ from_json(JObj) ->
                 ,{fun set_created/2, kz_doc:created(JObj)}
 
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
+                ,{fun set_current_doc/2, JObj}
                 ,{fun maybe_migrate_features/2, kz_json:get_ne_value(?PVT_FEATURES, JObj)}
 
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
@@ -650,7 +653,7 @@ from_json(JObj) ->
                 ,fun ensure_features_defined/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
 
-                 |props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
+                 | props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
                 ]),
     PN.
 
@@ -758,6 +761,13 @@ features_fold(FeatureKey, Acc, JObj) ->
 %%------------------------------------------------------------------------------
 -spec from_json_with_options(kz_json:object(), knm_phone_number() | knm_number_options:options()) ->
                                     knm_phone_number().
+from_json_with_options(JObj, #knm_phone_number{}=PN) ->
+    Options = [{'dry_run', dry_run(PN)}
+              ,{'batch_run', batch_run(PN)}
+              ,{'mdn_run', mdn_run(PN)}
+              ,{'auth_by', auth_by(PN)}
+              ],
+    from_json_with_options(JObj, Options);
 from_json_with_options(JObj, Options)
   when is_list(Options) ->
     Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
@@ -772,14 +782,7 @@ from_json_with_options(JObj, Options)
                 end
               ],
     {'ok', PN} = setters(from_json(JObj), Updates),
-    PN;
-from_json_with_options(JObj, PN) ->
-    Options = [{'dry_run', dry_run(PN)}
-              ,{'batch_run', batch_run(PN)}
-              ,{'mdn_run', mdn_run(PN)}
-              ,{'auth_by', auth_by(PN)}
-              ],
-    from_json_with_options(JObj, Options).
+    PN.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -797,17 +800,15 @@ is_phone_number(_) -> 'false'.
                      knm_phone_number_return() |
                      knm_numbers:collection().
 
+setters(#knm_phone_number{}=PN, Routines) ->
+    setters_pn(PN, Routines);
 setters(T0, Routines) when is_map(T0) ->
-    setters_collection(T0, Routines);
-setters(PN, Routines) ->
-    setters_pn(PN, Routines).
+    setters_collection(T0, Routines).
 
 -spec setters_pn(knm_phone_number(), set_functions()) -> knm_phone_number_return().
 setters_pn(PN, Routines) ->
     try lists:foldl(fun setters_fold/2, PN, Routines) of
-        {'ok', _N}=Ok -> Ok;
-        {'error', _R}=Error -> Error;
-        Result -> {'ok', Result}
+        #knm_phone_number{}=NewPN -> {'ok', NewPN}
     catch
         'throw':{'stop', Error} -> Error;
         'error':'function_clause' ->
@@ -827,9 +828,9 @@ setters_pn(PN, Routines) ->
 
 -spec setters_collection(knm_numbers:collection(), set_functions()) -> knm_numbers:collection().
 setters_collection(T0=#{todo := PNs}, Routines) ->
-    F = fun (PN, T) ->
+    F = fun (#knm_phone_number{}=PN, T) ->
                 case setters(PN, Routines) of
-                    {'ok', NewPN} -> knm_numbers:ok(NewPN, T);
+                    {'ok', #knm_phone_number{}=NewPN} -> knm_numbers:ok(NewPN, T);
                     {'error', R} -> knm_numbers:ko(number(PN), R, T)
                 end
         end,
@@ -845,7 +846,7 @@ setters_collection(T0=#{todo := PNs}, Routines) ->
 -type setter_acc() :: knm_phone_number_return() |
                       knm_phone_number().
 
--spec setters_fold(set_function(), setter_acc()) -> setter_acc().
+-spec setters_fold(set_function(), knm_phone_number()) -> knm_phone_number().
 setters_fold(_, {'error', _R}=Error) ->
     throw({'stop', Error});
 setters_fold({Fun, Key, Value}, PN) when is_function(Fun, 3) ->
@@ -855,7 +856,7 @@ setters_fold({Fun, Value}, PN) when is_function(Fun, 2) ->
 setters_fold(Fun, PN) when is_function(Fun, 1) ->
     setters_fold_apply(Fun, [PN]).
 
--spec setters_fold_apply(set_function(), nonempty_list()) -> setter_acc().
+-spec setters_fold_apply(set_function(), nonempty_list()) -> knm_phone_number().
 setters_fold_apply(Fun, [{'ok',PN}|Args]) ->
     setters_fold_apply(Fun, [PN|Args]);
 setters_fold_apply(Fun, Args) ->
@@ -1361,7 +1362,7 @@ is_dirty(#knm_phone_number{is_dirty = IsDirty}) -> IsDirty.
 
 -ifdef(TEST).
 -spec set_is_dirty(knm_phone_number(), boolean()) -> knm_phone_number().
-set_is_dirty(PN, IsDirty=false) -> PN#knm_phone_number{is_dirty = IsDirty}.
+set_is_dirty(PN, IsDirty='false') -> PN#knm_phone_number{is_dirty = IsDirty}.
 -endif.
 
 %%------------------------------------------------------------------------------
@@ -1465,6 +1466,19 @@ reset_doc(PN) ->
 doc_from_public_fields(JObj) ->
     maybe_rename_public_features(
       sanitize_public_fields(JObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec current_doc(knm_phone_number()) -> kz_json:object().
+current_doc(#knm_phone_number{current_doc=Doc}) -> Doc.
+
+-spec set_current_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
+set_current_doc(PN=#knm_phone_number{}, JObj) ->
+    %% Only during from_json/1
+    'true' = kz_json:is_json_object(JObj),
+    PN#knm_phone_number{current_doc = JObj}.
 
 %%------------------------------------------------------------------------------
 %% @doc

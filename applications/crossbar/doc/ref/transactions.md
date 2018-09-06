@@ -18,51 +18,31 @@ curl -v -X GET \
 
 ## Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/{TRANSACTION_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
-```
-
-## Fetch
-
-> GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
-```
-
-## Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/{TRANSACTION_ID}
 ```
 
 ## Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/transactions/credit
+> PUT /v2/accounts/{ACCOUNT_ID}/transactions/sale
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/credit
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/sale
 ```
 
-## Fetch
+## Create
 
-> GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+> PUT /v2/accounts/{ACCOUNT_ID}/transactions/refund
 
 ```shell
-curl -v -X GET \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/refund
 ```
 

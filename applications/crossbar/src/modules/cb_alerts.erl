@@ -257,7 +257,7 @@ view_keys(Context) ->
                    (K) -> [[AccountId, OwnerId]|K]
                 end
                ,fun(K) ->
-                        case kz_services:is_reseller(AccountId) of
+                        case kz_services_reseller:is_reseller(AccountId) of
                             'false' -> K;
                             'true' -> [[<<"resellers">>, <<"all">>], [<<"resellers">>, <<"users">>]|K]
                         end

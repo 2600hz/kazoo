@@ -10,7 +10,6 @@
                  , kazoo_data
                  , kazoo_config
                  , kazoo_modb
-                 , braintree
 
                  , lager
                  ]}

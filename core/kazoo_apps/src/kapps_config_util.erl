@@ -56,7 +56,7 @@ load_config_from_account(Account, Config) ->
 -spec load_config_from_reseller(kz_term:api_binary(), kz_term:ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_reseller(undefined, _Config) -> {error, not_found};
 load_config_from_reseller(Account, Config) ->
-    case kz_services:find_reseller_id(Account) of
+    case kz_services_reseller:get_id(Account) of
         undefined -> {error, not_found};
         %% should get from direct reseller only
         %% same logic as kapps_account_config:get_from_reseller

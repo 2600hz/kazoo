@@ -1,4 +1,4 @@
-personal_ws-1.1 en 1123 utf-8
+personal_ws-1.1 en 1144 utf-8
 PrivateKeyInfo
 cfg
 ccv
@@ -64,6 +64,7 @@ rollups
 DND
 CRM
 passthru
+overridable
 Kaliningrad
 OpenXML
 CAVs
@@ -256,6 +257,7 @@ Aviv
 cnam
 Ralev
 forceclose
+AName
 Ippolito
 moh
 mms
@@ -341,6 +343,7 @@ Enderbury
 hotdesked
 sdp
 Kanturk
+CORS
 sha
 ratedeck
 ptr
@@ -380,14 +383,15 @@ unassign
 CPUs
 CustomerId
 postgrey
+EHLO
 smp
 sms
 minLength
 einval
 autocompaction
 UCT
-spf
 udp
+spf
 Telnyx's
 rtp
 dontlognull
@@ -418,7 +422,7 @@ powerpoint
 noreply
 wrapup
 OTP's
-SRV
+srv
 tns
 UIs
 UI's
@@ -470,6 +474,7 @@ responders
 usr
 txt
 Ust
+quaternary
 loopback
 stacktraces
 resampled
@@ -499,7 +504,9 @@ Mayen
 sctp
 nowait
 masqueradable
+dirname
 WSS
+OffnetReq
 Michal
 Gibberd
 Sitka
@@ -574,7 +581,7 @@ Catamarca
 ok
 streamable
 mv
-MX
+mx
 indicies
 subaccount
 config
@@ -621,6 +628,7 @@ eaddrinuse
 HAProxy
 haproxy
 zh
+activations
 exclusiveMaximum
 hotdesking
 queryable
@@ -677,7 +685,9 @@ iolist
 renderer
 libexec
 transferor
+smtplog
 Scoresbysund
+SchemaId
 snmp
 ufff
 Nipigon
@@ -701,6 +711,7 @@ unhandled
 hipe
 commenter
 datastore
+notstrict
 sandboxing
 UnionPay
 certfile
@@ -777,6 +788,7 @@ INVITEs
 Barthelemy
 CentOS
 skype
+reconnection
 posix
 Wann
 monday
@@ -801,6 +813,7 @@ keepalive
 webm
 instantiation
 keypos
+ErrorBody
 Ashchepkov
 QueueId
 Santo
@@ -816,8 +829,9 @@ frontend
 TaskId
 SmartPBX
 Tuam
-NAPTR
+naptr
 unix
+unshift
 unmute
 arity
 apache
@@ -872,6 +886,7 @@ formatter's
 formatters
 interaccount
 gzip
+ErrorCode
 Kozlov
 Kralendijk
 Edouard
@@ -927,6 +942,7 @@ relayhost
 SAVPF
 featureful
 noconnection
+AccountJObj
 anonymize
 EasterIsland
 Godthab
@@ -980,6 +996,7 @@ AssignTo
 ghostscript
 https
 uptime
+LIBS
 telnyx
 mynetworks
 ifaddr
@@ -987,6 +1004,7 @@ eaddrnotavail
 quickcheck
 loadmodule
 proto
+EmptyJObj
 endif
 resporg
 acdc
@@ -1023,6 +1041,7 @@ BEAMs
 CApath
 json
 Metlakatla
+bitstring
 acls
 ACLs
 modparam
@@ -1064,6 +1083,7 @@ boolean
 EndpointId
 AccountId
 econnrefused
+AttachmentId
 Fermoy
 Creston
 nodeup
@@ -1118,6 +1138,7 @@ ALG
 Danmarkshavn
 Merida
 xferext
+deprovisioning
 Katmandu
 Sensu
 hostent

@@ -45,7 +45,7 @@ save(Number, _CurrentState, _State) ->
 %%------------------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
-    knm_services:deactivate_feature(Number, ?KEY).
+    knm_providers:deactivate_feature(Number, ?KEY).
 
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
@@ -59,9 +59,9 @@ feature(Number) ->
 maybe_port_feature(Number) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case kz_json:get_ne_value(?KEY, Doc) of
-        'undefined' -> knm_services:deactivate_feature(Number, ?KEY);
+        'undefined' -> knm_providers:deactivate_feature(Number, ?KEY);
         Port ->
-            Number1 = knm_services:activate_feature(Number, {?KEY, Port}),
+            Number1 = knm_providers:activate_feature(Number, {?KEY, Port}),
             maybe_port_changed(Number1, Port)
     end.
 

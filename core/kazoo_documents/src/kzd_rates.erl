@@ -354,27 +354,27 @@ rate_suffix(Rate, Default) ->
 set_rate_suffix(Rate, Suffix) ->
     kz_json:set_value(<<"rate_suffix">>, Suffix, Rate).
 
--spec private_cost(doc()) -> kz_transaction:units().
+-spec private_cost(doc()) -> kz_currency:units().
 private_cost(Rate) ->
     private_cost(Rate, 0.0).
 
--spec private_cost(doc(), float()) -> kz_transaction:units().
+-spec private_cost(doc(), float()) -> kz_currency:units().
 private_cost(Rate, Default) ->
     Cost = kz_json:get_float_value(<<"pvt_internal_rate_cost">>, Rate, Default),
-    wht_util:dollars_to_units(Cost).
+    kz_currency:dollars_to_units(Cost).
 
 -spec set_private_cost(doc(), float()) -> doc().
 set_private_cost(Rate, Cost) when is_float(Cost) ->
     kz_json:set_value(<<"pvt_internal_rate_cost">>, Cost, Rate).
 
--spec private_surcharge(doc()) -> kz_transaction:units().
+-spec private_surcharge(doc()) -> kz_currency:units().
 private_surcharge(Rate) ->
     private_surcharge(Rate, 0.0).
 
--spec private_surcharge(doc(), float()) -> kz_transaction:units().
+-spec private_surcharge(doc(), float()) -> kz_currency:units().
 private_surcharge(Rate, Default) ->
     Surcharge = kz_json:get_float_value(<<"pvt_rate_surcharge">>, Rate, Default),
-    wht_util:dollars_to_units(Surcharge).
+    kz_currency:dollars_to_units(Surcharge).
 
 -spec set_private_surcharge(doc(), float()) -> doc().
 set_private_surcharge(Rate, Surcharge) when is_float(Surcharge) ->

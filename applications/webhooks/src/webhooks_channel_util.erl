@@ -129,7 +129,7 @@ base_hook_event(JObj, AccountId, Acc) ->
       ,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
       ,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
       ,{<<"request">>, kz_json:get_value(<<"Request">>, JObj)}
-      ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+      ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
       ,{<<"timestamp">>, kz_call_event:timestamp(JObj)}
       ,{<<"to">>, kz_json:get_value(<<"To">>, JObj)}
        | Acc

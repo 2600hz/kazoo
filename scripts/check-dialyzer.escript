@@ -44,6 +44,7 @@ filter_for_erlang_files(Files) ->
                   orelse is_beam(Arg)
                   orelse is_erl(Arg)
                  )
+                andalso filelib:is_file(Arg)
     ].
 
 %% Internals
@@ -132,7 +133,7 @@ do_warn(PLT, Paths, GoHard) ->
 
 %% explicitly adding `kz_types' so dialyzer knows about `sup_init_ret', `handle_call_ret_state' and other supervisor,
 %% gen_server, ... critical types defined in `kz_types'. Dialyzer is strict about types for these `init', `handle_*'
-%% functions and if we don't add `kz_types' here, dialyzer thinks their types are `any()' and will warn about it.
+%% functions and if we don't add `kz_types' here, Dialyzer thinks their types are `any()' and will warn about it.
 ensure_kz_types(Beams) ->
     case lists:any(fun(F) -> filename:basename(F, ".beam") =:= "kz_types" end, Beams) of
         'true' -> Beams;

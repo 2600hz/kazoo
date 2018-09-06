@@ -47,6 +47,13 @@
 -export([unbind_q_from_sysconf/2]).
 -export([sysconf_publish/2, sysconf_publish/3, sysconf_publish/4]).
 
+-export([bookkeepers_exchange/0]).
+-export([new_bookkeepers_queue/0, new_bookkeepers_queue/1]).
+-export([delete_bookkeepers_queue/1]).
+-export([bind_q_to_bookkeepers/2, bind_q_to_bookkeepers/3]).
+-export([unbind_q_from_bookkeepers/2]).
+-export([bookkeepers_publish/2, bookkeepers_publish/3, bookkeepers_publish/4]).
+
 -export([callctl_exchange/0]).
 -export([new_callctl_queue/1]).
 -export([delete_callctl_queue/1]).
@@ -246,6 +253,18 @@ sysconf_publish(Routing, Payload, ContentType) ->
 -spec sysconf_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 sysconf_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
+
+-spec bookkeepers_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
+bookkeepers_publish(Routing, Payload) ->
+    bookkeepers_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec bookkeepers_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
+bookkeepers_publish(Routing, Payload, ContentType) ->
+    bookkeepers_publish(Routing, Payload, ContentType, []).
+
+-spec bookkeepers_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+bookkeepers_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_BOOKKEEPERS, Routing, Payload, ContentType, Opts).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -551,6 +570,10 @@ notifications_exchange() ->
 sysconf_exchange() ->
     new_exchange(?EXCHANGE_SYSCONF, ?TYPE_SYSCONF).
 
+-spec bookkeepers_exchange() -> 'ok'.
+bookkeepers_exchange() ->
+    new_exchange(?EXCHANGE_BOOKKEEPERS, ?TYPE_BOOKKEEPERS).
+
 -spec callctl_exchange() -> 'ok'.
 callctl_exchange() ->
     new_exchange(?EXCHANGE_CALLCTL, ?TYPE_CALLCTL).
@@ -676,6 +699,12 @@ new_sysconf_queue() -> new_sysconf_queue(<<>>).
 
 -spec new_sysconf_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_sysconf_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
+
+-spec new_bookkeepers_queue() -> kz_term:ne_binary() | {'error', any()}.
+new_bookkeepers_queue() -> new_bookkeepers_queue(<<>>).
+
+-spec new_bookkeepers_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
+new_bookkeepers_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_callevt_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_callevt_queue(<<>>) ->
@@ -875,6 +904,9 @@ delete_notifications_queue(Queue) -> queue_delete(Queue).
 -spec delete_sysconf_queue(kz_term:ne_binary()) -> command_ret().
 delete_sysconf_queue(Queue) -> queue_delete(Queue).
 
+-spec delete_bookkeepers_queue(kz_term:ne_binary()) -> command_ret().
+delete_bookkeepers_queue(Queue) -> queue_delete(Queue).
+
 -spec delete_callmgr_queue(kz_term:ne_binary()) -> command_ret().
 delete_callmgr_queue(Queue) -> queue_delete(Queue).
 
@@ -980,6 +1012,14 @@ bind_q_to_sysconf(Queue, Routing) ->
 -spec bind_q_to_sysconf(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_sysconf(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_SYSCONF, Options).
+
+-spec bind_q_to_bookkeepers(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+bind_q_to_bookkeepers(Queue, Routing) ->
+    bind_q_to_bookkeepers(Queue, Routing, []).
+
+-spec bind_q_to_bookkeepers(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+bind_q_to_bookkeepers(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_BOOKKEEPERS, Options).
 
 -spec bind_q_to_callctl(kz_term:ne_binary()) -> 'ok'.
 bind_q_to_callctl(Queue) ->
@@ -1122,6 +1162,11 @@ unbind_q_from_notifications(Queue, Routing) ->
                                    'ok' | {'error', any()}.
 unbind_q_from_sysconf(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_SYSCONF).
+
+-spec unbind_q_from_bookkeepers(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                       'ok' | {'error', any()}.
+unbind_q_from_bookkeepers(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_BOOKKEEPERS).
 
 -spec unbind_q_from_resource(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                     'ok' | {'error', any()}.

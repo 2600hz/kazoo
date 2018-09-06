@@ -14,7 +14,6 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate_resource/1, validate_resource/2
-        ,billing/1
         ,authenticate/1
         ,authorize/1
         ,validate/1, validate/2, validate/3
@@ -48,13 +47,12 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
                ,{<<"v2_resource.authenticate">>, 'authenticate'}
                ,{<<"v2_resource.authorize">>, 'authorize'}
-               ,{<<"v2_resource.billing">>, 'billing'}
                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
                ,{<<"v2_resource.validate.devices">>, 'validate'}
                ,{<<"v2_resource.execute.put.devices">>, 'put'}
@@ -63,11 +61,7 @@ init() ->
                ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings),
-    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>
-                              ,'crossbar_services'
-                              ,'reconcile'
-                              ),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -108,30 +102,6 @@ resource_exists(_DeviceId) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
-
-%%------------------------------------------------------------------------------
-%% @doc Ensure we will be able to bill for devices.
-%% @end
-%%------------------------------------------------------------------------------
--spec billing(cb_context:context()) -> cb_context:context().
-billing(Context) ->
-    billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
-
-billing(Context, ?HTTP_GET, [{<<"devices">>, _}|_]) ->
-    Context;
-billing(Context, _ReqVerb, [{<<"devices">>, _}|_Nouns]) ->
-    try kz_services:allow_updates(cb_context:account_id(Context)) of
-        'true' ->
-            lager:debug("allowing service updates"),
-            Context
-    catch
-        'throw':{Error, Reason} ->
-            lager:debug("account ~s is not allowed to make billing updates: ~s: ~p"
-                       ,[props:get_value(<<"accounts">>, _Nouns), Error, Reason]),
-            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
-    end;
-billing(Context, _ReqVerb, _Nouns) ->
-    Context.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -286,14 +256,10 @@ patch(Context, Id) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Callback =
-        fun() ->
-                Context1 = crossbar_doc:save(Context),
-                _ = maybe_aggregate_device('undefined', Context1),
-                _ = kz_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
-                maybe_add_mobile_mdn(Context1)
-        end,
-    crossbar_services:maybe_dry_run(Context, Callback).
+    Context1 = crossbar_doc:save(Context),
+    _ = maybe_aggregate_device('undefined', Context1),
+    _ = kz_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
+    maybe_add_mobile_mdn(Context1).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, DeviceId) ->

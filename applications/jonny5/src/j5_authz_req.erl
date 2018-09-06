@@ -59,7 +59,7 @@ inbound_account_by_ip(Request, IP) ->
                ,[IP, AccountId]
                ),
     Routines = [fun(R) ->
-                        ResellerId = kz_services:find_reseller_id(AccountId),
+                        ResellerId = kz_services_reseller:get_id(AccountId),
                         j5_request:set_reseller_id(ResellerId, R)
                 end
                ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
@@ -115,7 +115,7 @@ allow_local_resource(AccountId, Request) ->
                ),
     Routines = [fun(R) -> j5_request:set_account_id(AccountId, R) end
                ,fun(R) ->
-                        ResellerId = kz_services:find_reseller_id(AccountId),
+                        ResellerId = kz_services_reseller:get_id(AccountId),
                         j5_request:set_reseller_id(ResellerId, R)
                 end
                ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
@@ -152,7 +152,7 @@ maybe_determine_reseller_id(Request) ->
 -spec determine_reseller_id(j5_request:request()) -> 'ok'.
 determine_reseller_id(Request) ->
     AccountId = j5_request:account_id(Request),
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     maybe_reseller_limited(
       j5_request:set_reseller_id(ResellerId, Request)
      ).

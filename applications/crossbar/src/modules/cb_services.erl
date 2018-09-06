@@ -1,31 +1,37 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
+%%% @author Peter Defebvre
 %%% @author Karl Anderson
-%%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_services).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1
-        ,resource_exists/0, resource_exists/1
-        ,content_types_provided/2
-        ,validate/1, validate/2
-        ,get/1, get/2
-        ,post/1, post/2
+        ,authorize/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,content_types_provided/1 ,content_types_provided/2
+        ,validate/1, validate/2, validate/3
+        ,post/1 ,post/2
+        ,patch/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
 
--define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".services">>).
-
--define(CB_LIST, <<"services/crossbar_listing">>).
+-define(CB_LIST, <<"services/plans">>).
 -define(AUDIT_LOG_LIST, <<"services/audit_logs_by_creation">>).
-
--define(PATH_PLAN, <<"plan">>).
--define(PATH_AUDIT, <<"audit">>).
--define(PATH_STATUS, <<"status">>).
+-define(SYNCHRONIZATION, <<"synchronization">>).
+-define(RECONCILIATION, <<"reconciliation">>).
+-define(EDITABLE, <<"editable">>).
+-define(AVAILABLE, <<"available">>).
+-define(QUOTE, <<"quote">>).
+-define(SUMMARY, <<"summary">>).
+-define(AUDIT, <<"audit">>).
+-define(OVERRIDES, <<"overrides">>).
+-define(TOPUP, <<"topup">>).
+-define(MANUAL, <<"manual">>).
 
 %%%=============================================================================
 %%% API
@@ -37,32 +43,72 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.services">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.validate.services">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.services">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.services">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.services">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, ?MODULE, 'delete').
+    _ = kazoo_services_maintenance:db_init(),
+    cb_modules_util:bind(?MODULE
+                        ,[{<<"*.authorize.services">>, 'authorize'}
+                         ,{<<"*.allowed_methods.services">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.services">>, 'resource_exists'}
+                         ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
+                         ,{<<"*.validate.services">>, 'validate'}
+                         ,{<<"*.execute.post.services">>, 'post'}
+                         ,{<<"*.execute.patch.services">>, 'patch'}
+                         ,{<<"*.execute.delete.services">>, 'delete'}
+                         ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
+%% @end
+%%------------------------------------------------------------------------------
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
+authorize(Context, _Path) ->
+    is_authorized(Context
+                 ,cb_context:req_verb(Context)
+                 ,cb_context:req_nouns(Context)
+                 ).
+
+-spec is_authorized(cb_context:context(), req_verb(), req_nouns()) -> 'true'.
+is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?EDITABLE]}]) ->
+    'true';
+is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?QUOTE]}]) ->
+    'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
 
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(?PATH_PLAN) ->
+allowed_methods(?EDITABLE) ->
     [?HTTP_GET];
-allowed_methods(?PATH_AUDIT) ->
+allowed_methods(?AVAILABLE) ->
     [?HTTP_GET];
-allowed_methods(?PATH_STATUS) ->
-    [?HTTP_GET, ?HTTP_POST].
+allowed_methods(?SUMMARY) ->
+    [?HTTP_GET];
+allowed_methods(?AUDIT) ->
+    [?HTTP_GET];
+allowed_methods(?TOPUP) ->
+    [?HTTP_POST];
+allowed_methods(?SYNCHRONIZATION) ->
+    [?HTTP_POST];
+allowed_methods(?RECONCILIATION) ->
+    [?HTTP_POST];
+allowed_methods(?QUOTE) ->
+    [?HTTP_POST];
+allowed_methods(?OVERRIDES) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH];
+allowed_methods(?MANUAL) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH];
+allowed_methods(_PlanId) ->
+    [?HTTP_POST, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+allowed_methods(?AUDIT, _AuditId) ->
+    [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
 %% @doc Does the path point to a valid resource.
@@ -75,18 +121,28 @@ allowed_methods(?PATH_STATUS) ->
 %% '''
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
--spec resource_exists(path_token()) -> boolean().
-resource_exists(?PATH_PLAN) -> 'true';
-resource_exists(?PATH_AUDIT) -> 'true';
-resource_exists(?PATH_STATUS) -> 'true';
-resource_exists(_) -> 'false'.
+-spec resource_exists(path_token()) -> 'true'.
+resource_exists(_) -> 'true'.
 
--spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
-content_types_provided(Context, ?PATH_AUDIT) ->
+-spec resource_exists(path_token(), path_token()) -> 'true'.
+resource_exists(_, _) -> 'true'.
+
+%%------------------------------------------------------------------------------
+%% @doc Add content types accepted and provided by this module
+%% @end
+%%------------------------------------------------------------------------------
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
+content_types_provided(Context) ->
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
+
+-spec content_types_provided(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+content_types_provided(Context, _) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
@@ -95,67 +151,141 @@ content_types_provided(Context, ?PATH_AUDIT) ->
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /services might load a list of service objects
-%% /services/123 might load the service object 123
+%% /services might load a list of service_plan objects
+%% /services/123 might load the service_plan object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_services(Context, cb_context:req_verb(Context)).
+    validate_service_plan(Context, cb_context:req_verb(Context)).
 
-validate_services(Context, ?HTTP_GET) -> load_services(Context);
-validate_services(Context, ?HTTP_POST) ->
-    BillingId = kz_json:get_value(<<"billing_id">>, cb_context:req_data(Context)),
-    try kz_services:set_billing_id(BillingId, cb_context:account_id(Context)) of
-        'undefined' ->
-            cb_context:setters(Context
-                              ,[{fun cb_context:set_doc/2, 'undefined'}
-                               ,{fun cb_context:set_resp_status/2, 'success'}
-                               ]);
-        ServicesRec ->
-            cb_context:setters(Context
-                              ,[{fun cb_context:set_doc/2, kz_services:public_json(ServicesRec)}
-                               ,{fun cb_context:store/3, 'services', ServicesRec}
-                               ,{fun cb_context:set_resp_status/2, 'success'}
-                               ])
-    catch
-        'throw':{Error, Reason} ->
-            R = kz_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, kz_json:new()),
-            crossbar_util:response('error', kz_term:to_binary(Error), 400, R, Context)
-    end.
+-spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
+validate_service_plan(Context, ?HTTP_GET) ->
+    pipe_services(Context, [], fun kz_services_plans:assigned/1);
+validate_service_plan(Context, ?HTTP_POST) ->
+    %% NOTE: allow this account to 'bulk' change their service plan assignments/overrides
+    maybe_allow_change(Context).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(Context, ?PATH_PLAN) ->
-    crossbar_util:response(kz_services:service_plan_json(cb_context:account_id(Context)), Context);
-validate(Context, ?PATH_AUDIT) ->
+validate(Context, ?EDITABLE) ->
+    %% NOTE: show what service plan fields are 'overridable'
+    list_editable(Context);
+validate(Context, ?AVAILABLE) ->
+    %% NOTE: list service plans available to this account for selection
+    AccountId = cb_context:account_id(Context),
+    ResellerId = kz_services_reseller:get_id(AccountId),
+    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    crossbar_doc:load_view(?CB_LIST
+                          ,[]
+                          ,cb_context:set_account_db(Context, ResellerDb)
+                          ,fun normalize_available_view_results/2
+                          );
+validate(Context, ?SUMMARY) ->
+    %% NOTE: summarize this accounts billing details based on the assigned service plans
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2
+                        ,kz_services:summary(cb_context:account_id(Context))
+                        }
+                       ]
+                      );
+validate(Context, ?AUDIT) ->
+    %% NOTE: show the billing audit logs
     load_audit_logs(Context);
-validate(Context0, ?PATH_STATUS) ->
-    Context1 = load_services(Context0),
-    case cb_context:resp_status(Context1) of
-        'success' -> create_status_payload(Context1);
-        _Else -> Context1
+validate(Context, ?TOPUP) ->
+    %% NOTE: top-up the accounts credit
+    validate_topup_amount(Context);
+validate(Context, ?MANUAL) ->
+    %% NOTE: manage the manual quantities
+    case is_allowed(Context) of
+        {'ok', _} -> validate_manual_quantities(Context, cb_context:req_verb(Context));
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
+validate(Context, PlanId) ->
+    validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?AUDIT, ?MATCH_MODB_PREFIX(Year, Month, _)=AuditId) ->
+    %% NOTE: show a billing audit log
+    AccountId = cb_context:account_id(Context),
+    AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    Context1 = cb_context:set_account_db(Context, AccountDb),
+    crossbar_doc:load(AuditId, Context1, ?TYPE_CHECK_OPTION(<<"audit_log">>));
+validate(Context, ?AUDIT, AuditId) ->
+    ErrorCause = kz_json:from_list([{<<"cause">>, AuditId}]),
+    cb_context:add_system_error('bad_identifier', ErrorCause, Context).
+
+-spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_service_plan(Context, ?SYNCHRONIZATION, ?HTTP_POST) ->
+    %% NOTE: sync this accounts billing details with the bookkeeper
+    case is_allowed(Context) of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
+validate_service_plan(Context, ?RECONCILIATION, ?HTTP_POST) ->
+    %% NOTE: sync this accounts quantities with the services db
+    case is_allowed(Context) of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
+validate_service_plan(Context, ?QUOTE, ?HTTP_POST) ->
+    %% NOTE: create a summary without requiring an account
+    %% based on the provided service plans.  If cb_context:account_id
+    %% is not empty, use the services plans from the sub-reseller
+    %% otherwise master.
+    pipe_services(Context
+                 ,[fun kz_services:remove_plans/1
+                  ,fun(S) -> assign_plans(Context, S) end
+                  ,fun(S) -> unassign_plans(Context, S) end
+                  ,fun(S) -> override_plans(Context, S) end
+                  ]
+                 ,fun kz_services:summary/1
+                 );
+validate_service_plan(Context, ?OVERRIDES, ?HTTP_GET) ->
+    %% NOTE: get the global overrides for this account
+    pipe_services(Context, [], fun kz_services_plans:overrides/1);
+validate_service_plan(Context, ?OVERRIDES, ?HTTP_POST) ->
+    %% NOTE: update the global overrides for this account
+    case is_allowed(Context) of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
+validate_service_plan(Context, ?OVERRIDES, ?HTTP_PATCH) ->
+    %% NOTE: update the global overrides for this account
+    case is_allowed(Context) of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
+validate_service_plan(Context, PlanId, ?HTTP_POST) ->
+    %% NOTE: conditionally assign service plan and overrides to the account
+    maybe_allow_change(Context, PlanId);
+validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
+    %% NOTE: conditionally unassign service plan from the account
+    maybe_allow_change(Context, PlanId).
+
+-spec validate_topup_amount(cb_context:context()) -> cb_context:context().
+validate_topup_amount(Context) ->
+    case get_topup_amount(Context) =< 0 of
+        'false' -> cb_context:set_resp_status(Context, 'success');
+        'true' ->
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Field is required but missing">>}]
+                   ),
+            cb_context:add_validation_error(<<"amount">>, <<"required">>, Msg, Context)
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%------------------------------------------------------------------------------
-
--spec get(cb_context:context()) -> cb_context:context().
-get(Context) ->
-    Context.
-
--spec get(cb_context:context(), path_token()) -> cb_context:context().
-get(Context, ?PATH_PLAN) ->
-    Context;
-get(Context, ?PATH_AUDIT) ->
-    Context;
-get(Context, ?PATH_STATUS) ->
-    Context.
+-spec validate_manual_quantities(cb_context:context(), http_method()) -> cb_context:context().
+validate_manual_quantities(Context, ?HTTP_GET) ->
+    AccountId = cb_context:account_id(Context),
+    Services = kz_services:fetch(AccountId),
+    JObj = kz_services:manual_quantities(Services),
+    crossbar_doc:handle_json_success(JObj, Context);
+validate_manual_quantities(Context, _HTTPMethod) ->
+    case is_allowed(Context) of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is POST, execute the actual action, usually a db save
@@ -164,110 +294,373 @@ get(Context, ?PATH_STATUS) ->
 %%------------------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    maybe_save_services(Context, cb_context:fetch(Context, 'services')).
+    pipe_services(Context
+                 ,[fun(S) -> assign_plans(Context, S) end
+                  ,fun(S) -> unassign_plans(Context, S) end
+                  ,fun(S) -> override_plans(Context, S) end
+                  ,fun kz_services:commit/1
+                  ]
+                 ,fun kz_services_plans:assigned/1
+                 ).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, ?PATH_STATUS) ->
-    maybe_update_status(Context).
-
--spec maybe_update_status(cb_context:context()) -> cb_context:context().
-maybe_update_status(Context) ->
-    case cb_context:is_superduper_admin(cb_context:auth_account_id(Context)) of
-        'false' -> cb_context:add_system_error('forbidden', Context);
-        'true' -> update_status(Context)
-    end.
-
--spec update_status(cb_context:context()) -> cb_context:context().
-update_status(Context) ->
-    ReqData = cb_context:req_data(Context),
-    Routines = [fun update_good_standing/2
-               ,fun maybe_update_reason/2
-               ,fun maybe_update_reason_code/2
-               ],
-    Update = lists:foldl(fun(F, J) -> F(J, ReqData) end
-                        ,kz_services:to_json(cb_context:fetch(Context, 'services'))
-                        ,Routines
-                        ),
-    Services = kz_services:save(kz_services:from_service_json(Update, 'false')),
-    create_status_payload(
-      cb_context:setters(Context
-                        ,[{fun cb_context:set_doc/2, kz_services:public_json(Services)}
-                         ,{fun cb_context:store/3, 'services', Services}
-                         ,{fun cb_context:set_resp_status/2, 'success'}
-                         ])
-     ).
-
--spec update_good_standing(kz_json:object(), kz_json:object()) -> kz_json:object().
-update_good_standing(JObj, ReqData) ->
-    case kz_json:get_ne_binary_value(<<"in_good_standing">>, ReqData) of
-        <<"true">> -> kzd_services:set_status(JObj, kzd_services:status_good());
-        <<"false">> -> kzd_services:set_status(JObj, kzd_services:status_delinquent())
-    end.
-
--spec maybe_update_reason(kz_json:object(), kz_json:object()) -> kz_json:object().
-maybe_update_reason(JObj, ReqData) ->
-    case kz_json:get_ne_binary_value(<<"reason">>, ReqData) of
-        'undefined' -> JObj;
-        Reason -> kzd_services:set_reason(JObj, Reason)
-    end.
-
--spec maybe_update_reason_code(kz_json:object(), kz_json:object()) -> kz_json:object().
-maybe_update_reason_code(JObj, ReqData) ->
-    case kz_json:get_number_value(<<"reason_code">>, ReqData) of
-        'undefined' -> JObj;
-        ReasonCore -> kzd_services:set_reason_code(JObj, ReasonCore)
-    end.
-
-maybe_save_services(Context, 'undefined') -> Context;
-maybe_save_services(Context, Services) ->
-    try kz_services:save(Services) of
-        NewServices ->
-            crossbar_util:response(kz_services:public_json(NewServices), Context)
+post(Context, ?SYNCHRONIZATION) ->
+    try kz_services_bookkeeper:sync(cb_context:account_id(Context)) of
+        _ -> cb_context:set_resp_status(Context, 'success')
     catch
-        'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
+        _E:_R ->
+            lager:debug("failed to synchronize account services(~s): ~p", [_E, _R]),
+            cb_context:add_system_error('unspecified_fault', Context)
+    end;
+post(Context, ?RECONCILIATION) ->
+    try kz_services:reconcile(cb_context:account_id(Context)) of
+        _ -> cb_context:set_resp_status(Context, 'success')
+    catch
+        _E:_R ->
+            lager:debug("failed to reconcile account services(~s): ~p", [_E, _R]),
+            cb_context:add_system_error('unspecified_fault', Context)
+    end;
+post(Context, ?TOPUP) ->
+    AccountId = cb_context:account_id(Context),
+    Amount = get_topup_amount(Context),
+    Trigger = <<"crossbar-request">>,
+    Audit = crossbar_services:audit_log(Context),
+    case kz_services_topup:topup(AccountId, Amount, Trigger, Audit) of
+        {'ok', Transaction, Ledger} ->
+            JObj = kz_json:from_list(
+                     [{<<"transaction">>, kz_transaction:public_json(Transaction)}
+                     ,{<<"ledger">>, kz_ledger:public_json(Ledger)}
+                     ]
+                    ),
+            crossbar_doc:handle_json_success(JObj, Context);
+        {'error', _Reason} ->
+            %% TODO: need better errors, from the bookkeeper...
+            cb_context:add_system_error('unspecified_fault', Context)
+    end;
+post(Context, ?QUOTE) ->
+    Context;
+post(Context, ?OVERRIDES) ->
+    Overrides = cb_context:req_data(Context),
+    pipe_services(Context
+                 ,[fun(S) -> override_plans(Context, S, Overrides) end
+                  ,fun kz_services:commit/1
+                  ]
+                 ,fun kz_services_plans:overrides/1
+                 );
+post(Context, ?MANUAL) ->
+    Quantities = cb_context:req_data(Context),
+    pipe_services(Context
+                 ,[fun(S) -> manual_quantities(Context, S, Quantities) end
+                  ,fun kz_services:commit/1
+                  ]
+                 ,fun kz_services:manual_quantities/1
+                 );
+post(Context, PlanId) ->
+    Addition = kz_json:set_value(<<"id">>, PlanId, cb_context:req_data(Context)),
+    Options = maybe_merge_overrides(Context),
+    pipe_services(Context
+                 ,[fun(S) ->
+                           kz_services_plan:assign(S, Addition, Options)
+                   end
+                  ,fun kz_services:commit/1
+                  ]
+                 ,fun kz_services_plans:assigned/1
+                 ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, ?OVERRIDES) ->
+    Overrides = cb_context:req_data(Context),
+    pipe_services(Context
+                 ,[fun(S) -> override_plans(Context, S, Overrides) end
+                  ,fun kz_services:commit/1
+                  ]
+                 ,fun kz_services_plans:overrides/1
+                 );
+patch(Context, ?MANUAL) ->
+    Quantities = cb_context:req_data(Context),
+    pipe_services(Context
+                 ,[fun(S) -> manual_quantities(Context, S, Quantities) end
+                  ,fun kz_services:commit/1
+                  ]
+                 ,fun kz_services:manual_quantities/1
+                 ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec list_editable(cb_context:context()) -> cb_context:context().
+list_editable(Context) ->
+    case cb_context:account_id(Context) of
+        'undefined' ->
+            JObj = kz_services_plans:editable_fields(),
+            crossbar_doc:handle_json_success(JObj, Context);
+        AccountId ->
+            list_resellers_editable(Context, AccountId)
     end.
 
+-spec list_resellers_editable(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+list_resellers_editable(Context, AccountId) ->
+    case kz_services_reseller:is_reseller(AccountId) of
+        'true' ->
+            JObj = kz_services_plans:editable_fields(AccountId),
+            crossbar_doc:handle_json_success(JObj, Context);
+        'false' ->
+            ResellerId = kz_services_reseller:get_id(AccountId),
+            JObj = kz_services_plans:editable_fields(ResellerId),
+            crossbar_doc:handle_json_success(JObj, Context)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec load_audit_logs(cb_context:context()) -> cb_context:context().
 load_audit_logs(Context) ->
-    Options = [{'mapper', crossbar_view:map_doc_fun()}
-              ,'include_docs'
-              ],
+    Options = [{'mapper', fun normalize_audit_view_results/2}],
     crossbar_view:load_modb(Context, ?AUDIT_LOG_LIST, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec load_services(cb_context:context()) -> cb_context:context().
-load_services(Context) ->
-    Services = kz_services:fetch(cb_context:account_id(Context)),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_doc/2, kz_services:public_json(Services)}
-                       ,{fun cb_context:store/3, 'services', Services}
-                       ,{fun cb_context:set_resp_data/2, kz_services:public_json(Services)}
-                       ,{fun cb_context:set_resp_status/2, 'success'}
-                       ]).
+-spec override_plans(cb_context:context(), kz_services:serivces()) -> kz_services:services().
+override_plans(Context, Services) ->
+    Overrides = kz_json:get_ne_json_value(<<"overrides">>, cb_context:req_data(Context)),
+    override_plans(Context, Services, Overrides).
+
+-spec override_plans(cb_context:context(), kz_services:services(), kz_term:api_json()) -> kz_services:services().
+override_plans(Context, Services, Overrides) ->
+    kz_services_plans:override(Services, Overrides, maybe_merge_overrides(Context)).
+
+-spec maybe_merge_overrides(cb_context:context()) -> kz_term:proplist().
+maybe_merge_overrides(Context) ->
+    case kz_json:is_true(<<"merge">>, cb_context:req_json(Context), 'false')
+        orelse cb_context:req_verb(Context) =:= ?HTTP_PATCH
+    of
+        'false' -> [];
+        'true' -> ['merge']
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec create_status_payload(cb_context:context()) -> cb_context:context().
-create_status_payload(Context) ->
-    JObj = kz_services:to_json(cb_context:fetch(Context, 'services')),
-    Status = kzd_services:status(JObj) =:= kzd_services:status_good(),
+-spec manual_quantities(cb_context:context(), kz_services:services(), kz_term:api_json()) -> kz_services:services().
+manual_quantities(Context, Services, Quantities) ->
+    kz_services:set_manual_updates(Services, Quantities, maybe_merge_quantities(Context)).
+
+-spec maybe_merge_quantities(cb_context:context()) -> kz_term:proplist().
+maybe_merge_quantities(Context) ->
+    case kz_json:is_true(<<"merge">>, cb_context:req_json(Context), 'false')
+        orelse cb_context:req_verb(Context) =:= ?HTTP_PATCH
+    of
+        'false' -> [];
+        'true' -> ['merge']
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, PlanId) ->
+    pipe_services(Context
+                 ,[fun(S) -> kz_services_plan:unassign(S, PlanId) end
+                  ,fun kz_services:commit/1
+                  ]
+                 ,fun kz_services_plans:assigned/1
+                 ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec assign_plans(cb_context:context(), kz_services:services()) -> kz_services:services().
+assign_plans(Context, Services) ->
+    Additions = kz_json:get_first_defined([<<"add">>
+                                          ,<<"plans">>
+                                          ]
+                                         ,cb_context:req_data(Context)
+                                         ,[]
+                                         ),
+    Options = maybe_merge_overrides(Context),
+    lists:foldl(fun(Addition, S) ->
+                        kz_services_plan:assign(S, Addition, Options)
+                end
+               ,Services
+               ,Additions
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec unassign_plans(cb_context:context(), kz_services:services()) -> kz_services:services().
+unassign_plans(Context, Services) ->
+    ReqData = cb_context:req_data(Context),
+    lists:foldl(fun(PlanId, S) -> kz_services_plan:unassign(S, PlanId) end
+               ,Services
+               ,kz_json:get_value(<<"delete">>, ReqData, [])
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-type services_pipe() :: fun((kz_services:services()) -> kz_services:services()).
+-type resp_function() :: fun((kz_json:object()) -> kz_json:object()).
+-spec pipe_services(cb_context:context(), [services_pipe()], resp_function()) -> cb_context:context().
+pipe_services(Context, Routines, RespFunction) ->
+    AccountId = cb_context:account_id(Context),
+    Services = lists:foldl(fun (F, S) -> F(S) end
+                          ,kz_services:fetch(AccountId)
+                          ,Routines
+                          ),
     cb_context:setters(Context
-                      ,[{fun cb_context:set_resp_data/2, create_status_payload(Status, JObj)}
+                      ,[{fun cb_context:set_resp_data/2, RespFunction(Services)}
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ]).
 
--spec create_status_payload(boolean(), kz_json:object()) -> kz_json:object().
-create_status_payload('true', _JObj) ->
-    kz_json:from_list([{<<"in_good_standing">>, 'true'}
-                      ]);
-create_status_payload('false', JObj) ->
-    kz_json:from_list([{<<"in_good_standing">>, 'false'}
-                      ,{<<"reason">>, kzd_services:reason(JObj)}
-                      ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
-                      ]).
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_available_view_results(kz_json:object(), kz_json:objects()) ->
+                                              kz_json:objects().
+normalize_available_view_results(JObj, Acc) ->
+    [kz_json:get_json_value(<<"value">>, JObj)|Acc].
+
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_audit_view_results(kz_json:object(), kz_json:objects()) ->
+                                          kz_json:objects().
+normalize_audit_view_results(JObj, Acc) ->
+    [kz_json:get_json_value(<<"value">>, JObj)|Acc].
+
+%%------------------------------------------------------------------------------
+%% @doc Check if you have the permission to update or delete service plans
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_allowed(cb_context:context()) -> {'ok', kz_term:ne_binary()} | 'false'.
+is_allowed(Context) ->
+    ResellerId = kz_services_reseller:get_id(cb_context:account_id(Context)),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    case AuthAccountId =:= ResellerId
+        orelse cb_context:is_superduper_admin(Context)
+    of
+        'true' -> {'ok', ResellerId};
+        'false' -> 'false'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Check if you have the permission to update or delete service plans
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_allow_change(cb_context:context()) -> cb_context:context().
+maybe_allow_change(Context) ->
+    case is_allowed(Context) of
+        {'ok', ResellerId} ->
+            check_plan_ids(Context, ResellerId);
+        'false' ->
+            cb_context:add_system_error('forbidden', Context)
+    end.
+
+-spec maybe_allow_change(cb_context:context(), path_token()) -> cb_context:context().
+maybe_allow_change(Context, PlanId) ->
+    case is_allowed(Context) of
+        {'ok', ResellerId} ->
+            check_plan_id(Context, PlanId, ResellerId);
+        'false' ->
+            cb_context:add_system_error('forbidden', Context)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_plan_ids(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+check_plan_ids(Context, ResellerId) ->
+    AddPlanIds = get_plan_ids(Context),
+    check_plan_ids(maybe_forbid_delete(Context), ResellerId, AddPlanIds).
+
+-spec get_plan_ids(cb_context:context()) -> kz_term:ne_binaries().
+get_plan_ids(Context) ->
+    ReqData = cb_context:req_data(Context),
+    Items = kz_json:get_value(<<"add">>, ReqData, []),
+    get_plan_ids(Items, []).
+
+-spec get_plan_ids(kz_term:ne_binaries() | kz_json:objects(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+get_plan_ids([], Ids) -> Ids;
+get_plan_ids([Item|Items], Ids) ->
+    case kz_json:is_json_object(Item) of
+        'false' -> get_plan_ids(Items, maybe_add_plan_id(Item, Ids));
+        'true' ->
+            Id = kz_doc:id(Item),
+            get_plan_ids(Items, maybe_add_plan_id(Id, Ids))
+    end.
+
+-spec maybe_add_plan_id(kz_term:api_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+maybe_add_plan_id(Id=?NE_BINARY, Ids) -> [Id|Ids];
+maybe_add_plan_id(_, Ids) -> Ids.
+
+-spec check_plan_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
+check_plan_ids(Context, _ResellerId, []) ->
+    cb_context:set_resp_status(Context, 'success');
+check_plan_ids(Context, ResellerId, PlanIds) ->
+    lists:foldl(fun(PlanId, Ctxt) ->
+                        case cb_context:resp_status(Ctxt) of
+                            'success' ->
+                                check_plan_id(Ctxt, PlanId, ResellerId);
+                            _Status -> Ctxt
+                        end
+                end
+               ,cb_context:set_resp_status(Context, 'success')
+               ,PlanIds
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_plan_id(cb_context:context(), path_token(), kz_term:ne_binary()) ->
+                           cb_context:context().
+check_plan_id(Context, PlanId, ResellerId) ->
+    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
+
+-spec maybe_forbid_delete(cb_context:context()) -> cb_context:context().
+maybe_forbid_delete(Context) ->
+    case kz_json:get_value(<<"delete">>, cb_context:req_data(Context), []) of
+        [] -> Context;
+        DeletePlansIds ->
+            maybe_forbid_delete(DeletePlansIds, Context)
+    end.
+
+-spec maybe_forbid_delete(kz_term:ne_binaries(), cb_context:context()) -> cb_context:context().
+maybe_forbid_delete(DeletePlansIds, Context) ->
+    %% TODO: is there a cleaner way to do this... yes...
+    Services = kz_services:fetch(cb_context:account_id(Context)),
+    ServiceJObj = kz_services:services_jobj(Services),
+    ExistingPlansIds = kzd_services:plan_ids(ServiceJObj),
+    case DeletePlansIds -- ExistingPlansIds of
+        [] -> Context;
+        _ -> cb_context:add_system_error('plan_is_not_assigned', Context)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_topup_amount(cb_context:context()) -> integer().
+get_topup_amount(Context) ->
+    ReqData = cb_context:req_data(Context),
+    kz_currency:dollars_to_units(
+      kz_json:get_float_value(<<"amount">>, ReqData, 0)
+     ).

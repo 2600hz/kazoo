@@ -1204,8 +1204,7 @@ get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME(DbName) ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     Plan = kzs_plan:plan(DbName, Opts),
     case kzs_view:get_results(Plan, DbName, DesignDoc, Options) of
-        {'error', 'not_found'} ->
-            maybe_create_view(DbName, Plan, DesignDoc, Options);
+        {'error', 'not_found'} ->  maybe_create_view(DbName, Plan, DesignDoc, Options);
         Other -> Other
     end;
 get_results(DbName, DesignDoc, Options) ->
@@ -1541,15 +1540,11 @@ register_views_from_folder(Classification, App, Folder) ->
 -spec refresh_views(kz_term:ne_binary()) -> boolean() | {'error', 'invalid_db_name'}.
 refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     suppress_change_notice(),
-    Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
+    Classification = kzs_util:db_classification(DbName),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
-    Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
-                  {'error', _E} ->
-                      lager:debug("failed to get docs: ~p", [_E]),
-                      'false';
-                  {'ok', JObjs} ->
-                      ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
-                      Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],
+    Updated = case view_definitions(Classification) of
+                  [] -> 'false';
+                  Views ->
                       Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
                       db_view_update(Database, Views)
               end,
@@ -1568,3 +1563,15 @@ refresh_views(DbName) ->
         {'ok', Db} -> refresh_views(Db);
         {'error', _}=E -> E
     end.
+
+-spec view_definitions(atom() | kz_term:ne_binary()) -> views_listing().
+view_definitions(Classification) when is_atom(Classification) ->
+    case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [kz_term:to_binary(Classification)]) of
+        {'error', _} -> [];
+        {'ok', JObjs} ->
+            ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
+            [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs]
+    end;
+view_definitions(DbName) ->
+    view_definitions(kzs_util:db_classification(DbName)).
+

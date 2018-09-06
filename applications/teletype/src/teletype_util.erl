@@ -472,7 +472,7 @@ send_update(RespQ, MsgId, Status, Msg, Metadata) ->
 -spec find_account_rep_email(kz_term:api_object() | kz_term:ne_binary()) -> kz_term:api_binaries().
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(?NE_BINARY=AccountId) ->
-    case kz_services:is_reseller(AccountId) of
+    case kz_services_reseller:is_reseller(AccountId) of
         'true' ->
             lager:debug("finding admin email for reseller account ~s", [AccountId]),
             find_account_admin_email(AccountId);
@@ -524,7 +524,7 @@ extract_admin_emails(Users) ->
     ].
 
 -spec find_reseller_id(kz_term:ne_binary()) -> kz_term:ne_binary().
-find_reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
+find_reseller_id(AccountId) -> kz_services_reseller:get_id(AccountId).
 
 -spec find_account_admin(kz_term:api_binary()) -> kz_term:api_object().
 find_account_admin('undefined') -> 'undefined';

@@ -246,7 +246,7 @@ quantity(JObj) ->
 offset(JObj) ->
     kz_json:get_integer_value(?KEY_OFFSET, JObj).
 
--spec results(kz_json:object()) -> list().
+-spec results(kz_json:object()) -> kz_json:api_objects() | kz_json:object().
 results(JObj) ->
     kz_json:get_value(?KEY_RESULTS, JObj).
 

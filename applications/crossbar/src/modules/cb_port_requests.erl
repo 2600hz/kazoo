@@ -1313,7 +1313,7 @@ common_patch_notification_props(_, _) ->
                                     cb_context:context().
 generate_loa_from_port(Context, PortRequest) ->
     AccountId = cb_context:account_id(Context),
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
     TemplateData =
         props:filter_undefined(

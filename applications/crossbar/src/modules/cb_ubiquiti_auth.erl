@@ -186,8 +186,8 @@ maybe_add_account_information(UUID, AuthResponse) ->
             lager:debug("found account as ~s", [AccountId]),
 
             kz_json:set_values([{<<"account_id">>, AccountId}
-                               ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
-                               ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+                               ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+                               ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
                                ]
                               ,AuthResponse
                               );

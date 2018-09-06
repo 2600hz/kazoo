@@ -95,7 +95,7 @@
         ,host_url/1, set_host_url/2
         ,set_pretty_print/2
         ,set_port/2
-        ,set_raw_path/2
+        ,raw_path/1, set_raw_path/2
         ,raw_qs/1, set_raw_qs/2
         ,profile_id/1 ,set_profile_id/2
 
@@ -667,6 +667,9 @@ host_url(#cb_context{host_url = Value}) -> Value.
 -spec set_pretty_print(context(), boolean()) -> context().
 set_pretty_print(#cb_context{}=Context, Value) ->
     Context#cb_context{pretty_print = Value}.
+
+-spec raw_path(context()) -> binary().
+raw_path(#cb_context{raw_path = Value}) -> Value.
 
 -spec set_raw_path(context(), binary()) -> context().
 set_raw_path(#cb_context{}=Context, Value) ->

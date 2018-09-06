@@ -95,8 +95,9 @@
                          ,'cb_metaflows'
                          ,'cb_multi_factor'
                          ,'cb_notifications'
-                         ,'cb_pivot'
+                         ,'cb_parked_calls'
                          ,'cb_phone_numbers'
+                         ,'cb_pivot'
                          ,'cb_port_requests'
                          ,'cb_presence'
                          ,'cb_quickcall'
@@ -107,7 +108,6 @@
                          ,'cb_schemas'
                          ,'cb_search'
                          ,'cb_security'
-                         ,'cb_service_plans'
                          ,'cb_services'
                          ,'cb_simple_authz'
                          ,'cb_sms'
@@ -125,7 +125,6 @@
                          ,'cb_webhooks'
                          ,'cb_websockets'
                          ,'cb_whitelabel'
-                         ,'cb_parked_calls'
                          ]).
 
 -define(DEPRECATED_MODULES, ['cb_local_resources'

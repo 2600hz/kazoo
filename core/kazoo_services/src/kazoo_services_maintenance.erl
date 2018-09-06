@@ -5,11 +5,16 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_services_maintenance).
 
+-export([update_tree/3]).
+
 -export([flush/0]).
--export([credit/2]).
--export([debit/2]).
+-export([db_init/0]).
 -export([refresh/0]).
--export([reconcile/0, reconcile/1
+-export([migrate_service_plans/1, migrate_service_plan/2]).
+-export([migrate_services/0]).
+-export([fix_plan_apps/1]).
+-export([reconcile/0
+        ,reconcile/1
         ,remove_orphaned_services/0
         ]).
 -export([sync/1]).
@@ -21,10 +26,36 @@
 -export([rebuild_services_db/0
         ,attempt_services_recovery/0
         ]).
+-export([disable_topup/0]).
+-export([enable_topup/0]).
+-export([topup_status/0
+        ,topup_status/1
+        ]).
 
 -include("services.hrl").
 
+-define(UI_APPS_KEY(PlanId), [<<"plans">>, PlanId, <<"overrides">>, <<"ui_apps">>]).
+-define(UI_APP_KEY(PlanId, Name), [<<"plans">>, PlanId, <<"overrides">>, <<"ui_apps">>, Name]).
 -define(KZ_SERVICES_DB_TMP, <<"services_backup">>).
+
+%%------------------------------------------------------------------------------
+%% @doc TODO: where does this belong, also needs testing
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_services:services().
+update_tree(Account, NewTree, NewResellerId) ->
+    AccountId = kz_util:format_account_id(Account),
+    Services = kz_services:fetch(AccountId, ['skip_cache']),
+    ServicesJObj = kz_services:services_jobj(Services),
+    Props = props:filter_undefined(
+              [{?SERVICES_PVT_TREE, NewTree}
+              ,{?SERVICES_PVT_TREE_PREVIOUSLY, kzd_accounts:tree(ServicesJObj)}
+              ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
+              ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
+              ]),
+    %%FIXME: do something about setting pvt_auth_*_id
+    {'ok', NewServicesJObj} = kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, ServicesJObj)),
+    kz_services:set_services_jobj(Services, NewServicesJObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -32,68 +63,153 @@
 %%------------------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
-    kz_services:flush_services().
+    kz_cache:flush_local(?CACHE_NAME).
 
 %%------------------------------------------------------------------------------
-%% @doc Add arbitrary credit to an account, without charging the accounts
-%% credit card
+%% @doc Creates the services db, addes the required view to the services db
+%% and registers the quantifier view for account dbs.
 %% @end
 %%------------------------------------------------------------------------------
--spec credit(kz_term:ne_binary(), kz_term:text()) -> 'no_return'.
-credit(AccountId, Amount) ->
-    Units = wht_util:dollars_to_units(Amount),
+-spec db_init() -> 'ok'.
+db_init() ->
+    _ = kz_datamgr:del_doc(?KZ_DATA_DB, <<"account-kazoo_apps-services">>),
+    kz_datamgr:db_create(?KZ_SERVICES_DB),
+    kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views"),
+    _ = kz_datamgr:register_view('account', {<<"_design/services">>, js_design_doc()}),
+    'ok'.
 
-    case create_transaction(kz_transaction:credit(AccountId, Units)) of
-        'ok' ->
-            lager:info("credited account ~p $~p", [AccountId, Amount]);
-        {'error', _R} ->
-            lager:info("failed to credit account: ~s: ~p", [AccountId, _R])
-    end,
-    'no_return'.
-
-%%------------------------------------------------------------------------------
-%% @doc Add arbitrary debit to an account, without charging the accounts
-%% debit card
-%% @end
-%%------------------------------------------------------------------------------
--spec debit(kz_term:ne_binary(), kz_term:text()) -> 'no_return'.
-debit(AccountId, Amount) ->
-    Units = wht_util:dollars_to_units(Amount),
-
-    case create_transaction(kz_transaction:debit(AccountId, Units)) of
-        'ok' -> lager:info("debited account ~s $~p", [AccountId, Amount]);
-        {'error', _R} ->
-            lager:info("failed to debit account ~s: ~p"
-                      ,[AccountId, _R]
-                      )
-    end,
-    'no_return'.
-
--spec create_transaction(kz_transaction:kz_transaction()) ->
-                                'ok' |
-                                {'error', any()}.
-create_transaction(Transaction) ->
-    Routines = [fun admin_discretion/1
-               ,fun admin_description/1
+-spec js_design_doc() -> kz_json:object().
+js_design_doc() ->
+    Quantify = [{<<"map">>, js_quantify_map()}
+               ,{<<"reduce">>, <<"_sum">>}
                ],
-    T = lists:foldl(fun(F, T) -> F(T) end
-                   ,Transaction
-                   ,Routines
-                   ),
-    case kz_transaction:save(T) of
-        {'ok', _} -> 'ok';
-        {'error', _R}=E -> E
-    end.
+    ObjectPlans = [{<<"map">>, js_object_plans_map()}],
+    Bookkeepers = [{<<"map">>, js_bookkeepers_map()}],
+    ServicePlans = [{<<"map">>, js_service_plans_map()}],
+    Views = [{<<"quantify">>, kz_json:from_list(Quantify)}
+            ,{<<"object_plans">>, kz_json:from_list(ObjectPlans)}
+            ,{<<"bookkeepers">>, kz_json:from_list(Bookkeepers)}
+            ,{<<"plans">>, kz_json:from_list(ServicePlans)}
+            ],
+    Props = [{<<"_id">>, <<"_design/services">>}
+            ,{<<"views">>, kz_json:from_list(Views)}
+            ],
+    kz_json:from_list(Props).
 
--spec admin_discretion(kz_transaction:kz_transaction()) ->
-                              kz_transaction:kz_transaction().
-admin_discretion(T) ->
-    kz_transaction:set_reason(wht_util:admin_discretion(), T).
+-spec js_service_plans_map() -> kz_term:ne_binary().
+js_service_plans_map() ->
+    iolist_to_binary(
+      ["function(doc) {"
+       "    if (doc.pvt_type != 'service_plan' || doc.pvt_deleted) return;"
+       "    emit(doc._id, {'id': doc._id, 'name': doc.name, 'description': doc.description, 'category': doc.category});"
+       "}"
+      ]
+     ).
 
--spec admin_description(kz_transaction:kz_transaction()) ->
-                               kz_transaction:kz_transaction().
-admin_description(T) ->
-    kz_transaction:set_description(<<"system administrator credit modification">>, T).
+-spec js_bookkeepers_map() -> kz_term:ne_binary().
+js_bookkeepers_map() ->
+    iolist_to_binary(
+      ["function(doc) {"
+       "    if (doc.pvt_type != 'bookkeeper' || doc.pvt_deleted) return;"
+       "    emit(doc.bookkeeper, {'id': doc._id, 'name': doc.name, 'description': doc.description});"
+       "}"
+      ]
+     ).
+
+-spec js_object_plans_map() -> kz_term:ne_binary().
+js_object_plans_map() ->
+    iolist_to_binary(
+      ["function(doc) {"
+       "    if(!doc.service || !doc.service.plans || doc.pvt_deleted) return;"
+       "    emit(doc.pvt_type, doc.service.plans);"
+       "}"
+      ]
+     ).
+
+-spec js_quantify_map() -> kz_term:ne_binary().
+js_quantify_map() ->
+    FunMatchBlock = fun(Class) -> [" emit(['phone_numbers', '", Class, "'], 1);"] end,
+    iolist_to_binary(
+      ["function(doc) {"
+       "    if (doc.pvt_deleted) return;"
+       "    if (doc.hasOwnProperty('enabled') && !doc.enabled) return;"
+       "    switch (doc.pvt_type || doc._id) {"
+       "        case 'user':"
+       "            emit(['users', doc.priv_level], 1);"
+       "            if (doc.qubicle && doc.qubicle.enabled) {"
+       "                emit(['qubicle', 'recipients'], 1);"
+       "            }"
+       "            break;"
+       "        case 'device':"
+       "            emit(['devices', doc.device_type || 'sip_device'], 1);"
+       "            break;"
+       "        case 'limits':"
+       "            if (doc.twoway_trunks && doc.twoway_trunks > 0) {"
+       "                emit(['limits', 'twoway_trunks'], doc.twoway_trunks);"
+       "            }"
+       "            if (doc.inbound_trunks && doc.inbound_trunks > 0) {"
+       "                emit(['limits', 'inbound_trunks'], doc.inbound_trunks);"
+       "            }"
+       "            if (doc.outbound_trunks && doc.outbound_trunks > 0) {"
+       "                emit(['limits', 'outbound_trunks'], doc.outbound_trunks);"
+       "            }"
+       "            break;"
+       "        case 'whitelabel':"
+       "            emit(['branding', 'whitelabel'], 1);"
+       "            break;"
+       "        case 'dedicated_ip':"
+       "            emit(['ips', 'dedicated'], 1);"
+       "            break;"
+       "        case 'apps_store':"
+       "            for (var index in doc.apps) {"
+       "                if (!doc.apps.hasOwnProperty(index)) {"
+       "                    continue;"
+       "                }"
+       "                switch (doc.apps[index].allowed_users) {"
+       "                    case 'all':"
+       "                        emit(['user_apps', doc.apps[index].name], -1);"
+       "                        break;"
+       "                    case 'admins':"
+       "                        emit(['user_apps', doc.apps[index].name], -2);"
+       "                        break;"
+       "                    case 'specific':"
+       "                        emit(['user_apps', doc.apps[index].name], doc.apps[index].users.length);"
+       "                        break;"
+       "                }"
+       "                emit(['account_apps', doc.apps[index].name], 1);"
+       "            }"
+       "            break;"
+       "        case 'number':"
+       "            emit(['number_carriers', doc.pvt_module_name], 1);"
+       "            var features = doc.pvt_features || {};"
+       "            for (var index in features) {"
+       "                if (features.hasOwnProperty(index)) {"
+       "                    emit(['number_services', index], 1);"
+       "                }"
+       "            }"
+      ,kazoo_number_manager_maintenance:generate_js_classifiers(FunMatchBlock),
+       "            break;"
+       "        case 'qubicle_queue':"
+       "            emit(['qubicle', 'queues'], 1);"
+       "            break;"
+       "        case 'vmbox':"
+       "            emit(['voicemails', 'mailbox'], 1);"
+       "            break;"
+       "        case 'faxbox':"
+       "            emit(['faxes', 'mailbox'], 1);"
+       "            break;"
+       "        case 'conference':"
+       "            emit(['conferences', 'conference'], 1);"
+       "            break;"
+       "    }"
+       "    if (doc.billing) {"
+       "        for (index in doc.billing) {"
+       "            emit(['billing', index], doc.billing[index]);"
+       "        }"
+       "    }"
+       "}"
+      ]
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc maintenance function for the services db
@@ -105,11 +221,490 @@ refresh() ->
     kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views").
 
 %%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_service_plans(kz_term:ne_binary()) -> 'no_return'.
+migrate_service_plans(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
+    ViewOptions = ['include_docs'],
+    {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/plans">>, ViewOptions),
+    io:format("verifying ~p service plans have been migrated~n", [length(JObjs)]),
+    migrate_service_plans(AccountDb, [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]).
+
+-spec migrate_service_plans(kz_term:ne_binary(), kz_json:objects()) -> 'no_return'.
+migrate_service_plans(_AccountDb, []) -> 'no_return';
+migrate_service_plans(AccountDb, [JObj|JObjs]) ->
+    case kz_json:get_integer_value(<<"pvt_vsn">>, JObj, 0) > 1 of
+        'true' -> migrate_service_plans(AccountDb, JObjs);
+        'false' ->
+            _ = migrate_service_plan(AccountDb, JObj),
+            migrate_service_plans(AccountDb, JObjs)
+    end.
+
+-spec migrate_service_plan(kz_term:ne_binary(), kz_json:object()) -> kzd_services:doc().
+migrate_service_plan(AccountDb, JObj) ->
+    io:format("~s/~s requires migration~n", [AccountDb, kz_doc:id(JObj)]),
+    Routines = [fun migrate_service_plans_bookkeeper/2
+               ,fun migrate_service_plans_apps/2
+               ,fun migrate_service_plans_pvt_parameters/2
+               ,fun migrate_service_plans_ratedeck/2
+               ,fun store_migrated_services_plan/2
+               ],
+    lists:foldl(fun(F, J) -> F(AccountDb, J) end, JObj, Routines).
+
+-spec migrate_service_plans_bookkeeper(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+migrate_service_plans_bookkeeper(AccountDb, JObj) ->
+    Keys = kz_json:get_keys(<<"bookkeepers">>, JObj),
+    Cleaned = kz_json:delete_key(<<"bookkeepers">>, JObj),
+    case migrate_bookkeepers(AccountDb, JObj, Keys) of
+        'undefined' -> Cleaned;
+        BookkeeperId ->
+            AccountId = kz_util:format_account_id(AccountDb),
+            Setters = [{fun kzd_service_plan:set_bookkeeper_id/2, BookkeeperId}
+                      ,{fun kzd_service_plan:set_bookkeeper_vendor_id/2, AccountId}
+                      ,{fun kzd_service_plan:set_bookkeeper_type/2, <<"braintree">>}
+                      ],
+            kz_doc:setters(Cleaned, Setters)
+    end.
+
+-spec migrate_bookkeepers(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_term:api_binary().
+migrate_bookkeepers(AccountDb, JObj, Keys) ->
+    migrate_bookkeepers(AccountDb, JObj, Keys, 'undefined').
+
+-spec migrate_bookkeepers(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries(), kz_term:api_binary()) -> kz_term:api_binary().
+migrate_bookkeepers(_AccountDb, _JObj, [], BraintreeId) -> BraintreeId;
+migrate_bookkeepers(AccountDb, JObj, [Key|Keys], BraintreeId) ->
+    Mappings = kz_json:get_ne_json_value([<<"bookkeepers">>, Key], JObj, kz_json:new()),
+    ViewOptions = [{'key', Key}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(AccountDb, <<"services/bookkeepers">>, ViewOptions) of
+        {'ok', [Result|_]} when Key =:= <<"braintree">> ->
+            Bookkeeper = kz_json:get_value(<<"doc">>, Result),
+            OtherId = merge_bookkeeper(AccountDb, Bookkeeper, Mappings),
+            migrate_bookkeepers(AccountDb, JObj, Keys, OtherId);
+        {'ok', [Result|_]} ->
+            Bookkeeper = kz_json:get_value(<<"doc">>, Result),
+            _OtherId = merge_bookkeeper(AccountDb, Bookkeeper, Mappings),
+            migrate_bookkeepers(AccountDb, JObj, Keys, BraintreeId);
+        _Else when Key =:= <<"braintree">> ->
+            OtherId = create_bookkeeper(AccountDb, Mappings, Key),
+            migrate_bookkeepers(AccountDb, JObj, Keys, OtherId);
+        _Else ->
+            _OtherId = create_bookkeeper(AccountDb, Mappings, Key),
+            migrate_bookkeepers(AccountDb, JObj, Keys, BraintreeId)
+    end.
+
+-spec merge_bookkeeper(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_term:api_binary().
+merge_bookkeeper(AccountDb, Bookkeeper, NewMappings) ->
+    CurrentMappings = kzd_bookkeeper:mappings(Bookkeeper),
+    Mappings = kz_json:merge_recursive(CurrentMappings, NewMappings),
+    {'ok', JObj} = kz_datamgr:save_doc(AccountDb, kzd_bookkeeper:set_mappings(Bookkeeper, Mappings)),
+    kz_doc:id(JObj).
+
+-spec create_bookkeeper(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
+create_bookkeeper(AccountDb, Mappings, Key) ->
+    AccountId = kz_util:format_account_id(AccountDb),
+    BaseJObj = kz_doc:update_pvt_parameters(kz_json:new()
+                                           ,AccountDb
+                                           ,[{'account_id', AccountId}
+                                            ,{'crossbar_doc_vsn', 2}
+                                            ,{'type', kzd_bookkeeper:type()}
+                                            ]
+                                           ),
+    Name = <<"Migrated from Service Plans for 4.3+">>,
+    Setters = [{fun kzd_bookkeeper:set_name/2, Name}
+              ,{fun kzd_bookkeeper:set_bookkeeper_type/2, Key}
+              ,{fun kzd_bookkeeper:set_mappings/2, Mappings}
+              ],
+    Bookkeeper = kz_doc:setters(BaseJObj, Setters),
+    {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Bookkeeper),
+    kz_doc:id(JObj).
+
+-spec migrate_service_plans_apps(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+migrate_service_plans_apps(_AccountDb, JObj) ->
+    Plan = kzd_service_plan:plan(JObj),
+    Apps = migrate_ui_apps(Plan),
+    Cleaned = kz_json:delete_key([<<"plan">>, <<"ui_apps">>], JObj),
+    kzd_service_plan:set_applications(Cleaned, Apps).
+
+-spec migrate_service_plans_pvt_parameters(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+migrate_service_plans_pvt_parameters(_AccountDb, JObj) ->
+    Options = [{'crossbar_doc_vsn', 2}],
+    kz_doc:update_pvt_parameters(JObj, ?KZ_SERVICES_DB, Options).
+
+
+-spec migrate_service_plans_ratedeck(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+migrate_service_plans_ratedeck(_AccountDb, JObj) ->
+    Plan = kzd_service_plan:plan(JObj),
+    Setters = props:filter_empty(
+                [{fun kzd_service_plan:set_ratedeck_id/2
+                 ,get_ratedeck_binary(<<"ratedeck">>, Plan)
+                 }
+                ,{fun kzd_service_plan:set_ratedeck_name/2
+                 ,get_ratedeck_binary(<<"ratedeck_name">>, Plan)
+                 }
+                ]
+               ),
+    Keys = [[<<"plan">>, <<"ratedeck">>]
+           ,[<<"plan">>, <<"ratedeck_name">>]
+           ],
+    Cleaned = kz_json:delete_keys(Keys, JObj),
+    kz_doc:setters(Cleaned, Setters).
+
+-spec store_migrated_services_plan(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+store_migrated_services_plan(AccountDb, JObj) ->
+    io:format("  storing migrated service plan ~s/~s~n", [AccountDb, kz_doc:id(JObj)]),
+    {'ok', UpdatedJObj} = kz_datamgr:save_doc(AccountDb, JObj),
+    UpdatedJObj.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_services() -> 'ok'.
+migrate_services() ->
+    ViewOptions = ['descending'],
+    {'ok', JObjs} = kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/by_tree">>, ViewOptions),
+    migrate_services(JObjs).
+
+-spec migrate_services(kz_json:objects()|kz_services:services()) -> 'ok'.
+migrate_services([]) -> 'ok';
+migrate_services([JObj|JObjs]) ->
+    AccountId = kz_doc:id(JObj),
+    FetchOptions = ['hydrate_account_quantities'
+                   ,'hydrate_cascade_quantities'
+                   ,'skip_cache'
+                   ],
+    _ = migrate_services(
+          kz_services:fetch(AccountId, FetchOptions)
+         ),
+    migrate_services(JObjs);
+migrate_services(Services) ->
+    JObj = kz_services:services_jobj(Services),
+    case kz_term:to_integer(kz_doc:vsn(JObj, 0)) > 1 of
+        'true' -> 'ok';
+        'false' ->
+            _ = kz_datamgr:save_doc(?KZ_SERVICES_DB
+                                   ,migrate_services_doc(Services, JObj)
+                                   ),
+            'ok'
+    end.
+
+-spec migrate_services_doc(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_services_doc(Services, JObj) ->
+    %% NOTE: order is important here...
+    Routines = [fun migrate_services_ratedeck/2
+               ,fun migrate_services_remove_keys/2
+               ,fun migrate_manual_quantities/2
+               ,fun migrate_account_quantities/2
+               ,fun migrate_cascade_quantities/2
+               ,fun migrate_services_plans/2
+               ,fun migrate_services_pvt_parameters/2
+               ],
+    lists:foldl(fun(F, J) -> F(Services, J) end, JObj, Routines).
+
+-spec migrate_services_ratedeck(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_services_ratedeck(Services, JObj) ->
+    CurrentJObj = kz_services:current_services_jobj(Services),
+    Quantities = kz_json:get_json_value(<<"quantities">>, CurrentJObj, kz_json:new()),
+    Setters = props:filter_empty(
+                [{fun kzd_services:set_ratedeck_id/2
+                 ,get_ratedeck_binary(<<"ratedeck">>, Quantities)
+                 }
+                ,{fun kzd_services:set_ratedeck_name/2
+                 ,get_ratedeck_binary(<<"ratedeck_name">>, Quantities)
+                 }
+                ]
+               ),
+    kz_doc:setters(JObj, Setters).
+
+-spec get_ratedeck_binary(kz_json:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
+get_ratedeck_binary(Key, Quantities) ->
+    case kz_json:get_keys(Key, Quantities) of
+        [] -> 'undefined';
+        [Binary|_] -> Binary
+    end.
+
+-spec migrate_services_remove_keys(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_services_remove_keys(_Services, JObj) ->
+    Keys = [<<"pvt_dirty">>
+           ,<<"billing_id">>
+           ,<<"quantities">>
+           ,<<"transactions">>
+           ,<<"account_quantities">>
+           ,<<"cascade_quantities">>
+           ],
+    kz_json:delete_keys(Keys, JObj).
+
+-spec migrate_manual_quantities(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_manual_quantities(Services, JObj) ->
+    Keys = [<<"users">>
+           ,<<"devices">>
+           ,<<"ips">>
+           ,<<"limits">>
+           ,<<"number_services">>
+           ,<<"number_carriers">>
+           ,<<"phone_numbers">>
+           ,<<"ledgers">>
+           ,<<"qubicle">>
+           ,<<"branding">>
+           ,<<"ui_apps">>
+           ,<<"billing">>
+           ,<<"ratedeck">>
+           ,<<"ratedeck_name">>
+           ,<<"faxes">>
+           ,<<"voicemails">>
+           ,<<"conferences">>
+           ],
+    CurrentJObj = kz_services:current_services_jobj(Services),
+    Quantities = kz_json:get_json_value(<<"quantities">>, CurrentJObj, kz_json:new()),
+    ManualQuantities = kz_json:delete_keys(Keys, Quantities),
+    kzd_services:set_manual_quantities(JObj, ManualQuantities).
+
+-spec migrate_account_quantities(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_account_quantities(Services, JObj) ->
+    Quantities = kz_services:account_quantities(Services),
+    kzd_services:set_account_quantities(JObj, Quantities).
+
+-spec migrate_cascade_quantities(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_cascade_quantities(Services, JObj) ->
+    Quantities = kz_services:cascade_quantities(Services),
+    kzd_services:set_cascade_quantities(JObj, Quantities).
+
+-spec migrate_services_plans(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_services_plans(Services, JObj) ->
+    CurrentJObj = kz_services:current_services_jobj(Services),
+    PlanIds = kzd_services:plan_ids(CurrentJObj),
+    Plans = migrate_services_plans(CurrentJObj, PlanIds, kz_json:new()),
+    kzd_services:set_plans(JObj, Plans).
+
+-spec migrate_services_plans(kz_json:object(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
+migrate_services_plans(_JObj, [], Plans) -> Plans;
+migrate_services_plans(JObj, [PlanId|PlanIds], Plans) ->
+    Plan = kzd_services:plan(JObj, PlanId),
+    VendorId = plan_vendor_id(Plan),
+    Overrides = plan_overrides(Plan),
+    Props = [{[PlanId, <<"overrides">>], Overrides}
+            ,{[PlanId, <<"vendor_id">>], VendorId}
+            ],
+    migrate_services_plans(JObj, PlanIds, kz_json:set_values(Props, Plans)).
+
+-spec plan_overrides(kz_json:object()) -> kz_json:object().
+plan_overrides(Plan) ->
+    PlanOverrides = kz_json:get_ne_json_value(<<"overrides">>
+                                             ,Plan
+                                             ,kz_json:new()
+                                             ),
+    kz_json:from_list(
+      props:filter_empty(
+        [{<<"plan">>, migrate_account_apps(PlanOverrides)}
+        ,{<<"applications">>, migrate_ui_apps(PlanOverrides)}
+        ]
+       )
+     ).
+
+-spec migrate_account_apps(kz_json:object()) -> kz_json:object().
+migrate_account_apps(PlanOverrides) ->
+    AppNames = kz_json:get_keys(<<"ui_apps">>, PlanOverrides),
+    migrate_account_apps(PlanOverrides, AppNames).
+
+migrate_account_apps(PlanOverrides, []) ->
+    kz_json:delete_key(<<"ui_apps">>, PlanOverrides);
+migrate_account_apps(PlanOverrides, [AppName|AppNames]) ->
+    App = kz_json:get_ne_json_value([<<"ui_apps">>, AppName], PlanOverrides, kz_json:new()),
+    Keys = [<<"app_id">>
+           ,<<"account_id">>
+           ,<<"account_db">>
+           ,<<"enabled">>
+           ,<<"category">>
+           ,<<"name">>
+           ],
+    Cleaned = kz_json:delete_keys(Keys, App),
+    case kz_term:is_empty(Cleaned) of
+        'true' -> migrate_account_apps(PlanOverrides, AppNames);
+        'false' ->
+            JObj = kz_json:set_value([<<"account_apps">>, AppName]
+                                    ,Cleaned
+                                    ,PlanOverrides
+                                    ),
+            migrate_account_apps(JObj, AppNames)
+    end.
+
+-spec plan_vendor_id(kz_json:object()) -> kz_term:ne_binary().
+plan_vendor_id(JObj) ->
+    Account = kz_json:get_first_defined([<<"account_id">>
+                                        ,<<"account_db">>
+                                        ,<<"vendor_id">>
+                                        ]
+                                       ,JObj
+                                       ),
+    case kz_term:is_empty(Account) of
+        'false' ->
+            kz_util:format_account_id(Account);
+        'true' ->
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            MasterAccountId
+    end.
+
+-spec migrate_services_pvt_parameters(kz_services:services(), kz_json:object()) -> kz_json:object().
+migrate_services_pvt_parameters(_Services, JObj) ->
+    Options = [{'crossbar_doc_vsn', 2}],
+    kz_doc:update_pvt_parameters(JObj, ?KZ_SERVICES_DB, Options).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_ui_apps(kz_json:object()) -> kz_json:object().
+migrate_ui_apps(JObj) ->
+    AppNames = kz_json:get_keys(<<"ui_apps">>, JObj),
+    migrate_ui_apps(JObj, AppNames, kz_json:new()).
+
+-spec migrate_ui_apps(kz_json:object(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
+migrate_ui_apps(_JObj, [], Apps) -> Apps;
+migrate_ui_apps(JObj, [AppName|AppNames], Apps) ->
+    case kz_json:get_ne_json_value([<<"ui_apps">>, AppName], JObj) of
+        'undefined' -> migrate_ui_apps(JObj, AppNames, Apps);
+        App ->
+            Id = kz_json:get_ne_binary_value(<<"app_id">>, App),
+            VendorId = find_ui_apps_vendor(App),
+            Enabled = kz_json:is_true(<<"enabled">>, App, 'true'),
+            UpdatedApps = maybe_add_ui_app(AppName, Id, VendorId, Enabled, Apps),
+            migrate_ui_apps(JObj, AppNames, UpdatedApps)
+    end.
+
+-spec maybe_add_ui_app(kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary(), boolean(), kz_json:object()) -> kz_json:object().
+maybe_add_ui_app(AppName, Id, VendorId, Enabled, Apps) ->
+    case kz_term:is_empty(Id) of
+        'true' -> Apps;
+        'false' ->
+            Props = [{[Id, <<"name">>], AppName}
+                    ,{[Id, <<"vendor_id">>], VendorId}
+                    ,{[Id, <<"enabled">>], Enabled}
+                    ],
+            kz_json:set_values(Props, Apps)
+    end.
+
+-spec find_ui_apps_vendor(kz_json:object()) -> kz_term:ne_binary().
+find_ui_apps_vendor(JObj) ->
+    Account = kz_json:get_first_defined([<<"account_id">>
+                                        ,<<"account_db">>
+                                        ,<<"vendor_id">>
+                                        ]
+                                       ,JObj
+                                       ),
+    case kz_term:is_empty(Account) of
+        'false' -> kz_util:format_account_id(Account);
+        'true' ->
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            MasterAccountId
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_plan_apps(kz_term:ne_binary()) -> 'ok'.
+fix_plan_apps(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
+    ViewOptions = ['include_docs'],
+    {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/plans">>, ViewOptions),
+    io:format("verifying ~p service plans have valid applications~n", [length(JObjs)]),
+    fix_plan_apps(AccountDb, [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]).
+
+-spec fix_plan_apps(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+fix_plan_apps(_AccountDb, []) -> 'ok';
+fix_plan_apps(AccountDb, [JObj|JObjs]) ->
+    _ = fix_plan_app(AccountDb, JObj),
+    fix_plan_apps(AccountDb, JObjs).
+
+-spec fix_plan_app(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+fix_plan_app(AccountDb, JObj) ->
+    io:format("verifying service plan ~s/~s applications~n"
+             ,[kz_util:format_account_id(AccountDb)
+              ,kz_doc:id(JObj)
+              ]
+             ),
+    Apps = kzd_service_plan:applications(JObj),
+    Keys = kz_json:get_keys(Apps),
+    UpdatedJObj = fix_plan_app(AccountDb, JObj, Keys),
+    case kz_json:are_equal(JObj, UpdatedJObj) of
+        'true' -> 'ok';
+        'false' ->
+            io:format("  storing updated service plan ~s/~s~n", [AccountDb, kz_doc:id(JObj)]),
+            _ = kz_datamgr:save_doc(AccountDb, UpdatedJObj),
+            'ok'
+    end.
+
+-spec fix_plan_app(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_json:object().
+fix_plan_app(_AccountDb, JObj, []) -> JObj;
+fix_plan_app(AccountDb, JObj, [AppId|AppIds]) ->
+    PlanApps = kzd_service_plan:applications(JObj),
+    PlanApp = kz_json:get_value(AppId, PlanApps),
+    VendorId = get_plan_app_vendor(PlanApp),
+    Props = maybe_open_app(VendorId, AppId, PlanApp),
+    case kz_term:is_empty(Props) of
+        'true' -> fix_plan_app(AccountDb, JObj, AppIds);
+        'false' ->
+            UpdatedApps =
+                kz_json:set_values(Props
+                                  ,kz_json:delete_key(AppId, PlanApps)
+                                  ),
+            fix_plan_app(AccountDb, kzd_service_plan:set_applications(JObj, UpdatedApps), AppIds)
+    end.
+
+-spec maybe_open_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
+maybe_open_app(VendorId, Id, PlanApp) ->
+    VendorDb = kz_util:format_account_db(VendorId),
+    case kz_datamgr:open_cache_doc(VendorDb, Id) of
+        {'ok', App} ->
+            [{[Id, <<"name">>], kzd_app:name(App)}
+            ,{[Id, <<"vendor_id">>], VendorId}
+            ];
+        {'error', 'not_found'} ->
+            io:format("  service plan has an invalid application ~s/~s~n", [VendorId, Id]),
+            Name = kz_json:get_ne_binary_value(<<"name">>, PlanApp),
+            maybe_find_app(VendorId, Name);
+        {'error', _} -> []
+    end.
+
+-spec maybe_find_app(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:proplist().
+maybe_find_app(_VendorId, 'undefined') -> [];
+maybe_find_app(?NE_BINARY = VendorId, Name) ->
+    ViewOptions = [{'key', Name}],
+    VendorDb = kz_util:format_account_db(VendorId),
+    case kz_datamgr:get_results(VendorDb, <<"apps_store/crossbar_listing">>, ViewOptions) of
+        {'ok', [App|_]} ->
+            Id = kz_doc:id(App),
+            io:format("  correcting invalid application ~s with ~s/~s~n"
+                     ,[Name, VendorId, Id]
+                     ),
+            [{[Id, <<"name">>], Name}
+            ,{[Id, <<"vendor_id">>], VendorId}
+            ];
+        _Else ->
+            io:format("  unable to find valid application for ~s in vendor ~s~n"
+                     ,[Name, VendorId]
+                     ),
+            []
+    end.
+
+-spec get_plan_app_vendor(kz_json:object()) -> kz_term:ne_binary().
+get_plan_app_vendor(JObj) ->
+    case kz_json:get_ne_binary_value(<<"vendor_id">>, JObj) of
+        'undefined' ->
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            MasterAccountId;
+        Account -> kz_util:format_account_id(Account)
+    end.
+
+%%------------------------------------------------------------------------------
 %% @doc schedules an eventual sync with the bookkeeper and will dirty the
 %% full reseller tree (as it normally does when changes occur)
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec reconcile() -> 'no_return'.
 reconcile() ->
     reconcile('all').
@@ -142,7 +737,7 @@ reconcile(Account) ->
 sync(Account) when not is_binary(Account) ->
     sync(kz_term:to_binary(Account));
 sync(Account) ->
-    _ = kz_services:sync(Account),
+    _ = kz_services_bookkeeper:sync(Account),
     'ok'.
 
 -spec sync_descendants(kz_term:text()) -> 'ok'.
@@ -170,7 +765,7 @@ set_reseller_id(Reseller, Account) when not is_binary(Account) ->
 set_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
     set_reseller_id(kz_term:to_binary(Reseller), Account);
 set_reseller_id(Reseller, Account) ->
-    whs_account_conversion:set_reseller_id(Reseller, Account).
+    kz_services_reseller:set_reseller_id(Reseller, Account).
 
 %%------------------------------------------------------------------------------
 %% @doc Set the reseller_id to the provided value on all the sub-accounts
@@ -183,7 +778,7 @@ cascade_reseller_id(Reseller, Account) when not is_binary(Account) ->
 cascade_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
     cascade_reseller_id(kz_term:to_binary(Reseller), Account);
 cascade_reseller_id(Reseller, Account) ->
-    whs_account_conversion:cascade_reseller_id(Reseller, Account).
+    kz_services_reseller:cascade_reseller_id(Reseller, Account).
 
 %%------------------------------------------------------------------------------
 %% @doc Remove reseller status from an account and set all its sub accounts
@@ -194,7 +789,7 @@ cascade_reseller_id(Reseller, Account) ->
 demote_reseller(Account) when not is_binary(Account) ->
     demote_reseller(kz_term:to_binary(Account));
 demote_reseller(Account) ->
-    whs_account_conversion:demote(Account).
+    kz_services_reseller:demote(Account).
 
 %%------------------------------------------------------------------------------
 %% @doc Set the reseller status on the provided account and update all
@@ -205,7 +800,7 @@ demote_reseller(Account) ->
 make_reseller(Account) when not is_binary(Account) ->
     make_reseller(kz_term:to_binary(Account));
 make_reseller(Account) ->
-    whs_account_conversion:promote(Account).
+    kz_services_reseller:promote(Account).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -249,7 +844,7 @@ rebuild_services_db(JObjs) ->
     io:format("rebuilding services database views~n", []),
     kapps_maintenance:refresh(?KZ_SERVICES_DB),
     io:format("restoring service documents~n", []),
-    kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
+    _ = kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
     io:format("rebuild complete~n", []).
 
 -spec compare_services_backup() -> boolean().
@@ -322,3 +917,58 @@ maybe_remove_orphan(<<_/binary>> = AccountId, Count) ->
     end;
 maybe_remove_orphan(ViewResult, Count) ->
     maybe_remove_orphan(kz_doc:id(ViewResult), Count).
+
+%%------------------------------------------------------------------------------
+%% @doc Enable auto top up
+%% @end
+%%------------------------------------------------------------------------------
+-spec enable_topup() -> 'ok'.
+enable_topup() ->
+    _ = kapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'true'),
+    io:format("auto top up enabled ~n").
+
+%%------------------------------------------------------------------------------
+%% @doc Disable auto top up
+%% @end
+%%------------------------------------------------------------------------------
+-spec disable_topup() -> 'ok'.
+disable_topup() ->
+    _ = kapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'false'),
+    io:format("auto top up disabled ~n", []).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec topup_status() -> 'ok'.
+topup_status() ->
+    IsEnabled = case kapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>) of
+                    'true' -> "enabled";
+                    _ -> "disabled"
+                end,
+    io:format("auto top up is ~s~n", [IsEnabled]).
+
+-spec topup_status(kz_term:ne_binary()) -> 'ok'.
+topup_status(AccountId) ->
+    {'ok', ReplinishUnits, ThresholdUnits} = kz_services_topup:get_topup(AccountId),
+    io:format("+-----------------+------------------+------------------+---------------+-------------------------+~n"),
+    io:format("| Current Balance | Notify threshold | Top up threshold | Top up Amount | Auto top up in 24 hours |~n"),
+    io:format("+=================+==================+==================+===============+=========================+~n"),
+    io:format("| ~-15w | ~-16w | ~-16w | ~-13w | ~-23w |~n"
+             ,[kz_currency:available_dollars(AccountId, 0)
+              ,get_notify_threshold(AccountId)
+              ,kz_currency:units_to_dollars(ThresholdUnits)
+              ,kz_currency:units_to_dollars(ReplinishUnits)
+              ,kz_services_topup:should_topup(AccountId)
+              ]),
+    io:format("+-----------------+------------------+------------------+---------------+-------------------------+~n").
+
+-spec get_notify_threshold(kz_term:ne_binary()) -> kz_term:api_float().
+get_notify_threshold(AccountId) ->
+    case kzd_accounts:fetch(AccountId) of
+        {'error', _Reason} ->
+            io:format("failed to open account ~p: ~p", [AccountId, _Reason]),
+            'undefined';
+        {'ok', JObj} ->
+            kzd_accounts:notifications_low_balance_threshold(JObj)
+    end.

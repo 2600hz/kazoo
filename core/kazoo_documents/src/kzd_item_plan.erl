@@ -24,7 +24,6 @@
         ,single_discount/1, single_discount/2
         ,cumulative_discount/1, cumulative_discount/2
         ,activation_charge/1, activation_charge/2
-        ,is_enabled/1
         ,keys/1
         ]).
 
@@ -49,7 +48,6 @@
 -define(SINGLE, <<"single">>).
 -define(CUMULATIVE, <<"cumulative">>).
 -define(MAXIMUM, <<"maximum">>).
--define(ENABLED, <<"enabled">>).
 
 -spec cumulative_merge_scheme() -> [{kz_json:key(), fun((kz_json:path(), kz_json:object()|kz_json:objects()) -> kz_json:api_json_term())}].
 cumulative_merge_scheme() ->
@@ -67,7 +65,6 @@ cumulative_merge_scheme() ->
     ,{[?DISCOUNTS, ?CUMULATIVE, ?RATE], fun kz_json:find/2}
     ,{[?DISCOUNTS, ?CUMULATIVE, ?RATES], fun ?MODULE:cumulative_merge_object/2}
     ,{[?DISCOUNTS, ?CUMULATIVE, ?MAXIMUM], fun ?MODULE:cumulative_merge_sum/2}
-    ,{?ENABLED, fun ?MODULE:cumulative_merge_and/2}
     ].
 
 -spec cumulative_merge_sum(kz_json:path(), kz_json:objects()) -> non_neg_integer().
@@ -231,7 +228,3 @@ activation_charge(ItemPlan) ->
 -spec activation_charge(doc(), Default) -> float() | Default.
 activation_charge(ItemPlan, Default) ->
     kz_json:get_float_value(?ACTIVATION_CHARGE, ItemPlan, Default).
-
--spec is_enabled(doc()) -> boolean().
-is_enabled(ItemPlan) ->
-    kz_json:is_true(?ENABLED, ItemPlan).

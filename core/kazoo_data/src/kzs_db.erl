@@ -204,9 +204,13 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling
     Add = sets:to_list(sets:subtract(New, Current)),
     Update = sets:to_list(sets:intersection(Current, New)),
     Delete = sets:to_list(sets:subtract(Current, New)),
-    lager:debug("view updates found ~p new, ~p possible updates and ~p potential removals for db ~s"
-               ,[length(Add), length(Update), length(Delete), Db]
-               ),
+    _ = case ShouldRemoveDangling of
+            'true'-> lager:debug("view updates found ~p new, ~p possible updates and ~p potential removals for db ~s"
+                                ,[length(Add), length(Update), length(Delete), Db]
+                                );
+            'false' -> lager:debug("view updates found ~p new, ~p possible updates for db ~s"
+                                  ,[length(Add), length(Update), Db])
+        end,
     Conflicts = add_views(Server, Db, Add, NewViews),
     lager:debug("view additions resulted in ~p conflicts", [length(Conflicts)]),
     {Changed, Errors} = update_views(Server, Db, Update ++ Conflicts, CurrentViews, NewViews),
@@ -222,6 +226,7 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling
 -spec add_views(map(), kz_term:ne_binary(), kz_term:ne_binaries(), views_listing()) -> kz_term:api_ne_binaries().
 add_views(Server, Db, Add, NewViews) ->
     Views = [props:get_value(Id, NewViews) || Id <- Add],
+    [lager:debug("saving view ~s / ~s", [Db, Id]) || Id <- Add],
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
     [Id || JObj <- JObjs, {Id, <<"conflict">>} <- [log_save_view_error(JObj)] ].
 

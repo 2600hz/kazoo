@@ -302,7 +302,8 @@ next(Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -ifndef(TEST).
--spec create_discovery(kz_term:ne_binary(), module(), kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
+-spec create_discovery(kz_term:ne_binary(), module(), kz_json:object(), knm_number_options:options()) ->
+                              knm_number:knm_number().
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
               ,{'module_name', kz_term:to_binary(Carrier)}
@@ -310,11 +311,11 @@ create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
               ],
     {'ok', PhoneNumber} =
         knm_phone_number:setters(knm_phone_number:from_number_with_options(DID, Options)
-                                ,[{fun knm_phone_number:set_carrier_data/2, Data}
-                                 ]),
+                                ,[{fun knm_phone_number:set_carrier_data/2, Data}]
+                                ),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
--spec create_discovery(kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
+-spec create_discovery(kz_json:object(), knm_number_options:options()) -> knm_number:knm_number().
 create_discovery(JObj, Options) ->
     PhoneNumber = knm_phone_number:from_json_with_options(JObj, Options),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
@@ -390,14 +391,14 @@ is_local(QID) ->
 discovery(Num) ->
     discovery(Num, []).
 
--spec discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
 discovery(Num, Options) ->
     case local_discovery(Num, Options) of
         {'ok', _}=OK -> OK;
         {'error', 'not_found'} -> remote_discovery(Num, Options)
     end.
 
--spec local_discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec local_discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
 local_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
@@ -409,13 +410,13 @@ local_discovery(Num, Options) ->
     end.
 -endif.
 
--spec remote_discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec remote_discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
 remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
 remote_discovery(Number, Options) ->
     Payload = [{<<"Number">>, Number}
-              ,{<<"Account-ID">>, account_id(Options)}
+              ,{<<"Account-ID">>, knm_number_options:account_id(Options)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call(Payload
@@ -443,6 +444,7 @@ handle_flush(JObj) ->
     QID = kapi_discovery:query_id(JObj),
     gen_listener:cast(?MODULE, {'reset_search',QID}).
 
+-spec handle_search(kz_json:object()) -> 'ok'.
 handle_search(JObj) ->
     'true' = kapi_discovery:req_v(JObj),
     handle_search(JObj, is_local(kapi_discovery:query_id(JObj))).
@@ -472,7 +474,7 @@ handle_search(JObj, 'true') ->
     Publisher = fun(P) -> kapi_discovery:publish_resp(kz_api:server_id(JObj), P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
-
+-spec handle_number(kz_json:object()) -> 'ok'.
 handle_number(JObj) ->
     'true' = kapi_discovery:number_req_v(JObj),
     Number = kapi_discovery:number(JObj),
