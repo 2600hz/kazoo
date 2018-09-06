@@ -248,7 +248,22 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     EPs = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
 
-    {Common, UniqueEndpoints} = kz_json:lift_common_properties(Endpoints),
+    {Common, UniqueEndpoints} = kz_json:lift_common_properties(Endpoints
+                                                              ,[<<"Endpoint-Type">>
+                                                               ,<<"Failover">>
+                                                               ,<<"Forward-IP">>
+                                                               ,<<"Invite-Format">>
+                                                               ,<<"Proxy-IP">>
+                                                               ,<<"Proxy-Zone">>
+                                                               ,<<"Route">>
+                                                               ,<<"SIP-Interface">>
+                                                               ,<<"SIP-Transport">>
+                                                               ,<<"To-DID">>
+                                                               ,<<"To-IP">>
+                                                               ,<<"To-Realm">>
+                                                               ,<<"To-User">>
+                                                               ,<<"To-Username">>
+                                                               ]),
     UpdatedJObj = kz_json:set_value(<<"Endpoints">>, UniqueEndpoints, kz_json:merge(JObj, Common)),
 
     LiftedCmd = list_to_binary(["bridge "
