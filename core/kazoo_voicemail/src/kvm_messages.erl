@@ -107,7 +107,7 @@ count_non_deleted(AccountId, BoxId) ->
     }.
 
 %%------------------------------------------------------------------------------
-%% @doc Get  total count of non-deleted messages of mailboxes assigned to a user.
+%% @doc Get total count of non-deleted messages of mailboxes assigned to a user.
 %% Only counts messages which are in retention duration and are
 %% in `new' or `saved' folder only.
 %% @end

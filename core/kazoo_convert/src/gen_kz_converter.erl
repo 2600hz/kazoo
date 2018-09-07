@@ -6,7 +6,7 @@
 %%%
 %%% Converters:
 %%% <ul>
-%%%   <li>The behavior `gen_kz_converter' specifies the interface of the functions convert/4  and read_metadata/1, and define their return types.</li>
+%%%   <li>The behavior `gen_kz_converter' specifies the interface of the functions convert/4 and read_metadata/1, and define their return types.</li>
 %%%   <li>Converter modules should always delete any files created in the process,
 %%%   including the input file if the {'file', FilePath} `Content' format is specified. If `output_type' is `path' the file converted file will be returned and deletion of this file will be
 %%%   the responsibility of the caller. </li>

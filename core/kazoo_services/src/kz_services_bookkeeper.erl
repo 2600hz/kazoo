@@ -60,7 +60,7 @@ invoices_foldl_fun(Services) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
             Result = update_bookkeeper(Type, Invoice, Services),
-            _ = store_audit_log(Services, Invoice, Result),
+            _ = maybe_store_audit_log(Services, Invoice, Result),
             _ = notify_reseller(Services, Invoice),
             [{Invoice, Result} | Results]
     end.
@@ -69,6 +69,22 @@ invoices_foldl_fun(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec maybe_store_audit_log(kz_services:services(), kz_services_invoice:invoice(), kz_amqp_worker:request_result()) -> 'ok'.
+maybe_store_audit_log(Services, Invoice, Results) ->
+    case kz_services:account_id(Services) =:= master_account_id()
+        andalso (not ?KZ_SERVICE_STORE_MASTER_AUDIT)
+    of
+        'false' -> store_audit_log(Services, Invoice, Results);
+        'true' -> 'ok'
+    end.
+
+-spec master_account_id() -> kz_term:api_binary().
+master_account_id() ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} -> MasterAccountId;
+        _Else -> 'undefined'
+    end.
+
 -spec store_audit_log(kz_services:services(), kz_services_invoice:invoice(), kz_amqp_worker:request_result()) -> 'ok'.
 store_audit_log(Services, Invoice, {'ok', Result}) ->
     Details =

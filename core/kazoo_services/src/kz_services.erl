@@ -420,7 +420,7 @@ is_deleted(Services) ->
 ratedeck_id(Services) ->
     %% TODO: these are here for backward compatibility
     %% but the ratedeck integration on services and
-    %% service_plan documents could use a revist...
+    %% service_plan documents could use a revisit...
     ServicesJObj = services_jobj(Services),
     case kzd_services:ratedeck_id(ServicesJObj) of
         'undefined' -> plan_ratedeck_id(Services);
@@ -446,7 +446,7 @@ plan_ratedeck_id(Services) ->
 ratedeck_name(Services) ->
     %% TODO: these are here for backward compatibility
     %% but the ratedeck integration on services and
-    %% service_plan documents could use a revist...
+    %% service_plan documents could use a revisit...
     ServicesJObj = services_jobj(Services),
     case kzd_services:ratedeck_name(ServicesJObj) of
         'undefined' -> plan_ratedeck_name(Services);
@@ -625,8 +625,25 @@ summary(Services) ->
             ,{<<"quantities">>, Quantities}
             ,{<<"reseller">>, Reseller}
             ,{<<"ratedeck">>, Ratedeck}
+            ,{<<"billing_cycle">>, billing_cycle(Services)}
             ],
     kz_json:from_list(Props).
+
+-spec billing_cycle(services()) -> kz_json:object().
+billing_cycle(_Services) ->
+    {{Y, M, _}, _} = calendar:universal_time(),
+    NextBillDate =
+        calendar:datetime_to_gregorian_seconds(
+          {kz_date:normalize({Y, M + 1, 1})
+          ,{0, 0, 0}
+          }
+         ),
+    kz_json:from_list(
+      [{<<"next">>, NextBillDate}
+      ,{<<"period">>, 1}
+      ,{<<"unit">>, <<"month">>}
+      ]
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc Fetch the services doc for a give account from the services database

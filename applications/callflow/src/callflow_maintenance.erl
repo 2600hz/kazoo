@@ -311,7 +311,7 @@ all_accounts_set_classifier(Action, Classifier) ->
 %%
 %% Usage:
 %% ```
-%% sup callflow_maintenance device_classifier_inherit international  username@realm.tld
+%% sup callflow_maintenance device_classifier_inherit international username@realm.tld
 %% sup callflow_maintenance device_classifier_deny international username@realm.tld
 %% '''
 %% @end

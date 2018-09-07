@@ -639,7 +639,7 @@ ensure_saved(Context, JObj, Options) ->
             Context1
     end.
 
-%% @equiv  save_attachment(DocId, AName, Contents, Context, [])
+%% @equiv save_attachment(DocId, AName, Contents, Context, [])
 -spec save_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 save_attachment(DocId, AName, Contents, Context) ->
     save_attachment(DocId, AName, Contents, Context, []).

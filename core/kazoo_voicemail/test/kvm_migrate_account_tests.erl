@@ -95,7 +95,7 @@ is_db_under_test(ThisMonth, _) ->
 
 -define(GET_LAGACY_CALL, {kz_datamgr, get_results, [?FIXTURE_MASTER_ACCOUNT_DB, ?LEGACY_VIEW, [{limit, 2000}, descending]]}).
 
-%% Checking history calls  to kz_datamgr:get_results to see if any calls happens to
+%% Checking history calls to kz_datamgr:get_results to see if any calls happens to
 %% get legacy messages, if yes return empty result to stop the process.
 check_kz_datamgr_history() ->
     fun(Db, ?LEGACY_VIEW=View, Options) ->

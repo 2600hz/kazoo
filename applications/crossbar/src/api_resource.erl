@@ -1119,7 +1119,7 @@ send_chunk_response(<<"to_csv">>, Req, Context) ->
 %%------------------------------------------------------------------------------
 %% @doc If chunked is started close data array and send envelope as the last chunk.
 %% Otherwise return `{Req, Context}' to allow {@link api_util} or {@link api_resource}
-%% handling  the errors in the Context.
+%% handling the errors in the Context.
 %% @end
 %%------------------------------------------------------------------------------
 -spec finish_chunked_response(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.

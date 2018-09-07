@@ -50,6 +50,9 @@
 -export([item_plan/1
         ,set_item_plan/2
         ]).
+-export([masqueraded/1
+        ,set_masqueraded/2
+        ]).
 
 -export([empty/0]).
 -export([setters/1
@@ -78,6 +81,7 @@
                          ,taxes = kz_json:new() :: kz_json:object()
                          ,changes = 'undefined'
                          ,item_plan = kz_json:new() :: kz_json:object()
+                         ,masqueraded = 'false' :: boolean()
                          }).
 
 -opaque item() :: #kz_service_item{}.
@@ -344,6 +348,22 @@ set_item_plan(Item, ItemPlan) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec masqueraded(item()) -> boolean().
+masqueraded(#kz_service_item{masqueraded=Masqueraded}) ->
+    Masqueraded.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_masqueraded(item(), boolean()) -> item().
+set_masqueraded(Item, Masqueraded) ->
+    Item#kz_service_item{masqueraded=Masqueraded}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec empty() -> item().
 empty() ->
     #kz_service_item{}.
@@ -453,6 +473,7 @@ create(Services, ItemPlan, CategoryName, ItemName) ->
               ,{fun set_exceptions/2, Exceptions}
                %% NOTE: Ensure rate has been set in item before this is executed!
               ,{fun maybe_set_discounts/2, ItemPlan}
+              ,{fun set_masqueraded/2, ItemName =/= As}
               ],
     log_item(setters(Setters)).
 

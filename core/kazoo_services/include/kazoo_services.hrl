@@ -18,6 +18,10 @@
        ,kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')
        ).
 
+-define(KZ_SERVICE_STORE_MASTER_AUDIT
+       ,kapps_config:get_is_true(<<"services">>, <<"should_save_master_audit_logs">>, 'false')
+       ).
+
 -define(TOPUP_CONFIG, <<"topup">>).
 
 -define(KZ_SERVICE_HRL, 'true').

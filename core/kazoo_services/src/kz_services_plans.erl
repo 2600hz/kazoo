@@ -355,7 +355,7 @@ merge_to_single(PlansJObjs, JObj) ->
 
 -spec merge_to_single_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
 merge_to_single_fold(JObj, Merged) ->
-    kz_json:merge(Merged, JObj).
+    kz_json:merge_recursive(Merged, JObj).
 
 -spec merge_strategy_sort(merge_strategy_group(), merge_strategy_group()) -> boolean().
 merge_strategy_sort({A, _}, {B, _}) ->

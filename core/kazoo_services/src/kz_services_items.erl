@@ -149,9 +149,7 @@ annotate([CurrentItem|CurrentItems], [], Reason, Items) ->
     Item = maybe_annotate(<<"removed">>, Difference, Reason, CurrentItem),
     annotate(CurrentItems, [], Reason, [Item|Items]);
 annotate(CurrentItems, [ProposedItem|ProposedItems], Reason, Items) ->
-    CategoryName = kz_services_item:category_name(ProposedItem),
-    ItemName = kz_services_item:item_name(ProposedItem),
-    case split_items(CurrentItems, CategoryName, ItemName) of
+    case split_items(CurrentItems, ProposedItem) of
         {'undefined', RemainingCurrentItems} ->
             Item = maybe_annotate(<<"created">>, 'undefined', Reason, ProposedItem),
             annotate(RemainingCurrentItems, ProposedItems, Reason, [Item|Items]);
@@ -179,11 +177,17 @@ maybe_annotate(Type, Difference, Reason, Item) ->
     kz_services_item:set_changes(Item, Changes).
 
 -type api_item() :: kz_serivces_item:item() | 'undefined'.
--spec split_items(items(), kz_term:ne_binary(), kz_term:ne_binary()) -> {api_item(), items()}.
-split_items(Items, CategoryName, ItemName) ->
+-spec split_items(items(), kz_services_item:item()) -> {api_item(), items()}.
+split_items(Items, ProposedItem) ->
+    CategoryName = kz_services_item:category_name(ProposedItem),
+    ItemName = kz_services_item:item_name(ProposedItem),
+    Masqueraded = kz_services_item:masqueraded(ProposedItem),
     case lists:splitwith(fun(Item) ->
                                  kz_services_item:category_name(Item) =:= CategoryName
-                                     andalso kz_services_item:item_name(Item) =:= ItemName
+                                     andalso
+                                     kz_services_item:item_name(Item) =:= ItemName
+                                     andalso
+                                     kz_services_item:masqueraded(Item) =:= Masqueraded
                          end, Items)
     of
         {[], RemainingItems} ->

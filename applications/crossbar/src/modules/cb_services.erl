@@ -430,8 +430,10 @@ load_audit_logs(Context) ->
 %%------------------------------------------------------------------------------
 -spec override_plans(cb_context:context(), kz_services:serivces()) -> kz_services:services().
 override_plans(Context, Services) ->
-    Overrides = kz_json:get_ne_json_value(<<"overrides">>, cb_context:req_data(Context)),
-    override_plans(Context, Services, Overrides).
+    case kz_json:get_ne_json_value(<<"overrides">>, cb_context:req_data(Context)) of
+        'undefined' -> Services;
+        Overrides -> override_plans(Context, Services, Overrides)
+    end.
 
 -spec override_plans(cb_context:context(), kz_services:services(), kz_term:api_json()) -> kz_services:services().
 override_plans(Context, Services, Overrides) ->

@@ -11,6 +11,9 @@
         "listing_by_children": {
             "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var tree = doc.pvt_tree.slice(0),parent = tree[tree.length - 1];emit([parent, doc.name], {'id': doc.pvt_account_id,'name': doc.name,'realm': doc.realm,'descendants_count': doc.descendants_count || 0});}"
         },
+        "listing_by_depth": {
+            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_tree.length, {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
+        },
         "listing_by_descendants": {
             "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var t = doc.pvt_tree.slice(0);for (var i in t) {emit([t[i], doc.name], {'id': doc.pvt_account_id,'name': doc.name,'realm': doc.realm,'tree': doc.pvt_tree});}}"
         },

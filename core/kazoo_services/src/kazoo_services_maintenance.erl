@@ -66,7 +66,7 @@ flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
 %%------------------------------------------------------------------------------
-%% @doc Creates the services db, addes the required view to the services db
+%% @doc Creates the services db, adds the required view to the services db
 %% and registers the quantifier view for account dbs.
 %% @end
 %%------------------------------------------------------------------------------
@@ -711,7 +711,7 @@ reconcile() ->
 
 -spec reconcile(kz_term:text()) -> 'no_return'.
 reconcile('all') ->
-    Accounts = kapps_util:get_all_accounts('raw'),
+    Accounts = get_all_accounts(),
     Total = length(Accounts),
     _ = lists:foldr(fun(Account, Current) ->
                             io:format("reconcile services (~p/~p) '~s'~n", [Current, Total, Account]),
@@ -727,6 +727,17 @@ reconcile(Account) ->
         _E:_R ->
             io:format("failed to reconcile account ~s(~p):~n  ~p~n", [Account, _E, _R])
     end.
+
+-spec get_all_accounts() -> kz_term:ne_binaries().
+get_all_accounts() ->
+    ViewOptions = ['descending'],
+    {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB
+                                          ,<<"accounts/listing_by_depth">>
+                                          ,ViewOptions
+                                          ),
+    lists:reverse(
+      [kz_json:get_value(<<"id">>, JObj) || JObj <- JObjs]
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc runs an immediate sync with a bookkeeper without dirtying the

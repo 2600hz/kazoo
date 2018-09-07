@@ -430,7 +430,6 @@ pages:
   - 'Kazoo Services (and Plans)':
     - 'core/kazoo_services/doc/README.md'
     - 'core/kazoo_services/doc/lifecycle.md'
-    - 'core/kazoo_services/doc/ratedeck.md'
     - 'core/kazoo_services/doc/bookkeepers.md'
   - 'Kazoo PropEr':
     - 'core/kazoo_proper/doc/README.md'

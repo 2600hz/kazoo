@@ -339,7 +339,7 @@ move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Moves a message to another mailbox.
-%% It reads the mailbox document from database first, then calls {@link  maybe_do_move/7}.
+%% It reads the mailbox document from database first, then calls {@link maybe_do_move/7}.
 %%
 %% @see maybe_do_move/7
 %% @end

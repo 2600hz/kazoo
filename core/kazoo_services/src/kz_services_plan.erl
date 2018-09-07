@@ -380,9 +380,9 @@ override(Services, PlanId, Overrides, Options) ->
 
 -spec maybe_override(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> kz_json:object().
 maybe_override(ServicesJObj, PlanId, Overrides, Options) ->
-    case kz_json:is_empty(kzd_services:plan(ServicesJObj, PlanId)) of
-        'true' -> kzd_services:plan_overrides(ServicesJObj, PlanId, kz_json:new());
-        'false' -> set_or_merge_override(ServicesJObj, PlanId, Overrides, Options)
+    case kz_json:is_empty(kzd_services:plan_overrides(ServicesJObj, PlanId)) of
+        'false' -> set_or_merge_override(ServicesJObj, PlanId, Overrides, Options);
+        'true' -> Overrides
     end.
 
 -spec set_or_merge_override(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> kz_json:object().
