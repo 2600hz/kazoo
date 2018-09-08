@@ -43,7 +43,7 @@
 %%   the contents of the file or `path' to receive a path to the converted file in the response.
 %%   The default is `path'.</li>
 %%   <li><strong>tmp_dir:</strong> the working directory where the conversion will take place.</li>
-%%   <li><strong>return_metadata:</strong>Include a third option in the output tuple which is a Proplist of metadata about the file.</li>
+%%   <li><strong>read_metadata:</strong>Include a third option in the output tuple which is a Proplist of metadata about the file.</li>
 %%   <li><strong>to_filename:</strong>The user requested destination file name for the converted file, if a full path is provided this will
 %%   be copied to the specified path, if a relative path is specified, it will be copied to the `tmp_dir' using the file name specified</li>
 %% </ul>
