@@ -21,8 +21,8 @@
 -type fax_convert_funs() :: [fun((kz_term:ne_binary(), map()) -> fax_converted())].
 
 %%------------------------------------------------------------------------------
-%% @doc Converts the data or file specified in `Content' from the `To' mime-type to the
-%% `From' mime-type.
+%% @doc Converts the data or file specified in `Content' from the `From' mime-type to the
+%% `To' mime-type.
 %%
 %% Arguments Description:
 %% <ul>
