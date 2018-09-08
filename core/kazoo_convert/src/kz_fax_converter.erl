@@ -50,15 +50,9 @@
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec convert(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, kz_term:proplist()) ->
+-spec convert(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, map() | kz_term:proplist()) ->
                      gen_kz_converter:converted().
-convert(From, To, Content, Opts) ->
-    Options = maps:from_list(
-                [{<<"from_format">>, From}
-                ,{<<"to_format">>, To}
-                ,{<<"job_id">>, props:get_value(<<"job_id">>, Opts, kz_binary:rand_hex(12))}
-                 | props:delete_keys([<<"job_id">>], Opts)
-                ]),
+convert(From, To, Content, #{<<"from_format">> := From, <<"to_format">> := To, <<"job_id">> := _ }=Options) ->
     Filename = save_file(Content, Options),
     lager:info("converting document ~s from ~s to ~s", [Filename, From, To]),
     case run_convert(eval_format(From, To), To, Filename, Options) of
@@ -71,7 +65,20 @@ convert(From, To, Content, Opts) ->
         {'error', Message}=Error ->
             lager:error("conversion failed with error: ~p", [Message]),
             Error
-    end.
+    end;
+convert(From, To, Content, Options) when is_map(Options) ->
+    case maps:is_key(<<"job_id">>, Options) of
+        true -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To});
+        false -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To, <<"job_id">> => kz_binary:rand_hex(12)})
+    end;
+convert(From, To, Content, Opts) ->
+    Options = maps:from_list(
+                [{<<"from_format">>, From}
+                ,{<<"to_format">>, To}
+                ,{<<"job_id">>, props:get_value(<<"job_id">>, Opts, kz_binary:rand_hex(12))}
+                 | props:delete_keys([<<"job_id">>], Opts)
+                ]),
+    convert(From, To, Content, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Collects the fax related metadata from a file
