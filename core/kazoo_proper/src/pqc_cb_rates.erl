@@ -145,6 +145,7 @@ wait_for_task(API, TaskId) ->
             throw(GetResp);
         <<"success">> -> pqc_cb_tasks:delete(API, TaskId);
         _Status ->
+            lager:info("wrong status(~s) for task in ~s", [_Status, GetResp]),
             timer:sleep(1000),
             wait_for_task(API, TaskId)
     end.
