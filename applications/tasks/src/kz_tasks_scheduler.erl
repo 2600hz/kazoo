@@ -384,7 +384,7 @@ handle_call({'restart_task', TaskId}, _From, State) ->
 
 %% This used to be cast but would race with worker process' EXIT signal.
 handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, State) ->
-    lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
+    lager:debug("worker finished ~s: ~p:~p", [TaskId, TotalSucceeded, TotalFailed]),
     Task = task_by_id(TaskId, State),
     Task1 = Task#{finished => kz_time:now_s()
                  ,total_rows_failed => TotalFailed
@@ -596,6 +596,7 @@ add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
                                       {'error', any()}.
 update_task(Task = #{id := TaskId}) ->
     Updates = kz_json:to_proplist(kz_tasks:to_json(Task)),
+    lager:debug("updating task ~s with ~p", [TaskId, Updates]),
     case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
         {'ok', Doc} -> {'ok', kz_tasks:to_public_json(kz_tasks:from_json(Doc))};
         {'error', _R}=E ->
