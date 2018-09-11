@@ -1176,6 +1176,7 @@ wait_for_check(Pid, Ref) ->
             throw(Reason)
     after 5 * ?MILLISECONDS_IN_MINUTE ->
             lager:error("check in ~p timed out", [Pid]),
+            exit(Pid, 'timeout'),
             throw('timeout')
     end.
 
