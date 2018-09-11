@@ -610,9 +610,10 @@ update_task(Task = #{id := TaskId}) ->
     end.
 
 -spec set_last_worker_update(kz_tasks:id(), non_neg_integer(), state()) -> state().
-set_last_worker_update(TaskId,
-                       ProcessedSoFar,
-                       State = #state{last_worker_update = LWU}) ->
+set_last_worker_update(TaskId
+                      ,ProcessedSoFar
+                      ,#state{last_worker_update = LWU}=State
+                      ) ->
     State#state{last_worker_update = LWU#{TaskId => ProcessedSoFar}}.
 
 -spec task_api(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().

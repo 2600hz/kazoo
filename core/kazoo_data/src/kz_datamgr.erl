@@ -911,7 +911,7 @@ update_doc(DbName, Id, Options) ->
                                     {'ok', kz_json:object()} |
                                     data_error().
 apply_updates_and_save(DbName, Id, Options, CurrentDoc) ->
-    UpdateProps = props:get_value('update', Options, []),
+    UpdateProps = props:get_value('update', Options),
     UpdatedDoc = kz_json:set_values(UpdateProps, CurrentDoc),
 
     case kz_json:are_equal(CurrentDoc, UpdatedDoc) of
@@ -944,10 +944,9 @@ update_not_found(DbName, Id, Options) ->
     CreateProps = props:get_value('create', Options, []),
 
     JObj = kz_json:from_list(props:set_value(kz_doc:path_id(), Id, CreateProps)),
-    case save_doc(DbName, JObj) of
-        {'ok', _Saved} -> update_doc(DbName, Id, Options);
-        {'error', _}=E -> E
-    end.
+    Updated = kz_json:set_values(props:get_value('update', Options), JObj),
+
+    save_doc(DbName, Updated).
 
 %%------------------------------------------------------------------------------
 %% @doc Remove document from the db.
