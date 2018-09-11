@@ -8,8 +8,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-
 attributes_keys_unique_test_() ->
     Keys = kz_endpoint:attributes_keys(),
-    [?_assertEqual(length(Keys), length(lists:usort(Keys)))
-    ].
+    [?_assertEqual(length(Keys), length(lists:usort(Keys)))].

@@ -8,7 +8,9 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_endpoints).
 
--export([by_owner_id/3, ignore_early_media/1]).
+-export([by_owner_id/3
+        ,ignore_early_media/1
+        ]).
 
 -include("kazoo_endpoint.hrl").
 

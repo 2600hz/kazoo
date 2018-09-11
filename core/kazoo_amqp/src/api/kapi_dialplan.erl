@@ -148,7 +148,7 @@ bridge(Prop) when is_list(Prop) ->
            || EP <- props:get_value(<<"Endpoints">>, Prop, []),
               bridge_endpoint_v(EP)
           ],
-    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
+    Prop1 = props:set_value(<<"Endpoints">>, EPs, Prop),
     case bridge_v(Prop1) of
         'true' -> kz_api:build_message(Prop1, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for bridge_req"}
