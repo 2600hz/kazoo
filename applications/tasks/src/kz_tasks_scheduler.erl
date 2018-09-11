@@ -239,7 +239,7 @@ attempt_upload(TaskId, AName, CSV, CSVPath, Retries, Max) ->
     Options = [{'content_type', <<"text/csv">>}],
     case kz_datamgr:put_attachment(?KZ_TASKS_DB, TaskId, AName, CSV, Options) of
         {'ok', _TaskJObj} ->
-            lager:debug("saved ~s after ~p attempts: ~s", [AName, Max-Retries+1, kz_json:encode(_TaskJObj)]),
+            lager:debug("saved ~s after ~p attempts", [AName, Max-Retries+1]),
             kz_util:delete_file(CSVPath);
         {'error', _R} ->
             lager:debug("upload of ~s failed (~s), may retry soon", [TaskId, _R]),
@@ -595,14 +595,12 @@ add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
 -spec update_task(kz_tasks:task()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
 update_task(Task = #{id := TaskId}) ->
-    Updates = kz_json:to_proplist(kz_tasks:to_json(Task)),
-    lager:debug("updating task ~s with ~p", [TaskId, Updates]),
+    Updates = kz_json:flatten(kz_tasks:to_json(Task)),
     UpdateOptions = [{'update', Updates}
                     ,{'ensure_saved', 'true'}
                     ],
     case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, UpdateOptions) of
         {'ok', Doc} ->
-            lager:info("updated task ~s to ~s", [TaskId, kz_json:encode(Doc)]),
             {'ok', kz_tasks:to_public_json(kz_tasks:from_json(Doc))};
         {'error', _R}=E ->
             lager:error("failed to update ~s in ~s: ~p", [TaskId, ?KZ_TASKS_DB, _R]),
