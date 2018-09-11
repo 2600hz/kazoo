@@ -90,7 +90,8 @@ save_oauth_doc(App, DocId, JObj, TokenObj, RefreshTokenObj) ->
                                  ,{<<"scopes">>, binary:split(kz_json:get_value(<<"scope">>, TokenObj), <<" ">>) }
                                  ,{<<"refresh_token">>, kz_json:get_value(<<"refresh_token">>, RefreshTokenObj) }
                                  ]),
-    case kz_datamgr:update_doc(?KZ_OAUTH_DB, DocId, Doc) of
+    UpdateOptions = [{'update', Doc}],
+    case kz_datamgr:update_doc(?KZ_OAUTH_DB, DocId, UpdateOptions) of
         {'ok', DocObj} -> load_profile(App, JObj, TokenObj, DocObj);
         {'error', _R} ->
             lager:debug("unable to update oauth document ~s: ~p", [DocId, _R]),

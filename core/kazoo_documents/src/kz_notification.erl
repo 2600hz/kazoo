@@ -182,8 +182,7 @@ set_base_properties(JObj) ->
 
 -spec set_base_properties(doc(), kz_term:api_binary()) -> doc().
 set_base_properties(JObj, Id) ->
-    WithId = kz_doc:set_id(JObj, db_id(Id)),
-    kz_doc:set_type(WithId, ?PVT_TYPE).
+    kz_json:set_values(base_properties(JObj, Id), JObj).
 
 -spec base_properties(doc()) -> kz_json:flat_proplist().
 base_properties(JObj) ->

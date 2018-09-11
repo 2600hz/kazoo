@@ -378,9 +378,11 @@ publish_presence_update(Context, PresenceId, PresenceState) ->
     AccountDb = cb_context:account_db(Context),
     lager:debug("updating presence for ~s@~s to state ~s", [PresenceId, Realm, PresenceState]),
     %% persist presence setting
-    {'ok', _} = kz_datamgr:update_doc(AccountDb, ?MANUAL_PRESENCE_DOC, [{PresenceId, PresenceState}]),
+    Update = [{PresenceId, PresenceState}],
+    UpdateOptions = [{'update', Update}],
+    {'ok', _} = kz_datamgr:update_doc(AccountDb, ?MANUAL_PRESENCE_DOC, UpdateOptions),
     PresenceString = <<PresenceId/binary, "@", Realm/binary>>,
-    kapps_call_command:presence(PresenceState, PresenceString, kz_term:to_hex_binary(crypto:hash(md5, PresenceString))).
+    kapps_call_command:presence(PresenceState, PresenceString, kz_term:to_hex_binary(crypto:hash('md5', PresenceString))).
 
 -spec find_presence_id(kz_json:object()) -> kz_term:api_binary().
 find_presence_id(JObj) ->
