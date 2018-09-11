@@ -6,9 +6,13 @@
 pushd $(dirname $0) > /dev/null
 cd $(pwd -P)/..
 
-MODULE=$1
-ERL_FILES=$(grep -rl "$1:" {core,applications} --include "*.erl" --exclude="\*pqc.erl" | grep -v "test/")
-MOD_BEAM=$(find {core,applications} -name "$MODULE.beam")
+if [ -z ${ERL_FILES+x} ]; then
+    MODULE=$1
+    ERL_FILES=$(grep -rl "$1:" {core,applications} --include "*.erl" --exclude="\*pqc.erl" | grep -v "test/")
+    MOD_BEAM=$(find {core,applications} -name "$MODULE.beam")
+    echo "dialyzing usages of $MODULE"
+    shift
+fi
 
 BEAM_FILES=()
 BEAM=""
@@ -22,11 +26,9 @@ for ERL in $ERL_FILES; do
     BEAM_FILES+=($BEAM)
 done
 
-shift
-
 BEAM_FILES+=("core/kazoo_stdlib/ebin/kz_types.beam")
 ARGS=${BEAM_FILES[@]}
-echo "dialyzing usages of $MODULE"
+
 dialyzer --plt .kazoo.plt $MOD_BEAM $ARGS $@
 
 popd > /dev/null
