@@ -246,7 +246,10 @@ response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
 start_trace(RequestId) ->
     lager:md([{'request_id', RequestId}]),
     put('now', kz_time:now()),
-    TraceFile = "/tmp/" ++ kz_term:to_list(RequestId) ++ ".log",
+
+    TracePath = trace_path(),
+
+    TraceFile = filename:join(TracePath, kz_term:to_list(RequestId) ++ ".log"),
     lager:info("tracing at ~s", [TraceFile]),
 
     {'ok', _}=OK = kz_data_tracing:trace_file([glc_ops:eq('request_id', RequestId)]
@@ -256,6 +259,13 @@ start_trace(RequestId) ->
                                              ),
     ?INFO("authenticating...~s", [RequestId]),
     OK.
+
+-spec trace_path() -> file:filename_all().
+trace_path() ->
+    case application:get_env('kazoo_proper', 'trace_path') of
+        'undefined' -> "/tmp";
+        Path -> Path
+    end.
 
 -spec set_log_level(atom()) -> atom().
 set_log_level(LogLevel) ->
