@@ -94,7 +94,7 @@ api_key(MasterAccountId) ->
             throw('missing_master_account')
     end.
 
--spec create_api_state(binary(), binary(), kz_data_tracing:trace_ref()) -> state().
+-spec create_api_state(response(), binary(), kz_data_tracing:trace_ref()) -> state().
 create_api_state({'error', {'failed_connect', 'econnrefused'}}, _RequestId, _Trace) ->
     lager:warning("failed to connect to Crossbar; is it running?"),
     throw({'error', 'econnrefused'});
@@ -264,7 +264,7 @@ start_trace(RequestId) ->
 trace_path() ->
     case application:get_env('kazoo_proper', 'trace_path') of
         'undefined' -> "/tmp";
-        Path -> Path
+        {'ok', Path} -> Path
     end.
 
 -spec set_log_level(atom()) -> atom().
