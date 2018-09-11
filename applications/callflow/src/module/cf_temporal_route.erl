@@ -109,7 +109,8 @@ process_rules(Temporal
 process_rules(#temporal{local_sec=LSec
                        ,local_date={Y, M, D}
                        }=T
-             ,[#rule{id=Id
+             ,[#rule{cycle=Cycle
+                    ,id=Id
                     ,name=Name
                     ,wtime_start=TStart
                     ,wtime_stop=TStop
@@ -119,8 +120,16 @@ process_rules(#temporal{local_sec=LSec
              ,Call
              ) ->
     lager:info("processing temporal rule ~s (~s)", [Id, Name]),
-    PrevDay = kz_date:normalize({Y, M, D - 1}),
-    BaseDate = next_rule_date(Rule, PrevDay),
+
+    %% Weekly logic becomes convoluted when prev date is passed for SearchDate.
+    %% This creates lots of edge cases so pass today in weekly only.
+    SearchDate = case Cycle of
+                     <<"weekly">> ->
+                         {Y, M, D};
+                     _ ->
+                         kz_date:normalize({Y, M, D - 1})
+                 end,
+    BaseDate = next_rule_date(Rule, SearchDate),
     BaseTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
 
     case {BaseTime + TStart, BaseTime + TStop} of
@@ -464,43 +473,52 @@ next_rule_date(#rule{cycle = <<"daily">>
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
     kz_date:normalize({Y0, M0, D0 + Offset + I0});
 next_rule_date(#rule{cycle = <<"weekly">>
-                    ,interval=I0
+                    ,interval=Interval
                     ,wdays=Weekdays
                     ,start_date={Y0, M0, D0}=StartDate
-                    }
-              ,{Y1, M1, D1}=_PrevDate
+                    }=Rule
+              ,{Y1, M1, D1}=Today
               ) ->
     DOW0 = calendar:day_of_the_week({Y1, M1, D1}),
     Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
-    Offset = trunc( Distance / I0 ) * I0,
+    Offset = trunc( Distance / Interval ) * Interval,
     Weekday = calendar:day_of_the_week(StartDate),
-    case find_active_days(Weekdays, DOW0) of
-        %% During an 'active' week but before the last weekday in the list
-        %%   move to the next day this week
-        [Day|_] when Distance =:= Offset ->
-            lager:debug("next day in rule is ~w", [Day]),
-            kz_date:normalize({Y1, M1, D1 + Day - DOW0});
 
-        %% This case handles a situation where the changeover of weeks could potentially
-        %% impact the calculation.  If there is 1 week difference between the start and previous
-        %% date, and the dow is a monday (when this edge case occurs) and also the actual
-        %% difference of the number of days between the two is less than 7, we can be sure that
-        %% we have the specific case where prevday is actually the sunday before a monday start day.
-        _Val when Weekday =:= 1
-                  andalso abs(D0 - D1) < 7
-                  andalso Distance =:= 1 ->
+    %%TODO: remove these log lines when we are happy that this just works
+    lager:debug("today is: ~p dow: ~p, startdate is: ~p, start dow is ~b, interval is: ~b, distance is: ~b, offset is: ~b, rule days found: ~p"
+               ,[Today, DOW0, StartDate, Weekday, Interval, Distance, Offset, find_active_days(Weekdays, DOW0)]
+               ),
+
+    case find_active_days(Weekdays, DOW0) of
+        %% When the start date is in the future but within the week,
+        %% skip over the invalid rule dates by recursively calling
+        %% self with Today as StartDate
+        [_Day|_] when Today < StartDate
+                      andalso Distance =:= Offset ->
+            lager:debug("rule starts in the future jumping to search from ~p", [StartDate]),
+            next_rule_date(Rule, StartDate);
+
+        %% When today is the first rule day and also the start date return the start date
+        [Day|_] when Today =:= StartDate
+                     andalso Day =:= DOW0
+                     andalso Distance =:= Offset ->
+            lager:debug("rule starts today ~b", [Day]),
             StartDate;
 
+        %% During an 'active' week that fails the previous guards, move to the next day this week
+        [Day|_] when Distance =:= Offset ->
+            lager:debug("next day in rule is ~w and day is ~w", [Day, DOW0]),
+            kz_date:normalize({Y1, M1, D1 + Day - DOW0});
+
         %% Empty list:
-        %%   The last DOW during an 'active' week,
         %% Non Empty List that failed the guard:
         %%   During an 'inactive' week
         _Val ->
+            lager:debug("no rule found for this week"),
             {WY0, W0} = calendar:iso_week_number({Y0, M0, D0}),
-            {Y2, M2, D2} = kz_date:from_iso_week({WY0, W0 + Offset + I0}),
+            {Y2, M2, D2} = kz_date:from_iso_week({WY0, W0 + Offset + Interval}),
             kz_date:normalize({Y2, M2, ( D2 - 1 ) + kz_date:wday_to_dow( hd( Weekdays ) )})
     end;
-
 next_rule_date(#rule{cycle = <<"monthly">>
                     ,interval=I0
                     ,days=[_|_]=Days
@@ -839,7 +857,7 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 find_active_days(Weekdays, DOW0) ->
     [DOW1
      || DOW1 <- [kz_date:wday_to_dow(D) || D <- Weekdays],
-        DOW1 > DOW0
+        DOW1 >= DOW0
     ].
 
 -spec sort_wdays([wday()]) -> [wday()].
