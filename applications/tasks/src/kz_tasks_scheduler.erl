@@ -597,7 +597,10 @@ add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
 update_task(Task = #{id := TaskId}) ->
     Updates = kz_json:to_proplist(kz_tasks:to_json(Task)),
     lager:debug("updating task ~s with ~p", [TaskId, Updates]),
-    case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
+    UpdateOptions = [{'update', Updates}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, UpdateOptions) of
         {'ok', Doc} ->
             lager:info("updated task ~s to ~s", [TaskId, kz_json:encode(Doc)]),
             {'ok', kz_tasks:to_public_json(kz_tasks:from_json(Doc))};
