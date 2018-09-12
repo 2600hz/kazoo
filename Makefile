@@ -200,7 +200,7 @@ $(FMT):
 fmt-all: $(FMT)
 	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
 
-fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
+fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/4.3 -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
@@ -265,8 +265,8 @@ sdks:
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
-CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
+CHANGED := $(shell git --no-pager diff --name-only HEAD origin/4.3 -- applications core scripts)
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/4.3 -- applications/crossbar/priv/api/swagger.json)
 PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 
 circle-pre:

@@ -12,7 +12,7 @@ pushd $(dirname $0) > /dev/null
 
 cd $(pwd -P)/..
 
-ERL_FILES=${ERL_FILES:-$(git --no-pager diff --name-only HEAD origin/master -- applications core | grep erl)}
+ERL_FILES=${ERL_FILES:-$(git --no-pager diff --name-only HEAD origin/4.3 -- applications core | grep erl)}
 
 HOST=${HOST:-"192.168.1.186"}
 BEAM_PATH=${BEAM_PATH:-"/tmp/beams"}

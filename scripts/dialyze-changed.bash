@@ -7,7 +7,7 @@
 pushd $(dirname $0) > /dev/null
 cd $(pwd -P)/..
 
-ERL_FILES=$(git --no-pager diff --name-only HEAD origin/master -- applications core | grep erl)
+ERL_FILES=$(git --no-pager diff --name-only HEAD origin/4.3 -- applications core | grep erl)
 
 BEAM_FILES=()
 BEAM=""

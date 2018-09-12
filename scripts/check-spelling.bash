@@ -7,7 +7,7 @@ cd $ROOT
 
 # from https://en.wikipedia.org/wiki/Commonly_misspelled_English_words
 FILE="$ROOT/scripts/misspellings.txt"
-CHANGED=${CHANGED:-$(git --no-pager diff --name-only HEAD origin/master -- $ROOT/applications $ROOT/core $ROOT/doc)}
+CHANGED=${CHANGED:-$(git --no-pager diff --name-only HEAD origin/4.3 -- $ROOT/applications $ROOT/core $ROOT/doc)}
 
 function check_spelling {
     correct=$(echo "$1" | cut -f1 -d"|")

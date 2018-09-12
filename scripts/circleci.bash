@@ -7,9 +7,9 @@ fi
 
 cd $KAZOO_ROOT
 
-echo resetting kazoo to origin/master
+echo resetting kazoo to origin/4.3
 git fetch --prune
-git rebase origin/master
+git rebase origin/4.3
 
 if [ ! -d $APP_PATH ]; then
     echo adding submodule to $KAZOO_ROOT

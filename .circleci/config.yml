@@ -79,7 +79,7 @@ jobs:
     # Test
     #   This would typically be a build job when using workflows, possibly combined with build
     # This is based on your 1.0 configuration file or project settings
-    - run: echo -e "\nexport CHANGED=\$(git --no-pager diff --name-only HEAD origin/master -- applications core | xargs readlink -e)\nexport CHANGED_SWAGGER=`[[ ! -z $(git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json) ]] && echo $(readlink -e applications/crossbar/priv/api/swagger.json)`\n" >> $BASH_ENV
+    - run: echo -e "\nexport CHANGED=\$(git --no-pager diff --name-only HEAD origin/4.3 -- applications core | xargs readlink -e)\nexport CHANGED_SWAGGER=`[[ ! -z $(git --no-pager diff --name-only HEAD origin/4.3 -- applications/crossbar/priv/api/swagger.json) ]] && echo $(readlink -e applications/crossbar/priv/api/swagger.json)`\n" >> $BASH_ENV
     - run: echo $CHANGED
     - run: ./scripts/state-of-docs.sh || true
     - run: ./scripts/code_checks.bash $CHANGED
