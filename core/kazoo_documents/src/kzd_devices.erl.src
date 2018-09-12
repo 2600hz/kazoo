@@ -50,6 +50,7 @@
 -export([provision_endpoint_model/1, provision_endpoint_model/2, set_provision_endpoint_model/2]).
 -export([provision_feature_keys/1, provision_feature_keys/2, set_provision_feature_keys/2]).
 -export([provision_feature_key/2, provision_feature_key/3, set_provision_feature_key/3]).
+-export([qubicle/1, qubicle/2, set_qubicle/2]).
 -export([register_overwrite_notify/1, register_overwrite_notify/2, set_register_overwrite_notify/2]).
 -export([ringtones/1, ringtones/2, set_ringtones/2]).
 -export([ringtones_external/1, ringtones_external/2, set_ringtones_external/2]).
@@ -609,6 +610,18 @@ provision_feature_key(Doc, FeatureKey, Default) ->
 -spec set_provision_feature_key(doc(), kz_json:key(), any()) -> doc().
 set_provision_feature_key(Doc, FeatureKey, Value) ->
     kz_json:set_value([<<"provision">>, <<"feature_keys">>, FeatureKey], Value, Doc).
+
+-spec qubicle(doc()) -> kz_json:object().
+qubicle(Doc) ->
+    qubicle(Doc, kz_json:new()).
+
+-spec qubicle(doc(), Default) -> kz_json:object() | Default.
+qubicle(Doc, Default) ->
+    kz_json:get_json_value([<<"qubicle">>], Doc, Default).
+
+-spec set_qubicle(doc(), kz_json:object()) -> doc().
+set_qubicle(Doc, Qubicle) ->
+    kz_json:set_value([<<"qubicle">>], Qubicle, Doc).
 
 -spec register_overwrite_notify(doc()) -> boolean().
 register_overwrite_notify(Doc) ->

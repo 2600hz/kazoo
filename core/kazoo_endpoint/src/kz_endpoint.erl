@@ -1154,6 +1154,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
                       ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
                       ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
+                      ,{<<"qubicle">>, build_qubicle_object(Endpoint, Properties, Call)}
                        | maybe_get_t38(Endpoint, Call)
                       ])),
     maybe_format_endpoint(SIPEndpoint, kz_json:get_json_value(<<"formatters">>, Endpoint)).
@@ -1244,6 +1245,13 @@ push_headers(PushJObj) ->
                         {<<"X-KAZOO-PUSHER-", K/binary>>, V}
                 end, PushJObj).
 
+-spec build_qubicle_object(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+build_qubicle_object(Endpoint, _Properties, _Call) ->
+    kz_json:from_list(
+      [{<<"exclude">>, kz_json:get_value(<<"exclude_from_queues">>, Endpoint)}
+      ]
+     ).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -1283,7 +1291,7 @@ get_custom_sip_interface(JObj) ->
 %%------------------------------------------------------------------------------
 -spec create_skype_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                    kz_json:object().
-create_skype_endpoint(Endpoint, Properties, _Call) ->
+create_skype_endpoint(Endpoint, Properties, Call) ->
     SkypeJObj = kz_json:get_value(<<"skype">>, Endpoint),
     kz_json:from_list(
       [{<<"Invite-Format">>, <<"username">>}
@@ -1291,6 +1299,7 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
       ,{<<"To-Username">>, get_to_username(SkypeJObj)}
       ,{<<"Endpoint-Type">>, <<"skype">>}
       ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
+      ,{<<"qubicle">>, build_qubicle_object(Endpoint, Properties, Call)}
       ]).
 
 %%------------------------------------------------------------------------------
@@ -1375,6 +1384,7 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
               ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
               ,{<<"SIP-Interface">>, SIPInterface}
               ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+              ,{<<"qubicle">>, build_qubicle_object(Endpoint, Properties, Call)}
               ])
     end.
 
@@ -1841,6 +1851,7 @@ create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
                      ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"sms">>, Call)}
                      ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
+                     ,{<<"qubicle">>, build_qubicle_object(Endpoint, Properties, Call)}
                      ]),
             EP = create_mobile_sms_endpoint_failover(Prop, Failover),
             kz_json:from_list(EP)

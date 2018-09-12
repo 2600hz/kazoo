@@ -58,6 +58,7 @@ Key | Description | Type | Default | Required | Support Level
 `provision.feature_keys./^[0-9]+$/` |   | `object() | null()` |   | `false` |  
 `provision.feature_keys` | Feature Keys | `object()` |   | `false` |  
 `provision` | Provision data | `object()` |   | `false` |  
+`qubicle` | Qubicle specific configuration parameters | `object()` | `{}` | `false` |  
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean()` | `false` | `false` |  
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false` |  
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false` |  

@@ -336,6 +336,24 @@
             },
             "type": "object"
         },
+        "qubicle": {
+            "additionalProperties": {
+                "properties": {
+                    "exclude": {
+                        "default": false,
+                        "description": "Do not ring this device when calling user/agent in queue",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "exclude"
+                ],
+                "type": "object"
+            },
+            "default": {},
+            "description": "Qubicle specific configuration parameters",
+            "type": "object"
+        },
         "register_overwrite_notify": {
             "default": false,
             "description": "When true enables overwrite notifications",
