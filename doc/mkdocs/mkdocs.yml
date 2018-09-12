@@ -366,6 +366,7 @@ pages:
   - 'Kazoo Convert':
     - 'core/kazoo_convert/doc/README.md'
     - 'core/kazoo_convert/doc/fax_converter.md'
+    - 'core/kazoo_convert/doc/fax_converter_convertapi.md'
   - 'Kazoo Apps':
     - 'core/kazoo_apps/doc/README.md'
     - 'core/kazoo_apps/doc/kapps_notify_publisher.md'
