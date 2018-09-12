@@ -1466,7 +1466,7 @@ record_call(_Node, _UUID, <<"unmask">>, JObj) ->
                     end,
     {<<"record_session_unmask">>, RecordingName};
 record_call(Node, UUID, <<"start">>, JObj) ->
-    Vars = props:filter_undefined(record_call_vars(JObj)),
+    Vars = record_call_vars(JObj),
     Args = ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set'),
     AppArgs = ecallmgr_util:fs_args_to_binary(Args),
 
@@ -1617,17 +1617,16 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
               ],
     Realm = props:get_first_defined([<<"Account-Realm">>, <<"Realm">>], CCVs, <<"norealm">>),
     ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
-    Vars = props:filter_undefined(
-             [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
-             ,{<<"Simplify-Loopback">>, <<"false">>}
-             ,{<<"Loopback-Bowout">>, <<"true">>}
-             ,{<<"Loopback-Request-URI">>, ReqURI}
-             ,{<<"SIP-Invite-Domain">>, Realm}
-             ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
-             ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
-             ,{<<"Outbound-Callee-ID-Number">>, TransferTo}
-             ,{<<"Outbound-Callee-ID-Name">>, TransferTo}
-             ]),
+    Vars = [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
+           ,{<<"Simplify-Loopback">>, <<"false">>}
+           ,{<<"Loopback-Bowout">>, <<"true">>}
+           ,{<<"Loopback-Request-URI">>, ReqURI}
+           ,{<<"SIP-Invite-Domain">>, Realm}
+           ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
+           ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
+           ,{<<"Outbound-Callee-ID-Number">>, TransferTo}
+           ,{<<"Outbound-Callee-ID-Name">>, TransferTo}
+           ],
     Props = [KV || {K,_V} = KV <- CCVs,
                    lists:member(K, CCVList)
             ] ++ Vars,
@@ -1638,10 +1637,9 @@ transfer(Node, UUID, <<"blind">>, TransferTo, JObj) ->
     Realm = transfer_realm(UUID),
     TransferLeg = transfer_leg(JObj),
     TargetUUID = transfer_set_callid(UUID, TransferLeg),
-    KVs = props:filter_undefined(
-            [{<<"SIP-Refer-To">>, <<"<sip:", TransferTo/binary, "@", Realm/binary>>}
-            ,{<<"SIP-Referred-By">>, transfer_referred(UUID, TransferLeg)}
-            ]),
+    KVs = [{<<"SIP-Refer-To">>, <<"<sip:", TransferTo/binary, "@", Realm/binary>>}
+          ,{<<"SIP-Referred-By">>, transfer_referred(UUID, TransferLeg)}
+          ],
     Args = kz_binary:join(ecallmgr_util:process_fs_kv(Node, TargetUUID, KVs, 'set'), <<";">>),
     [{<<"kz_uuid_setvar_multi">>, list_to_binary([TargetUUID, " ", Args])}
     ,{<<"blind_xfer">>, list_to_binary([TransferLeg, " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}

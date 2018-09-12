@@ -556,6 +556,8 @@ fs_args_to_binary(Args, Sep, Prefix) ->
 
 -spec process_fs_kv(atom(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> [binary()].
 process_fs_kv(_, _, [], _) -> [];
+process_fs_kv(Node, UUID, [{_K, 'undefined'} | KVs], Action) ->
+    process_fs_kv(Node, UUID, KVs, Action);
 process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
     X1 = format_fs_kv(K, V, UUID, Action),
     lists:foldl(fun(Prop, Acc) ->
