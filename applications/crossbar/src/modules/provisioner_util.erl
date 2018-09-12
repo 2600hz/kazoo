@@ -71,25 +71,34 @@ maybe_provision(Context) ->
 -spec maybe_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
-    case MACAddress =/= 'undefined'
-        andalso get_provisioning_type()
-    of
+    case get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
-            _ = do_full_provisioner_provider(Context),
-            _ = do_full_provision(MACAddress, Context),
-            'true';
-        <<"awesome_provisioner">> ->
+            maybe_full_provision(MACAddress, Context);
+        <<"awesome_provisioner">> when MACAddress =/= 'undefined' ->
             _ = do_awesome_provision(Context),
             'true';
-        <<"simple_provisioner">>  ->
+        <<"simple_provisioner">> when MACAddress =/= 'undefined' ->
             _ = do_simple_provision(MACAddress, Context),
             'true';
-        <<"provisioner_v5">>  ->
+        <<"provisioner_v5">> when MACAddress =/= 'undefined' ->
             _ = maybe_provision_v5(Context, cb_context:req_verb(Context)),
             'true';
         _ -> 'false'
     end;
 maybe_provision(_Context, _Status) -> 'false'.
+
+-spec maybe_full_provision(kz_term:ne_binary(), cb_context:context()) -> boolean().
+maybe_full_provision('undefined', Context) ->
+    OldMACAddress = get_old_mac_address(Context),
+    _ = case OldMACAddress =/= 'undefined' of
+            'true' -> delete_full_provision(OldMACAddress, Context);
+            _ -> 'ok'
+        end,
+    'false';
+maybe_full_provision(MACAddress, Context) ->
+    _ = do_full_provisioner_provider(Context),
+    _ = do_full_provision(MACAddress, Context),
+    'true'.
 
 -spec maybe_provision_v5(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 maybe_provision_v5(Context, ?HTTP_PUT) ->

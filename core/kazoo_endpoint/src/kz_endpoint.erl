@@ -1069,9 +1069,10 @@ guess_endpoint_type(Endpoint, []) ->
 get_clid(Endpoint, Properties, Call) ->
     get_clid(Endpoint, Properties, Call, <<"internal">>).
 
+-spec get_clid(kz_json:object(), kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> clid().
 get_clid(Endpoint, Properties, Call, Type) ->
     case kz_json:is_true(<<"suppress_clid">>, Properties) of
-        'true' -> maybe_privacy_cid(#clid{}, Call);
+        'true' -> maybe_privacy_cid(#clid{}, Call, Type);
         'false' ->
             {Number, Name} = kz_attributes:caller_id(Type, Call),
             CallerNumber = case kapps_call:caller_id_number(Call) of
@@ -1087,17 +1088,22 @@ get_clid(Endpoint, Properties, Call, Type) ->
                                    ,caller_name=CallerName
                                    ,callee_number=CalleeNumber
                                    ,callee_name=CalleeName
-                                   }, Call)
+                                   }, Call, Type)
     end.
 
--spec maybe_privacy_cid(clid(), kapps_call:call()) -> clid().
+-spec maybe_privacy_cid(clid(), kapps_call:call(), kz_term:ne_binary()) -> clid().
 maybe_privacy_cid(#clid{caller_name=CallerName
                        ,caller_number=CallerNumber
-                       }=Clid, Call) ->
-    {Name, Number} = kz_privacy:maybe_cid_privacy(kapps_call:custom_channel_vars(Call), {CallerName, CallerNumber}),
-    Clid#clid{caller_name=Name
-             ,caller_number=Number
-             }.
+                       }=Clid, Call, Type) ->
+    case kz_privacy:maybe_cid_privacy(kapps_call:custom_channel_vars(Call), {CallerName, CallerNumber}) of
+        {CallerName, CallerNumber} -> Clid;
+        %% Ensure prepend is applied after privacy
+        {Name, Number} ->
+            {NewName, NewNumber} = kz_attributes:maybe_prefix_cid(Name, Number, 'false', Type, Call),
+            Clid#clid{caller_number=NewNumber
+                     ,caller_name=NewName
+                     }
+    end.
 
 -spec create_sip_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                  kz_json:object().
@@ -1661,6 +1667,7 @@ maybe_set_confirm_properties({Endpoint, Call, CallFwd, CCVs}=Acc) ->
                       ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
                       ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
                       ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
+                      ,{<<"Require-Fail-On-Single-Reject">>, <<"USER_BUSY,CALL_REJECTED,NO_ANSWER,NORMAL_CLEARING">>}
                       ],
             {Endpoint, Call, CallFwd
             ,kz_json:merge_jobjs(kz_json:from_list(Confirm), CCVs)

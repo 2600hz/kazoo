@@ -68,6 +68,8 @@
         },
         "Record-Action": {
             "enum": [
+                "mask",
+                "unmask",
                 "start",
                 "stop"
             ],

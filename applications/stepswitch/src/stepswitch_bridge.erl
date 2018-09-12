@@ -387,19 +387,27 @@ build_bridge(#state{endpoints=Endpoints
             ) ->
     lager:debug("set outbound caller id to ~s '~s'", [Number, Name]),
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
-    CCVs =
-        kz_json:set_values([{<<"Ignore-Display-Updates">>, <<"true">>}
-                           ,{<<"Account-ID">>, AccountId}
-                           ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
-                           ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
-                           ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
-                           ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
-                           ]
-                          ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())
-                          ),
-    FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
-    IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, CCVs, 'false')
+
+    ReqCCVs = kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new()),
+
+    IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, ReqCCVs, 'false')
         orelse kapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),
+
+    FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, ReqCCVs),
+
+    AddCCVs = props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
+                                     ,{<<"Account-ID">>, AccountId}
+                                     ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
+                                     ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
+                                     ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
+                                     ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
+                                     ]),
+    RemoveCCVs = [{<<"Require-Ignore-Early-Media">>, null}
+                 ,{<<"Require-Fail-On-Single-Reject">>, null}
+                 ],
+
+    CCVs = kz_json:set_values(AddCCVs ++ RemoveCCVs, ReqCCVs),
+    FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
@@ -412,6 +420,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Custom-Application-Vars">>, kapi_offnet_resource:custom_application_vars(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
       ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
       ,{<<"Media">>, kapi_offnet_resource:media(OffnetReq)}
       ,{<<"Hold-Media">>, kapi_offnet_resource:hold_media(OffnetReq)}
       ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}

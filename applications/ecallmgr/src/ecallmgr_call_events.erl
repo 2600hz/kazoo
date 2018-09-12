@@ -760,7 +760,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
     ,{<<"Local-SDP">>, props:get_value(<<"variable_rtp_local_sdp_str">>, Props)}
     ,{<<"Duration-Seconds">>, props:get_value(<<"variable_duration">>, Props)}
     ,{<<"Billing-Seconds">>, get_billing_seconds(Props)}
-    ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
+    ,{<<"Ringing-Seconds">>, get_ringing_seconds(Props)}
     ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
     ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
      | debug_channel_props(Props)
@@ -1086,6 +1086,13 @@ get_billing_seconds(Props) ->
         Billmsec -> kz_term:to_binary(kz_term:ceiling(Billmsec / 1000))
     end.
 
+-spec get_ringing_seconds(kz_term:proplist()) -> kz_term:ne_binary().
+get_ringing_seconds(Props) ->
+    RingingSeconds =
+        props:get_integer_value(<<"variable_duration">>, Props)
+        - get_billing_seconds(Props)
+        - props:get_integer_value(<<"variable_progresssec">>, Props),
+    kz_term:to_binary(RingingSeconds).
 
 -spec swap_call_legs(kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);

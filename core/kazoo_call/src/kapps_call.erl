@@ -128,6 +128,8 @@
 -export([default_helper_function/2]).
 
 -export([start_recording/1, start_recording/2
+        ,mask_recording/1
+        ,unmask_recording/1
         ,stop_recording/1
         ]).
 
@@ -1436,6 +1438,32 @@ stop_recording(OriginalCall) ->
             MediaName = custom_channel_var(<<"Media-Name">>, Call),
             API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
             kapps_call_command:stop_record_call(API, Call),
+            Call
+    end.
+
+-spec mask_recording(call()) -> call().
+mask_recording(OriginalCall) ->
+    case retrieve_recording(OriginalCall) of
+        {'ok', {MediaName, _RecorderPid}, Call} ->
+            kapps_call_command:mask_record_call([{<<"Media-Name">>, MediaName}], Call),
+            Call;
+        {'empty', Call} ->
+            MediaName = custom_channel_var(<<"Media-Name">>, Call),
+            API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
+            kapps_call_command:mask_record_call(API, Call),
+            Call
+    end.
+
+-spec unmask_recording(call()) -> call().
+unmask_recording(OriginalCall) ->
+    case retrieve_recording(OriginalCall) of
+        {'ok', {MediaName, _RecorderPid}, Call} ->
+            kapps_call_command:unmask_record_call([{<<"Media-Name">>, MediaName}], Call),
+            Call;
+        {'empty', Call} ->
+            MediaName = custom_channel_var(<<"Media-Name">>, Call),
+            API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
+            kapps_call_command:unmask_record_call(API, Call),
             Call
     end.
 
