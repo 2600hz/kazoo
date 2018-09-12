@@ -595,7 +595,7 @@ add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
 -spec update_task(kz_tasks:task()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
 update_task(Task = #{id := TaskId}) ->
-    Updates = kz_json:flatten(kz_tasks:to_json(Task)),
+    Updates = kz_json:to_proplist(kz_tasks:to_json(Task)),
     UpdateOptions = [{'update', Updates}
                     ,{'ensure_saved', 'true'}
                     ],
