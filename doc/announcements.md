@@ -4,6 +4,10 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 ## Versions
 
+### 4.3
+
+1. The Kazoo services have been significantly refactored.  This has resulted in changes to the APIs related to services (prior service_plans), ledgers and transactions as well as the documents in the services database and service plans.  See the documentation in `core/kazoo_services/doc` for more information.
+
 ### 4.2
 
 1.  Erlang Version Support
