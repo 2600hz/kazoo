@@ -1637,6 +1637,9 @@ transfer(Node, UUID, <<"blind">>, TransferTo, JObj) ->
     Realm = transfer_realm(UUID),
     TransferLeg = transfer_leg(JObj),
     TargetUUID = transfer_set_callid(UUID, TransferLeg),
+
+    lager:info("transferring to ~s @ ~s", [TransferTo, Realm]),
+
     KVs = [{<<"SIP-Refer-To">>, <<"<sip:", TransferTo/binary, "@", Realm/binary>>}
           ,{<<"SIP-Referred-By">>, transfer_referred(UUID, TransferLeg)}
           ],
@@ -1648,6 +1651,9 @@ transfer(Node, UUID, <<"blind">>, TransferTo, JObj) ->
 -spec transfer_realm(kz_term:ne_binary()) -> kz_term:ne_binary().
 transfer_realm(UUID) ->
     case ecallmgr_fs_channel:fetch(UUID, 'record') of
+        {'ok', #channel{realm='undefined'}} ->
+            lager:debug("channel.realm is undefined for ~s", [UUID]),
+            <<"norealm">>;
         {'ok', #channel{realm=Realm}} -> Realm;
         _Else -> <<"norealm">>
     end.

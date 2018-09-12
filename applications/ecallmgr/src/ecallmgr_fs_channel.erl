@@ -759,7 +759,9 @@ get_realm(Props) ->
                                 ,Props
                                 )
     of
-        'undefined' -> 'undefined';
+        'undefined' ->
+            lager:debug("no realm found in props ~p", [Props]),
+            'undefined';
         Realm -> kz_term:to_lower_binary(Realm)
     end.
 
