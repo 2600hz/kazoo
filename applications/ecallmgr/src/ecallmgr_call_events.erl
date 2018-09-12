@@ -1079,20 +1079,20 @@ get_disposition(Props) ->
 get_hangup_code(Props) ->
     kzd_freeswitch:hangup_code(Props).
 
--spec get_billing_seconds(kz_term:proplist()) -> kz_term:api_binary().
+-spec get_billing_seconds(kz_term:proplist()) -> integer().
 get_billing_seconds(Props) ->
     case props:get_integer_value(<<"variable_billmsec">>, Props) of
-        'undefined' -> props:get_value(<<"variable_billsec">>, Props);
-        Billmsec -> kz_term:to_binary(kz_term:ceiling(Billmsec / 1000))
+        'undefined' -> props:get_integer_value(<<"variable_billsec">>, Props);
+        Billmsec -> kz_term:ceiling(Billmsec / 1000)
     end.
 
--spec get_ringing_seconds(kz_term:proplist()) -> kz_term:ne_binary().
+-spec get_ringing_seconds(kz_term:proplist()) -> integer().
 get_ringing_seconds(Props) ->
-    RingingSeconds =
-        props:get_integer_value(<<"variable_duration">>, Props)
-        - get_billing_seconds(Props)
-        - props:get_integer_value(<<"variable_progresssec">>, Props),
-    kz_term:to_binary(RingingSeconds).
+    DurationS = props:get_integer_value(<<"variable_duration">>, Props),
+    BillingS = get_billing_seconds(Props),
+    ProgressS = props:get_integer_value(<<"variable_progresssec">>, Props),
+
+    DurationS - BillingS - ProgressS.
 
 -spec swap_call_legs(kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);
