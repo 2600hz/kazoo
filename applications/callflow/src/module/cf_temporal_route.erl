@@ -194,7 +194,7 @@ build_rule(Id, RulesDoc, StartDate, RuleName) ->
          ,start_date = StartDate
          ,wdays = sort_wdays(kzd_temporal_rules:wdays(RulesDoc, ?RULE_DEFAULT_WDAYS))
          ,wtime_start = kzd_temporal_rules:time_window_start(RulesDoc, ?RULE_DEFAULT_WTIME_START)
-         ,wtime_stop = kzd_temporal_rules:time_window_start(RulesDoc, ?RULE_DEFAULT_WTIME_STOP)
+         ,wtime_stop = kzd_temporal_rules:time_window_stop(RulesDoc, ?RULE_DEFAULT_WTIME_STOP)
          }.
 
 -spec days_in_rule(kzd_temporal_rules:doc()) -> kz_term:integers().
