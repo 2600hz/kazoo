@@ -30235,7 +30235,7 @@
                     "description": "For which files types may be called openoffice",
                     "enum": [
                         "for_msoffice_files_also",
-                        "for_open_office_files_only",
+                        "for_openoffice_files_only",
                         "never"
                     ],
                     "type": "string"

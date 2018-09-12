@@ -50,7 +50,7 @@
 %%   <li><strong>read_metadata:</strong>Include a third option in the output tuple which is a Proplist of metadata about the file.</li>
 %%   <li><strong>to_filename:</strong>The user requested destination file name for the converted file, if a full path is provided this will
 %%   be copied to the specified path, if a relative path is specified, it will be copied to the `tmp_dir' using the file name specified</li>
-%%   <li><strong>try_openoffice:</strong> try conversion using locally installer Libre Office (Open Office). Possible values `for_open_office_files_only', `for_msoffice_files_also', `never' Default is `for_msoffice_files_also'.</li>
+%%   <li><strong>try_openoffice:</strong> try conversion using locally installer Libre Office (Open Office). Possible values `for_openoffice_files_only', `for_msoffice_files_also', `never' Default is `for_msoffice_files_also'.</li>
 %% </ul>
 %%
 %% @end
@@ -123,7 +123,7 @@ maybe_convert_using_openoffice(From, To, Content, #{<<"try_openoffice">> := <<"f
             lager:debug("Trying convert using convertapi"),
             maybe_convert_via_convertapi(From, To, Content, Options)
     end;
-maybe_convert_using_openoffice(<<?OPENOFFICE_MIME_PREFIX, _/binary>>=From, To, Content, #{<<"try_openoffice">> := <<"for_open_office_files_only">>}=Options) ->
+maybe_convert_using_openoffice(<<?OPENOFFICE_MIME_PREFIX, _/binary>>=From, To, Content, #{<<"try_openoffice">> := <<"for_openoffice_files_only">>}=Options) ->
     case kz_fax_converter:convert(From, To, Content, Options) of
         {'ok', _}=Ok -> Ok;
         {'ok', _, _}=Ok -> Ok;
@@ -131,7 +131,7 @@ maybe_convert_using_openoffice(<<?OPENOFFICE_MIME_PREFIX, _/binary>>=From, To, C
             lager:debug("Trying convert using convertapi"),
             maybe_convert_via_convertapi(From, To, Content, Options)
     end;
-maybe_convert_using_openoffice(From, To, Content, #{<<"try_openoffice">> := <<"for_open_office_files_only">>}=Options) ->
+maybe_convert_using_openoffice(From, To, Content, #{<<"try_openoffice">> := <<"for_openoffice_files_only">>}=Options) ->
     maybe_convert_via_convertapi(From, To, Content, Options);
 maybe_convert_using_openoffice(_From, _To, _Content, #{<<"try_openoffice">> := UnsupportedOption}) ->
     {'error', <<"invalid conversion requested: Unsupported \"try_openoffice\" value: ", UnsupportedOption/binary>>};
@@ -139,7 +139,7 @@ maybe_convert_using_openoffice(From, To, Content, Options) ->
     case ?TRY_OPENOFFICE of
         <<"never">> -> maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"never">>, Options));
         <<"for_msoffice_files_also">> -> maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"for_msoffice_files_also">>, Options));
-        <<"for_open_office_files_only">> -> maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"for_open_office_files_only">>, Options));
+        <<"for_openoffice_files_only">> -> maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"for_open_office_files_only">>, Options));
         Value ->
             lager:debug("Unsuported \"try_openoffice\" config value: ~p. Will be used \"for_msoffice_files_also\"", [Value]),
             maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"for_msoffice_files_also">>, Options))

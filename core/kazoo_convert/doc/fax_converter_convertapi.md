@@ -1,7 +1,7 @@
 # Kazoo converter using ConvertAPI service
 
 THis module is use `kz_fax_converter` for image and pdf document convertsion. For OpenOffice documents and OpenOffice compatables documents may be calls
-`kz_fax_converter` too. This is configured by `try_openoffice` config param with `for_msoffice_files_also` or `for_open_office_files_only`
+`kz_fax_converter` too. This is configured by `try_openoffice` config param with `for_msoffice_files_also` or `for_openoffice_files_only`
 
 ## Possible config params
 
