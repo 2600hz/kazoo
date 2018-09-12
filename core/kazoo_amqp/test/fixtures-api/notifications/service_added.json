@@ -1,39 +1,145 @@
 {
-    "Account-ID": "account0000000000000000000000003",
+    "Account-ID": "account0000000000000000000000002",
     "App-Name": "crossbar",
     "App-Version": "4.0.0",
     "Audit-Log": {
-        "audit": {
-            "account0000000000000000000000003": {
-                "account_name": "Sub-Sub Account",
-                "diff_quantities": {
-                    "devices": {
-                        "sip_device": 1
-                    }
-                }
-            }
+        "account": {
+            "id": "account0000000000000000000000002",
+            "name": "admin"
         },
-        "authenticating_user": {
-            "account_id": "account0000000000000000000000003",
-            "account_name": "Sub-Sub Account",
-            "auth_user_id": "user0000000000000000000000000003",
-            "created": 63636183145,
-            "language": "fr-FR",
-            "realm": "paustu8.sip.2600hz.local",
-            "timezone": "Europe/Paris"
+        "agent": {
+            "account_id": "account0000000000000000000000002",
+            "first_name": "User",
+            "last_name": "Two",
+            "type": "user",
+            "type_id": "user0000000000000000000000000002"
         },
-        "pvt_created": 63667033675,
-        "pvt_modified": 63667033675,
-        "pvt_node": "kazoo_apps@example.com",
-        "pvt_type": "audit_log",
-        "tree": [
-            "account0000000000000000000000001",
-            "account0000000000000000000000002",
-            "account0000000000000000000000003"
-        ]
+        "authentication": {
+            "account_id": "account0000000000000000000000002",
+            "account_name": "admin",
+            "type": "x-auth-token"
+        },
+        "changes": {
+            "account_id": "account0000000000000000000000002",
+            "account_name": "admin",
+            "type": [
+                "account"
+            ]
+        },
+        "crossbar_request": true,
+        "request": {
+            "client_ip": "192.168.0.1",
+            "id": "14da1b3f58411d9324d8a7b40b516b61",
+            "method": "DELETE",
+            "path": "/v2/accounts/account0000000000000000000000002/devices/device00000000000000000000000002"
+        }
     },
     "Event-Category": "notification",
     "Event-Name": "service_added",
+    "Items": [
+        {
+            "billable": 2,
+            "category": "users",
+            "item": "_all",
+            "quantity": 2,
+            "rate": 10,
+            "total": 20
+        },
+        {
+            "billable": 4,
+            "category": "devices",
+            "changes": {
+                "difference": {
+                    "quantity": -1
+                },
+                "type": "modified"
+            },
+            "discounts": {
+                "cumulative": {
+                    "quantity": 3,
+                    "rate": 2
+                },
+                "total": 6
+            },
+            "item": "sip_device",
+            "name": "Device",
+            "quantity": 4,
+            "rate": 2,
+            "total": 2
+        },
+        {
+            "billable": 4,
+            "category": "devices",
+            "item": "mobile",
+            "name": "Mobile",
+            "quantity": 4,
+            "rate": 29.99,
+            "total": 119.96
+        },
+        {
+            "billable": 1,
+            "category": "ui_apps",
+            "item": "numbers",
+            "name": "Numbers App",
+            "quantity": 1,
+            "rate": 2,
+            "total": 2
+        },
+        {
+            "billable": 1,
+            "category": "ui_apps",
+            "item": "accounts",
+            "name": "Accounts App",
+            "quantity": 1,
+            "rate": 5,
+            "total": 5
+        },
+        {
+            "billable": 14,
+            "category": "phone_numbers",
+            "item": "did_us",
+            "name": "US DID Phone Number",
+            "quantity": 14,
+            "rate": 1,
+            "total": 14
+        },
+        {
+            "billable": 1,
+            "category": "phone_numbers",
+            "changes": {
+                "difference": {
+                    "quantity": -1
+                },
+                "type": "removed"
+            },
+            "item": "tollfree_us",
+            "name": "US Tollfree Phone Number",
+            "quantity": 1,
+            "rate": 4.99,
+            "total": 4.99
+        },
+        {
+            "billable": 14,
+            "category": "number_services",
+            "item": "e911",
+            "name": "E911 Service",
+            "quantity": 14,
+            "rate": 0,
+            "total": 0
+        },
+        {
+            "billable": 4,
+            "category": "limits",
+            "changes": {
+                "type": "created"
+            },
+            "item": "inbound_trunks",
+            "name": "Inbound Trunk",
+            "quantity": 4,
+            "rate": 6.99,
+            "total": 27.96
+        }
+    ],
     "Msg-ID": "dab6c2826c1d2fa3",
     "Node": "kazoo_apps@example.com",
     "Server-ID": "kazoo_apps@example.com-<0.797.0>-51857161",

@@ -1,0 +1,99 @@
+{
+    "items": [
+        {
+            "category": "users",
+            "discounts": 0,
+            "item": "_all",
+            "name": "users/All",
+            "quantity": 2,
+            "rate": 10,
+            "total": 20
+        },
+        {
+            "category": "devices",
+            "changes": {
+                "quantity": 1,
+                "type": "removed"
+            },
+            "discounts": 6,
+            "item": "sip_device",
+            "name": "Device",
+            "quantity": 4,
+            "rate": 2,
+            "total": 2
+        },
+        {
+            "category": "devices",
+            "discounts": 0,
+            "item": "mobile",
+            "name": "Mobile",
+            "quantity": 4,
+            "rate": 29.99,
+            "total": 119.96
+        },
+        {
+            "category": "ui_apps",
+            "discounts": 0,
+            "item": "numbers",
+            "name": "Numbers App",
+            "quantity": 1,
+            "rate": 2,
+            "total": 2
+        },
+        {
+            "category": "ui_apps",
+            "discounts": 0,
+            "item": "accounts",
+            "name": "Accounts App",
+            "quantity": 1,
+            "rate": 5,
+            "total": 5
+        },
+        {
+            "category": "phone_numbers",
+            "discounts": 0,
+            "item": "did_us",
+            "name": "US DID Phone Number",
+            "quantity": 14,
+            "rate": 1,
+            "total": 14
+        },
+        {
+            "category": "phone_numbers",
+            "changes": {
+                "quantity": 1,
+                "type": "plan_removed"
+            },
+            "discounts": 0,
+            "item": "tollfree_us",
+            "name": "US Tollfree Phone Number",
+            "quantity": 1,
+            "rate": 4.99,
+            "total": 4.99
+        },
+        {
+            "category": "number_services",
+            "discounts": 0,
+            "item": "e911",
+            "name": "E911 Service",
+            "quantity": 14,
+            "rate": 0,
+            "total": 0
+        },
+        {
+            "category": "limits",
+            "changes": {
+                "quantity": 1,
+                "type": "plan_added"
+            },
+            "discounts": 0,
+            "item": "inbound_trunks",
+            "name": "Inbound Trunk",
+            "quantity": 4,
+            "rate": 6.99,
+            "total": 27.96
+        }
+    ],
+    "total": 195.91,
+    "total_discounts": 6
+}

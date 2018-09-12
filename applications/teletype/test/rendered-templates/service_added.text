@@ -1,48 +1,79 @@
-                Service Change
-
+                           Service Change Invoice
 
 Date: Monday, July 17, 2017 10:17
 
-Services for your sub-account 'Sub-Sub Account' have been changed.
+There has been some changes to your VoIP services in account Sub Account.
 
- Here is the summary of changes.
-=== Service Change Summary ===
+Here is the invoice based on the service plan applied to your account. Your account
+will be billed starts of each month.
 
-============================================
-
-Service Category: devices
-
-*   Item: sip_device  Quantity: 1
-
---------------------------------------------
-
-
-
+-----------------------------------------------------------------------------------
+| Service                                                          |        PRICE |
+-----------------------------------------------------------------------------------
+|                                                                                 |
++ Service Name: Accounts App                                                $5.00 |
+| Quantity: 1                                                                     |
+| Rate: $5.00                                                                     |
+|                                                                                 |
++ Service Name: Device                                                      $2.00 |
+| Quantity: 4                                                                     |
+| Rate: $2.00                                                                     |
+| Discounts: $6.00                                                                |
+| 1 item(s) removed from your service                                             |
+|                                                                                 |
++ Service Name: E911 Service                                                $0.00 |
+| Quantity: 14                                                                    |
+| Rate: $0.00                                                                     |
+|                                                                                 |
++ Service Name: Inbound Trunk                                              $27.96 |
+| Quantity: 4                                                                     |
+| Rate: $6.99                                                                     |
+| Newly started billed by your service plan                                       |
+|                                                                                 |
++ Service Name: Mobile                                                    $119.96 |
+| Quantity: 4                                                                     |
+| Rate: $29.99                                                                    |
+|                                                                                 |
++ Service Name: Numbers App                                                 $2.00 |
+| Quantity: 1                                                                     |
+| Rate: $2.00                                                                     |
+|                                                                                 |
++ Service Name: US DID Phone Number                                        $14.00 |
+| Quantity: 14                                                                    |
+| Rate: $1.00                                                                     |
+|                                                                                 |
++ Service Name: US Tollfree Phone Number                                    $4.99 |
+| Quantity: 1                                                                     |
+| Rate: $4.99                                                                     |
+| 1 item(s) stopped billed by your service plan                                   |
+|                                                                                 |
++ Service Name: Users/All                                                  $20.00 |
+| Quantity: 2                                                                     |
+| Rate: $10.00                                                                    |
+|                                                                                 |
+-----------------------------------------------------------------------------------
+|                                                          TOTAL |        $195.91 |
+-----------------------------------------------------------------------------------
 
 
 Questions?
-Please email us and we'll be happy to help.
+If you have any questions about your service invoice, please contact support and
+we'll be happy to help you.
 
 Need to update your billing info?
-The Billing section can be accessed by your account owner, User Three.
+The Billing section can be accessed by your account owner.
 
 
 Thank you for your business!
 
 
 
-User Information Making this Change
+Agent Information
 
-    Name: User Three
-    Email: user-3001@2600hz.local
+    Name: User Two
+    Email: user-2001@2600hz.local
 
-Affected Account Information
-
-    Account ID: account0000000000000000000000002
-    Account Name: Sub Account
-    Account Realm: 3237c8.sip.2600hz.local
-
-Re-seller Account Information
+Account Information
 
     Account ID: account0000000000000000000000002
     Account Name: Sub Account

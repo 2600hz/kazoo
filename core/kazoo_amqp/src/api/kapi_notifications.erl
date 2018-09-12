@@ -291,6 +291,7 @@ service_added_definition() ->
                     ,restrict_to = 'service_added'
                     ,required_headers = [<<"Account-ID">>
                                         ,<<"Audit-Log">>
+                                        ,<<"Items">>
                                         ,<<"Timestamp">>
                                         ]
                     ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS

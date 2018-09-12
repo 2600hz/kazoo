@@ -18109,6 +18109,9 @@
                 "HTML": {
                     "type": "string"
                 },
+                "Items": {
+                    "type": "string"
+                },
                 "Preview": {
                     "type": "string"
                 },

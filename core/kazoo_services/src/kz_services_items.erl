@@ -213,7 +213,8 @@ difference(Item1, Item2) ->
                ,{<<"activation_charge">>, fun difference_number/2}
                ,{<<"minimum">>, fun difference_number/2}
                ,{<<"exceptions">>, fun difference_list/2}
-               ],    difference(Item1, Item2, Routines).
+               ],
+    difference(Item1, Item2, Routines).
 
 %%------------------------------------------------------------------------------
 %% @doc
