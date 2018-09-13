@@ -441,7 +441,6 @@ get_node_value(Category, Keys, Default, Node) when not is_binary(Node) ->
 get_node_value(Category, Keys, Default, Node) ->
     case get_category(Category) of
         {'ok', JObj} ->
-            Node = kz_term:to_binary(node()),
             kz_json:get_value([Node | Keys], JObj);
         {'error', 'not_found'} ->
             lager:debug("missing category ~s ~p: ~p", [Category, Keys, Default]),
