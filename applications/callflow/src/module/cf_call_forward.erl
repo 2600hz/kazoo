@@ -87,6 +87,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
                 ,interdigit_timeout=Interdigit
                 }=CF, CaptureGroup, Call) ->
     lager:info("playing call forwarding menu"),
+    _ = kapps_call_command:b_noop(Call),
     Prompt = case Enabled of
                  'true' ->
                      kapps_call:get_prompt(Call, <<"cf-enabled_menu">>);
