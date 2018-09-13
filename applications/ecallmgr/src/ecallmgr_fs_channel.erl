@@ -695,7 +695,7 @@ props_to_record(Props, Node) ->
             ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
             ,reseller_billing=props:get_value(<<"Reseller-Billing">>, CCVs)
             ,precedence=kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
-            ,realm=props:get_value(<<"Realm">>, CCVs, get_realm(Props))
+            ,realm=get_realm(Props)
             ,username=props:get_value(<<"Username">>, CCVs, get_username(Props))
             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
             ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
@@ -760,7 +760,7 @@ get_realm(Props) ->
                                 )
     of
         'undefined' ->
-            lager:debug("no realm found in props ~p", [Props]),
+            lager:info("no realm found in props ~p", [Props]),
             'undefined';
         Realm -> kz_term:to_lower_binary(Realm)
     end.
