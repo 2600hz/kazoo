@@ -647,7 +647,6 @@ update_category(_, _, _, _, _) -> 'ok'.
 -else.
 update_category('undefined', _, _, _, _) -> 'ok';
 update_category(_, 'undefined', _, _, _) -> 'ok';
-update_category(_, _, 'undefined', _, _) -> 'ok';
 update_category(Category, Key, Value, 'undefined', Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options);
 update_category(Category, Key, Value, Node, Options) when not is_list(Key) ->
