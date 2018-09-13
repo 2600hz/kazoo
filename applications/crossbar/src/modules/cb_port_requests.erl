@@ -431,6 +431,16 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%% Internal functions
 %%%=============================================================================
 
+%% TODO: IMPLEMENT ME
+phonebook_enabled(Context) ->
+    Context.
+
+
+
+
+
+
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
