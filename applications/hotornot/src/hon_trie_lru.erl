@@ -41,7 +41,7 @@
 -record(state, {trie = trie:new() :: trie:trie()
                ,ratedeck_db :: kz_term:api_ne_binary()
                ,check_ref :: reference()
-               ,start_time_ms = kz_time:now() :: pos_integer()
+               ,start_time_ms = kz_time:now() :: kz_time:now()
                ,expires_s :: pos_integer()
                }).
 -define(STATE_READY(Trie, RatedeckDb, CheckRef)
