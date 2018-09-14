@@ -135,15 +135,30 @@ error_to_props({'no_payment_token'=Reason, Details}) ->
 error_to_props({'api_error'=Reason, Details}) ->
     Key = kz_term:to_binary(Reason),
     Errors = kz_json:get_value([Key, <<"errors">>], Details, []),
-    Message = kz_json:get_ne_binary_value([Key, <<"message">>]
-                                         ,Details
-                                         ,?DEFAULT_ERROR_MESSAGE
-                                         ),
-    [{<<"Message">>, Message}
-    ,{<<"Status">>, <<"error">>}
-    ,{<<"Reason">>, Key}
-    ,{<<"Details">>, Errors}
-    ];
+    case kz_json:get_ne_binary_value([Key, <<"message">>]
+                                    ,Details
+                                    ,?DEFAULT_ERROR_MESSAGE
+                                    )
+    of
+        <<"Customer ID is invalid", _/binary>>=Message ->
+            [{<<"Message">>, Message}
+            ,{<<"Status">>, <<"error">>}
+            ,{<<"Reason">>, <<"no_payment_token">>}
+            ,{<<"Details">>, Details}
+            ];
+        <<"Customer does not have any credit cards", _/binary>>=Message ->
+            [{<<"Message">>, Message}
+            ,{<<"Status">>, <<"error">>}
+            ,{<<"Reason">>, <<"no_payment_token">>}
+            ,{<<"Details">>, Details}
+            ];
+        Message ->
+            [{<<"Message">>, Message}
+            ,{<<"Status">>, <<"error">>}
+            ,{<<"Reason">>, Key}
+            ,{<<"Details">>, Errors}
+            ]
+    end;
 error_to_props({'min_amount'=Reason, Details}) ->
     Key = kz_term:to_binary(Reason),
     Message = kz_json:get_ne_binary_value(Key, Details, ?DEFAULT_ERROR_MESSAGE),

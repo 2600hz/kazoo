@@ -62,6 +62,24 @@
         ,tree/2
         ,set_tree/2
         ]).
+-export([bookkeeper/1
+        ,bookkeeper/2
+        ,set_bookkeeper/2
+        ,default_bookkeeper_type/0
+        ]).
+-export([bookkeeper_vendor_id/1
+        ,bookkeeper_vendor_id/2
+        ,set_bookkeeper_vendor_id/2
+        ]).
+-export([bookkeeper_id/1
+        ,bookkeeper_id/2
+        ,set_bookkeeper_id/2
+        ,default_bookkeeper_id/0
+        ]).
+-export([bookkeeper_type/1
+        ,bookkeeper_type/2
+        ,set_bookkeeper_type/2
+        ]).
 -export([status_good/0
         ,status_delinquent/0
         ,status/1
@@ -89,6 +107,10 @@
 -define(RESELLER_ID, <<"pvt_reseller_id">>).
 -define(IS_RESELLER, <<"pvt_reseller">>).
 -define(TREE, <<"pvt_tree">>).
+-define(BOOKKEEPER, <<"bookkeeper">>).
+-define(BOOKKEEPER_ID, [?BOOKKEEPER, <<"id">>]).
+-define(BOOKKEEPER_VENDOR, [?BOOKKEEPER, <<"vendor_id">>]).
+-define(BOOKKEEPER_TYPE, [?BOOKKEEPER, <<"type">>]).
 -define(STATUS, <<"pvt_status">>).
 -define(IS_DELETED, <<"pvt_deleted">>).
 
@@ -404,6 +426,102 @@ tree(JObj, Default) ->
 -spec set_tree(doc(), kz_term:ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->
     kz_json:set_value(?TREE, Tree, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper(doc()) -> kz_term:api_object().
+bookkeeper(JObj) ->
+    bookkeeper(JObj, 'undefined').
+
+-spec bookkeeper(doc(), Default) -> kz_json:object() | Default.
+bookkeeper(JObj, Default) ->
+    kz_json:get_ne_json_value(?BOOKKEEPER, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper(doc(), kz_json:object()) -> doc().
+set_bookkeeper(JObj, Bookkeeper) ->
+    kz_json:set_value(?BOOKKEEPER, Bookkeeper, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_vendor_id(doc()) -> kz_term:api_binary().
+bookkeeper_vendor_id(JObj) ->
+    bookkeeper_vendor_id(JObj, 'undefined').
+
+-spec bookkeeper_vendor_id(doc(), Default) -> kz_term:ne_binary() | Default.
+bookkeeper_vendor_id(JObj, Default) ->
+    kz_json:get_ne_binary_value(?BOOKKEEPER_VENDOR, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_vendor_id(doc(), kz_term:ne_binary()) -> doc().
+set_bookkeeper_vendor_id(JObj, VendorId) ->
+    kz_json:set_value(?BOOKKEEPER_VENDOR, VendorId, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_id(doc()) -> kz_term:ne_binary().
+bookkeeper_id(JObj) ->
+    bookkeeper_id(JObj, default_bookkeeper_id()).
+
+-spec bookkeeper_id(doc(), Default) -> Default | kz_term:ne_binary().
+bookkeeper_id(JObj, Default) ->
+    kz_json:get_ne_binary_value(?BOOKKEEPER_ID, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_id(doc(), kz_term:ne_binary()) -> doc().
+set_bookkeeper_id(JObj, BookkeeperId) ->
+    kz_json:set_value(?BOOKKEEPER_ID, BookkeeperId, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec default_bookkeeper_id() -> kz_term:ne_binary().
+default_bookkeeper_id() ->
+    <<"default_bookkeeper">>.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_type(doc()) -> kz_term:ne_binary().
+bookkeeper_type(JObj) ->
+    bookkeeper_type(JObj, default_bookkeeper_type()).
+
+-spec bookkeeper_type(doc(), Default) -> Default | kz_term:ne_binary().
+bookkeeper_type(JObj, Default) ->
+    kz_json:get_ne_binary_value(?BOOKKEEPER_TYPE, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_type(doc(), kz_term:ne_binary()) -> doc().
+set_bookkeeper_type(JObj, BookkeeperType) ->
+    kz_json:set_value(?BOOKKEEPER_TYPE, BookkeeperType, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec default_bookkeeper_type() -> kz_term:ne_binary().
+default_bookkeeper_type() ->
+    <<"default">>.
 
 %%------------------------------------------------------------------------------
 %% @doc

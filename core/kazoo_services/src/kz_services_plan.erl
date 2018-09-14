@@ -14,6 +14,9 @@
 -export([bookkeeper_id/1]).
 -export([bookkeeper_type/1]).
 -export([bookkeeper_vendor_id/1]).
+-export([default_bookkeeper/1
+        ,set_default_bookkeeper/2
+        ]).
 -export([ratedeck_id/1]).
 -export([ratedeck_name/1]).
 -export([applications/1]).
@@ -49,6 +52,7 @@
               ,vendor_id :: kz_term:api_ne_binary()
               ,jobj = kzd_service_plan:new() :: kzd_service_plan:doc()
               ,plan_jobj = kzd_service_plan:new() :: kzd_service_plan:doc()
+              ,default_bookkeeper = kz_json:new() :: kz_json:object()
               ,overrides = kz_json:new() :: kz_json:object()
               }
        ).
@@ -101,7 +105,7 @@ set_vendor_id(Plan, VendorId) ->
 %%------------------------------------------------------------------------------
 -spec bookkeeper_id(plan()) -> kz_term:ne_binary().
 bookkeeper_id(Plan) ->
-    kzd_service_plan:bookkeeper_id(jobj(Plan), <<"default">>).
+    kzd_service_plan:bookkeeper_id(jobj(Plan), kzd_services:default_bookkeeper_id()).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -109,7 +113,7 @@ bookkeeper_id(Plan) ->
 %%------------------------------------------------------------------------------
 -spec bookkeeper_type(plan()) -> kz_term:ne_binary().
 bookkeeper_type(Plan) ->
-    kzd_service_plan:bookkeeper_type(jobj(Plan), <<"default">>).
+    kzd_service_plan:bookkeeper_type(jobj(Plan), kzd_services:default_bookkeeper_type()).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -118,6 +122,27 @@ bookkeeper_type(Plan) ->
 -spec bookkeeper_vendor_id(plan()) -> kz_term:ne_binary().
 bookkeeper_vendor_id(Plan) ->
     kzd_service_plan:bookkeeper_vendor_id(jobj(Plan), vendor_id(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec default_bookkeeper(plan()) -> kz_json:object().
+default_bookkeeper(#plan{default_bookkeeper=Bookkeeper}) ->
+    Bookkeeper.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_default_bookkeeper(plan(), kz_json:object()) -> plan().
+set_default_bookkeeper(Plan, Bookkeeper) ->
+    JObj = kz_json:merge_recursive(
+             [kz_json:from_list([{<<"bookkeeper">>, Bookkeeper}])
+             ,jobj(Plan)
+             ]
+            ),
+    set_jobj(Plan#plan{default_bookkeeper=Bookkeeper}, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -173,7 +198,10 @@ plan_jobj(#plan{plan_jobj=PlanJObj}) ->
 %%------------------------------------------------------------------------------
 -spec set_plan_jobj(plan(), kzd_service_plan:doc()) -> plan().
 set_plan_jobj(Plan, PlanJObj) ->
-    Plan#plan{plan_jobj=PlanJObj}.
+    Routines = [{fun set_overrides/2, overrides(Plan)}
+               ,{fun set_default_bookkeeper/2, default_bookkeeper(Plan)}
+               ],
+    setters(Plan#plan{plan_jobj=PlanJObj}, Routines).
 
 %%------------------------------------------------------------------------------
 %% @doc

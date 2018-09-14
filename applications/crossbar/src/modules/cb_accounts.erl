@@ -1339,7 +1339,7 @@ create_account_mod(AccountId) ->
 -spec create_first_transaction(kz_term:ne_binary()) -> any().
 create_first_transaction(AccountId) ->
     {Year, Month, _} = erlang:date(),
-    kz_currency:rollup(AccountId, Year, Month, 0).
+    kz_currency:rollover(AccountId, Year, Month, 0).
 
 -spec ensure_accounts_db_exists() -> 'ok'.
 ensure_accounts_db_exists() ->

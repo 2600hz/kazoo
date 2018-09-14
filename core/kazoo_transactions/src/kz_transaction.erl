@@ -47,6 +47,12 @@
         ,set_order_id/2
         ]).
 -export([status/1
+        ,status_pending/0
+        ,status_pending/1
+        ,status_failed/0
+        ,status_failed/1
+        ,status_completed/0
+        ,status_completed/1
         ,set_status/2
         ]).
 -export([transaction_type/1
@@ -86,7 +92,6 @@
 -include("kazoo_transactions.hrl").
 
 -define(STATUS_PENDING, <<"pending">>).
--define(STATUS_SUBMITTED, <<"submitted">>).
 -define(STATUS_COMPLETED, <<"completed">>).
 -define(STATUS_FAILED, <<"failed">>).
 
@@ -125,23 +130,9 @@ set_account(Transaction, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Setters = [{fun set_account_id/2, AccountId}
               ,{fun set_account_name/2, kzd_accounts:fetch_name(AccountId)}
-               | maybe_set_bookkeeper(Account)
+               | set_bookkeeper(Account)
               ],
     setters(Transaction, Setters).
-
--spec maybe_set_bookkeeper(kz_term:ne_binary()) -> setter_funs().
-maybe_set_bookkeeper(Account) ->
-    case kz_services:bookkeeper(Account) of
-        {'error', _} -> [];
-        {'ok', Bookkeeper} ->
-            [{fun set_bookkeeper_type/2
-             ,kz_services:bookkeeper_type(Bookkeeper)
-             }
-            ,{fun set_bookkeeper_vendor_id/2
-             ,kz_services:bookkeeper_vendor_id(Bookkeeper)
-             }
-            ]
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -286,9 +277,27 @@ bookkeeper(Transaction) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper_type(transaction()) -> kz_term:api_binary().
+-spec set_bookkeeper(kz_term:ne_binary()) -> setter_funs().
+set_bookkeeper(?NE_BINARY=Account) ->
+    Services = kz_services:fetch(Account),
+    [{fun set_bookkeeper_type/2
+     ,kz_services:bookkeeper_type(Services)
+     }
+    ,{fun set_bookkeeper_vendor_id/2
+     ,kz_services:bookkeeper_vendor_id(Services)
+     }
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_type(transaction()) -> kz_term:ne_binary().
 bookkeeper_type(#transaction{bookkeeper_type=Type}) ->
-    Type.
+    case kz_term:is_empty(Type) of
+        'true' -> kzd_services:default_bookkeeper_type();
+        'false' -> Type
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -302,9 +311,12 @@ set_bookkeeper_type(Transaction, Type) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper_vendor_id(transaction()) -> kz_term:api_binary().
-bookkeeper_vendor_id(#transaction{bookkeeper_vendor_id=VendorId}) ->
-    VendorId.
+-spec bookkeeper_vendor_id(transaction()) -> kz_term:api_ne_binary().
+bookkeeper_vendor_id(#transaction{bookkeeper_vendor_id=VendorId}=Transaction) ->
+    case kz_term:is_empty(VendorId) of
+        'true' -> kz_services_reseller:get_id(account_id(Transaction));
+        'false' -> VendorId
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -385,6 +397,30 @@ set_order_id(Transaction, OrderId) ->
 -spec status(transaction()) -> kz_term:ne_binary().
 status(#transaction{status=Status}) ->
     Status.
+
+-spec status_pending() -> kz_term:ne_binary().
+status_pending() ->
+    ?STATUS_PENDING.
+
+-spec status_pending(transaction()) -> boolean().
+status_pending(Transaction) ->
+    status(Transaction) =:= status_pending().
+
+-spec status_failed() -> kz_term:ne_binary().
+status_failed() ->
+    ?STATUS_FAILED.
+
+-spec status_failed(transaction()) -> boolean().
+status_failed(Transaction) ->
+    status(Transaction) =:= status_failed().
+
+-spec status_completed() -> kz_term:ne_binary().
+status_completed() ->
+    ?STATUS_COMPLETED.
+
+-spec status_completed(transaction()) -> boolean().
+status_completed(Transaction) ->
+    status(Transaction) =:= status_completed().
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -505,8 +541,7 @@ setters(Transaction, Routines) ->
 %%------------------------------------------------------------------------------
 -spec public_json(transaction()) -> kz_json:object().
 public_json(Transaction) ->
-    Routines = [fun maybe_prefix_id/1
-               ,fun amount_to_dollars/1
+    Routines = [fun amount_to_dollars/1
                ,fun kz_doc:public_fields/1
                ],
     lists:foldl(fun(F, J) ->
@@ -515,16 +550,6 @@ public_json(Transaction) ->
                ,to_json(Transaction)
                ,Routines
                ).
-
--spec maybe_prefix_id(kzd_transactions:doc()) -> kzd_transactions:doc().
-maybe_prefix_id(TransactionJObj) ->
-    case kz_doc:id(TransactionJObj) of
-        ?MATCH_MODB_PREFIX(_Year, _Month, _Id) -> TransactionJObj;
-        Id ->
-            Created = kz_doc:created(TransactionJObj),
-            {Year, Month, _} = kz_term:to_date(Created),
-            kz_doc:set_id(TransactionJObj, kazoo_modb_util:modb_id(Year, Month, Id))
-    end.
 
 -spec amount_to_dollars(kzd_transactions:doc()) -> kzd_transactions:doc().
 amount_to_dollars(TransactionJObj) ->
@@ -557,12 +582,23 @@ to_json(#transaction{private_fields=PrivateFields}=Transaction) ->
             ,{<<"pvt_created">>, get_created_timestamp(TransactionJObj)}
             ,{<<"pvt_modified">>, kz_time:now_s()}
             ,{<<"pvt_account_id">>, account_id(Transaction)}
+             | maybe_add_id(TransactionJObj)
             ],
     kz_json:set_values(Props, TransactionJObj).
 
 -spec get_created_timestamp(kzd_transactions:doc()) -> kz_term:integer().
 get_created_timestamp(TransactionJObj) ->
     kz_json:get_integer_value(<<"pvt_created">>, TransactionJObj, kz_time:now_s()).
+
+-spec maybe_add_id(kzd_transactions:doc()) -> kz_term:proplist().
+maybe_add_id(TransactionJObj) ->
+    case kz_doc:id(TransactionJObj) of
+        'undefined' ->
+            [{<<"_id">>, kazoo_modb_util:modb_id()}
+            ,{<<"pvt_created">>, kz_time:now_s()}
+            ];
+        _ -> []
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -598,7 +634,7 @@ from_json(JObj) ->
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', transaction()} |
                                                          kz_datamgr:data_error().
-fetch(Account, ?MATCH_MODB_PREFIX(Year, Month, Id)) ->
+fetch(Account, ?MATCH_MODB_PREFIX(Year, Month, _)=Id) ->
     fetch(Account, Id, Year, Month).
 
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year()|kz_term:ne_binary(), kz_time:month()|kz_term:ne_binary()) ->
@@ -651,12 +687,22 @@ save(Transaction, Account, Year, Month) ->
 
 -spec save(transaction()) -> {'ok', transaction()} | {'error', any()}.
 save(Transaction) ->
+    BookkeeperType = bookkeeper_type(Transaction),
+    case kz_term:is_empty(BookkeeperType)
+        orelse BookkeeperType =:= kzd_services:default_bookkeeper_type()
+    of
+        'true' -> {'error', 'invalid_bookkeeper'};
+        'false' -> do_save(Transaction)
+    end.
+
+-spec do_save(transaction()) -> {'ok', transaction()} | {'error', any()}.
+do_save(Transaction) ->
     MODb = modb(Transaction),
     {AccountId, _Year, _Month} = kazoo_modb_util:split_account_mod(MODb),
     Props = [{<<"pvt_account_id">>, AccountId}],
 
     TransactionJObj = kz_json:set_values(Props, to_json(Transaction)),
-    IsPending = status(Transaction) =:= ?STATUS_PENDING,
+    IsPending = status_pending(Transaction),
 
     case kazoo_modb:save_doc(MODb, TransactionJObj) of
         {'ok', SavedJObj} when IsPending ->
@@ -668,7 +714,7 @@ save(Transaction) ->
                         ,dollar_amount(Transaction)
                         ]
                        ),
-            maybe_submit_to_bookkeeper(from_json(SavedJObj));
+            submit_to_bookkeeper(from_json(SavedJObj));
         {'ok', SavedJObj} ->
             lager:debug("updated ~s transaction in ~s ~p-~p"
                        ,[transaction_type(Transaction)
@@ -689,23 +735,8 @@ save(Transaction) ->
             Error
     end.
 
--spec maybe_submit_to_bookkeeper(transaction()) -> {'ok', transaction()} | {'error', any()}.
-maybe_submit_to_bookkeeper(Transaction) ->
-    case kz_term:is_empty(bookkeeper_type(Transaction)) of
-        'true' -> save(set_status(Transaction, ?STATUS_COMPLETED));
-        'false' -> submit_to_bookkeeper(Transaction)
-    end.
-
 -spec submit_to_bookkeeper(transaction()) -> {'ok', transaction()}.
 submit_to_bookkeeper(Transaction) ->
-    case save(set_status(Transaction, ?STATUS_SUBMITTED)) of
-        {'error', _} -> {'ok', Transaction};
-        {'ok', UpdatedTransaction} ->
-            attempt_bookkeeper(UpdatedTransaction)
-    end.
-
--spec attempt_bookkeeper(transaction()) -> {'ok', transaction()} | {'error', any()}.
-attempt_bookkeeper(Transaction) ->
     Sale = kzd_transactions:type_sale(),
     Refund = kzd_transactions:type_refund(),
     case transaction_type(Transaction) of
@@ -760,21 +791,21 @@ handle_bookkeeper_result(Transaction, {'ok', Result}) ->
          ),
     case kz_json:get_ne_binary_value(<<"Status">>, Result, <<"fatal">>) of
         <<"success">> ->
-            Setters = [{fun set_status/2, ?STATUS_COMPLETED}
+            Setters = [{fun set_status/2, status_completed()}
                       ,{fun set_bookkeeper_results/2, BookkeeperResult}
                       ],
             UpdatedTransaction = setters(Transaction, Setters),
             _ = send_notification(UpdatedTransaction),
             save(UpdatedTransaction);
         <<"error">> ->
-            Setters = [{fun set_status/2, ?STATUS_FAILED}
+            Setters = [{fun set_status/2, status_failed()}
                       ,{fun set_bookkeeper_results/2, BookkeeperResult}
                       ],
             UpdatedTransaction = setters(Transaction, Setters),
             _ = send_notification(UpdatedTransaction),
             save(UpdatedTransaction);
         <<"fatal">> ->
-            Setters = [{fun set_status/2, ?STATUS_FAILED}
+            Setters = [{fun set_status/2, status_failed()}
                       ,{fun set_bookkeeper_results/2, BookkeeperResult}
                       ],
             save(setters(Transaction, Setters))
@@ -788,13 +819,13 @@ handle_bookkeeper_result(Transaction, {'error', 'timeout'}) ->
           ,{<<"details">>, kz_json:new()}
           ]
          ),
-    Setters = [{fun set_status/2, ?STATUS_FAILED}
+    Setters = [{fun set_status/2, status_failed()}
               ,{fun set_bookkeeper_results/2, BookkeeperResult}
               ],
     save(setters(Transaction, Setters));
 handle_bookkeeper_result(Transaction, {'error', _Else}) ->
     lager:info("request to bookkeeper failed: ~p", [_Else]),
-    Setters = [{fun set_status/2, ?STATUS_FAILED}],
+    Setters = [{fun set_status/2, status_failed()}],
     save(setters(Transaction, Setters)).
 
 -spec send_notification(transaction()) -> 'ok'.
@@ -804,8 +835,8 @@ send_notification(Transaction) ->
     Notification =
         [{<<"Account-ID">>, account_id(Transaction)}
         ,{<<"Amount">>, dollar_amount(Transaction)}
-        ,{<<"Response">>, kz_json:get_value(<<"processor_response_text">>, Details, status(Transaction))}
-        ,{<<"Success">>, status(Transaction) =:= ?STATUS_COMPLETED}
+        ,{<<"Response">>, find_response(Transaction)}
+        ,{<<"Success">>, status_completed(Transaction)}
         ,{<<"Timestamp">>, created(Transaction)}
         ,{<<"Add-Ons">>, kz_json:get_value(<<"add_ons">>, Details)}
         ,{<<"Billing-Address">>, kz_json:get_value(<<"billing_address">>, Details)}
@@ -817,3 +848,13 @@ send_notification(Transaction) ->
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_transaction/1).
+
+-spec find_response(transaction()) -> kz_term:ne_binary().
+find_response(Transaction) ->
+    BookkeeperResult = bookkeeper_results(Transaction),
+    Details = kz_json:get_ne_json_value(<<"details">>, BookkeeperResult, kz_json:new()),
+    case kz_json:get_ne_binary_value(<<"processor_response_text">>, Details) of
+        'undefined' ->
+            kz_json:get_ne_binary_value(<<"message">>, BookkeeperResult, status(Transaction));
+        Response -> Response
+    end.

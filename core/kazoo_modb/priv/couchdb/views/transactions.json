@@ -24,7 +24,12 @@
                 "  var amount = doc.amount || 0;",
                 "  if (doc.pvt_transaction_type === 'refund')",
                 "    amount *= -1;",
-                "  emit(doc.pvt_created, {id:doc._id, amount:amount, status: doc.status, executor:doc.executor, description: doc.description, metadata: doc.metadata});",
+                "  if (doc.bookkeeper && doc.bookkeeper.results) {",
+                "      var bookkeeper = {status: doc.bookkeeper.results.status, reason: doc.bookkeeper.results.reason, message: doc.bookkeeper.results.message};",
+                "      emit(doc.pvt_created, {id:doc._id, amount:amount, status: doc.status, executor:doc.executor, description: doc.description, metadata: doc.metadata, bookkeeper: bookkeeper});",
+                "  } else {",
+                "      emit(doc.pvt_created, {id:doc._id, amount:amount, status: doc.status, executor:doc.executor, description: doc.description, metadata: doc.metadata});",
+                "  }",
                 "}"
             ]
         }

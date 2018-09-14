@@ -68,8 +68,20 @@ test_for_low_balance(AccountId, AccountJObj, Loop) ->
             test_for_low_balance(AccountId, AccountJObj, Loop - 1);
         {'error', _R} -> 'ok';
         {'ok', AvailableUnits} ->
-            maybe_notify_for_low_balance(AccountJObj, AvailableUnits),
             maybe_topup_account(AccountJObj, AvailableUnits)
+    end.
+
+-spec maybe_topup_account(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
+maybe_topup_account(AccountJObj, AvailableUnits) ->
+    AccountId = kz_doc:id(AccountJObj),
+    lager:info("checking topup for account ~s with balance $~w"
+              ,[AccountId, kz_currency:units_to_dollars(AvailableUnits)]),
+    case kz_services_topup:maybe_topup(AccountId, AvailableUnits) of
+        {'ok', _Transaction, _Ledger} ->
+            lager:info("topup successful for ~s", [AccountId]);
+        {'error', _Error} ->
+            lager:debug("topup failed for ~s: ~p", [AccountId, _Error]),
+            maybe_notify_for_low_balance(AccountJObj, AvailableUnits)
     end.
 
 -spec maybe_notify_for_low_balance(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
@@ -86,22 +98,6 @@ maybe_notify_for_low_balance(AccountJObj, AvailableUnits) ->
 -spec is_balance_below_notify_threshold(kz_currency:units(), number()) -> boolean().
 is_balance_below_notify_threshold(AvailableUnits, Threshold) ->
     AvailableUnits =< kz_currency:dollars_to_units(Threshold).
-
--spec maybe_topup_account(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
-maybe_topup_account(AccountJObj, AvailableUnits) ->
-    AccountId = kz_doc:id(AccountJObj),
-    lager:info("checking topup for account ~s with balance $~w"
-              ,[AccountId, kz_currency:units_to_dollars(AvailableUnits)]
-              ),
-    case kz_services_topup:maybe_topup(AccountId, AvailableUnits) of
-        {'ok', _Transaction, _Ledger} ->
-            maybe_reset_low_balance_sent(AccountJObj),
-            lager:info("topup successful for ~s", [AccountId]);
-        {'error', 'topup_disabled'} -> 'ok';
-        {'error', 'balance_above_threshold'} -> 'ok';
-        {'error', _Error} ->
-            lager:debug("topup failed for ~s: ~p", [AccountId, _Error])
-    end.
 
 -spec maybe_reset_low_balance_sent(kzd_accounts:doc()) -> 'ok'.
 maybe_reset_low_balance_sent(AccountJObj) ->

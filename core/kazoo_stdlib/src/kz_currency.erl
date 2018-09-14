@@ -24,9 +24,9 @@
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
 -export([pretty_print_dollars/1]).
--export([rollup/1
-        ,rollup/3
-        ,rollup/4
+-export([rollover/1
+        ,rollover/3
+        ,rollover/4
         ]).
 -export([modb/1]).
 
@@ -180,18 +180,18 @@ pretty_print_dollars(Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec rollup(kz_term:ne_binary()) -> available_units_return().
-rollup(Account) ->
-    kz_ledgers:rollup(Account).
+-spec rollover(kz_term:ne_binary()) -> available_units_return().
+rollover(Account) ->
+    kz_ledgers:rollover(Account).
 
--spec rollup(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) -> available_units_return().
-rollup(Account, Year, Month) ->
-    kz_ledgers:rollup(Account, Year, Month).
+-spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) -> available_units_return().
+rollover(Account, Year, Month) ->
+    kz_ledgers:rollover(Account, Year, Month).
 
--spec rollup(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), units()) ->
+-spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), units()) ->
                     available_units_return().
-rollup(Account, Year, Month, Units) ->
-    kz_ledgers:rollup(Account, Year, Month, Units).
+rollover(Account, Year, Month, Units) ->
+    kz_ledgers:rollover(Account, Year, Month, Units).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -200,4 +200,4 @@ rollup(Account, Year, Month, Units) ->
 -spec modb(kz_term:ne_binary()) -> available_units_return().
 modb(MODb) ->
     {Account, Year, Month} = kazoo_modb_util:split_account_mod(MODb),
-    rollup(Account, Year, Month).
+    rollover(Account, Year, Month).

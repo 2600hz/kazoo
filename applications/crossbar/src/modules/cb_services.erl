@@ -326,6 +326,11 @@ post(Context, ?TOPUP) ->
     Trigger = <<"crossbar-request">>,
     Audit = crossbar_services:audit_log(Context),
     case kz_services_topup:topup(AccountId, Amount, Trigger, Audit) of
+        {'ok', 'undefined', Ledger} ->
+            JObj = kz_json:from_list(
+                     [{<<"ledger">>, kz_ledger:public_json(Ledger)}]
+                    ),
+            crossbar_doc:handle_json_success(JObj, Context);
         {'ok', Transaction, Ledger} ->
             JObj = kz_json:from_list(
                      [{<<"transaction">>, kz_transaction:public_json(Transaction)}
@@ -333,6 +338,8 @@ post(Context, ?TOPUP) ->
                      ]
                     ),
             crossbar_doc:handle_json_success(JObj, Context);
+        {'error', {'transaction_incomplete', Transaction}} ->
+            crossbar_services:transaction_to_error(Context, Transaction);
         {'error', _Reason} ->
             %% TODO: need better errors, from the bookkeeper...
             cb_context:add_system_error('unspecified_fault', Context)
@@ -519,8 +526,9 @@ unassign_plans(Context, Services) ->
 -spec pipe_services(cb_context:context(), [services_pipe()], resp_function()) -> cb_context:context().
 pipe_services(Context, Routines, RespFunction) ->
     AccountId = cb_context:account_id(Context),
+    AuditLog = crossbar_services:audit_log(Context),
     Services = lists:foldl(fun (F, S) -> F(S) end
-                          ,kz_services:fetch(AccountId)
+                          ,kz_services:set_audit_log(kz_services:fetch(AccountId), AuditLog)
                           ,Routines
                           ),
     cb_context:setters(Context

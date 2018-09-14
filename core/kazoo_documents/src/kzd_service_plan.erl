@@ -181,7 +181,7 @@ set_bookkeeper_vendor_id(JObj, VendorId) ->
 %%------------------------------------------------------------------------------
 -spec bookkeeper_id(doc()) -> kz_term:ne_binary().
 bookkeeper_id(JObj) ->
-    bookkeeper_id(JObj, 'undefined').
+    bookkeeper_id(JObj, kzd_services:default_bookkeeper_id()).
 
 -spec bookkeeper_id(doc(), Default) -> Default | kz_term:ne_binary().
 bookkeeper_id(JObj, Default) ->
@@ -201,7 +201,7 @@ set_bookkeeper_id(JObj, BookkeeperId) ->
 %%------------------------------------------------------------------------------
 -spec bookkeeper_type(doc()) -> kz_term:ne_binary().
 bookkeeper_type(JObj) ->
-    bookkeeper_type(JObj, 'undefined').
+    bookkeeper_type(JObj, kzd_services:default_bookkeeper_type()).
 
 -spec bookkeeper_type(doc(), Default) -> Default | kz_term:ne_binary().
 bookkeeper_type(JObj, Default) ->

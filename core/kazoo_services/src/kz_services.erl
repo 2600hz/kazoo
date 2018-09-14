@@ -53,6 +53,12 @@
         ,hydrate_invoices/1
         ,reset_invoices/1
         ]).
+-export([bookkeeper_type/1
+        ,set_bookkeeper_type/2
+        ]).
+-export([bookkeeper_vendor_id/1
+        ,set_bookkeeper_vendor_id/2
+        ]).
 -export([is_dirty/1]).
 -export([is_deleted/1]).
 -export([ratedeck_id/1
@@ -88,11 +94,6 @@
 -export([is_services/1]).
 -export([apps/1]).
 
--export([bookkeeper/1
-        ,bookkeeper_type/1
-        ,bookkeeper_vendor_id/1
-        ]).
-
 -include("services.hrl").
 
 -record(kz_services, {account_id :: kz_term:api_ne_binary()
@@ -110,12 +111,6 @@
                      ,dirty = 'false' :: boolean()
                      }).
 
--record(bookkeeper, {type :: kz_term:api_ne_binary()
-                    ,vendor_id :: kz_term:api_ne_binary()
-                    }
-       ).
-
--type bookkeeper() :: #bookkeeper{}.
 -type services() :: #kz_services{}.
 -type setter_fun() :: {fun((services(), Value) -> services()), Value}.
 -type setter_funs() :: [setter_fun()].
@@ -137,7 +132,6 @@
              ,invoices_foldl/0
              ,setter_fun/0
              ,setter_funs/0
-             ,bookkeeper/0
              ,fetch_options/0
              ]).
 
@@ -397,6 +391,58 @@ reset_invoices(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec bookkeeper_type(services()) -> kz_term:ne_binary().
+bookkeeper_type(Services) ->
+    case kzd_services:bookkeeper_type(services_jobj(Services), 'undefined') of
+        'undefined' -> maybe_master_bookkeeper_type(Services);
+        BookkeeperType -> BookkeeperType
+    end.
+
+-spec maybe_master_bookkeeper_type(services()) -> kz_term:ne_binary().
+maybe_master_bookkeeper_type(Services) ->
+    ResellerId = kz_services_reseller:get_id(Services),
+    case kapps_util:get_master_account_id() of
+        {'ok', ResellerId} -> master_bookeeper_type();
+        {'ok', _OtherId} -> kzd_services:default_bookkeeper_type()
+    end.
+
+-spec master_bookeeper_type() -> kz_term:ne_binary().
+master_bookeeper_type() ->
+    kapps_config:get_ne_binary(?CONFIG_CAT, <<"master_account_bookkeeper">>, kzd_services:default_bookkeeper_type()).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_type(services(), kz_term:ne_binary()) -> services().
+set_bookkeeper_type(Services, BookkeeperType) ->
+    ServicesJObj = kzd_services:set_bookkeeper_type(services_jobj(Services), BookkeeperType),
+    set_services_jobj(Services, ServicesJObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bookkeeper_vendor_id(services()) -> kz_term:ne_binary().
+bookkeeper_vendor_id(Services) ->
+    case kzd_services:bookkeeper_vendor_id(services_jobj(Services), 'undefined') of
+        'undefined' -> kz_services_reseller:get_id(Services);
+        BookkeeperVendorId -> BookkeeperVendorId
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_bookkeeper_vendor_id(services(), kz_term:ne_binary()) -> services().
+set_bookkeeper_vendor_id(Services, BookkeeperVendorId) ->
+    ServicesJObj = kzd_services:set_bookkeeper_vendor_id(services_jobj(Services), BookkeeperVendorId),
+    set_services_jobj(Services, ServicesJObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec is_dirty(services()) -> boolean().
 is_dirty(#kz_services{dirty=Dirty}) -> Dirty.
 
@@ -429,14 +475,18 @@ ratedeck_id(Services) ->
 
 -spec plan_ratedeck_id(services()) -> kz_term:api_ne_binary().
 plan_ratedeck_id(Services) ->
-    Plans = kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
-                                            PlansList ++ Plans
-                                    end
-                                   ,[]
-                                   ,plans(Services)
-                                   ),
-    Plan = kz_services_plans:merge(Plans),
-    kz_services_plan:ratedeck_id(Plan).
+    case kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
+                                         PlansList ++ Plans
+                                 end
+                                ,[]
+                                ,plans(Services)
+                                )
+    of
+        [] -> 'undefined';
+        Plans ->
+            Plan = kz_services_plans:merge(Plans),
+            kz_services_plan:ratedeck_id(Plan)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -455,14 +505,18 @@ ratedeck_name(Services) ->
 
 -spec plan_ratedeck_name(services()) -> kz_term:api_ne_binary().
 plan_ratedeck_name(Services) ->
-    Plans = kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
-                                            PlansList ++ Plans
-                                    end
-                                   ,[]
-                                   ,plans(Services)
-                                   ),
-    Plan = kz_services_plans:merge(Plans),
-    kz_services_plan:ratedeck_name(Plan).
+    case kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
+                                         PlansList ++ Plans
+                                 end
+                                ,[]
+                                ,plans(Services)
+                                )
+    of
+        [] -> 'undefined';
+        Plans ->
+            Plan = kz_services_plans:merge(Plans),
+            kz_services_plan:ratedeck_name(Plan)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -992,6 +1046,8 @@ apps(Services) ->
     kz_json:from_list(dict:to_list(AppsDict)).
 
 -spec apps_foldl(kz_term:ne_binary(), kz_services_plans:plans_list(), dict:dict()) -> dict:dict().
+apps_foldl(_BookkeeperHash, [], Apps) ->
+    Apps;
 apps_foldl(_BookkeeperHash, PlansList, Apps) ->
     Plan = kz_services_plans:merge(PlansList),
     kz_json:foldl(fun(K, V, A) ->
@@ -1020,51 +1076,3 @@ sum_quantities_updates(Quantities, Updates) ->
                ,Quantities
                ,Props
                ).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec bookkeeper(kz_term:ne_binary()) -> {'ok', bookkeeper()} |
-                                         {'error', any()}.
-bookkeeper(Account) ->
-    AccountId = kz_util:format_account_id(Account),
-    ResellerId = kz_services_reseller:get_id(AccountId),
-    case kapps_util:get_master_account_id() of
-        {'error', _Resaon} = Error -> Error;
-        {'ok', ResellerId} ->
-            {'ok', #bookkeeper{type = <<"braintree">>
-                              ,vendor_id = ResellerId
-                              }
-            };
-        {'ok', _OtherResellerId} ->
-            {'error', 'unsupported_reseller'}
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec bookkeeper_type(kz_term:ne_binary() | bookkeeper()) -> kz_term:api_ne_binary().
-bookkeeper_type(?NE_BINARY=Account) ->
-    case bookkeeper(Account) of
-        {'error', _Reason} -> 'undefined';
-        {'ok', Bookkeeper} ->
-            bookkeeper_type(Bookkeeper)
-    end;
-bookkeeper_type(#bookkeeper{type=Type}) ->
-    Type.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec bookkeeper_vendor_id(kz_term:ne_binary() | bookkeeper()) -> kz_term:api_binary().
-bookkeeper_vendor_id(?NE_BINARY=Account) ->
-    case bookkeeper(Account) of
-        {'error', _Reason} -> 'undefined';
-        {'ok', Bookkeeper} ->
-            bookkeeper_vendor_id(Bookkeeper)
-    end;
-bookkeeper_vendor_id(#bookkeeper{vendor_id=VendorId}) ->
-    VendorId.

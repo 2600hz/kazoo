@@ -17,13 +17,13 @@
         ,total_source/4
         ]).
 -export([available_ledgers/1]).
--export([verify_monthly_rollup_exists/1
-        ,get_monthly_rollup/1
-        ,get_monthly_rollup/3
+-export([verify_monthly_rollover_exists/1
+        ,get_monthly_rollover/1
+        ,get_monthly_rollover/3
         ]).
--export([rollup/1
-        ,rollup/3
-        ,rollup/4
+-export([rollover/1
+        ,rollover/3
+        ,rollover/4
         ]).
 
 -include("kazoo_ledgers.hrl").
@@ -37,14 +37,18 @@
                            ,{<<"friendly_name">>, <<"Kazoo Services">>}
                            ,{<<"markup_type">>, []}
                            ])
-        ,kz_json:from_list([{<<"name">>, <<"kazoo-ledgers">>}
-                           ,{<<"friendly_name">>, <<"Kazoo Ledgers">>}
+        ,kz_json:from_list([{<<"name">>, <<"kazoo-topup">>}
+                           ,{<<"friendly_name">>, <<"Kazoo Credit Topup">>}
+                           ,{<<"markup_type">>, []}
+                           ])
+        ,kz_json:from_list([{<<"name">>, <<"kazoo-rollover">>}
+                           ,{<<"friendly_name">>, <<"Kazoo Monthly Rollover">>}
                            ,{<<"markup_type">>, []}
                            ])
         ]
        ).
 
--define(ROLLUP_ID(Y,M), kazoo_modb_util:modb_id(Y, M, <<"kazoo_ledgers_monthly_rollup">>)).
+-define(ROLLOVER_ID(Y,M), kazoo_modb_util:modb_id(Y, M, <<"kazoo_ledgers_monthly_rollover">>)).
 -type ledgers() :: [kz_ledger:ledger()].
 -export_type([ledgers/0]).
 
@@ -70,9 +74,9 @@ total_sources(Account, Options) ->
     case get_sources_total(Account, Options) of
         {'ok', Total} -> {'ok', Total};
         {'error', 'missing_ledgers'} ->
-            maybe_migrate_legacy_rollup(Account, Options);
-        {'error', 'missing_rollup'} ->
-            maybe_migrate_legacy_rollup(Account, Options);
+            maybe_migrate_legacy_rollover(Account, Options);
+        {'error', 'missing_rollover'} ->
+            maybe_migrate_legacy_rollover(Account, Options);
         {'error', _Reason} = Error ->
             Error
     end.
@@ -97,7 +101,6 @@ total_sources_from_previous(Account) ->
 get_sources_total(Account, Options) ->
     View = <<"ledgers/total_by_source">>,
     ViewOptions = ['reduce'
-                  ,'group'
                   ,{'group_level', 1}
                   ,'missing_as_error'
                    | Options
@@ -125,7 +128,7 @@ get_sources_total(Account, Options) ->
 sum_sources(Account, Options, JObjs) ->
     case lists:foldl(fun sum_sources_foldl/2, {'false', 0}, JObjs) of
         {'false', _Total} ->
-            {'error', 'missing_rollup'};
+            {'error', 'missing_rollover'};
         {'true', Total} ->
             log_sources_sum(Account, Options, Total)
     end.
@@ -146,13 +149,13 @@ log_sources_sum(Account, Options, Total) ->
 
 -spec sum_sources_foldl(kz_json:object(), {boolean(), kz_currency:units()}) ->
                                {boolean(), kz_currency:units()}.
-sum_sources_foldl(JObj, {FoundRollup, Sum}) ->
+sum_sources_foldl(JObj, {FoundRollover, Sum}) ->
     Value = kz_json:get_integer_value(<<"value">>, JObj, 0),
     case kz_json:get_value(<<"key">>, JObj) of
-        [<<"kazoo-ledgers">>] ->
+        [<<"kazoo-rollover">>] ->
             {'true', Sum + Value};
         _Else ->
-            {FoundRollup, Sum + Value}
+            {FoundRollover, Sum + Value}
     end.
 
 %%------------------------------------------------------------------------------
@@ -290,24 +293,24 @@ available_ledgers(AccountId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec verify_monthly_rollup_exists(kz_term:ne_binary()) -> boolean().
-verify_monthly_rollup_exists(Account) ->
-    case get_monthly_rollup(Account) of
+-spec verify_monthly_rollover_exists(kz_term:ne_binary()) -> boolean().
+verify_monthly_rollover_exists(Account) ->
+    case get_monthly_rollover(Account) of
         {'ok', _} -> 'true';
         {'error', _} -> 'false'
     end.
 
--spec get_monthly_rollup(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
+-spec get_monthly_rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
                                                  {'error', any()}.
-get_monthly_rollup(Account) ->
+get_monthly_rollover(Account) ->
     {CurrentYear, CurrentMonth, _} = erlang:date(),
-    get_monthly_rollup(Account, CurrentYear, CurrentMonth).
+    get_monthly_rollover(Account, CurrentYear, CurrentMonth).
 
--spec get_monthly_rollup(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
+-spec get_monthly_rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
                                 {'ok', kz_ledger:ledger()} |
                                 {'error', any()}.
-get_monthly_rollup(Account, Year, Month) ->
-    case kazoo_modb:open_doc(Account, ?ROLLUP_ID(Year,Month), Year, Month) of
+get_monthly_rollover(Account, Year, Month) ->
+    case kazoo_modb:open_doc(Account, ?ROLLOVER_ID(Year,Month), Year, Month) of
         {'ok', LedgerJObj} ->
             Ledger = kz_ledger:set_modb(kz_ledger:from_json(LedgerJObj)
                                        ,Account
@@ -316,7 +319,7 @@ get_monthly_rollup(Account, Year, Month) ->
                                        ),
             {'ok', Ledger};
         {'error', _Reason} = Error ->
-            lager:debug("unable to get monthly rollup for ~s ~p-~p: ~p"
+            lager:debug("unable to get monthly rollover for ~s ~p-~p: ~p"
                        ,[Account, Year, Month, _Reason]
                        ),
             Error
@@ -326,13 +329,13 @@ get_monthly_rollup(Account, Year, Month) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_migrate_legacy_rollup(kz_term:ne_binary(), kazoo_modb:view_options()) ->
+-spec maybe_migrate_legacy_rollover(kz_term:ne_binary(), kazoo_modb:view_options()) ->
                                          kz_currency:available_units_return().
-maybe_migrate_legacy_rollup(Account, Options) ->
+maybe_migrate_legacy_rollover(Account, Options) ->
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Year = props:get_integer_value('year', Options, DefaultYear),
     Month = props:get_integer_value('month', Options, DefaultMonth),
-    lager:warning("ledger rollup not found in ~s ~p-~p"
+    lager:warning("ledger rollover not found in ~s ~p-~p"
                  ,[Account, Year, Month]
                  ),
     %% NOTE: This is the migration point for legacy balances,
@@ -341,13 +344,13 @@ maybe_migrate_legacy_rollup(Account, Options) ->
     %%  create the ledger rollover from the transaction balance
     case kz_transactions:legacy_total(Account, Year, Month) of
         {'ok', Amount} ->
-            lager:debug("found transaction rollup, migrating $~p to ledger balance"
+            lager:debug("found transaction rollover, migrating $~p to ledger balance"
                        ,[kz_currency:units_to_dollars(Amount)]
                        ),
-            _ = rollup(Account, Year, Month, Amount),
+            _ = rollover(Account, Year, Month, Amount),
             get_sources_total(Account, Options);
         {'error', 'no_legacy_transactions'} ->
-            _ = rollup(Account, Year, Month),
+            _ = rollover(Account, Year, Month),
             get_sources_total(Account, Options);
         {'error', _Reason} = Error -> Error
     end.
@@ -356,40 +359,40 @@ maybe_migrate_legacy_rollup(Account, Options) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec rollup(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
+-spec rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
                                      {'error', any()}.
-rollup(Account) ->
+rollover(Account) ->
     {Year, Month, _} = erlang:date(),
-    rollup(Account, Year, Month).
+    rollover(Account, Year, Month).
 
--spec rollup(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
+-spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
                     {'ok', kz_ledger:ledger()} |
                     {'error', any()}.
-rollup(Account, Year, Month) ->
+rollover(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
     case kz_currency:past_available_units(Account, PreviousYear, PreviousMonth) of
         {'error', _R} = Error -> Error;
         {'ok', Total} ->
-            rollup(Account, Year, Month, Total)
+            rollover(Account, Year, Month, Total)
     end.
 
--spec rollup(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), kz_currency:units()) ->
+-spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), kz_currency:units()) ->
                     kz_currency:available_units_return().
-rollup(Account, Year, Month, Total) ->
+rollover(Account, Year, Month, Total) ->
     Id = <<(kz_term:to_binary(Year))/binary, "-"
           ,(kz_term:to_binary(Month))/binary
          >>,
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, Account}
-          ,{fun kz_ledger:set_source_service/2, <<"kazoo-ledgers">>}
+          ,{fun kz_ledger:set_source_service/2, <<"kazoo-rollover">>}
           ,{fun kz_ledger:set_source_id/2, Id}
-          ,{fun kz_ledger:set_description/2, <<"Kazoo ledgers monthly rollup">>}
+          ,{fun kz_ledger:set_description/2, <<"Kazoo ledgers monthly rollover">>}
           ,{fun kz_ledger:set_period_start/2, kz_time:now_s()}
           ,{fun kz_ledger:set_metadata/2, metadata()}
           ,{fun kz_ledger:set_unit_amount/2, Total}
-          ,{fun kz_ledger:set_id/2, ?ROLLUP_ID(Year,Month)}
+          ,{fun kz_ledger:set_id/2, ?ROLLOVER_ID(Year,Month)}
           ,{fun kz_ledger:set_ledger_type/2, ledger_type(Total)}
           ]
          ),
@@ -397,7 +400,7 @@ rollup(Account, Year, Month, Total) ->
         kz_ledger:to_json(kz_ledger:setters(Setters)),
     case kazoo_modb:save_doc(Account, LedgerJObj, Year, Month) of
         {'ok', _SavedJObj} ->
-            lager:info("created ledger rollup for ~s ~p-~p"
+            lager:info("created ledger rollover for ~s ~p-~p"
                       ,[Account, Year, Month]
                       ),
             ViewOptions = [{'year', Year}
@@ -405,7 +408,7 @@ rollup(Account, Year, Month, Total) ->
                           ],
             get_sources_total(Account, ViewOptions);
         {'error', _Reason} = Error ->
-            lager:warning("unable to save ledger rollup for ~s ~p-~p: ~p"
+            lager:warning("unable to save ledger rollover for ~s ~p-~p: ~p"
                          ,[Account, Year, Month, _Reason]
                          ),
             Error
@@ -414,7 +417,7 @@ rollup(Account, Year, Month, Total) ->
 -spec metadata() -> kz_json:object().
 metadata() ->
     kz_json:from_list(
-      [{<<"type">>, <<"rollup">>}
+      [{<<"type">>, <<"rollover">>}
       ,{<<"trigger">>, <<"automatic">>}
       ]
      ).

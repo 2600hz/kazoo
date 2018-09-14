@@ -18,6 +18,7 @@
 -include("crossbar.hrl").
 
 -define(AVAILABLE, <<"available">>).
+-define(TOTAL, <<"total">>).
 -define(CREDIT, <<"credit">>).
 -define(DEBIT, <<"debit">>).
 
@@ -53,6 +54,8 @@ allowed_methods() ->
     [?HTTP_GET].
 
 -spec allowed_methods(path_token()) -> http_methods().
+allowed_methods(?TOTAL) ->
+    [?HTTP_GET];
 allowed_methods(?AVAILABLE) ->
     [?HTTP_GET];
 allowed_methods(?CREDIT) ->
@@ -92,7 +95,11 @@ resource_exists(_, _) -> 'true'.
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context, Path) ->
-    authorize_request(Context, Path, cb_context:req_verb(Context)).
+    try authorize_request(Context, Path, cb_context:req_verb(Context))
+    catch
+        _E:_R ->
+            {'stop', cb_context:add_system_error('forbidden', Context)}
+    end.
 
 -spec authorize_request(cb_context:context(), path_token(), http_method()) ->
                                boolean() |
@@ -152,6 +159,23 @@ validate(Context, ?CREDIT) ->
     cb_context:validate_request_data(<<"ledgers">>, Context);
 validate(Context, ?DEBIT) ->
     cb_context:validate_request_data(<<"ledgers">>, Context);
+validate(Context, ?TOTAL) ->
+    case kz_ledgers:total_sources(cb_context:account_id(Context)) of
+        {'error', _R} ->
+            lager:debug("failed to fetch ledgers total: ~p", [_R]),
+            cb_context:add_system_error('unspecified_fault', Context);
+        {'ok', Units} ->
+            JObj = kz_json:from_list(
+                     [{<<"amount">>
+                      ,kz_currency:units_to_dollars(Units)
+                      }
+                     ]
+                    ),
+            Setters = [{fun cb_context:set_resp_status/2, 'success'}
+                      ,{fun cb_context:set_resp_data/2, JObj}
+                      ],
+            cb_context:setters(Context, Setters)
+    end;
 validate(Context, ?AVAILABLE) ->
     Available = kz_ledgers:available_ledgers(cb_context:account_id(Context)),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}

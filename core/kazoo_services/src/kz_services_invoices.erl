@@ -83,7 +83,9 @@ annotate(Services, CurrentInvoices, [ProposedInvoice|ProposedInvoices], Invoices
 -spec create_current_invoices(kz_services:services()) -> invoices().
 create_current_invoices(Services) ->
     ServicesJObj = kz_services:current_services_jobj(Services),
-    Plans = kz_services_plans:fetch(Services, ServicesJObj),
+    Plans = kz_services_plans:fetch(
+              kz_services:set_services_jobj(Services, ServicesJObj)
+             ),
     create_invoices(reset(Services), Plans).
 
 -spec create_proposed_invoices(kz_services:services()) -> invoices().

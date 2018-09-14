@@ -15,6 +15,7 @@
         ]).
 -export([reconcile/1]).
 -export([audit_log/1]).
+-export([transaction_to_error/2]).
 
 -include("crossbar.hrl").
 
@@ -152,3 +153,26 @@ audit_log_auth(Context) ->
     ,{<<"account_id">>, cb_context:auth_account_id(Context)}
     ,{<<"account_name">>, kzd_accounts:name(cb_context:auth_account_doc(Context))}
     ].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec transaction_to_error(cb_context:context(), kz_transaction:transaction()) -> cb_context:context().
+transaction_to_error(Context, Transaction) ->
+    case kz_transaction:status_completed(Transaction) of
+        'true' ->
+            crossbar_util:response(kz_transaction:public_json(Transaction), Context);
+        'false' ->
+            BookkeeperResults = kz_transaction:bookkeeper_results(Transaction),
+            Reason = kz_json:get_ne_binary_value(<<"reason">>, BookkeeperResults),
+            transaction_to_error(Context, Transaction, Reason)
+    end.
+
+-spec transaction_to_error(cb_context:context(), kz_transaction:transaction(), kz_term:api_ne_binary()) -> cb_context:context().
+transaction_to_error(Context, Transaction, 'undefined') ->
+    cb_context:add_system_error(500, 'unspecified_fault', kz_transaction:public_json(Transaction), Context);
+transaction_to_error(Context, _Transaction, <<"no_payment_token">>) ->
+    cb_context:add_system_error('no_payment_token', Context);
+transaction_to_error(Context, Transaction, Reason) ->
+    cb_context:add_system_error(500, Reason, kz_transaction:public_json(Transaction), Context).
