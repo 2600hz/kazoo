@@ -213,6 +213,9 @@ relay_encoded_email(To, From, Encoded) ->
     lager:debug("relaying from ~s to ~p", [From, To]),
     handle_send(To, From, send(To, From, Encoded)).
 
+-type gen_smtp_send_resp() :: {'ok', pid()} | {'error', any()} | pid().
+
+-spec send(kz_term:binaries(), kz_term:ne_binary(), kz_term:ne_binary()) -> gen_smtp_send_resp().
 send(To, From, Encoded) ->
     Self = self(),
     gen_smtp_client:send({From, To, Encoded}
@@ -220,16 +223,19 @@ send(To, From, Encoded) ->
                         ,fun(X) -> Self ! {'relay_response', X} end
                         ).
 
-handle_send(To, From, {'ok', _OK}) ->
-    lager:debug("send is processing: ~p", [_OK]),
+-spec handle_send(kz_term:binaries(), kz_term:ne_binary(), gen_smtp_send_resp()) ->
+                         {'ok', kz_term:ne_binary()} | {'error', any()}.
+handle_send(To, From, {'ok', _Pid}) ->
+    lager:debug("smtp client is processing with pid ~p", [_Pid]),
     wait_for_response(To, From);
 handle_send(_To, _From, {'error', _R}=Error) ->
     lager:info("error trying to send email: ~p", [_R]),
     Error;
-handle_send(To, From, _SendResp) ->
-    lager:debug("send resp: ~p", [_SendResp]),
+handle_send(To, From, _Pid) ->
+    lager:debug("smtp client is processing with pid ~p", [_Pid]),
     wait_for_response(To, From).
 
+-spec wait_for_response(kz_term:binaries(), kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 wait_for_response(To, From) ->
     Timeout = kapps_config:get_pos_integer(<<"smtp_client">>, <<"send_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
 
@@ -243,6 +249,8 @@ wait_for_response(To, From) ->
             {'error', 'timeout'}
     end.
 
+-spec handle_relay_response(kz_term:binaries(), kz_term:ne_binary(), {'ok', kz_term:ne_binary()} | {'error', any()}) ->
+                                   {'ok', kz_term:ne_binary()} | {'error', any()}.
 handle_relay_response(To, From, {'ok', Receipt}) ->
     kz_cache:store_local(?CACHE_NAME
                         ,{'receipt', Receipt}
@@ -263,6 +271,7 @@ handle_relay_response(_To, _From, {'exit', Reason}) ->
     log_email_send_error(Reason),
     {'error', Reason}.
 
+-spec log_email_send_error(any()) -> 'ok'.
 log_email_send_error({'function_clause', Stacktrace}) ->
     kz_util:log_stacktrace(Stacktrace);
 log_email_send_error(Reason) ->
