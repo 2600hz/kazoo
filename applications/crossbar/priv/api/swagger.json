@@ -30214,7 +30214,7 @@
                 },
                 "resolution": {
                     "default": 200,
-                    "description": "Whith document resolution is used for converted files",
+                    "description": "Which document resolution is used for converted files",
                     "maximum": 2400,
                     "minimum": 10,
                     "type": "integer"
