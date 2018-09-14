@@ -18113,7 +18113,7 @@
                     "items": {
                         "type": "object"
                     },
-                    "type": "string"
+                    "type": "array"
                 },
                 "Preview": {
                     "type": "string"

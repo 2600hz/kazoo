@@ -613,7 +613,7 @@ monthly_every_ordinal_recurrence_test_() ->
     ,?_assertEqual({2011,?FEB,4}, cf_temporal_route:next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"friday">>], start_date={2011,?JAN,1}}, {2011,?JAN,1}))
     ,?_assertEqual({2011,?JAN,29}, cf_temporal_route:next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"saturday">>], start_date={2011,?JAN,1}}, {2011,?JAN,1}))
     ,?_assertEqual({2011,?JAN,30}, cf_temporal_route:next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"sunday">>], start_date={2011,?JAN,1}}, {2011,?JAN,1}))
-     %% on occurance
+     %% on occurrence
     ,?_assertEqual({2011,?FEB,7}, cf_temporal_route:next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2011,?JAN,1}}, {2011,?JAN,3}))
     ,?_assertEqual({2011,?FEB,14}, cf_temporal_route:next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"monday">>], start_date={2011,?JAN,1}}, {2011,?JAN,10}))
     ,?_assertEqual({2011,?FEB,21}, cf_temporal_route:next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"monday">>], start_date={2011,?JAN,1}}, {2011,?JAN,17}))
