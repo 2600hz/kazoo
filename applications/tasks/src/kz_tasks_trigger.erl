@@ -105,10 +105,6 @@ handle_cast({'cleanup_finished', Ref}, #state{browse_dbs_ref = Ref}=State) ->
     lager:debug("cleanup finished for ~p, starting timer", [Ref]),
     {'noreply', State#state{browse_dbs_ref = browse_dbs_timer()}, 'hibernate'};
 
-handle_cast({'$proxy_stop', Reason}, State) ->
-    lager:debug("~p stopping with reason: ~p", [?MODULE, Reason]),
-    {'stop', Reason, State};
-
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
     {'noreply', State}.

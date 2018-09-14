@@ -157,9 +157,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({'$proxy_stop', Reason}, State) ->
-    lager:debug("~p stopping with reason: ~p", [?MODULE, Reason]),
-    {'stop', Reason, State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 

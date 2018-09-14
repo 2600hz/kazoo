@@ -423,11 +423,9 @@ amqp_register(Global, From) ->
                 'yes' ->
                     lager:debug("amqp register ok, registering ~p locally", [Name]),
                     gen_listener:cast(?SERVER, {'register_local', Global, From});
-                'no' ->
-                    gen_listener:reply(From, 'no')
+                'no' -> gen_listener:reply(From, 'no')
             end;
-        _Pid ->
-            gen_listener:reply(From, 'no')
+        _Pid -> gen_listener:reply(From, 'no')
     end.
 
 -spec do_amqp_register(kz_global:global()) -> 'yes' | 'no'.
@@ -581,10 +579,6 @@ do_amqp_unregister(Global, Reason) ->
               ],
     lager:debug("deleting ~p", [Name]),
     ets:delete(?TAB_NAME, Name),
-    kz_util:spawn(fun() ->
-                          timer:sleep(500), % Give time to other nodes to register the name
-                          gen_listener:call(?SERVER, {'amqp_delete', Global, Reason})
-                  end),
     kz_amqp_worker:cast(Payload, ?AMQP_UNREGISTER_FUN).
 
 -spec maybe_amqp_query(kz_global:name(), term()) -> 'ok'.
