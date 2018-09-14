@@ -40,7 +40,10 @@
             "type": "string"
         },
         "Items": {
-            "type": "string"
+            "items": {
+                "type": "object"
+            },
+            "type": "array"
         },
         "Preview": {
             "type": "string"

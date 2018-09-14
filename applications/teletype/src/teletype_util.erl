@@ -214,10 +214,10 @@ relay_encoded_email(To, From, Encoded) ->
     Timeout = kapps_config:get_pos_integer(<<"smtp_client">>, <<"send_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
 
     lager:debug("relaying from ~s to ~p", [From, To]),
-    gen_smtp_client:send({From, To, Encoded}
-                        ,smtp_options()
-                        ,fun(X) -> Self ! {'relay_response', X} end
-                        ),
+    {'ok', _} = gen_smtp_client:send({From, To, Encoded}
+                                    ,smtp_options()
+                                    ,fun(X) -> Self ! {'relay_response', X} end
+                                    ),
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive

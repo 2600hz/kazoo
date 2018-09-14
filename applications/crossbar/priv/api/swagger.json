@@ -18110,6 +18110,9 @@
                     "type": "string"
                 },
                 "Items": {
+                    "items": {
+                        "type": "object"
+                    },
                     "type": "string"
                 },
                 "Preview": {
