@@ -388,15 +388,12 @@ channel_var_sort({A, _}, {B, _}) -> A =< B.
 
 -spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_channel_vars_fold({?GET_CCV(Key), V}, Acc) ->
-    [{Key, V} | Acc];
+    props:set_value(Key, V, Acc);
 custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
-    [{Key, V} | Acc];
+    props:set_value(Key, V, Acc);
 custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
-    case props:is_defined(Key, Acc) of
-        'true' -> Acc;
-        'false' -> [{Key, V} | Acc]
-    end;
-custom_channel_vars_fold(_, Acc) -> Acc.
+    props:insert_value(Key, V, Acc);
+custom_channel_vars_fold(_KV, Acc) -> Acc.
 
 -spec custom_application_vars(kzd_freeswitch:data()) -> kz_term:proplist().
 custom_application_vars(Props) ->
@@ -416,15 +413,12 @@ application_var_sort({A, _}, {B, _}) -> A =< B.
 
 -spec custom_application_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_application_vars_fold({?GET_CAV(Key), V}, Acc) ->
-    [{Key, V} | Acc];
+    props:set_value(Key, V, Acc);
 custom_application_vars_fold({?CAV(Key), V}, Acc) ->
-    [{Key, V} | Acc];
+    props:set_value(Key, V, Acc);
 custom_application_vars_fold({?GET_CAV_HEADER(Key), V}, Acc) ->
-    case props:is_defined(Key, Acc) of
-        'true' -> Acc;
-        'false' -> [{Key, V} | Acc]
-    end;
-custom_application_vars_fold(_, Acc) -> Acc.
+    props:insert_value(Key, V, Acc);
+custom_application_vars_fold(_KV, Acc) -> Acc.
 
 -spec application_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
 application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
