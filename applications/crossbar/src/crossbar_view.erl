@@ -45,6 +45,7 @@
          %% ranged query
         ,'created_to', 'created_from', 'max_range'
         ,'range_end_keymap', 'range_key_name', 'range_keymap', 'range_start_keymap'
+        ,'should_paginate'
         ]).
 
 -type direction() :: 'ascending' | 'descending'.
@@ -102,7 +103,8 @@
                     {'range_end_keymap', range_keymap()} |
                     {'range_keymap', range_keymap()} |
                     {'range_key_name', kz_term:ne_binary()} |
-                    {'range_start_keymap', range_keymap()}
+                    {'range_start_keymap', range_keymap()} |
+                    {'should_paginate', boolean()}
                    ].
 
 -type load_params() :: #{chunk_size => pos_integer()
@@ -529,7 +531,9 @@ map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] 
 %%------------------------------------------------------------------------------
 -spec get_page_size(cb_context:context(), options()) -> kz_term:api_pos_integer().
 get_page_size(Context, Options) ->
-    case cb_context:should_paginate(Context) of
+    case props:is_true('should_paginate', Options, 'true')
+        andalso cb_context:should_paginate(Context)
+    of
         'true' ->
             case props:get_value('limit', Options) of
                 'undefined' ->
@@ -539,7 +543,7 @@ get_page_size(Context, Options) ->
                     Limit
             end;
         'false' ->
-            lager:debug("pagination disabled in context"),
+            lager:debug("pagination disabled in context or option"),
             'undefined'
     end.
 

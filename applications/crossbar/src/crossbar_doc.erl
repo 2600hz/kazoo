@@ -1043,7 +1043,7 @@ add_location_header(JObj, RHs) ->
 
 -spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context(), http_method()) ->
                                  cb_context:context().
-handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
+handle_json_success(JObjs, Context, ?HTTP_PUT) when is_list(JObjs) ->
     RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
@@ -1059,7 +1059,7 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
-handle_json_success([_|_]=JObjs, Context, _Verb) ->
+handle_json_success(JObjs, Context, _Verb) when is_list(JObjs) ->
     RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)

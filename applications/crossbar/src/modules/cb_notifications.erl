@@ -1155,14 +1155,19 @@ summary_available(Context) ->
 
 -spec fetch_summary_available(cb_context:context()) -> cb_context:context().
 fetch_summary_available(Context) ->
-    Context1 =
-        crossbar_doc:load_view(?CB_LIST
-                              ,[]
-                              ,cb_context:set_account_db(Context, ?KZ_CONFIG_DB)
-                              ,select_normalize_fun(Context)
-                              ),
-    cache_available(Context1),
-    Context1.
+    ViewOptions = [{'databases', [?KZ_CONFIG_DB]}
+                  ,{'mapper', select_normalize_fun(Context)}
+                  ,{'should_paginate', 'false'}
+                  ,{'unchunkable', 'true'}
+                  ],
+    Context1 = crossbar_view:load(Context, ?CB_LIST, ViewOptions),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cache_available(Context1),
+            Context1;
+        _ ->
+            Context1
+    end.
 
 -spec cache_available(cb_context:context()) -> 'ok'.
 cache_available(Context) ->
@@ -1198,10 +1203,16 @@ summary_account(Context) ->
 
 -spec summary_account(cb_context:context(), kz_json:objects()) -> cb_context:context().
 summary_account(Context, AccountAvailable) ->
-    Available = filter_available(summary_available(Context)),
-    lager:debug("loaded system available"),
-    JObj = merge_available(AccountAvailable, Available),
-    crossbar_doc:handle_json_success(JObj, Context).
+    Context1 = summary_available(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Available = filter_available(Context1),
+            lager:debug("loaded system available"),
+            JObj = merge_available(AccountAvailable, Available),
+            crossbar_doc:handle_json_success(JObj, Context);
+        _ ->
+            Context1
+    end.
 
 -spec filter_available(cb_context:context()) -> kz_json:objects().
 filter_available(Context) ->
