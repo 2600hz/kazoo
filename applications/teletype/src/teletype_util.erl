@@ -210,14 +210,19 @@ relay_encoded_email([], _From, _Encoded) ->
     lager:debug("failed to send email as the TO addresses list is empty"),
     {'error', 'no_to_addresses'};
 relay_encoded_email(To, From, Encoded) ->
+    lager:debug("relaying from ~s to ~p", [From, To]),
+    handle_send(To, From, send(To, From, Encoded)).
+
+send(To, From, Encoded) ->
     Self = self(),
+    gen_smtp_client:send({From, To, Encoded}
+                        ,smtp_options()
+                        ,fun(X) -> Self ! {'relay_response', X} end
+                        ).
+
+handle_send(To, From, {'ok', _}) ->
     Timeout = kapps_config:get_pos_integer(<<"smtp_client">>, <<"send_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
 
-    lager:debug("relaying from ~s to ~p", [From, To]),
-    {'ok', _} = gen_smtp_client:send({From, To, Encoded}
-                                    ,smtp_options()
-                                    ,fun(X) -> Self ! {'relay_response', X} end
-                                    ),
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
@@ -243,7 +248,11 @@ relay_encoded_email(To, From, Encoded) ->
     after Timeout ->
             lager:debug("timed out waiting for relay response"),
             {'error', 'timeout'}
-    end.
+    end;
+handle_send(_To, _From, {'error', _R}=Error) ->
+    lager:info("error trying to send email: ~p", [_R]),
+    Error.
+
 
 log_email_send_error({'function_clause', Stacktrace}) ->
     kz_util:log_stacktrace(Stacktrace);
