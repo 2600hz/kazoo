@@ -235,7 +235,7 @@ direction(Req) ->
 authorizing_type(Req) ->
     kz_json:get_ne_binary_value(<<"Authorizing-Type">>, Req).
 
--spec send_empty(req()) -> kz_term:api_ne_binary().
+-spec send_empty(req()) -> boolean().
 send_empty(Req) ->
     kz_json:is_true(<<"Send-Empty">>, Req, 'false').
 
@@ -247,6 +247,6 @@ options(Req) ->
 outbound_flags(Req) ->
     kz_json:get_list_value(<<"Outbound-Flags">>, Req, []).
 
--spec resource_id(req()) -> kz_term:ne_binary().
+-spec resource_id(req()) -> kz_term:api_ne_binary().
 resource_id(Req) ->
     kz_json:get_ne_binary_value(<<"Resource-ID">>, Req).

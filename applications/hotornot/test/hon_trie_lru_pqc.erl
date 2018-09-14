@@ -21,10 +21,40 @@
         ,correct_parallel/0
         ]).
 
--define(EXPIRES_S, 2). % expire after 2 seconds
--record(model, {cache = []
-               ,now_ms = 0
-               ,next_purge = ?EXPIRES_S * 1000
+-export([find_prefix/2]).
+
+proper_test_() ->
+    {"Runs "?MODULE_STRING" PropEr tests"
+    ,[{'timeout'
+      ,120
+      ,{"Sequential tests"
+       ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}
+                                                      ,'noshrink'
+                                                      ,30
+                                                      ]))
+       }
+      }
+     ,{'timeout'
+      ,120
+      ,{"Parallel tests"
+       ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}
+                                                               ,'noshrink'
+                                                               ,10
+                                                               ]))
+       }
+      }
+     ]
+    }.
+
+-type prefix() :: pos_integer().
+-type id() :: kz_term:ne_binary().
+-type now_ms() :: non_neg_integer().
+
+-type cache() :: [{prefix(), [{id(), now_ms()}]}].
+
+-define(EXPIRES_S, 1). % expire after 1 second
+-record(model, {cache = [] :: cache()
+               ,now_ms = 0 :: now_ms()
                }
        ).
 
@@ -38,33 +68,47 @@ correct() ->
                    {History, State, Result} = run_commands(?MODULE, Cmds),
                    hon_trie_lru:stop(?KZ_RATES_DB),
 
-                   ?WHENFAIL(?debugFmt("~nLRU: ~p~n Final State: ~p~nRecreate:~n~s~nZip:~n~s~n"
-                                      ,[_Pid, State, recreate_steps(Cmds), print_zip(zip(Cmds, History))]
-                                      )
+                   ?WHENFAIL(begin
+                                 {Zipped, Recreate} = print_zip(zip(Cmds, History)),
+                                 ?debugFmt("~nLRU: ~p~n Final State: ~p~nZip:~n~s~nRecreate:~n~s~n"
+                                          ,[_Pid, State
+                                           ,lists:reverse(Zipped)
+                                           ,string:join(lists:reverse(Recreate), ",")
+                                           ]
+                                          )
+                             end
                             ,aggregate(command_names(Cmds), Result =:= 'ok')
                             )
                end
               )
            ).
 
-recreate_steps(Steps) ->
-    string:join([recreate_step(Step) || Step <- Steps], ",").
-
-recreate_step({'set', _Var, {'call', M, F, As}}) ->
-    io_lib:format("~s:~s(~s)~n", [M, F, args_to_list(As)]).
-
 args_to_list(Args) ->
     string:join([io_lib:format("~p", [A]) || A <- Args], ", ").
 
 print_zip(Zip) ->
-    [print_zip_item(Item) || Item <- Zip].
+    io:format("~n"),
+    StopStep = io_lib:format("hon_trie_lru:stop(~p)~n", [?KZ_RATES_DB]),
+    StartStep = io_lib:format("hon_trie_lru:start_link(~p, ~p)~n", [?KZ_RATES_DB, ?EXPIRES_S]),
+
+    {Print, Recreate} = lists:foldl(fun(Item, {Z, R}) -> {[print_zip_item(Item) | Z], [recreate_item(Item) | R]} end
+                                   ,{[], [StartStep, StopStep]}
+                                   ,Zip
+                                   ),
+    {Print, [StopStep | Recreate]}.
+
+recreate_item({{set, _Var, {call, M, F, As}}
+              ,{#model{cache=_Cache, now_ms=_NowMs}, Result}
+              }) ->
+    [io_lib:format("~p = ~s:~s(~s)", [Result, M, F, args_to_list(As)])].
 
 print_zip_item({{set, _Var, {call, M, F, As}}
                ,{#model{cache=Cache, now_ms=NowMs}, Result}
                }) ->
-    io_lib:format("~6b: cache: ~p calling ~s:~s(~s) results in ~p~n"
-                 ,[NowMs, Cache, M, F, args_to_list(As), Result]
-                 ).
+    [io_lib:format("~6bms: cache: ~p~n", [NowMs, Cache])
+    ,io_lib:format("~12s~ss:~s(~s) results in:~n", ["", M, F, args_to_list(As)])
+    ,io_lib:format("~14s~p~n", ["", Result])
+    ].
 
 correct_parallel() ->
     ?FORALL(Cmds
@@ -76,8 +120,9 @@ correct_parallel() ->
                    {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                    hon_trie_lru:stop(?KZ_RATES_DB),
 
-                   ?WHENFAIL(?debugFmt("Failing Cmds: ~p\nS: ~p\nP: ~p\n"
-                                      ,[Cmds, Sequential, Parallel]
+
+                   ?WHENFAIL(?debugFmt("S: ~p~nP: ~p~n"
+                                      ,[Sequential, Parallel]
                                       )
                             ,aggregate(command_names(Cmds), Result =:= 'ok')
                             )
@@ -85,7 +130,6 @@ correct_parallel() ->
               )
            ).
 
--type cache() :: [{kz_term:ne_binary(), {kz_term:ne_binary(), kz_time:gregorian_seconds()}}].
 initial_state() ->
     #model{}.
 
@@ -96,19 +140,6 @@ command(#model{}) ->
           ,{'call', 'timer', 'sleep', [range(Ms-100,Ms+100)]}
           ]).
 
-next_state(#model{now_ms=NowMs
-                 ,next_purge=NextPurge
-                 ,cache=Cache
-                 }=Model
-          ,V
-          ,Call
-          ) when NextPurge < NowMs ->
-    next_state(Model#model{cache=expire_rates(Cache, NowMs)
-                          ,next_purge=NextPurge + (?EXPIRES_S * 1000)
-                          }
-              ,V
-              ,Call
-              );
 next_state(#model{cache=Cache
                  ,now_ms=NowMs
                  }=Model
@@ -116,9 +147,11 @@ next_state(#model{cache=Cache
           ,{'call', 'hon_trie', 'match_did', [PhoneNumber, _AccountId, _RatedeckId]}
           ) ->
     case find_prefix(Cache, PhoneNumber) of
-        'error' -> Model;
+        'error' -> Model#model{now_ms=NowMs+1};
         {'ok', Prefix, RateIds} ->
-            Model#model{cache=bump_matched(Cache, NowMs, Prefix, RateIds)}
+            Model#model{cache=bump_matched(expire_rates(Cache, NowMs), NowMs, Prefix, RateIds)
+                       ,now_ms=NowMs+1
+                       }
     end;
 next_state(#model{cache=Cache
                  ,now_ms=NowMs
@@ -127,13 +160,19 @@ next_state(#model{cache=Cache
           ,{'call', 'hon_trie_lru', 'cache_rates', [_RatedeckId, RateDocs]}
           ) ->
     {UpdatedCache, NowMs} = cache_rates(Cache, NowMs, RateDocs),
-    Model#model{cache=UpdatedCache};
-next_state(#model{now_ms=ThenMs}=Model
+    Model#model{cache=UpdatedCache
+               ,now_ms=NowMs+1
+               };
+next_state(#model{now_ms=ThenMs
+                 ,cache=Cache
+                 }=Model
           ,_V
           ,{'call', 'timer', 'sleep', [SleepMs]}
           ) ->
     NowMs = ThenMs + SleepMs,
-    Model#model{now_ms=NowMs}.
+    Model#model{now_ms=NowMs
+               ,cache=expire_rates(Cache, NowMs)
+               }.
 
 precondition(_Model, _Call) -> 'true'.
 
@@ -179,12 +218,13 @@ rate_doc() ->
           ]).
 
 %% Helpers
+-spec cache_rates(cache(), now_ms(), kz_json:objects()) -> cache().
 cache_rates(Cache, NowMs, RateDocs) ->
     lists:foldl(fun cache_rate/2, {Cache, NowMs}, RateDocs).
 
 cache_rate(Rate, {Cache, NowMs}) ->
     Id = kz_doc:id(Rate),
-    Prefix = kz_term:to_list(kzd_rates:prefix(Rate)),
+    Prefix = kzd_rates:prefix(Rate),
 
     Rates = props:get_value(Prefix, Cache, []),
     NewRates = props:insert_value(Id, NowMs, Rates),
@@ -198,12 +238,12 @@ expire_rates(Cache, NowMs) ->
     NewCache.
 
 expire_rate({Prefix, Rates}, {Cache, OldestTimestamp}) ->
-    case [RateId || {RateId, LastUsed} <- Rates,
-                    LastUsed < OldestTimestamp
-         ]
+    case lists:filter(fun({_RateId, LastUsed}) -> LastUsed >= OldestTimestamp end
+                     ,Rates
+                     )
     of
-        [] -> {props:set_value(Prefix, Rates, Cache), OldestTimestamp};
-        [_|_]=_OldRates -> {Cache, OldestTimestamp}
+        [] -> {Cache, OldestTimestamp};
+        RatesToKeep -> {props:set_value(Prefix, RatesToKeep, Cache), OldestTimestamp}
     end.
 
 bump_matched(Cache, NowMs, Prefix, RateIds) ->
@@ -214,13 +254,13 @@ bump_matched(Cache, NowMs, Prefix, RateIds) ->
 
 -spec find_prefix(cache(), string()) ->
                          'error' |
-                         {'ok', string(), any()}.
+                         {'ok', prefix(), any()}.
 find_prefix(Cache, PhoneNumber) ->
     PNBin = kz_term:to_binary(PhoneNumber),
     case lists:foldl(fun longest_prefix/2, {PNBin, <<>>, 0, []}, Cache) of
         {_, <<>>, 0, []} -> 'error';
         {_, Prefix, _Len, Rates} ->
-            {'ok', kz_term:to_list(Prefix), Rates}
+            {'ok', Prefix, Rates}
     end.
 
 longest_prefix({Prefix, Rates}
@@ -230,7 +270,8 @@ longest_prefix({Prefix, Rates}
     case binary:match(PhoneNumber, PrefixBin) of
         {0, PrefixLength} when PrefixLength > MatchingLength ->
             {PhoneNumber, Prefix, PrefixLength, Rates};
-        _ -> Acc
+        _Else ->
+            Acc
     end.
 
 -endif.
