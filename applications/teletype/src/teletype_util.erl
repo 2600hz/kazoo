@@ -220,39 +220,48 @@ send(To, From, Encoded) ->
                         ,fun(X) -> Self ! {'relay_response', X} end
                         ).
 
-handle_send(To, From, {'ok', _}) ->
+handle_send(To, From, {'ok', _OK}) ->
+    lager:debug("send is processing: ~p", [_OK]),
+    wait_for_response(To, From);
+handle_send(_To, _From, {'error', _R}=Error) ->
+    lager:info("error trying to send email: ~p", [_R]),
+    Error;
+handle_send(To, From, _SendResp) ->
+    lager:debug("send resp: ~p", [_SendResp]),
+    wait_for_response(To, From).
+
+wait_for_response(To, From) ->
     Timeout = kapps_config:get_pos_integer(<<"smtp_client">>, <<"send_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
 
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
-        {'relay_response', {'ok', Receipt}} ->
-            kz_cache:store_local(?CACHE_NAME
-                                ,{'receipt', Receipt}
-                                ,#email_receipt{to=To
-                                               ,from=From
-                                               ,timestamp=kz_time:now_s()
-                                               ,call_id=kz_util:get_callid()
-                                               }
-                                ,[{'expires', ?MILLISECONDS_IN_HOUR}]
-                                ),
-            _ = lager:debug("relayed message: ~p", [Receipt]),
-            {'ok', binary:replace(Receipt, <<"\r\n">>, <<>>, ['global'])};
-        {'relay_response', {'error', _Type, {_SubType, _FailHost, Message}}} ->
-            lager:debug("error relaying message: ~p(~p): ~p", [_Type, _SubType, Message]),
-            {'error', Message};
-        {'relay_response', {'exit', Reason}} ->
-            lager:debug("failed to send email:"),
-            log_email_send_error(Reason),
-            {'error', Reason}
+        {'relay_response', Resp} ->
+            handle_relay_response(To, From, Resp)
     after Timeout ->
             lager:debug("timed out waiting for relay response"),
             {'error', 'timeout'}
-    end;
-handle_send(_To, _From, {'error', _R}=Error) ->
-    lager:info("error trying to send email: ~p", [_R]),
-    Error.
+    end.
 
+handle_relay_response(To, From, {'ok', Receipt}) ->
+    kz_cache:store_local(?CACHE_NAME
+                        ,{'receipt', Receipt}
+                        ,#email_receipt{to=To
+                                       ,from=From
+                                       ,timestamp=kz_time:now_s()
+                                       ,call_id=kz_util:get_callid()
+                                       }
+                        ,[{'expires', ?MILLISECONDS_IN_HOUR}]
+                        ),
+    _ = lager:debug("relayed message: ~p", [Receipt]),
+    {'ok', binary:replace(Receipt, <<"\r\n">>, <<>>, ['global'])};
+handle_relay_response(_To, _From, {'error', _Type, {_SubType, _FailHost, Message}}) ->
+    lager:debug("error relaying message: ~p(~p): ~p", [_Type, _SubType, Message]),
+    {'error', Message};
+handle_relay_response(_To, _From, {'exit', Reason}) ->
+    lager:debug("failed to send email:"),
+    log_email_send_error(Reason),
+    {'error', Reason}.
 
 log_email_send_error({'function_clause', Stacktrace}) ->
     kz_util:log_stacktrace(Stacktrace);
