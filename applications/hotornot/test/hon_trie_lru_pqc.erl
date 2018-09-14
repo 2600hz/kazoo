@@ -26,7 +26,7 @@
 proper_test_() ->
     {"Runs "?MODULE_STRING" PropEr tests"
     ,[{'timeout'
-      ,75
+      ,120
       ,{"Sequential tests"
        ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}
                                                       ,'noshrink'
@@ -35,11 +35,11 @@ proper_test_() ->
        }
       }
      ,{'timeout'
-      ,75
+      ,120
       ,{"Parallel tests"
        ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}
                                                                ,'noshrink'
-                                                               ,30
+                                                               ,10
                                                                ]))
        }
       }
