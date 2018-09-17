@@ -38,8 +38,7 @@
 
 -include("konami.hrl").
 
--define(WSD_ID, ?WSD_ENABLED
-        andalso {'file', <<(get('callid'))/binary, "_transfer">>}).
+-define(WSD_ID, {'file', <<(get('callid'))/binary, "_transfer">>}).
 
 -define(WSD_EVT(Fr, T, E), ?WSD_ENABLED
         andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_term:to_binary(?LINE))/binary, "-", E/binary>>)).
@@ -178,7 +177,7 @@ pre_originate('cast', ?EVENT(_CallId, _EventName, _Evt), State) ->
             ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
         _OtherLeg ->
             lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
-            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+            ?WSD_EVT(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
     end,
     {'next_state', 'pre_originate', State};
 pre_originate('info', Evt, State) ->
@@ -692,13 +691,13 @@ attended_answer('cast', ?EVENT(TargetA, <<"CHANNEL_DESTROY">>, _Evt)
                ,#state{target_a_leg=TargetA}=State
                ) ->
     lager:debug("target 'a' ~s destroyed(~s)", [TargetA, kz_call_event:hangup_cause(_Evt)]),
-    ?WSD_EVT(TargetA, 'right', <<"destroyed">>),
+    ?WSD_NOTE(TargetA, 'right', <<"destroyed">>),
     {'next_state', 'attended_answer', State};
 attended_answer('cast', ?EVENT(TargetB, <<"CHANNEL_DESTROY">>, _Evt)
                ,#state{target_b_leg=TargetB}=State
                ) ->
     lager:debug("target 'b' ~s destroyed: ~s", [TargetB, kz_call_event:hangup_cause(_Evt)]),
-    ?WSD_EVT(TargetB, 'right', <<"destroyed">>),
+    ?WSD_NOTE(TargetB, 'right', <<"destroyed">>),
     {'next_state', 'attended_answer', State};
 attended_answer('cast', ?EVENT(_CallId, _EventName, _Evt), State) ->
     case kz_call_event:other_leg_call_id(_Evt) of
@@ -707,7 +706,7 @@ attended_answer('cast', ?EVENT(_CallId, _EventName, _Evt), State) ->
             ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
         _OtherLeg ->
             lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
-            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+            ?WSD_EVT(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
     end,
     {'next_state', 'attended_answer', State};
 attended_answer('cast', Msg, State) ->
@@ -920,7 +919,7 @@ takeback('cast', ?EVENT(_CallId, _EventName, _Evt), State) ->
             ?WSD_NOTE(_CallId, 'right', <<"unhandled ", _EventName/binary>>);
         _OtherLeg ->
             lager:info("unhandled event ~s for ~s to ~s", [_EventName, _CallId, _OtherLeg]),
-            ?WSD_NOTE(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
+            ?WSD_EVT(_CallId, _OtherLeg, <<"unhandled ", _EventName/binary>>)
     end,
     {'next_state', 'takeback', State};
 takeback('cast', 'timeout', #state{call=Call}=State) ->
