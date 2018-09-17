@@ -405,16 +405,22 @@ cleanup_jobs(AccountId) ->
         {'ok', []} -> 'ok';
         {'ok', JObjs} ->
             lager:debug("cleaning up ~B fax jobs for account_id ~s", [length(JObjs), AccountId]),
-            _ = [begin
-                     DocId = kz_doc:id(JObj),
-                     lager:debug("moving zombie job ~s status to pending", [DocId]),
-                     kz_datamgr:update_doc(?KZ_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
-                 end
-                 || JObj <- JObjs
-                ],
+            _ = [cleanup_job(JObj) || JObj <- JObjs],
             'ok';
         {'error', _R} -> lager:debug("unable to cleanup account_id ~s fax jobs: ~p", [AccountId, _R])
     end.
+
+-spec cleanup_job(kz_json:object()) -> 'ok'.
+cleanup_job(JObj) ->
+    DocId = kz_doc:id(JObj),
+    lager:debug("moving zombie job ~s status to pending", [DocId]),
+    Updates = [{<<"pvt_job_status">>, <<"pending">>}],
+    UpdateOptions = [{'update', Updates}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    {'ok', _} = kz_datamgr:update_doc(?KZ_FAXES_DB, DocId, UpdateOptions),
+    lager:debug("job ~s status updated to pending", [DocId]).
+
 
 -spec maybe_serialize(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
 maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountId, Number, _Job, Jobs) ->

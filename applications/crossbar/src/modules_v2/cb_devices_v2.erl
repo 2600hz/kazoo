@@ -735,8 +735,13 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
         'false' -> maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            {'ok', _} = kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(cb_context:doc(Context))),
-            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            Update = [{kz_doc:path_revision(), 'null'}],
+            UpdateOptions = [{'update', Update}
+                            ,{'create', kz_json:to_proplist(cb_context:doc(Context))}
+                            ,{'ensure_saved', 'true'}
+                            ],
+            {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, DeviceId, UpdateOptions),
+            _ = kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
@@ -753,11 +758,10 @@ maybe_remove_aggregate(DeviceId, Context) ->
 -spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
 maybe_remove_aggregate(DeviceId, _Context, 'success') ->
-    case kz_datamgr:open_doc(?KZ_SIP_DB, DeviceId) of
+    case kz_datamgr:del_doc(?KZ_SIP_DB, DeviceId) of
         {'error', 'not_found'} -> 'false';
-        {'ok', JObj} ->
-            _ = kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
-            kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
+        {'ok', _JObj} ->
+            _ = kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.

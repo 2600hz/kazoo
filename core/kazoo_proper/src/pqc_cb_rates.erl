@@ -145,6 +145,7 @@ wait_for_task(API, TaskId) ->
             throw(GetResp);
         <<"success">> -> pqc_cb_tasks:delete(API, TaskId);
         _Status ->
+            lager:info("wrong status(~s) for task in ~s", [_Status, GetResp]),
             timer:sleep(1000),
             wait_for_task(API, TaskId)
     end.
@@ -345,29 +346,29 @@ seq() ->
     ?INFO("create account resp: ~p", [AccountResp]),
     AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
 
-    case is_binary(AccountId) of
-        'true' -> ?INFO("created account ~s~n", [AccountId]);
-        'false' ->
-            ?INFO("failed to get account id from ~s~n", [AccountResp]),
-            throw('no_account_id')
-    end,
+    _ = case is_binary(AccountId) of
+            'true' -> ?INFO("created account ~s~n", [AccountId]);
+            'false' ->
+                ?INFO("failed to get account id from ~s~n", [AccountResp]),
+                throw('no_account_id')
+        end,
 
     RatedeckId = kzd_rates:ratedeck_id(RateDoc),
     ServicePlanId = service_plan_id(RatedeckId),
 
     _Assigned = assign_service_plan(API, AccountId, RatedeckId),
     ?INFO("assigned: ~p", [_Assigned]),
-    case kz_json:get_value([<<"data">>, ServicePlanId, <<"vendor_id">>]
-                          ,kz_json:decode(_Assigned)
-                          )
-    of
-        'undefined' ->
-            ?ERROR("failed to assign service plan for '~s' to account ~s", [RatedeckId, AccountId]),
-            lager:error("failed to assign service plan for ~s to account ~s: ~s", [RatedeckId, AccountId, _Assigned]),
-            throw('no_plan');
-        _MasterAccountId ->
-            ?INFO("assigned service plan to account ~s~n", [AccountId])
-    end,
+    _ = case kz_json:get_value([<<"data">>, ServicePlanId, <<"vendor_id">>]
+                              ,kz_json:decode(_Assigned)
+                              )
+        of
+            'undefined' ->
+                ?ERROR("failed to assign service plan for '~s' to account ~s", [RatedeckId, AccountId]),
+                lager:error("failed to assign service plan for ~s to account ~s: ~s", [RatedeckId, AccountId, _Assigned]),
+                throw('no_plan');
+            _MasterAccountId ->
+                ?INFO("assigned service plan to account ~s~n", [AccountId])
+        end,
 
     RateCost = ?MODULE:rate_account_did(API, AccountId, hd(?PHONE_NUMBERS)),
     ?INFO("rated DID ~s in account ~s", [hd(?PHONE_NUMBERS), AccountId]),
@@ -402,7 +403,7 @@ ratedeck_id() ->
     oneof(?RATEDECK_NAMES).
 
 rate_cost() ->
-    range(1.0, 10.0).
+    range(1, 10).
 
 phone_number() ->
     elements(?PHONE_NUMBERS).

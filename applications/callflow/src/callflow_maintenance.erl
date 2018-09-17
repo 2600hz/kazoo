@@ -32,6 +32,8 @@
 
 -include("callflow.hrl").
 
+-define(DOLLAR_SIGN, 36). % = $\$ but makes fmt wonky atm
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -290,13 +292,14 @@ set_account_classifier_action(Action, Classifier, AccountDb) ->
     io:format("found account: ~p", [kzd_accounts:fetch_name(AccountDb)]),
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
 
-    _ = kz_datamgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-    _ = kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    Update = [{[<<"call_restriction">>, Classifier, <<"action">>], Action}],
+    {'ok', _} = kzd_accounts:update(AccountId, Update),
 
     kz_endpoint:flush_account(AccountDb),
 
     io:format("  ...  classifier '~s' switched to action '~s'\n", [Classifier, Action]).
 
+-spec all_accounts_set_classifier(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 all_accounts_set_classifier(Action, Classifier) ->
     'true' = is_classifier(Classifier),
     lists:foreach(fun(AccountDb) ->
@@ -304,7 +307,9 @@ all_accounts_set_classifier(Action, Classifier) ->
                           %% Not sure if this interruption is really needed.
                           %%  Keeping it as it was taken as an example from kapps_util:update_all_accounts/1
                           set_account_classifier_action(Action, Classifier, AccountDb)
-                  end, kapps_util:get_all_accounts()).
+                  end
+                 ,kapps_util:get_all_accounts()
+                 ).
 
 %%------------------------------------------------------------------------------
 %% @doc Set `call_restriction' flag on device level.
@@ -334,10 +339,16 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     'true' = is_classifier(Classifier),
     [User, Realm] = binary:split(Uri, <<"@">>),
     {'ok', AccountDb} = kapps_util:get_account_by_realm(Realm),
+
     Options = [{'key', User}],
     {'ok', [DeviceDoc]} = kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
     DeviceId = kz_doc:id(DeviceDoc),
-    _ = kz_datamgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+
+    Update = [{[<<"call_restriction">>, Classifier, <<"action">>], Action}],
+    UpdateOptions = [{'update', Update}],
+
+    {'ok', _} = kz_datamgr:update_doc(AccountDb, DeviceId, UpdateOptions),
+
     kz_endpoint:flush(AccountDb, DeviceId).
 
 %%------------------------------------------------------------------------------
@@ -452,22 +463,30 @@ update_feature_codes(Account) ->
             maybe_update_feature_codes(AccountDb, Patterns)
     end.
 
-maybe_update_feature_codes(Db, []) ->
-    io:format("~s : feature codes up to date\n", [kz_util:format_account_id(Db, 'raw')]);
-maybe_update_feature_codes(Db, [Pattern|Patterns]) ->
+-spec maybe_update_feature_codes(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+maybe_update_feature_codes(Db, Patterns) ->
+    lists:foreach(fun(Pattern) -> maybe_update_feature_code(Db, Pattern) end
+                 ,Patterns
+                 ),
+    io:format("~s : feature codes up to date\n", [kz_util:format_account_id(Db, 'raw')]).
+
+-spec maybe_update_feature_code(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+maybe_update_feature_code(Db, Pattern) ->
+    maybe_update_feature_code(Db, Pattern, kz_json:get_ne_binary_value(<<"key">>, Pattern)).
+
+maybe_update_feature_code(Db, Pattern, <<"^\\*5([0-9]*)", ?DOLLAR_SIGN>>=_Regex) ->
     DocId = kz_doc:id(Pattern),
-    Regex = kz_json:get_value(<<"key">>, Pattern),
-    case Regex of
-        <<"^\\*5([0-9]*)$">> ->
-            NewRegex = <<"^\\*5(|[0-9]{2,})$">>,
-            case kz_datamgr:update_doc(Db, DocId, [{<<"patterns">>, [NewRegex]}]) of
-                {'error', _Reason} ->
-                    io:format("failed to update doc ~s with new patterns\n", [DocId]);
-                {'ok', _} ->
-                    io:format("successfully updated patterns for doc ~s (~p -> ~p)\n",
-                              [DocId, Regex, NewRegex])
-            end;
-                         _OtherRegex ->
-                               io:format("skipping pattern ~p\n", [_OtherRegex])
-                       end,
-                         maybe_update_feature_codes(Db, Patterns).
+    NewRegex = <<"^\\*5(|[0-9]{2,})", ?DOLLAR_SIGN>>,
+    Update = [{<<"patterns">>, [NewRegex]}],
+    UpdateOptions = [{'update', Update}],
+
+    case kz_datamgr:update_doc(Db, DocId, UpdateOptions) of
+        {'error', _Reason} ->
+            io:format("failed to update doc ~s with new patterns\n", [DocId]);
+        {'ok', _} ->
+            io:format("successfully updated patterns for doc ~s (~p -> ~p)\n"
+                     ,[DocId, _Regex, NewRegex]
+                     )
+    end;
+maybe_update_feature_code(_Db, _Pattern, _Regex) ->
+    io:format("skipping pattern ~p\n", [_Regex]).

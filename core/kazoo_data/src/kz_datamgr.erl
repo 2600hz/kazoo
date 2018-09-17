@@ -43,7 +43,7 @@
         ,del_doc/2, del_docs/2
         ,del_doc/3, del_docs/3
         ,lookup_doc_rev/2, lookup_doc_rev/3
-        ,update_doc/3, update_doc/4
+        ,update_doc/3
         ,revise_doc_from_file/3
         ,revise_docs_from_folder/3, revise_docs_from_folder/4
         ,revise_views_from_folder/2
@@ -95,11 +95,20 @@
         ,register_views_from_folder/3
         ]).
 
+-type update_option() :: {'update', kz_json:flat_proplist()} |
+                         {'create', kz_json:flat_proplist()} |
+                         {'extra_update', kz_json:flat_proplist()} |
+                         {'ensure_saved', boolean()}.
+-type update_options() :: [update_option()].
+
 -export_type([view_option/0, view_options/0
              ,view_listing/0, views_listing/0
              ,data_error/0, data_errors/0
              ,db_classification/0
+             ,update_option/0, update_options/0
              ]).
+
+-deprecated({'ensure_saved', '_', 'eventually'}).
 
 -include("kz_data.hrl").
 
@@ -212,6 +221,7 @@ maybe_update_doc(DbName, JObj) ->
         'false' -> {'ok', JObj}
     end.
 
+-spec should_update(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
         {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
@@ -885,43 +895,58 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% @doc Fetch, update and save a doc (creating if not present).
 %% @end
 %%------------------------------------------------------------------------------
--type update_props() :: [{kz_json:path(), kz_json:json_term()}].
-
--spec update_doc(kz_term:ne_binary(), docid(), update_props()) ->
+-spec update_doc(kz_term:ne_binary(), docid(), update_options()) ->
                         {'ok', kz_json:object()} |
                         data_error().
-update_doc(DbName, Id, UpdateProps) ->
-    update_doc(DbName, Id, UpdateProps, []).
-
--spec update_doc(kz_term:ne_binary(), docid(), update_props(), kz_term:proplist()) ->
-                        {'ok', kz_json:object()} |
-                        data_error().
-update_doc(DbName, Id, UpdateProps, CreateProps) ->
-    update_doc(DbName, Id, UpdateProps, CreateProps, []).
-
--spec update_doc(kz_term:ne_binary(), docid(), update_props(), kz_term:proplist(), kz_term:proplist()) ->
-                        {'ok', kz_json:object()} |
-                        data_error().
-update_doc(DbName, Id, UpdateProps, CreateProps, ExtraUpdateProps)
-  when is_list(UpdateProps),
-       is_list(CreateProps),
-       is_list(ExtraUpdateProps) ->
+update_doc(DbName, Id, Options) ->
     case open_doc(DbName, Id) of
         {'error', 'not_found'} ->
-            JObj = kz_json:from_list([{<<"_id">>, Id}]
-                                     ++ CreateProps
-                                     ++ UpdateProps
-                                     ++ ExtraUpdateProps
-                                    ),
-            save_doc(DbName, JObj);
+            update_not_found(DbName, Id, Options);
         {'error', _}=E -> E;
-        {'ok', JObj}=OK ->
-            UpdatedJObj = kz_json:set_values(UpdateProps, JObj),
-            case kz_json:are_equal(JObj, UpdatedJObj) of
-                'true' -> OK;
-                'false' -> save_doc(DbName, kz_json:set_values(ExtraUpdateProps, UpdatedJObj))
-            end
+        {'ok', CurrentDoc} ->
+            apply_updates_and_save(DbName, Id, Options, CurrentDoc)
     end.
+
+-spec apply_updates_and_save(kz_term:ne_binary(), docid(), update_options(), kz_json:object()) ->
+                                    {'ok', kz_json:object()} |
+                                    data_error().
+apply_updates_and_save(DbName, Id, Options, CurrentDoc) ->
+    UpdateProps = props:get_value('update', Options),
+    UpdatedDoc = kz_json:set_values(UpdateProps, CurrentDoc),
+
+    case kz_json:are_equal(CurrentDoc, UpdatedDoc) of
+        'true' -> {'ok', CurrentDoc};
+        'false' ->
+            save_update(DbName, Id, Options, UpdatedDoc)
+    end.
+
+-spec save_update(kz_term:ne_binary(), docid(), update_options(), kz_json:object()) ->
+                         {'ok', kz_json:object()} |
+                         data_error().
+save_update(DbName, Id, Options, UpdatedDoc) ->
+    ExtraProps = props:get_value('extra_update', Options, []),
+    ExtraUpdatedDoc = kz_json:set_values(ExtraProps, UpdatedDoc),
+
+    EnsureSaved = props:is_true('ensure_saved', Options, 'false'),
+
+    case save_doc(DbName, ExtraUpdatedDoc) of
+        {'ok', _}=OK -> OK;
+        {'error', 'conflict'} when EnsureSaved ->
+            lager:debug("saving ~s to ~s resulted in a conflict, trying again", [Id, DbName]),
+            update_doc(DbName, Id, Options);
+        {'error', _}=E -> E
+    end.
+
+-spec update_not_found(kz_term:ne_binary(), docid(), update_options()) ->
+                              {'ok', kz_json:object()} |
+                              data_error().
+update_not_found(DbName, Id, Options) ->
+    CreateProps = props:get_value('create', Options, []),
+
+    JObj = kz_json:from_list(props:set_value(kz_doc:path_id(), Id, CreateProps)),
+    Updated = kz_json:set_values(props:get_value('update', Options), JObj),
+
+    save_doc(DbName, Updated).
 
 %%------------------------------------------------------------------------------
 %% @doc Remove document from the db.
@@ -1513,6 +1538,7 @@ register_view(Classification, App, {<<"_design/", Name/binary>>, View}) ->
     Version = kz_util:application_version(App),
     AppName = kz_term:to_binary(App),
     DocId = <<(kz_term:to_binary(Classification))/binary, "-", AppName/binary, "-", Name/binary>>,
+
     Update = [{<<"view_definition">>, View}],
     ExtraUpdate = [{<<"version">>, Version}],
     Create = [{<<"application">>, AppName}
@@ -1520,7 +1546,13 @@ register_view(Classification, App, {<<"_design/", Name/binary>>, View}) ->
              ,{<<"name">>, Name}
              ,{<<"pvt_type">>, <<"view_definition">>}
              ],
-    update_doc(?KZ_DATA_DB, DocId, Update, Create, ExtraUpdate);
+
+    UpdateOptions = [{'update', Update}
+                    ,{'extra_update', ExtraUpdate}
+                    ,{'create', Create}
+                    ],
+
+    update_doc(?KZ_DATA_DB, DocId, UpdateOptions);
 register_view(Classification, App, ViewName) ->
     register_view(Classification, App, kzs_util:get_view_json(App, ViewName)).
 
@@ -1571,7 +1603,4 @@ view_definitions(Classification) when is_atom(Classification) ->
         {'ok', JObjs} ->
             ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
             [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs]
-    end;
-view_definitions(DbName) ->
-    view_definitions(kzs_util:db_classification(DbName)).
-
+    end.

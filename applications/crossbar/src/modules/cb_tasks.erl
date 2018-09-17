@@ -509,6 +509,7 @@ handle_read_result(TaskId, OrigContext, ReadContext) ->
         [] -> crossbar_util:response_bad_identifier(TaskId, OrigContext);
         [TaskJObj] ->
             JObj = kz_json:set_value(<<"_read_only">>, TaskJObj, kz_json:new()),
+            lager:debug("task fetched: ~s", [kz_json:encode(TaskId)]),
             cb_context:setters(ReadContext
                               ,[{fun cb_context:set_doc/2, JObj}
                                ,{fun cb_context:set_resp_data/2, JObj}
@@ -553,9 +554,9 @@ read_attachment_file(TaskId, Context, AttachmentName) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     AccountId = cb_context:account_id(Context),
-    ViewOptions = [{startkey, [AccountId, kz_time:now_s(), kz_json:new()]}
-                  ,{endkey, [AccountId]}
-                  ,descending
+    ViewOptions = [{'startkey', [AccountId, kz_time:now_s(), kz_json:new()]}
+                  ,{'endkey', [AccountId]}
+                  ,'descending'
                   ],
     crossbar_doc:load_view(?KZ_TASKS_BY_CREATED
                           ,ViewOptions

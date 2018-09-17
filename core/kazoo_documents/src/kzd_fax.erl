@@ -20,7 +20,8 @@
         ,identity_number/1, identity_number/2
         ,identity_name/1, identity_name/2
         ,folder/1, folder/2
-        ,document/1, document_url/1
+        ,document/1, document/2
+        ,document_url/1
         ,notifications/1
         ,rx_result/1, tx_result/1, result/1
         ,job_node/1, job_node/2
@@ -153,13 +154,17 @@ folder(FaxDoc) ->
 folder(FaxDoc, Default) ->
     kz_json:get_value(?KEY_FOLDER, FaxDoc, Default).
 
--spec document(doc()) -> doc().
+-spec document(doc()) -> kz_json:object().
 document(FaxDoc) ->
-    kz_json:get_value(?KEY_DOCUMENT, FaxDoc, kz_json:new()).
+    document(FaxDoc, kz_json:new()).
 
--spec document_url(doc()) -> doc() | 'undefined'.
+-spec document(doc(), Default) -> kz_json:object() | Default.
+document(FaxDoc, Default) ->
+    kz_json:get_json_value(?KEY_DOCUMENT, FaxDoc, Default).
+
+-spec document_url(doc()) -> kz_term:api_ne_binary().
 document_url(FaxDoc) ->
-    kz_json:get_value(?KEY_DOCUMENT_URL, FaxDoc).
+    kz_json:get_ne_binary_value(?KEY_DOCUMENT_URL, FaxDoc).
 
 -spec identity_name(doc()) -> kz_term:api_binary().
 identity_name(FaxDoc) ->
@@ -228,4 +233,3 @@ retry_after(FaxDoc) ->
 -spec retry_after(doc(), Default) -> integer() | Default.
 retry_after(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_RETRY_AFTER, FaxDoc, Default).
-

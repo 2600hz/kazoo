@@ -247,18 +247,12 @@ create_ledger(Transaction) ->
           ,{fun kz_ledger:set_source_service/2, <<"kazoo-services">>}
           ]
          ),
-    case kz_ledger:credit(kz_ledger:setters(Setters)) of
-        {'error', _R} = Error -> Error;
-        {'ok', Ledger} ->
-            {'ok', Ledger}
-    end.
+    kz_ledger:credit(kz_ledger:setters(Setters)).
 
 -spec reset_low_balance_notification(kz_term:ne_binary()) -> 'ok'.
 reset_low_balance_notification(AccountId) ->
-    case kzd_accounts:fetch(AccountId) of
-        {'error', _} -> 'ok';
-        {'ok', AccountJObj0} ->
-            AccountJObj1 = kzd_accounts:reset_low_balance_sent(AccountJObj0),
-            AccountJObj2 = kzd_accounts:remove_low_balance_tstamp(AccountJObj1),
-            kzd_accounts:save(AccountJObj2)
-    end.
+    Updates = [{kzd_accounts:path_notifications_low_balance_sent_low_balance(), 'false'}
+              ,{kzd_accounts:path_low_balance_tstamp(), 'null'}
+              ],
+    {'ok', _} = kzd_accounts:update(AccountId, Updates),
+    'ok'.

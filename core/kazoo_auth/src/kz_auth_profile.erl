@@ -336,15 +336,19 @@ update_user(DocId, Props, Token) ->
 
 -spec do_update_user(kz_term:ne_binary(), kz_term:proplist(), map()) -> map().
 do_update_user(DocId, Props, Token) ->
-    case kz_datamgr:update_doc(?KZ_AUTH_DB, DocId, Props) of
-        {'ok', DocObj} -> maybe_cache_user(Token#{user_doc => DocObj
-                                                 ,user_map => kz_json:to_map(DocObj)
-                                                 }
-                                          ,DocId
-                                          );
+    UpdateOptions = [{'update', Props}],
+    case kz_datamgr:update_doc(?KZ_AUTH_DB, DocId, UpdateOptions) of
+        {'ok', DocObj} ->
+            maybe_cache_user(Token#{user_doc => DocObj
+                                   ,user_map => kz_json:to_map(DocObj)
+                                   }
+                            ,DocId
+                            );
         {'error', _Error} ->
             lager:debug("unable to update auth document ~s: ~p", [DocId, _Error]),
-            Token#{profile_error_code => {500, 'datastore_fault'}, profile => kz_json:new()}
+            Token#{profile_error_code => {500, 'datastore_fault'}
+                  ,profile => kz_json:new()
+                  }
     end.
 
 -spec maybe_cache_user(map(), kz_term:ne_binary()) -> map().

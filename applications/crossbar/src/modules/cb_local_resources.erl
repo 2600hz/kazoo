@@ -160,13 +160,18 @@ maybe_aggregate_resource(Context) ->
 
 -spec maybe_aggregate_resource(cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_resource(Context, 'success') ->
+    ResourceId = kz_doc:id(cb_context:doc(Context)),
     case kz_term:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
-            ResourceId = kz_doc:id(cb_context:doc(Context)),
             maybe_remove_aggregate(ResourceId, Context);
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(cb_context:doc(Context))),
+            Update = [{kz_doc:path_revision(), 'null'}],
+            UpdateOptions = [{'update', Update}
+                            ,{'create', kz_json:to_proplist(cb_context:doc(Context))}
+                            ,{'ensure_saved', 'true'}
+                            ],
+            {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, ResourceId, UpdateOptions),
             _ = kapi_switch:publish_reload_gateways(),
             _ = kapi_switch:publish_reload_acls(),
             'true'
@@ -179,9 +184,8 @@ maybe_remove_aggregate(ResourceId, Context) ->
 
 -spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate(ResourceId, _Context, 'success') ->
-    case kz_datamgr:open_doc(?KZ_SIP_DB, ResourceId) of
-        {'ok', JObj} ->
-            kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
+    case kz_datamgr:del_doc(?KZ_SIP_DB, ResourceId) of
+        {'ok', _JObj} ->
             _ = kapi_switch:publish_reload_gateways(),
             _ = kapi_switch:publish_reload_acls(),
             'true';
@@ -272,13 +276,19 @@ maybe_aggregate_resources([]) -> 'ok';
 maybe_aggregate_resources([Resource|Resources]) ->
     case lists:any(fun(Gateway) ->
                            kz_json:is_true(<<"register">>, Gateway)
-                               andalso
-                                 (not kz_json:is_false(<<"enabled">>, Gateway))
-                   end, kz_json:get_value(<<"gateways">>, Resource, []))
+                               andalso (not kz_json:is_false(<<"enabled">>, Gateway))
+                   end
+                  ,kz_json:get_list_value(<<"gateways">>, Resource, [])
+                  )
     of
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(Resource)),
+            Update = [{kz_doc:path_revision(), 'null'}],
+            UpdateOptions = [{'update', Update}
+                            ,{'create', kz_json:to_proplist(Resource)}
+                            ,{'ensure_saved', 'true'}
+                            ],
+            {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Resource), UpdateOptions),
             _ = kapi_switch:publish_reload_gateways(),
             _ = kapi_switch:publish_reload_acls(),
             maybe_aggregate_resources(Resources);
@@ -293,9 +303,8 @@ maybe_aggregate_resources([Resource|Resources]) ->
 -spec maybe_remove_aggregates(kz_json:objects()) -> 'ok'.
 maybe_remove_aggregates([]) -> 'ok';
 maybe_remove_aggregates([Resource|Resources]) ->
-    case kz_datamgr:open_doc(?KZ_SIP_DB, kz_doc:id(Resource)) of
-        {'ok', JObj} ->
-            kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
+    case kz_datamgr:del_doc(?KZ_SIP_DB, kz_doc:id(Resource)) of
+        {'ok', _JObj} ->
             _ = kapi_switch:publish_reload_gateways(),
             _ = kapi_switch:publish_reload_acls(),
             maybe_remove_aggregates(Resources);
