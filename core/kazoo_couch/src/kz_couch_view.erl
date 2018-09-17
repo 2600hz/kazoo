@@ -83,7 +83,7 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 %% list; that would be better, but for not, setting the view's "reduce" to the _count
 %% function will suffice (provided a reduce isn't already defined).
 -spec get_results_count(server(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                               {'ok', integer()} |
+                               {'ok', kz_term:api_integer()} |
                                couchbeam_error().
 get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = kz_couch_util:get_db(Conn, DbName),
