@@ -119,7 +119,7 @@ transfer_leg(JObj) ->
 
 -spec transfer_context(kz_json:object()) -> binary().
 transfer_context(JObj) ->
-    case kz_json:get_binary_value(<<"Transfer-Context">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"Transfer-Context">>, JObj) of
         'undefined' -> ?DEFAULT_FREESWITCH_CONTEXT;
         Context -> Context
     end.
