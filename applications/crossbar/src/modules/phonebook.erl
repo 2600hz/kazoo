@@ -24,7 +24,7 @@
 
 -spec phonebook_enabled() -> boolean().
 phonebook_enabled() ->
-    kapps_config:get_is_true(<<"phonebook">>, <<"enabled">>, 'false').
+    kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enabled">>, 'false').
 
 -spec maybe_create_port_in(cb_context:context()) -> 'ok'.
 maybe_create_port_in(Context) ->
