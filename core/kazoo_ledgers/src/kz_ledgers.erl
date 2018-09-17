@@ -301,14 +301,14 @@ verify_monthly_rollover_exists(Account) ->
     end.
 
 -spec get_monthly_rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
-                                                 {'error', any()}.
+                                                   {'error', any()}.
 get_monthly_rollover(Account) ->
     {CurrentYear, CurrentMonth, _} = erlang:date(),
     get_monthly_rollover(Account, CurrentYear, CurrentMonth).
 
 -spec get_monthly_rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                                {'ok', kz_ledger:ledger()} |
-                                {'error', any()}.
+                                  {'ok', kz_ledger:ledger()} |
+                                  {'error', any()}.
 get_monthly_rollover(Account, Year, Month) ->
     case kazoo_modb:open_doc(Account, ?ROLLOVER_ID(Year,Month), Year, Month) of
         {'ok', LedgerJObj} ->
@@ -330,7 +330,7 @@ get_monthly_rollover(Account, Year, Month) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_migrate_legacy_rollover(kz_term:ne_binary(), kazoo_modb:view_options()) ->
-                                         kz_currency:available_units_return().
+                                           kz_currency:available_units_return().
 maybe_migrate_legacy_rollover(Account, Options) ->
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Year = props:get_integer_value('year', Options, DefaultYear),
@@ -360,14 +360,14 @@ maybe_migrate_legacy_rollover(Account, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
-                                     {'error', any()}.
+                                       {'error', any()}.
 rollover(Account) ->
     {Year, Month, _} = erlang:date(),
     rollover(Account, Year, Month).
 
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
-                    {'ok', kz_ledger:ledger()} |
-                    {'error', any()}.
+                      {'ok', kz_ledger:ledger()} |
+                      {'error', any()}.
 rollover(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
@@ -378,7 +378,7 @@ rollover(Account, Year, Month) ->
     end.
 
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), kz_currency:units()) ->
-                    kz_currency:available_units_return().
+                      kz_currency:available_units_return().
 rollover(Account, Year, Month, Total) ->
     Id = <<(kz_term:to_binary(Year))/binary, "-"
           ,(kz_term:to_binary(Month))/binary

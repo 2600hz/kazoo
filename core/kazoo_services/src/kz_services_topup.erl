@@ -254,7 +254,7 @@ create_ledger(Transaction) ->
     end.
 
 -spec create_ledger(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
-                                topup_return().
+                           topup_return().
 create_ledger(AccountId, ReplinishUnits, Trigger, Audit) ->
     case create_ledger(AccountId, ReplinishUnits, Trigger, Audit, kz_json:new()) of
         {'error', Reason} ->

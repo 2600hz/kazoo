@@ -189,8 +189,8 @@ fix_rollover(Account, Year, Month) ->
     end.
 
 -spec maybe_replace_rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_currency:units()) ->
-                                  {'ok', kz_ledger:ledger()} |
-                                  {'error', any()}.
+                                    {'ok', kz_ledger:ledger()} |
+                                    {'error', any()}.
 maybe_replace_rollover(Account, Year, Month, AvailableUnits) ->
     case kz_ledgers:get_monthly_rollover(Account, Year, Month) of
         {'error', _} ->

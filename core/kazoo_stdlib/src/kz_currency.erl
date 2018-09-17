@@ -189,7 +189,7 @@ rollover(Account, Year, Month) ->
     kz_ledgers:rollover(Account, Year, Month).
 
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), units()) ->
-                    available_units_return().
+                      available_units_return().
 rollover(Account, Year, Month, Units) ->
     kz_ledgers:rollover(Account, Year, Month, Units).
 
