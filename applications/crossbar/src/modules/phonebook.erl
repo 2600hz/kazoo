@@ -13,7 +13,7 @@
 
 -include("crossbar.hrl").
 
--define(MOD_CONFIG_CAT, <<"phonebook">>).
+-define(MOD_CONFIG_CAT, <<"crossbar.phonebook">>).
 
 
 %%------------------------------------------------------------------------------
@@ -21,36 +21,43 @@
 %% @end
 %%------------------------------------------------------------------------------
 
+-spec maybe_create_port_in(cb_context:context()) -> cb_context:context().
+maybe_create_port_in(Context) ->
+    case send_to_phonebook(Context) of
+        'true' ->
+            create_port_in(cb_context:doc(Context), cb_context:auth_token(Context)),
+            Context;
+        'false' -> Context
+    end.
+
+-spec maybe_add_comment(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+maybe_add_comment(Context, Comment) ->
+    case send_to_phonebook(Context)
+        andalso not req_from_phonebook(Context)
+    of
+        'true' ->
+            add_comment(cb_context:doc(Context), cb_context:auth_token(Context), Comment),
+            Context;
+        'false' -> Context
+    end.
+
+-spec maybe_cancel_port_in(cb_context:context()) -> cb_context:context().
+maybe_cancel_port_in(Context) ->
+    case send_to_phonebook(Context) of
+        'true' ->
+            cancel_port_in(cb_context:doc(Context), cb_context:auth_token(Context)),
+            Context;
+        'false' -> Context
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec phonebook_enabled() -> boolean().
 phonebook_enabled() ->
     kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enabled">>, 'false').
-
--spec maybe_create_port_in(cb_context:context()) -> 'ok'.
-maybe_create_port_in(Context) ->
-    case phonebook_enabled() of
-        'true' ->
-            create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
-        'false' -> 'ok'
-    end.
-
--spec maybe_add_comment(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
-maybe_add_comment(Context, Comment) ->
-    case phonebook_enabled()
-        andalso not req_from_phonebook(Context)
-    of
-        'true' ->
-            add_comment(cb_context:doc(Context), cb_context:auth_token(Context), Comment);
-        'false' -> 'ok'
-    end.
-
--spec maybe_cancel_port_in(cb_context:context()) -> 'ok'.
-maybe_cancel_port_in(Context) ->
-    case phonebook_enabled() of
-        'true' ->
-            create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
-        'false' -> 'ok'
-    end.
 
 -spec req_from_phonebook(cb_context:context()) -> boolean().
 req_from_phonebook(Context) ->
@@ -59,15 +66,15 @@ req_from_phonebook(Context) ->
         _ -> 'false'
     end.
 
+send_to_phonebook(Context) ->
+    cb_context:resp_status(Context) =:= 'success'
+        andalso phonebook_enabled().
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec create_port_in(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 create_port_in(JObj, AuthToken) ->
     send_req('create_port_in'
             ,JObj
+
             ,AuthToken
             ,kz_doc:account_id(JObj)
             ,'undefined'
@@ -103,20 +110,20 @@ send_req('create_port_in', JObj, AuthToken, AccountId, _) ->
     UrlString = req_uri('create_port_in', AccountId),
     lager:debug("creating port in request to phonebook via ~s: ~s", [UrlString, Data]),
     Resp = kz_http:put(UrlString, Headers, Data),
-    handle_resp(Resp, AccountId, AuthToken);
+    handle_resp(Resp, AccountId);
 send_req('comment', Comment, AuthToken, AccountId, PortId) ->
     Data = kz_json:encode(Comment),
     Headers = req_headers(AuthToken),
     UrlString = req_uri('comment', AccountId, PortId),
     lager:debug("adding comment to phonebook via ~s", [UrlString]),
     Resp = kz_http:put(UrlString, Headers, Data),
-    handle_resp(Resp, AccountId, AuthToken);
+    handle_resp(Resp, AccountId);
 send_req('cancel_port_in', _, AuthToken, AccountId, _) ->
     Headers = req_headers(AuthToken),
     UrlString = req_uri('accounts', AccountId),
     lager:debug("accounts delete via ~s", [UrlString]),
     Resp = kz_http:delete(UrlString, Headers),
-    handle_resp(Resp, AccountId, AuthToken).
+    handle_resp(Resp, AccountId).
 
 -spec req_uri('create_port_in', kz_term:ne_binary()) -> iolist().
 req_uri('create_port_in', AccountId) ->
@@ -134,31 +141,23 @@ phonebook_uri(ExplodedPath) ->
     Uri = kz_util:uri(Url, ExplodedPath),
     binary:bin_to_list(Uri).
 
--spec handle_resp(kz_http:ret(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-handle_resp({'ok', 200, _, Resp}, _, _) ->
+-spec handle_resp(kz_http:ret(), kz_term:ne_binary()) -> 'ok'.
+handle_resp({'ok', 200, _, Resp}, _) ->
     lager:debug("phonebook success ~s", [Resp]);
-handle_resp({'ok', Code, _, Resp}, AccountId, AuthToken) ->
+handle_resp({'ok', Code, _, Resp}, AccountId) ->
     lager:warning("phonebook error ~p. ~s", [Code, Resp]),
-    create_alert(kz_json:decode(Resp), AccountId, AuthToken);
-handle_resp(_Error, _, _) ->
+    create_alert(kz_json:decode(Resp), AccountId);
+handle_resp(_Error, _) ->
     lager:error("phonebook fatal error ~p", [_Error]).
 
-create_alert(JObj, AccountId, AuthToken) ->
-    Props = [{<<"metadata">>, JObj}
-            ,{<<"category">>, <<"provisioner">>}
-            ],
 
-    OwnerId =
-        case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
-            {'error', _R} -> 'undefined';
-            {'ok', AuthJObj} -> kz_json:get_value(<<"owner_id">>, AuthJObj)
-        end,
+create_alert(JObj, AccountId) ->
+    Props = [{<<"metadata">>, JObj}
+            ,{<<"category">>, <<"phonebook">>}
+            ],
 
     From = [kz_json:from_list([{<<"type">>, <<"account">>}
                               ,{<<"value">>, AccountId}
-                              ])
-           ,kz_json:from_list([{<<"type">>, <<"user">>}
-                              ,{<<"value">>, OwnerId}
                               ])
            ],
 
@@ -170,8 +169,8 @@ create_alert(JObj, AccountId, AuthToken) ->
                             ])
          ],
 
-    Title = <<"Provisioning Error">>,
-    Msg = <<"Error trying to provision device">>,
+    Title = <<"Phonebook Error">>,
+    Msg = <<"Error trying to handle portin">>,
     {'ok', AlertJObj} = kapps_alert:create(Title, Msg, From, To, Props),
     {ok, _} = kapps_alert:save(AlertJObj),
     ok.
