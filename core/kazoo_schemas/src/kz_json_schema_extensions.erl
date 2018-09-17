@@ -100,13 +100,13 @@ extra_validation(<<"storage.attachment.dropbox.oauth_doc_id">>, Value, State) ->
     validate_attachment_oauth_doc_id(Value, State);
 extra_validation(<<"faxbox.smtp_permission_list">>, Values, State) ->
     F = fun(Val, Acc) ->
-            case re:compile(Val) of
-                {ok, _} ->
-                    Acc;
-                {error, _Reason} ->
-                    ErrMsg = <<"Invalid smtp_permission regex: '", Val/binary,"'">>,
-                    lager:debug("~s. Reason: ~p", [ErrMsg, _Reason]),
-                    [Val| Acc] end
+                case re:compile(Val) of
+                    {ok, _} ->
+                        Acc;
+                    {error, _Reason} ->
+                        ErrMsg = <<"Invalid smtp_permission regex: '", Val/binary,"'">>,
+                        lager:debug("~s. Reason: ~p", [ErrMsg, _Reason]),
+                        [Val| Acc] end
         end,
     case lists:foldl(F, [], Values) of
         [] ->
