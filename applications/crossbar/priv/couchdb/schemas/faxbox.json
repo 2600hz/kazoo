@@ -223,9 +223,9 @@
             "default": [],
             "description": "smtp permission list. accepts regular expressions",
             "items": {
-                "kazoo-validation": true,
                 "type": "string"
             },
+            "kazoo-validation": true,
             "support_level": "supported",
             "type": "array"
         }

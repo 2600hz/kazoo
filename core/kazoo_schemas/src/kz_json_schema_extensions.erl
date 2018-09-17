@@ -98,13 +98,22 @@ extra_validation(<<"storage.attachment.onedrive.oauth_doc_id">>, Value, State) -
     validate_attachment_oauth_doc_id(Value, State);
 extra_validation(<<"storage.attachment.dropbox.oauth_doc_id">>, Value, State) ->
     validate_attachment_oauth_doc_id(Value, State);
-extra_validation(<<"faxbox">>, Value, State) ->
-    case re:compile(Value) of
-        {ok, _} ->
+extra_validation(<<"faxbox.smtp_permission_list">>, Values, State) ->
+    F = fun(Val, Acc) ->
+            case re:compile(Val) of
+                {ok, _} ->
+                    Acc;
+                {error, _Reason} ->
+                    ErrMsg = <<"Invalid smtp_permission regex: '", Val/binary,"'">>,
+                    lager:debug("~s. Reason: ~p", [ErrMsg, _Reason]),
+                    [Val| Acc] end
+        end,
+    case lists:foldl(F, [], Values) of
+        [] ->
             State;
-        {error, _Reason} ->
-            ErrorMsg = <<"Invalid smtp_permission regex: '", Value/binary,"'">>,
-            lager:debug("~s. Reason: ~p", [ErrorMsg, _Reason]),
+        FailingRegexes ->
+            Failed = binary:list_to_bin(lists:join(", ", FailingRegexes)),
+            ErrorMsg = <<"Invalid smtp_permission regex(es): [", Failed/binary,"]">>,
             jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
     end;
 extra_validation(_Key, _Value, State) ->
