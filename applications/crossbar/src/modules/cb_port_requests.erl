@@ -319,7 +319,9 @@ save(Context) ->
                                   ,{fun cb_context:set_doc/2, NewDoc}
                                   ]
                                  ),
-    crossbar_doc:save(Context1).
+    Context2 = crossbar_doc:save(Context1),
+    phonebook:maybe_create_port_in(Context2),
+    Context2.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -420,7 +422,9 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 -spec delete(cb_context:context(), path_token()) ->
                     cb_context:context().
 delete(Context, _Id) ->
-    crossbar_doc:delete(Context).
+    Context2 = crossbar_doc:delete(Context),
+    phonebook:maybe_cancel_port_in(Context),
+    Context2.
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
                     cb_context:context().
@@ -430,15 +434,6 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
-
-%% TODO: IMPLEMENT ME
-phonebook_enabled(Context) ->
-    Context.
-
-
-
-
-
 
 
 %%------------------------------------------------------------------------------
@@ -1117,6 +1112,7 @@ maybe_send_port_comment_notification(Context, Id) ->
     case has_new_comment(DbDocComments, ReqDataComments) of
         'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
         'true' ->
+            phonebook:maybe_add_comment(Context, lists:last(ReqDataComments)),
             try send_port_comment_notification(Context, Id, lists:last(ReqDataComments)) of
                 _ -> lager:debug("port comment notification sent")
             catch

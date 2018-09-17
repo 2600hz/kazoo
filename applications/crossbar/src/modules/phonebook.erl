@@ -6,13 +6,59 @@
 %%%-----------------------------------------------------------------------------
 -module(phonebook).
 
--export([create_port_in/2]).
--export([add_comment/3]).
--export([cancel_port_in/2]).
+-export([maybe_create_port_in/1
+        ,maybe_add_comment/2
+        ,maybe_cancel_port_in/1
+        ]).
 
 -include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<"phonebook">>).
+
+
+%%------------------------------------------------------------------------------
+%% @doc exported functions
+%% @end
+%%------------------------------------------------------------------------------
+
+
+-spec phonebook_enabled() -> boolean().
+phonebook_enabled() ->
+    kapps_config:get_is_true(<<"phonebook">>, <<"enabled">>, 'false').
+
+-spec maybe_create_port_in(cb_context:context()) -> 'ok'.
+maybe_create_port_in(Context) ->
+    case phonebook_enabled() of
+        'true' ->
+            create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
+        'false' -> 'ok'
+    end.
+
+-spec maybe_add_comment(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
+maybe_add_comment(Context, Comment) ->
+    case phonebook_enabled()
+        andalso not req_from_phonebook(Context)
+    of
+        'true' ->
+            add_comment(cb_context:doc(Context), cb_context:auth_token(Context), Comment);
+        'false' -> 'ok'
+    end.
+
+-spec maybe_cancel_port_in(cb_context:context()) -> 'ok'.
+maybe_cancel_port_in(Context) ->
+    case phonebook_enabled() of
+        'true' ->
+            create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
+        'false' -> 'ok'
+    end.
+
+-spec req_from_phonebook(cb_context:context()) -> boolean().
+req_from_phonebook(Context) ->
+    case cb_context:req_header(Context, <<"User-Agent">>) of
+        <<"phonebook">> -> 'true';
+        _ -> 'false'
+    end.
+
 
 %%------------------------------------------------------------------------------
 %% @doc
