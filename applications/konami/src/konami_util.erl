@@ -68,7 +68,7 @@ maybe_start_metaflow(Call, Endpoint) ->
             lager:debug("sending metaflow for endpoint: ~s: ~s"
                        ,[Id, kzd_metaflows:listen_on(Metaflow, <<"self">>)]
                        ),
-            kapps_util:amqp_pool_send(API, fun kapi_metaflow:publish_binding/1)
+            kz_amqp_worker:cast(API, fun kapi_metaflow:publish_binding/1)
     end.
 
 -spec is_sms(kapps_call:call()) -> boolean().
