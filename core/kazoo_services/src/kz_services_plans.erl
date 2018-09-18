@@ -6,9 +6,7 @@
 -module(kz_services_plans).
 
 -export([empty/0]).
--export([fetch/1
-        ,fetch/2
-        ]).
+-export([fetch/1]).
 -export([foldl/3]).
 
 -export([public_json/1]).
@@ -90,56 +88,53 @@ empty() -> dict:new().
 -type fetch_context() :: {fetched_plans(), plans()}.
 -spec fetch(kz_services:services()) -> plans().
 fetch(Services) ->
-    ServicesJObj = kz_services:services_jobj(Services),
-    fetch(Services, ServicesJObj).
-
--spec fetch(kz_services:services(), kz_json:object()) -> plans().
-fetch(_Services, ServicesJObj) ->
     lager:debug("fetching service plan documents"),
     Routines = [fun get_services_plan/2
                ,fun get_object_plans/2
                ],
     {_, Plans} =
         lists:foldl(fun(F, FetchContext) ->
-                            F(ServicesJObj, FetchContext)
+                            F(Services, FetchContext)
                     end
                    ,{dict:new(), empty()}
                    ,Routines
                    ),
     Plans.
 
--spec get_services_plan(kz_json:object(), fetch_context()) -> fetch_context().
-get_services_plan(ServicesJObj, FetchContext) ->
-    lists:foldl(get_service_plans_fold(ServicesJObj)
+-spec get_services_plan(kz_services:services(), fetch_context()) -> fetch_context().
+get_services_plan(Services, FetchContext) ->
+    ServicesJObj = kz_services:services_jobj(Services),
+    lists:foldl(get_service_plans_fold(Services)
                ,FetchContext
                ,kzd_services:plan_ids(ServicesJObj)
                ).
 
 -type service_plans_fold() :: fun((kz_term:ne_binary(), fetch_context()) -> fetch_context()).
--spec get_service_plans_fold(kz_json:object()) -> service_plans_fold().
-get_service_plans_fold(ServicesJObj) ->
+-spec get_service_plans_fold(kz_services:services()) -> service_plans_fold().
+get_service_plans_fold(Services) ->
     fun(PlanId, FetchContext) ->
-            get_services_plan(PlanId, ServicesJObj, FetchContext)
+            get_services_plan(Services, PlanId, FetchContext)
     end.
 
--spec get_services_plan(kz_term:ne_binary(), kz_json:object(), fetch_context()) -> fetch_context().
-get_services_plan(PlanId, ServicesJObj, FetchContext) ->
-    VendorId = kzd_services:plan_vendor_id(ServicesJObj
+-spec get_services_plan(kz_services:services(), kz_term:ne_binary(), fetch_context()) -> fetch_context().
+get_services_plan(Services, PlanId, FetchContext) ->
+    Overrides = get_services_plan_overrides(Services, PlanId),
+    VendorId = kzd_services:plan_vendor_id(kz_services:services_jobj(Services)
                                           ,PlanId
-                                          ,default_plan_vendor_id(ServicesJObj)
+                                          ,kz_services:bookkeeper_vendor_id(Services)
                                           ),
-    Overrides = get_services_plan_overrides(ServicesJObj, PlanId),
-    maybe_append_plan(PlanId, VendorId, Overrides, FetchContext).
+    maybe_append_plan(Services, PlanId, VendorId, Overrides, FetchContext).
 
--spec get_services_plan_overrides(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
-get_services_plan_overrides(ServicesJObj, PlanId) ->
+-spec get_services_plan_overrides(kz_services:services(), kz_term:ne_binary()) -> kz_json:object().
+get_services_plan_overrides(Services, PlanId) ->
+    ServicesJObj = kz_services:services_jobj(Services),
     PlansOverrides = kzd_services:overrides(ServicesJObj),
     PlanOverrides = kzd_services:plan_overrides(ServicesJObj, PlanId),
     kz_json:merge_recursive(PlansOverrides, PlanOverrides).
 
--spec get_object_plans(kz_json:object(), fetch_context()) -> fetch_context().
-get_object_plans(ServicesJObj, FetchContext) ->
-    AccountId = kz_doc:id(ServicesJObj),
+-spec get_object_plans(kzd_services:services(), fetch_context()) -> fetch_context().
+get_object_plans(Services, FetchContext) ->
+    AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"services/object_plans">>) of
         {'error', _Reason} ->
@@ -147,40 +142,41 @@ get_object_plans(ServicesJObj, FetchContext) ->
             FetchContext;
         {'ok', ObjectPlans} ->
             lager:debug("found ~p references to object plans", [length(ObjectPlans)]),
-            build_object_plan(ServicesJObj, FetchContext, ObjectPlans)
+            build_object_plan(Services, FetchContext, ObjectPlans)
     end.
 
--spec build_object_plan(kz_json:object(), fetch_context(), kz_json:objects()) -> fetch_context().
-build_object_plan(ServicesJObj, FetchContext, ObjectPlans) ->
+-spec build_object_plan(kz_services:services(), fetch_context(), kz_json:objects()) -> fetch_context().
+build_object_plan(Services, FetchContext, ObjectPlans) ->
     Props = [{PlanId, kz_json:get_value([<<"value">>, PlanId], ObjectPlan)}
              || ObjectPlan <- ObjectPlans
                     ,PlanId <- kz_json:get_keys(<<"value">>, ObjectPlan)
             ],
-    DefaultPlanVendorId = default_plan_vendor_id(ServicesJObj),
-    lists:foldl(get_object_plans_fold(DefaultPlanVendorId)
+    lists:foldl(get_object_plans_fold(Services)
                ,FetchContext
                ,Props
                ).
 
 -type object_plans_fold() :: fun(({kz_term:ne_binary(), kz_json:object()}, fetch_context()) -> fetch_context()).
--spec get_object_plans_fold(kz_term:api_binary()) -> object_plans_fold().
-get_object_plans_fold(DefaultPlanVendorId) ->
+-spec get_object_plans_fold(kz_services:services()) -> object_plans_fold().
+get_object_plans_fold(Services) ->
     fun({PlanId, JObj}, FetchContext) ->
-            get_object_plan(PlanId, DefaultPlanVendorId, JObj, FetchContext)
+            get_object_plan(Services, PlanId, JObj, FetchContext)
     end.
 
--spec get_object_plan(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fetch_context()) -> fetch_context().
-get_object_plan(PlanId, DefaultPlanVendorId, JObj, FetchContext) ->
-    VendorId = kz_json:get_ne_value(<<"vendor_id">>, JObj, DefaultPlanVendorId),
+-spec get_object_plan(kz_services:services(), kz_term:ne_binary(), kz_json:object(), fetch_context()) -> fetch_context().
+get_object_plan(Services, PlanId, JObj, FetchContext) ->
+    DefaultVendorId = kz_services:bookkeeper_vendor_id(Services),
+    VendorId = kz_json:get_ne_value(<<"vendor_id">>, JObj, DefaultVendorId),
     Overrides = kz_json:get_ne_value(<<"overrides">>, JObj, kz_json:new()),
-    maybe_append_plan(PlanId, VendorId, Overrides, FetchContext).
+    maybe_append_plan(Services, PlanId, VendorId, Overrides, FetchContext).
 
--spec maybe_append_plan(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fetch_context()) -> fetch_context().
-maybe_append_plan(PlanId, VendorId, Overrides, {FetchedPlans, ServicePlans}) ->
+-spec maybe_append_plan(kz_services:services(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fetch_context()) ->
+                               fetch_context().
+maybe_append_plan(Services, PlanId, VendorId, Overrides, {FetchedPlans, ServicePlans}) ->
     case maybe_fetch_plan(PlanId, VendorId, FetchedPlans) of
         {'undefined', _} -> {FetchedPlans, ServicePlans};
         {Plan, UpdatedFetchedPlans} ->
-            UpdatedPlan = kz_services_plan:set_overrides(Plan, Overrides),
+            UpdatedPlan = prepare_plan(Services, Overrides, Plan),
             BookkeeperHash = kz_services_plan:bookkeeper_hash(UpdatedPlan),
             lager:debug("adding plan ~s/~s for bookkeeper ~s"
                        ,[kz_services_plan:vendor_id(UpdatedPlan)
@@ -192,6 +188,28 @@ maybe_append_plan(PlanId, VendorId, Overrides, {FetchedPlans, ServicePlans}) ->
             ,dict:append(BookkeeperHash, UpdatedPlan, ServicePlans)
             }
     end.
+
+-spec prepare_plan(kz_services:services(), kz_json:object(), kz_services_plan:plan()) -> kz_services_plan:plan().
+prepare_plan(Services, Overrides, Plan) ->
+    Routines = [{fun kz_services_plan:set_overrides/2, Overrides}
+               ,{fun kz_services_plan:set_default_bookkeeper/2
+                ,default_bookkeeper(Services)
+                }
+               ],
+    kz_services_plan:setters(Plan, Routines).
+
+-spec default_bookkeeper(kz_services:services()) -> kz_json:object().
+default_bookkeeper(Services) ->
+    Type = kz_services:bookkeeper_type(Services),
+    VendorId = kz_services:bookkeeper_vendor_id(Services),
+    Id = kzd_services:bookkeeper_id(
+           kz_services:services_jobj(Services)
+          ),
+    Routines = [{fun kzd_services:set_bookkeeper_type/2, Type}
+               ,{fun kzd_services:set_bookkeeper_vendor_id/2, VendorId}
+               ,{fun kzd_services:set_bookkeeper_id/2, Id}
+               ],
+    kzd_services:bookkeeper(kz_doc:setters(Routines), kz_json:new()).
 
 -spec maybe_fetch_plan(kz_term:ne_binary(), kz_term:ne_binary(), dict:dict()) ->
                               {kz_services_plan:plan() | 'undefined', fetched_plans()}.
@@ -213,13 +231,6 @@ maybe_append_plan_jobjs(Key, Plan, FetchedPlans) ->
 -spec plan_jobjs_key(kz_term:ne_binary(), kz_term:ne_binary()) -> plan_jobjs_key().
 plan_jobjs_key(VendorId, PlanId) ->
     {VendorId, PlanId}.
-
--spec default_plan_vendor_id(kzd_services:doc()) -> kz_term:api_ne_binary().
-default_plan_vendor_id(ServicesJObj) ->
-    case kzd_services:reseller_id(ServicesJObj) of
-        'undefined' -> kz_json:get_ne_binary_value(<<"reseller_id">>, ServicesJObj);
-        ResellerId -> ResellerId
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -306,7 +317,7 @@ merge_override(ServicesJObj, Overrides) ->
 %%------------------------------------------------------------------------------
 -type mergable() :: plans() | plans_list().
 -spec merge(mergable()) -> kz_services_plan:plan().
-merge([Head|Tail]=Plans) when is_list(Plans) ->
+merge([Head|Tail]=Plans) ->
     VendorId = kz_services_plan:bookkeeper_vendor_id(Head),
     'true' = lists:all(fun(Plan) ->
                                VendorId =:= kz_services_plan:bookkeeper_vendor_id(Plan)

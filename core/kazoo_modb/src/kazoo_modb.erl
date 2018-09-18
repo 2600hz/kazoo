@@ -26,9 +26,9 @@
 
 -type view_option() :: {'year', kz_time:year()} |
                        {'month', kz_time:month()} |
-                       {'create_db', boolean()} |
-                       {'allow_old_modb_creation', boolean()} |
-                       {'missing_as_error', boolean()} |
+                       {'create_db', boolean()} | 'create_db' |
+                       {'allow_old_modb_creation', boolean()} | 'allow_old_modb_creation' |
+                       {'missing_as_error', boolean()} | 'missing_as_error' |
                        kz_datamgr:view_option().
 -type view_options() :: [view_option()].
 
@@ -75,10 +75,13 @@ strip_modb_options(ViewOptions) ->
 is_modb_option({'year', _}) -> 'true';
 is_modb_option({'month', _}) -> 'true';
 is_modb_option({'create_db', _}) -> 'true';
+is_modb_option('create_db') -> 'true';
 is_modb_option({'allow_old_modb_creation', _}) -> 'true';
+is_modb_option('allow_old_modb_creation') -> 'true';
 is_modb_option({'ensure_saved', _}) -> 'true';
 is_modb_option({'max_retries', _}) -> 'true';
 is_modb_option({'missing_as_error', _}) -> 'true';
+is_modb_option('missing_as_error') -> 'true';
 is_modb_option(_) -> 'false'.
 
 -spec get_results_missing_db(kz_term:ne_binary(), kz_term:ne_binary(), view_options(), integer()) ->

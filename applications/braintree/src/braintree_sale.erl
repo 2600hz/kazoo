@@ -33,7 +33,6 @@ validate_request(JObj) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ] ++ Result
             ),
-    io:format("Resp: ~p~n", [Resp]),
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_bookkeepers:publish_sale_resp(ServerId, P) end,
     kz_amqp_worker:cast(Resp, Publisher).

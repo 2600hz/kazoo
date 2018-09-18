@@ -905,7 +905,10 @@ fetch_category(Category, 'false') ->
 %% the destination.
 %% @end
 %%------------------------------------------------------------------------------
--type migrate_setting() :: {kz_term:ne_binary(), config_key()} | kz_term:ne_binary().
+-type migrate_fun() :: fun((kz_term:ne_binary(), kz_term:ne_binary(), config_key(), any()) -> any()).
+-type migrate_setting() :: {kz_term:ne_binary(), config_key()}
+                         | kz_term:api_ne_binary()
+                         | migrate_fun().
 -type migrate_value() :: {kz_term:ne_binary(), kz_term:ne_binary(), config_key(), _}.
 -type migrate_values() :: [migrate_value()].
 
@@ -1079,6 +1082,28 @@ fetch_category(Category, 'false') ->
         ,{{<<"sysconf">>, <<"acl_request_timeout_fudge_ms">>}
          ,{<<"ecallmgr">>, <<"acl_request_timeout_fudge_ms">>}
          }
+
+        ,{{<<"services">>, <<"master_account_bookkeeper">>}
+         ,fun(_FromId, _Node, _FromSetting, <<"kz_bookkeeper_braintree">>) ->
+                  {<<"services">>
+                  ,<<"master_account_bookkeeper">>
+                  ,<<"braintree">>
+                  };
+             (_FromId, _Node, _FromSetting, <<"kz_bookkeeper_", _/binary>>) ->
+                  {<<"services">>
+                  ,<<"master_account_bookkeeper">>
+                  ,kzd_services:default_bookkeeper_type()
+                  };
+             (FromId, _Node, FromSetting, Value) ->
+                  {FromId, FromSetting, Value}
+          end
+         }
+        ,{{<<"services">>, <<"modules">>}
+         ,'undefined'
+         }
+        ,{{<<"services">>, <<"support_billing_id">>}
+         ,'undefined'
+         }
         ]).
 
 -spec migrate() -> 'ok'.
@@ -1103,6 +1128,16 @@ migrate_config_setting({From, To}) ->
 -spec migrate_config_setting(kz_json:object(), migrate_values(), migrate_setting()) ->
                                     'ok' |
                                     {'error', any()}.
+migrate_config_setting(UpdatedFrom, Removed, Fun)
+  when is_function(Fun) ->
+    case migrate_config_setting_fun(Fun, Removed) of
+        {[], _To} -> 'ok';
+        {UpdatedRemoved, UpdatedTo} ->
+            migrate_config_setting(UpdatedFrom, UpdatedRemoved, UpdatedTo)
+    end;
+migrate_config_setting(UpdatedFrom, _Removed, 'undefined') ->
+    {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedFrom),
+    'ok';
 migrate_config_setting(UpdatedFrom, Removed, {ToId, ToSetting}) ->
     case ToId =:= kz_doc:id(UpdatedFrom) of
         'true' ->
@@ -1120,6 +1155,38 @@ migrate_config_setting(UpdatedFrom, Removed, {ToId, ToSetting}) ->
                     {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedFrom),
                     'ok'
             end
+    end.
+
+-spec migrate_config_setting_fun(migrate_fun(), migrate_values()) ->
+                                        {migrate_values(), migrate_setting()}.
+migrate_config_setting_fun(Fun, Removed) ->
+    migrate_config_setting_fun(Fun, Removed, 'undefined', []).
+
+-spec migrate_config_setting_fun(migrate_fun(), migrate_values(), 'undefined' | migrate_setting(), migrate_values()) ->
+                                        {migrate_values(), migrate_setting()}.
+migrate_config_setting_fun(_Fun, [], To, Removed) ->
+    {Removed, To};
+migrate_config_setting_fun(Fun, [{FromId, Node, FromSetting, Value}=Remove|Removals], _To, Removed) ->
+    case Fun(FromId, Node, FromSetting, Value) of
+        {FromId, FromSetting, Value} ->
+            migrate_config_setting_fun(Fun
+                                      ,Removals
+                                      ,{FromId, FromSetting}
+                                      ,Removed
+                                      );
+        {ToId, ToSetting, NewValue} ->
+            UpdatedRemove = {FromId, Node, FromSetting, NewValue},
+            migrate_config_setting_fun(Fun
+                                      ,Removals
+                                      ,{ToId, ToSetting}
+                                      ,[UpdatedRemove|Removed]
+                                      );
+        Else ->
+            migrate_config_setting_fun(Fun
+                                      ,Removals
+                                      ,Else
+                                      ,[Remove|Removed]
+                                      )
     end.
 
 -spec add_config_setting(kz_term:ne_binary(), config_key(), migrate_values()) ->

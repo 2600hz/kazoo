@@ -99,7 +99,11 @@ resource_exists(_) -> 'true'.
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context, Path) ->
-    authorize_request(Context, Path, cb_context:req_verb(Context)).
+    try authorize_request(Context, Path, cb_context:req_verb(Context))
+    catch
+        _E:_R ->
+            {'stop', cb_context:add_system_error('forbidden', Context)}
+    end.
 
 -spec authorize_request(cb_context:context(), path_token(), http_method()) ->
                                boolean() |
@@ -109,7 +113,9 @@ authorize_request(Context, ?REFUND, ?HTTP_PUT) ->
 authorize_request(Context, ?SALE, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, _, ?HTTP_PUT) ->
-    {'stop', cb_context:add_system_error('forbidden', Context)}.
+    {'stop', cb_context:add_system_error('forbidden', Context)};
+authorize_request(_Context, _Path, _Verb) ->
+    'false'.
 
 -spec authorize_create(cb_context:context()) -> boolean() |
                                                 {'stop', cb_context:context()}.
@@ -117,7 +123,9 @@ authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
     IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),
     AccountId = cb_context:account_id(Context),
-    BookkeeperVendor = kz_services:bookkeeper_vendor_id(AccountId),
+    BookkeeperVendor = kz_services:bookkeeper_vendor_id(
+                         kz_services:fetch(AccountId)
+                        ),
     AuthAccountId = cb_context:auth_account_id(Context),
     IsReseller = kz_term:is_not_empty(BookkeeperVendor)
         andalso BookkeeperVendor =:= AuthAccountId,
@@ -245,33 +253,7 @@ process_action(Context, ?SALE, Transaction) ->
 
 -spec handle_bookkeeper_result(cb_context:context(), kz_transaction:transaction()) -> cb_context:context().
 handle_bookkeeper_result(Context, Transaction) ->
-    {_AccountId, Year, Month} = kazoo_modb_util:split_account_mod(
-                                  kz_transaction:modb(Transaction)
-                                 ),
-    Props = [{<<"transaction_id">>
-             ,<<(kz_term:to_binary(Year))/binary
-               ,(kz_term:to_binary(Month))/binary
-               ,"-"
-               ,(kz_transaction:id(Transaction))/binary
-              >>
-             }
-            ],
-    Results = kz_json:set_values(Props, get_transaction_results(Transaction)),
-    case kz_json:get_ne_binary_value(<<"status">>, Results, <<"success">>) of
-        <<"success">> ->
-            crossbar_util:response(kz_transaction:public_json(Transaction), Context);
-        <<"fatal">> ->
-            cb_context:add_system_error(500, 'bookkeeper_fatal', Results, Context);
-        <<"error">> ->
-            cb_context:add_system_error(400, 'bookkeeper_error', Results, Context)
-    end.
-
--spec get_transaction_results(kz_transaction:transaction()) -> kz_json:object().
-get_transaction_results(Transaction) ->
-    case kz_transaction:bookkeeper_results(Transaction) of
-        'undefined' -> kz_json:new();
-        BookkeeperResults -> BookkeeperResults
-    end.
+    crossbar_services:transaction_to_error(Context, Transaction).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -284,18 +266,8 @@ normalize_view_results(_Context, JObj, Acc) ->
 
 -spec normalize_view_result(kz_json:object()) -> kz_json:object().
 normalize_view_result(JObj) ->
-    Id = kz_json:get_ne_binary_value(<<"id">>, JObj),
-    Created = kz_json:get_ne_binary_value(<<"key">>, JObj),
     Value = kz_json:get_ne_json_value(<<"value">>, JObj),
     Amount = kz_currency:units_to_dollars(
                kz_json:get_integer_value(<<"amount">>, Value, 0)
               ),
-    Summary = kz_json:set_value(<<"amount">>, Amount, Value),
-    PrefixedId = maybe_set_doc_modb_prefix(Id, Created),
-    kz_doc:set_id(Summary, PrefixedId).
-
--spec maybe_set_doc_modb_prefix(kz_term:ne_binary(), kz_term:api_integer()) -> kz_term:ne_binary().
-maybe_set_doc_modb_prefix(?MATCH_MODB_PREFIX(_,_,_)=Id, _) -> Id;
-maybe_set_doc_modb_prefix(Id, Created) ->
-    {Year, Month, _} = kz_term:to_date(Created),
-    kazoo_modb_util:modb_id(Year, Month, Id).
+    kz_json:set_value(<<"amount">>, Amount, Value).

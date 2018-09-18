@@ -12,6 +12,7 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/1 ,content_types_provided/2
+        ,to_csv/1
         ,validate/1, validate/2, validate/3
         ,post/1 ,post/2
         ,patch/2
@@ -49,6 +50,7 @@ init() ->
                          ,{<<"*.allowed_methods.services">>, 'allowed_methods'}
                          ,{<<"*.resource_exists.services">>, 'resource_exists'}
                          ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
+                         ,{<<"*.to_csv.get.services">>, 'to_csv'}
                          ,{<<"*.validate.services">>, 'validate'}
                          ,{<<"*.execute.post.services">>, 'post'}
                          ,{<<"*.execute.patch.services">>, 'patch'}
@@ -147,6 +149,30 @@ content_types_provided(Context, _) ->
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
                                           ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Add content types accepted and provided by this module
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
+to_csv({Req, Context}) ->
+    {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
+
+-spec to_response(cb_context:context(), kz_term:ne_binary(), req_nouns()) ->
+                         cb_context:context().
+to_response(Context, _, [{<<"services">>, [?SUMMARY]}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    JObj = cb_context:resp_data(Context),
+    case kz_json:get_list_value(<<"invoices">>, JObj, []) of
+        [] -> Context;
+        Invoices ->
+            Items = lists:foldl(fun(Invoice, I) ->
+                                        kz_json:get_list_value(<<"items">>, Invoice, []) ++ I
+                                end
+                               ,[]
+                               ,Invoices
+                               ),
+            cb_context:set_resp_data(Context, Items)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
@@ -325,7 +351,13 @@ post(Context, ?TOPUP) ->
     Amount = get_topup_amount(Context),
     Trigger = <<"crossbar-request">>,
     Audit = crossbar_services:audit_log(Context),
+
     case kz_services_topup:topup(AccountId, Amount, Trigger, Audit) of
+        {'ok', 'undefined', Ledger} ->
+            JObj = kz_json:from_list(
+                     [{<<"ledger">>, kz_ledger:public_json(Ledger)}]
+                    ),
+            crossbar_doc:handle_json_success(JObj, Context);
         {'ok', Transaction, Ledger} ->
             JObj = kz_json:from_list(
                      [{<<"transaction">>, kz_transaction:public_json(Transaction)}
@@ -333,6 +365,8 @@ post(Context, ?TOPUP) ->
                      ]
                     ),
             crossbar_doc:handle_json_success(JObj, Context);
+        {'error', {'transaction_incomplete', Transaction}} ->
+            crossbar_services:transaction_to_error(Context, Transaction);
         {'error', _Reason} ->
             %% TODO: need better errors, from the bookkeeper...
             cb_context:add_system_error('unspecified_fault', Context)
@@ -519,8 +553,9 @@ unassign_plans(Context, Services) ->
 -spec pipe_services(cb_context:context(), [services_pipe()], resp_function()) -> cb_context:context().
 pipe_services(Context, Routines, RespFunction) ->
     AccountId = cb_context:account_id(Context),
+    AuditLog = crossbar_services:audit_log(Context),
     Services = lists:foldl(fun (F, S) -> F(S) end
-                          ,kz_services:fetch(AccountId)
+                          ,kz_services:set_audit_log(kz_services:fetch(AccountId), AuditLog)
                           ,Routines
                           ),
     cb_context:setters(Context
@@ -660,7 +695,7 @@ maybe_forbid_delete(DeletePlansIds, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_topup_amount(cb_context:context()) -> integer().
+-spec get_topup_amount(cb_context:context()) -> kz_currency:units().
 get_topup_amount(Context) ->
     ReqData = cb_context:req_data(Context),
     kz_currency:dollars_to_units(
