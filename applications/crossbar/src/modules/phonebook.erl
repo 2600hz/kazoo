@@ -127,14 +127,16 @@ phonebook_uri(ExplodedPath) ->
 -spec create_alert(any(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 create_alert(Response, JObj, Type) ->
     Subject = <<"Phonebook Request Error">>,
-    Msg = <<"Error updating "
+    Msg = <<"Error requesting "
+            "type ~s "
             "port request: ~s "
             "for numbers: ~p "
             "on account: ~s "
             "in state: ~s "
-            "with response ~p"
+            "with response: ~p"
           >>,
     Args = [Type
+           ,kz_doc:id(JObj)
            ,kz_json:get_keys(kzd_port_requests:numbers(JObj))
            ,kz_doc:account_id(JObj)
            ,kzd_port_requests:port_state(JObj)
