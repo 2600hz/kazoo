@@ -5,6 +5,8 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_fax_converter_convertapi).
 
+-behaviour(gen_kz_converter).
+
 -export([convert/4
         ,read_metadata/1
         ]).
