@@ -695,7 +695,7 @@ props_to_record(Props, Node) ->
             ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
             ,reseller_billing=props:get_value(<<"Reseller-Billing">>, CCVs)
             ,precedence=kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
-            ,realm=props:get_value(<<"Realm">>, CCVs, get_realm(Props))
+            ,realm=get_realm(Props, CCVs)
             ,username=props:get_value(<<"Username">>, CCVs, get_username(Props))
             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
             ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
@@ -751,15 +751,23 @@ get_username(Props) ->
         Username -> kz_term:to_lower_binary(Username)
     end.
 
--spec get_realm(kz_term:proplist()) -> kz_term:api_binary().
-get_realm(Props) ->
-    case props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                 ,<<"variable_domain_name">>
-                                 ]
-                                ,Props
-                                )
-    of
-        'undefined' -> 'undefined';
+-spec get_realm(kzd_freeswitch:data(), kz_term:proplist()) ->
+                       kz_term:api_ne_binary().
+get_realm(Props, CCVs) ->
+    case props:get_value(<<"Realm">>, CCVs) of
+        'undefined' ->
+            lager:info("no realm in CCVs, checking FS props: ~p", [CCVs]),
+            get_realm_from_props(Props);
+        Realm -> Realm
+    end.
+
+-spec get_realm_from_props(kzd_freeswitch:data()) ->
+                                  kz_term:api_ne_binary().
+get_realm_from_props(Props) ->
+    case props:get_value(<<"variable_domain_name">>, Props) of
+        'undefined' ->
+            lager:info("no realm found in props ~p", [Props]),
+            'undefined';
         Realm -> kz_term:to_lower_binary(Realm)
     end.
 
@@ -795,7 +803,7 @@ props_to_update(Props) ->
       ,{#channel.precedence, kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
       ,{#channel.presence_id, props:get_value(<<"Channel-Presence-ID">>, CCVs, props:get_value(<<"variable_presence_id">>, Props))}
       ,{#channel.profile, props:get_value(<<"variable_sofia_profile_name">>, Props)}
-      ,{#channel.realm, props:get_value(<<"Realm">>, CCVs, get_realm(Props))}
+      ,{#channel.realm, get_realm(Props, CCVs)}
       ,{#channel.reseller_billing, props:get_value(<<"Reseller-Billing">>, CCVs)}
       ,{#channel.reseller_id, props:get_value(<<"Reseller-ID">>, CCVs)}
       ,{#channel.resource_id, props:get_value(<<"Resource-ID">>, CCVs)}
