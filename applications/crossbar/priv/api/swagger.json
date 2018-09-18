@@ -27345,6 +27345,70 @@
             },
             "type": "object"
         },
+        "system_config.app_exchange": {
+            "description": "Schema for app_exchange system_config",
+            "properties": {
+                "app_exchange_url": {
+                    "description": "app_exchange app_exchange_url",
+                    "type": "string"
+                },
+                "compress_response_body": {
+                    "default": true,
+                    "description": "app_exchange compress_response_body",
+                    "type": "boolean"
+                },
+                "ip": {
+                    "description": "app_exchange ip",
+                    "type": "string"
+                },
+                "request_timeout_ms": {
+                    "default": 10000,
+                    "description": "app_exchange request_timeout_ms",
+                    "type": "integer"
+                },
+                "ssl_ca_cert": {
+                    "description": "app_exchange ssl_ca_cert",
+                    "type": "string"
+                },
+                "ssl_password": {
+                    "default": "",
+                    "description": "app_exchange ssl_password",
+                    "type": "string"
+                },
+                "ssl_port": {
+                    "default": 8443,
+                    "description": "app_exchange ssl_port",
+                    "type": "integer"
+                },
+                "ssl_workers": {
+                    "default": 20,
+                    "description": "app_exchange ssl_workers",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.appex_server": {
+            "description": "Schema for appex_server system_config",
+            "properties": {
+                "check_reverse_proxies": {
+                    "default": true,
+                    "description": "appex_server check_reverse_proxies",
+                    "type": "boolean"
+                },
+                "reverse_proxies": {
+                    "default": [
+                        "127.0.0.1"
+                    ],
+                    "description": "appex_server reverse_proxies",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
         "system_config.auth": {
             "description": "Schema for auth system_config",
             "properties": {
@@ -32955,6 +33019,19 @@
                     "type": "object"
                 }
             },
+            "type": "object"
+        },
+        "system_configs": {
+            "description": "Schema for system_config documents",
+            "properties": {
+                "default": {
+                    "description": "default settings that apply to all nodes/zones if not defined",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "default"
+            ],
             "type": "object"
         },
         "tasks": {
@@ -45331,6 +45408,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "system_configs",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/system_configs"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/SYSTEM_CONFIG_ID"
                     }
                 ],
@@ -45342,6 +45427,14 @@
             },
             "put": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "system_configs",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/system_configs"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/SYSTEM_CONFIG_ID"
                     }
@@ -45401,6 +45494,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "system_configs",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/system_configs"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/SYSTEM_CONFIG_ID"
                     },
