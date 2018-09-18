@@ -441,7 +441,6 @@ get_node_value(Category, Keys, Default, Node) when not is_binary(Node) ->
 get_node_value(Category, Keys, Default, Node) ->
     case get_category(Category) of
         {'ok', JObj} ->
-            Node = kz_term:to_binary(node()),
             kz_json:get_value([Node | Keys], JObj);
         {'error', 'not_found'} ->
             lager:debug("missing category ~s ~p: ~p", [Category, Keys, Default]),
@@ -648,7 +647,6 @@ update_category(_, _, _, _, _) -> 'ok'.
 -else.
 update_category('undefined', _, _, _, _) -> 'ok';
 update_category(_, 'undefined', _, _, _) -> 'ok';
-update_category(_, _, 'undefined', _, _) -> 'ok';
 update_category(Category, Key, Value, 'undefined', Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options);
 update_category(Category, Key, Value, Node, Options) when not is_list(Key) ->

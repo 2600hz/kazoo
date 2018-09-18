@@ -140,7 +140,7 @@ get_system_config_document_schema(Id) ->
            ,{[<<"properties">>, <<"default">>, <<"default">>], kz_json:new()}
            ,{[<<"properties">>, <<"default">>, <<"type">>], <<"object">>}
            ,{[<<"properties">>, <<"default">>, <<"$ref">>], system_schema_name(Id)}
-           ,{[<<"patternProperties">>, <<"(?!id\b)\b\w+">>, <<"$ref">>], system_schema_name(Id)}
-           ,{[<<"patternProperties">>, <<"(?!id\b)\b\w+">>, <<"type">>], <<"object">>}
+           ,{[<<"patternProperties">>, <<"(?!id\\b)(?!^_.+\\b)(?!^pvt_.+\\b)\\b\\w+">>, <<"$ref">>], system_schema_name(Id)}
+           ,{[<<"patternProperties">>, <<"(?!id\\b)(?!^_.+\\b)(?!^pvt_.+\\b)\\b\\w+">>, <<"type">>], <<"object">>}
            ],
     kz_json:expand(kz_json:from_list(Flat)).
