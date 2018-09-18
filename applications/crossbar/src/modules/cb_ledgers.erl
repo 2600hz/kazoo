@@ -163,9 +163,9 @@ validate(Context, ?DEBIT) ->
     cb_context:validate_request_data(<<"ledgers">>, Context);
 validate(Context, ?TOTAL) ->
     case kz_ledgers:total_sources(cb_context:account_id(Context)) of
-        {'error', _R} ->
-            lager:debug("failed to fetch ledgers total: ~p", [_R]),
-            cb_context:add_system_error('unspecified_fault', Context);
+        {'error', Reason} ->
+            lager:debug("failed to fetch ledgers total: ~p", [Reason]),
+            crossbar_doc:handle_datamgr_errors(Reason, ?TOTAL, Context);
         {'ok', Units} ->
             JObj = kz_json:from_list(
                      [{<<"amount">>
@@ -173,17 +173,11 @@ validate(Context, ?TOTAL) ->
                       }
                      ]
                     ),
-            Setters = [{fun cb_context:set_resp_status/2, 'success'}
-                      ,{fun cb_context:set_resp_data/2, JObj}
-                      ],
-            cb_context:setters(Context, Setters)
+            crossbar_doc:handle_json_success(JObj, Context)
     end;
 validate(Context, ?AVAILABLE) ->
     Available = kz_ledgers:available_ledgers(cb_context:account_id(Context)),
-    Setters = [{fun cb_context:set_resp_status/2, 'success'}
-              ,{fun cb_context:set_resp_data/2, Available}
-              ],
-    cb_context:setters(Context, Setters);
+    crossbar_doc:handle_json_success(Available, Context);
 validate(Context, SourceService) ->
     ViewOptions = [{'is_chunked', 'true'}
                   ,{'range_keymap', SourceService}
@@ -207,10 +201,7 @@ validate(Context, SourceService, Id) ->
 validate_fetch_ledger(Context, SourceService, Ledger) ->
     case kz_ledger:source_service(Ledger) =:= SourceService of
         'true' ->
-            Setters = [{fun cb_context:set_resp_status/2, 'success'}
-                      ,{fun cb_context:set_resp_data/2, kz_ledger:public_json(Ledger)}
-                      ],
-            cb_context:setters(Context, Setters);
+            crossbar_doc:handle_json_success(kz_ledger:public_json(Ledger), Context);
         'false' ->
             Id = kz_ledger:id(Ledger),
             Error = kz_json:from_list([{<<"cause">>, Id}]),
@@ -302,18 +293,14 @@ maybe_convert_units(_, Value) -> Value.
 process_action(Context, ?CREDIT, Ledger) ->
     case kz_ledger:credit(Ledger) of
         {'error', Reason} ->
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'error'}
-                                        ,{fun cb_context:set_resp_data/2, Reason}
-                                        ]);
+            crossbar_doc:handle_datamgr_errors(Reason, kz_ledger:id(Ledger), Context);
         {'ok', SavedLedger} ->
             maybe_impact_reseller(Context, SavedLedger)
     end;
 process_action(Context, ?DEBIT, Ledger) ->
     case kz_ledger:debit(Ledger) of
         {'error', Reason} ->
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'error'}
-                                        ,{fun cb_context:set_resp_data/2, Reason}
-                                        ]);
+            crossbar_doc:handle_datamgr_errors(Reason, kz_ledger:id(Ledger), Context);
         {'ok', SavedLedger} ->
             maybe_impact_reseller(Context, SavedLedger)
     end.
@@ -327,9 +314,7 @@ maybe_impact_reseller(Context, Ledger) ->
 
 -spec maybe_impact_reseller(cb_context:context(), kz_ledger:ledger(), boolean(), kz_term:api_binary()) -> cb_context:context().
 maybe_impact_reseller(Context, Ledger, 'false', _ResellerId) ->
-    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                ,{fun cb_context:set_resp_data/2, kz_ledger:public_json(Ledger)}
-                                ]);
+    crossbar_doc:handle_json_success(kz_ledger:public_json(Ledger), Context);
 maybe_impact_reseller(Context, Ledger, 'true', 'undefined') ->
     JObj = kz_json:from_list(
              [{kz_ledger:account_id(Ledger)
@@ -337,9 +322,7 @@ maybe_impact_reseller(Context, Ledger, 'true', 'undefined') ->
               }
              ]
             ),
-    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                ,{fun cb_context:set_resp_data/2, JObj}
-                                ]);
+    crossbar_doc:handle_json_success(JObj, Context);
 maybe_impact_reseller(Context, AccountLedger, 'true', ResellerId) ->
     AccountId = kz_ledger:account_id(AccountLedger),
     AccountResponse = build_success_response(AccountId, AccountLedger),
@@ -349,9 +332,7 @@ maybe_impact_reseller(Context, AccountLedger, 'true', ResellerId) ->
             JObj = build_response(AccountId, AccountResponse
                                  ,ResellerId, ResellerResponse
                                  ),
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                        ,{fun cb_context:set_resp_data/2, JObj}
-                                        ]);
+            crossbar_doc:handle_json_success(JObj, Context);
         {'error', Reason} ->
             ResellerResponse = build_error_response(Context, AccountId, Reason),
             JObj = build_response(AccountId, AccountResponse

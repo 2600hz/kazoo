@@ -718,7 +718,7 @@ save(Ledger) ->
     LedgerJObj = add_account_info(AccountId, to_json(Ledger)),
     case kazoo_modb:save_doc(MODb, LedgerJObj) of
         {'ok', SavedJObj} ->
-            lager:debug("created ~s ~s in ~s ~p-~p for $~w"
+            lager:debug("created ~s ~s in ~s ~p-~p (~p) for $~w"
                        ,[source_service(Ledger)
                         ,ledger_type(Ledger)
                         ,AccountId
