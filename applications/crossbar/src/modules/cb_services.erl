@@ -12,6 +12,7 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/1 ,content_types_provided/2
+        ,to_csv/1
         ,validate/1, validate/2, validate/3
         ,post/1 ,post/2
         ,patch/2
@@ -49,6 +50,7 @@ init() ->
                          ,{<<"*.allowed_methods.services">>, 'allowed_methods'}
                          ,{<<"*.resource_exists.services">>, 'resource_exists'}
                          ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
+                         ,{<<"*.to_csv.get.services">>, 'to_csv'}
                          ,{<<"*.validate.services">>, 'validate'}
                          ,{<<"*.execute.post.services">>, 'post'}
                          ,{<<"*.execute.patch.services">>, 'patch'}
@@ -147,6 +149,30 @@ content_types_provided(Context, _) ->
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
                                           ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Add content types accepted and provided by this module
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
+to_csv({Req, Context}) ->
+    {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
+
+-spec to_response(cb_context:context(), kz_term:ne_binary(), req_nouns()) ->
+                         cb_context:context().
+to_response(Context, _, [{<<"services">>, [?SUMMARY]}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    JObj = cb_context:resp_data(Context),
+    case kz_json:get_list_value(<<"invoices">>, JObj, []) of
+        [] -> Context;
+        Invoices ->
+            Items = lists:foldl(fun(Invoice, I) ->
+                                        kz_json:get_list_value(<<"items">>, Invoice, []) ++ I
+                                end
+                               ,[]
+                               ,Invoices
+                               ),
+            cb_context:set_resp_data(Context, Items)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)

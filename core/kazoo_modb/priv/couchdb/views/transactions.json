@@ -26,9 +26,9 @@
                 "    amount *= -1;",
                 "  if (doc.bookkeeper && doc.bookkeeper.results) {",
                 "      var bookkeeper = {status: doc.bookkeeper.results.status, reason: doc.bookkeeper.results.reason, message: doc.bookkeeper.results.message};",
-                "      emit(doc.pvt_created, {id:doc._id, amount:amount, status: doc.status, executor:doc.executor, description: doc.description, metadata: doc.metadata, bookkeeper: bookkeeper});",
+                "      emit(doc.pvt_created, {id:doc._id, amount:amount, status: doc.status, executor:doc.executor, description: doc.description, metadata: doc.metadata, bookkeeper: bookkeeper, created: doc.pvt_created});",
                 "  } else {",
-                "      emit(doc.pvt_created, {id:doc._id, amount:amount, status: doc.status, executor:doc.executor, description: doc.description, metadata: doc.metadata});",
+                "      emit(doc.pvt_created, {id:doc._id, amount:amount, status: doc.status, executor:doc.executor, description: doc.description, metadata: doc.metadata, created: doc.pvt_created});",
                 "  }",
                 "}"
             ]
