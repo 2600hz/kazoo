@@ -47,6 +47,11 @@ get_node(Config, Node) ->
 apply_default_values(Config, Node, Default) ->
     NodeValue = get_node(Config, Node),
     Merged = kz_json:merge_recursive(Default, NodeValue),
+
+    lager:info("merging defaults ~p", [Default]),
+    lager:info("into node ~s: ~p", [Node, NodeValue]),
+    lager:info("results in ~p", [Merged]),
+
     kz_json:set_value(Node, Merged, Config).
 
 -spec apply_default_node(kz_json:object()) -> kz_json:object().
