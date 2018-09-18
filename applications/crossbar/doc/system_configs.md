@@ -40,6 +40,20 @@ Defaults
 
 In order to have effective configuration values one must provide `with_defaults=true` URI parameter for GET requests (either to get document or document section). With this parameter provided a configuration merge down as described above is performed.
 
+#### Schema
+
+Schema for system_config documents
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`$.+@.+^` | Node-specific settings - these take highest precedence | `object()` |   | `false` |
+`$[a-zA-Z0-9.]+^` | Zone-specific settings - these are checked if a node-specific setting is not defined | `object()` |   | `false` |
+`default` | default settings that apply to all nodes/zones if not defined | `object()` |   | `true` |
+
+
+
 ## Fetch List of Configured System Configs Categories
 
 > GET /v2/system_configs
