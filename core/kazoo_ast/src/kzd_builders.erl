@@ -66,12 +66,23 @@ accessors_from_patterns(PatternProperties) ->
 accessor_from_pattern(<<"^_", _/binary>>, _Properties, Acc) -> Acc;
 accessor_from_pattern(<<"^_pvt", _/binary>>, _Properties, Acc) -> Acc;
 accessor_from_pattern(_Pattern, Properties, {Acc, Path}) ->
-    Acc1 = accessor_from_pattern(Path, key_from_path(Path), Properties, Acc),
+    PatternPath = pattern_path(Path, Properties),
+    Acc1 = accessor_from_pattern(PatternPath, key_from_path(PatternPath), Properties, Acc),
     {Acc1, Path}.
 
+pattern_path([], Properties) ->
+    [kz_json:get_ne_binary_value(<<"name">>, Properties, <<"index">>)];
+pattern_path(Path, Properties) ->
+    [_|Rest] = lists:reverse(Path),
+    lists:reverse([kz_json:get_ne_binary_value(<<"name">>, Properties, <<"index">>)
+                   | Rest
+                  ]).
+
 accessor_from_pattern(Path, Key, Properties, {Exports, Accessors}) ->
-    {add_pattern_exports(clean_name(Path), Key, Exports)
-    ,add_pattern_accessors(clean_name(Path), Key, Properties, Accessors)
+    io:format("pattern path: ~p~n", [Path]),
+    AccessorName = clean_name(Path),
+    {add_pattern_exports(AccessorName, Key, Exports)
+    ,add_pattern_accessors(AccessorName, Key, Properties, Accessors)
     }.
 
 key_from_path([]) ->
@@ -87,6 +98,10 @@ key_from_parent(<<"audit">>) ->
     <<"account_id">>;
 key_from_parent(<<"plan">>) ->
     <<"plan_name">>;
+key_from_parent(<<"node">>=Node) ->
+    Node;
+key_from_parent(<<"zone">>=Zone) ->
+    Zone;
 key_from_parent(Parent) ->
     case kz_binary:strip_right(Parent, <<"s">>) of
         Parent -> kz_binary:join([Parent, <<"index">>], <<"_">>);
