@@ -26,8 +26,8 @@
 
 -define(DEFAULT, <<"default">>).
 
--spec maybe_new({ok, kz_json:object()}) -> kz_json:object().
-maybe_new({ok, JObj}) -> JObj;
+-spec maybe_new({'ok', kz_json:object()}) -> kz_json:object().
+maybe_new({'ok', JObj}) -> JObj;
 maybe_new(_) -> kz_json:new().
 
 -spec get_keys(kz_json:object()) -> [kz_term:ne_binary()].
@@ -47,17 +47,17 @@ get_node(Config, Node) ->
 apply_default_values(Config, Node, Default) ->
     NodeValue = get_node(Config, Node),
     Merged = kz_json:merge_recursive(Default, NodeValue),
-
-    lager:info("merging defaults ~p", [Default]),
-    lager:info("into node ~s: ~p", [Node, NodeValue]),
-    lager:info("results in ~p", [Merged]),
-
     kz_json:set_value(Node, Merged, Config).
 
 -spec apply_default_node(kz_json:object()) -> kz_json:object().
 apply_default_node(Config) ->
     Default = kz_json:get_value(?DEFAULT, Config, kz_json:new()),
-    lists:foldl(fun(K,A) -> apply_default_values(A, K, Default) end, Config, get_keys(Config)).
+    lists:foldl(fun(NodeOrZoneKey, ConfigAcc) ->
+                        apply_default_values(ConfigAcc, NodeOrZoneKey, Default)
+                end
+               ,Config
+               ,get_keys(Config)
+               ).
 
 -spec apply_schema_defaults(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_schema_defaults(Id, Config) ->
@@ -79,21 +79,13 @@ schema_defaults(Id) ->
 
 -spec maybe_insert_default_node(kz_json:object()) -> kz_json:object().
 maybe_insert_default_node(Config) ->
-    case kz_json:get_value(?DEFAULT, Config) of
-        'undefined' -> kz_json:set_value(?DEFAULT, kz_json:new(), Config);
-        _Else -> Config
-    end.
+    kz_json:insert_value(?DEFAULT, kz_json:new(), Config).
 
 -spec config_with_defaults(kz_term:ne_binary()) -> kz_json:object().
 config_with_defaults(Id) ->
     ConfigJObj = get_config(Id),
-    lager:info("config for ~s: ~p", [Id, ConfigJObj]),
-
     WithDefaults = apply_default_node(ConfigJObj),
-    lager:info("after default node applied: ~p", [WithDefaults]),
-
     WithDefaultNode = maybe_insert_default_node(WithDefaults),
-    lager:info("after inserting default node: ~p", [WithDefaultNode]),
 
     apply_schema_defaults(Id, WithDefaultNode).
 
