@@ -291,11 +291,12 @@ service_added_definition() ->
                     ,restrict_to = 'service_added'
                     ,required_headers = [<<"Account-ID">>
                                         ,<<"Audit-Log">>
+                                        ,<<"Items">>
                                         ,<<"Timestamp">>
                                         ]
                     ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"service_added">>)
-                    ,types = []
+                    ,types = [{<<"Items">>, fun kz_json:are_json_objects/1}]
                     }.
 
 %%% Transaction and Top-up common optional headers

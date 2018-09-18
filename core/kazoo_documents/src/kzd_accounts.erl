@@ -29,10 +29,10 @@
 -export([notifications_first_occurrence/1, notifications_first_occurrence/2, set_notifications_first_occurrence/2]).
 -export([notifications_first_occurrence_sent_initial_call/1, notifications_first_occurrence_sent_initial_call/2, set_notifications_first_occurrence_sent_initial_call/2]).
 -export([notifications_first_occurrence_sent_initial_registration/1, notifications_first_occurrence_sent_initial_registration/2, set_notifications_first_occurrence_sent_initial_registration/2]).
--export([notifications_low_balance/1, notifications_low_balance/2, set_notifications_low_balance/2]).
+-export([notifications_low_balance/1, notifications_low_balance/2, set_notifications_low_balance/2, path_notifications_low_balance/0]).
 -export([notifications_low_balance_enabled/1, notifications_low_balance_enabled/2, set_notifications_low_balance_enabled/2]).
 -export([notifications_low_balance_last_notification/1, notifications_low_balance_last_notification/2, set_notifications_low_balance_last_notification/2]).
--export([notifications_low_balance_sent_low_balance/1, notifications_low_balance_sent_low_balance/2, set_notifications_low_balance_sent_low_balance/2]).
+-export([notifications_low_balance_sent_low_balance/1, notifications_low_balance_sent_low_balance/2, set_notifications_low_balance_sent_low_balance/2, path_notifications_low_balance_sent_low_balance/0]).
 -export([notifications_low_balance_threshold/1, notifications_low_balance_threshold/2, set_notifications_low_balance_threshold/2]).
 -export([org/1, org/2, set_org/2]).
 -export([preflow/1, preflow/2, set_preflow/2]).
@@ -55,37 +55,39 @@
 -export([type/0
         ,fetch/1, fetch/2
         ,fetch_name/1, fetch_realm/1
-        ,save/1, save/2
+        ,save/1, save_accounts_doc/1
+        ,update/2
 
         ,api_key/1, set_api_key/2
         ,is_enabled/1, enable/1, disable/1
+        ,path_enabled/0
         ,is_expired/1
 
         ,tree/1, tree/2, set_tree/2
         ,default_timezone/0
-        ,notification_preference/1, set_notification_preference/2
-        ,allow_number_additions/1, set_allow_number_additions/2
-        ,is_superduper_admin/1, set_superduper_admin/2
+        ,notification_preference/1, set_notification_preference/2, path_notification_preference/0
+        ,allow_number_additions/1, set_allow_number_additions/2, path_allow_number_additions/0
+        ,is_superduper_admin/1, set_superduper_admin/2, path_superduper_admin/0
 
         ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
         ,trial_time_left/1, trial_time_left/2
         ,trial_has_expired/2
 
-        ,demote/1, promote/1
+        ,demote/1, promote/1, path_reseller/0
 
         ,fax_settings/1
         ,get_inherited_value/3
         ,get_parent_account_id/1
 
-        ,reseller_id/1, set_reseller_id/2, is_reseller/1
+        ,reseller_id/1, set_reseller_id/2, is_reseller/1, path_reseller_id/0
         ,is_trial_account/1
         ,low_balance_enabled/1, low_balance_enabled_exists/1, set_low_balance_enabled/1, reset_low_balance_enabled/1
 
-        ,low_balance_sent/1, reset_low_balance_sent/1
+        ,low_balance_sent/1, reset_low_balance_sent/1, path_low_balance_sent/0
 
 
         ,low_balance_threshold/1, set_low_balance_threshold/2
-        ,low_balance_tstamp/1, remove_low_balance_tstamp/1
+        ,low_balance_tstamp/1, remove_low_balance_tstamp/1, path_low_balance_tstamp/0
         ,parent_account_id/1
         ,preflow_id/1
 
@@ -93,8 +95,8 @@
 
         ,sent_initial_call/1
         ,sent_initial_registration/1
-        ,set_initial_call_sent/2
-        ,set_initial_registration_sent/2
+        ,set_initial_call_sent/2, path_initial_call_sent/0
+        ,set_initial_registration_sent/2, path_initial_registration_sent/0
         ,set_low_balance_sent/1
         ,set_low_balance_tstamp/1
 
@@ -397,6 +399,10 @@ notifications_low_balance(Doc) ->
 notifications_low_balance(Doc, Default) ->
     kz_json:get_json_value([<<"notifications">>, <<"low_balance">>], Doc, Default).
 
+-spec path_notifications_low_balance() -> kz_json:path().
+path_notifications_low_balance() ->
+    [<<"notifications">>, <<"low_balance">>].
+
 -spec set_notifications_low_balance(doc(), kz_json:object()) -> doc().
 set_notifications_low_balance(Doc, NotificationsLowBalance) ->
     kz_json:set_value([<<"notifications">>, <<"low_balance">>], NotificationsLowBalance, Doc).
@@ -436,6 +442,10 @@ notifications_low_balance_sent_low_balance(Doc, Default) ->
 -spec set_notifications_low_balance_sent_low_balance(doc(), boolean()) -> doc().
 set_notifications_low_balance_sent_low_balance(Doc, NotificationsLowBalanceSentLowBalance) ->
     kz_json:set_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], NotificationsLowBalanceSentLowBalance, Doc).
+
+-spec path_notifications_low_balance_sent_low_balance() -> kz_json:path().
+path_notifications_low_balance_sent_low_balance() ->
+    [<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>].
 
 -spec notifications_low_balance_threshold(doc()) -> kz_term:api_number().
 notifications_low_balance_threshold(Doc) ->
@@ -760,6 +770,10 @@ enable(JObj) ->
 disable(JObj) ->
     kz_json:set_value([<<"pvt_enabled">>], 'false', JObj).
 
+-spec path_enabled() -> kz_json:path().
+path_enabled() ->
+    [<<"pvt_enabled">>].
+
 -spec tree(doc()) -> kz_term:ne_binaries().
 tree(JObj) ->
     tree(JObj, []).
@@ -798,6 +812,10 @@ notification_preference(JObj, [H|T]) ->
 set_notification_preference(JObj, Pref) ->
     kz_json:set_value([<<"pvt_notification_preference">>], Pref, JObj).
 
+-spec path_notification_preference() -> kz_json:path().
+path_notification_preference() ->
+    [<<"pvt_notification_preference">>].
+
 -spec allow_number_additions(doc()) -> boolean().
 allow_number_additions(JObj) ->
     kz_json:is_true([<<"pvt_wnm_allow_additions">>], JObj).
@@ -809,6 +827,10 @@ allow_number_additions(JObj) ->
 -spec set_allow_number_additions(doc(), boolean()) -> doc().
 set_allow_number_additions(JObj, IsAllowed) ->
     kz_json:set_value([<<"pvt_wnm_allow_additions">>], kz_term:is_true(IsAllowed), JObj).
+
+-spec path_allow_number_additions() -> kz_json:path().
+path_allow_number_additions() ->
+    [<<"pvt_wnm_allow_additions">>].
 
 -spec is_superduper_admin(kz_term:api_ne_binary() | doc()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
@@ -823,6 +845,10 @@ is_superduper_admin(JObj) ->
 -spec set_superduper_admin(doc(), boolean()) -> doc().
 set_superduper_admin(JObj, IsAdmin) ->
     kz_json:set_value([<<"pvt_superduper_admin">>], IsAdmin, JObj).
+
+-spec path_superduper_admin() -> kz_json:path().
+path_superduper_admin() ->
+    [<<"pvt_superduper_admin">>].
 
 -spec trial_expiration(doc()) -> kz_term:api_integer().
 trial_expiration(JObj) ->
@@ -887,6 +913,10 @@ promote(JObj) ->
 demote(JObj) ->
     kz_json:set_value([<<"pvt_reseller">>], 'false', JObj).
 
+-spec path_reseller() -> kz_json:path().
+path_reseller() ->
+    [<<"pvt_reseller">>].
+
 -spec reseller_id(doc()) -> doc().
 reseller_id(JObj) ->
     kz_json:get_value([<<"pvt_reseller_id">>], JObj).
@@ -894,6 +924,10 @@ reseller_id(JObj) ->
 -spec set_reseller_id(doc(), kz_term:ne_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->
     kz_json:set_value([<<"pvt_reseller_id">>], ResellerId, JObj).
+
+-spec path_reseller_id() -> kz_json:path().
+path_reseller_id() ->
+    [<<"pvt_reseller_id">>].
 
 -spec fax_settings(doc() | kz_term:ne_binary()) -> doc().
 fax_settings(AccountId)
@@ -990,6 +1024,10 @@ set_low_balance_sent(Doc) ->
 reset_low_balance_sent(Doc) ->
     set_notifications_low_balance_sent_low_balance(Doc, 'false').
 
+-spec path_low_balance_sent() -> kz_json:path().
+path_low_balance_sent() ->
+    [<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>].
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -1034,6 +1072,10 @@ remove_low_balance_tstamp(Doc) ->
     LowBalance = notifications_low_balance(Doc, kz_json:new()),
     set_notifications_low_balance(Doc, kz_json:delete_key([<<"last_notification">>], LowBalance)).
 
+-spec path_low_balance_tstamp() -> kz_json:path().
+path_low_balance_tstamp() ->
+    path_notifications_low_balance() ++ [<<"last_notification">>].
+
 -spec home_zone(kz_term:ne_binary() | doc()) -> kz_term:api_binary().
 home_zone(AccountId) when is_binary(AccountId) ->
     case fetch(AccountId) of
@@ -1067,6 +1109,10 @@ sent_initial_registration(Doc) ->
 set_initial_registration_sent(Doc, Sent) ->
     set_notifications_first_occurrence_sent_initial_registration(Doc, Sent).
 
+-spec path_initial_registration_sent() -> kz_json:path().
+path_initial_registration_sent() ->
+    [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>].
+
 -spec sent_initial_call(doc()) -> boolean().
 sent_initial_call(Doc) ->
     FirstOccurrence = notifications_first_occurrence(Doc, kz_json:new()),
@@ -1076,28 +1122,69 @@ sent_initial_call(Doc) ->
 set_initial_call_sent(Doc, Sent) ->
     set_notifications_first_occurrence_sent_initial_call(Doc, Sent).
 
+-spec path_initial_call_sent() -> kz_json:path().
+path_initial_call_sent() ->
+    [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>].
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec save(doc()) ->
-                  {'ok', kz_json:object()} |
-                  {'error', any()}.
+                  {'ok', doc()} |
+                  kz_datamgr:data_error().
 save(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
-    case kz_datamgr:ensure_saved(AccountDb, AccountJObj) of
-        {'error', _R}=E -> E;
-        {'ok', SavedJObj} ->
-            kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, SavedJObj)
+    case kz_datamgr:save_doc(AccountDb, AccountJObj) of
+        {'error', _R}=E ->
+            lager:info("failed to save account doc: ~p", [_R]),
+            E;
+        {'ok', SavedJObj} -> save_accounts_doc(SavedJObj)
     end.
 
--spec save(kz_term:ne_binary(), function()) -> 'ok' | {'error', any()}.
-save(?NE_BINARY = Account, UpdateFun) ->
-    case fetch(Account) of
-        {'error', _R}=E -> E;
-        {'ok', AccountJObj} ->
-            save(UpdateFun(AccountJObj))
+-spec save_accounts_doc(doc()) ->
+                               {'ok', doc()} |
+                               kz_datamgr:data_error().
+save_accounts_doc(AccountDoc) ->
+    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, kz_doc:id(AccountDoc)) of
+        {'error', 'not_found'} ->
+            handle_saved_accounts_doc(AccountDoc, kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(AccountDoc)));
+        {'error', _R}=E ->
+            lager:info("failed to save account doc to accounts: ~p", [_R]),
+            E;
+        {'ok', AccountsDoc} ->
+            Update = [{kz_doc:path_revision(), kz_doc:revision(AccountsDoc)}
+                      | kz_json:to_proplist(AccountDoc)
+                     ],
+            UpdateOptions = [{'update', Update}
+                            ,{'ensure_saved', 'true'}
+                            ],
+            handle_saved_accounts_doc(AccountDoc
+                                     ,kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, kz_doc:id(AccountDoc), UpdateOptions)
+                                     )
+    end.
+
+-spec handle_saved_accounts_doc(doc(), kz_datamgr:data_error() | {'ok', doc()}) ->
+                                       kz_datamgr:data_error() | {'ok', doc()}.
+handle_saved_accounts_doc(AccountDoc, {'ok', _}) ->
+    {'ok', AccountDoc};
+handle_saved_accounts_doc(_, Error) -> Error.
+
+-spec update(kz_term:ne_binary(), kz_json:flat_proplist()) ->
+                    {'ok', doc()} |
+                    kz_datamgr:data_error().
+update(?NE_BINARY = Account, UpdateProps) ->
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountDb = kz_util:format_account_db(AccountId),
+
+    UpdateOptions = [{'update', UpdateProps}
+                    ,{'ensure_saved', 'true'}
+                    ],
+
+    case kz_datamgr:update_doc(AccountDb, AccountId, UpdateOptions) of
+        {'error', _}=E -> E;
+        {'ok', _} ->
+            kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, AccountId, UpdateOptions)
     end.
 
 %% @equiv is_in_account_hierarchy(CheckFor, InAccount, false)

@@ -384,7 +384,7 @@ handle_call({'restart_task', TaskId}, _From, State) ->
 
 %% This used to be cast but would race with worker process' EXIT signal.
 handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, State) ->
-    lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
+    lager:debug("worker finished ~s: ~p:~p", [TaskId, TotalSucceeded, TotalFailed]),
     Task = task_by_id(TaskId, State),
     Task1 = Task#{finished => kz_time:now_s()
                  ,total_rows_failed => TotalFailed
@@ -596,17 +596,22 @@ add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
                                       {'error', any()}.
 update_task(Task = #{id := TaskId}) ->
     Updates = kz_json:to_proplist(kz_tasks:to_json(Task)),
-    case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
-        {'ok', Doc} -> {'ok', kz_tasks:to_public_json(kz_tasks:from_json(Doc))};
+    UpdateOptions = [{'update', Updates}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, UpdateOptions) of
+        {'ok', Doc} ->
+            {'ok', kz_tasks:to_public_json(kz_tasks:from_json(Doc))};
         {'error', _R}=E ->
             lager:error("failed to update ~s in ~s: ~p", [TaskId, ?KZ_TASKS_DB, _R]),
             E
     end.
 
 -spec set_last_worker_update(kz_tasks:id(), non_neg_integer(), state()) -> state().
-set_last_worker_update(TaskId,
-                       ProcessedSoFar,
-                       State = #state{last_worker_update = LWU}) ->
+set_last_worker_update(TaskId
+                      ,ProcessedSoFar
+                      ,#state{last_worker_update = LWU}=State
+                      ) ->
     State#state{last_worker_update = LWU#{TaskId => ProcessedSoFar}}.
 
 -spec task_api(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().

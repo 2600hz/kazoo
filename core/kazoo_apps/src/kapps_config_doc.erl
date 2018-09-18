@@ -26,8 +26,8 @@
 
 -define(DEFAULT, <<"default">>).
 
--spec maybe_new({ok, kz_json:object()}) -> kz_json:object().
-maybe_new({ok, JObj}) -> JObj;
+-spec maybe_new({'ok', kz_json:object()}) -> kz_json:object().
+maybe_new({'ok', JObj}) -> JObj;
 maybe_new(_) -> kz_json:new().
 
 -spec get_keys(kz_json:object()) -> [kz_term:ne_binary()].
@@ -46,17 +46,28 @@ get_node(Config, Node) ->
 -spec apply_default_values(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_default_values(Config, Node, Default) ->
     NodeValue = get_node(Config, Node),
-    kz_json:set_value(Node, kz_json:merge_recursive(Default, NodeValue), Config).
+    Merged = kz_json:merge_recursive(Default, NodeValue),
+    kz_json:set_value(Node, Merged, Config).
 
 -spec apply_default_node(kz_json:object()) -> kz_json:object().
 apply_default_node(Config) ->
     Default = kz_json:get_value(?DEFAULT, Config, kz_json:new()),
-    lists:foldl(fun(K,A) -> apply_default_values(A, K, Default) end, Config, get_keys(Config)).
+    lists:foldl(fun(NodeOrZoneKey, ConfigAcc) ->
+                        apply_default_values(ConfigAcc, NodeOrZoneKey, Default)
+                end
+               ,Config
+               ,get_keys(Config)
+               ).
 
 -spec apply_schema_defaults(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_schema_defaults(Id, Config) ->
     Default = schema_defaults(Id),
-    lists:foldl(fun(K,A) -> apply_default_values(A, K, Default) end, Config, [?DEFAULT|get_keys(Config)]).
+    lists:foldl(fun(NodeOrZoneKey, ConfigAcc) ->
+                        apply_default_values(ConfigAcc, NodeOrZoneKey, Default)
+                end
+               ,Config
+               ,[?DEFAULT|get_keys(Config)]
+               ).
 
 -spec apply_schema_defaults_to_default(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_schema_defaults_to_default(Id, Config) ->
@@ -64,18 +75,19 @@ apply_schema_defaults_to_default(Id, Config) ->
 
 -spec schema_defaults(kz_term:ne_binary()) -> kz_json:object().
 schema_defaults(Id) ->
-    kz_json_schema:default_object(kapps_config_util:system_schema(Id)).
+    kz_json_schema:default_object(kapps_config_util:system_config_document_schema(Id)).
 
 -spec maybe_insert_default_node(kz_json:object()) -> kz_json:object().
 maybe_insert_default_node(Config) ->
-    case kz_json:get_value(?DEFAULT, Config) of
-        undefined -> kz_json:set_value(?DEFAULT, kz_json:new(), Config);
-        _Else -> Config
-    end.
+    kz_json:insert_value(?DEFAULT, kz_json:new(), Config).
 
 -spec config_with_defaults(kz_term:ne_binary()) -> kz_json:object().
 config_with_defaults(Id) ->
-    apply_schema_defaults(Id, maybe_insert_default_node(apply_default_node(get_config(Id)))).
+    ConfigJObj = get_config(Id),
+    WithDefaults = apply_default_node(ConfigJObj),
+    WithDefaultNode = maybe_insert_default_node(WithDefaults),
+
+    apply_schema_defaults(Id, WithDefaultNode).
 
 -spec default_config(kz_term:ne_binary(), [kz_term:ne_binary()]) -> kz_json:object().
 default_config(Id, Keys) ->

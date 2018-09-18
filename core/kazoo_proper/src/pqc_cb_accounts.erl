@@ -53,11 +53,9 @@ create_account(API, NewAccountName) ->
 
 -spec allow_number_additions(kz_term:ne_binary()) -> {'ok', kzd_accounts:doc()}.
 allow_number_additions(AccountId) ->
-    {'ok', _Account} = kzd_accounts:save(AccountId
-                                        ,fun(J) ->
-                                                 kzd_accounts:set_allow_number_additions(J, 'true')
-                                         end
-                                        ).
+    {'ok', _Account} = kzd_accounts:update(AccountId
+                                          ,[{kzd_accounts:path_allow_number_additions(), 'true'}]
+                                          ).
 
 -spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> binary().
 delete_account(API, AccountId) ->

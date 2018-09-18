@@ -120,7 +120,7 @@ rate_version() ->
 
 -spec set_rate_version(kz_term:ne_binary()) -> 'ok'.
 set_rate_version(Version) ->
-    kapps_config:set_string(?APP_NAME, <<"rate_version">>, Version),
+    {'ok', _} = kapps_config:set_string(?APP_NAME, <<"rate_version">>, Version),
     'ok'.
 
 -spec should_account_filter_by_resource(kz_term:ne_binary()) -> boolean().

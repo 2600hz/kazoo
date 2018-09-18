@@ -1072,11 +1072,13 @@ language(#kapps_call{language='undefined', account_id=AccountId}) ->
 language(#kapps_call{language=Language}) -> Language.
 -endif.
 
--spec get_prompt(call(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec get_prompt(call(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+get_prompt(#kapps_call{}, 'undefined') -> 'undefined';
 get_prompt(#kapps_call{}=Call, Media) ->
     get_prompt(Call, Media, language(Call)).
 
--spec get_prompt(call(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+-spec get_prompt(call(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+get_prompt(_Call, 'undefined', _Lang) -> 'undefined';
 get_prompt(Call, Media, 'undefined') ->
     kz_media_util:get_prompt(Media, language(Call), account_id(Call));
 get_prompt(Call, Media, Language) ->

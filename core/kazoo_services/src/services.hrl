@@ -13,7 +13,5 @@
 
 -define(CACHE_NAME, 'kazoo_services_cache').
 
--type bookkeeper_sync_result() :: 'ok' | 'delinquent' | 'retry'.
-
 -define(KAZOO_SERVICES_HRL, 'true').
 -endif.

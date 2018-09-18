@@ -265,10 +265,11 @@ maybe_create_migration_doc(Account) ->
 
 -spec create_migration_doc(binary()) -> 'ok'.
 create_migration_doc(Account) ->
-    Doc = kz_json:from_list(
-            [{<<"_id">>, ?MIGRATIONS_DOC}
-            ,{<<"pvt_created">>, kz_time:now_s()}
-            ,{<<"migrations_performed">>, []}
-            ]),
-    {'ok', _} = kz_datamgr:ensure_saved(Account, Doc),
+    Update = [{<<"pvt_created">>, kz_time:now_s()}
+             ,{<<"migrations_performed">>, []}
+             ],
+    UpdateOptions = [{'update', Update}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    {'ok', _} = kz_datamgr:update_doc(Account, ?MIGRATIONS_DOC, UpdateOptions),
     lager:debug("created migration doc for account ~s", [Account]).

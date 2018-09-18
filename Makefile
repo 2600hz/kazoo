@@ -131,15 +131,16 @@ DIALYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
-$(PLT): DEPS_EBIN ?= $(shell find $(ROOT)/deps -name ebin -type d -not -path "*/.erlang.mk/*" )
+EXCLUDE_DEPS = $(ROOT)/deps/erlang_localtime/ebin
+$(PLT): DEPS_EBIN ?= $(filter-out $(EXCLUDE_DEPS),$(wildcard $(ROOT)/deps/*/ebin))
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
 	@-$(DIALYZER) --build_plt --output_plt $(PLT) \
-	    --apps $(OTP_APPS) \
-	    -r $(DEPS_EBIN)
+	     --apps $(OTP_APPS) \
+	     -r $(DEPS_EBIN)
 	@for ebin in $(CORE_EBINS); do \
-	    $(DIALYZER) --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
-	done
+	     $(DIALYZER) --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
+	 done
 build-plt: $(PLT)
 
 clean-plt:

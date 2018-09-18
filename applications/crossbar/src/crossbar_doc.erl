@@ -13,13 +13,13 @@
         ,load_view/3, load_view/4, load_view/5, load_view/6
         ,load_attachment/4, load_docs/2
         ,save/1, save/2, save/3
+        ,update/3, update/4
         ,delete/1, delete/2
         ,save_attachment/4, save_attachment/5
         ,delete_attachment/3
-        ,ensure_saved/1, ensure_saved/2
         ,rev_to_etag/1
         ,current_doc_vsn/0
-        ,update_pvt_parameters/2, add_pvt_auth/2
+        ,update_pvt_parameters/2, add_pvt_auth/3, pvt_updates/2
         ,start_key/1, start_key/2
         ]).
 
@@ -41,14 +41,14 @@
 -include("crossbar.hrl").
 
 -define(CROSSBAR_DOC_VSN, <<"1">>).
--define(PVT_FUNS, [fun add_pvt_vsn/2
-                  ,fun add_pvt_account_id/2
-                  ,fun add_pvt_account_db/2
-                  ,fun add_pvt_created/2
-                  ,fun add_pvt_modified/2
-                  ,fun add_pvt_request_id/2
-                  ,fun add_pvt_auth/2
-                  ,fun add_pvt_alphanum_name/2
+-define(PVT_FUNS, [fun add_pvt_vsn/3
+                  ,fun add_pvt_account_id/3
+                  ,fun add_pvt_account_db/3
+                  ,fun add_pvt_created/3
+                  ,fun add_pvt_modified/3
+                  ,fun add_pvt_request_id/3
+                  ,fun add_pvt_auth/3
+                  ,fun add_pvt_alphanum_name/3
                   ]).
 
 -type direction() :: 'ascending' | 'descending'.
@@ -607,34 +607,24 @@ save_jobj(Context, JObj0, Options) ->
             Context1
     end.
 
-%%equiv ensure_saved(Context, [])
--spec ensure_saved(cb_context:context()) -> cb_context:context().
-ensure_saved(Context) ->
-    ensure_saved(Context, []).
+-spec update(cb_context:context(), kz_json:key(), kz_json:flat_proplist()) ->
+                    cb_context:context().
+update(Context, DocId, Updates) ->
+    update(Context, DocId, Updates, []).
 
-%%------------------------------------------------------------------------------
-%% @doc This function attempts to save the provided document to the accounts
-%% database. The result is loaded into the context record.
-%%
-%% Failure here returns 500 or 503.
-%% @end
-%%------------------------------------------------------------------------------
-
--spec ensure_saved(cb_context:context(), kz_term:proplist()) -> cb_context:context().
-ensure_saved(Context, Options) ->
-    ensure_saved(Context, cb_context:doc(Context), Options).
-
--spec ensure_saved(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                          cb_context:context().
-ensure_saved(Context, JObj, Options) ->
-    JObj0 = update_pvt_parameters(JObj, Context),
-    case kz_datamgr:ensure_saved(cb_context:account_db(Context), JObj0, Options) of
+-spec update(cb_context:context(), kz_json:key(), kz_json:flat_proplist(), kz_json:flat_proplist()) ->
+                    cb_context:context().
+update(Context, DocId, Updates, Creates) ->
+    UpdateOptions = [{'update', Updates}
+                    ,{'create', Creates}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    case kz_datamgr:update_doc(cb_context:account_db(Context), DocId, UpdateOptions) of
         {'error', Error} ->
-            DocId = kz_doc:id(JObj0),
             handle_datamgr_errors(Error, DocId, Context);
-        {'ok', JObj1} ->
-            Context1 = handle_datamgr_success(JObj1, Context),
-            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObj]),
+        {'ok', Saved} ->
+            Context1 = handle_datamgr_success(Saved, Context),
+            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, Saved]),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
@@ -1043,7 +1033,7 @@ add_location_header(JObj, RHs) ->
 
 -spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context(), http_method()) ->
                                  cb_context:context().
-handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
+handle_json_success(JObjs, Context, ?HTTP_PUT) when is_list(JObjs) ->
     RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
@@ -1059,7 +1049,7 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
-handle_json_success([_|_]=JObjs, Context, _Verb) ->
+handle_json_success(JObjs, Context, _Verb) when is_list(JObjs) ->
     RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
@@ -1147,58 +1137,68 @@ handle_datamgr_errors(Else, _View, Context) ->
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, Context) ->
-    F = fun(Fun, JObj) -> apply_pvt_fun(Fun, JObj, Context) end,
-    lists:foldl(F, JObj0, ?PVT_FUNS).
+    Updates = pvt_updates(JObj0, Context),
+    kz_json:set_values(Updates, JObj0).
 
--type pvt_fun() :: fun((kz_json:object(), cb_context:context()) -> kz_json:object()).
--spec apply_pvt_fun(pvt_fun(), kz_json:object(), cb_context:context()) -> kz_json:object().
-apply_pvt_fun(Fun, JObj, Context) ->
-    Fun(JObj, Context).
+-spec pvt_updates(kz_json:object(), cb_context:context()) -> kz_json:json_proplist().
+pvt_updates(JObj, Context) ->
+    F = fun(Fun, Updates) -> apply_pvt_fun(Fun, JObj, Updates, Context) end,
+    lists:foldl(F, [], ?PVT_FUNS).
 
--spec add_pvt_vsn(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_vsn(JObj, _) ->
+-type pvt_fun() :: fun((kz_json:object(), kz_json:json_proplist(), cb_context:context()) -> kz_json:json_proplist()).
+-spec apply_pvt_fun(pvt_fun(), kz_json:object(), kz_json:json_proplist(), cb_context:context()) -> kz_json:json_proplist().
+apply_pvt_fun(Fun, JObj, Updates, Context) ->
+    Fun(JObj, Updates, Context).
+
+-spec add_pvt_vsn(kz_json:object(), kz_json:json_proplist(), cb_context:context()) -> kz_json:json_proplist().
+add_pvt_vsn(JObj, Updates, _) ->
     case kz_doc:vsn(JObj) of
-        'undefined' -> kz_doc:set_vsn(JObj, ?CROSSBAR_DOC_VSN);
-        _ -> JObj
+        'undefined' -> [{kz_doc:path_vsn(), ?CROSSBAR_DOC_VSN} | Updates];
+        _ -> Updates
     end.
 
--spec add_pvt_account_db(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_account_db(JObj, Context) ->
-    case kz_doc:account_db(JObj) of
-        'undefined' ->
+-spec add_pvt_account_db(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
+                                kz_json:json_proplist().
+add_pvt_account_db(JObj, Updates, Context) ->
+    %% if no account db and the request is for an account, set db
+    case kz_doc:account_db(JObj) =:= 'undefined' of
+        'false' -> Updates;
+        'true' ->
             case cb_context:account_db(Context) of
-                'undefined' -> JObj;
-                AccountDb -> kz_doc:set_account_db(JObj, AccountDb)
-            end;
-        _Else -> JObj
+                'undefined' -> Updates;
+                AccountDb -> [{kz_doc:path_account_db(), AccountDb} | Updates]
+            end
     end.
 
--spec add_pvt_account_id(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_account_id(JObj, Context) ->
-    case kz_doc:account_id(JObj) of
-        'undefined' ->
+-spec add_pvt_account_id(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
+                                kz_json:json_proplist().
+add_pvt_account_id(JObj, Updates, Context) ->
+    case kz_doc:account_id(JObj) =:= 'undefined' of
+        'false' -> Updates;
+        'true' ->
             case cb_context:account_id(Context) of
                 'undefined' -> JObj;
-                AccountId -> kz_doc:set_account_id(JObj, AccountId)
-            end;
-        _Else -> JObj
+                AccountId -> [{kz_doc:path_account_id(), AccountId} | Updates]
+            end
     end.
 
--spec add_pvt_created(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_created(JObj, _) ->
-    case kz_doc:revision(JObj) of
-        'undefined' -> kz_doc:set_created(JObj, kz_time:now_s());
-        _ -> JObj
+-spec add_pvt_created(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
+                             kz_json:json_proplist().
+add_pvt_created(JObj, Updates, _Context) ->
+    case kz_doc:revision(JObj) =:= 'undefined' of
+        'true' -> [{kz_doc:path_created(), kz_time:now_s()} | Updates];
+        'false' -> Updates
     end.
 
--spec add_pvt_modified(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_modified(JObj, _) ->
-    kz_doc:set_modified(JObj, kz_time:now_s()).
+-spec add_pvt_modified(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
+                              kz_json:json_proplist().
+add_pvt_modified(_JObj, Updates, _Context) ->
+    [{kz_doc:path_modified(), kz_time:now_s()} | Updates].
 
--spec add_pvt_request_id(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_request_id(JObj, Context) ->
-    RequestId = cb_context:req_id(Context),
-    kz_json:set_value(<<"pvt_request_id">>, RequestId, JObj).
+-spec add_pvt_request_id(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
+                                kz_json:json_proplist().
+add_pvt_request_id(_JObj, Updates, Context) ->
+    [{<<"pvt_request_id">>, cb_context:req_id(Context)} | Updates].
 
 %%------------------------------------------------------------------------------
 %% @doc This function is used to update the private to set account ID, user ID
@@ -1208,28 +1208,31 @@ add_pvt_request_id(JObj, Context) ->
 %% document recently.
 %% @end
 %%------------------------------------------------------------------------------
--spec add_pvt_auth(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_auth(JObj, Context) ->
+-spec add_pvt_auth(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
+                          kz_json:json_proplist().
+add_pvt_auth(_JObj, Updates, Context) ->
     case cb_context:is_authenticated(Context) of
-        'false' -> kz_json:set_value(<<"pvt_is_authenticated">>, 'false', JObj);
+        'false' ->
+            [{<<"pvt_is_authenticated">>, 'false'} | Updates];
         'true' ->
             AuthDoc = cb_context:auth_doc(Context),
-            Values = props:filter_undefined(
-                       [{<<"pvt_is_authenticated">>, 'true'}
-                       ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
-                       ,{<<"pvt_auth_user_id">>, cb_context:auth_user_id(Context)}
-                       ,{<<"pvt_original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
-                       ,{<<"pvt_original_auth_owner_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
-                       ]),
-            kz_json:set_values(Values, JObj)
+            [{<<"pvt_is_authenticated">>, 'true'}
+            ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
+            ,{<<"pvt_auth_user_id">>, cb_context:auth_user_id(Context)}
+            ,{<<"pvt_original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
+            ,{<<"pvt_original_auth_owner_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
+             | Updates
+            ]
     end.
 
--spec add_pvt_alphanum_name(kz_json:object(), cb_context:context()) -> kz_json:object().
-add_pvt_alphanum_name(JObj, Context) ->
-    add_pvt_alphanum_name(JObj, Context, kz_json:get_value(<<"name">>, JObj), kz_doc:type(JObj)).
+-spec add_pvt_alphanum_name(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
+                                   kz_json:json_proplist().
+add_pvt_alphanum_name(JObj, Updates, Context) ->
+    add_pvt_alphanum_name(JObj, Updates, Context, kz_json:get_value(<<"name">>, JObj), kz_doc:type(JObj)).
 
--spec add_pvt_alphanum_name(kz_json:object(), cb_context:context(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
-add_pvt_alphanum_name(JObj, _, 'undefined', <<"user">>) ->
+-spec add_pvt_alphanum_name(kz_json:object(), kz_json:json_proplist(), cb_context:context(), kz_term:api_binary(), kz_term:ne_binary()) ->
+                                   kz_json:json_proplist().
+add_pvt_alphanum_name(JObj, Updates, _Context, 'undefined', <<"user">>) ->
     Name = case {kz_json:get_ne_binary_value(<<"first_name">>, JObj)
                 ,kz_json:get_ne_binary_value(<<"last_name">>, JObj)
                 }
@@ -1239,11 +1242,15 @@ add_pvt_alphanum_name(JObj, _, 'undefined', <<"user">>) ->
                {FirstName, 'undefined'} -> FirstName;
                {FirstName, LastName} -> <<FirstName/binary, LastName/binary>>
            end,
-    kz_json:set_value(<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name), JObj);
-add_pvt_alphanum_name(JObj, _, 'undefined', _) ->
-    JObj;
-add_pvt_alphanum_name(JObj, _, Name, _) ->
-    kz_json:set_value(<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name), JObj).
+    [{<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name)}
+     | Updates
+    ];
+add_pvt_alphanum_name(_JObj, Updates, _Context, 'undefined', _Type) ->
+    Updates;
+add_pvt_alphanum_name(_JObj, Updates, _Context, Name, _Type) ->
+    [{<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name)}
+     | Updates
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc

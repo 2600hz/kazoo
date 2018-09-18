@@ -18109,6 +18109,12 @@
                 "HTML": {
                     "type": "string"
                 },
+                "Items": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
                 "Preview": {
                     "type": "string"
                 },
@@ -28782,6 +28788,25 @@
             },
             "type": "object"
         },
+        "system_config.crossbar.phonebook": {
+            "description": "Schema for crossbar.phonebook system_config",
+            "properties": {
+                "cluster_id": {
+                    "description": "the kazoo cluster_id",
+                    "type": "string"
+                },
+                "enabled": {
+                    "default": false,
+                    "description": "phonebook integration enabled",
+                    "type": "boolean"
+                },
+                "phonebook_url": {
+                    "description": "the phonebook api url",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.crossbar.resources": {
             "description": "Schema for crossbar.resources system_config",
             "properties": {
@@ -32949,6 +32974,19 @@
                     "type": "object"
                 }
             },
+            "type": "object"
+        },
+        "system_configs": {
+            "description": "Schema for system_config documents",
+            "properties": {
+                "default": {
+                    "description": "default settings that apply to all nodes/zones if not defined",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "default"
+            ],
             "type": "object"
         },
         "tasks": {
@@ -38530,6 +38568,23 @@
                             "$ref": "#/definitions/ledgers"
                         }
                     },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/ledgers/total": {
+            "get": {
+                "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
@@ -45325,6 +45380,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "system_configs",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/system_configs"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/SYSTEM_CONFIG_ID"
                     }
                 ],
@@ -45336,6 +45399,14 @@
             },
             "put": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "system_configs",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/system_configs"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/SYSTEM_CONFIG_ID"
                     }
@@ -45395,6 +45466,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "system_configs",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/system_configs"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/SYSTEM_CONFIG_ID"
                     },

@@ -57,7 +57,7 @@ do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Pa
     Resp = couchbeam_httpc:db_request(put, Url, [], <<>>, Options1, [201, 202]),
     case Resp of
         {ok, _Status, _Headers, Ref} ->
-            hackney:skip_body(Ref),
+            _ = hackney:skip_body(Ref),
             {ok, #db{server=Server, name=DbName, options=Options1}};
         {error, precondition_failed} ->
             {error, db_exists};

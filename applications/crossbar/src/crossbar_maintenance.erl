@@ -293,7 +293,8 @@ find_account_by_id(Id) ->
 %%------------------------------------------------------------------------------
 -spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
-    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_allow_number_additions(J, 'true') end) of
+    Update = [{kzd_accounts:path_allow_number_additions(), 'true'}],
+    case kzd_accounts:update(AccountId, Update) of
         {'ok', _A} ->
             io:format("  account ~s allowed to add numbers: ~s~n", [AccountId, kz_json:encode(_A)]),
             lager:debug("  account ~s allowed to add numbers: ~s", [AccountId, kz_json:encode(_A)]);
@@ -309,7 +310,8 @@ allow_account_number_additions(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec disallow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 disallow_account_number_additions(AccountId) ->
-    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_allow_number_additions(J, 'false') end) of
+    Update = [{kzd_accounts:path_allow_number_additions(), 'false'}],
+    case kzd_accounts:update(AccountId, Update) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -320,7 +322,8 @@ disallow_account_number_additions(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec enable_account(input_term()) -> 'ok' | 'failed'.
 enable_account(AccountId) ->
-    case kzd_accounts:save(AccountId, fun kzd_accounts:enable/1) of
+    Update = [{kzd_accounts:path_enabled(), 'true'}],
+    case kzd_accounts:update(AccountId, Update) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -331,7 +334,8 @@ enable_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec disable_account(input_term()) -> 'ok' | 'failed'.
 disable_account(AccountId) ->
-    case kzd_accounts:save(AccountId, fun kzd_accounts:disable/1) of
+    Update = [{kzd_accounts:path_enabled(), 'false'}],
+    case kzd_accounts:update(AccountId, Update) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -342,7 +346,8 @@ disable_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
-    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_superduper_admin(J, 'true') end) of
+    Update = [{kzd_accounts:path_superduper_admin(), 'true'}],
+    case kzd_accounts:update(AccountId, Update) of
         {'ok', _A} ->
             io:format("  account ~s is admin-ified: ~s~n", [AccountId, kz_json:encode(_A)]),
             lager:debug("  account ~s is admin-ified: ~s~n", [AccountId, kz_json:encode(_A)]);
@@ -358,7 +363,8 @@ promote_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec demote_account(input_term()) -> 'ok' | 'failed'.
 demote_account(AccountId) ->
-    case kzd_accounts:save(AccountId, fun(J) -> kzd_accounts:set_superduper_admin(J, 'false') end) of
+    Update = [{kzd_accounts:path_superduper_admin(), 'false'}],
+    case kzd_accounts:update(AccountId, Update) of
         {'ok', _} -> 'ok';
         {'error', _} -> 'failed'
     end.
@@ -373,18 +379,22 @@ create_account(AccountName, Realm, Username, Password)
        is_binary(Realm),
        is_binary(Username),
        is_binary(Password) ->
-    Account = kz_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
-                                ,{<<"name">>, AccountName}
-                                ,{<<"realm">>, Realm}
-                                ]),
+    Account = kz_json:set_values([{<<"_id">>, kz_datamgr:get_uuid()}
+                                 ,{<<"name">>, AccountName}
+                                 ,{<<"realm">>, Realm}
+                                 ]
+                                ,kzd_accounts:new()
+                                ),
 
-    User = kz_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
-                             ,{<<"username">>, Username}
-                             ,{<<"password">>, Password}
-                             ,{<<"first_name">>, <<"Account">>}
-                             ,{<<"last_name">>, <<"Admin">>}
-                             ,{<<"priv_level">>, <<"admin">>}
-                             ]),
+    User = kz_json:set_values([{<<"_id">>, kz_datamgr:get_uuid()}
+                              ,{<<"username">>, Username}
+                              ,{<<"password">>, Password}
+                              ,{<<"first_name">>, <<"Account">>}
+                              ,{<<"last_name">>, <<"Admin">>}
+                              ,{<<"priv_level">>, <<"admin">>}
+                              ]
+                             ,kzd_users:new()
+                             ),
 
     try create_account_and_user(Account, User) of
         {'ok', _Context} -> 'ok'
@@ -449,7 +459,7 @@ create_fold(F, {'ok', C}) -> F(C).
 
 -spec update_system_config(kz_term:ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
-    kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
+    {'ok', _} = kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
     io:format("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]),
     lager:debug("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
 
@@ -1175,71 +1185,73 @@ view_app(AppJObj) ->
 
 print_app(AppJObj) ->
     io:format("App ~s\n", [kz_json:get_ne_value(<<"key">>, AppJObj)]),
-    _ = put(pp_lvl, 1),
-    _ = print_k_v(kz_json:get_value(<<"value">>, AppJObj)),
+    _ = put('pp_lvl', 1),
+    _ = print_kvs(kz_json:get_json_value(<<"value">>, AppJObj)),
     io:format("\n"),
-    no_return.
+    'no_return'.
 
-print_k_v(JObj) -> kz_json:map(fun print_k_v/2, JObj).
-print_k_v(K, V) ->
-    Lvl = get(pp_lvl),
+print_kvs(JObj) -> kz_json:foreach(fun print_k_v/1, JObj).
+
+print_k_v({K, V}) ->
+    Lvl = get('pp_lvl'),
     Indent = string:copies("  ", Lvl),
     case kz_json:is_json_object(V) of
-        false -> io:format("~s~s: ~s\n", [Indent, K, kz_json:encode(V)]);
-        true ->
+        'false' -> io:format("~s~s: ~s\n", [Indent, K, kz_json:encode(V)]);
+        'true' ->
             io:format("~s~s:\n", [Indent, K]),
-            _ = put(pp_lvl, Lvl + 1),
-            print_k_v(V),
-            _ = put(pp_lvl, Lvl)
+            _ = put('pp_lvl', Lvl + 1),
+            _ = print_kvs(V),
+            _ = put('pp_lvl', Lvl)
     end.
 
 update_app(AppId, Path, Value) ->
     case lists:last(Path) of
-        <<"_id">> -> ok;
-        <<"pvt_", _/binary>> -> ok;
+        <<"_id">> -> 'ok';
+        <<"pvt_", _/binary>> -> 'ok';
         ?NE_BINARY ->
-            {ok, MA} = kapps_util:get_master_account_db(),
-            Update = [{Path, Value}],
-            case kz_datamgr:update_doc(MA, AppId, Update) of
-                {ok, _} -> app(AppId);
-                {error, _R} -> io:format("updating ~s failed: ~p\n", [AppId, _R])
+            {'ok', MA} = kapps_util:get_master_account_db(),
+            Updates = [{Path, Value}],
+            UpdateOptions = [{'update', Updates}],
+            case kz_datamgr:update_doc(MA, AppId, UpdateOptions) of
+                {'ok', _} -> app(AppId);
+                {'error', _R} -> io:format("updating ~s failed: ~p\n", [AppId, _R])
             end
     end,
-    no_return.
+    'no_return'.
 
--spec set_app_field(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec set_app_field(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_field(AppId, Field, Value) ->
     update_app(AppId, [Field], Value).
 
--spec set_app_label(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec set_app_label(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_label(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"label">>], Value).
 
--spec set_app_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec set_app_description(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_description(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"description">>], Value).
 
--spec set_app_extended_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec set_app_extended_description(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_extended_description(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"extended_description">>], Value).
 
--spec set_app_features(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec set_app_features(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_features(AppId, Value) ->
-    Values = [V || V <- binary:split(Value, <<$@>>, [global]),
+    Values = [V || V <- binary:split(Value, <<$@>>, ['global']),
                    V =/= <<>>
              ],
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"features">>], Values).
 
--spec set_app_icon(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec set_app_icon(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_icon(AppId, PathToPNGIcon) ->
-    {ok, MA} = kapps_util:get_master_account_db(),
+    {'ok', MA} = kapps_util:get_master_account_db(),
     io:format("Processing...\n"),
     Icon = {filename:basename(PathToPNGIcon), PathToPNGIcon},
     update_icon(AppId, MA, Icon).
 
--spec set_app_screenshots(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec set_app_screenshots(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_screenshots(AppId, PathToScreenshotsFolder) ->
-    {ok, MA} = kapps_util:get_master_account_db(),
+    {'ok', MA} = kapps_util:get_master_account_db(),
     io:format("Processing...\n"),
     SShots = [{filename:basename(SShot), SShot}
               || SShot <- filelib:wildcard(kz_term:to_list(PathToScreenshotsFolder) ++ "/*.png")

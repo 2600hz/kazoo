@@ -39,6 +39,12 @@
         "HTML": {
             "type": "string"
         },
+        "Items": {
+            "items": {
+                "type": "object"
+            },
+            "type": "array"
+        },
         "Preview": {
             "type": "string"
         },

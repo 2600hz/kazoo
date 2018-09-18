@@ -55,7 +55,7 @@
 -type objects() :: [object()].
 %% Denotes a list of {@link object()}.
 
--type flat_proplist() :: [{keys(), flat_json_term()}].
+-type flat_proplist() :: [{path(), flat_json_term()}].
 %% Denotes a flatten version of JSON proplist, `[{full_path, value}]'.
 
 -type flat_object() :: ?JSON_WRAPPER(flat_proplist()).

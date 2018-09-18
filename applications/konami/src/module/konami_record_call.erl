@@ -37,7 +37,7 @@ handle(Data, Call, <<"start">>) ->
     lager:debug("starting recording, see you on the other side"),
     kapps_call:start_recording(Data, Call);
 handle(_Data, Call, <<"stop">>) ->
-    kapps_call:stop_recording(Call),
+    _ = kapps_call:stop_recording(Call),
     lager:debug("sent command to stop recording call"),
     Call.
 

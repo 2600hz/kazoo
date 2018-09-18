@@ -10,37 +10,40 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
--export([id/1
-        ,id/2
+-export([id/1, id/2
         ,set_id/2
+        ,path_id/0
         ]).
 -export([revision/1
         ,set_revision/2
         ,delete_revision/1
+        ,path_revision/0
         ]).
--export([type/1
-        ,type/2
+-export([type/1, type/2
         ,set_type/2
+        ,path_type/0
         ]).
--export([account_id/1
-        ,account_id/2
+-export([account_id/1, account_id/2
         ,set_account_id/2
+        ,path_account_id/0
         ]).
--export([account_db/1
-        ,account_db/2
+-export([account_db/1, account_db/2
         ,set_account_db/2
+        ,path_account_db/0
         ]).
 -export([created/1
         ,created/2
         ,set_created/2
+        ,path_created/0
         ]).
 -export([modified/1
         ,modified/2
         ,set_modified/2
+        ,path_modified/0
         ]).
--export([vsn/1
-        ,vsn/2
+-export([vsn/1, vsn/2
         ,set_vsn/2
+        ,path_vsn/0
         ]).
 -export([document_hash/1
         ,set_document_hash/2
@@ -60,6 +63,8 @@
         ,external_attachments/2
         ,attachment_names/1
         ,delete_attachments/1
+        ,path_attachments/0
+        ,path_external_attachments/0
         ]).
 -export([attachment/1
         ,attachment/2
@@ -179,6 +184,10 @@ id(JObj, Default) ->
 set_id(JObj, Id) ->
     kz_json:set_value(?KEY_ID, Id, JObj).
 
+-spec path_id() -> kz_json:path().
+path_id() ->
+    [?KEY_ID].
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -186,6 +195,10 @@ set_id(JObj, Id) ->
 -spec revision(doc()) -> kz_term:api_binary().
 revision(JObj) ->
     kz_json:get_first_defined([?KEY_REV, <<"rev">>], JObj).
+
+-spec path_revision() -> kz_json:path().
+path_revision() ->
+    [?KEY_REV].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -227,6 +240,10 @@ type(JObj, Default) ->
 set_type(JObj, Type) ->
     kz_json:set_value(?KEY_PVT_TYPE, Type, JObj).
 
+-spec path_type() -> kz_json:path().
+path_type() ->
+    [?KEY_PVT_TYPE].
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -246,6 +263,10 @@ account_id(JObj, Default) ->
 -spec set_account_id(doc(), kz_term:ne_binary()) -> doc().
 set_account_id(JObj, AccountId) ->
     kz_json:set_value(?KEY_ACCOUNT_ID, AccountId, JObj).
+
+-spec path_account_id() -> kz_json:path().
+path_account_id() ->
+    [?KEY_ACCOUNT_ID].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -267,6 +288,10 @@ account_db(JObj, Default) ->
 set_account_db(JObj, AccountDb) ->
     kz_json:set_value(?KEY_ACCOUNT_DB, AccountDb, JObj).
 
+-spec path_account_db() -> kz_json:path().
+path_account_db() ->
+    [?KEY_ACCOUNT_DB].
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -286,6 +311,10 @@ created(JObj, Default) ->
 -spec set_created(doc(), kz_time:gregorian_seconds()) -> doc().
 set_created(JObj, Timestamp) ->
     kz_json:set_value(?KEY_CREATED, Timestamp, JObj).
+
+-spec path_created() -> kz_json:path().
+path_created() ->
+    [?KEY_CREATED].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -307,6 +336,10 @@ modified(JObj, Default) ->
 set_modified(JObj, Now) ->
     kz_json:set_value(?KEY_MODIFIED, Now, JObj).
 
+-spec path_modified() -> kz_json:path().
+path_modified() ->
+    [?KEY_MODIFIED].
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -326,6 +359,10 @@ vsn(JObj, Default) ->
 -spec set_vsn(doc(), kz_term:ne_binary()) -> doc().
 set_vsn(JObj, VSN) ->
     kz_json:set_value(?KEY_VSN, VSN, JObj).
+
+-spec path_vsn() -> kz_json:path().
+path_vsn() ->
+    [?KEY_VSN].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -399,6 +436,14 @@ attachments(JObj, Default) ->
         A3 -> A3
     end.
 
+-spec path_attachments() -> kz_json:path().
+path_attachments() ->
+    [?KEY_ATTACHMENTS].
+
+-spec path_external_attachments() -> kz_json:path().
+path_external_attachments() ->
+    [?KEY_EXTERNAL_ATTACHMENTS].
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -428,6 +473,7 @@ external_attachments(JObj, Default) ->
         ?EMPTY_JSON_OBJECT -> Default;
         A3 -> A3
     end.
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end

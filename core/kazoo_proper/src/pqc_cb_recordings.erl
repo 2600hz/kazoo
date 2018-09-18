@@ -159,7 +159,7 @@ recordings_url(AccountId, RecordingId) ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    init(),
+    _ = init(),
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
     File = ?MP3_FILE,
@@ -202,7 +202,7 @@ seq() ->
         _E:_R ->
             ST = erlang:get_stacktrace(),
             ?INFO(?MODULE_STRING ":seq/0 failed ~s: ~p", [_E, _R]),
-            [?INFO("st: ~p", [S]) || S <- ST],
+            _ = [?INFO("st: ~p", [S]) || S <- ST],
             io:format(?MODULE_STRING ":seq/0 failed: ~s: ~p", [_E, _R])
     after
         pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),

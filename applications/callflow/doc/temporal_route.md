@@ -2,6 +2,8 @@
 
 ### About Temporal Route
 
+Branch the callflow based on the current date and time when compared to the temporal rule(s) associated with the action.
+
 #### Schema
 
 Validator for the temporal_route callflow data object

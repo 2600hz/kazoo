@@ -14,14 +14,19 @@
 -include("tasks.hrl").
 
 -define(CATEGORY, "account_crawler").
--define(SHOULD_CRAWL_FOR_LOW_BALANCE,
-        kapps_config:get_is_true(?CONFIG_CAT,
-                                 <<"should_crawl_for_low_balance">>,
-                                 'true')).
--define(LOW_BALANCE_REPEAT,
-        kapps_config:get_integer(?CONFIG_CAT,
-                                 <<"low_balance_repeat_s">>,
-                                 1 * ?SECONDS_IN_DAY)).
+-define(SHOULD_CRAWL_FOR_LOW_BALANCE
+       ,kapps_config:get_is_true(?CONFIG_CAT
+                                ,<<"should_crawl_for_low_balance">>
+                                ,'true'
+                                )
+       ).
+
+-define(LOW_BALANCE_REPEAT
+       ,kapps_config:get_integer(?CONFIG_CAT
+                                ,<<"low_balance_repeat_s">>
+                                ,1 * ?SECONDS_IN_DAY
+                                )
+       ).
 
 %%%=============================================================================
 %%% API
@@ -33,9 +38,10 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok' | {'error', 'exists'}.
 init() ->
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY>>,
-                            ?MODULE,
-                            'maybe_test_for_low_balance').
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY>>
+                           ,?MODULE
+                           ,'maybe_test_for_low_balance'
+                           ).
 
 %% Triggerables
 -spec maybe_test_for_low_balance(kz_term:ne_binary(), kzd_accounts:doc()) -> 'ok'.
@@ -62,8 +68,20 @@ test_for_low_balance(AccountId, AccountJObj, Loop) ->
             test_for_low_balance(AccountId, AccountJObj, Loop - 1);
         {'error', _R} -> 'ok';
         {'ok', AvailableUnits} ->
-            maybe_notify_for_low_balance(AccountJObj, AvailableUnits),
             maybe_topup_account(AccountJObj, AvailableUnits)
+    end.
+
+-spec maybe_topup_account(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
+maybe_topup_account(AccountJObj, AvailableUnits) ->
+    AccountId = kz_doc:id(AccountJObj),
+    lager:info("checking topup for account ~s with balance $~w"
+              ,[AccountId, kz_currency:units_to_dollars(AvailableUnits)]),
+    case kz_services_topup:maybe_topup(AccountId, AvailableUnits) of
+        {'ok', _Transaction, _Ledger} ->
+            lager:info("topup successful for ~s", [AccountId]);
+        {'error', _Error} ->
+            lager:debug("topup failed for ~s: ~p", [AccountId, _Error]),
+            maybe_notify_for_low_balance(AccountJObj, AvailableUnits)
     end.
 
 -spec maybe_notify_for_low_balance(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
@@ -81,21 +99,6 @@ maybe_notify_for_low_balance(AccountJObj, AvailableUnits) ->
 is_balance_below_notify_threshold(AvailableUnits, Threshold) ->
     AvailableUnits =< kz_currency:dollars_to_units(Threshold).
 
--spec maybe_topup_account(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
-maybe_topup_account(AccountJObj, AvailableUnits) ->
-    AccountId = kz_doc:id(AccountJObj),
-    lager:info("checking topup for account ~s with balance $~w"
-              ,[AccountId, kz_currency:units_to_dollars(AvailableUnits)]),
-    case kz_services_topup:maybe_topup(AccountId, AvailableUnits) of
-        {'ok', _Transaction, _Ledger} ->
-            maybe_reset_low_balance_sent(AccountJObj),
-            lager:info("topup successful for ~s", [AccountId]);
-        {'error', 'topup_disabled'} -> 'ok';
-        {'error', 'balance_above_threshold'} -> 'ok';
-        {'error', _Error} ->
-            lager:debug("topup failed for ~s: ~p", [AccountId, _Error])
-    end.
-
 -spec maybe_reset_low_balance_sent(kzd_accounts:doc()) -> 'ok'.
 maybe_reset_low_balance_sent(AccountJObj) ->
     case kzd_accounts:low_balance_sent(AccountJObj)
@@ -108,9 +111,12 @@ maybe_reset_low_balance_sent(AccountJObj) ->
 -spec reset_low_balance_sent(kzd_accounts:doc()) ->  'ok'.
 reset_low_balance_sent(AccountJObj0) ->
     lager:debug("resetting low balance sent"),
-    AccountJObj1 = kzd_accounts:reset_low_balance_sent(AccountJObj0),
-    AccountJObj2 = kzd_accounts:remove_low_balance_tstamp(AccountJObj1),
-    _ = kzd_accounts:save(AccountJObj2),
+
+    Updates = [{kzd_accounts:path_low_balance_sent(), 'false'}
+              ,{kzd_accounts:path_low_balance_tstamp(), 'null'}
+              ],
+
+    {'ok', _} = kzd_accounts:update(kz_doc:id(AccountJObj0), Updates),
     'ok'.
 
 -spec maybe_low_balance_notify(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
@@ -163,7 +169,8 @@ notify_of_low_balance(AccountJObj, AvailableUnits) ->
 
 -spec update_account_low_balance_sent(kzd_accounts:doc()) -> 'ok'.
 update_account_low_balance_sent(AccountJObj0) ->
-    AccountJObj1 = kzd_accounts:set_low_balance_sent(AccountJObj0),
-    AccountJObj2 = kzd_accounts:set_low_balance_tstamp(AccountJObj1),
-    _ = kzd_accounts:save(AccountJObj2),
+    Updates = [{kzd_accounts:path_low_balance_sent(), 'true'}
+              ,{kzd_accounts:path_low_balance_tstamp(), kz_time:now_s()}
+              ],
+    {'ok', _} = kzd_accounts:update(kz_doc:id(AccountJObj0), Updates),
     'ok'.

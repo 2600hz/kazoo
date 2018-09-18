@@ -94,7 +94,7 @@ api_key(MasterAccountId) ->
             throw('missing_master_account')
     end.
 
--spec create_api_state(binary(), binary(), kz_data_tracing:trace_ref()) -> state().
+-spec create_api_state(response(), binary(), kz_data_tracing:trace_ref()) -> state().
 create_api_state({'error', {'failed_connect', 'econnrefused'}}, _RequestId, _Trace) ->
     lager:warning("failed to connect to Crossbar; is it running?"),
     throw({'error', 'econnrefused'});
@@ -246,7 +246,10 @@ response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
 start_trace(RequestId) ->
     lager:md([{'request_id', RequestId}]),
     put('now', kz_time:now()),
-    TraceFile = "/tmp/" ++ kz_term:to_list(RequestId) ++ ".log",
+
+    TracePath = trace_path(),
+
+    TraceFile = filename:join(TracePath, kz_term:to_list(RequestId) ++ ".log"),
     lager:info("tracing at ~s", [TraceFile]),
 
     {'ok', _}=OK = kz_data_tracing:trace_file([glc_ops:eq('request_id', RequestId)]
@@ -256,6 +259,13 @@ start_trace(RequestId) ->
                                              ),
     ?INFO("authenticating...~s", [RequestId]),
     OK.
+
+-spec trace_path() -> file:filename_all().
+trace_path() ->
+    case application:get_env('kazoo_proper', 'trace_path') of
+        'undefined' -> "/tmp";
+        {'ok', Path} -> Path
+    end.
 
 -spec set_log_level(atom()) -> atom().
 set_log_level(LogLevel) ->

@@ -408,8 +408,8 @@ fetch_legacy(Db, Doc, []) ->
                        {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
                        {'error', kz_term:ne_binary()}.
 fetch_url(Doc) ->
-    case kzd_fax:document(Doc) of
-        [] ->
+    case kzd_fax:document(Doc, 'undefined') of
+        'undefined' ->
             lager:info("no attachment found on doc ~s", [kz_doc:id(Doc)]),
             {'error', <<"no attachment found">>};
         FetchRequest  ->

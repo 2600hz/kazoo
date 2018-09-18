@@ -510,7 +510,8 @@ get_prompt(PromptId, Lang, _AccountId, 'false') ->
             kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>)
     end.
 
--spec is_not_prompt(binary()) -> boolean().
+-spec is_not_prompt(kz_term:api_binary()) -> boolean().
+is_not_prompt('undefined') -> 'true';
 is_not_prompt(<<>>) -> 'true';
 is_not_prompt(<<"silence">>) -> 'true';
 is_not_prompt(<<"silence_stream://", _/binary>>) -> 'true';

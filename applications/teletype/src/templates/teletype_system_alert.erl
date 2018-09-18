@@ -41,7 +41,7 @@ category() -> <<"system">>.
 friendly_name() -> <<"System Notifications">>.
 
 -spec to() -> kz_json:object().
-to() -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
+to() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
 -spec from() -> kz_term:api_ne_binary().
 from() -> teletype_util:default_from_address().

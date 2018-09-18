@@ -7,9 +7,10 @@
 -module(teletype_render_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("teletype.hrl").
+-include("../src/teletype.hrl").
 
 -export([overwrite_t0/3]).
+-export([manual_rendering/1, manual_rendering/2]).
 
 -spec render_test_() -> any().
 render_test_() ->
@@ -75,13 +76,12 @@ cleanup(LinkPid) ->
     end.
 
 test_rendering(Module) ->
-    TemplateId = Module:id(),
-    TemplateIdStr = binary_to_list(TemplateId),
-    Fixture = "fixtures-api/notifications/" ++ TemplateIdStr ++ ".json",
-    {ok,FixtureJObj} = kz_json:fixture(kazoo_amqp, Fixture),
-    DataJObj = kz_json:normalize(FixtureJObj),
-    Macros = Module:macros(DataJObj),
-    CTs = teletype_templates:master_content_types(TemplateId),
+    #{id_str := TemplateIdStr
+     ,id := TemplateId
+     ,cts := CTs
+     ,macros := Macros
+     ,fixture_file := Fixture
+     } = call_template(Module),
     [{"Render "++ TemplateIdStr ++" "++ binary_to_list(CT) ++" using "++ Fixture
      ,render(TemplateId, CT, Macros)
      }
@@ -89,15 +89,60 @@ test_rendering(Module) ->
     ].
 
 render(TemplateId, CT, Macros) ->
-    TmpModule = teletype_templates:renderer_name(TemplateId, CT),
-    {ok, Template} = fetch_template(TemplateId, CT),
-    {ok, Rendered} = kz_template:render(Template, TmpModule, Macros),
-    %% Below is only when adding new tests
-    %% overwrite_t0(TemplateId, CT, Rendered),
-    %% Above is only when adding new tests
+    {ok, Rendered} = render_t0(TemplateId, CT, Macros),
     [?_assertEqual(T0, Line)
      || {T0, Line} <- lists:zip(t0(TemplateId, CT), lines(iolist_to_binary(Rendered)))
     ].
+
+render_t0(TemplateId, CT, Macros) ->
+    TmpModule = teletype_templates:renderer_name(TemplateId, CT),
+    {ok, Template} = fetch_template(TemplateId, CT),
+    kz_template:render(Template, TmpModule, Macros).
+
+-spec manual_rendering(atom()) -> 'ok'.
+manual_rendering(Module) ->
+    manual_rendering(Module, 'false').
+
+-spec manual_rendering(atom(), boolean()) -> 'ok'.
+manual_rendering(Module, ShouldOverwrite) ->
+    #{cts := CTs
+     ,id :=TemplateId
+     ,macros := Macros
+     ,fixture_file := Fixture
+     } = Map = call_template(Module),
+    ?DEV_LOG("Template ~s uses fixture ~s, macros are:~n~p~n", [TemplateId, Fixture, Macros]),
+    _ = [do_maunal_render(ShouldOverwrite, CT, Map) || CT <- CTs],
+    ok.
+
+do_maunal_render(ShouldOverwrite, CT, #{id_str := TemplateIdStr
+                                       ,id := TemplateId
+                                       ,macros := Macros
+                                       }) ->
+    io:format(user, "Rendering ~s for ~s: ", [TemplateIdStr, CT]),
+    case render_t0(TemplateId, CT, Macros) of
+        {'ok', Rendered} when ShouldOverwrite ->
+            io:format(user, "rendered successfully, writing rendered template...~n", []),
+            overwrite_t0(TemplateId, CT, Rendered);
+        {'ok', _} ->
+            io:format(user, "rendered successfully~n", []);
+        {'error', _Error} ->
+            io:format(user, "rendering failed: ~p~n", [_Error])
+    end.
+
+call_template(Module) ->
+    TemplateId = Module:id(),
+    TemplateIdStr = binary_to_list(TemplateId),
+    Fixture = "fixtures-api/notifications/" ++ TemplateIdStr ++ ".json",
+    {ok, FixtureJObj} = kz_json:fixture(kazoo_amqp, Fixture),
+    DataJObj = kz_json:normalize(FixtureJObj),
+    Macros = Module:macros(DataJObj),
+    CTs = teletype_templates:master_content_types(TemplateId),
+    #{id_str => TemplateIdStr
+     ,id => TemplateId
+     ,cts => CTs
+     ,macros => Macros
+     ,fixture_file => Fixture
+     }.
 
 t0(TemplateId, CT) ->
     Ext = ct_to_ext(CT),
@@ -106,6 +151,7 @@ t0(TemplateId, CT) ->
     {ok, Bin} = file:read_file(Path),
     lines(Bin).
 
+-spec overwrite_t0(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> 'ok'.
 overwrite_t0(TemplateId, CT, Rendered) ->
     Ext = ct_to_ext(CT),
     Path = filename:join([code:lib_dir(?APP), "test/rendered-templates/", <<TemplateId/binary,".",Ext/binary>>]),

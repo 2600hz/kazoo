@@ -64,24 +64,16 @@ check_initial_registration(Account) when is_binary(Account) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_relay(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_relay(Value) ->
-    case update_smtp_client_document(<<"relay">>, Value) of
-        {'ok', _} ->
-            'ok';
-        _Error ->
-            'failed'
-    end.
+    {'ok', _} = update_smtp_client_document(<<"relay">>, Value),
+    'ok'.
 %%------------------------------------------------------------------------------
 %% @doc Configures the username key of the SMTP_Client System Config document.
 %% @end
 %%------------------------------------------------------------------------------
 -spec configure_smtp_username(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_username(Value) ->
-    case update_smtp_client_document(<<"username">>, Value) of
-        {'ok', _} ->
-            'ok';
-        _Error ->
-            'failed'
-    end.
+    {'ok', _} = update_smtp_client_document(<<"username">>, Value),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Configures the password key of the SMTP_Client System Config document.
@@ -89,12 +81,8 @@ configure_smtp_username(Value) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_password(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_password(Value) ->
-    case update_smtp_client_document(<<"password">>, Value) of
-        {'ok', _} ->
-            'ok';
-        _Error ->
-            'failed'
-    end.
+    {'ok', _} = update_smtp_client_document(<<"password">>, Value),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Configures the username key of the SMTP_Client System Config document.
@@ -102,12 +90,8 @@ configure_smtp_password(Value) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_auth(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_auth(Value) ->
-    case update_smtp_client_document(<<"auth">>, Value) of
-        {'ok', _} ->
-            'ok';
-        _Error ->
-            'failed'
-    end.
+    {'ok', _} = update_smtp_client_document(<<"auth">>, Value),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Configures the port key of the SMTP_Client System Config document.
@@ -115,12 +99,8 @@ configure_smtp_auth(Value) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_port(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_port(Value) ->
-    case update_smtp_client_document(<<"port">>, Value) of
-        {'ok', _} ->
-            'ok';
-        _Error ->
-            'failed'
-    end.
+    {'ok', _} = update_smtp_client_document(<<"port">>, Value),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -359,6 +339,6 @@ open_system_config(Id) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_smtp_client_document(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {error, any()}.
+-spec update_smtp_client_document(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()}.
 update_smtp_client_document(Key, Value) ->
     kapps_config:set(?SMTP_CLIENT_DOC, Key, Value).

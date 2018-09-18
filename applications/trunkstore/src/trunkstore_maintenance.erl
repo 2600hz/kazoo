@@ -207,7 +207,9 @@ set_classifier_action(Action, Classifier, UserR) ->
         {'true', AcctDB, AcctID} ->
             {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),
             TSDocId = kz_doc:id(Opts),
-            kz_datamgr:update_doc(AcctDB, TSDocId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+            Updates = [{[<<"call_restriction">>, Classifier, <<"action">>], Action}],
+            UpdateOptions = [{'update', Updates}],
+            {'ok', _} = kz_datamgr:update_doc(AcctDB, TSDocId, UpdateOptions),
             io:format("Success\n");
         'false' ->
             io:format("Failed: account with realm ~p does not exist\n", [Realm])

@@ -152,4 +152,7 @@ kz_amqp_util_targeted_publish() ->
     end.
 
 smtp_send() ->
-    fun({_, _, _}, _, CallBack) -> CallBack({ok, <<"Message accepted">>}) end.
+    fun({_, _, _}, _, CallBack) ->
+            kz_util:runs_in(2000, CallBack, [{ok, <<"Message accepted">>}]),
+            {'ok', self()}
+    end.

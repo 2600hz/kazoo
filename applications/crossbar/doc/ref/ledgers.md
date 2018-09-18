@@ -81,6 +81,16 @@ curl -v -X GET \
 
 ## Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/total
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/total
+```
+
+## Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}
 
 ```shell

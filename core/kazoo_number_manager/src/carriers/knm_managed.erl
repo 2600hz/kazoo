@@ -65,7 +65,7 @@ find_numbers(<<"+", _/binary>>=Prefix, Quantity, Options) ->
 find_numbers(Prefix, Quantity, Options) ->
     find_numbers(<<"+",Prefix/binary>>, Quantity, Options).
 
--spec find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_binary(), knm_search:options()) ->
+-spec find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_ne_binary(), knm_search:options()) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
 find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
@@ -82,7 +82,7 @@ find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
         Result -> Result
     end.
 
--spec do_find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_binary(), knm_search:options()) ->
+-spec do_find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_ne_binary(), knm_search:options()) ->
                                         {'ok', list()} |
                                         {'error', any()}.
 do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
@@ -202,10 +202,13 @@ save_doc(JObj) ->
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),
-    case kz_datamgr:update_doc(?KZ_MANAGED, Num, [{?PVT_MODULE_NAME, kz_term:to_binary(?MODULE)}
-                                                  | UpdateProps
-                                                 ])
-    of
+
+    Updates = [{?PVT_MODULE_NAME, kz_term:to_binary(?MODULE)}
+               | UpdateProps
+              ],
+    UpdateOptions = [{'update', Updates}],
+
+    case kz_datamgr:update_doc(?KZ_MANAGED, Num, UpdateOptions) of
         {'ok', _UpdatedDoc} -> Number;
         {'error', Reason} ->
             knm_errors:database_error(Reason, PhoneNumber)

@@ -400,4 +400,5 @@ send_port_comment_notification(Context, PortReqId) ->
     lager:debug("sending port request notification for new comment by user ~s in account ~s"
                ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)]
                ),
+    _ = phonebook:maybe_add_comment(Context, Comment),
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).

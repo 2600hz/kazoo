@@ -32,6 +32,11 @@
                            {'incomplete', binary(), binary()}.
 -export_type([char_to_bin_res/0]).
 
+%% https://developers.braintreepayments.com/reference/general/validation-errors/all/php#code-91511
+%% https://developers.braintreepayments.com/reference/general/validation-errors/all/php#code-91510
+%% https://developers.braintreepayments.com/reference/general/validation-errors/all/php#code-81571
+-define(NO_PAYMENT_TOKEN_CODES, [91511, 91510, 81571]).
+
 %%------------------------------------------------------------------------------
 %% @doc Export XMerl object to XML and convert it to a binary.
 %% @end
@@ -132,42 +137,58 @@ error_to_props({'no_payment_token'=Reason, Details}) ->
     ,{<<"Reason">>, Key}
     ,{<<"Details">>, Details}
     ];
-error_to_props({'api_error'=Reason, Details}) ->
+error_to_props({'api_error'=Reason, Error}) ->
     Key = kz_term:to_binary(Reason),
-    Errors = kz_json:get_value([Key, <<"errors">>], Details, []),
-    Message = kz_json:get_ne_binary_value([Key, <<"message">>]
-                                         ,Details
-                                         ,?DEFAULT_ERROR_MESSAGE
-                                         ),
+    Details = kz_json:get_json_value(Key, Error, kz_json:new()),
+    BraintreeErrors = kz_json:get_value(<<"errors">>, Details, []),
+    case is_missing_payment_token(BraintreeErrors) of
+        'true' ->
+            [{<<"Message">>, <<"No payment method available">>}
+            ,{<<"Status">>, <<"error">>}
+            ,{<<"Reason">>, <<"no_payment_token">>}
+            ,{<<"Details">>, Details}
+            ];
+        'false' ->
+            Message = kz_json:get_ne_binary_value(<<"message">>
+                                                 ,Details
+                                                 ,?DEFAULT_ERROR_MESSAGE
+                                                 ),
+            [{<<"Message">>, Message}
+            ,{<<"Status">>, <<"error">>}
+            ,{<<"Reason">>, Key}
+            ,{<<"Details">>, Details}
+            ]
+    end;
+error_to_props({'min_amount'=Reason, Error}) ->
+    Key = kz_term:to_binary(Reason),
+    Message = kz_json:get_ne_binary_value(Key, Error, ?DEFAULT_ERROR_MESSAGE),
     [{<<"Message">>, Message}
     ,{<<"Status">>, <<"error">>}
     ,{<<"Reason">>, Key}
-    ,{<<"Details">>, Errors}
     ];
-error_to_props({'min_amount'=Reason, Details}) ->
+error_to_props({'max_amount'=Reason, Error}) ->
     Key = kz_term:to_binary(Reason),
-    Message = kz_json:get_ne_binary_value(Key, Details, ?DEFAULT_ERROR_MESSAGE),
+    Message = kz_json:get_ne_binary_value(Key, Error, ?DEFAULT_ERROR_MESSAGE),
     [{<<"Message">>, Message}
     ,{<<"Status">>, <<"error">>}
     ,{<<"Reason">>, Key}
-    ,{<<"Details">>, Details}
     ];
-error_to_props({'max_amount'=Reason, Details}) ->
+error_to_props({Reason, Error}) ->
     Key = kz_term:to_binary(Reason),
-    Message = kz_json:get_ne_binary_value(Key, Details, ?DEFAULT_ERROR_MESSAGE),
-    [{<<"Message">>, Message}
-    ,{<<"Status">>, <<"error">>}
-    ,{<<"Reason">>, Key}
-    ,{<<"Details">>, Details}
-    ];
-error_to_props({Reason, Details}) ->
-    Key = kz_term:to_binary(Reason),
-    Message = kz_json:get_ne_binary_value(Key, Details, ?DEFAULT_ERROR_MESSAGE),
+    Message = kz_json:get_ne_binary_value(Key, Error, ?DEFAULT_ERROR_MESSAGE),
     [{<<"Message">>, Message}
     ,{<<"Status">>, <<"fatal">>}
     ,{<<"Reason">>, Key}
-    ,{<<"Details">>, Details}
     ].
+
+-spec is_missing_payment_token(kz_term:objects()) -> boolean().
+is_missing_payment_token(BraintreeErrors) ->
+    lists:any(fun(JObj) ->
+                      Code = kz_json:get_integer_value(<<"code">>, JObj, 0),
+                      lists:member(Code, ?NO_PAYMENT_TOKEN_CODES)
+              end
+             ,BraintreeErrors
+             ).
 
 %%------------------------------------------------------------------------------
 %% @doc

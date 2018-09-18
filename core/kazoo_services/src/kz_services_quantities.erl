@@ -501,7 +501,7 @@ calculate_vmbox_updates(JObj, Updates) ->
     case kz_doc:type(JObj) =:= <<"vmbox">> of
         'false' -> Updates;
         'true' ->
-            Key = [<<"voicemails">>, <<"vmbox">>],
+            Key = [<<"voicemails">>, <<"mailbox">>],
             [{Key, 1} | Updates]
     end.
 
@@ -510,7 +510,7 @@ calculate_faxbox_updates(JObj, Updates) ->
     case kz_doc:type(JObj) =:= <<"faxbox">> of
         'false' -> Updates;
         'true' ->
-            Key = [<<"faxes">>, <<"faxbox">>],
+            Key = [<<"faxes">>, <<"mailbox">>],
             [{Key, 1} | Updates]
     end.
 

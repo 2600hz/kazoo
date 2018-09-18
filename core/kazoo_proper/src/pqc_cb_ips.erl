@@ -300,7 +300,7 @@ init() ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    init(),
+    _ = init(),
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
@@ -330,7 +330,8 @@ seq() ->
         ?INFO("zones: ~p", [Zones]),
 
         {'ok', AssignedIPs} = fetch_assigned(API, AccountId),
-        ?INFO("assigned ips: ~p", [AssignedIPs])
+        ?INFO("assigned ips: ~p", [AssignedIPs]),
+        lager:info("finished running IPs test")
 
     catch
         _E:_R ->

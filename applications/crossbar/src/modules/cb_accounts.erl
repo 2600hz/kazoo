@@ -19,8 +19,6 @@
         ,post/2, post/3
         ,delete/2, delete/3
         ,patch/2
-
-        ,replicate_account_definition/1
         ]).
 
 -export([notify_new_account/1]).
@@ -290,9 +288,9 @@ post(Context, AccountId) ->
             _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
             _ = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
 
-            JObj = cb_context:doc(Context1),
-            _ = replicate_account_definition(JObj),
-            leak_pvt_fields(AccountId, Context1);
+            {'ok', SavedAccount} = kzd_accounts:save(cb_context:doc(Context1)),
+
+            leak_pvt_fields(AccountId, cb_context:set_doc(Context1, SavedAccount));
         _Status -> Context1
     end.
 
@@ -1325,13 +1323,11 @@ maybe_set_notification_preference(Context) ->
 
 -spec set_notification_preference(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 set_notification_preference(Context, Preference) ->
-    AccountDb = cb_context:account_db(Context),
     AccountDefinition = kzd_accounts:set_notification_preference(cb_context:doc(Context), Preference),
-    case kz_datamgr:save_doc(AccountDb, AccountDefinition) of
+    case kzd_accounts:save(AccountDefinition) of
         {'error', _R} ->
             lager:error("failed to update account definition: ~p", [_R]);
-        {'ok', AccountDef} ->
-            _ = replicate_account_definition(AccountDef),
+        {'ok', _AccountDef} ->
             lager:info("notification_preference set to '~s'", [Preference])
     end.
 
@@ -1343,7 +1339,7 @@ create_account_mod(AccountId) ->
 -spec create_first_transaction(kz_term:ne_binary()) -> any().
 create_first_transaction(AccountId) ->
     {Year, Month, _} = erlang:date(),
-    kz_currency:rollup(AccountId, Year, Month, 0).
+    kz_currency:rollover(AccountId, Year, Month, 0).
 
 -spec ensure_accounts_db_exists() -> 'ok'.
 ensure_accounts_db_exists() ->
@@ -1359,9 +1355,9 @@ create_account_definition(Context) ->
     Doc = crossbar_doc:update_pvt_parameters(cb_context:doc(Context), Context),
     JObj = maybe_set_trial_expires(kz_doc:set_id(Doc, cb_context:account_id(Context))),
 
-    case kz_datamgr:save_doc(cb_context:account_db(Context), JObj) of
-        {'ok', AccountDef}->
-            _ = replicate_account_definition(AccountDef),
+    case kzd_accounts:save(JObj) of
+        {'ok', AccountDef} ->
+            lager:debug("account definition created: ~s", [kz_doc:revision(AccountDef)]),
             cb_context:setters(Context
                               ,[{fun cb_context:set_doc/2, AccountDef}
                                ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(AccountDef)}
@@ -1388,25 +1384,9 @@ set_trial_expires(JObj) ->
 
 -spec load_initial_views(cb_context:context()) -> 'ok'.
 load_initial_views(Context)->
-    kz_datamgr:refresh_views(cb_context:account_db(Context)),
+    _ = kz_datamgr:refresh_views(cb_context:account_db(Context)),
     _ = kazoo_number_manager_maintenance:update_number_services_view(cb_context:account_db(Context)),
     'ok'.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec replicate_account_definition(kz_json:object()) ->
-                                          {'ok', kz_json:object()} |
-                                          {'error', any()}.
-replicate_account_definition(JObj) ->
-    AccountId = kz_doc:id(JObj),
-    case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
-        {'ok', Rev} ->
-            kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj, Rev));
-        _Else ->
-            kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj))
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc This function will determine if the realm in the request is

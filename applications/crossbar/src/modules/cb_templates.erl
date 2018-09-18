@@ -229,14 +229,20 @@ import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
     case kz_datamgr:open_doc(TemplateDb, Id) of
         {'error', _} -> import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
         {'ok', JObj} ->
-            Routines = [fun(J) -> kz_doc:set_account_id(J, AccountId) end
-                       ,fun(J) -> kz_doc:set_account_db(J, AccountDb) end
-                       ,fun kz_doc:delete_revision/1
-                       ,fun kz_doc:delete_attachments/1
-                       ],
-            _ = kz_datamgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)),
-            Attachments = kz_doc:attachment_names(JObj),
-            _ = import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id),
+            AttachmentNames = kz_doc:attachment_names(JObj),
+            Updates = [{kz_doc:path_account_id(), AccountId}
+                      ,{kz_doc:path_account_db(), AccountDb}
+                      ,{kz_doc:path_revision(), 'null'}
+                       | [{Key, 'null'} || Key <- AttachmentNames]
+                      ],
+
+            UpdateOptions = [{'update', Updates}
+                            ,{'create', kz_json:to_proplist(JObj)}
+                            ,{'ensure_saved', 'true'}
+                            ],
+            _ = kz_datamgr:update_doc(AccountDb, Id, UpdateOptions),
+
+            _ = import_template_attachments(AttachmentNames, JObj, TemplateDb, AccountDb, Id),
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
     end.
 
