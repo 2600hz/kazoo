@@ -108,6 +108,8 @@ authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
     authorize_create(Context);
+authorize_request(Context, _, ?HTTP_GET) ->
+    Context;
 authorize_request(Context, _, ?HTTP_PUT) ->
     {'stop', cb_context:add_system_error('forbidden', Context)}.
 

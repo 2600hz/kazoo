@@ -352,7 +352,8 @@ maybe_migrate_legacy_rollover(Account, Options) ->
         {'error', 'no_legacy_transactions'} ->
             _ = rollover(Account, Year, Month),
             get_sources_total(Account, Options);
-        {'error', _Reason} = Error -> Error
+        {'error', _Reason} = Error ->
+            Error
     end.
 
 %%------------------------------------------------------------------------------
@@ -372,7 +373,10 @@ rollover(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
     case kz_currency:past_available_units(Account, PreviousYear, PreviousMonth) of
-        {'error', _R} = Error -> Error;
+        {'error', 'db_not_found'} ->
+            rollover(Account, Year, Month, 0);
+        {'error', _R} = Error ->
+            Error;
         {'ok', Total} ->
             rollover(Account, Year, Month, Total)
     end.
