@@ -20,6 +20,7 @@
         ,lookup_user_flags/3
         ,lookup_user_flags/4
         ,lookup_did/2
+        ,lookup_trunk/2
         ]).
 -export([invite_format/2]).
 
@@ -91,6 +92,38 @@ constrain_weight(W) when not is_integer(W) ->
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
+
+-spec lookup_trunk(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                        {'ok', kz_json:object()} |
+                        {'error', 'no_trunk_found' | atom()}.
+lookup_trunk(TrunkId, AccountId) ->
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    case kz_cache:fetch_local(?CACHE_NAME
+                             ,{'lookup_trunk', TrunkId, AccountId}
+                             )
+    of
+        {'ok', _}=Resp ->
+            lager:info("cache hit for ~s", [TrunkId]),
+            Resp;
+        {'error', 'not_found'} ->
+            Options = [{'key', TrunkId}],
+            case kz_datamgr:get_results(AccountDb, ?TS_VIEW_CROSSBAR_LISTING, Options) of
+                {'ok', []} ->
+                    lager:info("cache miss for trunk with id ~s, no results", [TrunkId]),
+                    {'error', 'no_did_found'};
+                {'ok', _} ->
+                    lager:info("cache miss, found trunk with id ~s", [TrunkId]),
+                    {'ok', Resp} = kz_datamgr:open_doc(AccountDb, TrunkId),
+                    kz_cache:store_local(?CACHE_NAME
+                                        ,{'lookup_trunk', TrunkId, AccountId}
+                                        ,Resp
+                                        ),
+                    {'ok', Resp};
+                {'error', _}=E ->
+                    lager:info("cache miss for ~s, error ~p", [TrunkId, E]),
+                    E
+            end
+    end.
 
 -spec lookup_did(kz_term:ne_binary(), kz_term:ne_binary()) ->
                         {'ok', kz_json:object()} |

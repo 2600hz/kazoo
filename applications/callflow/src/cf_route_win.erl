@@ -279,10 +279,23 @@ maybe_start_metaflow(Call) ->
 -spec maybe_start_metaflow(kapps_call:call(), kz_term:api_binary()) -> kapps_call:call().
 maybe_start_metaflow(Call, 'undefined') ->
     maybe_start_endpoint_metaflow(Call, kapps_call:authorizing_id(Call)),
+    maybe_start_ts_metaflow(Call, kapps_call:authorizing_id(Call)),
     Call;
 maybe_start_metaflow(Call, App) ->
     lager:debug("metaflow app ~s", [App]),
     Call.
+
+-spec maybe_start_ts_metaflow(kapps_call:call(), kz_term:api_binary()) -> 'ok'.
+maybe_start_ts_metaflow(_Call, 'undefined') -> 'ok';
+maybe_start_ts_metaflow(Call, TrunkId) ->
+    lager:debug("looking up trunkstore for ~s", [TrunkId]),
+    AccountId = kapps_call:account_id(Call),
+    case ts_util:lookup_trunk(TrunkId, AccountId) of
+        {'ok', Trunk} ->
+            lager:debug("trying to send metaflow for a-leg of trunk ~s", [TrunkId]),
+            konami_util:maybe_start_metaflow(Call, Trunk);
+        {'error', _E} -> 'ok'
+    end.
 
 -spec maybe_start_endpoint_metaflow(kapps_call:call(), kz_term:api_binary()) -> 'ok'.
 maybe_start_endpoint_metaflow(_Call, 'undefined') -> 'ok';
@@ -291,7 +304,7 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} ->
             lager:debug("trying to send metaflow for a-leg endpoint ~s", [EndpointId]),
-            kz_endpoint:maybe_start_metaflow(Call, Endpoint);
+            konami_util:maybe_start_metaflow(Call, Endpoint);
         {'error', _E} -> 'ok'
     end.
 

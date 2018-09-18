@@ -18,6 +18,7 @@
 
 %% Account views
 -define(TS_VIEW_DIDLOOKUP, <<"trunkstore/lookup_did">>).
+-define(TS_VIEW_CROSSBAR_LISTING, <<"trunkstore/crossbar_listing">>).
 
 -define(TS_VIEW_IPAUTH, <<"lookup_ip_auth/lookup_ip_auth">>).
 -define(TS_VIEW_USERAUTH, <<"lookup_user_auth/lookup_user_auth">>).

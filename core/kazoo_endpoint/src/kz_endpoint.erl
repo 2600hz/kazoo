@@ -13,7 +13,6 @@
 -export([build/2, build/3]).
 -export([create_call_fwd_endpoint/3
         ,create_sip_endpoint/3
-        ,maybe_start_metaflow/2
         ,encryption_method_map/2
         ,get_sip_realm/2, get_sip_realm/3
         ]).
@@ -24,7 +23,6 @@
 
 -include("kazoo_endpoint.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(NON_DIRECT_MODULES, [<<"cf_ring_group">>, <<"acdc_util">>]).
 
@@ -869,36 +867,9 @@ maybe_start_metaflows(Call, Endpoints, _CallId) ->
     of
         'false' -> 'ok';
         'undefined' ->
-            [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
+            [konami_util:maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
             'ok';
         _App -> 'ok'
-    end.
-
--spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
-maybe_start_metaflow(Call, Endpoint) ->
-    case not is_sms(Call)
-        andalso kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint)
-    of
-        'false' -> 'ok';
-        'undefined' -> 'ok';
-        ?EMPTY_JSON_OBJECT -> 'ok';
-        Metaflow ->
-            Id = kz_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
-            API = props:filter_undefined(
-                    [{<<"Endpoint-ID">>, Id}
-                    ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-                    ,{<<"Call">>, kapps_call:to_json(Call)}
-                    ,{<<"Numbers">>, kzd_metaflows:numbers(Metaflow)}
-                    ,{<<"Patterns">>, kzd_metaflows:patterns(Metaflow)}
-                    ,{<<"Binding-Digit">>, kzd_metaflows:binding_digit(Metaflow)}
-                    ,{<<"Digit-Timeout">>, kzd_metaflows:digit_timeout(Metaflow)}
-                    ,{<<"Listen-On">>, kzd_metaflows:listen_on(Metaflow, <<"self">>)}
-                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ]),
-            lager:debug("sending metaflow for endpoint: ~s: ~s"
-                       ,[Id, kzd_metaflows:listen_on(Metaflow, <<"self">>)]
-                       ),
-            kz_amqp_worker:cast(API, fun kapi_metaflow:publish_binding/1)
     end.
 
 -type ep_routine() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) ->
