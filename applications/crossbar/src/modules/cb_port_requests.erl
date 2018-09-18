@@ -488,7 +488,7 @@ validate_load_summary(Context, <<_/binary>> = Type) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_port_requests(cb_context:context(), req_nouns(), http_method()) ->
-                                   cb_context:context().
+                                    cb_context:context().
 validate_port_requests(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
     search_by_number(Context);
 validate_port_requests(Context, _, ?HTTP_GET) ->
