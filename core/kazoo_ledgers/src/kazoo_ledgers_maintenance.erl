@@ -224,7 +224,7 @@ rollover_accounts() ->
     'ok'.
 
 -spec rollover_account_fold(kz_term:ne_binary(), {pos_integer(), pos_integer()}) ->
-                                 {pos_integer(), pos_integer()}.
+                                   {pos_integer(), pos_integer()}.
 rollover_account_fold(Account, {Current, Total}) ->
     io:format("rollover accounts (~p/~p) '~s'~n", [Current, Total, Account]),
     _ = rollover_account(Account),
