@@ -801,7 +801,7 @@ handle_fetch_options(Services, ['skip_cache'|Options]) ->
 %%------------------------------------------------------------------------------
 -spec commit_updates(kz_term:ne_binary(), kz_services_quantities:billables(), kz_services_quantities:billables()) -> services().
 commit_updates(Account, Current, Proposed) ->
-    commit_updates(Account, Current, Proposed, []).
+    commit_updates(Account, Current, Proposed, kz_json:new()).
 
 -spec commit_updates(kz_term:ne_binary(), kz_services_quantities:billables(), kz_services_quantities:billables(), kz_json:object()) -> services().
 commit_updates(Account, Current, Proposed, AuditLog) ->

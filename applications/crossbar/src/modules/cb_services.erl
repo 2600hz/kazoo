@@ -325,6 +325,7 @@ post(Context, ?TOPUP) ->
     Amount = get_topup_amount(Context),
     Trigger = <<"crossbar-request">>,
     Audit = crossbar_services:audit_log(Context),
+
     case kz_services_topup:topup(AccountId, Amount, Trigger, Audit) of
         {'ok', 'undefined', Ledger} ->
             JObj = kz_json:from_list(
@@ -668,7 +669,7 @@ maybe_forbid_delete(DeletePlansIds, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_topup_amount(cb_context:context()) -> integer().
+-spec get_topup_amount(cb_context:context()) -> kz_currency:units().
 get_topup_amount(Context) ->
     ReqData = cb_context:req_data(Context),
     kz_currency:dollars_to_units(

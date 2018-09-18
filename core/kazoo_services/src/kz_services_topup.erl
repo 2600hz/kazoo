@@ -50,7 +50,7 @@ should_topup(?NE_BINARY=AccountId) ->
 should_topup(?NE_BINARY=AccountId, AvailableUnits) ->
     case get_topup(AccountId) of
         {'error', _} -> 'false';
-        {'ok', _ReplinishUnits, ThresholdUnits} ->
+        {'ok', _ReplenishUnits, ThresholdUnits} ->
             lager:info("checking if account ~s balance $~w is below top up threshold $~w"
                       ,[AccountId
                        ,kz_currency:units_to_dollars(AvailableUnits)
@@ -173,21 +173,21 @@ maybe_topup(Account) ->
 maybe_topup(Account, AvailableUnits) ->
     case get_topup(Account) of
         {'error', _}=E -> E;
-        {'ok', ReplinishUnits, ThresholdUnits} ->
+        {'ok', ReplenishUnits, ThresholdUnits} ->
             lager:info("checking if account ~s balance $~w is below top up threshold $~w"
                       ,[Account
                        ,kz_currency:units_to_dollars(AvailableUnits)
                        ,kz_currency:units_to_dollars(ThresholdUnits)
                        ]),
             AccountId = kz_util:format_account_id(Account, 'raw'),
-            maybe_topup(AccountId, AvailableUnits, ReplinishUnits, ThresholdUnits)
+            maybe_topup(AccountId, AvailableUnits, ReplenishUnits, ThresholdUnits)
     end.
 
 -spec maybe_topup(kz_term:ne_binary(), kz_currency:units(), kz_currency:units(), kz_currency:units()) ->
                          topup_return().
-maybe_topup(AccountId, AvailableUnits, ReplinishUnits, ThresholdUnits) ->
+maybe_topup(AccountId, AvailableUnits, ReplenishUnits, ThresholdUnits) ->
     case should_topup(AccountId, AvailableUnits, ThresholdUnits) of
-        'true' -> topup(AccountId, ReplinishUnits);
+        'true' -> topup(AccountId, ReplenishUnits);
         {'error', _} = Error -> Error
     end.
 
@@ -196,17 +196,29 @@ maybe_topup(AccountId, AvailableUnits, ReplinishUnits, ThresholdUnits) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec topup(kz_term:ne_binary(), kz_currency:units()) -> topup_return().
-topup(AccountId, ReplinishUnits) ->
-    topup(AccountId, ReplinishUnits, ?DEFAULT_EXECUTOR_TRIGGER).
+topup(AccountId, ReplenishUnits) ->
+    topup(AccountId, ReplenishUnits, ?DEFAULT_EXECUTOR_TRIGGER).
 
 -spec topup(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary()) ->
                    topup_return().
-topup(AccountId, ReplinishUnits, Trigger) ->
-    topup(AccountId, ReplinishUnits, Trigger, 'undefined').
+topup(AccountId, ReplenishUnits, Trigger) ->
+    topup(AccountId, ReplenishUnits, Trigger, 'undefined').
 
 -spec topup(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
                    topup_return().
-topup(AccountId, ReplinishUnits, Trigger, Audit) ->
+topup(AccountId, ReplenishUnits, Trigger, Audit) ->
+    TopupTransaction = create_topup_transaction(AccountId, ReplenishUnits, Trigger, Audit),
+    case kz_transaction:sale(TopupTransaction) of
+        {'error', 'invalid_bookkeeper'} ->
+            create_ledger(AccountId, ReplenishUnits, Trigger, Audit);
+        {'error', _Reason} = Error -> Error;
+        {'ok', Transaction} ->
+            maybe_create_ledger(Transaction)
+    end.
+
+-spec create_topup_transaction(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
+                                      kz_transaction:transaction().
+create_topup_transaction(AccountId, ReplenishUnits, Trigger, Audit) ->
     Setters =
         props:filter_empty(
           [{fun kz_transaction:set_account/2, AccountId}
@@ -214,16 +226,10 @@ topup(AccountId, ReplinishUnits, Trigger, Audit) ->
           ,{fun kz_transaction:set_executor_trigger/2, Trigger}
           ,{fun kz_transaction:set_executor_module/2, ?EXECUTOR_MODULE}
           ,{fun kz_transaction:set_audit/2, Audit}
-          ,{fun kz_transaction:set_unit_amount/2, ReplinishUnits}
+          ,{fun kz_transaction:set_unit_amount/2, ReplenishUnits}
           ]
          ),
-    case kz_transaction:sale(kz_transaction:setters(Setters)) of
-        {'error', 'invalid_bookkeeper'} ->
-            create_ledger(AccountId, ReplinishUnits, Trigger, Audit);
-        {'error', _Reason} = Error -> Error;
-        {'ok', Transaction} ->
-            maybe_create_ledger(Transaction)
-    end.
+    kz_transaction:setters(Setters).
 
 -spec maybe_create_ledger(kz_transaction:transaction()) -> topup_return().
 maybe_create_ledger(Transaction) ->
@@ -235,7 +241,7 @@ maybe_create_ledger(Transaction) ->
 -spec create_ledger(kz_transaction:transaction()) -> topup_return().
 create_ledger(Transaction) ->
     AccountId = kz_transaction:account_id(Transaction),
-    ReplinishUnits = kz_transaction:unit_amount(Transaction),
+    ReplenishUnits = kz_transaction:unit_amount(Transaction),
     Trigger = kz_transaction:executor_trigger(Transaction),
     Audit = kz_transaction:audit(Transaction),
     Props = [{[<<"transaction">>, <<"id">>]
@@ -246,7 +252,7 @@ create_ledger(Transaction) ->
              }
             ],
     Metadata = kz_json:set_values(Props, kz_json:new()),
-    case create_ledger(AccountId, ReplinishUnits, Trigger, Audit, Metadata) of
+    case create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) of
         {'error', Reason} ->
             {'error', {'ledger_error', Transaction, Reason}};
         {'ok', Ledger} ->
@@ -255,8 +261,8 @@ create_ledger(Transaction) ->
 
 -spec create_ledger(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
                            topup_return().
-create_ledger(AccountId, ReplinishUnits, Trigger, Audit) ->
-    case create_ledger(AccountId, ReplinishUnits, Trigger, Audit, kz_json:new()) of
+create_ledger(AccountId, ReplenishUnits, Trigger, Audit) ->
+    case create_ledger(AccountId, ReplenishUnits, Trigger, Audit, kz_json:new()) of
         {'error', Reason} ->
             {'error', {'ledger_error', 'undefined', Reason}};
         {'ok', Ledger} ->
@@ -265,11 +271,11 @@ create_ledger(AccountId, ReplinishUnits, Trigger, Audit) ->
 
 -spec create_ledger(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object(), kz_json:object()) ->
                            {'ok', kz_ledger:ledger()} | {'error', any()}.
-create_ledger(AccountId, ReplinishUnits, Trigger, Audit, Metadata) ->
-    SourceId = kz_json:get_value([<<"transaction">>, <<"id">>]
-                                ,Metadata
-                                ,kz_binary:rand_hex(5)
-                                ),
+create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) ->
+    SourceId = kz_json:get_ne_binary_value([<<"transaction">>, <<"id">>]
+                                          ,Metadata
+                                          ,kz_binary:rand_hex(5)
+                                          ),
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, AccountId}
@@ -279,7 +285,7 @@ create_ledger(AccountId, ReplinishUnits, Trigger, Audit, Metadata) ->
           ,{fun kz_ledger:set_executor_trigger/2, Trigger}
           ,{fun kz_ledger:set_executor_module/2, ?EXECUTOR_MODULE}
           ,{fun kz_ledger:set_audit/2, Audit}
-          ,{fun kz_ledger:set_unit_amount/2, ReplinishUnits}
+          ,{fun kz_ledger:set_unit_amount/2, ReplenishUnits}
           ,{fun kz_ledger:set_period_start/2, kz_time:now_s()}
           ,{fun kz_ledger:set_source_service/2, ?SOURCE_SERVICE}
           ]

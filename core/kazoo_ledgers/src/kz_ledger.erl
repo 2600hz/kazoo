@@ -714,13 +714,8 @@ save(Ledger, Account, Year, Month) ->
 save(Ledger) ->
     MODb = modb(Ledger),
     {AccountId, _Year, _Month} = kazoo_modb_util:split_account_mod(MODb),
-    Props =
-        props:filter_undefined(
-          [{<<"pvt_account_id">>, AccountId}
-          ,{[<<"audit">>, <<"available_units">>], available_units(AccountId)}
-          ]
-         ),
-    LedgerJObj = kz_json:set_values(Props, to_json(Ledger)),
+
+    LedgerJObj = add_account_info(AccountId, to_json(Ledger)),
     case kazoo_modb:save_doc(MODb, LedgerJObj) of
         {'ok', SavedJObj} ->
             lager:debug("created ~s ~s in ~s ~p-~p for $~w"
@@ -745,6 +740,14 @@ save(Ledger) ->
                        ]),
             Error
     end.
+
+-spec add_account_info(kz_term:ne_binary(), kzd_ledgers:doc()) -> kzd_ledgers:doc().
+add_account_info(AccountId, LedgerJObj) ->
+    Audit = kzd_ledgers:audit(LedgerJObj),
+    UpdatedAudit = kz_json:set_value(<<"available_units">>, available_units(AccountId), Audit),
+
+    UpdatedLedger = kzd_ledger:set_audit(LedgerJObj, UpdatedAudit),
+    kz_doc:set_account_id(UpdatedLedger, AccountId).
 
 -spec available_units(kz_term:ne_binary()) -> kz_currency:units() | 'undefined'.
 available_units(AccountId) ->

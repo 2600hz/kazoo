@@ -84,7 +84,11 @@ warn(PLT, Paths, 'true') ->
     %% then run do_warm without GoHard
     {BeamPaths, 'true'} = lists:foldl(fun get_beam_path/2, {[], 'true'}, Paths),
     Modules = lists:usort([M || {'warn_unknown', _, {'unknown_function',{M, _F, _Arity}}} <- do_scan_unknown(PLT, BeamPaths)]),
-    do_warn(PLT, [fix_path(code:which(M)) || M <- Modules] ++ BeamPaths, 'true');
+    do_warn(PLT, [fix_path(MPath) ||
+                     M <- Modules,
+                     MPath <- [code:which(M)],
+                     MPath =/= 'non_existing'
+                 ] ++ BeamPaths, 'true');
 warn(PLT, Paths, 'false') ->
     {BeamPaths, 'false'} = lists:foldl(fun get_beam_path/2, {[], 'false'}, Paths),
     do_warn(PLT, BeamPaths, 'false').
@@ -116,6 +120,8 @@ maybe_fix_path(Path, BPs, GoHard) ->
 fix_path(Path) ->
     {'ok', CWD} = file:get_cwd(),
     fix_path(Path, CWD).
+
+fix_path('non_existing', _CWD) -> 'undefined';
 fix_path(Path, CWD) ->
     case re:run(Path, CWD) of
         'nomatch' -> filename:join([CWD, Path]);
