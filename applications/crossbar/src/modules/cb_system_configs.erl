@@ -148,7 +148,8 @@ validate_document(Context, Id, ?HTTP_POST) ->
 validate_document(Context, Id, ?HTTP_PATCH) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
     StoredConfig = kapps_config_doc:stored_config(Id, kapps_config_doc:get_keys(RequestData)),
-    FullConfig = kz_json:merge(StoredConfig, RequestData),
+    FullConfig = kz_json:merge_recursive(StoredConfig, RequestData),
+
     validate_document_request(Context, Id, FullConfig);
 
 validate_document(Context, Id, ?HTTP_DELETE) ->
