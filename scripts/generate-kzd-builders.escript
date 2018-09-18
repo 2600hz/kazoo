@@ -6,5 +6,7 @@
 
 -export([main/1]).
 
-main(_) ->
-    kzd_builders:build_accessors().
+main([]) ->
+    kzd_builders:build_accessors();
+main([Schema]) ->
+    kzd_builders:build_accessor(Schema).
