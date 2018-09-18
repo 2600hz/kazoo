@@ -746,7 +746,7 @@ add_account_info(AccountId, LedgerJObj) ->
     Audit = kzd_ledgers:audit(LedgerJObj),
     UpdatedAudit = kz_json:set_value(<<"available_units">>, available_units(AccountId), Audit),
 
-    UpdatedLedger = kzd_ledger:set_audit(LedgerJObj, UpdatedAudit),
+    UpdatedLedger = kzd_ledgers:set_audit(LedgerJObj, UpdatedAudit),
     kz_doc:set_account_id(UpdatedLedger, AccountId).
 
 -spec available_units(kz_term:ne_binary()) -> kz_currency:units() | 'undefined'.
