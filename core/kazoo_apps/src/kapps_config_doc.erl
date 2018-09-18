@@ -57,7 +57,12 @@ apply_default_node(Config) ->
 -spec apply_schema_defaults(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_schema_defaults(Id, Config) ->
     Default = schema_defaults(Id),
-    lists:foldl(fun(K,A) -> apply_default_values(A, K, Default) end, Config, [?DEFAULT|get_keys(Config)]).
+    lists:foldl(fun(NodeOrZoneKey, Acc) ->
+                        apply_default_values(Acc, NodeOrZoneKey, Default)
+                end
+               ,Config
+               ,[?DEFAULT|get_keys(Config)]
+               ).
 
 -spec apply_schema_defaults_to_default(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_schema_defaults_to_default(Id, Config) ->
@@ -70,13 +75,22 @@ schema_defaults(Id) ->
 -spec maybe_insert_default_node(kz_json:object()) -> kz_json:object().
 maybe_insert_default_node(Config) ->
     case kz_json:get_value(?DEFAULT, Config) of
-        undefined -> kz_json:set_value(?DEFAULT, kz_json:new(), Config);
+        'undefined' -> kz_json:set_value(?DEFAULT, kz_json:new(), Config);
         _Else -> Config
     end.
 
 -spec config_with_defaults(kz_term:ne_binary()) -> kz_json:object().
 config_with_defaults(Id) ->
-    apply_schema_defaults(Id, maybe_insert_default_node(apply_default_node(get_config(Id)))).
+    ConfigJObj = get_config(Id),
+    lager:info("config for ~s: ~p", [Id, ConfigJObj]),
+
+    WithDefaults = apply_default_node(ConfigJObj),
+    lager:info("after default node applied: ~p", [WithDefaults]),
+
+    WithDefaultNode = maybe_insert_default_node(WithDefaults),
+    lager:info("after inserting default node: ~p", [WithDefaultNode]),
+
+    apply_schema_defaults(Id, WithDefaultNode).
 
 -spec default_config(kz_term:ne_binary(), [kz_term:ne_binary()]) -> kz_json:object().
 default_config(Id, Keys) ->
