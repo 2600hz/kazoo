@@ -70,20 +70,28 @@ debug_dump_process_info(InfoLog, [Pid|Pids]) ->
 debug_dump_process_status(FolderName) ->
     StatusLog = FolderName ++ "/processes_status",
     'ok' = start_debug_file(StatusLog),
-    debug_dump_process_status(StatusLog, erlang:processes()).
+    debug_dump_processes_status(StatusLog, erlang:processes()).
 
--spec debug_dump_process_status(string(), [pid()]) -> 'ok'.
-debug_dump_process_status(_, []) -> 'ok';
-debug_dump_process_status(StatusLog, [Pid|Pids]) ->
-    Info = erlang:process_info(Pid),
+-spec debug_dump_processes_status(string(), [pid()]) -> 'ok'.
+debug_dump_processes_status(_, []) -> 'ok';
+debug_dump_processes_status(StatusLog, [Pid|Pids]) ->
+    debug_dump_process_status(StatusLog, Pid),
+    debug_dump_processes_status(StatusLog, Pids).
+
+-spec debug_dump_process_status(string(), pid()) -> 'ok'.
+debug_dump_process_status(StatusLog, Pid)  ->
+    debug_dump_process_info(StatusLog, Pid, process_info(Pid)).
+
+-spec debug_dump_process_info(string(), pid(), kz_term:api_proplist()) -> 'ok'.
+debug_dump_process_info(_StatusLog, _Pid, 'undefined') -> 'ok';
+debug_dump_process_info(StatusLog, Pid, Info) ->
     Dictionary = props:get_value('dictionary', Info, []),
-    _ = case props:get_value('$initial_call', Dictionary) =/= 'undefined' of
-            'false' -> 'ok';
-            'true' ->
-                StatusBytes = io_lib:format("~p~n~p~n~n", [Pid, catch sys:get_status(Pid)]),
-                'ok' = file:write_file(StatusLog, StatusBytes, ['append'])
-        end,
-    debug_dump_process_status(StatusLog, Pids).
+    case props:get_value('$initial_call', Dictionary) =/= 'undefined' of
+        'false' -> 'ok';
+        'true' ->
+            StatusBytes = io_lib:format("~p~n~p~n~n", [Pid, catch sys:get_status(Pid)]),
+            'ok' = file:write_file(StatusLog, StatusBytes, ['append'])
+    end.
 
 -spec debug_dump_ets(string()) -> 'ok'.
 debug_dump_ets(FolderName) ->
