@@ -42,7 +42,6 @@ config_url(Id, NodeId) ->
 -spec list_configs(pqc_cb_api:api()) -> kz_term:ne_binaries().
 list_configs(API) ->
     URL = configs_url(),
-    io:format("GET ~s~n", [URL]),
     Resp = pqc_cb_api:make_request([200]
                                   ,fun kz_http:get/2
                                   ,URL
@@ -53,7 +52,6 @@ list_configs(API) ->
 -spec get_config(pqc_cb_api:api(), kz_term:ne_binary()) -> kzd_system_configs:doc().
 get_config(API, Id) ->
     URL = config_url(Id),
-    io:format("GET ~p:~n", [URL]),
     Resp = pqc_cb_api:make_request([200, 404]
                                   ,fun kz_http:get/2
                                   ,URL
@@ -64,7 +62,6 @@ get_config(API, Id) ->
 -spec get_default_config(pqc_cb_api:api(), kz_term:ne_binary()) -> kzd_system_configs:doc().
 get_default_config(API, Id) ->
     URL = config_url(Id) ++ "?with_defaults=true",
-    io:format("GET ~p:~n", [URL]),
     Resp = pqc_cb_api:make_request([200, 404]
                                   ,fun kz_http:get/2
                                   ,URL
@@ -75,7 +72,6 @@ get_default_config(API, Id) ->
 -spec get_node_config(pqc_cb_api:api(), kz_term:ne_binary(), kz_term:ne_binary()) -> kzd_system_configs:doc().
 get_node_config(API, Id, NodeId) ->
     URL = config_url(Id, NodeId) ++ "?with_defaults=true",
-    io:format("GET ~p:~n", [URL]),
     Resp = pqc_cb_api:make_request([200, 404]
                                   ,fun kz_http:get/2
                                   ,URL
@@ -90,7 +86,6 @@ set_default_config(API, Config) ->
     URL = config_url(kz_doc:id(Config)),
     Data = pqc_cb_api:create_envelope(Config),
 
-    io:format("POST ~p:~n~p~n", [URL, Data]),
     Resp = pqc_cb_api:make_request([200]
                                   ,fun kz_http:post/3
                                   ,URL
@@ -105,7 +100,6 @@ patch_default_config(API, Id, Config) ->
     URL = config_url(Id),
     Data = pqc_cb_api:create_envelope(Config),
 
-    io:format("POST ~p:~n~p~n", [URL, Data]),
     Resp = pqc_cb_api:make_request([200]
                                   ,fun kz_http:patch/3
                                   ,URL
@@ -117,12 +111,12 @@ patch_default_config(API, Id, Config) ->
 -spec delete_config(pqc_cb_api:api(), kz_term:ne_binary()) -> binary().
 delete_config(API, Id) ->
     URL = config_url(Id),
-    io:format("DELETE ~p:~n", [URL]),
-    pqc_cb_api:make_request([200, 404]
-                           ,fun kz_http:delete/2
-                           ,URL
-                           ,pqc_cb_api:request_headers(API)
-                           ).
+    Resp = pqc_cb_api:make_request([200, 404]
+                                  ,fun kz_http:delete/2
+                                  ,URL
+                                  ,pqc_cb_api:request_headers(API)
+                                  ),
+    pqc_cb_response:data(Resp).
 
 init() ->
     _ = kz_data_tracing:clear_all_traces(),
@@ -149,7 +143,6 @@ seq() ->
     API = pqc_kazoo_model:api(Model),
 
     Listing = list_configs(API),
-    io:format("listing: ~p~n", [Listing]),
     'false' = lists:member(?SYSTEM_CONFIG_ID, Listing),
 
     Section = kz_json:from_list([{<<"key">>, <<"value">>}
@@ -190,6 +183,16 @@ seq() ->
     <<"alue">> = kz_json:get_value([<<"nested">>, <<"ankle">>], GetNode),
     <<"nalue">> = kz_json:get_value([<<"nested">>, <<"knee">>], GetNode),
 
+    InListing = list_configs(API),
+    'true' = lists:member(?SYSTEM_CONFIG_ID, InListing),
+
+    Delete = delete_config(API, ?SYSTEM_CONFIG_ID),
+    io:format("delete: ~p~n", [Delete]),
+    'true' = kz_json:is_true([<<"_read_only">>, <<"deleted">>], Delete),
+
+    OutListing = list_configs(API),
+    'false' = lists:member(?SYSTEM_CONFIG_ID, OutListing),
+
     ?INFO("COMPLETED SUCCESSFULLY!"),
     cleanup(API),
     io:format("done: ~p~n", [API]).
@@ -198,10 +201,10 @@ seq() ->
 cleanup() ->
     ?INFO("CLEANUP ALL THE THINGS"),
     kz_data_tracing:clear_all_traces(),
-    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?SYSTEM_CONFIG_ID),
     cleanup(pqc_cb_api:authenticate()).
 
 -spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
+    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?SYSTEM_CONFIG_ID),
     pqc_cb_api:cleanup(API).
