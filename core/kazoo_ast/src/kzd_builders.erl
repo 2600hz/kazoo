@@ -68,18 +68,22 @@ accessor_from_pattern(<<"^_pvt", _/binary>>, _Properties, Acc) -> Acc;
 accessor_from_pattern(_Pattern, Properties, {Acc, Path}) ->
     PatternPath = pattern_path(Path, Properties),
     Acc1 = accessor_from_pattern(PatternPath, key_from_path(PatternPath), Properties, Acc),
-    {Acc1, Path}.
+    {Acc1, PatternPath}.
 
 pattern_path([], Properties) ->
-    [kz_json:get_ne_binary_value(<<"name">>, Properties, <<"index">>)];
+    case kz_json:get_ne_binary_value(<<"name">>, Properties) of
+        'undefined' -> [];
+        Name -> [Name]
+    end;
 pattern_path(Path, Properties) ->
-    [_|Rest] = lists:reverse(Path),
-    lists:reverse([kz_json:get_ne_binary_value(<<"name">>, Properties, <<"index">>)
-                   | Rest
-                  ]).
+    case kz_json:get_ne_binary_value(<<"name">>, Properties) of
+        'undefined' -> Path;
+        Name ->
+            [_|Rest] = lists:reverse(Path),
+            lists:reverse([Name | Rest])
+    end.
 
 accessor_from_pattern(Path, Key, Properties, {Exports, Accessors}) ->
-    io:format("pattern path: ~p~n", [Path]),
     AccessorName = clean_name(Path),
     {add_pattern_exports(AccessorName, Key, Exports)
     ,add_pattern_accessors(AccessorName, Key, Properties, Accessors)
