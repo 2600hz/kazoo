@@ -248,7 +248,7 @@ put(Context, Action) ->
            ,kz_json:get_ne_binary_value([<<"usage">>, <<"unit">>], ReqData)
            }
           ,{fun kz_ledger:set_period_start/2
-           ,kz_json:get_integer_value([<<"period">>, <<"start">>], ReqData)
+           ,kz_json:get_integer_value([<<"period">>, <<"start">>], ReqData, kz_time:now_s())
            }
           ,{fun kz_ledger:set_period_end/2
            ,kz_json:get_integer_value([<<"period">>, <<"end">>], ReqData)
