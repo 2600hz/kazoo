@@ -8,6 +8,7 @@
     + [Get port request by phone number for account and descendants](#get-port-request-for-account-and-descendants)
 * Port Request Listing
     - [List all](#list-port-requests)
+    - [List all by number](#list-port-requests-by-number-of-self-and-subaccounts)
     - [List all for sub accounts](#list-port-requests-of-self-and-sub-accounts)
     - [List by state](#listing-by-port-state)
         + [`unconfirmed`](#listing-by-unconfirmed-port)
@@ -124,6 +125,46 @@ curl -v -X GET \
             ]
         }
     ],
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+#### Search a port request by phone number from superduper admin across all sub-accounts
+
+> GET /v2/port_requests
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/port_requests?by_number={PHONE_NUMBER}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "created": 63630107130,
+            "id": "0684aa1e2785d62c76ce27d2451a1c26",
+            "name": "Porting 202.555.9000",
+            "numbers": {
+                "{PHONE_NUMBER}": {}
+            },
+            "port_state": "canceled",
+            "sent": false,
+            "updated": 63630120578,
+            "uploads": {
+                "file.pdf": {
+                    "content_type": "application/pdf",
+                    "length": 90931
+                }
+            }
+        }
+    ],
+    "page_size": 1,
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"

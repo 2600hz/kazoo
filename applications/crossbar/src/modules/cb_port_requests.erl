@@ -10,6 +10,7 @@
 -module(cb_port_requests).
 
 -export([init/0
+        ,authorize/1
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,content_types_provided/3, content_types_provided/4
@@ -66,6 +67,7 @@
 -spec init() -> 'ok'.
 init() ->
     _ = knm_port_request:init(),
+    _ = crossbar_bindings:bind(<<"*.authorize.port_requests">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.port_requests">>, ?MODULE, 'content_types_provided'),
@@ -76,6 +78,30 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.patch.port_requests">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.post.port_requests">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.port_requests">>, ?MODULE, 'delete').
+
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
+%% @end
+%%------------------------------------------------------------------------------
+-spec authorize(cb_context:context()) ->
+                       boolean() |
+                       {'stop', cb_context:context()}.
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> 'true'.
+authorize(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
+    case cb_context:is_superduper_admin(Context)
+        andalso cb_context:is_account_admin(Context)
+    of
+        'true' -> 'true';
+        'false' ->
+            {'stop', cb_context:add_system_error('forbidden', Context)}
+    end;
+authorize(Context, [{<<"port_requests">>, []}], _) ->
+    {'stop', cb_context:add_system_error('forbidden', Context)};
+authorize(_Context, _, _) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
@@ -231,7 +257,7 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 -spec validate(cb_context:context()) ->
                       cb_context:context().
 validate(Context) ->
-    validate_port_request(Context, cb_context:req_verb(Context)).
+    validate_port_requests(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) ->
                       cb_context:context().
@@ -319,7 +345,8 @@ save(Context) ->
                                   ,{fun cb_context:set_doc/2, NewDoc}
                                   ]
                                  ),
-    crossbar_doc:save(Context1).
+    Context2 = crossbar_doc:save(Context1),
+    phonebook:maybe_create_port_in(Context2).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -420,7 +447,8 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 -spec delete(cb_context:context(), path_token()) ->
                     cb_context:context().
 delete(Context, _Id) ->
-    crossbar_doc:delete(Context).
+    Context2 = crossbar_doc:delete(Context),
+    phonebook:maybe_cancel_port_in(Context2).
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
                     cb_context:context().
@@ -430,6 +458,7 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -458,11 +487,13 @@ validate_load_summary(Context, <<_/binary>> = Type) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_port_request(cb_context:context(), http_method()) ->
-                                   cb_context:context().
-validate_port_request(Context, ?HTTP_GET) ->
+-spec validate_port_requests(cb_context:context(), req_nouns(), http_method()) ->
+                                    cb_context:context().
+validate_port_requests(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
+    search_by_number(Context);
+validate_port_requests(Context, _, ?HTTP_GET) ->
     summary(Context);
-validate_port_request(Context, ?HTTP_PUT) ->
+validate_port_requests(Context, _, ?HTTP_PUT) ->
     create(Context).
 
 -spec validate_port_request(cb_context:context(), kz_term:ne_binary(), http_method()) ->
@@ -638,16 +669,16 @@ load_summary_fold(Context, Type, IsRanged) ->
 -spec load_summary(cb_context:context(), {boolean(), crossbar_view:options()}) -> cb_context:context().
 load_summary(Context, {IsRanged, Opts}) ->
     View = get_summarize_view_name(Context),
-    Context1 = cb_context:set_should_paginate(Context, 'false'),
     Options = [{'mapper', fun normalize_view_results/2}
               ,{'databases', [?KZ_PORT_REQUESTS_DB]}
               ,{'unchunkable', 'true'}
+              ,{'should_paginate', 'false'}
               ,'include_docs'
                | Opts
               ],
     case IsRanged of
-        'true' -> crossbar_view:load_range(Context1, View, Options);
-        'false' -> crossbar_view:load(Context1, View, Options)
+        'true' -> crossbar_view:load_range(Context, View, Options);
+        'false' -> crossbar_view:load(Context, View, Options)
     end.
 
 -spec view_key_options(cb_context:context(), kz_term:ne_binary(), boolean()) -> {boolean(), crossbar_view:options()}.
@@ -922,6 +953,27 @@ successful_validation(Context, _Id) ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     cb_context:set_doc(Context, Normalized).
 
+-spec search_by_number(cb_context:context()) -> cb_context:context().
+search_by_number(Context) ->
+    case cb_context:req_value(Context, <<"by_number">>) of
+        'undefined' ->
+            cb_context:add_system_error('invalid_request', <<"missing query string by_number">>, Context);
+        Number ->
+            E164 = knm_converters:normalize(Number),
+            fetch_by_number(Context, E164)
+    end.
+
+-spec fetch_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+fetch_by_number(Context, Number) ->
+    Options = [{'mapper', fun normalize_view_results/2}
+              ,{'keymap', Number}
+              ,{'databases', [?KZ_PORT_REQUESTS_DB]}
+              ,{'unchunkable', 'true'}
+              ,{'should_paginate', 'false'}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, ?PORT_REQ_NUMBERS, Options).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -931,25 +983,19 @@ successful_validation(Context, _Id) ->
 check_number_portability(PortId, Number, Context) ->
     E164 = knm_converters:normalize(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
-    PortOptions = [{'key', E164}],
-    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_REQ_NUMBERS, PortOptions) of
-        {'ok', []} -> check_number_existence(E164, Number, Context);
-        {'ok', [PortReq]} ->
-            check_number_portability(PortId, Number, Context, E164, PortReq);
-        {'ok', [_|_]=_PortReqs} ->
-            lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!",
-                        [E164, Number]),
-            Msg = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
-            number_validation_error(Context, Number, Msg);
-        {'error', _E} ->
-            lager:debug("failed to query the port request view: ~p", [_E]),
-            Message = <<"Failed to query back-end services, cannot port at this time">>,
-            number_validation_error(Context, Number, Message)
+    Context1 = fetch_by_number(Context, E164),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            DataResp = cb_context:resp_data(Context1),
+            check_number_portability(PortId, Number, Context1, E164, DataResp);
+        _ -> Context1
     end.
 
--spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+-spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:objects()) ->
                                       cb_context:context().
-check_number_portability(PortId, Number, Context, E164, PortReq) ->
+check_number_portability(_PortId, Number, Context, E164, []) ->
+    check_number_existence(E164, Number, Context);
+check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
     case {kz_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
          ,kz_doc:id(PortReq) =:= PortId
          }
@@ -968,7 +1014,12 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
                        ,[E164, Number, kz_json:get_value(<<"value">>, PortReq)]),
             Message = <<"Number is being ported for a different account">>,
             number_validation_error(Context, Number, Message)
-    end.
+    end;
+check_number_portability(_PortId, Number, Context, E164, [_|_]) ->
+    lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!",
+                [E164, Number]),
+    Msg = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
+    number_validation_error(Context, Number, Msg).
 
 -spec number_validation_error(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      cb_context:context().
@@ -1107,6 +1158,7 @@ maybe_send_port_comment_notification(Context, Id) ->
     case has_new_comment(DbDocComments, ReqDataComments) of
         'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
         'true' ->
+            _ = phonebook:maybe_add_comment(Context, lists:last(ReqDataComments)),
             try send_port_comment_notification(Context, Id, lists:last(ReqDataComments)) of
                 _ -> lager:debug("port comment notification sent")
             catch

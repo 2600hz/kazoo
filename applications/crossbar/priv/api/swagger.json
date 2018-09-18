@@ -28788,6 +28788,25 @@
             },
             "type": "object"
         },
+        "system_config.crossbar.phonebook": {
+            "description": "Schema for crossbar.phonebook system_config",
+            "properties": {
+                "cluster_id": {
+                    "description": "the kazoo cluster_id",
+                    "type": "string"
+                },
+                "enabled": {
+                    "default": false,
+                    "description": "phonebook integration enabled",
+                    "type": "boolean"
+                },
+                "phonebook_url": {
+                    "description": "the phonebook api url",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.crossbar.resources": {
             "description": "Schema for crossbar.resources system_config",
             "properties": {
