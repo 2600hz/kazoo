@@ -946,7 +946,7 @@ find_schema(Schema=?NE_BINARY) ->
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_payment_token', Context) ->
-    build_system_error(402, 'no_payment_token', <<"no means of payment on file">>, Context);
+    build_system_error(402, 'no_payment_token', <<"no payment method available">>, Context);
 add_system_error('no_credit', Context) ->
     build_system_error(402, 'no_credit', <<"not enough credit to perform action">>, Context);
 add_system_error('unspecified_fault', Context) ->

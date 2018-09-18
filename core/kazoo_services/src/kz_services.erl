@@ -475,18 +475,9 @@ ratedeck_id(Services) ->
 
 -spec plan_ratedeck_id(services()) -> kz_term:api_ne_binary().
 plan_ratedeck_id(Services) ->
-    case kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
-                                         PlansList ++ Plans
-                                 end
-                                ,[]
-                                ,plans(Services)
-                                )
-    of
-        [] -> 'undefined';
-        Plans ->
-            Plan = kz_services_plans:merge(Plans),
-            kz_services_plan:ratedeck_id(Plan)
-    end.
+    kz_services_plan:ratedeck_id(
+      merge_all_plans(Services)
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -505,18 +496,9 @@ ratedeck_name(Services) ->
 
 -spec plan_ratedeck_name(services()) -> kz_term:api_ne_binary().
 plan_ratedeck_name(Services) ->
-    case kz_services_plans:foldl(fun(_BookkeeperHash, PlansList, Plans) ->
-                                         PlansList ++ Plans
-                                 end
-                                ,[]
-                                ,plans(Services)
-                                )
-    of
-        [] -> 'undefined';
-        Plans ->
-            Plan = kz_services_plans:merge(Plans),
-            kz_services_plan:ratedeck_name(Plan)
-    end.
+    kz_services_plan:ratedeck_name(
+      merge_all_plans(Services)
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -629,6 +611,24 @@ setters(Services, Routines) ->
                ,Services
                ,Routines
                ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec merge_all_plans(services()) -> kz_services_plan:plan().
+merge_all_plans(Services) ->
+    case kz_services_plans:foldl(fun collect_plans_foldl/3, [], plans(Services)) of
+        [] -> kz_services_plan:empty();
+        Plans -> kz_services_plans:merge(Plans)
+    end.
+
+-spec collect_plans_foldl(kz_term:ne_binary()
+                         ,kz_services_plans:plans_list()
+                         ,kz_services_plans:plans_list()
+                         ) -> kz_services_plans:plans_list().
+collect_plans_foldl(_BookkeeperHash, PlansList, Plans) ->
+    PlansList ++ Plans.
 
 %%------------------------------------------------------------------------------
 %% @doc
