@@ -257,7 +257,7 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 -spec validate(cb_context:context()) ->
                       cb_context:context().
 validate(Context) ->
-    validate_port_request(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    validate_port_requests(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) ->
                       cb_context:context().
@@ -487,13 +487,13 @@ validate_load_summary(Context, <<_/binary>> = Type) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_port_request(cb_context:context(), req_nouns(), http_method()) ->
+-spec validate_port_requests(cb_context:context(), req_nouns(), http_method()) ->
                                    cb_context:context().
-validate_port_request(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
+validate_port_requests(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
     search_by_number(Context);
-validate_port_request(Context, _, ?HTTP_GET) ->
+validate_port_requests(Context, _, ?HTTP_GET) ->
     summary(Context);
-validate_port_request(Context, _, ?HTTP_PUT) ->
+validate_port_requests(Context, _, ?HTTP_PUT) ->
     create(Context).
 
 -spec validate_port_request(cb_context:context(), kz_term:ne_binary(), http_method()) ->
@@ -953,7 +953,7 @@ successful_validation(Context, _Id) ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     cb_context:set_doc(Context, Normalized).
 
-
+-spec search_by_number(cb_context:context()) -> cb_context:context().
 search_by_number(Context) ->
     case cb_context:req_value(Context, <<"by_number">>) of
         'undefined' ->
@@ -963,6 +963,7 @@ search_by_number(Context) ->
             fetch_by_number(Context, E164)
     end.
 
+-spec fetch_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 fetch_by_number(Context, Number) ->
     Options = [{'mapper', fun normalize_view_results/2}
               ,{'keymap', Number}
@@ -994,11 +995,6 @@ check_number_portability(PortId, Number, Context) ->
                                       cb_context:context().
 check_number_portability(_PortId, Number, Context, E164, []) ->
     check_number_existence(E164, Number, Context);
-check_number_portability(_PortId, Number, Context, E164, [_|_]) ->
-    lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!",
-                [E164, Number]),
-    Msg = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
-    number_validation_error(Context, Number, Msg);
 check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
     case {kz_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
          ,kz_doc:id(PortReq) =:= PortId
@@ -1018,7 +1014,12 @@ check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
                        ,[E164, Number, kz_json:get_value(<<"value">>, PortReq)]),
             Message = <<"Number is being ported for a different account">>,
             number_validation_error(Context, Number, Message)
-    end.
+    end;
+check_number_portability(_PortId, Number, Context, E164, [_|_]) ->
+    lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!",
+                [E164, Number]),
+    Msg = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
+    number_validation_error(Context, Number, Msg).
 
 -spec number_validation_error(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      cb_context:context().
