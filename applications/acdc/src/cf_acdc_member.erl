@@ -23,7 +23,7 @@
 -record(member_call, {call             :: kapps_call:call()
                      ,queue_id         :: kz_term:api_binary()
                      ,config_data = [] :: kz_term:proplist()
-                     ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
+                     ,max_wait = 60 :: max_wait()
                      }).
 -type member_call() :: #member_call{}.
 
@@ -104,10 +104,14 @@ wait_for_bridge(#member_call{call=Call}, Timeout, _Start) when Timeout < 0 ->
     end_member_call(Call);
 wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
     Wait = os:timestamp(),
+    TimeoutMs = case Timeout of
+                    'infinity' -> 'infinity';
+                    _ -> Timeout * ?MILLISECONDS_IN_SECOND
+                end,
     receive
         {'amqp_msg', JObj} ->
             process_message(MC, Timeout, Start, Wait, JObj, kz_util:get_event_type(JObj))
-    after Timeout ->
+    after TimeoutMs ->
             lager:info("failed to handle the call in time, proceeding"),
             end_member_call(Call)
     end.
@@ -163,10 +167,9 @@ process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"member">>, 
 process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
     wait_for_bridge(MC, kz_time:decr_timeout(Timeout, Wait), Start).
 
-%% convert from seconds to milliseconds, or infinity
 -spec max_wait(integer()) -> max_wait().
 max_wait(N) when N < 1 -> 'infinity';
-max_wait(N) -> N * ?MILLISECONDS_IN_SECOND.
+max_wait(N) -> N.
 
 max_queue_size(N) when is_integer(N), N > 0 -> N;
 max_queue_size(_) -> 0.
