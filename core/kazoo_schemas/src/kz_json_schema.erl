@@ -839,14 +839,16 @@ default_object(?NE_BINARY=SchemaId) ->
     {'ok', Schema} = load(SchemaId),
     default_object(Schema);
 default_object(Schema) ->
-    try validate(Schema, kz_json:new()) of
+    try validate(kz_json:delete_key(<<"required">>, Schema), kz_json:new()) of
         {'ok', JObj} -> JObj;
         {'error', Err} ->
-            lager:debug("schema has errors : ~p ", [Err]),
+            lager:debug("failed to build default object for ~s due to errors: ~p"
+                       , [kz_doc:id(Schema), Err]
+                       ),
             kz_json:new()
     catch
         _Ex:_Err ->
-            lager:debug("exception getting schema default ~p : ~p", [_Ex, _Err]),
+            lager:error("exception getting schema default ~p : ~p", [_Ex, _Err]),
             kz_util:log_stacktrace(erlang:get_stacktrace()),
             kz_json:new()
     end.
