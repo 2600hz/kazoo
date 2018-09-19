@@ -255,7 +255,8 @@ get_database_sort(Db1, Db2) ->
     kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
-refresh(Database) ->
+refresh(DB) ->
+    Database = kz_util:uri_encode(kz_util:uri_decode(DB)),
     _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
     'ok'.
 
