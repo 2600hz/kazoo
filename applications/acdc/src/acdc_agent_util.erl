@@ -134,8 +134,7 @@ most_recent_statuses(AccountId, AgentId, Options) ->
                               ,fun async_most_recent_db_statuses/4
                               ,AccountId, AgentId, Options, self()
                               ),
-
-    maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
+    {'ok', receive_statuses([ETS, DB])}.
 
 -spec maybe_start_db_lookup(atom(), fun(), kz_term:ne_binary(), kz_term:api_binary(), list(), pid()) ->
                                    kz_term:pid_ref() | 'undefined'.
@@ -147,26 +146,6 @@ maybe_start_db_lookup(F, Fun, AccountId, AgentId, Options, Self) ->
     end.
 
 db_fetch_key(F, AccountId, AgentId) -> {F, AccountId, AgentId}.
-
--spec maybe_reduce_statuses(kz_term:api_binary(), kz_json:object()) ->
-                                   {'ok', kz_json:object()}.
-maybe_reduce_statuses('undefined', Statuses) ->
-    {'ok', kz_json:map(fun map_reduce_agent_statuses/2, Statuses)};
-maybe_reduce_statuses(_, Statuses) -> {'ok', Statuses}.
-
-map_reduce_agent_statuses(AgentId, Statuses) ->
-    {_, S} = kz_json:foldl(fun reduce_agent_statuses/3, {0, kz_json:new()}, Statuses),
-    {AgentId, S}.
-
-reduce_agent_statuses(_, Data, {T, _}=Acc) ->
-    StatT = kz_json:get_value(<<"timestamp">>, Data),
-    try kz_term:to_integer(StatT) of
-        Timestamp when Timestamp > T ->
-            {Timestamp, Data};
-        _ -> Acc
-    catch
-        _:_ -> Acc
-    end.
 
 -type receive_info() :: [{pid(), reference()} | 'undefined'].
 

@@ -344,14 +344,11 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
     Now = kz_time:now_s(),
     Yday = Now - ?SECONDS_IN_DAY,
 
-    Recent = cb_context:req_value(Context, <<"recent">>, 'false'),
-
     Opts = props:filter_undefined(
              [{<<"Status">>, Status}
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Start-Range">>, Yday}
              ,{<<"End-Range">>, Now}
-             ,{<<"Most-Recent">>, kz_term:is_false(Recent)}
              ,{<<"Limit">>, cb_context:req_value(Context, <<"limit">>)}
              ]),
 
