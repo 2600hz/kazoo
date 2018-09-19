@@ -2,6 +2,7 @@
 
 -export([seq/0
         ,cleanup/0, cleanup/1
+        ,default/0, init_db/0, cleanup_db/0
         ]
        ).
 
@@ -19,7 +20,33 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -define(SYSTEM_CONFIG_ID, <<"kazoo_proper">>).
+-define(SCHEMA_ID, <<"system_config.kazoo_proper">>).
 -define(NODE_ID, <<"foo@bar.com">>).
+
+-define(KEY_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}
+                                      ,{<<"default">>, <<"default_key">>}
+                                      ])
+       ).
+-define(KNEE_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}
+                                       ,{<<"default">>, <<"default_knee">>}
+                                       ])
+       ).
+
+-define(NESTED_SCHEMA, kz_json:from_list([{<<"type">>, <<"object">>}
+                                         ,{<<"properties">>, kz_json:from_list([{<<"knee">>, ?KNEE_SCHEMA}])}
+                                         ,{<<"default">>, kz_json:from_list([{<<"knee">>, <<"default_knee">>}])}
+                                         ])
+       ).
+
+-define(CONFIG_SCHEMA
+       ,kz_json:from_list([{<<"_id">>, ?SCHEMA_ID}
+                          ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
+                          ,{<<"properties">>, kz_json:from_list([{<<"key">>, ?KEY_SCHEMA}
+                                                                ,{<<"nested">>, ?NESTED_SCHEMA}
+                                                                ])}
+                          ,{<<"type">>, <<"object">>}
+                          ])
+       ).
 
 -spec configs_url() -> string().
 configs_url() ->
@@ -126,8 +153,17 @@ init() ->
     _ = [crossbar_maintenance:start_module(Mod) ||
             Mod <- ['cb_system_configs']
         ],
+    init_db(),
     ?INFO("INIT FINISHED").
 
+-spec init_db() -> {'ok', kz_json:object()}.
+init_db() ->
+    {'ok', _} = kz_datamgr:save_doc(?KZ_SCHEMA_DB, ?CONFIG_SCHEMA).
+
+-spec cleanup_db() -> {'ok', kz_json:object()}.
+cleanup_db() ->
+    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?SYSTEM_CONFIG_ID),
+    kz_datamgr:del_doc(?KZ_SCHEMA_DB, ?SCHEMA_ID).
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
@@ -136,14 +172,26 @@ initial_state() ->
     ?INFO("state initialized to ~p", [API]),
     pqc_kazoo_model:new(API).
 
+-spec default() -> any().
+default() ->
+    init_db(),
+    Stored = kapps_config_doc:stored_node(?SYSTEM_CONFIG_ID, <<"default">>),
+    io:format("stored: ~p~n", [Stored]),
+    cleanup_db().
+
 -spec seq() -> any().
 seq() ->
-    init(),
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
     Listing = list_configs(API),
     'false' = lists:member(?SYSTEM_CONFIG_ID, Listing),
+
+    GetSchemaDefaults = get_default_config(API, ?SYSTEM_CONFIG_ID),
+    io:format("get with schema defaults: ~p~n", [GetSchemaDefaults]),
+    ?SYSTEM_CONFIG_ID = kz_json:get_value(<<"id">>, GetSchemaDefaults),
+    <<"default_key">> = kz_json:get_value([<<"default">>, <<"key">>], GetSchemaDefaults),
+    <<"default_knee">> = kz_json:get_value([<<"default">>, <<"nested">>, <<"knee">>], GetSchemaDefaults),
 
     Section = kz_json:from_list([{<<"key">>, <<"value">>}
                                 ,{<<"nested">>, kz_json:from_list([{<<"knee">>, <<"nalue">>}])}
@@ -208,5 +256,5 @@ cleanup() ->
 -spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
-    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?SYSTEM_CONFIG_ID),
+    cleanup_db(),
     pqc_cb_api:cleanup(API).
