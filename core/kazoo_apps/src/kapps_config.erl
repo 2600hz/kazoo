@@ -66,7 +66,7 @@
                          {'pvt_fields', kz_term:api_object()}.
 -type update_options() :: [update_option()].
 
--type fetch_ret() :: {'ok', kz_json:object()} |
+-type fetch_ret() :: {'ok', kzd_system_configs:doc()} |
                      {'error', any()}.
 
 -define(KEY_DEFAULT, <<"default">>).
