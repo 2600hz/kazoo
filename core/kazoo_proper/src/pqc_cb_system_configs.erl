@@ -156,9 +156,11 @@ seq() ->
     io:format("set: ~p~n", [Set]),
     'true' = kz_json:are_equal(Set, Defaults),
 
-    Get = get_config(API, ?SYSTEM_CONFIG_ID),
+    Get = get_node_config(API, ?SYSTEM_CONFIG_ID, <<"default">>),
     io:format("get: ~p~n", [Get]),
-    'true' = kz_json:are_equal(Get, Defaults),
+    <<"nalue">> = kz_json:get_value([<<"nested">>, <<"knee">>], Get),
+    [?SYSTEM_CONFIG_ID, <<"default">>] = binary:split(kz_doc:id(Get), <<"/">>),
+    <<"value">> = kz_json:get_value(<<"key">>, Get),
 
     NodeSection = kz_json:from_list([{<<"key">>, <<"node">>}
                                     ,{<<"nested">>, kz_json:from_list([{<<"ankle">>, <<"alue">>}])}
