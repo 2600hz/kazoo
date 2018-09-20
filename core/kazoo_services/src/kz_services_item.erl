@@ -63,6 +63,7 @@
 -export([create/4]).
 -export([reset/1]).
 -export([has_changes/1]).
+-export([has_additions/1]).
 
 -include("services.hrl").
 
@@ -673,3 +674,16 @@ reset(Item) ->
 -spec has_changes(item()) -> boolean().
 has_changes(Item) ->
     changes(Item) =/= 'undefined'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_additions(item()) -> boolean().
+has_additions(Item) ->
+    case changes(Item) of
+        'undefined' -> 'false';
+        Changes ->
+            Key = [<<"difference">>, <<"quantity">>],
+            props:get_integer_value(Key, Changes, 0) > 0
+    end.

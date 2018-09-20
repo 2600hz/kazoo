@@ -59,7 +59,7 @@ dry_run(Context, CurrentJObj, ProposedJObj) ->
                                       ,ProposedJObj
                                       ),
     Quotes = kz_services_invoices:create(Services),
-    case kz_services_invoices:has_changes(Quotes) of
+    case kz_services_invoices:has_additions(Quotes) of
         'true' ->
             JObj = kz_services_invoices:public_json(Quotes),
             crossbar_util:response_402(JObj, Context);
