@@ -312,8 +312,7 @@ sum_updates([{Key, Value}|Props], Updates) ->
         CurrentValue ->
             %% NOTE: do NOT use props:set_value here!
             Sum = Value + CurrentValue,
-            Update = proplists:set_value(Key, Sum, Updates),
-            sum_updates(Props, Update)
+            sum_updates(Props, [{Key, Sum}|Updates])
     end.
 
 -spec has_substitute_values(kz_term:proplist()) -> boolean().

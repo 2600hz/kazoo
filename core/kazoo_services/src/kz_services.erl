@@ -85,6 +85,7 @@
         ]).
 -export([commit/1]).
 -export([commit_account/1]).
+-export([maybe_save_services_jobj/1]).
 -export([save_services_jobj/1]).
 -export([delete/1]).
 -export([reconcile/1

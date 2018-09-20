@@ -722,17 +722,31 @@ reconcile('all') ->
     Total = length(Accounts),
     _ = lists:foldr(fun(Account, Current) ->
                             io:format("reconcile services (~p/~p) '~s'~n", [Current, Total, Account]),
-                            _ = reconcile(Account),
+                            try reconcile(Account)
+                            catch
+                                _E:_R ->
+                                    io:format("    unable to reconcile!~n~p~n", [_R])
+                            end,
                             Current + 1
                     end, 1, Accounts),
     'no_return';
 reconcile(Account) when not is_binary(Account) ->
     reconcile(kz_term:to_binary(Account));
 reconcile(Account) ->
-    try kz_services:reconcile(Account)
-    catch
-        _E:_R ->
-            io:format("failed to reconcile account ~s(~p):~n  ~p~n", [Account, _E, _R])
+    AccountId = kz_util:format_account_id(Account),
+    FetchOptions = ['hydrate_account_quantities'
+                   ,'hydrate_cascade_quantities'
+                   ,'hydrate_plans'
+                   ,'hydrate_invoices'
+                   ,'skip_cache'
+                   ],
+    Services = kz_services:maybe_save_services_jobj(
+                 kz_services:fetch(AccountId, FetchOptions)
+                ),
+    case kz_services:is_dirty(Services) of
+        'false' -> 'no_return';
+        'true' ->
+            io:format("    quantity discrepancy corrected!~n", [])
     end.
 
 -spec get_all_accounts() -> kz_term:ne_binaries().
