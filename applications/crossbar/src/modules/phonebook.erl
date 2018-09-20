@@ -23,7 +23,7 @@
 
 -spec maybe_create_port_in(cb_context:context()) -> cb_context:context().
 maybe_create_port_in(Context) ->
-    case is_phonebook_request(Context) of
+    case should_send_to_phonebook(Context) of
         'true' ->
             create_port_in(cb_context:doc(Context), cb_context:auth_token(Context)),
             Context;
@@ -32,7 +32,7 @@ maybe_create_port_in(Context) ->
 
 -spec maybe_add_comment(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_add_comment(Context, Comment) ->
-    case is_phonebook_request(Context)
+    case should_send_to_phonebook(Context)
         andalso not req_from_phonebook(Context)
     of
         'true' ->
@@ -43,7 +43,7 @@ maybe_add_comment(Context, Comment) ->
 
 -spec maybe_cancel_port_in(cb_context:context()) -> cb_context:context().
 maybe_cancel_port_in(Context) ->
-    case is_phonebook_request(Context) of
+    case should_send_to_phonebook(Context) of
         'true' ->
             cancel_port_in(cb_context:doc(Context), cb_context:auth_token(Context)),
             Context;
@@ -66,8 +66,8 @@ req_from_phonebook(Context) ->
         _ -> 'false'
     end.
 
--spec is_phonebook_request(cb_context:context()) -> 'ok'.
-is_phonebook_request(Context) ->
+-spec should_send_to_phonebook(cb_context:context()) -> 'ok'.
+should_send_to_phonebook(Context) ->
     cb_context:resp_status(Context) =:= 'success'
         andalso phonebook_enabled().
 
@@ -78,9 +78,10 @@ create_port_in(JObj, AuthToken) ->
                         ,<<"ports">>
                         ,<<"in">>
                         ]),
-    lager:debug("creating port in request to phonebook via ~s: ~p", [Url, JObj]),
-    Response = kz_http:put(Url, req_headers(AuthToken), JObj),
-    handle_resp(Response, JObj, <<"create">>).
+    Data = kz_json:set_value(<<"data">>, JObj, kz_json:new()),
+    lager:debug("creating port in request to phonebook via ~s: ~p", [Url, Data]),
+    Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
+    handle_resp(Response, JObj, <<"create">>, Url).
 
 -spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 add_comment(JObj, AuthToken, Comment) ->
@@ -92,9 +93,9 @@ add_comment(JObj, AuthToken, Comment) ->
                         ,<<"notes">>
                         ]),
     Data = kz_json:set_value(<<"data">>, Comment, kz_json:new()),
-    lager:debug("adding comment to phonebook via ~s", [Url]),
+    lager:debug("adding comment to phonebook via ~s: ~p", [Url, Data]),
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
-    handle_resp(Response, JObj, <<"comment">>).
+    handle_resp(Response, JObj, <<"comment">>, Url).
 
 -spec cancel_port_in(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 cancel_port_in(JObj, AuthToken) ->
@@ -103,20 +104,43 @@ cancel_port_in(JObj, AuthToken) ->
     Url = phonebook_uri([<<"accounts">>, AccountId, <<"ports">>, <<"in">>, PortId]),
     lager:debug("accounts delete via ~s", [Url]),
     Response = kz_http:delete(Url, req_headers(AuthToken)),
-    handle_resp(Response, JObj, <<"cancel">>).
+    handle_resp(Response, JObj, <<"cancel">>, Url).
 
--spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary()) -> 'ok' | {'error', any}.
-handle_resp({'ok', 200, _, Resp}, _, _) ->
+-spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any}.
+handle_resp({'ok', 200, _, Resp}, _, _, _) ->
     lager:debug("phonebook success ~s", [Resp]);
-handle_resp({'ok', Code, _, Resp}, JObj, Type) ->
+handle_resp({'ok', Code, _, Resp}, JObj, Type, Url) ->
     lager:warning("phonebook error ~b response: ~p", [Code, Resp]),
-    create_alert(kz_json:decode(Resp), JObj, Type);
-handle_resp({'error', Msg}, JObj, Type) ->
-    lager:error("phonebook fatal error ~p", [Msg]),
-    create_alert(Msg, JObj, Type);
-handle_resp(Error, JObj, Type) ->
+    Response = kz_json:decode(Resp),
+    Message = kz_json:get_value(<<"message">>, Response, <<"unknown error">>),
+    Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
+    Prop = props:filter_empty(
+             [{<<"http_code">>, Code}
+             ,{<<"error_message">>, Message}
+             ,{<<"request_id">>, kz_json:get_value(<<"request_id">>, Response)}
+             ,{<<"response_code">>, kz_json:get_value(<<"code">>, Response)}
+             ,{<<"phonebook_url">>, Url}
+              | kz_json:recursive_to_proplist(Data)
+             ]),
+    create_alert(Prop, JObj, Type);
+handle_resp({'error', {'connect_failed', _}}, JObj, Type, Url) ->
+    lager:error("connection failed to phonebook url ~s", [Url]),
+    Prop = [{<<"error_message">>, <<"connection failed to phonebook">>}
+           ,{<<"phonebook_url">>, Url}
+           ],
+    create_alert(Prop, JObj, Type);
+handle_resp({'error', {'malformed_url', _}}, JObj, Type, Url) ->
+    lager:error("phonebook fatal error malformed_url ~s", [Url]),
+    Prop = [{<<"error_message">>, <<"malformed_url">>}
+           ,{<<"phonebook_url">>, Url}
+           ],
+    create_alert(Prop, JObj, Type);
+handle_resp(Error, JObj, Type, Url) ->
     lager:error("phonebook unknown error ~p", [Error]),
-    create_alert(Error, JObj, Type).
+    Prop = [{<<"error_message">>, kz_term:to_binary(io_lib:format("~p", [Error]))}
+           ,{<<"phonebook_url">>, Url}
+           ],
+    create_alert(Prop, JObj, Type).
 
 -spec phonebook_uri(iolist()) -> iolist().
 phonebook_uri(ExplodedPath) ->
@@ -124,25 +148,20 @@ phonebook_uri(ExplodedPath) ->
     Uri = kz_util:uri(Url, ExplodedPath),
     kz_term:to_list(Uri).
 
--spec create_alert(any(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec create_alert(kz_term:proplist(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 create_alert(Response, JObj, Type) ->
-    Subject = <<"Phonebook Request Error">>,
-    Msg = <<"Error requesting "
-            "type ~s "
-            "port request: ~s "
-            "for numbers: ~p "
-            "on account: ~s "
-            "in state: ~s "
-            "with response: ~p"
-          >>,
-    Args = [Type
-           ,kz_doc:id(JObj)
-           ,kz_json:get_keys(kzd_port_requests:numbers(JObj))
-           ,kz_doc:account_id(JObj)
-           ,kzd_port_requests:port_state(JObj)
-           ,Response
-           ],
-    kz_notify:system_alert(Subject, Msg, Args, []).
+    Subject = <<"Phonebook request failed">>,
+    Msg = kz_term:to_binary(io_lib:format("Unable to submit port update to phonebook for port: ~s"
+                                         ,[kzd_port_requests:name(JObj)])
+                           ),
+    Props = [{<<"request_type">>, Type}
+            ,{<<"port_id">>, kz_doc:id(JObj)}
+            ,{<<"phone_numbers">>, kz_json:get_keys(kzd_port_requests:numbers(JObj))}
+            ,{<<"account_id">>, kz_doc:account_id(JObj)}
+            ,{<<"port_state">>, kzd_port_requests:port_state(JObj)}
+             | Response
+            ],
+    kz_notify:system_alert(Subject, Msg, Props).
 
 -spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(Token) ->
