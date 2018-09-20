@@ -135,7 +135,7 @@ patch_default_config(API, Id, Config) ->
                                   ),
     pqc_cb_response:data(Resp).
 
--spec delete_config(pqc_cb_api:api(), kz_term:ne_binary()) -> binary().
+-spec delete_config(pqc_cb_api:api(), kz_term:ne_binary()) -> kz_json:object().
 delete_config(API, Id) ->
     URL = config_url(Id),
     Resp = pqc_cb_api:make_request([200, 404]
