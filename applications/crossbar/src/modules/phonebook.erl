@@ -78,8 +78,9 @@ create_port_in(JObj, AuthToken) ->
                         ,<<"ports">>
                         ,<<"in">>
                         ]),
-    lager:debug("creating port in request to phonebook via ~s: ~p", [Url, JObj]),
-    Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(JObj)),
+    Data = kz_json:set_value(<<"data">>, JObj, kz_json:new()),
+    lager:debug("creating port in request to phonebook via ~s: ~p", [Url, Data]),
+    Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"create">>).
 
 -spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
@@ -92,7 +93,7 @@ add_comment(JObj, AuthToken, Comment) ->
                         ,<<"notes">>
                         ]),
     Data = kz_json:set_value(<<"data">>, Comment, kz_json:new()),
-    lager:debug("adding comment to phonebook via ~s", [Url]),
+    lager:debug("adding comment to phonebook via ~s: ~p", [Url, Data]),
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"comment">>).
 
