@@ -10,7 +10,9 @@
 -export([flush/0]).
 -export([db_init/0]).
 -export([refresh/0]).
--export([migrate_service_plans/1, migrate_service_plan/2]).
+-export([migrate_service_plans/0
+        ,migrate_service_plans/1
+        ,migrate_service_plan/2]).
 -export([migrate_services/0]).
 -export([fix_plan_apps/1]).
 -export([reconcile/0
@@ -224,6 +226,11 @@ refresh() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec migrate_service_plans() -> 'no_return'.
+migrate_service_plans() ->
+    {'ok', AccountDb} = kapps_util:get_master_account_db(),
+    migrate_service_plans(AccountDb).
+
 -spec migrate_service_plans(kz_term:ne_binary()) -> 'no_return'.
 migrate_service_plans(Account) ->
     AccountDb = kz_util:format_account_db(Account),

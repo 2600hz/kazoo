@@ -129,8 +129,13 @@ set_item_name(#kz_service_item{}=Item, ItemName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec display_name(item()) -> kz_term:api_binary().
-display_name(#kz_service_item{item_name=ItemName, display_name=ItemName}) ->
-    'undefined';
+display_name(#kz_service_item{display_name='undefined'}=Item) ->
+    CategoryName = category_name(Item),
+    ItemName = item_name(Item),
+    case kzd_service_plan:all_items_key() =:= ItemName of
+        'true' -> CategoryName;
+        'false' -> <<CategoryName/binary, "/", ItemName/binary>>
+    end;
 display_name(#kz_service_item{display_name=DisplayName}) ->
     DisplayName.
 

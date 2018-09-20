@@ -30,10 +30,10 @@
                         {'error', {'ledger_error', kz_transaction:transaction() | 'undefined', any()}} |
                         {'error', any()}.
 
--define(DEFAULT_DESCRIPTION, <<"Kazoo services credit replenishment">>).
+-define(DEFAULT_DESCRIPTION, <<"Usage top-up">>).
 -define(DEFAULT_EXECUTOR_TRIGGER, <<"automatic">>).
 -define(EXECUTOR_MODULE, kz_term:to_binary(?MODULE)).
--define(SOURCE_SERVICE, <<"kazoo-topup">>).
+-define(SOURCE_SERVICE, <<"payments">>).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -219,14 +219,16 @@ topup(AccountId, ReplenishUnits, Trigger, Audit) ->
 -spec create_topup_transaction(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
                                       kz_transaction:transaction().
 create_topup_transaction(AccountId, ReplenishUnits, Trigger, Audit) ->
+    Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
     Setters =
         props:filter_empty(
           [{fun kz_transaction:set_account/2, AccountId}
-          ,{fun kz_transaction:set_description/2, ?DEFAULT_DESCRIPTION}
+          ,{fun kz_transaction:set_description/2, get_description(Trigger)}
           ,{fun kz_transaction:set_executor_trigger/2, Trigger}
           ,{fun kz_transaction:set_executor_module/2, ?EXECUTOR_MODULE}
           ,{fun kz_transaction:set_audit/2, Audit}
           ,{fun kz_transaction:set_unit_amount/2, ReplenishUnits}
+          ,{fun kz_transaction:set_metadata/2, Metadata}
           ]
          ),
     kz_transaction:setters(Setters).
@@ -250,6 +252,7 @@ create_ledger(Transaction) ->
             ,{[<<"transaction">>, <<"created">>]
              ,'true'
              }
+            ,{<<"automatic_description">>, 'true'}
             ],
     Metadata = kz_json:set_values(Props, kz_json:new()),
     case create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) of
@@ -262,7 +265,8 @@ create_ledger(Transaction) ->
 -spec create_ledger(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
                            topup_return().
 create_ledger(AccountId, ReplenishUnits, Trigger, Audit) ->
-    case create_ledger(AccountId, ReplenishUnits, Trigger, Audit, kz_json:new()) of
+    Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
+    case create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) of
         {'error', Reason} ->
             {'error', {'ledger_error', 'undefined', Reason}};
         {'ok', Ledger} ->
@@ -280,7 +284,7 @@ create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) ->
         props:filter_empty(
           [{fun kz_ledger:set_account/2, AccountId}
           ,{fun kz_ledger:set_source_id/2, SourceId}
-          ,{fun kz_ledger:set_description/2, ?DEFAULT_DESCRIPTION}
+          ,{fun kz_ledger:set_description/2, get_description(Trigger)}
           ,{fun kz_ledger:set_metadata/2, Metadata}
           ,{fun kz_ledger:set_executor_trigger/2, Trigger}
           ,{fun kz_ledger:set_executor_module/2, ?EXECUTOR_MODULE}
@@ -291,3 +295,11 @@ create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) ->
           ]
          ),
     kz_ledger:credit(kz_ledger:setters(Setters)).
+
+-spec get_description(kz_term:ne_binary()) -> kz_term:ne_binary().
+get_description(?DEFAULT_EXECUTOR_TRIGGER) ->
+    <<"Automatic usage top-up">>;
+get_description(<<"manual">>) ->
+    <<"Manual usage top-up">>;
+get_description(_Else) ->
+    ?DEFAULT_DESCRIPTION.

@@ -10,6 +10,10 @@
 
 -include("services.hrl").
 
+-define(STATUS_PENDING, <<"pending">>).
+-define(STATUS_COMPLETED, <<"completed">>).
+-define(STATUS_FAILED, <<"failed">>).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -59,9 +63,10 @@ maybe_update(Services) ->
 invoices_foldl_fun(Services) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
-            Result = update_bookkeeper(Type, Invoice, Services),
-            _ = maybe_store_audit_log(Services, Invoice, Result),
-            _ = notify_reseller(Services, Invoice),
+            AuditJObj = maybe_store_audit_log(Services, Invoice),
+            Result = update_bookkeeper(Type, Invoice, Services, AuditJObj),
+            FinalAuditJObj = update_audit_log(Services, AuditJObj, Result),
+            _ = notify_reseller(Services, Invoice, FinalAuditJObj),
             [{Invoice, Result} | Results]
     end.
 
@@ -69,13 +74,14 @@ invoices_foldl_fun(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_store_audit_log(kz_services:services(), kz_services_invoice:invoice(), kz_amqp_worker:request_result()) -> 'ok'.
-maybe_store_audit_log(Services, Invoice, Results) ->
+-spec maybe_store_audit_log(kz_services:services(), kz_services_invoice:invoice()) ->
+                                   kz_term:api_object().
+maybe_store_audit_log(Services, Invoice) ->
     case kz_services:account_id(Services) =:= master_account_id()
         andalso (not ?KZ_SERVICE_STORE_MASTER_AUDIT)
     of
-        'false' -> store_audit_log(Services, Invoice, Results);
-        'true' -> 'ok'
+        'true' -> 'undefined';
+        'false' -> store_audit_log(Services, Invoice)
     end.
 
 -spec master_account_id() -> kz_term:api_binary().
@@ -85,37 +91,18 @@ master_account_id() ->
         _Else -> 'undefined'
     end.
 
--spec store_audit_log(kz_services:services(), kz_services_invoice:invoice(), kz_amqp_worker:request_result()) -> 'ok'.
-store_audit_log(Services, Invoice, {'ok', Result}) ->
-    Details =
-        [kz_json:normalize(JObj)
-         || JObj <- kz_json:get_list_value(<<"Details">>, Result, [])
-        ],
-    store_audit_log_to_db(Services, Invoice, Details);
-store_audit_log(Services, Invoice, {'error', 'timeout'}) ->
-    Result = kz_json:from_list([{<<"status">>, <<"error">>}
-                               ,{<<"reason">>, <<"timeout">>}
-                               ,{<<"message">>, <<"bookkeeper did not respond to update request">>}
-                               ]
-                              ),
-    store_audit_log_to_db(Services, Invoice, Result);
-store_audit_log(_Services, _Invoice, _Result) ->
-    lager:warning("failed to get bookkeeper results: ~p", [_Result]).
-
--spec store_audit_log_to_db(kz_services:services(), kz_services_invoice:invoice(), kz_json:object() | kz_json:objects()) -> 'ok'.
-store_audit_log_to_db(Services, Invoice, Result) ->
+-spec store_audit_log(kz_services:services(), kz_services_invoice:invoice()) ->
+                             kz_term:api_object().
+store_audit_log(Services, Invoice) ->
     AccountId = kz_services:account_id(Services),
     AuditJObj = kz_services:audit_log(Services),
     InvoiceJObj = kz_services_invoice:public_json(Invoice),
     Props = [{<<"audit">>, AuditJObj}
             ,{<<"invoice">>, InvoiceJObj}
-            ,{<<"status">>, kz_json:get_value(<<"status">>, Result)}
-            ,{<<"reason">>, kz_json:get_value(<<"reason">>, Result)}
-            ,{<<"message">>, kz_json:get_value(<<"message">>, Result)}
+            ,{<<"status">>, ?STATUS_PENDING}
             ,{[<<"bookkeeper">>, <<"id">>], kz_services_invoice:bookkeeper_id(Invoice)}
             ,{[<<"bookkeeper">>, <<"type">>], kz_services_invoice:bookkeeper_type(Invoice)}
             ,{[<<"bookkeeper">>, <<"vendor_id">>], kz_services_invoice:bookkeeper_vendor_id(Invoice)}
-            ,{[<<"bookkeeper">>, <<"results">>], Result}
             ],
     JObj = kz_doc:update_pvt_parameters(kz_json:set_values(Props, kz_json:new())
                                        ,kz_util:format_account_db(AccountId)
@@ -125,16 +112,57 @@ store_audit_log_to_db(Services, Invoice, Result) ->
                                         ,{'type', <<"audit_log">>}
                                         ]
                                        ),
-    _ = kazoo_modb:save_doc(AccountId, JObj),
-    'ok'.
+    case kazoo_modb:save_doc(AccountId, JObj) of
+        {'ok', AuditDbJObj} -> AuditDbJObj;
+        {'error', _R} ->
+            lager:debug("failed to store audit log: ~p", [_R]),
+            'undefined'
+    end.
+
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec notify_reseller(kz_services:services(), kz_services_invoice:invoice()) -> 'ok'.
-notify_reseller(Services, Invoice) ->
+-spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_result()) ->
+                              kz_term:api_object().
+update_audit_log(_Services, 'undefined', _Result) -> 'ok';
+update_audit_log(Services, AuditJObj, {'ok', Details}) ->
+    Results =
+        [kz_json:normalize(JObj)
+         || JObj <- kz_json:get_list_value(<<"Details">>, Details, [])
+        ],
+    update_audit_log(Services, AuditJObj, Results);
+update_audit_log(Services, AuditJObj, {'error', 'timeout'}) ->
+    Results = kz_json:from_list([{<<"status">>, ?STATUS_FAILED}
+                                ,{<<"reason">>, <<"timeout">>}
+                                ,{<<"message">>, <<"bookkeeper did not respond to update request">>}
+                                ]
+                               ),
+    update_audit_log(Services, AuditJObj, Results);
+update_audit_log(Services, AuditLog, Result) ->
+    AccountId = kz_services:account_id(Services),
+    Props = [{<<"status">>, ?STATUS_COMPLETED}
+            ,{<<"reason">>, kz_json:get_value(<<"reason">>, Result)}
+            ,{<<"message">>, kz_json:get_value(<<"message">>, Result)}
+            ,{[<<"bookkeeper">>, <<"results">>], Result}
+            ],
+    case kazoo_modb:save_doc(AccountId, kz_json:set_values(Props, AuditLog)) of
+        {'ok', FinalAuditJObj} -> FinalAuditJObj;
+        {'error', _R} ->
+            lager:debug("failed to update audit log: ~p", [_R]),
+            'undefined'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec notify_reseller(kz_services:services(), kz_services_invoice:invoice(), kz_term:api_object()) -> 'ok'.
+notify_reseller(Services, Invoice, 'undefined') ->
     AuditJObj = kz_services:audit_log(Services),
+    notify_reseller(Services, Invoice, AuditJObj);
+notify_reseller(Services, Invoice, AuditJObj) ->
     Props = [{<<"Account-ID">>, kz_services:account_id(Services)}
             ,{<<"Audit-Log">>, AuditJObj}
             ,{<<"Items">>
@@ -151,9 +179,9 @@ notify_reseller(Services, Invoice) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services()) ->
+-spec update_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services(), kz_term:api_object()) ->
                                kz_amqp_worker:request_return().
-update_bookkeeper(Type, Invoice, Services) ->
+update_bookkeeper(Type, Invoice, Services, AuditJObj) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
@@ -164,6 +192,7 @@ update_bookkeeper(Type, Invoice, Services) ->
                  )
                }
               ,{<<"Call-ID">>, kz_util:get_callid()}
+              ,{<<"Audit-ID">>, kz_doc:id(AuditJObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Request
