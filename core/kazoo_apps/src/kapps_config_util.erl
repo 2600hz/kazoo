@@ -113,8 +113,16 @@ system_config_no_schema() ->
 
 -spec system_config_no_document_schema() -> kz_json:object().
 system_config_no_document_schema() ->
-    {'ok', SysConfigSchema} = kz_json_schema:load(<<"system_configs">>),
+    {'ok', SysConfigSchema} = load_system_config_schema(),
     kz_doc:public_fields(SysConfigSchema).
+
+-spec load_system_config_schema() -> {'ok', kz_json:object()} |
+                                     {'error', 'not_found'}.
+load_system_config_schema() ->
+    case kz_json_schema:load(<<"system_configs">>) of
+        {'ok', _}=OK -> OK;
+        {'error', 'not_found'} -> kz_json:fload(<<"system_configs">>)
+    end.
 
 -spec system_config_document_schema(kz_term:ne_binary()) -> kz_json:object().
 system_config_document_schema(Id) ->
@@ -129,7 +137,7 @@ system_config_document_schema(Id) ->
 
 -spec get_system_config_document_schema(kz_term:ne_binary()) -> kz_json:object().
 get_system_config_document_schema(Id) ->
-    {'ok', SysConfigSchema} = kz_json_schema:load(<<"system_configs">>),
+    {'ok', SysConfigSchema} = load_system_config_schema(),
     [NodeRegex|_] = kz_json:get_keys(<<"patternProperties">>, SysConfigSchema),
 
     kz_json:set_values([{[<<"properties">>, <<"default">>, <<"$ref">>], system_schema_name(Id)}
