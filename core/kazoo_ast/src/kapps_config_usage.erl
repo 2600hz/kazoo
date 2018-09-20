@@ -316,6 +316,7 @@ key_to_key_path(?BINARY_MATCH(K)) ->
 guess_type('get_list', Default) -> guess_type_by_default(Default);
 guess_type('is_true', _) -> <<"boolean">>;
 guess_type('get_is_true', _) -> <<"boolean">>;
+guess_type('get_is_false', _) -> <<"boolean">>;
 guess_type('get_boolean', _) -> <<"boolean">>;
 guess_type('get', Default) -> guess_type_by_default(Default);
 guess_type('get_current', Default) -> guess_type_by_default(Default);
