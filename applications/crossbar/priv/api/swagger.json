@@ -8576,6 +8576,9 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Audit-ID": {
+                    "type": "string"
+                },
                 "Bookkeeper-ID": {
                     "type": "string"
                 },
