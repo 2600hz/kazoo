@@ -121,7 +121,7 @@ system_config_no_document_schema() ->
 load_system_config_schema() ->
     case kz_json_schema:load(<<"system_configs">>) of
         {'ok', _}=OK -> OK;
-        {'error', 'not_found'} -> kz_json:fload(<<"system_configs">>)
+        {'error', 'not_found'} -> kz_json_schema:fload(<<"system_configs">>)
     end.
 
 -spec system_config_document_schema(kz_term:ne_binary()) -> kz_json:object().
