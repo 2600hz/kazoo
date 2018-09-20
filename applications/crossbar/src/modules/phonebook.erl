@@ -128,14 +128,14 @@ phonebook_uri(ExplodedPath) ->
 create_alert(Response, JObj, Type) ->
     Subject = <<"Phonebook Request Failed">>,
     Msg = <<"Phonebook request failed">>,
-    Headers = [{<<"request_type">>, Type}
-              ,{<<"port_id">>, kz_doc:id(JObj)}
-              ,{<<"phone_numbers">>, kz_json:get_keys(kzd_port_requests:numbers(JObj))}
-              ,{<<"account_id">>, kz_doc:account_id(JObj)}
-              ,{<<"port_state">>, kzd_port_requests:port_state(JObj)}
-              ,{<<"response_message">>, Response}
-              ],
-    kz_notify:system_alert(Subject, Msg, [], Headers).
+    Props = [{<<"request_type">>, Type}
+            ,{<<"port_id">>, kz_doc:id(JObj)}
+            ,{<<"phone_numbers">>, kz_json:get_keys(kzd_port_requests:numbers(JObj))}
+            ,{<<"account_id">>, kz_doc:account_id(JObj)}
+            ,{<<"port_state">>, kzd_port_requests:port_state(JObj)}
+            ,{<<"response_message">>, Response}
+            ],
+    kz_notify:detailed_alert(Subject, Msg, Props, []).
 
 -spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(Token) ->
