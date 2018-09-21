@@ -136,13 +136,24 @@ call_template(Module) ->
     {ok, FixtureJObj} = kz_json:fixture(kazoo_amqp, Fixture),
     DataJObj = kz_json:normalize(FixtureJObj),
     Macros = Module:macros(DataJObj),
+    RealyMacrosThisTime = update_system_macros(Macros),
     CTs = teletype_templates:master_content_types(TemplateId),
     #{id_str => TemplateIdStr
      ,id => TemplateId
      ,cts => CTs
-     ,macros => Macros
+     ,macros => RealyMacrosThisTime
      ,fixture_file => Fixture
      }.
+
+update_system_macros(Macros) ->
+    props:set_value(<<"system">>, fake_system(), Macros).
+
+fake_system() ->
+    [{<<"hostname">>, <<"localhost.local">>}
+    ,{<<"encoded_hostname">>, <<"_LBdE1TNqHSBgfhxgWW_7Q">>}
+    ,{<<"node">>, <<"greate_test_env@neverland">>}
+    ,{<<"encoded_node">>, <<"6rdR7MIUnpFLhBvGwVZO1g">>}
+    ].
 
 t0(TemplateId, CT) ->
     Ext = ct_to_ext(CT),

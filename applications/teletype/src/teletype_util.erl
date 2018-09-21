@@ -845,8 +845,8 @@ is_preview(DataJObj) ->
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
 
--spec timestamp_params(kz_time:gregorian_seconds(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
-timestamp_params(Timestamp, ?NE_BINARY=Timezone, ?NE_BINARY=ClockTimezone) when is_integer(Timestamp) ->
+-spec timestamp_params(kz_time:gregorian_seconds(), kz_term:ne_binary(), string()) -> kz_term:proplist().
+timestamp_params(Timestamp, ?NE_BINARY=Timezone, ClockTimezone) when is_integer(Timestamp) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     lager:debug("using tz ~s (system ~s) for ~p", [Timezone, ClockTimezone, DateTime]),
 
