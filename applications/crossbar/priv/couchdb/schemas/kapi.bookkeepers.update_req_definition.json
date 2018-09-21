@@ -6,6 +6,12 @@
         "Account-ID": {
             "type": "string"
         },
+        "Audit-ID": {
+            "type": "string"
+        },
+        "Audit-Log": {
+            "type": "string"
+        },
         "Bookkeeper-ID": {
             "type": "string"
         },

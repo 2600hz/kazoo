@@ -63,6 +63,7 @@
 -export([create/4]).
 -export([reset/1]).
 -export([has_changes/1]).
+-export([has_additions/1]).
 
 -include("services.hrl").
 
@@ -129,8 +130,13 @@ set_item_name(#kz_service_item{}=Item, ItemName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec display_name(item()) -> kz_term:api_binary().
-display_name(#kz_service_item{item_name=ItemName, display_name=ItemName}) ->
-    'undefined';
+display_name(#kz_service_item{display_name='undefined'}=Item) ->
+    CategoryName = category_name(Item),
+    ItemName = item_name(Item),
+    case kzd_service_plan:all_items_key() =:= ItemName of
+        'true' -> CategoryName;
+        'false' -> <<CategoryName/binary, "/", ItemName/binary>>
+    end;
 display_name(#kz_service_item{display_name=DisplayName}) ->
     DisplayName.
 
@@ -668,3 +674,16 @@ reset(Item) ->
 -spec has_changes(item()) -> boolean().
 has_changes(Item) ->
     changes(Item) =/= 'undefined'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_additions(item()) -> boolean().
+has_additions(Item) ->
+    case changes(Item) of
+        'undefined' -> 'false';
+        Changes ->
+            Key = [<<"difference">>, <<"quantity">>],
+            props:get_integer_value(Key, Changes, 0) > 0
+    end.

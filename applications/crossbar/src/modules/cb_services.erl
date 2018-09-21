@@ -349,9 +349,8 @@ post(Context, ?RECONCILIATION) ->
 post(Context, ?TOPUP) ->
     AccountId = cb_context:account_id(Context),
     Amount = get_topup_amount(Context),
-    Trigger = <<"crossbar-request">>,
     Audit = crossbar_services:audit_log(Context),
-
+    Trigger = kz_services_topup:manual_trigger(),
     case kz_services_topup:topup(AccountId, Amount, Trigger, Audit) of
         {'ok', 'undefined', Ledger} ->
             JObj = kz_json:from_list(

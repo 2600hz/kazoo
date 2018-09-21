@@ -11,6 +11,7 @@
 
 -export([public_json/1]).
 -export([has_changes/1]).
+-export([has_additions/1]).
 -export([reset/1]).
 
 -export([annotate/2
@@ -114,6 +115,14 @@ public_json(Items) ->
 -spec has_changes(items()) -> boolean().
 has_changes(Items) ->
     lists:any(fun kz_services_item:has_changes/1, Items).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_additions(items()) -> boolean().
+has_additions(Items) ->
+    lists:any(fun kz_services_item:has_additions/1, Items).
 
 %%------------------------------------------------------------------------------
 %% @doc

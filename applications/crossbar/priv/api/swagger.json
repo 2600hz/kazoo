@@ -8576,6 +8576,12 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Audit-ID": {
+                    "type": "string"
+                },
+                "Audit-Log": {
+                    "type": "string"
+                },
                 "Bookkeeper-ID": {
                     "type": "string"
                 },
@@ -32142,6 +32148,11 @@
         "system_config.services": {
             "description": "Schema for services system_config",
             "properties": {
+                "cascade_commits_to_master_account": {
+                    "default": true,
+                    "description": "services cascade_commits_to_master_account",
+                    "type": "boolean"
+                },
                 "debug_services_quantities": {
                     "default": false,
                     "description": "services debug_services_quantities",

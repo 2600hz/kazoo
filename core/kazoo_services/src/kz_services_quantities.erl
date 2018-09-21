@@ -85,6 +85,7 @@ fetch_to_json_fold({[_, Category, Item], Value}, SubstituteValues, JObj) ->
 fetch_to_json_fold({Key, Value}, SubstituteValues, JObj) when Value < 0 ->
     %% NOTE: negative quantities represent a substitute value
     %%   (for example, -2 should be replaced with the quantity of admin users)
+    %% NOTE: do NOT use props:get_value here!
     case kz_term:to_integer(proplists:get_value(Value, SubstituteValues, 0)) of
         0 -> JObj;
         Quantity -> kz_json:set_value(Key, Quantity, JObj)
@@ -101,6 +102,7 @@ fetch_to_json_fold({Key, Value}, _, JObj) ->
 %%------------------------------------------------------------------------------
 -spec substitute_values(kz_services:services() | quantities_prop()) -> kz_term:proplist().
 substitute_values(Props) when is_list(Props) ->
+    %% NOTE: do NOT use props:get_value here!
     UsersAdminQuantity = kz_term:to_integer(
                            proplists:get_value([<<"users">>, <<"admin">>],  Props, 0)
                           ),
@@ -303,13 +305,14 @@ calculate_updates(Services, JObj) ->
 -spec sum_updates(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 sum_updates([], Updates) -> Updates;
 sum_updates([{Key, Value}|Props], Updates) ->
-    case props:get_value(Key, Updates) of
+    %% NOTE: do NOT use props:get_value here!
+    case proplists:get_value(Key, Updates) of
         'undefined' ->
             sum_updates(Props, [{Key, Value} | Updates]);
         CurrentValue ->
+            %% NOTE: do NOT use props:set_value here!
             Sum = Value + CurrentValue,
-            Update = props:set_value(Key, Sum, Updates),
-            sum_updates(Props, Update)
+            sum_updates(Props, [{Key, Sum}|Updates])
     end.
 
 -spec has_substitute_values(kz_term:proplist()) -> boolean().
@@ -321,7 +324,8 @@ has_substitute_values([_|Updates]) -> has_substitute_values(Updates).
 substitute_values(Services, Updates) ->
     SubstituteValues = substitute_values(Services),
     lists:map(fun({Key, Value}=KV) ->
-                      case props:get_value(Value, SubstituteValues) of
+                      %% NOTE: do NOT use props:get_value here!
+                      case proplists:get_value(Value, SubstituteValues) of
                           'undefined' -> KV;
                           Substitution -> {Key, Substitution}
                       end
@@ -537,7 +541,8 @@ compare_service_updates([], [], Updates) ->
 compare_service_updates([{K, V}|Current], [], Updates) ->
     compare_service_updates(Current, [], [{K, V * -1} | Updates]);
 compare_service_updates(Current, [{K, V}=KV|Proposed], Updates) ->
-    case props:get_value(K, Current) of
+    %% NOTE: do NOT use props:get_value here!
+    case proplists:get_value(K, Current) of
         'undefined' ->
             compare_service_updates(Current, Proposed, [KV|Updates]);
         CurrentValue ->
@@ -552,11 +557,12 @@ compare_service_updates(Current, [{K, V}=KV|Proposed], Updates) ->
                             ,kz_term:proplist()
                             ) -> kz_term:proplist().
 compare_serivce_update(Current, CurrentValue, Key, ProposedValue, Proposed, Updates) ->
+    %% NOTE: do NOT use props:delete here!
     case ProposedValue - CurrentValue of
         0 ->
-            compare_service_updates(props:delete(Key, Current), Proposed, Updates);
+            compare_service_updates(proplists:delete(Key, Current), Proposed, Updates);
         Value ->
-            compare_service_updates(props:delete(Key, Current), Proposed, [{Key, Value}|Updates])
+            compare_service_updates(proplists:delete(Key, Current), Proposed, [{Key, Value}|Updates])
     end.
 
 %%------------------------------------------------------------------------------

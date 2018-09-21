@@ -12,6 +12,8 @@
 -export([public_json/1]).
 -export([has_changes/1]).
 -export([changed/1]).
+-export([has_additions/1]).
+-export([additions/1]).
 
 -include("services.hrl").
 
@@ -165,6 +167,26 @@ changed(Thing) ->
     [Invoice
      || Invoice <- Invoices
             ,kz_services_invoice:has_changes(Invoice)
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_additions(kz_services:services() | invoices()) -> boolean().
+has_additions(Thing) ->
+    additions(Thing) =/= [].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec additions(kz_services:services() | invoices()) -> invoices().
+additions(Thing) ->
+    Invoices = maybe_services(Thing),
+    [Invoice
+     || Invoice <- Invoices
+            ,kz_services_invoice:has_additions(Invoice)
     ].
 
 %%------------------------------------------------------------------------------
