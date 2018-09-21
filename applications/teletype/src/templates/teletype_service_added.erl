@@ -52,7 +52,7 @@ macros() ->
       ]).
 
 -spec subject() -> kz_term:ne_binary().
-subject() -> <<"Service change invoice for account '{{sub_account.name}}'">>.
+subject() -> <<"Service change invoice for account '{{affected.name}}'">>.
 
 -spec category() -> kz_term:ne_binary().
 category() -> <<"account">>.
@@ -151,7 +151,7 @@ macros(DataJObj, 'false') ->
     Timestamp = timestamp(DataJObj),
     Invoice = invoice_data(DataJObj),
     Reseller = reseller_info_data(DataJObj),
-    Affected = sub_account_data(DataJObj),
+    Affected = affected_account_data(DataJObj),
     [{<<"account">>, Reseller} %% backward compatibility
     ,{<<"affected">>, Affected}
     ,{<<"invoice">>, Invoice}
@@ -171,13 +171,13 @@ timestamp(DataJObj) ->
 
 -spec reseller_info_data(kz_json:object()) -> kz_term:proplist().
 reseller_info_data(DataJObj) ->
-    AccountId = kz_json:get_ne_binary_value([<<"audit_log">>, <<"account">>, <<"id">>], DataJObj),
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
     ResellerId = teletype_util:find_reseller_id(AccountId),
     teletype_util:find_account_params(ResellerId).
 
--spec sub_account_data(kz_json:object()) -> kz_term:proplist().
-sub_account_data(DataJObj) ->
-    AccountId = kz_json:get_ne_binary_value([<<"audit_log">>, <<"account">>, <<"id">>], DataJObj),
+-spec affected_account_data(kz_json:object()) -> kz_term:proplist().
+affected_account_data(DataJObj) ->
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
     teletype_util:find_account_params(AccountId).
 
 -spec agent_user_data(kz_json:object()) -> kz_term:proplist().
