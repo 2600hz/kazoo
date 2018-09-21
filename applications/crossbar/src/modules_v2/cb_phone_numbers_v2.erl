@@ -1038,11 +1038,12 @@ has_tokens(Context, Count) ->
 
 -spec default_knm_options(cb_context:context()) -> knm_number_options:options().
 default_knm_options(Context) ->
-    [{'crossbar', [{'services', crossbar_services:fetch(Context)}
+    AuthAccountId = cb_context:auth_account_id(Context),
+    [{'crossbar', [{'services', kz_services:fetch(AuthAccountId)}
                   ,{'account_id', cb_context:account_id(Context)}
                   ,{'reseller_id', cb_context:reseller_id(Context)}
                   ]
      }
-    ,{'auth_by', cb_context:auth_account_id(Context)}
+    ,{'auth_by', AuthAccountId}
     ,{'dry_run', not cb_context:accepting_charges(Context)}
     ].
