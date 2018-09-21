@@ -119,7 +119,6 @@ store_audit_log(Services, Invoice) ->
             'undefined'
     end.
 
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -192,7 +191,7 @@ update_bookkeeper(Type, Invoice, Services, AuditJObj) ->
                  )
                }
               ,{<<"Call-ID">>, kz_util:get_callid()}
-              ,{<<"Audit-ID">>, kz_doc:id(AuditJObj)}
+              ,{<<"Audit-Log">>, AuditJObj}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Request

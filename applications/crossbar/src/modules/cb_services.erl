@@ -350,7 +350,8 @@ post(Context, ?TOPUP) ->
     AccountId = cb_context:account_id(Context),
     Amount = get_topup_amount(Context),
     Audit = crossbar_services:audit_log(Context),
-    case kz_services_topup:topup(AccountId, Amount, <<"manual">>, Audit) of
+    Trigger = kz_services_topup:manual_trigger(),
+    case kz_services_topup:topup(AccountId, Amount, Trigger, Audit) of
         {'ok', 'undefined', Ledger} ->
             JObj = kz_json:from_list(
                      [{<<"ledger">>, kz_ledger:public_json(Ledger)}]

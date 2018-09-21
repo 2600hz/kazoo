@@ -162,7 +162,7 @@ update_req_definition() ->
                                         ,<<"Items">>
                                         ]
                     ,optional_headers = [<<"Dry-Run">>
-                                        ,<<"Audit-ID">>
+                                        ,<<"Audit-Log">>
                                         ]
                     ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
                               ,{<<"Event-Name">>, <<"update_req">>}
