@@ -53,7 +53,7 @@ apply_default_values(Config, Node, Defaults) ->
 
     DefaultsSection = get_node(Defaults, ?DEFAULT),
 
-    Merged = kz_json:merge_recursive([DefaultsSection, DefaultSection, NodeSection]),
+    Merged = kz_json:merge([DefaultsSection, DefaultSection, NodeSection]),
     kz_json:set_value(Node, Merged, Config).
 
 -spec apply_default_node(kzd_system_configs:doc()) -> kzd_system_configs:doc().
