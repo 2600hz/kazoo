@@ -791,6 +791,10 @@ response(#cb_context{resp_status='success'
                     ,resp_data=JObj
                     }) ->
     {'ok', JObj};
+response(#cb_context{resp_status='accepted'
+                    ,resp_data=JObj
+                    }) ->
+    {'ok', JObj};
 response(#cb_context{resp_error_code=Code
                     ,resp_error_msg=Msg
                     ,resp_data=DataJObj

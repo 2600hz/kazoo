@@ -1372,7 +1372,6 @@ create_push_response(Req0, Context, Fun) ->
     Req2 = set_resp_headers(Req1, Context),
     {succeeded(Context), cowboy_req:set_resp_body(Content, Req2), Context}.
 
-
 -type pull_response() :: kz_term:text() | resp_file().
 
 %%------------------------------------------------------------------------------
@@ -1440,7 +1439,7 @@ do_create_resp_envelope(Context) ->
                    ]
            end,
 
-    encode_start_keys(kz_json:set_values(props:filter_undefined(Resp), cb_context:resp_envelope(Context))
+    encode_start_keys(kz_json:set_values(Resp, cb_context:resp_envelope(Context))
                      ,cb_context:should_paginate(Context)
                      ).
 

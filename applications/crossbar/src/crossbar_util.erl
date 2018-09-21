@@ -104,7 +104,7 @@ response_202(Msg, Context) ->
 -spec response_202(kz_term:api_ne_binary(), kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_202(Msg, JTerm, Context) ->
-    create_response('success', Msg, 202, JTerm, Context).
+    create_response('accepted', Msg, 202, JTerm, Context).
 
 -spec response_400(kz_term:ne_binary(), kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
