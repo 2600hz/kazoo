@@ -21,8 +21,8 @@
 -type fax_convert_funs() :: [fun((kz_term:ne_binary(), map()) -> fax_converted())].
 
 %%------------------------------------------------------------------------------
-%% @doc Converts the data or file specified in `Content' from the `To' mime-type to the
-%% `From' mime-type.
+%% @doc Converts the data or file specified in `Content' from the `From' mime-type to the
+%% `To' mime-type.
 %%
 %% Arguments Description:
 %% <ul>
@@ -43,22 +43,16 @@
 %%   the contents of the file or `path' to receive a path to the converted file in the response.
 %%   The default is `path'.</li>
 %%   <li><strong>tmp_dir:</strong> the working directory where the conversion will take place.</li>
-%%   <li><strong>return_metadata:</strong>Include a third option in the output tuple which is a Proplist of metadata about the file.</li>
+%%   <li><strong>read_metadata:</strong>Include a third option in the output tuple which is a Proplist of metadata about the file.</li>
 %%   <li><strong>to_filename:</strong>The user requested destination file name for the converted file, if a full path is provided this will
 %%   be copied to the specified path, if a relative path is specified, it will be copied to the `tmp_dir' using the file name specified</li>
 %% </ul>
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec convert(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, kz_term:proplist()) ->
+-spec convert(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, map() | kz_term:proplist()) ->
                      gen_kz_converter:converted().
-convert(From, To, Content, Opts) ->
-    Options = maps:from_list(
-                [{<<"from_format">>, From}
-                ,{<<"to_format">>, To}
-                ,{<<"job_id">>, props:get_value(<<"job_id">>, Opts, kz_binary:rand_hex(12))}
-                 | props:delete_keys([<<"job_id">>], Opts)
-                ]),
+convert(From, To, Content, #{<<"from_format">> := From, <<"to_format">> := To, <<"job_id">> := _ }=Options) ->
     Filename = save_file(Content, Options),
     lager:info("converting document ~s from ~s to ~s", [Filename, From, To]),
     case run_convert(eval_format(From, To), To, Filename, Options) of
@@ -71,7 +65,20 @@ convert(From, To, Content, Opts) ->
         {'error', Message}=Error ->
             lager:error("conversion failed with error: ~p", [Message]),
             Error
-    end.
+    end;
+convert(From, To, Content, Options) when is_map(Options) ->
+    case maps:is_key(<<"job_id">>, Options) of
+        true -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To});
+        false -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To, <<"job_id">> => kz_binary:rand_hex(12)})
+    end;
+convert(From, To, Content, Opts) ->
+    Options = maps:from_list(
+                [{<<"from_format">>, From}
+                ,{<<"to_format">>, To}
+                ,{<<"job_id">>, props:get_value(<<"job_id">>, Opts, kz_binary:rand_hex(12))}
+                 | props:delete_keys([<<"job_id">>], Opts)
+                ]),
+    convert(From, To, Content, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Collects the fax related metadata from a file
