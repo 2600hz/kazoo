@@ -1829,5 +1829,17 @@ delete_docs(Db, Ids) ->
                        {'ok', kz_json:objects()} |
                        {'error', kz_data:data_errors()}.
 save_docs(Db, Docs) ->
-    kz_datamgr:save_docs(Db, Docs).
+    kz_datamgr:save_docs(Db, prepare_docs(Db, Docs, [])).
+
+-spec prepare_docs(kz_term:ne_binary(), kz_json:objects(), kz_json:objects()) ->
+                          kz_json:objects().
+prepare_docs(_Db, [], Updated) ->
+    Updated;
+prepare_docs(Db, [Doc|Docs], Updated) ->
+    case kz_datamgr:lookup_doc_rev(Db, kz_doc:id(Doc)) of
+        {'ok', Rev} ->
+            prepare_docs(Db, Docs, [kz_doc:set_revision(Doc, Rev)|Updated]);
+        {'error', _} ->
+            prepare_docs(Db, Docs, [kz_doc:delete_revision(Doc)|Updated])
+    end.
 -endif.
