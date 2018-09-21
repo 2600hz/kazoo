@@ -8576,6 +8576,12 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Audit-ID": {
+                    "type": "string"
+                },
+                "Audit-Log": {
+                    "type": "string"
+                },
                 "Bookkeeper-ID": {
                     "type": "string"
                 },
@@ -30220,6 +30226,58 @@
             },
             "type": "object"
         },
+        "system_config.kazoo_convert.convertapi": {
+            "description": "Schema for kazoo_convert.convertapi system_config",
+            "properties": {
+                "api_url": {
+                    "default": "https://v2.convertapi.com",
+                    "description": "convertapi api_url",
+                    "type": "string"
+                },
+                "pdf_version": {
+                    "default": "1.7",
+                    "description": "Which pdf version files will be produced by convertapi service",
+                    "enum": [
+                        "1.2",
+                        "1.3",
+                        "1.4",
+                        "1.5",
+                        "1.6",
+                        "1.7"
+                    ],
+                    "type": "string"
+                },
+                "resolution": {
+                    "default": 200,
+                    "description": "Which document resolution is used for converted files",
+                    "maximum": 2400,
+                    "minimum": 10,
+                    "type": "integer"
+                },
+                "secret": {
+                    "description": "convertapi secret",
+                    "type": "string"
+                },
+                "timeout": {
+                    "default": 60,
+                    "description": "Document conversion timeout",
+                    "maximum": 1200,
+                    "minimum": 10,
+                    "type": "integer"
+                },
+                "try_openoffice": {
+                    "default": "for_msoffice_files_also",
+                    "description": "For which files types may be called openoffice",
+                    "enum": [
+                        "for_msoffice_files_also",
+                        "for_openoffice_files_only",
+                        "never"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.kazoo_couch": {
             "description": "Schema for kazoo_couch system_config",
             "properties": {
@@ -32090,6 +32148,11 @@
         "system_config.services": {
             "description": "Schema for services system_config",
             "properties": {
+                "cascade_commits_to_master_account": {
+                    "default": true,
+                    "description": "services cascade_commits_to_master_account",
+                    "type": "boolean"
+                },
                 "debug_services_quantities": {
                     "default": false,
                     "description": "services debug_services_quantities",
@@ -32980,13 +33043,11 @@
             "description": "Schema for system_config documents",
             "properties": {
                 "default": {
+                    "default": {},
                     "description": "default settings that apply to all nodes/zones if not defined",
                     "type": "object"
                 }
             },
-            "required": [
-                "default"
-            ],
             "type": "object"
         },
         "tasks": {

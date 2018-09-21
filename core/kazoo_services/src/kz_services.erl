@@ -85,6 +85,7 @@
         ]).
 -export([commit/1]).
 -export([commit_account/1]).
+-export([maybe_save_services_jobj/1]).
 -export([save_services_jobj/1]).
 -export([delete/1]).
 -export([reconcile/1
@@ -95,6 +96,8 @@
 -export([apps/1]).
 
 -include("services.hrl").
+
+-define(DONT_CASCADE_MASTER, kapps_config:get_is_false(?CONFIG_CAT, <<"cascade_commits_to_master_account">>, 'true')).
 
 -record(kz_services, {account_id :: kz_term:api_ne_binary()
                      ,services_jobj = kzd_services:new() :: kzd_services:doc()
@@ -713,7 +716,7 @@ fetch('undefined', Options) ->
     handle_fetch_options(empty(), Options);
 fetch(Account=?NE_BINARY, Options) ->
     AccountId = kz_util:format_account_id(Account),
-    OpenDocFun = choose_open_doc_fun(Options),
+    OpenDocFun = choose_open_doc_fun(Options, AccountId),
 
     handle_fetched_doc(AccountId, Options, OpenDocFun(?KZ_SERVICES_DB, AccountId)).
 
@@ -737,14 +740,18 @@ handle_fetched_doc(AccountId, Options, {'error', 'not_found'}) ->
                                    kz_datamgr:data_error() |
                                    {'error', 'not_found'}
                                        ).
--spec choose_open_doc_fun(fetch_options()) -> open_doc_fun().
-choose_open_doc_fun(Options) ->
+-spec choose_open_doc_fun(fetch_options(), kz_term:ne_binary()) -> open_doc_fun().
+choose_open_doc_fun(Options, AccountId) ->
     case props:is_true('skip_cache', Options, 'false') of
         'false' ->
-            lager:debug("fetching services doc (with cache)"),
+            lager:debug("fetching services doc ~s (with cache)"
+                       ,[AccountId]
+                       ),
             fun kz_datamgr:open_cache_doc/2;
         'true' ->
-            lager:debug("fetching services doc (without cache)"),
+            lager:debug("fetching services doc ~s (without cache)"
+                       ,[AccountId]
+                       ),
             fun kz_datamgr:open_doc/2
     end.
 
@@ -837,8 +844,14 @@ commit_updates(Services, FetchOptions) ->
 -spec cascade_commit_updates(kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 cascade_commit_updates(_FetchOptions, []) -> 'ok';
 cascade_commit_updates(FetchOptions, [Account|Accounts]) ->
-    #kz_services{} = commit_account(fetch(Account, FetchOptions)),
-    cascade_commit_updates(FetchOptions, Accounts).
+    case Accounts =:= []
+        andalso ?DONT_CASCADE_MASTER
+    of
+        'true' -> 'ok';
+        'false' ->
+            #kz_services{} = commit_account(fetch(Account, FetchOptions)),
+            cascade_commit_updates(FetchOptions, Accounts)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -857,14 +870,20 @@ commit(#kz_services{}=Services) ->
 -spec cascade_commit(kz_term:ne_binaries() | services()) -> 'ok'.
 cascade_commit([]) -> 'ok';
 cascade_commit([Account|Accounts]) ->
-    FetchOptions = ['hydrate_account_quantities'
-                   ,'hydrate_cascade_quantities'
-                   ,'hydrate_plans'
-                   ,'hydrate_invoices'
-                   ],
-    Services = fetch(Account, FetchOptions),
-    _ = commit_account(Services),
-    cascade_commit(Accounts);
+    case Accounts =:= []
+        andalso ?DONT_CASCADE_MASTER
+    of
+        'true' -> 'ok';
+        'false' ->
+            FetchOptions = ['hydrate_account_quantities'
+                           ,'hydrate_cascade_quantities'
+                           ,'hydrate_plans'
+                           ,'hydrate_invoices'
+                           ],
+            Services = fetch(Account, FetchOptions),
+            _ = commit_account(Services),
+            cascade_commit(Accounts)
+    end;
 cascade_commit(Services) ->
     Tree = kzd_services:tree(services_jobj(Services)),
     cascade_commit(Tree).

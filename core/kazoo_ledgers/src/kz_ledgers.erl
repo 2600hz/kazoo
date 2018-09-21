@@ -33,22 +33,22 @@
                            ,{<<"friendly_name">>, <<"Per Minute VoIP">>}
                            ,{<<"markup_type">>, [<<"percentage">>]}
                            ])
-        ,kz_json:from_list([{<<"name">>, <<"kazoo-services">>}
-                           ,{<<"friendly_name">>, <<"Kazoo Services">>}
+        ,kz_json:from_list([{<<"name">>, <<"services">>}
+                           ,{<<"friendly_name">>, <<"Monthly Recurring Services">>}
                            ,{<<"markup_type">>, []}
                            ])
-        ,kz_json:from_list([{<<"name">>, <<"kazoo-topup">>}
-                           ,{<<"friendly_name">>, <<"Kazoo Credit Topup">>}
+        ,kz_json:from_list([{<<"name">>, <<"payments">>}
+                           ,{<<"friendly_name">>, <<"Payments">>}
                            ,{<<"markup_type">>, []}
                            ])
-        ,kz_json:from_list([{<<"name">>, <<"kazoo-rollover">>}
-                           ,{<<"friendly_name">>, <<"Kazoo Monthly Rollover">>}
+        ,kz_json:from_list([{<<"name">>, <<"rollovers">>}
+                           ,{<<"friendly_name">>, <<"Monthly Rollover">>}
                            ,{<<"markup_type">>, []}
                            ])
         ]
        ).
 
--define(ROLLOVER_ID(Y,M), kazoo_modb_util:modb_id(Y, M, <<"kazoo_ledgers_monthly_rollover">>)).
+-define(ROLLOVER_ID(Y,M), kazoo_modb_util:modb_id(Y, M, <<"ledgers_monthly_rollover">>)).
 -type ledgers() :: [kz_ledger:ledger()].
 -export_type([ledgers/0]).
 
@@ -152,7 +152,7 @@ log_sources_sum(Account, Options, Total) ->
 sum_sources_foldl(JObj, {FoundRollover, Sum}) ->
     Value = kz_json:get_integer_value(<<"value">>, JObj, 0),
     case kz_json:get_value(<<"key">>, JObj) of
-        [<<"kazoo-rollover">>] ->
+        [<<"rollovers">>] ->
             {'true', Sum + Value};
         _Else ->
             {FoundRollover, Sum + Value}
@@ -384,20 +384,23 @@ rollover(Account, Year, Month) ->
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), kz_currency:units()) ->
                       kz_currency:available_units_return().
 rollover(Account, Year, Month, Total) ->
-    Id = <<(kz_term:to_binary(Year))/binary, "-"
-          ,(kz_term:to_binary(Month))/binary
+    Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
+    Id = <<(kz_term:to_binary(Year))/binary
+          ,(kz_date:pad_month(Month))/binary
          >>,
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, Account}
-          ,{fun kz_ledger:set_source_service/2, <<"kazoo-rollover">>}
+          ,{fun kz_ledger:set_source_service/2, <<"rollovers">>}
           ,{fun kz_ledger:set_source_id/2, Id}
-          ,{fun kz_ledger:set_description/2, <<"Kazoo ledgers monthly rollover">>}
+          ,{fun kz_ledger:set_description/2, <<"Monthly rollover for ", Id/binary>>}
           ,{fun kz_ledger:set_period_start/2, kz_time:now_s()}
-          ,{fun kz_ledger:set_metadata/2, metadata()}
+          ,{fun kz_ledger:set_metadata/2, Metadata}
           ,{fun kz_ledger:set_unit_amount/2, Total}
           ,{fun kz_ledger:set_id/2, ?ROLLOVER_ID(Year,Month)}
           ,{fun kz_ledger:set_ledger_type/2, ledger_type(Total)}
+          ,{fun kz_ledger:set_executor_trigger/2, <<"automatic">>}
+          ,{fun kz_ledger:set_executor_module/2, ?MODULE}
           ]
          ),
     LedgerJObj =
@@ -417,14 +420,6 @@ rollover(Account, Year, Month, Total) ->
                          ),
             Error
     end.
-
--spec metadata() -> kz_json:object().
-metadata() ->
-    kz_json:from_list(
-      [{<<"type">>, <<"rollover">>}
-      ,{<<"trigger">>, <<"automatic">>}
-      ]
-     ).
 
 -spec ledger_type(kz_currency:units()) -> kzd_ledgers:ledger_type().
 ledger_type(Total) when Total < 0 ->

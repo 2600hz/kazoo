@@ -22,9 +22,9 @@
 new() ->
     kz_json_schema:default_object(?SCHEMA).
 
--spec default(doc()) -> kz_term:api_object().
+-spec default(doc()) -> kz_json:object().
 default(Doc) ->
-    default(Doc, 'undefined').
+    default(Doc, kz_json:new()).
 
 -spec default(doc(), Default) -> kz_json:object() | Default.
 default(Doc, Default) ->

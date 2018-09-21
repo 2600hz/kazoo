@@ -52,13 +52,14 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
 -spec dry_run(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> cb_context:context().
 dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
-    Services = kz_services:set_updates(fetch(Context)
+    AuthAccountId = cb_context:auth_account_id(Context),
+    Services = kz_services:set_updates(kz_services:fetch(AuthAccountId)
                                       ,AccountId
                                       ,CurrentJObj
                                       ,ProposedJObj
                                       ),
     Quotes = kz_services_invoices:create(Services),
-    case kz_services_invoices:has_changes(Quotes) of
+    case kz_services_invoices:has_additions(Quotes) of
         'true' ->
             JObj = kz_services_invoices:public_json(Quotes),
             crossbar_util:response_402(JObj, Context);
