@@ -517,7 +517,8 @@ check_empty_permissions(#state{errors=Errors
 -spec match(binary(), binary()) -> boolean().
 match(Address, Element) ->
     Address =:= kz_term:to_lower_binary(Element)
-        orelse re:run(Address, Element) =/= 'nomatch'.
+        orelse re:run(Address, kz_term:to_lower_binary(Element)) =/= 'nomatch'
+            orelse re:run(Address, Element) =/= 'nomatch'.
 
 -spec maybe_faxbox(state()) -> state().
 maybe_faxbox(#state{faxbox_email=Domain}=State) ->
