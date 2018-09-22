@@ -51,8 +51,8 @@ render(Renderer, TemplateId, Template, TemplateData, Tries) ->
     %% ?LOG_INFO("starting render of ~p", [TemplateId]),
     lager:info("starting render of ~p", [TemplateId]),
     case do_render(Renderer, TemplateId, Template, TemplateData) of
-        {'error', 'render_failed'} ->
-            ?LOG_INFO("render failed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
+        {'error', Reason} ->
+            ?LOG_INFO("render failed in ~p, pool: ~p with reason ~p", [kz_time:now_s() - Start, PoolStatus, Reason]),
             render(Renderer, TemplateId, Template, TemplateData, Tries-1);
         GoodReturn ->
             %% LOG_INFO("render completed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
