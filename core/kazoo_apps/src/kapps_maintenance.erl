@@ -57,7 +57,10 @@
         ,read_all_account_views/0
         ]).
 
--export([init_system/0, init_dbs/0, register_account_views/0]).
+-export([init_system/0
+        ,register_account_views/0
+        ,register_system_dbs_views/0
+        ]).
 
 -export([check_release/0]).
 
@@ -1041,8 +1044,9 @@ flush_account_views() ->
 %% @doc Returns all views related to account database by first trying fetching
 %% from process dictionary otherwise reads from file system.
 %%
-%% If account's views were read from file system, it put them inside
-%% `account_view' process dictionary.
+%% NOTE: Views refresh functionality is handled from database now, view's
+%% definition in databse are updated during system startup and refresh is now
+%% reading view definition from database not from file system.
 %% @see read_all_account_views/0
 %% @see flush_account_views/0
 %% @end
@@ -1056,63 +1060,27 @@ get_all_account_views() ->
             Views;
         Views -> Views
     end.
+
 %%------------------------------------------------------------------------------
-%% @doc Returns all account related views from file system.
-%%
-%% Currently reads account's related views from these apps:
-%% <ul>
-%% <li>{@link kazoo_apps}</li>
-%% <li>{@link conference}</li>
-%% <li>{@link webhooks}</li>
-%% <li>{@link crossbar}</li>
-%% <li>{@link callflow}</li>>
-%% </ul>
+%% @doc Returns all account database related views from file system.
 %% @end
 %%------------------------------------------------------------------------------
 -spec read_all_account_views() -> kz_datamgr:views_listing().
 read_all_account_views() ->
-    [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-    ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
-    ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
-     |kapps_util:get_views_json('crossbar', "account")
-     ++ kapps_util:get_views_json('callflow', "views")
+    [kapps_util:get_view_json(?APP, ?MAINTENANCE_VIEW_FILE)
+     | kapps_util:get_views_json(?APP, "account")
     ].
 
 %%------------------------------------------------------------------------------
-%% @doc Initialize and update core database views from file system.
+%% @doc Update account's MODB and account's specific view definitions in database.
 %%
-%% This includes reading views from file system and revise below views docs:
-%% <ul>
-%% <li>`maintenance' view in `sip_auth' database</li>
-%% <li>`accounts', `maintenance' and `search' views for `accounts' database</li>
-%% <li>`dedicated_ips' database views</li>
-%% </ul>
+%% This function reads all account and account's MODB related views updates (or
+%% creates) them in `system_data' database.
+%% Refreshing views will read those views from this this database.
 %%
-%% This function is always called by {@link init_system/0} during system startup.
-%% @end
-%%------------------------------------------------------------------------------
--spec init_dbs() -> 'ok'.
-init_dbs() ->
-    SipViews = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)],
-    _ = kapps_util:update_views(?KZ_SIP_DB, SipViews, 'false'),
-    Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-            ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
-            ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
-            ],
-    _ = kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'false'),
-    _ = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB, 'kazoo_ips', "views"),
-    'ok'.
-
-%%------------------------------------------------------------------------------
-%% @doc Read all account and account's MODB views from file system and put/update
-%% them `system_data' database to be read by refresh views later.
-%%
-%% This function reads all account and account's MODB related views from various
-%% application and classify each view and creates and updates them in
-%% `system_data' database. Refreshing views will read account's views from this
-%% this database.
-%%
-%% This function is always called by {@link init_system/0} during system startup.
+%% During system startup this function should always be called (by
+%% {@link init_system/0}) to make sure account's view definitions are updated to
+%% latest version.
 %% @end
 %%------------------------------------------------------------------------------
 -spec register_account_views() -> 'ok'.
@@ -1122,20 +1090,74 @@ register_account_views() ->
     kz_datamgr:register_views('account', Views).
 
 %%------------------------------------------------------------------------------
+%% @doc Update view definitions for core system databases.
+%%
+%% During system startup this function should always be called (by
+%% {@link init_system/0}) to make sure account's view definitions are updated to
+%% latest version.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_system_dbs_views() -> 'ok'.
+register_system_dbs_views() ->
+    register_system_dbs_views('false').
+
+-spec register_system_dbs_views(boolean()) -> 'ok'.
+register_system_dbs_views(ShouldUpdateViews) ->
+    Views = [{?KZ_ACCOUNTS_DB, [kapps_util:get_view_json(?APP, ?ACCOUNTS_AGG_VIEW_FILE)
+                               ,kapps_util:get_view_json(?APP, ?MAINTENANCE_VIEW_FILE)
+                               ,kapps_util:get_view_json(?APP, ?SEARCH_VIEW_FILE)
+                               ]
+             }
+            ,{?KZ_ACDC_DB, [kapps_util:get_view_json(?APP, <<"views/acdc.json">>)]}
+            ,{?KZ_ALERTS_DB, [kapps_util:get_view_json(?APP, <<"views/alerts.json">>)]}
+            ,{?KZ_CCCPS_DB, [kapps_util:get_view_json(?APP, <<"views/cccps.json">>)]}
+            ,{?KZ_CONFIG_DB, [kapps_util:get_view_json(?APP, <<"views/system_configs.json">>)]}
+            ,{?KZ_DEDICATED_IP_DB, kapps_util:get_views_json('kazoo_ips', "views")}
+            ,{?KZ_MEDIA_DB, [kapps_util:get_view_json(?APP, <<"account/media.json">>)]}
+            ,{?KZ_OFFNET_DB, [kapps_util:get_view_json(?APP, <<"views/resources.json">>)]}
+            ,{?KZ_PENDING_NOTIFY_DB, [kapps_util:get_view_json(?APP, <<"views/pending_notify.json">>)]}
+            ,{?KZ_PORT_REQUESTS_DB, [kapps_util:get_view_json(?APP, <<"views/port_requests.json">>)]}
+            ,{?KZ_RATES_DB, [kapps_util:get_view_json(?APP, <<"views/rates.json">>)]}
+            ,{?KZ_SIP_DB, [kapps_util:get_view_json(?APP, ?MAINTENANCE_VIEW_FILE)
+                          ,kapps_util:get_view_json(?APP, <<"views/resources.json">>)
+                          ]
+             }
+            ,{?KZ_TOKEN_DB, [kapps_util:get_view_json(?APP, <<"views/token_auth.json">>)]}
+            ,{?KZ_WEBHOOKS_DB, [kapps_util:get_view_json(?APP, <<"views/webhooks.json">>)]}
+            ],
+    register_system_dbs_views_fold(Views),
+    maybe_update_system_dbs_views(Views, ShouldUpdateViews).
+
+-spec register_system_dbs_views_fold(kz_datamgr:views_listing()) -> 'ok'.
+register_system_dbs_views_fold([]) -> 'ok';
+register_system_dbs_views_fold([{DbName, Views} | Others]) ->
+    kz_datamgr:register_views(kz_datamgr:db_classification(DbName), ?APP, Views),
+    register_system_dbs_views_fold(Others).
+
+-spec maybe_update_system_dbs_views(kz_datamgr:views_listing(), boolean()) -> 'ok'.
+maybe_update_system_dbs_views(Views, 'true') ->
+    update_system_dbs_views(Views);
+maybe_update_system_dbs_views(_, 'false') ->
+    'ok'.
+
+update_system_dbs_views([]) -> 'ok';
+update_system_dbs_views([{DbName, Views} | Others]) ->
+    _ = kapps_util:update_views(DbName, Views, 'false'),
+    update_system_dbs_views(Others).
+
+%%------------------------------------------------------------------------------
 %% @doc Initialize and update core database views and register account's views.
 %%
 %% This function is always called by {@link kapps_controller} during system
 %% startup to update core views and register account views.
 %%
 %% @see kapps_controller:start_link/0. `kapps_controller' for system startup
-%% @see crossbar_maintenance:db_init/0. `crossbar_maintenance:db_init/0' for
-%% updating other system databases views and system schema.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init_system() -> 'ok'.
 init_system() ->
-    init_dbs(),
     register_account_views(),
+    register_system_dbs_views('true'),
     lager:notice("system initialized").
 
 -spec check_release() -> 'ok' | 'error'.

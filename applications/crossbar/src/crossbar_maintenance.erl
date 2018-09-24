@@ -136,12 +136,20 @@ add_missing_modules(Modules, MissingModules) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% @deprecated View refresh functionality is moved to {@link kz_datamgr} and
+%% reading from database now, please use {@link kz_datamgr:refresh_views/0}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
     io:format("please use kapps_maintenance:refresh().").
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @deprecated View refresh functionality is moved to {@link kz_datamgr} and
+%% reading from database now, please use {@link kz_datamgr:refresh_views/1}.
+%% @end
+%%------------------------------------------------------------------------------
 -spec refresh(input_term()) -> 'ok'.
 refresh(Value) ->
     io:format("please use kapps_maintenance:refresh(~p).", [Value]).
@@ -1266,9 +1274,11 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
 %%------------------------------------------------------------------------------
 -spec check_system_configs() -> 'ok'.
 check_system_configs() ->
+    lager:notice("starting system schemas validation"),
     _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
          || {Config, Error} <- kapps_maintenance:validate_system_configs()
         ],
+    lager:notice("finished system schemas validation"),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -1298,24 +1308,18 @@ update_schemas() ->
 db_init_schemas() ->
     kz_datamgr:suppress_change_notice(),
     update_schemas(),
-    check_system_configs().
+    check_system_configs(),
+    kz_datamgr:enable_change_notice().
 
 %%------------------------------------------------------------------------------
-%% @doc Updating required database views and system schemas if they has been
-%% changed using view's definitions in database.
+%% @doc Updating system schemas.
 %%
-%% This is called as part of system/crossbar start up to update some databases
-%% views using their definitions stored in `system_data' database. The views
-%% will be updated if it is different from its own definitions.
-%%
-%% This is the same for system_schema, if any system schema is different from
-%% their counterpart in `crossbar/priv/couchdb/schemas/*' it will be updated.
+%% This is called as part of system/crossbar start up to update system_schema,
+%% if any system schema is different from their counterpart in
+%% `crossbar/priv/couchdb/schemas/*' it will be updated.
 %%
 %% Keep in mind that this function is only read from view definitions from
 %% `system_data' database only
-%%
-%% If you need to update view's definitions in runtime, e.g. during developing,
-%% use {@link kapps_maintenance:register_account_views/0}.
 %%
 %% If you only need to update system schemas in runtime, e.g. during developing,
 %% use {@link update_schemas/0}.
@@ -1326,22 +1330,5 @@ db_init_schemas() ->
 %%------------------------------------------------------------------------------
 -spec db_init() -> 'ok'.
 db_init() ->
-    kz_datamgr:suppress_change_notice(),
     _ = kz_util:spawn(fun db_init_schemas/0),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, ?APP, <<"account/media.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, <<"views/resources.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, ?APP, <<"views/port_requests.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, ?APP, <<"views/acdc.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, ?APP, <<"views/cccps.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, ?APP, <<"views/token_auth.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, ?APP, <<"views/alerts.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, ?APP, <<"views/pending_notify.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, ?APP, <<"views/webhooks.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, <<"views/resources.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),
-
-    _ = kz_datamgr:register_view('ratedeck', 'crossbar', <<"views/rates.json">>),
-    kz_datamgr:enable_change_notice(),
-    lager:debug("database views updated").
+    'ok'.
