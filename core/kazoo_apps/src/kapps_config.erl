@@ -656,7 +656,6 @@ update_category(Category, Key, Value, Node, Options) when not is_binary(Category
 update_category(Category, Key, Value, Node, Options) when not is_binary(Node) ->
     update_category(Category, Key, Value, kz_term:to_binary(Node), Options);
 update_category(Category, Keys, Value, Node, Options) ->
-    lager:debug("setting ~s(~p): ~p", [Category, Keys, Value]),
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category) of
         {'ok', JObj} ->
             lager:debug("updating category ~s(~s).~s to ~p", [Category
@@ -677,87 +676,90 @@ update_category(Category, Keys, Value, Node, Options) ->
                      -> {'ok', kz_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
-    L = [Node | Keys],
-    case kz_json:get_value(L, JObj) =/= 'undefined'
+    NodePath = [Node | Keys],
+    case kz_json:get_value(NodePath, JObj) =/= 'undefined'
         orelse props:is_true('node_specific', Options, 'false')
     of
         'true' ->
-            update_category(Category, kz_json:set_value(L, Value, JObj), PvtFields);
+            Update = [{NodePath, Value}],
+            Updates = [{'update', Update}
+                      ,{'create', Update}
+                      ,{'ensure_saved', 'true'}
+                      ],
+            update_category(Category, JObj, Updates, PvtFields);
         'false' ->
-            update_category(Category, kz_json:set_value([?KEY_DEFAULT | Keys], Value, JObj), PvtFields)
+            Update = [{[?KEY_DEFAULT | Keys], Value}],
+            Updates = [{'update', Update}
+                      ,{'create', Update}
+                      ,{'ensure_saved', 'true'}
+                      ],
+            update_category(Category, JObj, Updates, PvtFields)
     end.
 
--spec update_category(config_category(), kz_json:object(), kz_term:api_object()) ->
-                             {'ok', kz_json:object()}.
-update_category(Category, JObj, PvtFields) ->
-    case maybe_save_category(Category, JObj, PvtFields) of
-        {'ok', _}=OK -> OK;
-        {'error', 'conflict'} ->
-            lager:debug("conflict saving ~s, merging and saving", [Category]),
-            {'ok', Updated} = kz_datamgr:open_doc(?KZ_CONFIG_DB, Category),
-            Merged = kz_json:merge_jobjs(Updated, kz_doc:public_fields(JObj, 'false')),
-            lager:debug("updating from ~s to ~s", [kz_doc:revision(JObj), kz_doc:revision(Merged)]),
-            NewPvtFields = case PvtFields of
-                               'undefined' -> PvtFields;
-                               PvtFields -> kz_json:delete_key(<<"_rev">>, PvtFields)
-                           end,
-            update_category(Category, Merged, NewPvtFields)
-    end.
+-spec update_category(config_category(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object()) ->
+                             {'ok', kz_json:object()} |
+                             kz_datamgr:data_error().
+update_category(Category, JObj, Updates, PvtFields) ->
+    maybe_save_category(Category, JObj, Updates, PvtFields).
 -endif.
 
-
--spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_term:api_object()) ->
+-spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object()) ->
                                  {'ok', kz_json:object()} |
-                                 {'error', 'conflict'}.
-maybe_save_category(Category, JObj, PvtFields) ->
-    maybe_save_category(Category, JObj, PvtFields, 'false').
+                                 kz_datamgr:data_error().
+maybe_save_category(Category, JObj, Updates, PvtFields) ->
+    maybe_save_category(Category, JObj, Updates, PvtFields, 'false').
 
--spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_term:api_object(), boolean()) ->
+-spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamger:update_options(), kz_term:api_object(), boolean()) ->
                                  {'ok', kz_json:object()} |
-                                 {'error', 'conflict'}.
-maybe_save_category(Category, JObj, PvtFields, Looped) ->
-    maybe_save_category(Category, JObj, PvtFields, Looped, is_locked()).
+                                 kz_datamgr:data_error().
+maybe_save_category(Category, JObj, Updates, PvtFields, Looped) ->
+    maybe_save_category(Category, JObj, Updates, PvtFields, Looped, is_locked()).
 
--spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_term:api_object(), boolean(), boolean()) ->
+-spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object(), boolean(), boolean()) ->
                                  {'ok', kz_json:object()} |
-                                 {'error', 'conflict'}.
-maybe_save_category(_, JObj, _, _, 'true') ->
+                                 kz_datamgr:data_error().
+maybe_save_category(_Category, JObj, _Updates, _PvtFields, _Looped, 'true') ->
     lager:warning("failed to update category, system config database is locked!"),
     lager:warning("please update /etc/kazoo/config.ini or use 'sup kapps_config lock_db <boolean>' to enable system config writes."),
     {'ok', JObj};
-maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
+maybe_save_category(Category, JObj, Updates, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)"
                ,[Category, kz_doc:revision(JObj)]
                ),
 
-    JObj1 = update_pvt_fields(Category, JObj, PvtFields),
+    PvtUpdates = update_pvt_fields(Category, JObj, PvtFields),
+    WithPvtUpdates = props:set_value('extra_update', PvtUpdates, Updates),
 
-    case kz_datamgr:save_doc(?KZ_CONFIG_DB, JObj1) of
+    case kz_datamgr:update_doc(?KZ_CONFIG_DB, Category, WithPvtUpdates) of
         {'ok', SavedJObj}=Ok ->
-            lager:debug("saved cat ~s to db ~s (~s)", [Category, ?KZ_CONFIG_DB, kz_doc:revision(SavedJObj)]),
+            lager:info("saved cat ~s to db ~s (~s)", [Category, ?KZ_CONFIG_DB, kz_doc:revision(SavedJObj)]),
             _ = kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, SavedJObj),
             Ok;
         {'error', 'not_found'} when not Looped ->
-            lager:debug("attempting to create ~s DB", [?KZ_CONFIG_DB]),
+            lager:info("attempting to create ~s DB", [?KZ_CONFIG_DB]),
             'true' = kz_datamgr:db_create(?KZ_CONFIG_DB),
-            maybe_save_category(Category, JObj, PvtFields, 'true');
+            maybe_save_category(Category, JObj, Updates, PvtFields, 'true');
         {'error', 'conflict'}=E -> E;
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
-            _ = kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, JObj1),
-            {'ok', JObj1}
+            _ = kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, JObj),
+            {'ok', JObj}
     end.
 
 -spec update_pvt_fields(config_category(), kz_json:object(), kz_term:api_object()) ->
-                               kz_json:object().
+                               kz_json:proplist().
 update_pvt_fields(Category, JObj, 'undefined') ->
-    kz_doc:update_pvt_parameters(kz_doc:set_id(JObj, Category)
-                                ,?KZ_CONFIG_DB
-                                ,[{'type', <<"config">>}]
-                                );
+    kz_doc:get_pvt_updates(kz_doc:set_id(JObj, Category)
+                          ,?KZ_CONFIG_DB
+                          ,[{'type', <<"config">>}
+                           ,{'id', Category}
+                           ]
+                          );
 update_pvt_fields(Category, JObj, PvtFields) ->
     Base = update_pvt_fields(Category, JObj, 'undefined'),
-    kz_json:merge_jobjs(Base, PvtFields).
+    kz_json:to_proplist(
+      kz_json:merge_jobjs(kz_json:from_list(Base), PvtFields)
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc Lock configuration document.
@@ -1281,7 +1283,11 @@ migrate_config_doc(FromId, ToId) ->
 -spec migrate_from_doc_to_doc(kz_json:object(), kz_json:object()) -> 'ok'.
 migrate_from_doc_to_doc(FromJObj, ToJObj) ->
     MigratedJObj = migrate_from_doc(FromJObj, ToJObj),
-    {'ok', _ConfigDoc} = maybe_save_category(kz_doc:id(ToJObj), MigratedJObj, 'undefined'),
+    {'ok', _ConfigDoc} = maybe_save_category(kz_doc:id(ToJObj)
+                                            ,MigratedJObj
+                                            ,[{'update', kz_json:to_proplist(MigratedJObj)}]
+                                            ,'undefined'
+                                            ),
     lager:info("migrated ~s to ~s(~s)"
               ,[kz_doc:id(FromJObj), kz_doc:id(ToJObj), kz_doc:revision(_ConfigDoc)]
               ).
