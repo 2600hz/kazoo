@@ -950,7 +950,6 @@ update_not_found(DbName, Id, Options) ->
                                  ++ props:get_value('extra_update', Options, [])
                                 ,JObj
                                 ),
-    lager:info("saving to ~s: ~p", [DbName, Updated]),
     save_doc(DbName, Updated).
 
 %%------------------------------------------------------------------------------
