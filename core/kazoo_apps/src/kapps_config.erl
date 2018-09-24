@@ -504,8 +504,9 @@ get_current(Category, Keys, Default, Node) ->
     case get_category(Category, 'false') of
         {'ok', JObj} -> get_value(Category, Node, Keys, Default, JObj);
         {'error', 'not_found'} ->
-            lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
-            _ = set(Category, Keys, Default),
+            lager:info("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
+            _Set = set(Category, Keys, Default),
+            lager:info("set: ~p", [_Set]),
             Default;
         {'error', Error} ->
             lager:debug("error ~p getting  category ~s(default) ~p: ~p", [Error, Category, Keys, Default]),
@@ -854,17 +855,10 @@ get_category(Category, _) ->
 
 -spec get_category(kz_term:ne_binary(), boolean()) -> fetch_ret().
 get_category(Category, 'true') ->
-    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]) of
-        {'ok', JObj} -> {'ok', kapps_config_doc:config_with_default_node(JObj)};
-        _Other -> {'ok', kapps_config_doc:build_default(Category)}
-    end;
+    kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]);
 get_category(Category, 'false') ->
-    case kz_datamgr:open_doc(?KZ_CONFIG_DB, Category) of
-        {'ok', JObj} -> {'ok', kapps_config_doc:config_with_default_node(JObj)};
-        _Other -> _Other
-    end.
+    kz_datamgr:open_doc(?KZ_CONFIG_DB, Category).
 -endif.
-
 
 -spec fetch_category(kz_term:ne_binary()) -> fetch_ret().
 fetch_category(Category) ->
