@@ -19,7 +19,7 @@
 -include("kazoo_proper.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
--define(SYSTEM_CONFIG_ID, <<"kazoo_proper">>).
+-define(CATEGORY_ID, <<"kazoo_proper">>).
 -define(SCHEMA_ID, <<"system_config.kazoo_proper">>).
 -define(NODE_ID, <<"foo@bar.com">>).
 
@@ -162,7 +162,7 @@ init_db() ->
 
 -spec cleanup_db() -> {'ok', kz_json:object()}.
 cleanup_db() ->
-    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?SYSTEM_CONFIG_ID),
+    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?CATEGORY_ID),
     kz_datamgr:del_doc(?KZ_SCHEMA_DB, ?SCHEMA_ID).
 
 -spec initial_state() -> pqc_kazoo_model:model().
@@ -175,7 +175,7 @@ initial_state() ->
 -spec default() -> any().
 default() ->
     init_db(),
-    Stored = kapps_config_doc:stored_node(?SYSTEM_CONFIG_ID, <<"default">>),
+    Stored = kapps_config_doc:stored_node(?CATEGORY_ID, <<"default">>),
     io:format("stored: ~p~n", [Stored]),
     cleanup_db().
 
@@ -185,11 +185,11 @@ seq() ->
     API = pqc_kazoo_model:api(Model),
 
     Listing = list_configs(API),
-    'false' = lists:member(?SYSTEM_CONFIG_ID, Listing),
+    'false' = lists:member(?CATEGORY_ID, Listing),
 
-    GetSchemaDefaults = get_default_config(API, ?SYSTEM_CONFIG_ID),
+    GetSchemaDefaults = get_default_config(API, ?CATEGORY_ID),
     io:format("get with schema defaults: ~p~n", [GetSchemaDefaults]),
-    ?SYSTEM_CONFIG_ID = kz_json:get_value(<<"id">>, GetSchemaDefaults),
+    ?CATEGORY_ID = kz_json:get_value(<<"id">>, GetSchemaDefaults),
     <<"default_key">> = kz_json:get_value([<<"default">>, <<"key">>], GetSchemaDefaults),
     <<"default_knee">> = kz_json:get_value([<<"default">>, <<"nested">>, <<"knee">>], GetSchemaDefaults),
 
@@ -197,51 +197,58 @@ seq() ->
                                 ,{<<"nested">>, kz_json:from_list([{<<"knee">>, <<"nalue">>}])}
                                 ]),
     Defaults = kz_json:from_list([{<<"default">>, Section}
-                                 ,{<<"id">>, ?SYSTEM_CONFIG_ID}
+                                 ,{<<"id">>, ?CATEGORY_ID}
                                  ]),
 
     Set = set_default_config(API, Defaults),
     io:format("set: ~p~n", [Set]),
     'true' = kz_json:are_equal(Set, Defaults),
 
-    Get = get_node_config(API, ?SYSTEM_CONFIG_ID, <<"default">>),
+    Get = get_node_config(API, ?CATEGORY_ID, <<"default">>),
     io:format("get: ~p~n", [Get]),
     <<"nalue">> = kz_json:get_value([<<"nested">>, <<"knee">>], Get),
-    [?SYSTEM_CONFIG_ID, <<"default">>] = binary:split(kz_doc:id(Get), <<"/">>),
+    [?CATEGORY_ID, <<"default">>] = binary:split(kz_doc:id(Get), <<"/">>),
     <<"value">> = kz_json:get_value(<<"key">>, Get),
+
+    <<"nalue">> = kapps_config:get(?CATEGORY_ID, [<<"nested">>, <<"knee">>], 'undefined', <<"default">>),
+    <<"value">> = kapps_config:get(?CATEGORY_ID, <<"key">>, 'undefined', <<"default">>),
 
     NodeSection = kz_json:from_list([{<<"key">>, <<"node">>}
                                     ,{<<"nested">>, kz_json:from_list([{<<"ankle">>, <<"alue">>}])}
                                     ]),
     NodeSettings = kz_json:from_list([{?NODE_ID, NodeSection}]),
 
-    Patch = patch_default_config(API, ?SYSTEM_CONFIG_ID, NodeSettings),
+    Patch = patch_default_config(API, ?CATEGORY_ID, NodeSettings),
     io:format("patch: ~p~n", [Patch]),
     <<"node">> = kz_json:get_value([?NODE_ID, <<"key">>], Patch),
     <<"alue">> = kz_json:get_value([?NODE_ID, <<"nested">>, <<"ankle">>], Patch),
 
-    GetAll = get_default_config(API, ?SYSTEM_CONFIG_ID),
+    <<"node">> = kapps_config:get(?CATEGORY_ID, <<"key">>, 'undefined', ?NODE_ID),
+    <<"alue">> = kapps_config:get(?CATEGORY_ID, [<<"nested">>, <<"ankle">>], 'undefined', ?NODE_ID),
+    <<"nalue">> = kapps_config:get(?CATEGORY_ID, [<<"nested">>, <<"knee">>], 'undefined', ?NODE_ID),
+
+    GetAll = get_default_config(API, ?CATEGORY_ID),
     io:format("get all: ~p~n", [GetAll]),
     <<"node">> = kz_json:get_value([?NODE_ID, <<"key">>], Patch),
     <<"alue">> = kz_json:get_value([?NODE_ID, <<"nested">>, <<"ankle">>], Patch),
     <<"nalue">> = kz_json:get_value([<<"default">>, <<"nested">>, <<"knee">>], Patch),
 
-    GetNode = get_node_config(API, ?SYSTEM_CONFIG_ID, ?NODE_ID),
+    GetNode = get_node_config(API, ?CATEGORY_ID, ?NODE_ID),
     io:format("get node: ~p~n", [GetNode]),
-    [?SYSTEM_CONFIG_ID, ?NODE_ID] = binary:split(kz_doc:id(GetNode), <<"/">>),
+    [?CATEGORY_ID, ?NODE_ID] = binary:split(kz_doc:id(GetNode), <<"/">>),
     <<"node">> = kz_json:get_value([<<"key">>], GetNode),
     <<"alue">> = kz_json:get_value([<<"nested">>, <<"ankle">>], GetNode),
     <<"nalue">> = kz_json:get_value([<<"nested">>, <<"knee">>], GetNode),
 
     InListing = list_configs(API),
-    'true' = lists:member(?SYSTEM_CONFIG_ID, InListing),
+    'true' = lists:member(?CATEGORY_ID, InListing),
 
-    Delete = delete_config(API, ?SYSTEM_CONFIG_ID),
+    Delete = delete_config(API, ?CATEGORY_ID),
     io:format("delete: ~p~n", [Delete]),
     'true' = kz_json:is_true([<<"_read_only">>, <<"deleted">>], Delete),
 
     OutListing = list_configs(API),
-    'false' = lists:member(?SYSTEM_CONFIG_ID, OutListing),
+    'false' = lists:member(?CATEGORY_ID, OutListing),
 
     ?INFO("COMPLETED SUCCESSFULLY!"),
     cleanup(API),
