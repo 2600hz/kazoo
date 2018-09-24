@@ -78,7 +78,7 @@ create_port_in(JObj, AuthToken) ->
                         ,<<"ports">>
                         ,<<"in">>
                         ]),
-    Data = kz_json:set_value(<<"data">>, JObj, kz_json:new()),
+    Data = kz_json:set_value(<<"data">>, kz_doc:public_fields(JObj), kz_json:new()),
     lager:debug("creating port in request to phonebook via ~s: ~p", [Url, Data]),
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"create">>, Url).

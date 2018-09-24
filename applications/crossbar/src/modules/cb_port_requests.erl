@@ -324,7 +324,8 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    save(Context).
+    Context2 = save(Context),
+    phonebook:maybe_create_port_in(Context2).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, Id, ?PORT_ATTACHMENT) ->
@@ -345,8 +346,7 @@ save(Context) ->
                                   ,{fun cb_context:set_doc/2, NewDoc}
                                   ]
                                  ),
-    Context2 = crossbar_doc:save(Context1),
-    phonebook:maybe_create_port_in(Context2).
+    crossbar_doc:save(Context1).
 
 %%------------------------------------------------------------------------------
 %% @doc
