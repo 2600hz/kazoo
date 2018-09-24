@@ -67,26 +67,15 @@ apply_default_node(Config) ->
 
 -spec apply_schema_defaults(kz_term:ne_binary(), kzd_system_configs:doc()) ->
                                    kzd_system_configs:doc().
-apply_schema_defaults(Id, Config) ->
-    SchemaDefaults = schema_defaults(Id),
-
-    lists:foldl(fun(NodeOrZoneKey, ConfigAcc) ->
-                        apply_default_values(ConfigAcc, NodeOrZoneKey, SchemaDefaults)
-                end
-               ,Config
-               ,[?DEFAULT|get_keys(Config)]
-               ).
+apply_schema_defaults(_Id, Config) -> Config.
 
 -spec apply_schema_defaults_to_default(kz_term:ne_binary(), kzd_system_configs:doc()) ->
                                               kzd_system_configs:doc().
-apply_schema_defaults_to_default(Id, Config) ->
-    SchemaDefaults = schema_defaults(Id),
-    apply_default_values(Config, ?DEFAULT, SchemaDefaults).
+apply_schema_defaults_to_default(_Id, Config) ->
+    Config.
 
 -spec schema_defaults(kz_term:ne_binary()) -> kzd_system_configs:doc().
-schema_defaults(Id) ->
-    SchemaJObj = kapps_config_util:system_config_document_schema(Id),
-    kz_json_schema:default_object(SchemaJObj).
+schema_defaults(_Id) -> kz_json:new().
 
 -spec maybe_insert_default_node(kzd_system_configs:doc()) -> kzd_system_configs:doc().
 maybe_insert_default_node(Config) ->
