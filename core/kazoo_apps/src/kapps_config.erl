@@ -534,16 +534,15 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
 
 -spec get_default_value(config_category(), config_key(), Default, kz_json:object()) ->
                                Default | _.
-get_default_value(_Category, [?KEY_DEFAULT | Keys], Default, JObj) ->
-    case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
-        'undefined' -> Default;
+get_default_value(Category, [?KEY_DEFAULT | _Keys]=Path, Default, JObj) ->
+    case kz_json:get_value(Path, JObj) of
+        'undefined' ->
+            _ = set(Category, Path, Default),
+            Default;
         Else -> Else
     end;
-get_default_value(_Category, Keys, Default, JObj) ->
-    case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
-        'undefined' when Default =/= 'undefined' -> Default;
-        Else -> Else
-    end.
+get_default_value(Category, Keys, Default, JObj) ->
+    get_default_value(Category, [?KEY_DEFAULT | Keys], Default, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc Get all Key-Value pairs for a given category.
