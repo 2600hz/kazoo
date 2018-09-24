@@ -943,9 +943,14 @@ save_update(DbName, Id, Options, UpdatedDoc) ->
 update_not_found(DbName, Id, Options) ->
     CreateProps = props:get_value('create', Options, []),
 
-    JObj = kz_json:from_list(props:set_value(kz_doc:path_id(), Id, CreateProps)),
-    Updated = kz_json:set_values(props:get_value('update', Options), JObj),
-
+    JObj = kz_json:set_values(CreateProps, kz_json:new()),
+    Updated = kz_json:set_values([{kz_doc:path_id(), Id}
+                                  | props:get_value('update', Options)
+                                 ]
+                                 ++ props:get_value('extra_update', Options, [])
+                                ,JObj
+                                ),
+    lager:info("saving to ~s: ~p", [DbName, Updated]),
     save_doc(DbName, Updated).
 
 %%------------------------------------------------------------------------------

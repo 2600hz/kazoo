@@ -83,6 +83,7 @@
 -export([update_pvt_parameters/2
         ,update_pvt_parameters/3
         ,update_pvt_modified/1
+        ,get_pvt_updates/3
         ]).
 
 -export([public_fields/1
@@ -109,15 +110,15 @@
 -export([remove_pvt/1]).
 -endif.
 
--define(PVT_FUNS, [fun add_pvt_vsn/3
-                  ,fun add_pvt_account_id/3
-                  ,fun add_pvt_account_db/3
-                  ,fun add_pvt_created/3
-                  ,fun add_pvt_modified/3
-                  ,fun add_pvt_type/3
-                  ,fun add_pvt_node/3
-                  ,fun add_id/3
-                  ,fun add_pvt_document_hash/3
+-define(PVT_FUNS, [fun add_pvt_vsn/4
+                  ,fun add_pvt_account_id/4
+                  ,fun add_pvt_account_db/4
+                  ,fun add_pvt_created/4
+                  ,fun add_pvt_modified/4
+                  ,fun add_pvt_type/4
+                  ,fun add_pvt_node/4
+                  ,fun add_id/4
+                  ,fun add_pvt_document_hash/4
                   ]).
 
 %% CouchDB Keys
@@ -592,83 +593,93 @@ delete_attachment(JObj, AName) ->
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, []).
 
--spec update_pvt_parameters(doc(), kz_term:api_binary(), kz_term:proplist()) ->
+-spec update_pvt_parameters(doc(), kz_term:api_ne_binary(), kz_term:proplist()) ->
                                    doc().
-update_pvt_parameters(JObj0, DBName, Options) ->
+update_pvt_parameters(JObj, DbName, Options) ->
     Opts = props:insert_value('now', kz_time:now_s(), Options),
-    lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Opts) end, JObj0, ?PVT_FUNS).
 
--spec add_pvt_vsn(doc(), kz_term:api_binary(), kz_term:proplist()) -> doc().
-add_pvt_vsn(JObj, _, Options) ->
+    Updates = get_pvt_updates(JObj, DbName, Opts),
+    kz_json:set_values(Updates, JObj).
+
+-spec get_pvt_updates(kz_json:object(), kz_term:api_ne_binary(), kz_term:proplist()) ->
+                             kz_term:proplist().
+get_pvt_updates(JObj, DbName, Options) ->
+    lists:foldl(fun(Fun, Acc) -> Fun(Acc, JObj, DbName, Options) end, [], ?PVT_FUNS).
+
+-spec add_pvt_vsn(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_vsn(Acc, _JObj, _, Options) ->
     case props:get_value('crossbar_doc_vsn', Options) of
-        'undefined' -> JObj;
-        Vsn -> kz_json:set_value(?KEY_VSN, Vsn, JObj)
+        'undefined' -> Acc;
+        Vsn -> [{?KEY_VSN, Vsn} | Acc]
     end.
 
--spec add_pvt_account_db(doc(), kz_term:api_binary(), kz_term:proplist()) -> doc().
-add_pvt_account_db(JObj, 'undefined', Opts) ->
+-spec add_pvt_account_db(kz_term:proplist(), doc(), kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_account_db(Acc, _JObj, 'undefined', Opts) ->
     case props:get_value('account_db', Opts) of
-        'undefined' -> JObj;
-        Db -> kz_json:set_value(?KEY_ACCOUNT_DB, Db, JObj)
+        'undefined' -> Acc;
+        Db -> [{?KEY_ACCOUNT_DB, Db} | Acc]
     end;
-add_pvt_account_db(JObj, DBName, Opts) ->
+add_pvt_account_db(Acc, _JObj, DBName, Opts) ->
     case props:get_value('account_db', Opts) of
-        'undefined' -> kz_json:set_value(?KEY_ACCOUNT_DB, DBName, JObj);
-        Db -> kz_json:set_value(?KEY_ACCOUNT_DB, Db, JObj)
+        'undefined' ->
+            [{?KEY_ACCOUNT_DB, DBName} | Acc];
+        Db ->
+            [{?KEY_ACCOUNT_DB, Db} | Acc]
     end.
 
--spec add_pvt_account_id(doc(), kz_term:api_binary(), kz_term:proplist()) -> doc().
-add_pvt_account_id(JObj, 'undefined', Opts) ->
+-spec add_pvt_account_id(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_account_id(Acc, _JObj, 'undefined', Opts) ->
     case props:get_value('account_id', Opts) of
-        'undefined' -> JObj;
-        Id -> kz_json:set_value(?KEY_ACCOUNT_ID, Id, JObj)
+        'undefined' -> Acc;
+        Id -> [{?KEY_ACCOUNT_ID, Id} | Acc]
     end;
-add_pvt_account_id(JObj, DBName, Opts) ->
+add_pvt_account_id(Acc, _JObj, DBName, Opts) ->
     case props:get_value('account_id', Opts) of
-        'undefined' -> kz_json:set_value(?KEY_ACCOUNT_ID, kz_util:format_account_id(DBName, 'raw'), JObj);
-        Id -> kz_json:set_value(?KEY_ACCOUNT_ID, Id, JObj)
+        'undefined' ->
+            [{?KEY_ACCOUNT_ID, kz_util:format_account_id(DBName, 'raw')} | Acc];
+        Id ->
+            [{?KEY_ACCOUNT_ID, Id} | Acc]
     end.
 
--spec add_pvt_type(doc(), kz_term:api_binary(), kz_term:proplist()) -> doc().
-add_pvt_type(JObj, _, Options) ->
+-spec add_pvt_type(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_type(Acc, _JObj, _, Options) ->
     case props:get_value('type', Options) of
-        'undefined' -> JObj;
-        Type -> kz_json:set_value(?KEY_PVT_TYPE, Type, JObj)
+        'undefined' -> Acc;
+        Type -> [{?KEY_PVT_TYPE, Type} | Acc]
     end.
 
--spec add_pvt_node(doc(), kz_term:api_binary(), kz_term:proplist()) -> doc().
-add_pvt_node(JObj, _, Options) ->
+-spec add_pvt_node(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_node(Acc, _JObj, _, Options) ->
     case props:get_value('node', Options) of
-        'undefined' -> kz_json:set_value(?KEY_NODE, kz_term:to_binary(node()), JObj);
-        Node -> kz_json:set_value(?KEY_NODE, kz_term:to_binary(Node), JObj)
+        'undefined' ->
+            [{?KEY_NODE, kz_term:to_binary(node())} | Acc];
+        Node ->
+            [{?KEY_NODE, kz_term:to_binary(Node)} | Acc]
     end.
 
--spec add_pvt_created(doc(), kz_term:api_binary(), kz_term:proplist()) -> doc().
-add_pvt_created(JObj, _, Opts) ->
+-spec add_pvt_created(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_created(Acc, JObj, _, Opts) ->
     case kz_json:get_ne_binary_value(?KEY_REV, JObj) of
         'undefined' ->
-            kz_json:set_value(?KEY_CREATED
-                             ,props:get_value('now', Opts, kz_time:now_s())
-                             ,JObj
-                             );
-        _ -> JObj
+            [{?KEY_CREATED, props:get_value('now', Opts, kz_time:now_s())} | Acc];
+        _Rev -> Acc
     end.
 
--spec add_pvt_modified(doc(), kz_term:api_binary(), kz_term:proplist()) -> doc().
-add_pvt_modified(JObj, _, Opts) ->
-    kz_json:set_value(?KEY_MODIFIED, props:get_value('now', Opts), JObj).
+-spec add_pvt_modified(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_modified(Acc, _JObj, _, Opts) ->
+    [{?KEY_MODIFIED, props:get_value('now', Opts)} | Acc].
 
--spec add_id(doc(), any(), kz_term:proplist()) -> doc().
-add_id(JObj, _, Opts) ->
+-spec add_id(kz_term:proplist(), doc(), any(), kz_term:proplist()) -> kz_term:proplist().
+add_id(Acc, _JObj, _, Opts) ->
     case props:get_value('id', Opts) of
-        'undefined' -> JObj;
-        Id -> set_id(JObj, Id)
+        'undefined' -> Acc;
+        Id -> [{?KEY_ID, Id} | Acc]
     end.
 
--spec add_pvt_document_hash(doc(), any(), kz_term:proplist()) -> doc().
-add_pvt_document_hash(JObj, _, _) ->
+-spec add_pvt_document_hash(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+add_pvt_document_hash(Acc, JObj, _, _) ->
     Hash = calculate_document_hash(JObj),
-    set_document_hash(JObj, Hash).
+    [{?KEY_DOCUMENT_HASH, Hash} | Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -676,7 +687,7 @@ add_pvt_document_hash(JObj, _, _) ->
 %%------------------------------------------------------------------------------
 -spec update_pvt_modified(doc()) -> doc().
 update_pvt_modified(JObj) ->
-    add_pvt_modified(JObj, 'undefined', [{'now', kz_time:now_s()}]).
+    kz_json:set_value(?KEY_MODIFIED, kz_time:now_s(), JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will filter any private fields out of the provided
