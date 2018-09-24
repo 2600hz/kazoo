@@ -278,7 +278,8 @@ migrate_system_config(ConfigJObj) ->
                                     ,MediaJObj
                                     ,ConfigJObj
                                     ),
-    io:format("saving updated media config~n", []),
+    io:format("saving updated media config~n"),
+    lager:info("migrating ~p to ~p", [ConfigJObj, UpdatedMediaJObj]),
     {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedMediaJObj),
     'ok'.
 
