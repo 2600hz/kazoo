@@ -534,10 +534,10 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
 
 -spec get_default_value(config_category(), config_key(), Default, kz_json:object()) ->
                                Default | _.
-get_default_value(Category, [?KEY_DEFAULT | _Keys]=Path, Default, JObj) ->
+get_default_value(Category, [?KEY_DEFAULT | Keys]=Path, Default, JObj) ->
     case kz_json:get_value(Path, JObj) of
         'undefined' ->
-            _ = set(Category, Path, Default),
+            _ = set(Category, Keys, Default),
             Default;
         Else -> Else
     end;
