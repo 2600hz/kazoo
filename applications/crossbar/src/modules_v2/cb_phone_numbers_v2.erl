@@ -415,12 +415,14 @@ patch(Context, Number) ->
               ],
     JObj = cb_context:doc(Context),
     Result = knm_number:update(Number, [{fun knm_phone_number:update_doc/2, JObj}], Options),
-    set_response(Result, Context).
+    CB = fun() -> ?MODULE:patch(cb_context:set_accepting_charges(Context), Number) end,
+    set_response(Result, Context, CB).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
     Results = collection_process(Context, ?HTTP_DELETE),
-    set_response(Results, Context);
+    CB = fun() -> ?MODULE:delete(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
+    set_response(Results, Context, CB);
 delete(Context, Number) ->
     Options = default_knm_options(Context),
 
