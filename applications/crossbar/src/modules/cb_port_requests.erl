@@ -354,8 +354,7 @@ save(Context) ->
 %%------------------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
-    Callback = fun() -> save_then_maybe_notify(Context, Id, NewState) end,
-    crossbar_services:maybe_dry_run(Context, Callback);
+    save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_PENDING) ->
     save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_SCHEDULED) ->

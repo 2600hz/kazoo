@@ -192,7 +192,8 @@ ensure_can_load_to_create(T0=#{todo := PNs}) ->
         end,
     lists:foldl(F, T0, PNs);
 ensure_can_load_to_create(PN) ->
-    ensure_state(PN, [?NUMBER_STATE_AVAILABLE
+    ensure_state(PN, [?NUMBER_STATE_AGING
+                     ,?NUMBER_STATE_AVAILABLE
                      ,?NUMBER_STATE_PORT_IN
                      ]).
 
