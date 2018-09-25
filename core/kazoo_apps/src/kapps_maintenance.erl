@@ -51,6 +51,10 @@
         ,binding/1
         ]).
 
+-export([register_views/0
+        ,register_views/1
+        ]).
+
 -export([flush_getby_cache/0
         ,flush_account_views/0
         ,get_all_account_views/0
@@ -66,20 +70,7 @@
 
 -include("kazoo_apps.hrl").
 
--type bind() :: 'migrate' | 'refresh' | 'refresh_account'.
--spec binding(bind() | {bind(), kz_term:ne_binary()}) -> kz_term:ne_binary().
-binding('migrate') -> <<"maintenance.migrate">>;
-binding('refresh') -> <<"maintenance.refresh">>;
-binding('refresh_account') -> <<"maintenance.refresh.account">>;
-binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
-    CommonPath = binding(Common),
-    <<CommonPath/binary, ".", Specific/binary>>.
-
--spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
-bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
-
--spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
-unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
+-type bind() :: 'migrate' | 'refresh' | 'refresh_account' | 'register_views'.
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
@@ -88,6 +79,33 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec binding(bind() | {bind(), kz_term:ne_binary()}) -> kz_term:ne_binary().
+binding('migrate') -> <<"maintenance.migrate">>;
+binding('refresh') -> <<"maintenance.refresh">>;
+binding('refresh_account') -> <<"maintenance.refresh.account">>;
+binding('register_views') -> <<"maintenance.register_views">>;
+binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
+    CommonPath = binding(Common),
+    <<CommonPath/binary, ".", Specific/binary>>.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
+bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
+unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -216,10 +234,30 @@ blocking_refresh(Pause) ->
     refresh(Databases, Pause).
 
 %%------------------------------------------------------------------------------
+%% @doc Register views from all applications that have binding to
+%% `register_views'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_views() -> 'ok'.
+register_views() ->
+    kazoo_bindings:map(binding('register_views'), []).
+
+%%------------------------------------------------------------------------------
+%% @doc Register views from specific `App' application.
+%%
+%% `App' needs to bind to `register_views'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_views(kz_term:ne_binary() | atom()) -> 'ok'.
+register_views(?NE_BINARY=App) ->
+    kazoo_bindings:map(binding({'register_views', App}), []);
+register_views(App) ->
+    register_views(kz_term:to_atom(App, 'true')).
+
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec refresh() -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
@@ -1137,7 +1175,6 @@ register_system_dbs_views(ShouldUpdateViews) ->
                                ,kapps_util:get_view_json(?APP, ?SEARCH_VIEW_FILE)
                                ]
              }
-            ,{?KZ_ACDC_DB, [kapps_util:get_view_json(?APP, <<"views/acdc.json">>)]}
             ,{?KZ_ALERTS_DB, [kapps_util:get_view_json(?APP, <<"views/alerts.json">>)]}
             ,{?KZ_CCCPS_DB, [kapps_util:get_view_json(?APP, <<"views/cccps.json">>)]}
             ,{?KZ_CONFIG_DB, [kapps_util:get_view_json(?APP, <<"views/system_configs.json">>)]}
