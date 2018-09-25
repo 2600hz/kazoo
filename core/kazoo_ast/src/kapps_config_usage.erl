@@ -146,6 +146,8 @@ process_app(App) ->
     #{'project_schemas' := Usage} = kazoo_ast:walk_app(App, Options),
     Usage.
 
+print_dot('pqc_cb_system_configs', Acc) ->
+    {'skip', Acc};
 print_dot(_Module, Acc) ->
     io:format("."),
     Acc.

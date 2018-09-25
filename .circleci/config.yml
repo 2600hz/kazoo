@@ -95,6 +95,10 @@ jobs:
     - run: make xref
     - run: make sup_completion
     - run: TO_DIALYZE="$(echo $CHANGED)" make build-plt dialyze
+    - save_cache:
+        key: v1-dep-{{ .Branch }}-{{ epoch }}
+        paths:
+        - ~/2600hz/kazoo/.kazoo.plt
     - run: make elvis
     - run: make build-ci-release
     - run: ${PWD}/scripts/check-unstaged.bash
