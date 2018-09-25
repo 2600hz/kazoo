@@ -1,5 +1,13 @@
 {
     "_id": "_design/call_stats",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "modb",
+                "classification": "modb"
+            }
+        ],
+    },
     "language": "javascript",
     "views": {
         "call_log": {

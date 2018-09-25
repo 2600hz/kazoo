@@ -270,47 +270,26 @@ refresh(_) ->
 refresh_views(Database) ->
     refresh_views(Database, kz_datamgr:db_classification(Database)).
 
--spec refresh_views(kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
-refresh_views(Database, 'account') ->
-    refresh_account_db(Database);
+-spec refresh_views(kz_term:ne_binary(), kz_term:api_atom()) -> 'ok'.
 refresh_views(_Database, 'undefined') ->
     'ok';
+refresh_views(Database, 'modb') ->
+    kazoo_modb:refresh_views(Database);
+refresh_views(Database, 'account') ->
+    refresh_account_db(Database);
 refresh_views(Database, _) ->
     _ = kz_datamgr:refresh_views(Database),
+    _ = kazoo_bindings:map(binding({'refresh', Database}), [Database]),
     'ok'.
 
 -spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
-    case ensure_account_definition(AccountDb, AccountId) of
-        'deleted' -> 'ok';
-        'ok' ->
-            _ = kz_datamgr:refresh_views(Database),
-            kapps_account_config:migrate(AccountDb),
-            _ = kazoo_bindings:map(kapps_maintenance:binding({'refresh_account', AccountDb}), AccountId),
-            'ok'
-    end.
-
--spec ensure_account_definition(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'deleted'.
-ensure_account_definition(AccountDb, AccountId) ->
-    case kz_datamgr:open_doc(AccountDb, AccountId) of
-        {'error', 'not_found'} -> get_definition_from_accounts(AccountDb, AccountId);
-        {'ok', _} -> 'ok'
-    end.
-
--spec get_definition_from_accounts(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'deleted'.
-get_definition_from_accounts(AccountDb, AccountId) ->
-    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} -> kz_datamgr:ensure_saved(AccountDb, kz_doc:delete_revision(JObj)),
-                        'ok';
-        {'error', 'not_found'} ->
-            io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
-                     ,[AccountId]),
-            _ = kz_datamgr:db_archive(AccountDb),
-            kapps_maintenance:maybe_delete_db(AccountDb),
-            'deleted'
-    end.
+    _ = kz_datamgr:refresh_views(Database),
+    kapps_account_config:migrate(Database),
+    _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -1,0 +1,26 @@
+{
+    "_id": "_design/agents",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "account",
+                "classification": "account"
+            }
+        ],
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type !== 'user' || typeof doc.queues !== 'object' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'first_name': doc.first_name,",
+                "    'last_name': doc.last_name,",
+                "    'queues':doc.queues",
+                "  });",
+                "}"
+            ]
+        }
+    }
+}

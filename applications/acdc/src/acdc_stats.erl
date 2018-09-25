@@ -870,21 +870,8 @@ miss_to_doc(#agent_miss{agent_id=AgentId
 
 -spec init_db(kz_term:ne_binary()) -> 'ok'.
 init_db(AccountId) ->
-    DbName = acdc_stats_util:db_name(AccountId),
-    maybe_created_db(DbName, kazoo_modb:maybe_create(DbName)).
-
--spec maybe_created_db(kz_term:ne_binary(), boolean()) -> 'ok'.
-maybe_created_db(DbName, 'false') ->
-    case kz_datamgr:db_exists(DbName) of
-        'true' ->
-            lager:debug("database ~s already created, refreshing view", [DbName]),
-            kz_datamgr:revise_views_from_folder(DbName, 'acdc');
-        'false' ->
-            lager:debug("modb ~s was not created", [DbName])
-    end;
-maybe_created_db(DbName, 'true') ->
-    lager:debug("created db ~s, adding views", [DbName]),
-    kz_datamgr:revise_views_from_folder(DbName, 'acdc').
+    MODB = acdc_stats_util:db_name(AccountId),
+    kapps_maintenance:refresh_views(MODB).
 
 -spec call_stat_id(kz_json:object()) -> kz_term:ne_binary().
 call_stat_id(JObj) ->
