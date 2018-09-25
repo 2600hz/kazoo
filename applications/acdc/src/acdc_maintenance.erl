@@ -13,7 +13,10 @@
         ,logout_agents/1, logout_agent/2
         ,agent_presence_id/2
         ,migrate_to_acdc_db/0, migrate/0
+
         ,refresh/0, refresh_account/1
+        ,register_views/0
+
         ,flush_call_stat/1
         ,queues_summary/0, queues_summary/1, queue_summary/2
         ,queues_detail/0, queues_detail/1, queue_detail/2
@@ -193,6 +196,11 @@ refresh() ->
 refresh_account(Account) ->
     MODB = acdc_stats_util:db_name(Account),
     kapps_maintenance:refresh_views(MODB).
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(),
+    'ok'.
 
 -spec migrate() -> 'ok'.
 migrate() ->
