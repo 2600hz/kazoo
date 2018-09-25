@@ -89,11 +89,6 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
 
--spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
-refresh_account_db(Database) ->
-    _ = kz_datamgr:refresh_views(Database),
-    'ok'.
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -241,7 +236,7 @@ refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
              ,[self(), length(Databases) + 1, Total, Database]
              ),
-    _ = refresh(Database),
+    _ = refresh_views(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
             'true' -> 'ok'
@@ -257,10 +252,65 @@ get_databases() ->
 get_database_sort(Db1, Db2) ->
     kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
 
+%%------------------------------------------------------------------------------
+%% @doc Used to be refreshing view and creating database but now it is dead.
+%%
+%% @deprecated Refresh views functionality is changed to read view's definition
+%% from database now, please use {@link refresh_views/1}.
+%% @end
+%%------------------------------------------------------------------------------
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
-refresh(Database) ->
-    _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
+refresh(_) ->
+    io:format("Refresh views functionality is changed to read view's definitions "
+              "from database now, please use '~s:refresh_views/1'."
+             ,[?MODULE]
+             ).
+
+-spec refresh_views(kz_term:ne_binary()) -> 'ok'.
+refresh_views(Database) ->
+    refresh_views(Database, kz_datamgr:db_classification(Database)).
+
+-spec refresh_views(kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
+refresh_views(Database, 'account') ->
+    refresh_account_db(Database);
+refresh_views(_Database, 'undefined') ->
+    'ok';
+refresh_views(Database, _) ->
+    _ = kz_datamgr:refresh_views(Database),
     'ok'.
+
+-spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
+refresh_account_db(Database) ->
+    AccountDb = kz_util:format_account_id(Database, 'encoded'),
+    AccountId = kz_util:format_account_id(Database, 'raw'),
+    case ensure_account_definition(AccountDb, AccountId) of
+        'deleted' -> 'ok';
+        'ok' ->
+            _ = kz_datamgr:refresh_views(Database),
+            kapps_account_config:migrate(AccountDb),
+            _ = kazoo_bindings:map(kapps_maintenance:binding({'refresh_account', AccountDb}), AccountId),
+            'ok'
+    end.
+
+-spec ensure_account_definition(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'deleted'.
+ensure_account_definition(AccountDb, AccountId) ->
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} -> get_definition_from_accounts(AccountDb, AccountId);
+        {'ok', _} -> 'ok'
+    end.
+
+-spec get_definition_from_accounts(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'deleted'.
+get_definition_from_accounts(AccountDb, AccountId) ->
+    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj} -> kz_datamgr:ensure_saved(AccountDb, kz_doc:delete_revision(JObj)),
+                        'ok';
+        {'error', 'not_found'} ->
+            io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
+                     ,[AccountId]),
+            _ = kz_datamgr:db_archive(AccountDb),
+            kapps_maintenance:maybe_delete_db(AccountDb),
+            'deleted'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

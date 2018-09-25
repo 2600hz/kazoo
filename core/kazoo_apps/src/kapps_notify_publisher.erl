@@ -159,7 +159,7 @@ save_pending_notification(NotifyType, JObj, Loop) ->
         {'ok', _SavedJObj} ->
             lager:warning("payload for notification ~s is saved to ~s", [NotifyType, kz_doc:id(_SavedJObj)]);
         {'error', 'not_found'} ->
-            kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
+            kapps_maintenance:refresh_views(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
         {'error', 'timeout'} ->
             save_pending_notification(NotifyType, JObj, Loop - 1);

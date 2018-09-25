@@ -1343,12 +1343,7 @@ create_first_transaction(AccountId) ->
 
 -spec ensure_accounts_db_exists() -> 'ok'.
 ensure_accounts_db_exists() ->
-    case kz_datamgr:db_exists(?KZ_ACCOUNTS_DB) of
-        'true' -> 'ok';
-        'false' ->
-            _ = kapps_maintenance:refresh(?KZ_ACCOUNTS_DB),
-            'ok'
-    end.
+    kapps_maintenance:refresh_views(?KZ_ACCOUNTS_DB).
 
 -spec create_account_definition(cb_context:context()) -> cb_context:context().
 create_account_definition(Context) ->

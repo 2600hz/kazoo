@@ -841,7 +841,7 @@ make_reseller(Account) ->
 -spec attempt_services_recovery() -> 'ok'.
 attempt_services_recovery() ->
     JObjs = fetch_all_service_docs(?KZ_SERVICES_DB_TMP),
-    _ = kapps_maintenance:refresh(?KZ_SERVICES_DB),
+    _ = kapps_maintenance:refresh_views(?KZ_SERVICES_DB),
     {'ok', Results} = kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
     log_services_recovery_results(Results).
 
@@ -874,7 +874,7 @@ rebuild_services_db(JObjs) ->
     kz_datamgr:db_delete(?KZ_SERVICES_DB),
     timer:sleep(5000),
     io:format("rebuilding services database views~n", []),
-    kapps_maintenance:refresh(?KZ_SERVICES_DB),
+    kapps_maintenance:refresh_views(?KZ_SERVICES_DB),
     io:format("restoring service documents~n", []),
     _ = kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
     io:format("rebuild complete~n", []).

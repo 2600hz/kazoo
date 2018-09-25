@@ -73,7 +73,7 @@ move_doc(AcctDB, AcctID, TSJObj) ->
         'false' ->
             {'ok', AcctTSJObj} = create_ts_doc(AcctDB, AcctID, TSJObj),
             {'ok', _} = create_credit_doc(AcctDB, AcctID, AcctTSJObj),
-            _ = kapps_maintenance:refresh(AcctID),
+            _ = kapps_maintenance:refresh_views(AcctID),
             'ok'
     end.
 
