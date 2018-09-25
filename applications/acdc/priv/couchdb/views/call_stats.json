@@ -3,10 +3,10 @@
     "kazoo": {
         "view_map": [
             {
-                "database": "modb",
-                "classification": "modb"
+                "classification": "modb",
+                "database": "modb"
             }
-        ],
+        ]
     },
     "language": "javascript",
     "views": {
