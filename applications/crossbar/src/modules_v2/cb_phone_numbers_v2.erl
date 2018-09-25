@@ -333,7 +333,8 @@ post(Context, ?FIX, Num) ->
     AccountDb = cb_context:account_db(Context),
     AuthBy = cb_context:auth_account_id(Context),
     Result = kazoo_number_manager_maintenance:fix_number(Num, AuthBy, AccountDb),
-    set_response(Result, Context).
+    CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?FIX, Num) end,
+    set_response(Result, Context, CB).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
@@ -345,7 +346,7 @@ post(Context, ?CHECK) ->
     cb_context:set_resp_data(Context, knm_carriers:check(Numbers));
 post(Context, ?COLLECTION) ->
     Results = collection_process(Context, ?HTTP_POST),
-    CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
+    CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 post(Context, ?LOCALITY) ->
     fetch_locality(Context);
@@ -355,7 +356,8 @@ post(Context, Number) ->
               ],
     JObj = cb_context:doc(Context),
     Result = knm_number:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options),
-    set_response(Result, Context).
+    CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), Number) end,
+    set_response(Result, Context, CB).
 
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -377,14 +379,14 @@ put(Context, Number) ->
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
-    CB = fun() -> put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
     set_response(Results, Context, CB);
 put(Context, ?NE_BINARY=Number, ?ACTIVATE) ->
     Options = [{'public_fields', cb_context:doc(Context)}
                | default_knm_options(Context)
               ],
     Result = knm_number:move(Number, cb_context:account_id(Context), Options),
-    CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
@@ -392,7 +394,7 @@ put(Context, Number, ?RESERVE) ->
                | default_knm_options(Context)
               ],
     Result = knm_number:reserve(Number, Options),
-    CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?PORT) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
@@ -401,7 +403,7 @@ put(Context, Number, ?PORT) ->
                | default_knm_options(Context)
               ],
     Result = knm_number:create(Number, Options),
-    CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
     set_response(Result, Context, CB).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
@@ -427,6 +429,7 @@ delete(Context, Number) ->
     Options = default_knm_options(Context),
 
     Releaser = pick_release_or_delete(Context, Options),
+    CB = fun() -> ?MODULE:delete(cb_context:set_accepting_charges(Context), Number) end,
     case knm_number:Releaser(Number, Options) of
         {'error', Data}=Error ->
             case kz_json:is_json_object(Data)
@@ -434,10 +437,10 @@ delete(Context, Number) ->
                 andalso knm_errors:cause(Data) == <<"from available to released">>
             of
                 'true' -> reply_number_not_found(Context);
-                'false' -> set_response(Error, Context)
+                'false' -> set_response(Error, Context, CB)
             end;
         Else ->
-            set_response(Else, Context)
+            set_response(Else, Context, CB)
     end.
 
 %%%=============================================================================
