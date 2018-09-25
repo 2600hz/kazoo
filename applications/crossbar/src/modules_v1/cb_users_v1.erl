@@ -529,18 +529,28 @@ prepare_username(UserId, Context) ->
 check_user_name(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     UserName = kz_json:get_ne_value(<<"username">>, JObj),
-    AccountDb = cb_context:account_db(Context),
-    case is_username_unique(AccountDb, UserId, UserName) of
+    case is_username_min_length(cb_context:account_id(Context), UserName) of
         'true' ->
-            lager:debug("user name ~s is unique", [UserName]),
-            check_emergency_caller_id(UserId, Context);
+            case is_username_unique(cb_context:account_db(Context), UserId, UserName) of
+                'true' ->
+                    lager:debug("user name ~s is unique", [UserName]),
+                    check_emergency_caller_id(UserId, Context);
+                'false' ->
+                    lager:error("user name ~s is already in use", [UserName]),
+                    Msg = kz_json:from_list(
+                            [{<<"message">>, <<"User name already in use">>}
+                            ,{<<"cause">>, UserName}
+                            ]),
+                    Context1 = cb_context:add_validation_error([<<"username">>], <<"unique">>, Msg, Context),
+                    check_emergency_caller_id(UserId, Context1)
+            end;
         'false' ->
-            lager:error("user name ~s is already in use", [UserName]),
+            lager:error("user name ~s does not meet minimum length requirements", [UserName]),
             Msg = kz_json:from_list(
-                    [{<<"message">>, <<"User name already in use">>}
+                    [{<<"message">>, <<"User name does not meet minimum length requirements">>}
                     ,{<<"cause">>, UserName}
                     ]),
-            Context1 = cb_context:add_validation_error([<<"username">>], <<"unique">>, Msg, Context),
+            Context1 = cb_context:add_validation_error([<<"username">>], <<"minLength">>, Msg, Context),
             check_emergency_caller_id(UserId, Context1)
     end.
 
@@ -559,6 +569,11 @@ is_username_unique(AccountDb, UserId, UserName) ->
             lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
             'false'
     end.
+
+-spec is_username_min_length(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
+is_username_min_length(AccountId, UserName) ->
+    MinLength = kapps_account_config:get_global(AccountId, <<"accounts">>, <<"min_user_length">>, 3),
+    MinLength =< byte_size(UserName).
 
 -spec check_user_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_user_schema(UserId, Context) ->

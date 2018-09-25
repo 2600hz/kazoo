@@ -189,7 +189,8 @@ validate_request(CallflowId, Context) ->
         [] -> validate_patterns(CallflowId, Context);
         OriginalNumbers
           when is_list(OriginalNumbers) ->
-            validate_callflow_schema(CallflowId, normalize_numbers(Context, OriginalNumbers));
+            Context1 = validate_min_length_numbers(Context, CallflowId, OriginalNumbers),
+            validate_callflow_schema(CallflowId, normalize_numbers(Context1, OriginalNumbers));
         OriginalNumbers ->
             Msg = kz_json:from_list(
                     [{<<"message">>, <<"Value is not of type array">>}
@@ -238,6 +239,50 @@ validate_uniqueness(CallflowId, Context) ->
               ],
     cb_context:setters(Context, Setters).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_min_length_numbers(cb_context:context(), kz_term:api_binary(), kz_term:ne_binaries()) -> cb_context:context().
+validate_min_length_numbers(Context, CallflowId, Numbers) ->
+    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"accounts">>, <<"min_callflow_length">>, 1),
+    check_min_length_numbers(Context, MinLength, CallflowId, Numbers).
+
+-spec check_min_length_numbers(cb_context:context(), kz_term:binary(), kz_term:api_binary(), kz_term:ne_binaries()) -> cb_context:context().
+check_min_length_numbers(Context, _MinLength, _CallflowId, []) -> Context;
+check_min_length_numbers(Context, MinLength, CallflowId, [Number | Numbers]) ->
+    check_min_length_numbers(check_min_length(Context, Number, MinLength, CallflowId), MinLength, CallflowId, Numbers).
+
+-spec check_min_length(cb_context:context(), kz_term:ne_binary(), kz_term:binary(), kz_term:api_binary()) -> cb_context:context().
+check_min_length(Context, Number, MinLength, CallflowId) ->
+    case check_number_unchanged(cb_context:account_db(Context), Number, CallflowId) of
+        'true' -> Context;
+        'false' ->
+            case MinLength =< byte_size(Number) of
+                'true' -> Context;
+                'false' ->
+                    Msg = kz_json:from_list(
+                            [{<<"message">>, <<"Callflow number does not meet minimum length of ", MinLength/binary>>}
+                            ,{<<"cause">>, Number}
+                            ]),
+                    cb_context:add_validation_error(<<"numbers">>, <<"unique">>, Msg, Context)
+            end
+    end.
+
+-spec check_number_unchanged(kz_term:api_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
+check_number_unchanged(AccountDb, Number, CallflowId) ->
+    case kz_datamgr:open_cache_doc(AccountDb, CallflowId) of
+        {'ok', JObj} ->
+            Nums = kz_json:get_value([<<"numbers">>], JObj, []),
+            lists:member(Number, Nums);
+        {'error', _} ->
+            lager:debug("failed to load callflow from account"),
+            'false'
+    end.
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec validate_unique_numbers(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_unique_numbers(Context, CallflowId) ->
     validate_unique_numbers(Context, CallflowId, request_numbers(Context)).

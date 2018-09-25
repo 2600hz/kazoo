@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.accounts",
+    "description": "Schema for accounts account_config",
+    "properties": {
+        "min_callflow_length": {
+            "default": 1,
+            "description": "accounts min_callflow_length",
+            "type": "integer"
+        },
+        "min_device_length": {
+            "default": 3,
+            "description": "accounts min_device_length",
+            "type": "integer"
+        },
+        "min_user_length": {
+            "default": 3,
+            "description": "accounts min_user_length",
+            "type": "integer"
+        },
+        "min_vmbox_length": {
+            "default": 3,
+            "description": "accounts min_vmbox_length",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

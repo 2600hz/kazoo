@@ -626,12 +626,60 @@ validate_unique_vmbox(VMBoxId, Context) ->
 validate_unique_vmbox(VMBoxId, Context, 'undefined') ->
     check_vmbox_schema(VMBoxId, Context);
 validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
-    case check_uniqueness(VMBoxId, Context) of
-        'true' -> check_vmbox_schema(VMBoxId, Context);
+    case is_mailbox_min_length(VMBoxId, Context) of
+        'true' ->
+            case check_uniqueness(VMBoxId, Context) of
+                'true' -> check_vmbox_schema(VMBoxId, Context);
+                'false' ->
+                    Msg = kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}]),
+                    C = cb_context:add_validation_error(<<"mailbox">>, <<"unique">>, Msg, Context),
+                    check_vmbox_schema(VMBoxId, C)
+            end;
         'false' ->
-            Msg = kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}]),
-            C = cb_context:add_validation_error(<<"mailbox">>, <<"unique">>, Msg, Context),
+            Msg = kz_json:from_list([{<<"message">>, <<"Mailbox number does not meet minimum length requirement">>}]),
+            C = cb_context:add_validation_error(<<"mailbox">>, <<"minLength">>, Msg, Context),
             check_vmbox_schema(VMBoxId, C)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_mailbox_min_length(kz_term:api_binary(), cb_context:context()) -> boolean().
+is_mailbox_min_length(VMBoxId, Context) ->
+    AccountId = cb_context:account_id(Context),
+    Mailbox = kz_json:get_value(<<"mailbox">>, cb_context:req_data(Context)),
+    case is_mailbox_unchanged(VMBoxId, Context) of
+        'true' ->
+            'true';
+        'false' ->
+            MinLength = kapps_account_config:get_global(AccountId, <<"accounts">>, <<"min_vmbox_length">>, 3),
+            MinLength =< byte_size(Mailbox)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_mailbox_unchanged(kz_term:api_binary(), cb_context:context()) -> boolean().
+is_mailbox_unchanged(VMBoxId, Context) ->
+    try kz_json:get_integer_value(<<"mailbox">>, cb_context:req_data(Context)) of
+        Mailbox ->
+            is_mailbox_unchanged(VMBoxId, Context, Mailbox)
+    catch
+        _:_ ->
+            lager:debug("can't convert mailbox number to integer", []),
+            'false'
+    end.
+
+-spec is_mailbox_unchanged(kz_term:api_binary(), cb_context:context(), pos_integer()) -> boolean().
+is_mailbox_unchanged(VMBoxId, Context, Mailbox) ->
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), VMBoxId) of
+        {'ok', JObj} ->
+            Mailbox =:= kz_json:get_integer_value(<<"mailbox">>, JObj);
+        {'error', _} ->
+            lager:debug("failed to load mailbox from account"),
+            'false'
     end.
 
 %%------------------------------------------------------------------------------
