@@ -559,7 +559,8 @@ generate_js_classifiers(Classifications, Regexs, FunMatchBlock) ->
     ,[["  else if (e164.match(", escape(Regex), "))"
       ,FunMatchBlock(Class)
       ]
-      || {Class, Regex} <- lists:zip(Classifications, Regexs)
+      || {Class, Regex} <- lists:zip(Classifications, Regexs),
+         is_binary(Regex)
      ]
     ].
 

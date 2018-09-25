@@ -18,7 +18,7 @@
 <body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
     <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
         <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
-            Invoice for changes to VoIP services in '{{account.name}}' -
+            Invoice for changes to VoIP services in '{{affected.name}}' -
         </div>
         <div style="max-width:600px; margin:auto;" class="email-container">
             <!--[if mso]>
@@ -43,12 +43,12 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
-                        <p style="margin-top:0;font-family:'Open Sans',sans-serif;color:#555555;">There has been some changes to your VoIP services in account <b>{{sub_account.name}}</b>.</p>
-                        <p style="font-family:'Open Sans',sans-serif;color:#555555;">Here is the invoice based on the service plan applied to your account. Your account will be billed starts of each month.</p>
+                        <p style="margin-top:0;font-family:'Open Sans',sans-serif;color:#555555;">There have been some changes to your VoIP services in account <b>{{affected.name}}</b>.</p>
+                        <p style="font-family:'Open Sans',sans-serif;color:#555555;">Here is the invoice based on the service plan applied to your account. Your account will be billed at the start of each month.</p>
                     </td>
                 </tr>
             </table>
-            {% if invoice %}{% if invoice.items %}{% if invoice.items|length > 0 %}
+            {% if invoice %}{% if invoice.items %}
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;line-height:1">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:0 20px;">
@@ -63,7 +63,7 @@
                                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" width="100%">
                                         <tr>
                                             <td valign="middle" colspan="2" style="padding:10px 0;font-family:'Open Sans',sans-serif;color:#555555;">
-                                                <b>{{srv_item}}</b><br><span style="color:#999999;font-size:13px"><small>Quantity: {{item_props.quantity}}<br>Rate: ${{item_props.rate}}{% if item_props.discounts != "0.00" %}<br>Discounts: ${{item_props.discounts}}{% endif %}{% if item_props.changes
+                                                <b>{{srv_item}}</b><br><span style="color:#999999;font-size:13px"><small>Quantity: {{item_props.quantity}}<br>Rate: &dollar;{{item_props.rate}}{% if item_props.discounts != "0.00" %}<br>Discounts: &dollar;{{item_props.discounts}}{% endif %}{% if item_props.changes
                                                 %}<br>{% with type=item_props.changes.type %}{% if type == "plan_new" %}<span style="color:#07861d;">Newly started billed by your service plan</span>{% elif type == "plan_removed" %}<span style="color:#de0a0a">{{item_props.changes.quantity}} item(s) stopped billed by your service plan</span>{% elif type == "added" %}<span style="color:#07861d">{{item_props.changes.quantity}} item(s) added to your service</span>{% elif type == "removed" %}<span style="color:#de0a0a">{{item_props.changes.quantity}} item(s) removed from your service</span></small></span>{% endif %}{% endwith %}{% endif %}
                                             </td>
                                             <td align="right" valign="top" colspan="1" style="padding:10px 0;font-family:'Open Sans',sans-serif;color:#555555;">
@@ -82,13 +82,13 @@
                         <table role="presentation" aria-hidden="true" border="0" cellpadding="0" cellspacing="0" align="center" width="100%" style="max-width:560px;border:1px solid #dedede;border-top-style:none;">
                             <tr>
                                 <td align="right" bgcolor="#ffffff" colspan="2" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#999999;border-right:1px solid #dedede;"><small>TOTAL</small></td>
-                                <td align="right" bgcolor="#ffffff" colspan="1" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#555555">${{invoice.total}}</td>
+                                <td align="right" bgcolor="#ffffff" colspan="1" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#555555">&dollar;{{invoice.total}}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
             </table>
-            {% endif %}{% endif %}{% endif %}
+            {% endif %}{% endif %}
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
@@ -121,9 +121,9 @@
                     <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;border-bottom:2px solid #ffffff">
                         <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">Account Information</h4>
                         <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
-                            <b>-&nbsp;&nbsp;&nbsp;Account ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{sub_account.id}}</span><br>
-                            <b>-&nbsp;&nbsp;&nbsp;Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{sub_account.name}}</span><br>
-                            <b>-&nbsp;&nbsp;&nbsp;Account Realm:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{sub_account.realm}}</span>
+                            <b>-&nbsp;&nbsp;&nbsp;Account ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{affected.id}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{affected.name}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Realm:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{affected.realm}}</span>
                         </p>
                     </td>
                 </tr>

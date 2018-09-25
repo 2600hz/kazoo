@@ -5,6 +5,8 @@ Welcome {{user.first_name}},
 
 Your user profile is ready to use, here are login details to sign in.
 
+    Please make sure to change your password as soon as you sign in!
+
 
 === Profile Information ===
 

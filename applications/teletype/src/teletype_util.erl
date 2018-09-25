@@ -34,6 +34,7 @@
         ,is_preview/1
         ,read_preview_doc/1
         ,fix_timestamp/1, fix_timestamp/2, fix_timestamp/3
+        ,timestamp_params/3
         ,build_call_data/2
 
         ,public_proplist/2
@@ -844,6 +845,18 @@ is_preview(DataJObj) ->
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
 
+-spec timestamp_params(kz_time:gregorian_seconds(), kz_term:ne_binary(), string()) -> kz_term:proplist().
+timestamp_params(Timestamp, ?NE_BINARY=Timezone, ClockTimezone) when is_integer(Timestamp) ->
+    DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
+    lager:debug("using tz ~s (system ~s) for ~p", [Timezone, ClockTimezone, DateTime]),
+
+    props:filter_undefined(
+      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+      ,{<<"timestamp">>, Timestamp}
+      ,{<<"timezone">>, Timezone}
+      ]).
+
 %% make timestamp ready to process by "date" filter in ErlyDTL
 %% returns a prop list with local, UTC time and timezone
 -spec fix_timestamp(kz_time:gregorian_seconds() | kz_term:api_ne_binary()) -> kz_term:proplist().
@@ -856,17 +869,8 @@ fix_timestamp('undefined', Thing) ->
 fix_timestamp(?NE_BINARY=Timestamp, Thing) ->
     fix_timestamp(kz_term:to_integer(Timestamp), Thing);
 fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
-    DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-
-    lager:debug("using tz ~s (system ~s) for ~p", [TZ, ClockTimezone, DateTime]),
-
-    props:filter_undefined(
-      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, TZ)}
-      ,{<<"timestamp">>, Timestamp}
-      ,{<<"timezone">>, TZ}
-      ]);
+    timestamp_params(Timestamp, TZ, ClockTimezone);
 fix_timestamp(Timestamp, 'undefined') ->
     fix_timestamp(Timestamp, <<"UTC">>);
 fix_timestamp(Timestamp, DataJObj) ->

@@ -6,7 +6,6 @@
 %%%-----------------------------------------------------------------------------
 -module(crossbar_services).
 
--export([fetch/1]).
 -export([maybe_dry_run/2
         ,maybe_dry_run/3
         ]).
@@ -18,20 +17,6 @@
 -export([transaction_to_error/2]).
 
 -include("crossbar.hrl").
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec fetch(cb_context:context()) -> kz_services:services().
-fetch(Context) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    AccountId = cb_context:account_id(Context),
-    FetchOptions = [],
-    case kz_services_reseller:is_reseller(AuthAccountId) of
-        'true' -> kz_services:fetch(AuthAccountId, FetchOptions);
-        'false' -> kz_services:fetch(AccountId, FetchOptions)
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

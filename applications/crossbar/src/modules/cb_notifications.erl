@@ -505,6 +505,8 @@ maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"49">>, API);
 maybe_add_extra_data(<<"fax_outbound_smtp_error_to_email">>, API) ->
     props:set_value(<<"Errors">>, [<<"Not Deliverable">>], API);
+maybe_add_extra_data(<<"service_added">>, API) ->
+    props:set_value(<<"Items">>, [kz_json:new()], API);
 maybe_add_extra_data(<<"transaction">>, API) ->
     props:set_value(<<"Success">>, 'true', API);
 maybe_add_extra_data(<<"transaction_failed">>, API) ->

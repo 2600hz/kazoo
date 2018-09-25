@@ -94,7 +94,14 @@ jobs:
     - run: ./scripts/state-of-edoc.escript
     - run: make xref
     - run: make sup_completion
+    - restore_cache:
+        keys:
+          - plt-v1-{{ checksum "make/deps.mk" }}
     - run: TO_DIALYZE="$(echo $CHANGED)" make build-plt dialyze
+    - save_cache:
+        key: plt-v1-{{ checksum "make/deps.mk" }}
+        paths:
+          - .kazoo.plt
     - run: make elvis
     - run: make build-ci-release
     - run: ${PWD}/scripts/check-unstaged.bash
@@ -108,11 +115,3 @@ jobs:
           cat ${CIRCLE_ARTIFACTS}/log/error.log
           exit 1
         fi
-    # Teardown
-    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-    # Save test results
-    - store_test_results:
-        path: /tmp/circleci-test-results
-    # Save artifacts
-    - store_artifacts:
-        path: /tmp/circleci-test-results

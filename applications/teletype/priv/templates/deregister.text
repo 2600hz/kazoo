@@ -9,13 +9,13 @@ lost its registration.
     Please check the device.
 
 
-=== Last Registration Details ====
+=== Last Registration Details ===={% autoescape off %}
 
     Device ID: {{last_registration.authorizing_id}}
     Account ID: {{account.id}}
     Account Realm: {{account.realm}}
     User Agent: {{last_registration.user_agent}}
-    Contact: {{last_registration.contact}}
+    Contact: {{last_registration.contact}}{% endautoescape %}
 
 
 

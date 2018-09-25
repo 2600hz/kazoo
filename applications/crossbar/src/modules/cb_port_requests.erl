@@ -90,7 +90,7 @@ init() ->
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
--spec authorize(cb_context:context(), path_token(), path_token()) -> 'true'.
+-spec authorize(cb_context:context(), req_nouns(), req_verb()) -> 'true'.
 authorize(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
     case cb_context:is_superduper_admin(Context)
         andalso cb_context:is_account_admin(Context)
@@ -324,7 +324,8 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    save(Context).
+    Context2 = save(Context),
+    phonebook:maybe_create_port_in(Context2).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, Id, ?PORT_ATTACHMENT) ->
@@ -345,8 +346,7 @@ save(Context) ->
                                   ,{fun cb_context:set_doc/2, NewDoc}
                                   ]
                                  ),
-    Context2 = crossbar_doc:save(Context1),
-    phonebook:maybe_create_port_in(Context2).
+    crossbar_doc:save(Context1).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -354,8 +354,7 @@ save(Context) ->
 %%------------------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
-    Callback = fun() -> save_then_maybe_notify(Context, Id, NewState) end,
-    crossbar_services:maybe_dry_run(Context, Callback);
+    save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_PENDING) ->
     save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_SCHEDULED) ->
@@ -1153,8 +1152,8 @@ find_template(ResellerId, CarrierName) ->
 maybe_send_port_comment_notification(Context, Id) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     ReqData = cb_context:req_data(Context),
-    DbDocComments = kz_json:get_value(<<"comments">>, DbDoc),
-    ReqDataComments = kz_json:get_value(<<"comments">>, ReqData),
+    DbDocComments = kz_json:get_list_value(<<"comments">>, DbDoc, []),
+    ReqDataComments = kz_json:get_list_value(<<"comments">>, ReqData, []),
     case has_new_comment(DbDocComments, ReqDataComments) of
         'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
         'true' ->
@@ -1172,13 +1171,11 @@ maybe_send_port_comment_notification(Context, Id) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec has_new_comment(kz_term:api_objects(), kz_term:api_objects()) -> boolean().
-has_new_comment('undefined', [_|_]) -> 'true';
 has_new_comment([], [_|_]) -> 'true';
-has_new_comment(_, 'undefined') -> 'false';
 has_new_comment(_, []) -> 'false';
 has_new_comment(OldComments, NewComments) ->
-    OldTime = kz_json:get_value(<<"timestamp">>, lists:last(OldComments)),
-    NewTime = kz_json:get_value(<<"timestamp">>, lists:last(NewComments)),
+    OldTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(OldComments)),
+    NewTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(NewComments)),
     OldTime < NewTime.
 
 %%------------------------------------------------------------------------------

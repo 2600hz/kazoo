@@ -15,7 +15,6 @@
 
 -define(MOD_CONFIG_CAT, <<"crossbar.phonebook">>).
 
-
 %%------------------------------------------------------------------------------
 %% @doc exported functions
 %% @end
@@ -30,7 +29,7 @@ maybe_create_port_in(Context) ->
         'false' -> Context
     end.
 
--spec maybe_add_comment(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+-spec maybe_add_comment(cb_context:context(), kz_json:object()) -> cb_context:context().
 maybe_add_comment(Context, Comment) ->
     case should_send_to_phonebook(Context)
         andalso not req_from_phonebook(Context)
@@ -66,7 +65,7 @@ req_from_phonebook(Context) ->
         _ -> 'false'
     end.
 
--spec should_send_to_phonebook(cb_context:context()) -> 'ok'.
+-spec should_send_to_phonebook(cb_context:context()) -> boolean().
 should_send_to_phonebook(Context) ->
     cb_context:resp_status(Context) =:= 'success'
         andalso phonebook_enabled().
@@ -78,7 +77,7 @@ create_port_in(JObj, AuthToken) ->
                         ,<<"ports">>
                         ,<<"in">>
                         ]),
-    Data = kz_json:set_value(<<"data">>, JObj, kz_json:new()),
+    Data = kz_json:set_value(<<"data">>, kz_doc:public_fields(JObj), kz_json:new()),
     lager:debug("creating port in request to phonebook via ~s: ~p", [Url, Data]),
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"create">>, Url).
@@ -106,43 +105,43 @@ cancel_port_in(JObj, AuthToken) ->
     Response = kz_http:delete(Url, req_headers(AuthToken)),
     handle_resp(Response, JObj, <<"cancel">>, Url).
 
--spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any}.
+-spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), string()) -> 'ok'.
 handle_resp({'ok', 200, _, Resp}, _, _, _) ->
     lager:debug("phonebook success ~s", [Resp]);
 handle_resp({'ok', Code, _, Resp}, JObj, Type, Url) ->
     lager:warning("phonebook error ~b response: ~p", [Code, Resp]),
     Response = kz_json:decode(Resp),
-    Message = kz_json:get_value(<<"message">>, Response, <<"unknown error">>),
-    Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
+    Message = kz_json:get_ne_binary_value(<<"message">>, Response, <<"unknown error">>),
+    Data = kz_json:get_json_value(<<"data">>, Response, kz_json:new()),
     Prop = props:filter_empty(
              [{<<"http_code">>, Code}
              ,{<<"error_message">>, Message}
              ,{<<"request_id">>, kz_json:get_value(<<"request_id">>, Response)}
              ,{<<"response_code">>, kz_json:get_value(<<"code">>, Response)}
-             ,{<<"phonebook_url">>, Url}
+             ,{<<"phonebook_url">>, kz_term:to_binary(Url)}
               | kz_json:recursive_to_proplist(Data)
              ]),
     create_alert(Prop, JObj, Type);
 handle_resp({'error', {'connect_failed', _}}, JObj, Type, Url) ->
     lager:error("connection failed to phonebook url ~s", [Url]),
     Prop = [{<<"error_message">>, <<"connection failed to phonebook">>}
-           ,{<<"phonebook_url">>, Url}
+           ,{<<"phonebook_url">>, kz_term:to_binary(Url)}
            ],
     create_alert(Prop, JObj, Type);
 handle_resp({'error', {'malformed_url', _}}, JObj, Type, Url) ->
     lager:error("phonebook fatal error malformed_url ~s", [Url]),
     Prop = [{<<"error_message">>, <<"malformed_url">>}
-           ,{<<"phonebook_url">>, Url}
+           ,{<<"phonebook_url">>, kz_term:to_binary(Url)}
            ],
     create_alert(Prop, JObj, Type);
 handle_resp(Error, JObj, Type, Url) ->
     lager:error("phonebook unknown error ~p", [Error]),
     Prop = [{<<"error_message">>, kz_term:to_binary(io_lib:format("~p", [Error]))}
-           ,{<<"phonebook_url">>, Url}
+           ,{<<"phonebook_url">>, kz_term:to_binary(Url)}
            ],
     create_alert(Prop, JObj, Type).
 
--spec phonebook_uri(iolist()) -> iolist().
+-spec phonebook_uri(iolist()) -> string().
 phonebook_uri(ExplodedPath) ->
     Url = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"phonebook_url">>),
     Uri = kz_util:uri(Url, ExplodedPath),

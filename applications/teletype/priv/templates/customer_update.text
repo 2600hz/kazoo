@@ -1,7 +1,7 @@
 				Dear {{user.first_name}} {{user.last_name}}.
 
 
-Here are some news that we have selected for you.
+Here is some news that we have selected for you.
 
 Best regards,
 

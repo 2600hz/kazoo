@@ -2,11 +2,11 @@
 
 Date: {{ timestamp.local | date:"l, F j, Y H:i" }}
 
-There has been some changes to your VoIP services in account {{affected.name}}.
+There have been some changes to your VoIP services in account {{affected.name}}.
 
 Here is the invoice based on the service plan applied to your account. Your account
-will be billed starts of each month.
-{% if invoice %}{% if invoice.items %}{% if invoice.items|length > 0 %}
+will be billed at the start of each month.
+{% if invoice %}{% if invoice.items %}
 -----------------------------------------------------------------------------------
 | Service                                                          |        PRICE |
 -----------------------------------------------------------------------------------{% for srv_item, item_props in invoice.items %}
@@ -19,7 +19,7 @@ will be billed starts of each month.
 |                                                                                 |
 -----------------------------------------------------------------------------------
 |                                                          TOTAL | {{"$"|add:invoice.total|rjust:14}} |
------------------------------------------------------------------------------------{% endif %}{% endif %}{% endif %}
+-----------------------------------------------------------------------------------{% endif %}{% endif %}
 
 
 Questions?

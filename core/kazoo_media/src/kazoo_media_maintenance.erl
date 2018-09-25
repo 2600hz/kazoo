@@ -20,7 +20,6 @@
 -spec migrate() -> 'no_return'.
 migrate() ->
     io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?CONFIG_CAT]),
-
     maybe_migrate_system_config(<<"callflow">>),
 
     io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?CONFIG_CAT]),
@@ -258,7 +257,8 @@ maybe_migrate_system_config(ConfigId) ->
 -spec maybe_migrate_system_config(kz_term:ne_binary(), boolean()) -> 'ok'.
 maybe_migrate_system_config(ConfigId, DeleteAfter) ->
     case kz_datamgr:open_doc(?KZ_CONFIG_DB, ConfigId) of
-        {'error', 'not_found'} -> 'ok';
+        {'error', 'not_found'} ->
+            io:format("  failed to find ~s, not migrating~n", [ConfigId]);
         {'ok', JObj} ->
             migrate_system_config(kz_doc:public_fields(JObj)),
             maybe_delete_system_config(ConfigId, DeleteAfter)
@@ -274,12 +274,20 @@ maybe_delete_system_config(ConfigId, 'true') ->
 migrate_system_config(ConfigJObj) ->
     {'ok', MediaJObj} = get_media_config_doc(),
 
-    UpdatedMediaJObj = kz_json:foldl(fun migrate_system_config_fold/3
-                                    ,MediaJObj
-                                    ,ConfigJObj
-                                    ),
-    io:format("saving updated media config~n", []),
-    {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedMediaJObj),
+    {Updates, _} = kz_json:foldl(fun migrate_system_config_fold/3
+                                ,{[], MediaJObj}
+                                ,ConfigJObj
+                                ),
+    maybe_update_media_config(Updates, MediaJObj).
+
+maybe_update_media_config([], _) ->
+    io:format("no changes for that need saving~n");
+maybe_update_media_config(Updates, MediaJObj) ->
+    io:format("saving updated media config with:~n~p~n", [Updates]),
+    Update = [{'update', Updates}
+             ,{'ensure_saved', 'true'}
+             ],
+    {'ok', _} = kz_datamgr:update_doc(?KZ_CONFIG_DB, kz_doc:id(MediaJObj), Update),
     'ok'.
 
 -spec get_media_config_doc() -> {'ok', kz_json:object()}.
@@ -290,58 +298,61 @@ get_media_config_doc() ->
             {'ok', kz_json:from_list([{<<"_id">>, ?CONFIG_CAT}])}
     end.
 
--spec migrate_system_config_fold(kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
-                                        kz_json:object().
-migrate_system_config_fold(<<"default">> = Node, Settings, MediaJObj) ->
+-type migrate_fold_acc() :: {kz_term:proplist(), kzd_system_configs:doc()}.
+-spec migrate_system_config_fold(kz_term:ne_binary(), kz_json:json_term(), migrate_fold_acc()) ->
+                                        migrate_fold_acc().
+migrate_system_config_fold(<<"default">> = Node, Settings, Updates) ->
     io:format("migrating node '~s' settings~n", [Node]),
-    migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS);
-migrate_system_config_fold(Node, Settings, MediaJObj) ->
+    migrate_node_config(Node, Settings, Updates, ?CONFIG_KVS);
+migrate_system_config_fold(Node, Settings, Updates) ->
     case binary:split(Node, <<"@">>) of
         [_User, _Domain] ->
             io:format("migrating node '~s' settings~n", [Node]),
-            migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS);
+            migrate_node_config(Node, Settings, Updates, ?CONFIG_KVS);
         _Split ->
             io:format("skipping non-node '~s'~n", [Node]),
-            MediaJObj
+            Updates
     end.
 
--spec migrate_node_config(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> kz_json:object().
-migrate_node_config(_Node, _Settings, MediaJObj, []) -> MediaJObj;
-migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
+-spec migrate_node_config(kz_term:ne_binary(), kz_json:object(), migrate_fold_acc(), kz_term:proplist()) ->
+                                 migrate_fold_acc().
+migrate_node_config(_Node, _Settings, Updates, []) -> Updates;
+migrate_node_config(Node, Settings, Updates, [{K, V} | KVs]) ->
     case kz_json:get_value(K, Settings) of
         'undefined' ->
             io:format("  maybe setting ~p for node ~p to default '~p'~n", [K, Node, V]),
-            migrate_node_config(Node, Settings, maybe_update_media_config(Node, K, V, MediaJObj), KVs);
+            migrate_node_config(Node, Settings, maybe_update_media_config(Node, K, V, Updates), KVs);
         NodeV ->
             io:format("  maybe setting ~p for node ~p to '~p'~n", [K, Node, NodeV]),
 
-            migrate_node_config(Node, Settings, set_node_value(Node, K, NodeV, MediaJObj), KVs)
+            migrate_node_config(Node, Settings, set_node_value(Node, K, NodeV, Updates), KVs)
     end.
 
--spec set_node_value(kz_term:ne_binary(), kz_json:path(), kz_term:ne_binary(), kz_json:object()) ->
-                            kz_json:object().
-set_node_value(Node, <<_/binary>> = K, V, MediaJObj) ->
-    set_node_value(Node, [K], V, MediaJObj);
-set_node_value(Node, K, V, MediaJObj) ->
-    kz_json:set_value([Node | K], V, MediaJObj).
+-spec set_node_value(kz_term:ne_binary(), kz_json:path(), kz_term:ne_binary(), migrate_fold_acc()) ->
+                            migrate_fold_acc().
+set_node_value(Node, <<_/binary>> = K, V, Updates) ->
+    set_node_value(Node, [K], V, Updates);
+set_node_value(Node, K, V, {Updates, MediaJObj}) ->
+    {[{[Node | K], V} | Updates], MediaJObj}.
 
--spec maybe_update_media_config(kz_term:ne_binary(), kz_json:path(), kz_term:api_binary(), kz_json:object()) ->
-                                       kz_json:object().
-maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
+-spec maybe_update_media_config(kz_term:ne_binary(), kz_json:path(), kz_term:api_binary(), migrate_fold_acc()) ->
+                                       migrate_fold_acc().
+maybe_update_media_config(_Node, _K, 'undefined', Updates) ->
     io:format("    no value to set for ~p~n", [_K]),
-    MediaJObj;
-maybe_update_media_config(Node, <<_/binary>> = K, V, MediaJObj) ->
-    maybe_update_media_config(Node, [K], V, MediaJObj);
-maybe_update_media_config(Node, K, V, MediaJObj) ->
+    Updates;
+maybe_update_media_config(Node, <<_/binary>> = K, V, Updates) ->
+    maybe_update_media_config(Node, [K], V, Updates);
+maybe_update_media_config(Node, K, V, {Updates, MediaJObj}=Acc) ->
     Key = [Node | K],
     case kz_json:get_value(Key, MediaJObj) of
-        'undefined' -> kz_json:set_value(Key, V, MediaJObj);
+        'undefined' ->
+            {[{Key, V} | Updates], MediaJObj};
         V ->
             io:format("    media config has matching value for ~p~n", [Key]),
-            MediaJObj;
+            Acc;
         _V ->
             io:format("    media config has existing value '~p' for ~p~n", [_V, Key]),
-            MediaJObj
+            Acc
     end.
 
 -spec remove_empty_media_docs() -> 'no_return'.
