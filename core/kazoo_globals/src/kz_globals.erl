@@ -326,7 +326,7 @@ handle_cast(_Msg, State) ->
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     lager:debug("monitor ~p detected process ~p exited with reason ~p", [Ref, Pid, Reason]),
     erlang:demonitor(Ref, ['flush']),
-    delete_by_pid(Pid, Reason),
+    _ = delete_by_pid(Pid, Reason),
     {'noreply', State};
 handle_info({'EXIT', Pid, Reason}, State) ->
     lager:debug("proxy process ~p exited with reason ~p", [Pid, Reason]),
@@ -784,18 +784,19 @@ from_json(JObj, State) ->
     maybe_add_zone(kz_global:zone(Global), State),
     Global.
 
--spec delete_by_pid(pid()) -> 'ok'.
+-spec delete_by_pid(pid()) -> 'ok' | 'false'.
 delete_by_pid(Pid) ->
     delete_by_pid(Pid, 'normal').
 
--spec delete_by_pid(pid(), term()) -> 'ok'.
+-spec delete_by_pid(pid(), term()) -> 'ok' | 'false'.
 delete_by_pid(Pid, Reason) ->
     _Res = [delete_global(Global, Reason)
             || Global <- kz_global:all_globals_by_pid(?TAB_NAME, Pid)
            ],
-    lager:info("deleted ~p proxies", [length(_Res)]).
+    _Res =/= []
+        andalso lager:debug("deleted ~p proxies", [length(_Res)]).
 
--spec delete_by_node(atom()) -> 'ok'.
+-spec delete_by_node(atom()) -> 'ok' | 'false'.
 delete_by_node(Node)
   when Node =:= node() ->
     'ok';
@@ -806,7 +807,8 @@ delete_by_node(Node) ->
             end
             || Global <- kz_global:all_globals_by_node(?TAB_NAME, Node)
            ],
-    lager:info("deleted ~p proxies for expired node ~p", [length(_Res), Node]).
+    _Res =/= []
+        andalso lager:debug("deleted ~p proxies for expired node ~p", [length(_Res), Node]).
 
 -spec delete_global(kz_global:global(), term()) -> 'ok' | 'true'.
 delete_global(Global, Reason) ->
@@ -816,7 +818,7 @@ delete_global(Global, Reason) ->
 delete_global(Global, Reason, Node) when Node =:= node() ->
     do_amqp_unregister(Global, Reason);
 delete_global(Global, _Reason, _Node) ->
-    lager:debug("deleting ~p", [Global]),
+    lager:debug("deleting global ~p", [Global]),
     ets:delete(?TAB_NAME, kz_global:name(Global)).
 
 -spec remonitor_globals() -> 'ok'.
