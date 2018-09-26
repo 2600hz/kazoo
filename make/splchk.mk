@@ -16,14 +16,22 @@ splchk: splchk-changed
 ifeq ($(wildcard $(CURDIR)/doc/*.md),)
 splchk-docs:: splchk-init
 else
-DOCS := $(shell find $(CURDIR)/doc -name "*.md" -not -path "$(CURDIR)/doc/mkdocs/docs*")
+DOCS := $(shell find $(CURDIR)/doc -name "*.md" -not -path "$(CURDIR)/doc/mkdocs/docs*" -not path "$(CURDIR)/doc/ref")
 splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
 endif
 
-ifeq ($(wildcard $(CURDIR)/priv/templates/*),)
-splchk-docs:: splchk-init
-else
-TEMPLATES := $(shell find $(CURDIR)/priv/templates)
+ifneq ($(wildcard $(CURDIR)/priv/templates/*),)
+TEMPLATES := $(shell find $(CURDIR)/priv/templates -type f)
+splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(TEMPLATES)))
+endif
+
+ifneq ($(wildcard $(CURDIR)/test/rendered-templates/*),)
+RENDERED_TEMPLATES := $(shell find $(CURDIR)/test/rendered-templates -type f)
+splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(RENDERED_TEMPLATES)))
+endif
+
+ifneq ($(wildcard $(CURDIR)/priv/*/templates/*),)
+TEMPLATES := $(shell find $(CURDIR)/priv/*/templates/ -type f)
 splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(TEMPLATES)))
 endif
 
@@ -64,6 +72,9 @@ splchk-changed: splchk-init $(addsuffix .chk,$(basename $(CHANGED)))
 	@aspell --add-filter-path=$(ROOT) --mode=html --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
 %.chk: %.text
+	@aspell --add-filter-path=$(ROOT) --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
+%.chk: %.tmpl
 	@aspell --add-filter-path=$(ROOT) --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
 %.chk: Makefile
