@@ -1,5 +1,15 @@
 {
     "_id": "_design/cccps",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "account"
+            },
+            {
+                "database": "cccps"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "cid_listing": {

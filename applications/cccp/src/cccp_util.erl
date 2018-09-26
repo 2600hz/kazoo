@@ -17,6 +17,8 @@
         ,get_last_dialed_number/1
         ,current_account_outbound_directions/1
         ,count_user_legs/2
+
+        ,register_views/0
         ]).
 
 -include("cccp.hrl").
@@ -314,3 +316,8 @@ current_account_channels(AccountId) ->
         {_OK, [Resp|_]} ->
             kz_json:get_list_value(<<"Channels">>, Resp, [])
     end.
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(),
+    'ok'.

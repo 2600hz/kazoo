@@ -30,28 +30,12 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    maybe_init_db(),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.cccps">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.cccps">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.cccps">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.cccps">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.cccps">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.cccps">>, ?MODULE, 'delete').
-
--spec maybe_init_db() -> 'ok'.
-maybe_init_db() ->
-    case kz_datamgr:db_exists(<<"cccps">>) of
-        'true' ->
-            _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, ?APP, <<"views/cccps.json">>),
-            'ok';
-        'false' -> init_db()
-    end.
-
--spec init_db() -> 'ok'.
-init_db() ->
-    kz_datamgr:db_create(<<"cccps">>),
-    _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, ?APP, <<"views/cccps.json">>),
-    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
