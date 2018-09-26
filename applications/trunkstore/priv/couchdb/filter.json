@@ -1,7 +1,0 @@
-{
-    "_id": "_design/filter",
-    "filters": {
-        "by_doc": "function(doc, req) { if ( req.query.name == doc._id ) { return true; } return false; }"
-    },
-    "language": "javascript"
-}

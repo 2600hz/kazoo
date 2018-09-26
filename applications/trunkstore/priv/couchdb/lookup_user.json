@@ -1,9 +1,0 @@
-{
-    "_id": "_design/lookup_user",
-    "language": "javascript",
-    "views": {
-        "lookup_user_flags": {
-            "map": "function(doc) { if(doc.type != 'sys_info') return; var realm = doc.account.auth_realm; if(doc.call_restriction) { var call_restriction = JSON.parse(JSON.stringify(doc.call_restriction)) }; if(doc.servers) { var acct_clone = JSON.parse(JSON.stringify(doc.account)); var srvs = Iterator(doc.servers); for (var srv in srvs) { if (srv[1].auth) { var srv_clone = JSON.parse(JSON.stringify(srv[1])); srv_clone.auth.auth_realm = realm; emit([realm, srv_clone.auth.auth_user], {\"server\": srv_clone, \"account\": acct_clone, \"call_restriction\": call_restriction}); } } }}"
-        }
-    }
-}
