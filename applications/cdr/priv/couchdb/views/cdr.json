@@ -1,5 +1,12 @@
 {
     "_id": "_design/cdr",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "anonymous_cdrs"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "listing_by_id": {

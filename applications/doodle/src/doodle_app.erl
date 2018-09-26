@@ -11,6 +11,7 @@
 -define(ACCOUNT_CRAWLER_BINDING, <<"tasks.account_crawler">>).
 
 -export([start/2, stop/1]).
+-export([register_views/0]).
 
 %%------------------------------------------------------------------------------
 %% @doc Implement the application start behaviour.
@@ -19,6 +20,8 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
     _ = declare_exchanges(),
+    register_views(),
+    _ = kapps_maintenance:bind('register_views', 'doodle_app', 'register_views'),
     case kapps_config:get_json(?CONFIG_CAT, <<"reschedule">>) =:= undefined
         andalso kz_json:load_fixture_from_file(?APP, <<"fixtures">>, <<"reschedule.json">>)
     of
@@ -50,3 +53,8 @@ declare_exchanges() ->
     _ = kapi_sms:declare_exchanges(),
     _ = kapi_registration:declare_exchanges(),
     kapi_self:declare_exchanges().
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(),
+    'ok'.

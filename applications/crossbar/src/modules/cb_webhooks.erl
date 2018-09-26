@@ -46,11 +46,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, ?APP, <<"views/webhooks.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_SCHEMA_DB, ?APP, <<"schemas/webhooks.json">>),
     init_master_account_db(),
-
     _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -67,8 +63,6 @@ init() ->
 init_master_account_db() ->
     case kapps_util:get_master_account_db() of
         {'ok', MasterAccountDb} ->
-            _ = kz_datamgr:revise_doc_from_file(MasterAccountDb, 'webhooks', <<"webhooks.json">>),
-            lager:debug("ensured view into master db"),
             maybe_revise_schema(MasterAccountDb);
         {'error', _E} ->
             lager:warning("master account not set yet, unable to load view and revise schema: ~p", [_E])
@@ -101,6 +95,8 @@ maybe_revise_schema(MasterDb, SchemaJObj) ->
                                       ])
     end.
 
+%% FIXME: consider using kz_datamgr:update_doc or check if the document
+%% has a change to save.
 -spec revise_schema(kz_json:object(), kz_term:ne_binaries()) -> 'ok'.
 revise_schema(SchemaJObj, HNs) ->
     HookNames = [<<"all">> | HNs],

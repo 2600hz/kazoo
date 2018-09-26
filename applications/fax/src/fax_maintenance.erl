@@ -201,8 +201,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 %%------------------------------------------------------------------------------
 -spec refresh_views() -> 'ok'.
 refresh_views() ->
-    Views = kapps_util:get_views_json('fax', "views"),
-    _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
+    kapps_maintenance:refresh_views(?KZ_FAXES_DB),
     'ok'.
 
 %%------------------------------------------------------------------------------

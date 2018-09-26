@@ -1268,7 +1268,6 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
 -spec create_new_account_db(cb_context:context()) -> cb_context:context().
 create_new_account_db(Context) ->
     AccountDb = cb_context:account_db(Context),
-    _ = ensure_accounts_db_exists(),
     case kapps_util:is_account_db(AccountDb)
         andalso kz_datamgr:db_create(AccountDb)
     of
@@ -1341,10 +1340,6 @@ create_first_transaction(AccountId) ->
     {Year, Month, _} = erlang:date(),
     kz_currency:rollover(AccountId, Year, Month, 0).
 
--spec ensure_accounts_db_exists() -> 'ok'.
-ensure_accounts_db_exists() ->
-    kapps_maintenance:refresh_views(?KZ_ACCOUNTS_DB).
-
 -spec create_account_definition(cb_context:context()) -> cb_context:context().
 create_account_definition(Context) ->
     Doc = crossbar_doc:update_pvt_parameters(cb_context:doc(Context), Context),
@@ -1376,10 +1371,9 @@ set_trial_expires(JObj) ->
     Expires = kz_time:now_s() + TrialTime,
     kzd_accounts:set_trial_expiration(JObj, Expires).
 
-
 -spec load_initial_views(cb_context:context()) -> 'ok'.
 load_initial_views(Context)->
-    _ = kz_datamgr:refresh_views(cb_context:account_db(Context)),
+    _ = kapps_maintenance:refresh_views(cb_context:account_db(Context)),
     _ = kazoo_number_manager_maintenance:update_number_services_view(cb_context:account_db(Context)),
     'ok'.
 

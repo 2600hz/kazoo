@@ -53,9 +53,9 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
-    init_db(),
+    kapps_maintenance:refresh_views(?KZ_PROVISIONER_DB),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.global_provisioner_templates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.global_provisioner_templates">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.global_provisioner_templates">>, ?MODULE, 'allowed_methods'),
@@ -64,12 +64,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.global_provisioner_templates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.global_provisioner_templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.global_provisioner_templates">>, ?MODULE, 'delete'),
-    ok.
-
-init_db() ->
-    _ = kz_datamgr:db_create(?KZ_PROVISIONER_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_PROVISIONER_DB, ?APP, <<"account/provisioner_templates.json">>),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Add content types provided by this module.

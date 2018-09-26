@@ -498,6 +498,8 @@ start_crossbar() ->
             'false'
     end.
 
+%% technically we don't need to check if accounts db exists
+%% since kazoo always checks that during startup.
 -spec db_accounts_exists() -> 'true'.
 db_accounts_exists() ->
     db_exists(?KZ_ACCOUNTS_DB).
