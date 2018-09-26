@@ -16,7 +16,7 @@ splchk: splchk-changed
 ifeq ($(wildcard $(CURDIR)/doc/*.md),)
 splchk-docs:: splchk-init
 else
-DOCS := $(shell find $(CURDIR)/doc -name "*.md" -not -path "$(CURDIR)/doc/mkdocs/docs*" -not path "$(CURDIR)/doc/ref")
+DOCS := $(shell find doc -type f -name "*.md" -o -regex "doc/mkdocs/.+" -prune)
 splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
 endif
 
