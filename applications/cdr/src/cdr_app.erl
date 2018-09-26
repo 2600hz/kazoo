@@ -12,6 +12,7 @@
 
 %% Application callbacks
 -export([start/2, stop/1]).
+-export([register_views/0]).
 
 %%==============================================================================
 %% Application callbacks
@@ -24,7 +25,8 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
+    register_views(),
+    kapps_maintenance:bind('register_views', 'cdr_app', 'register_views'),
     cdr_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -40,3 +42,8 @@ stop(_State) ->
 declare_exchanges() ->
     _ = kapi_call:declare_exchanges(),
     kapi_self:declare_exchanges().
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(),
+    'ok'.
