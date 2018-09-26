@@ -52,10 +52,13 @@ create_collected_conference(Doc, Conference) ->
     Id = kz_doc:id(Doc),
     lager:debug("creating discovered conf ~s", [Id]),
     ReqData = kapps_conference:discovery_request(Conference),
-    IdReqData = kz_json:set_value(<<"Conference-ID">>, Id, ReqData),
-    DocReqData = kz_json:set_value(<<"Conference-Doc">>, Doc, IdReqData),
-    NameReqData = kz_json:set_value(<<"Conference-Name">>, kzd_conferences:name(Doc), DocReqData),
-    Conference1 = kapps_conference:from_json(NameReqData, Conference),
+    NewReqData = kz_json:set_values([{<<"Conference-ID">>, Id}
+                                    ,{<<"Conference-Doc">>, Doc}
+                                    ,{<<"Conference-Name">>, kzd_conferences:name(Doc)}
+                                    ]
+                                   ,ReqData
+                                   ),
+    Conference1 = kapps_conference:from_json(NewReqData, Conference),
     conf_config_req:cache_profile(Conference1),
     Conference1.
 
