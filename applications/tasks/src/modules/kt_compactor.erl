@@ -48,7 +48,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    ensure_dbs_view(),
+    kapps_maintenance:refresh_views(kazoo_couch:get_admin_nodes()),
     set_node_defaults(),
 
     case ?COMPACT_AUTOMATICALLY of
@@ -61,14 +61,6 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
-
--spec ensure_dbs_view() -> 'ok'.
-ensure_dbs_view() ->
-    kz_datamgr:revise_doc_from_file(kazoo_couch:get_admin_dbs()
-                                   ,'tasks'
-                                   ,filename:join(["views", "compactor.json"])
-                                   ),
-    'ok'.
 
 -spec set_node_defaults() -> 'ok'.
 set_node_defaults() ->

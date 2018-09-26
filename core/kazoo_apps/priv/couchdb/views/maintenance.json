@@ -1,5 +1,18 @@
 {
     "_id": "_design/maintenance",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            },
+            {
+                "database": "accounts"
+            },
+            {
+                "database": "sip_auth"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "conflicts": {

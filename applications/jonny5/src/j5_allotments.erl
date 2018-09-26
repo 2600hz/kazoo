@@ -186,7 +186,8 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
     case kz_datamgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart);
         {'error', 'not_found'} ->
-            add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts);
+            kazoo_modb:refresh_views(LedgerDb),
+            allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1);
         {'error', _R}=Error ->
             lager:debug("unable to get consumed quantity for ~s allotment from ~s: ~p"
                        ,[Classification, LedgerDb, _R]
@@ -209,13 +210,6 @@ sum_allotment_consumed_so_far([JObj|JObjs], CycleStart, Seconds) ->
         'false' ->
             sum_allotment_consumed_so_far(JObjs, CycleStart, Seconds + (Timestamp - CycleStart))
     end.
-
--spec add_transactions_view(kz_term:ne_binary(), non_neg_integer(), non_neg_integer(), kz_term:ne_binary(), j5_limits:limits(), 0..3) ->
-                                   integer() |
-                                   {'error', any()}.
-add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts) ->
-    _ = kz_datamgr:revise_views_from_folder(LedgerDb, 'jonny5'),
-    allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1).
 
 %%------------------------------------------------------------------------------
 %% @doc

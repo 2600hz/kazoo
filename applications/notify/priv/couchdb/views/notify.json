@@ -1,9 +1,0 @@
-{
-    "_id": "_design/notify",
-    "language": "javascript",
-    "views": {
-        "first_occurance": {
-            "map": "function(doc) { var sent_initial_registration = false; var sent_initial_call = false; if (typeof doc.notifications == 'object' && typeof doc.notifications.first_occurrence == 'object') { if (doc.notifications.first_occurrence.sent_initial_call || !doc.pvt_account_db) sent_initial_call = true; if (doc.notifications.first_occurrence.sent_initial_registration || !doc.realm) sent_initial_registration = true; } if (doc.pvt_deleted || (sent_initial_call && sent_initial_registration)) return; emit(doc._id, {'realm': doc.realm, 'account_db': doc.pvt_account_db, 'sent_initial_call': sent_initial_call, 'sent_initial_registration': sent_initial_registration}); }"
-        }
-    }
-}

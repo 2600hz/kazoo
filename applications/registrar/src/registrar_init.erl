@@ -19,4 +19,5 @@ start_link() ->
 -spec init() -> any().
 init() ->
     kz_util:put_callid(?MODULE),
-    kapps_maintenance:refresh_views(?KZ_SIP_DB).
+    kapps_maintenance:refresh_views(?KZ_SIP_DB),
+    kapps_maintenance:refresh_views(?KZ_OFFNET_DB).

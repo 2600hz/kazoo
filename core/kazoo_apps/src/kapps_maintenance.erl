@@ -1184,10 +1184,6 @@ register_system_dbs_views(ShouldUpdateViews) ->
             ,{?KZ_PENDING_NOTIFY_DB, [kapps_util:get_view_json(?APP, <<"views/pending_notify.json">>)]}
             ,{?KZ_PORT_REQUESTS_DB, [kapps_util:get_view_json(?APP, <<"views/port_requests.json">>)]}
             ,{?KZ_RATES_DB, [kapps_util:get_view_json(?APP, <<"views/rates.json">>)]}
-            ,{?KZ_SIP_DB, [kapps_util:get_view_json(?APP, ?MAINTENANCE_VIEW_FILE)
-                          ,kapps_util:get_view_json(?APP, <<"views/resources.json">>)
-                          ]
-             }
             ,{?KZ_TOKEN_DB, [kapps_util:get_view_json(?APP, <<"views/token_auth.json">>)]}
             ,{?KZ_WEBHOOKS_DB, [kapps_util:get_view_json(?APP, <<"views/webhooks.json">>)]}
             ],

@@ -18,6 +18,7 @@
         ,stop_module/1
         ,list_templates_from_db/1
         ]).
+-export([register_views/0]).
 
 -include("teletype.hrl").
 
@@ -265,3 +266,8 @@ maybe_remove_module_from_autoload(Module) when is_binary(Module) ->
     end;
 maybe_remove_module_from_autoload(Module) ->
     maybe_remove_module_from_autoload(kz_term:to_binary(Module)).
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    _ = kz_datamgr:register_views_from_folder(?APP),
+    'ok'.

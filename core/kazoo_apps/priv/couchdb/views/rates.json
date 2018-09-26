@@ -1,5 +1,12 @@
 {
     "_id": "_design/rates",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "ratedeck"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

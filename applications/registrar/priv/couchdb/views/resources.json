@@ -1,5 +1,15 @@
 {
     "_id": "_design/resources",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "sip_auth"
+            },
+            {
+                "database": "offnet"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

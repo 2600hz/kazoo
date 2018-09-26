@@ -1,5 +1,12 @@
 {
     "_id": "_design/compactor",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "dbs"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "listing_by_node": {

@@ -8,7 +8,7 @@
 
 -export([device_by_ip/1]).
 -export([set_listeners/1]).
--export([refresh_views/0]).
+-export([register_views/0]).
 
 -include("reg.hrl").
 
@@ -37,8 +37,7 @@ set_listeners(Count) ->
     kapps_config:set(?CONFIG_CAT, <<"listeners">>, Count),
     registrar_shared_listener_sup:set_listeners(Count).
 
--spec refresh_views() -> 'ok'.
-refresh_views() ->
-    View = kapps_util:get_view_json('registrar', <<"credentials.json">>),
-    _ = kapps_util:update_views(?KZ_SIP_DB, [View], 'false'),
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(),
     'ok'.

@@ -890,12 +890,12 @@ fetch_global_resources() ->
 fetch_global_resources() ->
     lager:debug("global resource cache miss, fetching from db"),
     ViewOptions = ['include_docs'],
-    case kz_datamgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_OFFNET_DB, ?LIST_RESOURCES_BY_ID, ViewOptions) of
         {'error', _R} ->
             lager:warning("unable to fetch global resources: ~p", [_R]),
             [];
         {'ok', JObjs} ->
-            CacheProps = [{'origin', [{'db', ?RESOURCES_DB, <<"resource">>}]}],
+            CacheProps = [{'origin', [{'db', ?KZ_OFFNET_DB, <<"resource">>}]}],
             Docs = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
             Resources = resources_from_jobjs(Docs),
             kz_cache:store_local(?CACHE_NAME, 'global_resources', Resources, CacheProps),
