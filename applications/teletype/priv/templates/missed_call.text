@@ -8,7 +8,7 @@ The caller was {{caller_id.name_number}}.
 
 === Call Details ===
 
-    Caller: {{caller_id.name_numbaer}}
+    Caller: {{caller_id.name_number}}
     Callee: {{to.user}} (originally dialed number)
     Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
     Hangup Cause: {{missed_call.reason}}
