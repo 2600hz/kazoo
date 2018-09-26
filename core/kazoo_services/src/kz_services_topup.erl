@@ -14,6 +14,9 @@
 -export([services_update_trigger/0
         ,services_update_trigger/1
         ]).
+-export([recurring_trigger/0
+        ,recurring_trigger/1
+        ]).
 -export([should_topup/1
         ,should_topup/2
         ]).
@@ -46,6 +49,7 @@
 -define(AUTOMATIC_TRIGGER, <<"automatic">>).
 -define(MANUAL_TRIGGER, <<"manual">>).
 -define(SERVICES_UPDATE_TRIGGER, <<"services_update">>).
+-define(RECURRING_TRIGGER, <<"recurring">>).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -94,6 +98,22 @@ services_update_trigger() ->
 -spec services_update_trigger(kz_term:api_binary()) -> boolean().
 services_update_trigger(Trigger) ->
     ?SERVICES_UPDATE_TRIGGER =:= Trigger.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec recurring_trigger() -> kz_term:ne_binary().
+recurring_trigger() ->
+    ?RECURRING_TRIGGER.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec recurring_trigger(kz_term:api_binary()) -> boolean().
+recurring_trigger(Trigger) ->
+    ?RECURRING_TRIGGER =:= Trigger.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -363,5 +383,7 @@ get_description(?MANUAL_TRIGGER) ->
     <<"Manual top-up">>;
 get_description(?SERVICES_UPDATE_TRIGGER) ->
     <<"Proration preemptive top-up">>;
+get_description(?RECURRING_TRIGGER) ->
+    <<"Recurring preemptive top-up">>;
 get_description(_Else) ->
     ?DEFAULT_DESCRIPTION.
