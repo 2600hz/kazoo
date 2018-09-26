@@ -34,8 +34,8 @@ create_conference(DiscoveryReq, Call) ->
 create_conference(DiscoveryReq, Call, 'undefined') ->
     lager:debug("using discovery to build conference"),
     Conference = kapps_conference:set_call(Call, kapps_conference:new()),
-    Conference2 = kapps_conference:set_discovery_request(DiscoveryReq, Conference),
-    kapps_conference:from_json(DiscoveryReq, Conference2);
+    Conference1 = kapps_conference:set_discovery_request(DiscoveryReq, Conference),
+    kapps_conference:from_json(DiscoveryReq, Conference1);
 create_conference(DiscoveryReq, Call, ConferenceId) ->
     Conference = kapps_conference:set_call(Call, kapps_conference:new()),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), ConferenceId) of
