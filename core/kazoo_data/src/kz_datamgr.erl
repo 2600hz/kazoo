@@ -1650,7 +1650,15 @@ check_view_map(ViewName, [Map | Maps], ViewMaps) ->
 check_db_classification(_ViewName, 'undefined', _, _) ->
     lager:error("no database name is set for registering view '~s'", [_ViewName]),
     {'error', 'invalid_db_name'};
-check_db_classification(_viewName, DbName, 'undefined', ViewMaps) ->
+check_db_classification(_ViewName, DbName, Classification, ViewMaps) when DbName =:= <<"account">>
+                                                                          orelse DbName =:= <<"modb">>
+                                                                          orelse DbName =:= <<"numbers">>
+                                                                          orelse DbName =:= <<"ratedeck">>
+                                                                          orelse Classification =:= <<"account">>
+                                                                          orelse Classification =:= <<"modb">> ->
+    %%FIXME: add all special db
+    special_db_classification(DbName, ViewMaps);
+check_db_classification(_ViewName, DbName, 'undefined', ViewMaps) ->
     case db_classification(DbName) of
         'undefined' -> {'error', <<"bad_classification">>};
         Classification ->
@@ -1665,6 +1673,12 @@ check_db_classification(_, DbName, Classification, ViewMaps) ->
                              ]),
     [JObj | ViewMaps].
 
+-spec special_db_classification(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
+special_db_classification(DbName, ViewMaps) ->
+    JObj = kz_json:from_list([{<<"database">>, DbName}
+                             ,{<<"classification">>, DbName}
+                             ]),
+    [JObj | ViewMaps].
 
 %% @equiv register_views_from_folder("views")
 -spec register_views_from_folder() -> 'ok'.
