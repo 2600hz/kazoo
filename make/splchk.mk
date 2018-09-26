@@ -59,6 +59,12 @@ splchk-changed: splchk-init $(addsuffix .chk,$(basename $(CHANGED)))
 %.chk: %.json
 	@aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
+%.chk: %.text
+	@aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
+%.chk: %.tmpl
+	@aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
 %.chk: %.erl
 	@aspell --add-filter-path=$(ROOT) --mode=erlang --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
@@ -70,12 +76,6 @@ splchk-changed: splchk-init $(addsuffix .chk,$(basename $(CHANGED)))
 
 %.chk: %.html
 	@aspell --add-filter-path=$(ROOT) --mode=html --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
-
-%.chk: %.text
-	@aspell --add-filter-path=$(ROOT) --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
-
-%.chk: %.tmpl
-	@aspell --add-filter-path=$(ROOT) --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
 %.chk: Makefile
 	@aspell --add-filter-path=$(ROOT) --mode=erlang --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
