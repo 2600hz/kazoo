@@ -173,19 +173,18 @@ from_json(JObj, Conference) ->
 
 -spec do_from_json(kz_json:object(), conference()) -> conference().
 do_from_json(JObj, Conference) ->
-    Name =
-        case name(Conference) of
+    ConferenceName =
+        case kz_json:get_ne_binary_value(<<"Conference-Name">>, JObj, name(Conference)) of
             'undefined' -> id(Conference);
-            Found -> Found
+            Name -> Name
         end,
-    ConferenceName = kz_json:get_ne_binary_value(<<"Conference-Name">>, JObj, Name),
     ConferenceId =
         case kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj, id(Conference)) of
             'undefined' -> ConferenceName;
             Id -> Id
         end,
 
-    lager:debug("building conference ~s(id:~s) from JSON", [ConferenceName, ConferenceId]),
+    lager:debug("building conference name: ~s (id:~s) from JSON", [ConferenceName, ConferenceId]),
 
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Conference#kapps_conference{id = ConferenceId

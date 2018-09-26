@@ -54,7 +54,8 @@ create_collected_conference(Doc, Conference) ->
     ReqData = kapps_conference:discovery_request(Conference),
     IdReqData = kz_json:set_value(<<"Conference-ID">>, Id, ReqData),
     DocReqData = kz_json:set_value(<<"Conference-Doc">>, Doc, IdReqData),
-    Conference1 = kapps_conference:from_json(DocReqData, Conference),
+    NameReqData = kz_json:set_value(<<"Conference-Name">>, kzd_conferences:name(Doc), DocReqData),
+    Conference1 = kapps_conference:from_json(NameReqData, Conference),
     conf_config_req:cache_profile(Conference1),
     Conference1.
 
