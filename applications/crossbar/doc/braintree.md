@@ -180,7 +180,7 @@ curl -v -X GET \
         ],
         "is_api": true,
         "is_automatic": {AUTOMATIC_BILLING},
-        "is_recurring": {REOCCURING_SUBSCRIPTION}
+        "is_recurring": {RECURRING_SUBSCRIPTION}
     }],
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
@@ -556,7 +556,7 @@ curl -v -X GET \
         ],
         "is_api": true,
         "is_automatic": {AUTOMATIC_BILLING},
-        "is_recurring": {REOCCURING_SUBSCRIPTION}
+        "is_recurring": {RECURRING_SUBSCRIPTION}
     },
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",

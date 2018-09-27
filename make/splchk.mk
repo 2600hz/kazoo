@@ -14,10 +14,25 @@ splchk-init: $(ROOT)/$(KAZOO_DICT) $(ROOT)/$(KAZOO_REPL)
 splchk: splchk-changed
 
 ifeq ($(wildcard $(CURDIR)/doc/*.md),)
-splchk-docs: splchk-init
+splchk-docs:: splchk-init
 else
-DOCS := $(shell find $(CURDIR)/doc -name "*.md" -not -path "$(CURDIR)/doc/mkdocs/docs*")
-splchk-docs: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
+DOCS := $(shell find doc -type f -name "*.md" -o -regex "doc/mkdocs/.+" -prune)
+splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(DOCS)))
+endif
+
+ifneq ($(wildcard $(CURDIR)/priv/templates/*),)
+TEMPLATES := $(shell find $(CURDIR)/priv/templates -type f)
+splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(TEMPLATES)))
+endif
+
+ifneq ($(wildcard $(CURDIR)/test/rendered-templates/*),)
+RENDERED_TEMPLATES := $(shell find $(CURDIR)/test/rendered-templates -type f)
+splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(RENDERED_TEMPLATES)))
+endif
+
+ifneq ($(wildcard $(CURDIR)/priv/*/templates/*),)
+TEMPLATES := $(shell find $(CURDIR)/priv/*/templates/ -type f)
+splchk-docs:: splchk-init $(addsuffix .chk,$(basename $(TEMPLATES)))
 endif
 
 JSON := $(wildcard $(CURDIR)/priv/couchdb/schemas/*.json)
@@ -44,6 +59,12 @@ splchk-changed: splchk-init $(addsuffix .chk,$(basename $(CHANGED)))
 %.chk: %.json
 	@aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
+%.chk: %.text
+	@aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
+%.chk: %.tmpl
+	@aspell --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
 %.chk: %.erl
 	@aspell --add-filter-path=$(ROOT) --mode=erlang --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
@@ -52,6 +73,9 @@ splchk-changed: splchk-init $(addsuffix .chk,$(basename $(CHANGED)))
 
 %.chk: %.hrl
 	@aspell --add-filter-path=$(ROOT) --mode=erlang --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
+
+%.chk: %.html
+	@aspell --add-filter-path=$(ROOT) --mode=html --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
 
 %.chk: Makefile
 	@aspell --add-filter-path=$(ROOT) --mode=erlang --home-dir=$(ROOT) --personal=$(KAZOO_DICT) --repl=$(KAZOO_REPL) --lang=en -x check $<
