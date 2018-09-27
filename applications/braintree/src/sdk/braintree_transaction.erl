@@ -99,12 +99,7 @@ find_by_customer(CustomerId, Min, Max) ->
 %%------------------------------------------------------------------------------
 
 -spec create(bt_transaction()) -> bt_transaction().
-create(#bt_transaction{amount=Amount}=Transaction) ->
-    MaxAmount = kapps_config:get_float(?CONFIG_CAT, <<"max_amount">>, 200.00),
-    case kz_term:to_float(Amount) >  MaxAmount of
-        'true' -> braintree_util:error_max_amount(MaxAmount);
-        'false' -> 'ok'
-    end,
+create(#bt_transaction{}=Transaction) ->
     Url = url(),
     Request = record_to_xml(Transaction, 'true'),
     Xml = braintree_request:post(Url, Request),
