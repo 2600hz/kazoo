@@ -1,5 +1,12 @@
 {
     "_id": "_design/storage",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_data"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

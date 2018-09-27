@@ -1,5 +1,12 @@
 {
     "_id": "_design/search",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "search_by_name": {

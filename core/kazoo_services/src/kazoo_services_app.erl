@@ -20,6 +20,7 @@ start(_Type, _Args) ->
     kapi_bookkeepers:declare_exchanges(),
     _ = kazoo_services_maintenance:db_init(),
     kapps_maintenance:bind({'refresh_account', <<"*">>}, 'kazoo_services_maintenance', 'migrate_service_plans'),
+    kapps_maintenance:bind_and_register_views('kazoo_services', 'kazoo_services_maintenance', 'register_views'),
     kazoo_services_sup:start_link().
 
 %%------------------------------------------------------------------------------

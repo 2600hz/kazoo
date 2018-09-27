@@ -1,5 +1,12 @@
 {
     "_id": "_design/apps",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_auth"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "list_by_account": {

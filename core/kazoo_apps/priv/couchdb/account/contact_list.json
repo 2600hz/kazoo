@@ -1,5 +1,12 @@
 {
     "_id": "_design/contact_list",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "excluded": {

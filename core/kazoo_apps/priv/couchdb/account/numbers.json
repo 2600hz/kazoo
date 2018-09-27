@@ -1,5 +1,12 @@
 {
     "_id": "_design/numbers",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "list_by_number": {

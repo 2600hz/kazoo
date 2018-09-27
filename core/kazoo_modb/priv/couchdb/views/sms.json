@@ -1,5 +1,12 @@
 {
     "_id": "_design/sms",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

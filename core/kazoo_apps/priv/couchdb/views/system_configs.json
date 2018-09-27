@@ -1,5 +1,12 @@
 {
     "_id": "_design/system_configs",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_config"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

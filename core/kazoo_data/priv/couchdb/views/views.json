@@ -1,5 +1,12 @@
 {
     "_id": "_design/views",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_data"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "views_by_classification": {

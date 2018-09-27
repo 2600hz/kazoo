@@ -112,4 +112,4 @@ do_archive_modbs(MODbs, AccountId) ->
 %%------------------------------------------------------------------------------
 -spec register_views() -> 'ok'.
 register_views() ->
-    kz_datamgr:register_views_from_folder('modb', 'kazoo_modb').
+    kz_datamgr:register_views_from_folder('kazoo_modb').

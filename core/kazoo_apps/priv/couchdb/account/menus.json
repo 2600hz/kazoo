@@ -1,5 +1,12 @@
 {
     "_id": "_design/menus",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

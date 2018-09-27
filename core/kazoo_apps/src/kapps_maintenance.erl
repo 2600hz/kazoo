@@ -1185,7 +1185,6 @@ register_system_dbs_views(ShouldUpdateViews) ->
             ,{?KZ_PORT_REQUESTS_DB, [kapps_util:get_view_json(?APP, <<"views/port_requests.json">>)]}
             ,{?KZ_RATES_DB, [kapps_util:get_view_json(?APP, <<"views/rates.json">>)]}
             ,{?KZ_TOKEN_DB, [kapps_util:get_view_json(?APP, <<"views/token_auth.json">>)]}
-            ,{?KZ_WEBHOOKS_DB, [kapps_util:get_view_json(?APP, <<"views/webhooks.json">>)]}
             ],
     register_system_dbs_views_fold(Views),
     maybe_update_system_dbs_views(Views, ShouldUpdateViews).

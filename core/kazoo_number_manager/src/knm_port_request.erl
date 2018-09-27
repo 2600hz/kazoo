@@ -6,8 +6,7 @@
 %%%-----------------------------------------------------------------------------
 -module(knm_port_request).
 
--export([init/0
-        ,current_state/1
+-export([current_state/1
         ,public_fields/1
         ,get/1
         ,new/3
@@ -50,15 +49,6 @@
 
 
 %%% API
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec init() -> any().
-init() ->
-    _ = kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
 
 %%------------------------------------------------------------------------------
 %% @doc

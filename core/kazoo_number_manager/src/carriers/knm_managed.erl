@@ -22,9 +22,6 @@
 
 -include("knm.hrl").
 
--define(KZ_MANAGED, <<"numbers%2Fmanaged">>).
--define(MANAGED_VIEW_FILE, <<"views/numbers_managed.json">>).
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -91,7 +88,7 @@ do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
                   ,{'limit', Quantity}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers_managed/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_MANAGED_DB, <<"numbers_managed/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available managed numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
@@ -189,13 +186,7 @@ save_doc(AccountId, Number) ->
 -spec save_doc(kz_json:object()) -> {'ok', kz_json:object()} |
                                     {'error', any()}.
 save_doc(JObj) ->
-    case kz_datamgr:save_doc(?KZ_MANAGED, JObj) of
-        {'error', 'not_found'} ->
-            'true' = kz_datamgr:db_create(?KZ_MANAGED),
-            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_MANAGED, ?APP, ?MANAGED_VIEW_FILE),
-            save_doc(JObj);
-        Result -> Result
-    end.
+    kz_datamgr:save_doc(?KZ_MANAGED_DB, JObj).
 
 -spec update_doc(knm_number:knm_number(), kz_term:proplist()) ->
                         knm_number:knm_number().
@@ -208,7 +199,7 @@ update_doc(Number, UpdateProps) ->
               ],
     UpdateOptions = [{'update', Updates}],
 
-    case kz_datamgr:update_doc(?KZ_MANAGED, Num, UpdateOptions) of
+    case kz_datamgr:update_doc(?KZ_MANAGED_DB, Num, UpdateOptions) of
         {'ok', _UpdatedDoc} -> Number;
         {'error', Reason} ->
             knm_errors:database_error(Reason, PhoneNumber)

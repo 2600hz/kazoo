@@ -15,7 +15,10 @@
 -export([register_common_providers/0]).
 -export([register_auth_app_key/2]).
 
--export([refresh/0, flush/0]).
+-export([refresh/0
+        ,register_views/0
+        ,flush/0
+        ]).
 
 -export([ensure_secret/0]).
 
@@ -55,7 +58,22 @@ register_auth_app_key(AppId, PemFile) ->
 
 -spec refresh() -> 'ok'.
 refresh() ->
-    kz_datamgr:revise_views_from_folder(?KZ_AUTH_DB, 'kazoo_auth').
+    case kz_datamgr:db_exists(?KZ_AUTH_DB) of
+        'false' ->
+            init_db(kz_datamgr:db_create(?KZ_AUTH_DB));
+        'true' -> init_db('true')
+    end.
+
+-spec init_db(boolean()) -> 'ok'.
+init_db('false') ->
+    lager:error("error trying to create auth database");
+init_db('true') ->
+    kapps_maintenance:refresh_views(?KZ_AUTH_DB).
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    _ = kz_datamgr:register_views_from_folder('kazoo_auth'),
+    'ok'.
 
 -spec register_common_providers() -> 'ok'.
 register_common_providers() ->

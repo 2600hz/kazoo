@@ -1,5 +1,12 @@
 {
     "_id": "_design/dedicated_ips",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "dedicated_ips"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "assigned_to_listing": {

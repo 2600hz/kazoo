@@ -8,6 +8,8 @@
 -export([remove_empty_media_docs/0
         ,remove_empty_media_docs/1
         ,migrate/0, migrate_prompts/0
+        ,register_views/0
+        ,refresh_views/0
         ,import_prompts/1, import_prompts/2
         ,import_prompt/1, import_prompt/2
         ,set_account_language/2
@@ -16,6 +18,25 @@
         ]).
 
 -include("kazoo_media.hrl").
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    _ = kz_datamgr:register_views_from_folder('kazoo_media'),
+    'ok'.
+
+-spec refresh_views() -> 'ok'.
+refresh_views() ->
+    case kz_datamgr:db_exists(?KZ_MEDIA_DB) of
+        'false' ->
+            init_db(kz_datamgr:db_create(?KZ_MEDIA_DB));
+        'true' -> init_db('true')
+    end.
+
+-spec init_db(boolean()) -> 'ok'.
+init_db('false') ->
+    lager:error("error trying to create auth database");
+init_db('true') ->
+    kapps_maintenance:refresh_views(?KZ_MEDIA_DB).
 
 -spec migrate() -> 'no_return'.
 migrate() ->

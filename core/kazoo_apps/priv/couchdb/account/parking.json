@@ -1,5 +1,12 @@
 {
     "_id": "_design/parking",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "parked_call": {

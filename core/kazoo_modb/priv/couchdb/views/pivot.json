@@ -1,5 +1,12 @@
 {
     "_id": "_design/pivot",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

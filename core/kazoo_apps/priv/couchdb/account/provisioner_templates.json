@@ -3,6 +3,13 @@
     "kazoo": {
         "view_map": [
             {
+                "classification": "account"
+            }
+        ]
+    },
+    "kazoo": {
+        "view_map": [
+            {
                 "database": "account"
             },
             {

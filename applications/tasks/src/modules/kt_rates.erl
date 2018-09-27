@@ -339,7 +339,7 @@ save_rates(Db, Rates) ->
             refresh_selectors_index(Db);
         {'error', 'not_found'} ->
             lager:debug("failed to find database ~s", [Db]),
-            kapps_maitenance:refresh_views(Db),
+            kapps_maintenance:refresh_views(Db),
             save_rates(Db, Rates);
         %% Workaround, need to fix!
         %% We assume that is everything ok and try to refresh index

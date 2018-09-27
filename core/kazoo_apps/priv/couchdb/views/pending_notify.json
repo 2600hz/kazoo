@@ -1,5 +1,12 @@
 {
     "_id": "_design/pending_notify",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "pending_notifications"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "failed_by_type": {

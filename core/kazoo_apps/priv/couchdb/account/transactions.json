@@ -1,5 +1,12 @@
 {
     "_id": "_design/transactions",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "allotment_consumed": {

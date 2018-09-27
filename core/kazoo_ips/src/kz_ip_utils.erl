@@ -11,9 +11,17 @@
 
 -spec refresh_database() -> 'ok'.
 refresh_database() ->
-    _ = kapi_maintenance:refresh_database(?KZ_DEDICATED_IP_DB),
+    init_db(),
     _ = kapi_maintenance:refresh_views(?KZ_DEDICATED_IP_DB),
     'ok'.
+
+init_db() ->
+    case kz_datamgr:db_exists(?KZ_DEDICATED_IP_DB) of
+        'false' ->
+            Result = kz_datamgr:db_create(?KZ_DEDICATED_IP_DB),
+            lager:debug("~s is created: ~p", [?KZ_DEDICATED_IP_DB, Result]);
+        'true' -> 'ok'
+    end.
 
 -spec refresh_database(function()) -> any().
 refresh_database(Callback) ->

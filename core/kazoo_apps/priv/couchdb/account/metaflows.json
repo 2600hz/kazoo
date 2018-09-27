@@ -1,5 +1,12 @@
 {
     "_id": "_design/metaflows",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

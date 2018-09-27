@@ -1,5 +1,12 @@
 {
     "_id": "_design/port_requests",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "port_requests"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "active_port_request": {

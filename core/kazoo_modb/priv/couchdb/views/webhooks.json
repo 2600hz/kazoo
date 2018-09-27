@@ -1,5 +1,12 @@
 {
     "_id": "_design/webhooks",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "attempts_by_hook_listing": {

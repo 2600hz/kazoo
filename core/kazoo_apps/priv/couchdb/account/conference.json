@@ -1,5 +1,12 @@
 {
     "_id": "_design/conference",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "listing_by_number": {

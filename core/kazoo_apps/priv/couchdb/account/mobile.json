@@ -1,5 +1,12 @@
 {
     "_id": "_design/mobile",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "listing_by_mdn": {

@@ -1,5 +1,15 @@
 {
     "_id": "_design/media",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_media"
+            },
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

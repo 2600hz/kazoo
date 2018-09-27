@@ -1,5 +1,12 @@
 {
     "_id": "_design/allotments",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "consumed": {

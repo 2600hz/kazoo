@@ -1,5 +1,12 @@
 {
     "_id": "_design/users",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "creds_by_md5": {
