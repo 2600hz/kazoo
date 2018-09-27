@@ -12,7 +12,7 @@
 -spec refresh_database() -> 'ok'.
 refresh_database() ->
     init_db(),
-    _ = kapi_maintenance:refresh_views(?KZ_DEDICATED_IP_DB),
+    _ = kapps_maintenance:refresh(?KZ_DEDICATED_IP_DB),
     'ok'.
 
 init_db() ->

@@ -8,32 +8,15 @@
 -export([remove_empty_media_docs/0
         ,remove_empty_media_docs/1
         ,migrate/0, migrate_prompts/0
-        ,register_views/0
-        ,refresh_views/0
         ,import_prompts/1, import_prompts/2
         ,import_prompt/1, import_prompt/2
         ,set_account_language/2
         ,refresh/0
+        ,register_views/0
         ,fix_media_names/0
         ]).
 
 -include("kazoo_media.hrl").
-
--spec register_views() -> 'ok'.
-register_views() ->
-    _ = kz_datamgr:register_views_from_folder('kazoo_media'),
-    'ok'.
-
--spec refresh_views() -> 'ok'.
-refresh_views() ->
-    case kz_datamgr:db_exists(?KZ_MEDIA_DB) of
-        'false' ->
-            Result = kz_datamgr:db_create(?KZ_MEDIA_DB),
-            lager:debug("~s database is created: ~p", [?KZ_MEDIA_DB, Result]);
-        'true' -> 'ok'
-    end,
-    _ = kapps_maintenance:refresh(?KZ_MEDIA_DB),
-    'ok'.
 
 -spec migrate() -> 'no_return'.
 migrate() ->
@@ -257,15 +240,18 @@ maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
 
 -spec refresh() -> 'ok'.
 refresh() ->
-    Req = [{<<"Database">>, ?KZ_MEDIA_DB}
-          ,{<<"Classification">>, kz_datamgr:db_classification(?KZ_MEDIA_DB)}
-          ,{<<"Action">>, <<"refresh_views">>}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    {'ok', _} = kz_amqp_worker:call(Req
-                                   ,fun kapi_maintenance:publish_req/1
-                                   ,fun kapi_maintenance:resp_v/1
-                                   ),
+    case kz_datamgr:db_exists(?KZ_MEDIA_DB) of
+        'false' ->
+            Result = kz_datamgr:db_create(?KZ_MEDIA_DB),
+            lager:debug("~s database is created: ~p", [?KZ_MEDIA_DB, Result]);
+        'true' -> 'ok'
+    end,
+    _ = kapps_maintenance:refresh(?KZ_MEDIA_DB),
+    'ok'.
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    _ = kz_datamgr:register_views_from_folder('kazoo_media'),
     'ok'.
 
 -spec maybe_migrate_system_config(kz_term:ne_binary()) -> 'ok'.
