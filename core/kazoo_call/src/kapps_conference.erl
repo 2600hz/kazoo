@@ -167,20 +167,24 @@ from_json(JObj, Conference) ->
     case kz_json:get_json_value(<<"Conference-Doc">>, JObj) of
         'undefined' -> do_from_json(JObj, Conference);
         Doc ->
-            FromJObj = do_from_json(JObj, Conference),
-            from_conference_doc(Doc, FromJObj)
+            FromDoc = from_conference_doc(Doc, Conference),
+            do_from_json(JObj, FromDoc)
     end.
 
 -spec do_from_json(kz_json:object(), conference()) -> conference().
 do_from_json(JObj, Conference) ->
-    ConferenceName = kz_json:get_ne_binary_value(<<"Conference-Name">>, JObj, id(Conference)),
+    ConferenceName =
+        case kz_json:get_ne_binary_value(<<"Conference-Name">>, JObj, name(Conference)) of
+            'undefined' -> id(Conference);
+            Name -> Name
+        end,
     ConferenceId =
         case kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj, id(Conference)) of
             'undefined' -> ConferenceName;
             Id -> Id
         end,
 
-    lager:debug("building conference ~s(id:~s) from JSON", [ConferenceName, ConferenceId]),
+    lager:debug("building conference name: ~s (id:~s) from JSON", [ConferenceName, ConferenceId]),
 
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Conference#kapps_conference{id = ConferenceId
@@ -292,7 +296,7 @@ from_conference_doc(JObj, Conference) ->
     ConferenceName = kzd_conferences:name(JObj, name(Conference)),
     ConferenceId = kz_doc:id(JObj, ConferenceName),
 
-    lager:debug("building conference ~s(id:~s) from config", [ConferenceName, ConferenceId]),
+    lager:debug("building conference ~s (id:~s) from config", [ConferenceName, ConferenceId]),
 
     Conference#kapps_conference{id = ConferenceId
                                ,name = ConferenceName
@@ -350,7 +354,7 @@ set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
 set_name(Name, Conference) when is_binary(Name) ->
     Conference#kapps_conference{name=Name}.
 
--spec name(conference()) -> kz_term:ne_binary().
+-spec name(conference()) -> kz_term:api_ne_binary().
 name(#kapps_conference{name=Name}) ->
     Name.
 

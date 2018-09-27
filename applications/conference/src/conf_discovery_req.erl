@@ -34,7 +34,8 @@ create_conference(DiscoveryReq, Call) ->
 create_conference(DiscoveryReq, Call, 'undefined') ->
     lager:debug("using discovery to build conference"),
     Conference = kapps_conference:set_call(Call, kapps_conference:new()),
-    kapps_conference:from_json(DiscoveryReq, Conference);
+    Conference1 = kapps_conference:set_discovery_request(DiscoveryReq, Conference),
+    kapps_conference:from_json(DiscoveryReq, Conference1);
 create_conference(DiscoveryReq, Call, ConferenceId) ->
     Conference = kapps_conference:set_call(Call, kapps_conference:new()),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), ConferenceId) of
@@ -46,6 +47,20 @@ create_conference(DiscoveryReq, Call, ConferenceId) ->
             lager:debug("could not find specified conference id ~s: ~p", [ConferenceId, _Else]),
             kapps_conference:from_json(cleanup_conference_doc(DiscoveryReq), Conference)
     end.
+-spec create_collected_conference(kz_json:object(), kapps_conference:conference()) -> kapps_conference:conference().
+create_collected_conference(Doc, Conference) ->
+    Id = kz_doc:id(Doc),
+    lager:debug("creating discovered conf ~s", [Id]),
+    ReqData = kapps_conference:discovery_request(Conference),
+    NewReqData = kz_json:set_values([{<<"Conference-ID">>, Id}
+                                    ,{<<"Conference-Doc">>, Doc}
+                                    ,{<<"Conference-Name">>, kzd_conferences:name(Doc)}
+                                    ]
+                                   ,ReqData
+                                   ),
+    Conference1 = kapps_conference:from_json(NewReqData, Conference),
+    conf_config_req:cache_profile(Conference1),
+    Conference1.
 
 -spec cleanup_conference_doc(kapi_conference:discovery_req()) -> kapi_conference:discovery_req().
 cleanup_conference_doc(DiscoveryReq) ->
@@ -132,7 +147,8 @@ validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
             Doc = kz_json:get_json_value(<<"doc">>, JObj),
-            valid_conference_id(Srv, kapps_conference:from_conference_doc(Doc, Conference), Digits);
+            Conference2 = create_collected_conference(Doc, Conference),
+            valid_conference_id(Srv, Conference2, Digits);
         _Else ->
             lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
             _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
