@@ -1,5 +1,12 @@
 {
     "_id": "_design/webhooks",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "webhook_meta_listing": {

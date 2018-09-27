@@ -7,8 +7,7 @@
 
 -behaviour(application).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
--include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include("webhooks.hrl").
 
 -export([start/2, stop/1]).
 
@@ -19,6 +18,7 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
     _ = declare_exchanges(),
+    kapps_maintenance:bind_and_register_views(?APP, 'webhooks_maintenance', 'register'),
     webhooks_sup:start_link().
 
 %%------------------------------------------------------------------------------
