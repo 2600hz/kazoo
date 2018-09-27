@@ -201,7 +201,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 %%------------------------------------------------------------------------------
 -spec refresh_views() -> 'ok'.
 refresh_views() ->
-    kapps_maintenance:refresh_views(?KZ_FAXES_DB),
+    kapps_maintenance:refresh(?KZ_FAXES_DB),
     'ok'.
 
 %%------------------------------------------------------------------------------

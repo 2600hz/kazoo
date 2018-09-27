@@ -147,7 +147,7 @@ handle_result(#ctx{account_id = _AccountId}=Ctx, {'ok', ViewResults}) ->
     maybe_next_cycle(migrate_messages(NewCtx, ViewResults));
 handle_result(#ctx{account_id = _AccountId, account_db = AccountDb, retries = Retries}=Ctx, {'error', 'not_found'}) when Retries > 3 ->
     ?SUP_LOG_WARNING("  [~s] refreshing view", [_AccountId]),
-    _ = kapps_maintenance:refresh_views(AccountDb),
+    _ = kapps_maintenance:refresh(AccountDb),
 
     timer:sleep(?TIME_BETWEEN_ACCOUNT_CRAWLS),
     migration_loop(Ctx#ctx{retries = Retries + 1

@@ -32,7 +32,7 @@ refresh_views() ->
             lager:debug("~s database is created: ~p", [?KZ_MEDIA_DB, Result]);
         'true' -> 'ok'
     end,
-    _ = kapps_maintenance:refresh_views(?KZ_MEDIA_DB),
+    _ = kapps_maintenance:refresh(?KZ_MEDIA_DB),
     'ok'.
 
 -spec migrate() -> 'no_return'.

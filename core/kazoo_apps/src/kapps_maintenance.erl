@@ -289,7 +289,7 @@ refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
              ,[self(), length(Databases) + 1, Total, Database]
              ),
-    _ = refresh_views(Database),
+    _ = refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
             'true' -> 'ok'
@@ -305,29 +305,17 @@ get_databases() ->
 get_database_sort(Db1, Db2) ->
     kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
 
-%%------------------------------------------------------------------------------
-%% @doc Used to be refreshing view and creating database but now it is dead.
-%%
-%% @deprecated Refresh views functionality is changed to read view's definition
-%% from database now, please use {@link refresh_views/1}.
-%% @end
-%%------------------------------------------------------------------------------
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
-refresh(_) ->
-    io:format("Refresh views functionality is changed to read view's definitions "
-              "from database now, please use '~s:refresh_views/1'."
-             ,[?MODULE]
-             ).
-
--spec refresh_views(kz_term:ne_binary()) -> 'ok'.
-refresh_views(Database) ->
+refresh(Database) ->
     refresh_views(Database, kz_datamgr:db_classification(Database)).
 
--spec refresh_views(kz_term:ne_binary(), kz_term:api_atom()) -> 'ok'.
+-spec refresh_views(kz_term:ne_binary(), kz_datamgr:db_classification() | kz_term:ne_binary()) -> 'ok'.
 refresh_views(_Database, 'undefined') ->
     'ok';
 refresh_views(Database, 'modb') ->
-    kazoo_modb:refresh_views(Database);
+    kazoo_modb:refresh_views(Database),
+    _ = kazoo_bindings:map(binding({'refresh', Database}), [Database]),
+    'ok';
 refresh_views(Database, 'account') ->
     refresh_account_db(Database);
 refresh_views(Database, _) ->
@@ -339,8 +327,8 @@ refresh_views(Database, _) ->
 refresh_account_db(Database) ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
-    _ = kz_datamgr:refresh_views(Database),
-    kapps_account_config:migrate(Database),
+    _ = kz_datamgr:refresh_views(AccountDb),
+    kapps_account_config:migrate(AccountDb),
     _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
     'ok'.
 
@@ -1205,7 +1193,7 @@ refresh_system_views() ->
 -spec refresh_system_views(kz_term:ne_binaries()) -> 'ok'.
 refresh_system_views([]) -> 'ok';
 refresh_system_views([Db | Dbs]) ->
-    refresh_views(Db),
+    refresh(Db),
     refresh_system_views(Dbs).
 
 %%------------------------------------------------------------------------------

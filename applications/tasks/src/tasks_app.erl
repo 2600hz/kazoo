@@ -20,7 +20,7 @@ start(_Type, _Args) ->
     _ = kapi_self:declare_exchanges(),
     _ = kapi_tasks:declare_exchanges(),
     kapps_maintenance:bind_and_register_views(?APP, 'tasks_maintenance', 'register_views'),
-    kapps_maintenance:refresh_views(?KZ_TASKS_DB),
+    kapps_maintenance:refresh(?KZ_TASKS_DB),
     Ok = tasks_sup:start_link(),
     _ = tasks_bindings:init(),
     Ok.

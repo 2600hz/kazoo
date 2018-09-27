@@ -228,7 +228,7 @@ js_quantify_map() ->
 -spec refresh() -> 'ok'.
 refresh() ->
     kz_datamgr:db_create(?KZ_SERVICES_DB),
-    _ = kapps_maintenance:refresh_views(?KZ_SERVICES_DB),
+    _ = kapps_maintenance:refresh(?KZ_SERVICES_DB),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -850,7 +850,7 @@ make_reseller(Account) ->
 -spec attempt_services_recovery() -> 'ok'.
 attempt_services_recovery() ->
     JObjs = fetch_all_service_docs(?KZ_SERVICES_DB_TMP),
-    _ = kapps_maintenance:refresh_views(?KZ_SERVICES_DB),
+    _ = kapps_maintenance:refresh(?KZ_SERVICES_DB),
     {'ok', Results} = kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
     log_services_recovery_results(Results).
 

@@ -184,7 +184,7 @@ do_insert(Db, Docs) ->
     case kz_datamgr:save_docs(Db, Docs) of
         {'ok', _Result} -> refresh_selectors_index(Db);
         {'error', 'not_found'} ->
-            kapps_maintenance:refresh_views(Db),
+            kapps_maintenance:refresh(Db),
             do_insert(Db, Docs);
         {'error', E} -> lager:error("error adding selectors: ~p",[E])
     end.

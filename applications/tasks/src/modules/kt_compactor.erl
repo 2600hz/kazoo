@@ -48,7 +48,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kapps_maintenance:refresh_views(kazoo_couch:get_admin_nodes()),
+    kapps_maintenance:refresh(kazoo_couch:get_admin_nodes()),
     set_node_defaults(),
 
     case ?COMPACT_AUTOMATICALLY of

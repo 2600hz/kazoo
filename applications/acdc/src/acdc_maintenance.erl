@@ -195,7 +195,7 @@ refresh() ->
 -spec refresh_account(kz_term:ne_binary()) -> 'ok'.
 refresh_account(Account) ->
     MODB = acdc_stats_util:db_name(Account),
-    kapps_maintenance:refresh_views(MODB).
+    kapps_maintenance:refresh(MODB).
 
 -spec register_views() -> 'ok'.
 register_views() ->

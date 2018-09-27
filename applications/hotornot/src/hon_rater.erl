@@ -12,7 +12,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    _ = [kapps_maintenance:refresh_views(kzd_ratedeck:format_ratedeck_db(Ratedeck))
+    _ = [kapps_maintenance:refresh(kzd_ratedeck:format_ratedeck_db(Ratedeck))
          || Ratedeck <- hotornot_config:ratedecks()
         ],
     'ok'.

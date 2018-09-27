@@ -60,7 +60,7 @@ get_view_count(AccountId, View, Retry) ->
     case kz_datamgr:get_results_count(AccountDb, View, []) of
         {'ok', Total} -> Total;
         {'error', 'not_found'} ->
-            kapps_maintenance:refresh_views(AccountDb),
+            kapps_maintenance:refresh(AccountDb),
             get_view_count(AccountDb, View, Retry-1);
         {'error', _} ->
             get_view_count(AccountDb, View, Retry-1)

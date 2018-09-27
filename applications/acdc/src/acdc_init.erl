@@ -42,7 +42,7 @@ init_acdc() ->
     end.
 
 -spec init_db() -> any().
-init_db() -> kapps_maintenance:refresh_views(?KZ_ACDC_DB).
+init_db() -> kapps_maintenance:refresh(?KZ_ACDC_DB).
 
 -spec init_acct(kz_term:ne_binary()) -> 'ok'.
 init_acct(Account) ->

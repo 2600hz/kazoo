@@ -20,7 +20,7 @@
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     kapps_maintenance:bind_and_register_views('stepswitch', 'stepswitch_maintenance', 'register_views'),
-    kapps_maintenance:refresh_views(?KZ_OFFNET_DB),
+    kapps_maintenance:refresh(?KZ_OFFNET_DB),
     stepswitch_sup:start_link().
 
 %%------------------------------------------------------------------------------

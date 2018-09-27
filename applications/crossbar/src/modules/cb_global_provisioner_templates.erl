@@ -55,7 +55,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kapps_maintenance:refresh_views(?KZ_PROVISIONER_DB),
+    kapps_maintenance:refresh(?KZ_PROVISIONER_DB),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.global_provisioner_templates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.global_provisioner_templates">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.global_provisioner_templates">>, ?MODULE, 'allowed_methods'),

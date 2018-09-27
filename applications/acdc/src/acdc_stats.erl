@@ -871,7 +871,7 @@ miss_to_doc(#agent_miss{agent_id=AgentId
 -spec init_db(kz_term:ne_binary()) -> 'ok'.
 init_db(AccountId) ->
     MODB = acdc_stats_util:db_name(AccountId),
-    kapps_maintenance:refresh_views(MODB).
+    kapps_maintenance:refresh(MODB).
 
 -spec call_stat_id(kz_json:object()) -> kz_term:ne_binary().
 call_stat_id(JObj) ->

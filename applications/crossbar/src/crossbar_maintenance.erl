@@ -137,22 +137,22 @@ add_missing_modules(Modules, MissingModules) ->
 %%------------------------------------------------------------------------------
 %% @doc
 %% @deprecated View refresh functionality is moved to {@link kz_datamgr} and
-%% reading from database now, please use {@link kapps_maintenance:refresh_views/0}.
+%% reading from database now, please use {@link kapps_maintenance:refresh/0}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    io:format("please use kapps_maintenance:refresh_views().").
+    io:format("please use kapps_maintenance:refresh().").
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @deprecated View refresh functionality is moved to {@link kz_datamgr} and
-%% reading from database now, please use {@link kapps_maintenance:refresh_views/1}.
+%% reading from database now, please use {@link kapps_maintenance:refresh/1}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec refresh(input_term()) -> 'ok'.
 refresh(Value) ->
-    io:format("please use kapps_maintenance:refresh_views(~p).", [Value]).
+    io:format("please use kapps_maintenance:refresh(~p).", [Value]).
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -522,7 +522,7 @@ db_exists(Database, ShouldRetry) ->
         'true' -> 'true';
         'false' when ShouldRetry ->
             io:format("db '~s' doesn't exist~n", [Database]),
-            kapps_maintenance:refresh_views(Database),
+            kapps_maintenance:refresh(Database),
             db_exists(Database, 'false');
         'false' ->
             throw(kz_json:from_list([{<<"error">>, <<"database not ready">>}
