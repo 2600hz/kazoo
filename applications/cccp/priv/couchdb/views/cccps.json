@@ -3,7 +3,7 @@
     "kazoo": {
         "view_map": [
             {
-                "database": "account"
+                "classification": "account"
             },
             {
                 "database": "cccps"

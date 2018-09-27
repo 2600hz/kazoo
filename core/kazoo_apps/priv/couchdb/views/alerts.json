@@ -1,5 +1,12 @@
 {
     "_id": "_design/alerts",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "alerts"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "available": {

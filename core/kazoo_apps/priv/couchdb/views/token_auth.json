@@ -1,5 +1,12 @@
 {
     "_id": "_design/token_auth",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "token_auth"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "listing_by_ctime": {

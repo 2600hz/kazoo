@@ -28,15 +28,12 @@ register_views() ->
 refresh_views() ->
     case kz_datamgr:db_exists(?KZ_MEDIA_DB) of
         'false' ->
-            init_db(kz_datamgr:db_create(?KZ_MEDIA_DB));
-        'true' -> init_db('true')
-    end.
-
--spec init_db(boolean()) -> 'ok'.
-init_db('false') ->
-    lager:error("error trying to create auth database");
-init_db('true') ->
-    kapps_maintenance:refresh_views(?KZ_MEDIA_DB).
+            Result = kz_datamgr:db_create(?KZ_MEDIA_DB),
+            lager:debug("~s database is created: ~p", [?KZ_MEDIA_DB, Result]);
+        'true' -> 'ok'
+    end,
+    _ = kapps_maintenance:refresh_views(?KZ_MEDIA_DB),
+    'ok'.
 
 -spec migrate() -> 'no_return'.
 migrate() ->
