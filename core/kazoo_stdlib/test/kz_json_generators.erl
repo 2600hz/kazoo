@@ -60,5 +60,4 @@ max_depth(JObj) ->
                          ,0
                          ,kz_json:flatten(JObj)
                          ),
-    Depth > 44 andalso io:format('user', "maxdepth ~p~n", [JObj]),
     Depth.
