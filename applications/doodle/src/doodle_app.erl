@@ -21,7 +21,7 @@
 start(_Type, _Args) ->
     _ = declare_exchanges(),
     register_views(),
-    _ = kapps_maintenance:bind('register_views', 'doodle_app', 'register_views'),
+    _ = kapps_maintenance:bind_and_register_views('doodle', 'doodle_app', 'register_views'),
     case kapps_config:get_json(?CONFIG_CAT, <<"reschedule">>) =:= undefined
         andalso kz_json:load_fixture_from_file(?APP, <<"fixtures">>, <<"reschedule.json">>)
     of

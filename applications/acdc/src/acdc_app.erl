@@ -24,7 +24,7 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     acdc_maintenance:register_views(),
-    _ = kapps_maintenance:bind('register_views', 'acdc_maintenance', 'register_views'),
+    _ = kapps_maintenance:bind_and_register_views('acdc', 'acdc_maintenance', 'register_views'),
     _ = kapps_maintenance:bind({'refresh_account', <<"*">>}, 'acdc_maintenance', 'refresh_account'),
     acdc_sup:start_link().
 

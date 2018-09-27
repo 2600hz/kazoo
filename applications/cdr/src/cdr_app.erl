@@ -26,7 +26,7 @@
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     register_views(),
-    kapps_maintenance:bind('register_views', 'cdr_app', 'register_views'),
+    kapps_maintenance:bind_and_register_views('cdr', 'cdr_app', 'register_views'),
     cdr_sup:start_link().
 
 %%------------------------------------------------------------------------------

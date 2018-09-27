@@ -20,7 +20,7 @@
 start(_Type, _Args) ->
     register_views(),
     _ = kapps_maintenance:bind('migrate', 'fax_maintenance', 'migrate'),
-    _ = kapps_maintenance:bind('register_views', 'doodle_app', 'register_views'),
+    _ = kapps_maintenance:bind_and_register_views('fax', 'doodle_app', 'register_views'),
     fax_sup:start_link().
 
 %%------------------------------------------------------------------------------
