@@ -24,7 +24,6 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     declare_exchanges(),
-    _ = kz_datamgr:register_view('numbers', ?APP, "views/numbers.json"),
     kapps_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
     kapps_maintenance:bind({'refresh_account', <<"*">>}, 'kazoo_number_manager_maintenance', 'update_number_services_view'),
     kapps_maintenance:bind_and_register_views(?APP, 'kazoo_number_manager_maintenance', 'register_views'),
