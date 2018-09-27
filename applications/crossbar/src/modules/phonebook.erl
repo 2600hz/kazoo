@@ -160,7 +160,7 @@ create_alert(Response, JObj, Type) ->
             ,{<<"port_state">>, kzd_port_requests:port_state(JObj)}
              | Response
             ],
-    kz_notify:system_alert(Subject, Msg, Props).
+    kz_notify:detailed_alert(Subject, Msg, Props, []).
 
 -spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(Token) ->
