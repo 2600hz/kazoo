@@ -195,7 +195,20 @@ refresh() ->
 -spec refresh_account(kz_term:ne_binary()) -> 'ok'.
 refresh_account(Account) ->
     MODB = acdc_stats_util:db_name(Account),
-    kapps_maintenance:refresh(MODB).
+    refresh_account(MODB, kazoo_moddd:maybe_create(MODB)),
+    lager:debug("refreshed: ~s", [MODB]).
+
+refresh_account(MODB, 'true') ->
+    lager:debug("created ~s", [MODB]),
+    kapps_maintenance:refresh(MODB);
+refresh_account(MODB, 'false') ->
+    case kz_datamgr:db_exists(MODB) of
+        'true' ->
+            lager:debug("exists ~s", [MODB]),
+            kz_datamgr:revise_views_from_folder(MODB, 'acdc');
+        'false' ->
+            lager:debug("modb ~s was not created", [MODB])
+    end.
 
 -spec register_views() -> 'ok'.
 register_views() ->
