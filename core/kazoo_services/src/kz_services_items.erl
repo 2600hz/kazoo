@@ -95,10 +95,7 @@ get_plan_items(_Services, Plan) ->
 %%------------------------------------------------------------------------------
 -spec foldl(fold_fun(), Acc, items()) -> Acc.
 foldl(FoldFun, Acc, Items) ->
-    lists:foldl(fun(Item, A) ->
-                        FoldFun(Item, A)
-                end, Acc, Items
-               ).
+    lists:foldl(FoldFun, Acc, Items).
 
 %%------------------------------------------------------------------------------
 %% @doc

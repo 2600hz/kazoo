@@ -644,8 +644,7 @@ should_set_discount(Item, DiscountPlan) ->
     BillableQuantity = billable_quantity(Item),
     Minimum = kz_json:get_integer_value(<<"minimum">>, DiscountPlan, 1),
     Rate > 0
-        andalso
-        BillableQuantity >= Minimum.
+        andalso BillableQuantity >= Minimum.
 
 -spec find_tiered_rate(kz_json:object(), non_neg_integer()) -> kz_term:api_float().
 find_tiered_rate(Rates, Quantity) ->
