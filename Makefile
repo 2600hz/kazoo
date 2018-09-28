@@ -10,7 +10,16 @@ JOBS ?= 1
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt clean-fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks
+.PHONY: kazoo deps core apps \
+	build-release build-ci-release tar-release release read-release-cookie \
+	bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas \
+	circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged \
+	clean clean-test clean-release \
+	dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo dialyze-hard dialyze-changed \
+	elvis install ci diff \
+	fixture_shell code_checks \
+	fmt clean-fmt \
+	xref xref_release
 
 all: compile
 
@@ -155,6 +164,9 @@ dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
+dialyze-changed: TO_DIALYZE = $(CHANGED)
+dialyze-changed: dialyze-it-changed
+
 dialyze-hard: TO_DIALYZE = $(CHANGED)
 dialyze-hard: dialyze-it-hard
 
@@ -163,6 +175,10 @@ dialyze-it: $(PLT)
 
 dialyze-it-hard: $(PLT)
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+
+dialyze-it-changed: $(PLT)
+	@echo $(TO_DIALYZE)
+	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
