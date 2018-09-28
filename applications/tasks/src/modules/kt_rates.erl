@@ -339,7 +339,7 @@ save_rates(Db, Rates) ->
             refresh_selectors_index(Db);
         {'error', 'not_found'} ->
             lager:debug("failed to find database ~s", [Db]),
-            kapps_maintenance:refresh(Db),
+            init_db(Db),
             save_rates(Db, Rates);
         %% Workaround, need to fix!
         %% We assume that is everything ok and try to refresh index
@@ -380,6 +380,13 @@ refresh_selectors_index(Db) ->
     {'ok', _} = kz_datamgr:all_docs(Db, [{'limit', 1}]),
     {'ok', _} = kz_datamgr:get_results(Db, <<"rates/lookup">>, [{'limit', 1}]),
     'ok'.
+
+-spec init_db(kz_term:ne_binary()) -> 'ok'.
+init_db(Db) ->
+    _Created = kz_datamgr:db_create(Db),
+    lager:debug("created ~s: ~s", [Db, _Created]),
+    kapps_maintenance:refresh(Db),
+    lager:info("initialized new ratedeck ~s", [Db]).
 
 -spec maybe_delete_rate(kz_json:object(), dict:dict()) -> kz_json:object() | 'false'.
 maybe_delete_rate(JObj, Dict) ->

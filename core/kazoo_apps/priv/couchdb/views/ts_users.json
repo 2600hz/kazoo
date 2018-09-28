@@ -1,9 +1,0 @@
-{
-    "_id": "_design/ts_users",
-    "language": "javascript",
-    "views": {
-        "crossbar_listing": {
-            "map": "function(doc) { if (doc._id.substring(0, 5) != 'user_' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id.substring(5), 'username': doc.username, 'email': doc.email ,'infoID': doc.infoID, 'userID': doc.userID}); }"
-        }
-    }
-}

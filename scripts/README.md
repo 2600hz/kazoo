@@ -811,7 +811,6 @@ Searches for undocumented source files:
     -- applications/webhooks/src/webhooks_listener.erl [undocumented functions: 1/9 (%11)]
     -- core/amqp_cron/src/amqp_cron_task.erl [undocumented functions: 1/9 (%11)]
     -- core/amqp_leader/src/amqp_leader_listener.erl [undocumented functions: 1/9 (%11)]
-    -- core/kazoo_apps/src/kazoo_apps_maint_listener.erl [undocumented functions: 1/9 (%11)]
     -- core/kazoo_maintenance/src/kapps_config_maint_listener.erl [undocumented functions: 1/9 (%11)]
     -- core/kazoo_maintenance/src/kazoo_oauth_maint_listener.erl [undocumented functions: 1/9 (%11)]
     -- core/kazoo_maintenance/src/skel_maint_listener.erl [undocumented functions: 1/9 (%11)]

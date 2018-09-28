@@ -255,7 +255,7 @@ register_views() ->
 -spec register_views(kz_term:ne_binary() | atom()) -> 'ok'.
 register_views(?NE_BINARY=App) ->
     kazoo_bindings:map(binding({'register_views', App}), []);
-register_views(App) ->
+register_views(App) when is_atom(App) ->
     register_views(kz_term:to_binary(App)).
 
 %%------------------------------------------------------------------------------

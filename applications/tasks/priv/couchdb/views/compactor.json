@@ -4,6 +4,9 @@
         "view_map": [
             {
                 "database": "dbs"
+            },
+            {
+                "database": "_dbs"
             }
         ]
     },

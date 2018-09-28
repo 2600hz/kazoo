@@ -63,7 +63,7 @@ init() ->
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_RATES_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, "views/rates.json").
+    kapps_maintenance:refresh(?KZ_RATES_DB).
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->

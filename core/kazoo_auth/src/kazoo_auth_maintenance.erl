@@ -72,8 +72,7 @@ init_db('true') ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    _ = kz_datamgr:register_views_from_folder('kazoo_auth'),
-    'ok'.
+    kz_datamgr:register_views_from_folder('kazoo_auth').
 
 -spec register_common_providers() -> 'ok'.
 register_common_providers() ->

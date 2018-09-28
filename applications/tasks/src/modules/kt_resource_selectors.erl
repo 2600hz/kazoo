@@ -184,7 +184,7 @@ do_insert(Db, Docs) ->
     case kz_datamgr:save_docs(Db, Docs) of
         {'ok', _Result} -> refresh_selectors_index(Db);
         {'error', 'not_found'} ->
-            kapps_maintenance:refresh(Db),
+            init_db(Db),
             do_insert(Db, Docs);
         {'error', E} -> lager:error("error adding selectors: ~p",[E])
     end.
@@ -262,3 +262,9 @@ generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Sto
       ,{<<"pvt_auth_account_id">>, AuthAccountId}
       ,{<<"pvt_created">>, kz_time:now_s()}
       ]).
+
+-spec init_db(kz_term:ne_binary()) -> 'ok'.
+init_db(Db) when is_binary(Db) ->
+    _ = kz_datamgr:db_create(Db),
+    kapps_maintenance:refresh(Db),
+    'ok'.

@@ -109,7 +109,7 @@ configure_smtp_port(Value) ->
 %%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    io:format("This function and 'accounts' database notify view are depreacted.").
+    io:format("This function and 'accounts' database notify view are deprecated.").
 
 %%------------------------------------------------------------------------------
 %% @doc

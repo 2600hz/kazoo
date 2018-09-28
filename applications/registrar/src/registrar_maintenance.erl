@@ -39,5 +39,4 @@ set_listeners(Count) ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    kz_datamgr:register_views_from_folder('registrar'),
-    'ok'.
+    kz_datamgr:register_views_from_folder('registrar').

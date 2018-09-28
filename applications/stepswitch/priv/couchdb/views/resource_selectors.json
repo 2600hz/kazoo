@@ -1,6 +1,12 @@
 {
     "_id": "_design/resource_selectors",
-    "_rev": "12-d02f42cd676775a96c64338d08fe406e",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "resource_selectors"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "id_listing": {

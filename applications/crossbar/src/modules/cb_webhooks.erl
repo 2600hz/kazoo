@@ -46,6 +46,8 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_SCHEMA_DB, ?APP, <<"schemas/webhooks.json">>),
     init_master_account_db(),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),

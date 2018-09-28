@@ -115,8 +115,7 @@ cnam_flush() ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    _ = kz_datamgr:register_views_from_folder('stepswitch'),
-    'ok'.
+    kz_datamgr:register_views_from_folder('stepswitch').
 
 %%------------------------------------------------------------------------------
 %% @doc Lookup a number in the route db and return the account ID if known
