@@ -3,7 +3,7 @@
     "kazoo": {
         "view_map": [
             {
-                "classifications": "numbers"
+                "classification": "numbers"
             }
         ]
     },

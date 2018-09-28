@@ -23,7 +23,7 @@ start(_StartType, _StartArgs) ->
     declare_exchanges(),
     _ = kapps_maintenance:bind('migrate', 'crossbar_maintenance', 'migrate'),
     _ = kapps_maintenance:bind({'refresh_account', <<"*">>}, 'crossbar_util', 'descendants_count'),
-    kapps_maintenance:bind_and_register_views('crossbar', ?MODULE, 'register_views'),
+    kapps_maintenance:bind_and_register_views('crossbar', 'crossbar_maintenance', 'register_views'),
     _ = crossbar_maintenance:db_init(),
     crossbar_sup:start_link().
 
@@ -35,7 +35,7 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     _ = kapps_maintenance:unbind('migrate', 'crossbar_maintenance', 'migrate'),
     _ = kapps_maintenance:unbind({'refresh_account', <<"*">>}, 'crossbar_util', 'descendants_count'),
-    _ = kapps_maintenance:unbind('register_views', ?MODULE, 'register_views'),
+    _ = kapps_maintenance:unbind('register_views', 'crossbar_maintenance', 'register_views'),
     _ = cowboy:stop_listener('api_resource'),
     _ = cowboy:stop_listener('api_resource_ssl'),
     _ = crossbar_bindings:flush(),

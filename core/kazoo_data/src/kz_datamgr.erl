@@ -1552,7 +1552,11 @@ maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps
     AppName = kz_term:to_binary(App),
     DocId = <<ClassId/binary, "-", AppName/binary, "-", Name/binary>>,
 
-    Update = [{<<"kazoo">>, ViewMaps}
+    lager:debug("trying to register view ~s with id ~s for app ~s, with kazoo object ~100p"
+               ,[Name, DocId, App, ViewMaps]
+               ),
+
+    Update = [{<<"kazoo">>, kz_json:from_list([{<<"view_map">>, ViewMaps}])}
              ,{<<"view_definition">>, kz_json:delete_key(<<"kazoo">>, View)}
              ],
     ExtraUpdate = [{<<"version">>, Version}],
@@ -1577,9 +1581,11 @@ validate_view_map(JObj) ->
     ViewMap = kz_json:get_list_value(<<"view_map">>, JObj, []),
     validate_view_map(ViewMap, []).
 
--spec validate_view_map('undefined' | kz_term:objects(), kz_term:objects()) ->
+-spec validate_view_map('undefined' | kz_term:objects(), kz_term:objects() | {'error', kz_term:ne_binary()}) ->
                                {kz_term:ne_binary(), kz_json:objects()} |
                                {'error', any()}.
+validate_view_map(_, {'error', _}=Error) ->
+    Error;
 validate_view_map([], []) ->
     validate_view_map('undefined');
 validate_view_map([], [JObj]) ->
@@ -1595,8 +1601,9 @@ validate_view_map([JObj | JObjs], ViewMaps) ->
     Class= kz_json:get_ne_binary_value(<<"classification">>, JObj),
     case kz_json:is_json_object(JObj) of
         'true' ->
-            validate_view_map(JObjs, only_one_of(Db, Class, [JObj, ViewMaps]));
+            validate_view_map(JObjs, only_one_of(Db, Class, [JObj | ViewMaps]));
         'false' ->
+    kz_util:log_stacktrace(),
             {'error', <<"not_valid_registration_info">>}
     end.
 
@@ -1657,7 +1664,7 @@ refresh_views(DbName) ->
 
 -spec view_definitions(kz_term:ne_binary(), atom() | kz_term:ne_binary()) -> views_listing().
 view_definitions(DbName, Classification) ->
-    ViewOptions = [DbName, kz_term:to_binary(Classification)],
+    ViewOptions = [kz_util:uri_decode(DbName), kz_term:to_binary(Classification)],
     case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, ViewOptions) of
         {'error', _} -> [];
         {'ok', JObjs} ->
