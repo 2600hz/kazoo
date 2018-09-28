@@ -167,9 +167,18 @@ migrate(Pause, Databases) ->
     io:format("removing deprecated databases...~n"),
     _  = remove_deprecated_databases(Databases),
 
+    migrate_kapps_account_config(Accounts),
+
     _ = kazoo_bindings:map(binding('migrate'), [Accounts]),
 
     'no_return'.
+
+migrate_kapps_account_config([]) ->
+    'ok';
+migrate_kapps_account_config([AccountDb | AccountDbs]) ->
+    kapps_account_config:migrate(AccountDb),
+    _ = timer:sleep(1 * ?MILLISECONDS_IN_SECOND),
+    migrate_kapps_account_config(AccountDbs).
 
 -spec parallel_migrate(kz_term:text() | integer()) -> 'no_return'.
 parallel_migrate(Workers) ->
@@ -328,7 +337,6 @@ refresh_account_db(Database) ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
     _ = kz_datamgr:refresh_views(AccountDb),
-    kapps_account_config:migrate(AccountDb),
     _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
     'ok'.
 
