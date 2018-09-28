@@ -205,15 +205,14 @@ refresh_account(MODB, 'false') ->
     case kz_datamgr:db_exists(MODB) of
         'true' ->
             lager:debug("exists ~s", [MODB]),
-            kz_datamgr:revise_views_from_folder(MODB, 'acdc');
+            kapps_maintenance:refresh(MODB);
         'false' ->
             lager:debug("modb ~s was not created", [MODB])
     end.
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    kz_datamgr:register_views_from_folder('acdc'),
-    'ok'.
+    kz_datamgr:register_views_from_folder('acdc').
 
 -spec migrate() -> 'ok'.
 migrate() ->
