@@ -187,7 +187,9 @@ maybe_separate_step({'app', AppFiles}, {Apps, Beams}, 'true') ->
 maybe_separate_step({'app', AppFiles}, {Apps, Beams}, 'false') ->
     {[{'app', AppFiles} | Apps], Beams};
 maybe_separate_step({'beam', Bs}, {Apps, Beams}, _InBulk) ->
-    {Apps, Bs ++ Beams}.
+    {Apps, Bs ++ Beams};
+maybe_separate_step(Beam, {Apps, Beams}, _InBulk) ->
+    {Apps, [Beam | Beams]}.
 
 %% explicitly adding `kz_types' so dialyzer knows about `sup_init_ret', `handle_call_ret_state' and other supervisor,
 %% gen_server, ... critical types defined in `kz_types'. Dialyzer is strict about types for these `init', `handle_*'
