@@ -6,6 +6,9 @@
                 "classification": "account"
             },
             {
+                "classification": "modb"
+            },
+            {
                 "database": "accounts"
             },
             {
