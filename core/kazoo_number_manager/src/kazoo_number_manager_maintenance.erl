@@ -186,8 +186,7 @@ init_dbs([Db | Dbs]) ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    _ = kz_datamgr:register_views_from_folder(?APP),
-    'ok'.
+    kz_datamgr:register_views_from_folder(?APP).
 
 %%------------------------------------------------------------------------------
 %% @doc

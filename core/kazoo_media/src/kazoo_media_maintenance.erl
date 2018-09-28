@@ -251,8 +251,7 @@ refresh() ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    _ = kz_datamgr:register_views_from_folder('kazoo_media'),
-    'ok'.
+    kz_datamgr:register_views_from_folder('kazoo_media').
 
 -spec maybe_migrate_system_config(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate_system_config(ConfigId) ->
