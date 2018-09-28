@@ -8,6 +8,9 @@
 
 -export([get_cdr_doc_id/2
         ,get_cdr_doc_id/3
+
+        ,register_views/0
+        ,init_db/0
         ]).
 -export([save_cdr/2]).
 
@@ -52,3 +55,8 @@ do_save_cdr(AccountMODb, Doc) ->
             lager:debug("failed to save cdr ~s : ~p", [kz_doc:id(Doc), _E]),
             {'error', 'max_save_retries'}
     end.
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder('cdr'),
+    'ok'.

@@ -42,8 +42,3 @@ stop(_State) ->
 declare_exchanges() ->
     _ = kapi_call:declare_exchanges(),
     kapi_self:declare_exchanges().
-
--spec register_views() -> 'ok'.
-register_views() ->
-    kz_datamgr:register_views_from_folder('cdr'),
-    'ok'.

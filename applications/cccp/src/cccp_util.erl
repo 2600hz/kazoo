@@ -19,6 +19,7 @@
         ,count_user_legs/2
 
         ,register_views/0
+        ,init_db/0
         ]).
 
 -include("cccp.hrl").
@@ -321,3 +322,14 @@ current_account_channels(AccountId) ->
 register_views() ->
     kz_datamgr:register_views_from_folder('cccp'),
     'ok'.
+
+-spec init_db() -> 'ok'.
+init_db() ->
+    case kz_datamgr:db_exists(<<"cccps">>) of
+        'true' ->
+            kapps_maintenance:refresh(?KZ_CCCPS_DB),
+            'ok';
+        'false' ->
+            kz_datamgr:db_create(<<"cccps">>),
+            kapps_maintenance:refresh(?KZ_CCCPS_DB)
+    end.
