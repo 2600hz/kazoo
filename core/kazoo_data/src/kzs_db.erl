@@ -237,7 +237,7 @@ update_views(Server, Db, Update, CurrentViews, NewViews) ->
                || Id <- Update,
                   CurrentView <- [props:get_value(Id, CurrentViews)],
                   NewView <- [props:get_value(Id, NewViews)],
-                  should_update(Id, NewView, CurrentView)
+                  should_update(Id, Db, NewView, CurrentView)
               ]),
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
     Errors = [Id || JObj <- JObjs, {Id, <<"conflict">>} <- [log_save_view_error(JObj)] ],
@@ -256,11 +256,11 @@ log_save_view_error(Id, Error) ->
     lager:warning("saving view ~s failed with error: ~s", [Id, Error]),
     {Id, Error}.
 
--spec should_update(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> boolean().
-should_update(_Id, _, undefined) ->
-    lager:warning("view ~p does not exist to update", [_Id]),
+-spec should_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> boolean().
+should_update(_Id, _Db, _, 'undefined') ->
+    lager:debug("adding view ~s to db ~s", [_Id, _Db]),
     false;
-should_update(_Id, NewView, OldView) ->
+should_update(_Id, _Db, NewView, OldView) ->
     case kz_json:are_equal(kz_doc:delete_revision(NewView), kz_doc:delete_revision(OldView)) of
         true ->
             _ = kz_datamgr:change_notice()

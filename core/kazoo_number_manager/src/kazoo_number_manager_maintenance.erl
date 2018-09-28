@@ -168,7 +168,7 @@ convert_carrier_module_number(Num, Target) ->
 
 -spec init_dbs() -> 'ok'.
 init_dbs() ->
-    init_dbs([?KZ_MEDIA_DB
+    init_dbs([?KZ_MANAGED_DB
              ,?KZ_INUM_DB
              ,?KZ_PORT_REQUESTS_DB
              ]).

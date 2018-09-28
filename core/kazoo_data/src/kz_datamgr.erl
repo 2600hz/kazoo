@@ -1552,9 +1552,7 @@ maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps
     AppName = kz_term:to_binary(App),
     DocId = <<ClassId/binary, "-", AppName/binary, "-", Name/binary>>,
 
-    lager:debug("trying to register view ~s with id ~s for app ~s, with kazoo object ~100p"
-               ,[Name, DocId, App, ViewMaps]
-               ),
+    log_register_views(Name, DocId, App, ViewMaps),
 
     Update = [{<<"kazoo">>, kz_json:from_list([{<<"view_map">>, ViewMaps}])}
              ,{<<"view_definition">>, kz_json:delete_key(<<"kazoo">>, View)}
@@ -1571,6 +1569,15 @@ maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps
                     ],
 
     update_doc(?KZ_DATA_DB, DocId, UpdateOptions).
+
+log_register_views(_, _, _, []) ->
+    'ok';
+log_register_views(Name, DocId, App, [ViewMap | ViewMaps]) ->
+    Dest = kz_json:get_value(<<"database">>, ViewMap, kz_json:get_value(<<"classification">>, ViewMap)),
+    lager:debug("trying to register view ~s with id ~s for app ~s, with destination ~s"
+               ,[Name, DocId, App, Dest]
+               ),
+    log_register_views(Name, DocId, App, ViewMaps).
 
 -spec validate_view_map(kz_term:api_object()) ->
                                {kz_term:ne_binary(), kz_json:objects()} |
