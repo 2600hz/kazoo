@@ -88,21 +88,12 @@
         ]).
 
 -export([refresh_views/1]).
-
--export([register_view/1
-        ,register_view/2
-        ,register_view/4
+-export([register_view/2
         ]).
-
--export([register_views/1
-        ,register_views/2
-        ,register_views/4
+-export([register_views/2
         ]).
-
--export([register_views_from_folder/0
-        ,register_views_from_folder/1
+-export([register_views_from_folder/1
         ,register_views_from_folder/2
-        ,register_views_from_folder/4
         ]).
 
 -type update_option() :: {'update', kz_json:flat_proplist()} |
