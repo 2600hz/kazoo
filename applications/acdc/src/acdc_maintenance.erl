@@ -195,7 +195,7 @@ refresh() ->
 -spec refresh_account(kz_term:ne_binary()) -> 'ok'.
 refresh_account(Account) ->
     MODB = acdc_stats_util:db_name(Account),
-    refresh_account(MODB, kazoo_moddd:maybe_create(MODB)),
+    refresh_account(MODB, kazoo_modb:maybe_create(MODB)),
     lager:debug("refreshed: ~s", [MODB]).
 
 refresh_account(MODB, 'true') ->
