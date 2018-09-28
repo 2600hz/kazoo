@@ -1535,8 +1535,8 @@ register_views(App, [View | Other]) ->
 -spec register_view(atom(), view_listing() | string() | kz_term:ne_binary()) ->
                            {'ok', kz_json:object()} |
                            data_error().
-register_view(App, {_, _}=View) ->
-    Validate = validate_view_map(kz_json:get_ne_json_value(<<"kazoo">>, View)),
+register_view(App, {_, ViewJObj}=View) ->
+    Validate = validate_view_map(kz_json:get_ne_json_value(<<"kazoo">>, ViewJObj)),
     maybe_register_view(View, App, Validate);
 register_view(App, ViewName) ->
     register_view(App, kzs_util:get_view_json(App, ViewName)).
