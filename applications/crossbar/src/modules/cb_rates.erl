@@ -48,6 +48,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
+    _ = init_db(),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.rates">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.rates">>, ?MODULE, 'resource_exists'),
@@ -59,6 +60,10 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.patch.rates">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete'),
     ok.
+
+init_db() ->
+    _ = kz_datamgr:db_create(?KZ_RATES_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, "views/rates.json").
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
@@ -170,7 +175,6 @@ ratedeck_db(Context) ->
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    _ = init_db(),
     _ = kz_util:spawn(fun upload_csv/1, [Context]),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 

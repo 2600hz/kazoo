@@ -10,7 +10,6 @@
         ,get_cdr_doc_id/3
 
         ,register_views/0
-        ,init_db/0
         ]).
 -export([save_cdr/2]).
 
