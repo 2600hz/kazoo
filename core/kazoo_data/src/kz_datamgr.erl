@@ -1603,7 +1603,6 @@ validate_view_map([JObj | JObjs], ViewMaps) ->
         'true' ->
             validate_view_map(JObjs, only_one_of(Db, Class, [JObj | ViewMaps]));
         'false' ->
-    kz_util:log_stacktrace(),
             {'error', <<"not_valid_registration_info">>}
     end.
 
