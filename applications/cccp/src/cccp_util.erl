@@ -320,8 +320,7 @@ current_account_channels(AccountId) ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    kz_datamgr:register_views_from_folder('cccp'),
-    'ok'.
+    kz_datamgr:register_views_from_folder('cccp').
 
 -spec init_db() -> 'ok'.
 init_db() ->

@@ -57,5 +57,4 @@ do_save_cdr(AccountMODb, Doc) ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    kz_datamgr:register_views_from_folder('cdr'),
-    'ok'.
+    kz_datamgr:register_views_from_folder('cdr').

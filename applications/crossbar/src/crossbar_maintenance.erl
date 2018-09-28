@@ -16,6 +16,7 @@
 -export([stop_module/1]).
 -export([running_modules/0]).
 -export([refresh/0, refresh/1
+        ,register_views/0
         ,flush/0
         ]).
 -export([find_account_by_number/1]).
@@ -1310,8 +1311,8 @@ update_schemas() ->
 db_init_schemas() ->
     kz_datamgr:suppress_change_notice(),
     update_schemas(),
-    check_system_configs(),
-    kz_datamgr:enable_change_notice().
+    kz_datamgr:enable_change_notice(),
+    check_system_configs().
 
 %%------------------------------------------------------------------------------
 %% @doc Updating system schemas.
@@ -1332,5 +1333,10 @@ db_init_schemas() ->
 %%------------------------------------------------------------------------------
 -spec db_init() -> 'ok'.
 db_init() ->
+    kapps_maintenance:bind_and_register_views('crossbar', ?MODULE, 'register_views'),
     _ = kz_util:spawn(fun db_init_schemas/0),
     'ok'.
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder('crossbar').

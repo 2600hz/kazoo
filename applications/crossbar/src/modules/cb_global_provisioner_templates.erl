@@ -55,7 +55,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kapps_maintenance:refresh(?KZ_PROVISIONER_DB),
+    init_db(),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.global_provisioner_templates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.global_provisioner_templates">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.global_provisioner_templates">>, ?MODULE, 'allowed_methods'),
@@ -64,6 +64,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.global_provisioner_templates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.global_provisioner_templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.global_provisioner_templates">>, ?MODULE, 'delete'),
+    'ok'.
+
+init_db() ->
+    _ = kz_datamgr:db_create(?KZ_PROVISIONER_DB),
+    _ = kapps_maintenance:refresh(?KZ_PROVISIONER_DB),
     'ok'.
 
 %%------------------------------------------------------------------------------
