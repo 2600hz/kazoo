@@ -44,6 +44,7 @@ stop(_State) ->
     _ = kazoo_bindings:unbind(?ACCOUNT_CRAWLER_BINDING,
                               'doodle_maintenance',
                               'start_check_sms_by_account'),
+    _ = kapps_maintenance:unbind('register_views', 'doodle_app', 'register_views'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.

@@ -29,4 +29,6 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    kapps_maintenance:unbind({'refresh_account', <<"*">>}, 'kazoo_services_maintenance', 'migrate_service_plans'),
+    kapps_maintenance:unbind('register_views', 'kazoo_services_maintenance', 'register_views'),
     'ok'.

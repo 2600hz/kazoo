@@ -26,6 +26,7 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    kapps_maintenance:unbind('register_views', 'teletype_maintenance', 'register_views'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.

@@ -32,4 +32,5 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.
 stop(_State) ->
+    _ = kapps_maintenance:unbind('register_views', 'tasks_maintenance', 'register_views'),
     tasks_bindings:flush().

@@ -34,6 +34,7 @@ start(_StartType, _StartArgs) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = kapps_maintenance:unbind('register_views', 'cdr_util', 'register_views'),
     'ok'.
 
 

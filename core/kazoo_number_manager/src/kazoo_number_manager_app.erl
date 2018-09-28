@@ -34,6 +34,7 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     kapps_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_number_manager_maintenance', 'migrate'),
     kapps_maintenance:unbind({'refresh_account', <<"*">>}, 'kazoo_number_manager_maintenance', 'update_number_services_view'),
+    kapps_maintenance:unbind('register_views', 'kazoo_number_manager_maintenance', 'register_views'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.

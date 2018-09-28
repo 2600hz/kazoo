@@ -29,6 +29,7 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = kapps_maintenance:unbind('register_views', 'cccp_util', 'register_views'),
     'ok'.
 
 

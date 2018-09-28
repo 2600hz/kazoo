@@ -1333,7 +1333,6 @@ db_init_schemas() ->
 %%------------------------------------------------------------------------------
 -spec db_init() -> 'ok'.
 db_init() ->
-    kapps_maintenance:bind_and_register_views('crossbar', ?MODULE, 'register_views'),
     _ = kz_util:spawn(fun db_init_schemas/0),
     'ok'.
 

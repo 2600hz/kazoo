@@ -30,6 +30,7 @@ start(_Type, _Args) ->
 -spec stop(any()) -> any().
 stop(_State) ->
     _ = kapps_maintenance:unbind('migrate', 'fax_maintenance', 'migrate'),
+    _ = kapps_maintenance:unbind('register_views', 'fax_app', 'register_views'),
     _ = cowboy:stop_listener('fax_file'),
     'ok'.
 

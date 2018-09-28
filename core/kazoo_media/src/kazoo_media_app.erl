@@ -32,4 +32,5 @@ start(_Type, _Args) ->
 stop(_State) ->
     _ = kz_media_proxy:stop(),
     kapps_maintenance:unbind('migrate', 'kazoo_media_maintenance', 'migrate'),
+    kapps_maintenance:unbind('register_views', 'kazoo_media_maintenance', 'register_views'),
     'ok'.

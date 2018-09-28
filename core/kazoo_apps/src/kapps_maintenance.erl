@@ -263,9 +263,9 @@ register_views(App) when is_atom(App) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_and_register_views(atom() | kz_term:ne_binary(), atom(), atom()) -> 'ok'.
-bind_and_register_views(AppName, Module, Function) ->
+bind_and_register_views(_AppName, Module, Function) ->
     bind(binding('register_views'), Module, Function),
-    bind(binding({'register_views', kz_term:to_binary(AppName)}), Module, Function),
+    %% bind(binding({'register_views', kz_term:to_binary(AppName)}), Module, Function),
     _ = Module:Function(),
     'ok'.
 

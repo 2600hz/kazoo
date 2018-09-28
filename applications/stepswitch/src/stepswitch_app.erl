@@ -34,6 +34,7 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
+    _ = kapps_maintenance:unbind('register_views', 'stepswitch_maintenance', 'register_views'),
     _ = kapi_authn:declare_exchanges(),
     _ = kapi_call:declare_exchanges(),
     _ = kapi_dialplan:declare_exchanges(),
