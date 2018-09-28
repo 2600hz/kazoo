@@ -97,7 +97,7 @@ do_show_calls([Srv|Srvs], Total) ->
 %%------------------------------------------------------------------------------
 -spec blocking_refresh() -> 'ok'.
 blocking_refresh() ->
-    io:format("This function is deprecated please, kapps_maintenance:refresh() instead.").
+    io:format("This function is deprecated please use kapps_maintenance:refresh() instead.").
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -107,11 +107,11 @@ blocking_refresh() ->
 %%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    io:format("This function is deprecated please, kapps_maintenance:refresh() instead.").
+    io:format("This function is deprecated please use kapps_maintenance:refresh() instead.").
 
 -spec refresh(binary() | string()) -> 'ok'.
 refresh(Account) ->
-    io:format("This function is deprecated please, kapps_maintenance:refresh(~p) instead.", [Account]).
+    io:format("This function is deprecated please use kapps_maintenance:refresh(~p) instead.", [Account]).
 
 %%------------------------------------------------------------------------------
 %% @doc

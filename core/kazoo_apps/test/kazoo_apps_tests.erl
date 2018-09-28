@@ -11,7 +11,7 @@
 get_views_json_test_() ->
     ViewListing = kapps_util:get_views_json(kazoo_apps, "views"),
     AccountView = kapps_util:get_view_json(kazoo_apps, <<"views/accounts.json">>),
-    [?_assertEqual(15, length(ViewListing))
+    [?_assertEqual(14, length(ViewListing))
     ,?_assert(lists:all(fun verify_listing/1, ViewListing))
     ,?_assertMatch({<<"_design/accounts">>,_}, AccountView)
     ,?_assert(verify_listing(AccountView))

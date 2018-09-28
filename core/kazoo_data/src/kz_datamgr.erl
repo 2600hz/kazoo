@@ -1569,8 +1569,8 @@ maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps
     update_doc(?KZ_DATA_DB, DocId, UpdateOptions).
 
 -spec validate_view_map(kz_term:api_object()) ->
-                            {kz_term:ne_binary(), kz_json:objects()} |
-                            {'error', kz_term:ne_binary()}.
+                               {kz_term:ne_binary(), kz_json:objects()} |
+                               {'error', kz_term:ne_binary()}.
 validate_view_map('undefined') ->
     {'error', <<"no_view_registration_info">>};
 validate_view_map(JObj) ->
@@ -1578,8 +1578,8 @@ validate_view_map(JObj) ->
     validate_view_map(ViewMap, []).
 
 -spec validate_view_map('undefined' | kz_term:objects(), kz_term:objects()) ->
-                            {kz_term:ne_binary(), kz_json:objects()} |
-                            {'error', any()}.
+                               {kz_term:ne_binary(), kz_json:objects()} |
+                               {'error', any()}.
 validate_view_map([], []) ->
     validate_view_map('undefined');
 validate_view_map([], [JObj]) ->
