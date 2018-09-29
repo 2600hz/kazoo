@@ -1,0 +1,19 @@
+{
+    "_id": "_design/parking",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "parked_call": {
+            "map": "function(doc) { if(doc.pvt_type != 'parked_call' || !doc.slot || doc.pvt_deleted) return; emit(doc.slot[\"Call-ID\"], null);}"
+        },
+        "parked_calls": {
+            "map": "function(doc) { if(doc.pvt_type != 'parked_call' || !doc.slot || doc.pvt_deleted) return; emit(doc._id, null);}"
+        }
+    }
+}

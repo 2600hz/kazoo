@@ -1,5 +1,12 @@
 {
     "_id": "_design/cdrs",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "lists": {
         "format_summary": "function() { var row, results = {'inbound': {}, 'outbound': {}}; while(row = getRow()){ var value = row.value; if(!results[value.direction][value.domain]) results[value.direction][value.domain] = {}; if(!results[value.direction][value.domain][value.classifier]) results[value.direction][value.domain][value.classifier] = {'total': 0}; results[value.direction][value.domain][value.classifier]['total'] += value.billable_seconds; if(value.rate_name) { if(!results[value.direction][value.domain][value.classifier][value.rate_name]) results[value.direction][value.domain][value.classifier][value.rate_name] = 0; results[value.direction][value.domain][value.classifier][value.rate_name] += value.billable_seconds; }} return JSON.stringify({'total_rows':1,'offset':0,'rows':[results]});}"

@@ -1,5 +1,12 @@
 {
     "_id": "_design/services",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "services"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "by_tree": {

@@ -14,4 +14,5 @@
 
                  , lager
                  ]}
+  ,{mod, {kazoo_oauth_app, []}}
  ]}.

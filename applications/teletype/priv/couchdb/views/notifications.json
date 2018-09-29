@@ -1,5 +1,12 @@
 {
     "_id": "_design/notifications",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_config"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

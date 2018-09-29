@@ -266,5 +266,5 @@ generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Sto
 -spec init_db(kz_term:ne_binary()) -> 'ok'.
 init_db(Db) when is_binary(Db) ->
     _ = kz_datamgr:db_create(Db),
-    {'ok', _} = kz_datamgr:revise_doc_from_file(Db, 'crossbar', "views/resource_selectors.json"),
+    kapps_maintenance:refresh(Db),
     'ok'.

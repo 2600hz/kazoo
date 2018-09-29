@@ -51,7 +51,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.local_provisioner_templates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.local_provisioner_templates">>, ?MODULE, 'content_types_accepted'),
@@ -61,7 +61,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.local_provisioner_templates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.local_provisioner_templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.local_provisioner_templates">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Add content types provided by this module

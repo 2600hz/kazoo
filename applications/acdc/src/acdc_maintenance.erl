@@ -13,7 +13,10 @@
         ,logout_agents/1, logout_agent/2
         ,agent_presence_id/2
         ,migrate_to_acdc_db/0, migrate/0
+
         ,refresh/0, refresh_account/1
+        ,register_views/0
+
         ,flush_call_stat/1
         ,queues_summary/0, queues_summary/1, queue_summary/2
         ,queues_detail/0, queues_detail/1, queue_detail/2
@@ -190,22 +193,26 @@ refresh() ->
     end.
 
 -spec refresh_account(kz_term:ne_binary()) -> 'ok'.
-refresh_account(Acct) ->
-    MoDB = acdc_stats_util:db_name(Acct),
-    refresh_account(MoDB, kazoo_modb:maybe_create(MoDB)),
-    lager:debug("refreshed: ~s", [MoDB]).
+refresh_account(Account) ->
+    MODB = acdc_stats_util:db_name(Account),
+    refresh_account(MODB, kazoo_modb:maybe_create(MODB)),
+    lager:debug("refreshed: ~s", [MODB]).
 
-refresh_account(MoDB, 'true') ->
-    lager:debug("created ~s", [MoDB]),
-    kz_datamgr:revise_views_from_folder(MoDB, 'acdc');
-refresh_account(MoDB, 'false') ->
-    case kz_datamgr:db_exists(MoDB) of
+refresh_account(MODB, 'true') ->
+    lager:debug("created ~s", [MODB]),
+    kapps_maintenance:refresh(MODB);
+refresh_account(MODB, 'false') ->
+    case kz_datamgr:db_exists(MODB) of
         'true' ->
-            lager:debug("exists ~s", [MoDB]),
-            kz_datamgr:revise_views_from_folder(MoDB, 'acdc');
+            lager:debug("exists ~s", [MODB]),
+            kapps_maintenance:refresh(MODB);
         'false' ->
-            lager:debug("modb ~s was not created", [MoDB])
+            lager:debug("modb ~s was not created", [MODB])
     end.
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder('acdc').
 
 -spec migrate() -> 'ok'.
 migrate() ->

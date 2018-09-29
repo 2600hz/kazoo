@@ -1,0 +1,91 @@
+{
+    "_id": "_design/lists",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'list' || doc.pvt_deleted)",
+                "    return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'description': doc.description,",
+                "    'list_type': doc.list_type",
+                "  });",
+                "}"
+            ]
+        },
+        "entries": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted)",
+                "    return;",
+                "  if (doc.pvt_type === 'list_entry') {",
+                "    emit(doc.list_id, {",
+                "      capture_group_key: doc.capture_group_key,",
+                "      capture_group_length: doc.capture_group_length,",
+                "      name: doc.name,",
+                "      number: doc.number,",
+                "      pattern: doc.pattern,",
+                "      prefix: doc.prefix,",
+                "      regexp: doc.regexp,",
+                "      type: doc.type",
+                "    })",
+                "  } else if (doc.pvt_type === 'list' && doc.entries) {",
+                "    for (var key in doc.entries) {",
+                "      if (!doc.entries.hasOwnProperty(key))",
+                "        continue;",
+                "      emit(doc._id, {",
+                "        capture_group_key: key,",
+                "        capture_group_length: doc.length,",
+                "        name: doc.entries[key].cid_name || doc.entries[key].name,",
+                "        number: doc.entries[key].cid_number || doc.entries[key].number,",
+                "        pattern: doc.entries[key].pattern,",
+                "        prefix: doc.entries[key].prefix,",
+                "        regexp: doc.entries[key].regexp,",
+                "        type: doc.entries[key].type",
+                "      })",
+                "    }",
+                "  } else {",
+                "    return",
+                "  }",
+                "}"
+            ]
+        },
+        "match_prefix": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.number || doc.prefix))",
+                "    return;",
+                "  emit(doc.number ? doc.number : doc.prefix, null);",
+                "}"
+            ]
+        },
+        "match_prefix_in_list": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.number || doc.prefix))",
+                "    return;",
+                "  emit([doc.list_id, doc.number ? doc.number : doc.prefix], null);",
+                "}"
+            ]
+        },
+        "regexps_in_list": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.regexp || doc.pattern))",
+                "    return;",
+                "  emit(doc.list_id, doc.regexp ? doc.regexp : doc.pattern);",
+                "}"
+            ]
+        }
+    }
+}

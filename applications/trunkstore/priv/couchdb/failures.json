@@ -1,9 +1,0 @@
-{
-    "_id": "_design/failures",
-    "language": "javascript",
-    "views": {
-        "causes": {
-            "map": "function(doc) { var callids = [doc['Call-ID'], doc['Other-Leg-Call-ID']].sort(); var dir = doc['Call-Direction']; var v = {}; v[dir] = { 'call-id': doc['Call-ID'] ,'hangup-cause': doc['Hangup-Cause'] }; if (dir == 'outbound') { var routes_available = doc['Routes-Available'].map(function(R) { return R['Route']; }); v[dir]['route-taken'] = doc['Custom-Channel-Vars']['Carrier-Route']; v[dir]['routes-available'] = routes_available; } else { v[dir]['account-id'] = doc['Customer-Account-ID']; } emit([callids[0], callids[1]], v);}"
-        }
-    }
-}

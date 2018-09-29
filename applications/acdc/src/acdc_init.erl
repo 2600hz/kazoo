@@ -44,7 +44,7 @@ init_acdc() ->
 -spec init_db() -> any().
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_ACDC_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>).
+    kapps_maintenance:refresh(?KZ_ACDC_DB).
 
 -spec init_acct(kz_term:ne_binary()) -> 'ok'.
 init_acct(Account) ->

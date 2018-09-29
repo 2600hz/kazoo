@@ -17,6 +17,8 @@
         ,cleanup_soft_deletes/1
         ]).
 
+-export([register_views/0]).
+
 -include("tasks.hrl").
 
 
@@ -184,5 +186,9 @@ handle_new_task_error('unknown_category_action', Category, Action) ->
     print_error(<<"No such category / action: ", Category/binary, " ", Action/binary>>);
 handle_new_task_error(JObj, _, _) ->
     print_json(kz_json:from_list([{<<"errors">>, JObj}])).
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(?APP).
 
 %%% End of Module

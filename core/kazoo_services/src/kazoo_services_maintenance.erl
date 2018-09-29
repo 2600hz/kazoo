@@ -9,7 +9,9 @@
 
 -export([flush/0]).
 -export([db_init/0]).
--export([refresh/0]).
+-export([refresh/0
+        ,register_views/0
+        ]).
 -export([migrate_service_plans/0
         ,migrate_service_plans/1
         ,migrate_service_plan/2]).
@@ -75,9 +77,12 @@ flush() ->
 -spec db_init() -> 'ok'.
 db_init() ->
     _ = kz_datamgr:del_doc(?KZ_DATA_DB, <<"account-kazoo_apps-services">>),
-    kz_datamgr:db_create(?KZ_SERVICES_DB),
-    kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views"),
-    _ = kz_datamgr:register_view('account', {<<"_design/services">>, js_design_doc()}),
+    refresh().
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    _ = kz_datamgr:register_views_from_folder('kazoo_services'),
+    _ = kz_datamgr:register_view('kazoo_services', {<<"_design/services">>, js_design_doc()}),
     'ok'.
 
 -spec js_design_doc() -> kz_json:object().
@@ -93,7 +98,10 @@ js_design_doc() ->
             ,{<<"bookkeepers">>, kz_json:from_list(Bookkeepers)}
             ,{<<"plans">>, kz_json:from_list(ServicePlans)}
             ],
+    ViewMap = kz_json:from_list([{<<"classification">>, <<"account">>}]),
+    Kazoo = kz_json:from_list([{<<"view_map">>, [ViewMap]}]),
     Props = [{<<"_id">>, <<"_design/services">>}
+            ,{<<"kazoo">>, Kazoo}
             ,{<<"views">>, kz_json:from_list(Views)}
             ],
     kz_json:from_list(Props).
@@ -220,7 +228,8 @@ js_quantify_map() ->
 -spec refresh() -> 'ok'.
 refresh() ->
     kz_datamgr:db_create(?KZ_SERVICES_DB),
-    kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views").
+    _ = kapps_maintenance:refresh(?KZ_SERVICES_DB),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -874,7 +883,7 @@ rebuild_services_db(JObjs) ->
     kz_datamgr:db_delete(?KZ_SERVICES_DB),
     timer:sleep(5000),
     io:format("rebuilding services database views~n", []),
-    kapps_maintenance:refresh(?KZ_SERVICES_DB),
+    refresh(),
     io:format("restoring service documents~n", []),
     _ = kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
     io:format("rebuild complete~n", []).

@@ -24,7 +24,8 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
+    cdr_util:register_views(),
+    kapps_maintenance:bind_and_register_views('cdr', 'cdr_util', 'register_views'),
     cdr_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -33,6 +34,7 @@ start(_StartType, _StartArgs) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = kapps_maintenance:unbind('register_views', 'cdr_util', 'register_views'),
     'ok'.
 
 

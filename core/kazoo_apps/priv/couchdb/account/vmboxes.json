@@ -1,0 +1,71 @@
+{
+    "_id": "_design/vmboxes",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return;",
+                "  var messges_count = doc.messages ? doc.messages.length || 0 : 0;",
+                "  emit(doc.name, {",
+                "    id: doc._id,",
+                "    name: doc.name,",
+                "    mailbox: doc.mailbox,",
+                "    owner_id: doc.owner_id,",
+                "    messages: messges_count",
+                "  });",
+                "}"
+            ]
+        },
+        "legacy_msg_by_timestamp": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'vmbox' || doc.pvt_deleted)",
+                "    return;",
+                "  var messages_count = doc.messages ? doc.messages.length || 0 : 0;",
+                "  if (messages_count) {",
+                "    doc.messages.forEach(",
+                "      function(Message) {",
+                "        if (Message.migration_error)",
+                "          return;",
+                "        var timestamp = parseInt(Message.timestamp, 10);",
+                "        emit(timestamp, {",
+                "          source_id: doc._id,",
+                "          owner_id: doc.owner_id,",
+                "          mailbox: doc.mailbox,",
+                "          box_timestamp: parseInt(doc.modified || doc.created, 10),",
+                "          timezone: doc.timezone,",
+                "          metadata: {",
+                "            timestamp: timestamp,",
+                "            from: Message.from,",
+                "            to: Message.to,",
+                "            caller_id_number: Message.caller_id_number,",
+                "            caller_id_name: Message.caller_id_name,",
+                "            call_id: Message.call_id,",
+                "            folder: Message.folder,",
+                "            length: Message.length,",
+                "            media_id: Message.media_id",
+                "          }",
+                "        })",
+                "      })",
+                "  }",
+                "}"
+            ]
+        },
+        "listing_by_mailbox": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return;",
+                "  emit(parseInt(doc.mailbox, 10), null);",
+                "}"
+            ]
+        }
+    }
+}

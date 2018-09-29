@@ -1,5 +1,12 @@
 {
     "_id": "_design/mailbox_messages",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "count_per_box_folder": {

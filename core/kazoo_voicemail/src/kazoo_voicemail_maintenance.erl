@@ -107,8 +107,7 @@ recover_missing_metadata(MODb) ->
             recover_missing_metadata(MODb, JObjs);
         {'error', 'not_found'} ->
             ?SUP_LOG_DEBUG("  adding view ~s", [?VIEW_MISSING_METADATA]),
-            _ = kapi_maintenance:refresh_database(MODb),
-            _ = kapi_maintenance:refresh_views(MODb),
+            _ = kazoo_modb:create(MODb),
             recover_missing_metadata(MODb);
         {'error', 'timeout'} ->
             timer:sleep(1000),

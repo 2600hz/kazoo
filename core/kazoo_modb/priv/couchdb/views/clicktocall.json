@@ -1,5 +1,12 @@
 {
     "_id": "_design/clicktocall",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "history_listing": {

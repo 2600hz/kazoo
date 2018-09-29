@@ -89,9 +89,6 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = kz_datamgr:db_create(?KZ_ACDC_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
-
     _ = kapi_acdc_agent:declare_exchanges(),
     _ = kapi_acdc_stats:declare_exchanges(),
 

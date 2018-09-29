@@ -1,0 +1,86 @@
+{
+    "_id": "_design/pending_notify",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "pending_notifications"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "failed_by_type": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'failed_notify' || !doc.max_retried || doc.pvt_deleted) return;",
+                "  key = doc.pvt_modified + (doc.retry_after ? doc.retry_after : 0);",
+                "  emit([doc.notification_type, key], {",
+                "    'id': doc._id,",
+                "    'type': doc.notification_type,",
+                "    'modified': doc.pvt_modified,",
+                "    'attempts': doc.attempts,",
+                "    'reason': doc.failure_reason",
+                "  });",
+                "}"
+            ],
+            "reduce": "_count"
+        },
+        "failed_range": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'failed_notify' || !doc.max_retried || doc.pvt_deleted) return;",
+                "  key = doc.pvt_modified + (doc.retry_after ? doc.retry_after : 0);",
+                "  emit([key, doc.notification_type], {",
+                "    'id': doc._id,",
+                "    'type': doc.notification_type,",
+                "    'modified': doc.pvt_modified,",
+                "    'attempts': doc.attempts,",
+                "    'reason': doc.failure_reason",
+                "  });",
+                "}"
+            ],
+            "reduce": "_count"
+        },
+        "list_by_modified": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'failed_notify' || doc.pvt_deleted || doc.max_retried) return;",
+                "  var key = doc.pvt_modified + (doc.retry_after ? doc.retry_after : 0);",
+                "  emit(key, null);",
+                "}"
+            ]
+        },
+        "pending_by_type": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'failed_notify' || doc.max_retried || doc.pvt_deleted) return;",
+                "  key = doc.pvt_modified + (doc.retry_after ? doc.retry_after : 0);",
+                "  emit([doc.notification_type, key], {",
+                "    'id': doc._id,",
+                "    'type': doc.notification_type,",
+                "    'modified': doc.pvt_modified,",
+                "    'attempts': doc.attempts,",
+                "    'reason': doc.failure_reason",
+                "  });",
+                "}"
+            ],
+            "reduce": "_count"
+        },
+        "pending_range": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'failed_notify' || doc.max_retried || doc.pvt_deleted) return;",
+                "  key = doc.pvt_modified + (doc.retry_after ? doc.retry_after : 0);",
+                "  emit([key, doc.notification_type], {",
+                "    'id': doc._id,",
+                "    'type': doc.notification_type,",
+                "    'modified': doc.pvt_modified,",
+                "    'attempts': doc.attempts,",
+                "    'reason': doc.failure_reason",
+                "  });",
+                "}"
+            ],
+            "reduce": "_count"
+        }
+    }
+}

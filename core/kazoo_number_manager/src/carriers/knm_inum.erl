@@ -21,9 +21,6 @@
 
 -include("knm.hrl").
 
--define(KZ_INUM,<<"numbers%2Finum">>).
--define(INUM_VIEW_FILE, <<"views/numbers_inum.json">>).
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -94,7 +91,7 @@ do_find_numbers_in_account(Prefix, Quantity, Offset, AccountId, QID) ->
                   ,{'skip', Offset}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(?KZ_INUM, <<"numbers_inum/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_INUM_DB, <<"numbers_inum/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available inum numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
@@ -172,13 +169,7 @@ save_doc(AccountId, Number) ->
 -spec save_doc(kz_json:object()) -> {'ok', kz_json:object()} |
                                     {'error', any()}.
 save_doc(JObj) ->
-    case kz_datamgr:save_doc(?KZ_INUM, JObj) of
-        {'error', 'not_found'} ->
-            'true' = kz_datamgr:db_create(?KZ_INUM),
-            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_INUM, ?APP, ?INUM_VIEW_FILE),
-            save_doc(JObj);
-        Result -> Result
-    end.
+    kz_datamgr:save_doc(?KZ_INUM_DB, JObj).
 
 -spec update_doc(knm_number:knm_number(), kz_term:proplist()) ->
                         knm_number:knm_number().
@@ -191,7 +182,7 @@ update_doc(Number, UpdateProps) ->
               ],
     UpdateOptions = [{'update', Updates}],
 
-    case kz_datamgr:update_doc(?KZ_INUM, Num, UpdateOptions) of
+    case kz_datamgr:update_doc(?KZ_INUM_DB, Num, UpdateOptions) of
         {'ok', _UpdatedDoc} -> Number;
         {'error', Reason} ->
             knm_errors:database_error(Reason, PhoneNumber)

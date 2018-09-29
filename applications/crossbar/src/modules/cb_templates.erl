@@ -187,8 +187,8 @@ create_template_db(TemplateName, Context) ->
             cb_context:add_system_error('datastore_fault', Context);
         'true' ->
             lager:debug("created DB for template ~s", [TemplateName]),
-            kz_datamgr:revise_docs_from_folder(TemplateDb, ?APP, "account", 'false'),
-            _ = kz_datamgr:revise_doc_from_file(TemplateDb, ?APP, ?MAINTENANCE_VIEW_FILE),
+            kz_datamgr:revise_docs_from_folder(TemplateDb, 'kazoo_apps', "account", 'false'),
+            _ = kz_datamgr:revise_doc_from_file(TemplateDb, 'kazoo_apps', <<"views/maintenance.json">>),
             cb_context:set_resp_status(Context, 'success')
     end.
 

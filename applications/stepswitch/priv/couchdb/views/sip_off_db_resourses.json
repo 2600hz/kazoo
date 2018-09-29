@@ -1,0 +1,31 @@
+{
+    "_id": "_design/resources",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "sip_auth"
+            },
+            {
+                "database": "offnet"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": "function(doc) {if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id,'name': doc.name,'enabled': doc.enabled,'weight_cost': doc.weight_cost,'template_name': doc.template_name,'classifiers': doc.classifiers});}"
+        },
+        "listing_active_by_rules": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options, 'flags':doc.flags || []}); }"
+        },
+        "listing_active_by_weight": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; emit([parseInt(doc.weight_cost, 10), doc._id], doc.name); }"
+        },
+        "listing_by_id": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, doc.name); }"
+        },
+        "listing_uac_gateways": {
+            "map": "function (doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted || !doc.enabled) return; for (var index in doc.gateways) { if (!doc.gateways[index] || !doc.gateways[index].register || doc.gateways[index].enabled == false) { continue; } var gateway = doc.gateways[index]; emit(doc._id, {'username': gateway.username, 'auth_username': gateway.auth_username, 'server': gateway.server, 'password': gateway.password, 'realm': gateway.realm, 'expiration': gateway.expiration, 'proxy': gateway.proxy, 'account_id': doc.pvt_account_id, 'id': doc._id + '-' + index, 'resource_id': doc._id, 'register_extension': gateway.register_extension, 'version': doc._rev})}}"
+        }
+    }
+}

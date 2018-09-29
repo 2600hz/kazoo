@@ -5,8 +5,6 @@
 -include_lib("kazoo/include/kz_api_literals.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
--define(ROUTES_DB, ?KZ_OFFNET_DB).
--define(RESOURCES_DB, ?KZ_OFFNET_DB).
 -define(LOCAL_RESOURCES_VIEW, <<"resources/crossbar_listing">>).
 
 -define(LIST_ROUTES_BY_NUMBER, <<"routes/listing_by_number">>).

@@ -104,14 +104,12 @@ configure_smtp_port(Value) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% @deprecated This function and `accounts' database notify view are depreacted.
 %% @end
 %%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    kz_datamgr:db_create(?KZ_ACCOUNTS_DB),
-    Views = [kapps_util:get_view_json('notify', <<"views/notify.json">>)],
-    kapps_util:update_views(?KZ_ACCOUNTS_DB, Views),
-    'ok'.
+    io:format("This function and 'accounts' database notify view are deprecated.").
 
 %%------------------------------------------------------------------------------
 %% @doc

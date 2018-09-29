@@ -11,10 +11,10 @@
 -export([flush/0
         ,cnam_flush/0
         ]).
--export([refresh/0]).
 -export([lookup_number/1
         ,number_tree/1
         ]).
+-export([register_views/0]).
 -export([reload_resources/0, reload_resources/1]).
 -export([process_number/1
         ,process_number/2
@@ -113,15 +113,9 @@ flush() -> kz_cache:flush_local(?CACHE_NAME).
 cnam_flush() ->
     io:format("flushed ~p entries from cnam cache~n", [stepswitch_cnam:flush()]).
 
-%%------------------------------------------------------------------------------
-%% @doc Lookup a number in the route db and return the account ID if known
-%% @end
-%%------------------------------------------------------------------------------
--spec refresh() -> 'ok'.
-refresh() ->
-    Views = kapps_util:get_views_json('stepswitch', "views"),
-    kapps_util:update_views(?RESOURCES_DB, Views, 'false'),
-    'ok'.
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder('stepswitch').
 
 %%------------------------------------------------------------------------------
 %% @doc Lookup a number in the route db and return the account ID if known

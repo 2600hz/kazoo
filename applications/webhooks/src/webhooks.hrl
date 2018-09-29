@@ -4,7 +4,8 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_events/include/kz_hooks.hrl").
 
--define(APP_NAME, <<"webhooks">>).
+-define(APP, webhooks).
+-define(APP_NAME, (atom_to_binary(?APP, utf8))).
 -define(APP_VERSION, <<"4.0.0">>).
 
 -type http_verb() :: 'get' | 'post'.

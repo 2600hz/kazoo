@@ -1,0 +1,16 @@
+{
+    "_id": "_design/temporal_rules_sets",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'temporal_rule_set' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'rules': doc.temporal_rules}); }"
+        }
+    }
+}

@@ -19,7 +19,9 @@
 start(_Type, _Args) ->
     _ = kapi_self:declare_exchanges(),
     _ = kapi_tasks:declare_exchanges(),
-    _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'tasks'),
+    kapps_maintenance:bind_and_register_views(?APP, 'tasks_maintenance', 'register_views'),
+    _ = kz_datamgr:db_create(?KZ_TASKS_DB),
+    kapps_maintenance:refresh(?KZ_TASKS_DB),
     Ok = tasks_sup:start_link(),
     _ = tasks_bindings:init(),
     Ok.
@@ -30,4 +32,5 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.
 stop(_State) ->
+    _ = kapps_maintenance:unbind('register_views', 'tasks_maintenance', 'register_views'),
     tasks_bindings:flush().

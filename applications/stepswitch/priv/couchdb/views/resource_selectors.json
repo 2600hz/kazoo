@@ -1,0 +1,41 @@
+{
+    "_id": "_design/resource_selectors",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "resource_selectors"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "id_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc._id], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }"
+        },
+        "name_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc.name], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }",
+            "reduce": "_count"
+        },
+        "name_resource_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc.name, doc.resource], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }",
+            "reduce": "_count"
+        },
+        "name_selector_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc.name, doc.selector], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }"
+        },
+        "resource_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc.resource], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }",
+            "reduce": "_count"
+        },
+        "resource_name_id_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc.resource, doc.name, doc._id], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }"
+        },
+        "resource_name_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc.resource, doc.name], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }",
+            "reduce": "_count"
+        },
+        "resource_name_selector_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || !doc.name) return; emit([doc.resource, doc.name, doc.selector], {'name': doc.name, 'selector': doc.selector, 'value': doc.value, 'resource': doc.resource, 'start_time': doc.start_time, 'stop_time': doc.stop_time}); }"
+        }
+    }
+}

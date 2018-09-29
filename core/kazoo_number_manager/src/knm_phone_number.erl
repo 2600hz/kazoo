@@ -1776,7 +1776,7 @@ save_to(SplitBy, ErrorF, T0) ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:debug("creating new number db '~s' for numbers ~p", [Db, Nums]),
                         'true' = kz_datamgr:db_create(Db),
-                        {'ok', _} = kz_datamgr:revise_doc_from_file(Db, ?APP, <<"views/numbers.json">>),
+                        _ = kapps_maintenance:refresh(Db),
                         FF(Db, PNs, T);
                     {'error', E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
