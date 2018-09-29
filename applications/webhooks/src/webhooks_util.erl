@@ -421,10 +421,6 @@ load_hooks(Srv) ->
             lager:debug("~b out of ~b webhooks need to migrate", [length(NeedMigrate), length(WHs)]),
             load_hooks(Srv, WHs),
             migrate_load_hook(Srv, NeedMigrate);
-        {'error', 'not_found'} ->
-            lager:debug("db or view not found, initializing"),
-            init_webhook_db(),
-            load_hooks(Srv);
         {'error', _E} ->
             lager:debug("failed to load webhooks: ~p", [_E])
     end.
@@ -432,7 +428,6 @@ load_hooks(Srv) ->
 -spec init_webhook_db() -> 'ok'.
 init_webhook_db() ->
     _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
     'ok'.
 

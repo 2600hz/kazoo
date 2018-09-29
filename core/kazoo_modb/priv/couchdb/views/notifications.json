@@ -1,5 +1,12 @@
 {
     "_id": "_design/notifications",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "smtp_log": {

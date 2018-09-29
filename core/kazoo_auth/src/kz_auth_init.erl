@@ -24,15 +24,4 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init() -> any().
 init() ->
-    case kz_datamgr:db_exists(?KZ_AUTH_DB) of
-        'false' -> init(kz_datamgr:db_create(?KZ_AUTH_DB));
-        'true' -> 'ok'
-    end,
     kz_auth_keys:public_key(?SYSTEM_KEY_ID).
-
--spec init(boolean()) -> any().
-init('false') ->
-    lager:error("error trying to create auth database");
-init('true') ->
-    kazoo_auth_maintenance:register_common_providers(),
-    kazoo_auth_maintenance:refresh().

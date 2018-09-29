@@ -21,6 +21,9 @@
 -export([refresh_numbers_dbs/0
         ,refresh_numbers_db/1
         ]).
+-export([init_dbs/0
+        ,register_views/0
+        ]).
 -export([fix_number/3
         ,fix_account_numbers/1
         ,fix_accounts_numbers/1
@@ -163,6 +166,28 @@ print_convert_carrier_failure(Target, TotalLength, KOs) ->
 convert_carrier_module_number(Num, Target) ->
     convert_carrier_module_numbers([Num], Target).
 
+-spec init_dbs() -> 'ok'.
+init_dbs() ->
+    init_dbs([?KZ_MANAGED_DB
+             ,?KZ_INUM_DB
+             ,?KZ_PORT_REQUESTS_DB
+             ]).
+
+init_dbs([]) -> 'ok';
+init_dbs([Db | Dbs]) ->
+    case kz_datamgr:db_exists(Db) of
+        'false' ->
+            Result = kz_datamgr:db_create(Db),
+            lager:debug("~s is created: ~p", [Db, Result]);
+        'true' -> 'ok'
+    end,
+    kapps_maintenance:refresh(Db),
+    init_dbs(Dbs).
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(?APP).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -181,10 +206,7 @@ refresh_numbers_dbs([NumberDb|NumberDbs], Total) ->
 
 -spec refresh_numbers_db(kz_term:ne_binary()) -> 'ok'.
 refresh_numbers_db(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
-    {'ok', _} = kz_datamgr:revise_doc_from_file(NumberDb
-                                               ,'kazoo_number_manager'
-                                               ,<<"views/numbers.json">>
-                                               ),
+    kapps_maintenance:refresh(NumberDb),
     'ok';
 refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
     NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
@@ -377,7 +399,7 @@ save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
         {error, not_found} ->
             ?SUP_LOG_DEBUG(" [~s] creating new number db '~s'", [AccountId, Db]),
             'true' = kz_datamgr:db_create(Db),
-            {ok, _} = kz_datamgr:revise_doc_from_file(Db, ?APP, <<"views/numbers.json">>),
+            {ok, _} = kapps_maintenance:refresh(Db),
             save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
         {error, timeout} ->
             ?SUP_LOG_ERROR(" [~s] failed to save numbers to ~s: timeout, maybe trying again...", [AccountId, Db]),

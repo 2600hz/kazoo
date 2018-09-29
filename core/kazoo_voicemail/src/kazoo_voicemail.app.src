@@ -1,7 +1,7 @@
 {application,kazoo_voicemail,
  [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_call,
                  kazoo_data,kazoo_documents,kazoo_endpoint,
-                 kazoo_maintenance,kazoo_media,kazoo_modb,
+                 kazoo_media,kazoo_modb,
                  kazoo_speech,kazoo_stdlib,kernel,lager,stdlib]},
   {description,"Voice mail box and Voice mail messages"},
   {vsn,"4.0.0"},

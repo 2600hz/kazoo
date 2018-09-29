@@ -1,5 +1,12 @@
 {
     "_id": "_design/transactions",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "legacy_total": {

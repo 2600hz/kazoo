@@ -17,7 +17,7 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
     _ = declare_exchanges(),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
+    kapps_maintenance:bind_and_register_views(?APP, 'teletype_maintenance', 'register_views'),
     teletype_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -26,6 +26,7 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    kapps_maintenance:unbind('register_views', 'teletype_maintenance', 'register_views'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.

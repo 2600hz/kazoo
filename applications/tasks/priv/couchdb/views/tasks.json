@@ -1,5 +1,12 @@
 {
     "_id": "_design/tasks",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "tasks"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "listing_by_account": {

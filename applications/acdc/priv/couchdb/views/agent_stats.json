@@ -1,5 +1,12 @@
 {
     "_id": "_design/agent_stats",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "most_recent_by_agent": {

@@ -13,27 +13,8 @@
 
 -define(CACHE_NAME, 'trunkstore_cache').
 
-%% cdr doc store
--define(TS_CDR_PREFIX, <<"failures">>).
-
 %% Account views
 -define(TS_VIEW_DIDLOOKUP, <<"trunkstore/lookup_did">>).
-
--define(TS_VIEW_IPAUTH, <<"lookup_ip_auth/lookup_ip_auth">>).
--define(TS_VIEW_USERAUTH, <<"lookup_user_auth/lookup_user_auth">>).
--define(TS_VIEW_USERAUTHREALM, <<"lookup_user_auth/lookup_user_auth_realm">>).
-
--define(TS_VIEW_CARRIERIP, <<"lookup_carrier_ip/lookup_carrier_ip">>).
-
--define(EOD, 'end_of_day').
-
-%% couch params for the routing table and its views
--define(TS_RATES_DB, <<"ts_rates">>).
--define(TS_CARRIERS_DOC, <<"carriers">>).
-
--define(DEFAULT_PROGRESS_TIMEOUT, 6). % seconds to timeout if no progress
-
--define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>, <<"e164">>, <<"npan">>, <<"1npan">>]).
 
 %% just want to deal with binary K/V pairs
 -type active_calls() :: [{binary(), 'flat_rate' | 'per_min'}].
@@ -81,9 +62,6 @@
                      ,routes_generated = kz_json:new() :: kz_json:object() | kz_json:objects()           % the routes generated during the routing phase
                      ,scenario = 'inbound' :: 'inbound' | 'outbound' | 'inbound_failover' | 'outbound_inbound' | 'outbound_inbound_failover' % what scenario have we routed over
                      }).
-
--define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookup_user_auth.json", "lookup_monitor.json", "lookup_ip_auth.json", "lookup_did.json", "lookup_user.json", "failures.json"]).
--define(TS_COUCH_BASE_DOCS, ["carriers.json"]).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 

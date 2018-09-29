@@ -1,0 +1,16 @@
+{
+    "_id": "_design/system_configs",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_config"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_deleted) return; emit(doc._id, null); }"
+        }
+    }
+}

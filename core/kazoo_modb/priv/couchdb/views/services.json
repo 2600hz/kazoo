@@ -1,5 +1,12 @@
 {
     "_id": "_design/services",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "audit_logs_by_creation": {

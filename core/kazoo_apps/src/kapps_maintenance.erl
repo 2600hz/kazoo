@@ -19,6 +19,7 @@
         ]).
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
+        ,refresh_account/1
         ,refresh_account_db/1
         ,maybe_delete_db/1
         ]).
@@ -51,32 +52,30 @@
         ,binding/1
         ]).
 
+-export([register_views/0
+        ,register_views/1
+        ]).
+
+-export([bind_and_register_views/3]).
+
 -export([flush_getby_cache/0
         ,flush_account_views/0
         ,get_all_account_views/0
         ,read_all_account_views/0
         ]).
 
--export([init_system/0, init_dbs/0, register_account_views/0]).
+-export([init_system/0
+        ,register_account_views/0
+        ,register_system_dbs_views/0
+
+        ,refresh_system_views/0
+        ]).
 
 -export([check_release/0]).
 
 -include("kazoo_apps.hrl").
 
--type bind() :: 'migrate' | 'refresh' | 'refresh_account'.
--spec binding(bind() | {bind(), kz_term:ne_binary()}) -> kz_term:ne_binary().
-binding('migrate') -> <<"maintenance.migrate">>;
-binding('refresh') -> <<"maintenance.refresh">>;
-binding('refresh_account') -> <<"maintenance.refresh.account">>;
-binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
-    CommonPath = binding(Common),
-    <<CommonPath/binary, ".", Specific/binary>>.
-
--spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
-bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
-
--spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
-unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
+-type bind() :: 'migrate' | 'refresh' | 'refresh_account' | 'register_views'.
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
@@ -86,10 +85,32 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
 
--spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
-refresh_account_db(Database) ->
-    _ = kz_datamgr:refresh_views(Database),
-    'ok'.
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec binding(bind() | {bind(), kz_term:ne_binary()}) -> kz_term:ne_binary().
+binding('migrate') -> <<"maintenance.migrate">>;
+binding('refresh') -> <<"maintenance.refresh">>;
+binding('refresh_account') -> <<"maintenance.refresh.account">>;
+binding('register_views') -> <<"maintenance.register_views">>;
+binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
+    CommonPath = binding(Common),
+    <<CommonPath/binary, ".", Specific/binary>>.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
+bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
+unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -147,9 +168,18 @@ migrate(Pause, Databases) ->
     io:format("removing deprecated databases...~n"),
     _  = remove_deprecated_databases(Databases),
 
+    migrate_kapps_account_config(Accounts),
+
     _ = kazoo_bindings:map(binding('migrate'), [Accounts]),
 
     'no_return'.
+
+migrate_kapps_account_config([]) ->
+    'ok';
+migrate_kapps_account_config([AccountDb | AccountDbs]) ->
+    kapps_account_config:migrate(AccountDb),
+    _ = timer:sleep(1 * ?MILLISECONDS_IN_SECOND),
+    migrate_kapps_account_config(AccountDbs).
 
 -spec parallel_migrate(kz_term:text() | integer()) -> 'no_return'.
 parallel_migrate(Workers) ->
@@ -218,10 +248,41 @@ blocking_refresh(Pause) ->
     refresh(Databases, Pause).
 
 %%------------------------------------------------------------------------------
+%% @doc Register views from all applications that have binding to
+%% `register_views'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_views() -> 'ok'.
+register_views() ->
+    kazoo_bindings:map(binding('register_views'), []).
+
+%%------------------------------------------------------------------------------
+%% @doc Register views from specific `App' application.
+%%
+%% `App' needs to bind to `register_views'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_views(kz_term:ne_binary() | atom()) -> 'ok'.
+register_views(?NE_BINARY=App) ->
+    kazoo_bindings:map(binding({'register_views', App}), []);
+register_views(App) when is_atom(App) ->
+    register_views(kz_term:to_binary(App)).
+
+%%------------------------------------------------------------------------------
+%% @doc Bind to register_views and call the registration function at same time.
+%% @end
+%%------------------------------------------------------------------------------
+-spec bind_and_register_views(atom() | kz_term:ne_binary(), atom(), atom()) -> 'ok'.
+bind_and_register_views(_AppName, Module, Function) ->
+    bind('register_views', Module, Function),
+    %% bind({'register_views', kz_term:to_binary(AppName)}, Module, Function),
+    _ = Module:Function(),
+    'ok'.
+
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec refresh() -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
@@ -256,8 +317,25 @@ get_database_sort(Db1, Db2) ->
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
+    _ = kz_datamgr:refresh_views(Database),
+    _ = kazoo_bindings:map(binding({'refresh', Database}), [Database]),
+    refresh_by_classification(Database, kz_datamgr:db_classification(Database)).
+
+refresh_by_classification(Database, 'account') ->
+    AccountDb = kz_util:format_account_id(Database, 'encoded'),
+    AccountId = kz_util:format_account_id(Database, 'raw'),
+    _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
+    'ok';
+refresh_by_classification(_, _) ->
     'ok'.
+
+-spec refresh_account(kz_term:ne_binary()) -> 'ok'.
+refresh_account(AccountId) ->
+    refresh_account_db(AccountId).
+
+-spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
+refresh_account_db(Database) ->
+    refresh(kz_util:format_account_db(Database)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -951,7 +1029,9 @@ migrate_system(PreviousVersion, ThisVersion) ->
 
 -spec migrate_system_version_routines(kz_term:ne_binary(), kz_term:ne_binary()) -> [fun()].
 migrate_system_version_routines(<<"3.22">>, _) ->
-    [fun handle_module_rename/0];
+    [fun migrate_and_cleanup_system_config/0
+    ,fun handle_module_rename/0
+    ];
 migrate_system_version_routines(_, _) -> [].
 
 -spec handle_module_rename() -> boolean().
@@ -974,6 +1054,132 @@ handle_module_rename_doc(JObj) ->
                 {'error', _Error} -> 'false'
             end
     end.
+
+-spec migrate_and_cleanup_system_config() -> 'true'.
+migrate_and_cleanup_system_config() ->
+    cleanup_invalid_notify_docs(),
+    delete_system_media_references(),
+    accounts_config_deprecate_timezone_for_default_timezone(),
+    'true'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec cleanup_invalid_notify_docs() -> 'ok'.
+cleanup_invalid_notify_docs() ->
+    _ = kz_datamgr:db_archive(<<"system_config">>),
+    case kz_datamgr:all_docs(?KZ_CONFIG_DB, ['include_docs']) of
+        {'ok', JObjs} -> cleanup_invalid_notify_docs(JObjs);
+        {'error', _R} ->
+            lager:warning("unable to fetch all system config docs: ~p", [_R])
+    end.
+
+-spec cleanup_invalid_notify_docs(kz_json:objects()) -> 'ok'.
+cleanup_invalid_notify_docs([]) -> 'ok';
+cleanup_invalid_notify_docs([JObj|JObjs]) ->
+    Id = kz_json:get_value(<<"id">>, JObj),
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    _ = maybe_remove_invalid_notify_doc(kz_doc:type(Doc), Id, Doc),
+    cleanup_invalid_notify_docs(JObjs).
+
+-spec maybe_remove_invalid_notify_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+maybe_remove_invalid_notify_doc(<<"notification">>, <<"notification", _/binary>>, _) -> 'ok';
+maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
+    _ = kz_datamgr:del_doc(?KZ_CONFIG_DB, JObj),
+    'ok';
+maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
+
+
+-spec delete_system_media_references() -> 'ok'.
+delete_system_media_references() ->
+    DocId = kz_call_response:config_doc_id(),
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, DocId) of
+        {'ok', CallResponsesDoc} ->
+            delete_system_media_references(DocId, CallResponsesDoc);
+        {'error', 'not_found'} -> 'ok'
+    end.
+
+-spec delete_system_media_references(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+delete_system_media_references(DocId, CallResponsesDoc) ->
+    TheKey = <<"default">>,
+    Default = kz_json:get_value(TheKey, CallResponsesDoc),
+
+    case kz_json:map(fun remove_system_media_refs/2, Default) of
+        Default -> 'ok';
+        NewDefault ->
+            io:format("updating ~s with stripped system_media references~n", [DocId]),
+            NewCallResponsesDoc = kz_json:set_value(TheKey, NewDefault, CallResponsesDoc),
+            _Resp = kz_datamgr:save_doc(?KZ_CONFIG_DB, NewCallResponsesDoc),
+            'ok'
+    end.
+
+-spec remove_system_media_refs(kz_json:path(), kz_json:objects()) ->
+                                      {kz_json:path(), kz_json:json_term()}.
+remove_system_media_refs(HangupCause, Config) ->
+    case kz_json:is_json_object(Config) of
+        'false' -> {HangupCause, Config};
+        'true' ->
+            {HangupCause
+            ,kz_json:foldl(fun remove_system_media_ref/3, kz_json:new(), Config)
+            }
+    end.
+
+-spec remove_system_media_ref(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+                                     kz_json:object().
+remove_system_media_ref(Key, <<"/system_media/", Value/binary>>, Acc) -> kz_json:set_value(Key, Value, Acc);
+remove_system_media_ref(Key, Value, Acc) -> kz_json:set_value(Key, Value, Acc).
+
+%%------------------------------------------------------------------------------
+%% @doc Remove system_config/accounts timezone key and use only
+%% default_timezone
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec accounts_config_deprecate_timezone_for_default_timezone() -> 'ok'.
+accounts_config_deprecate_timezone_for_default_timezone() ->
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, <<"accounts">>) of
+        {'ok', AccountsConfig} ->
+            accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig);
+        {'error', E} ->
+            lager:warning("unable to fetch system_config/accounts: ~p", [E])
+    end.
+
+-spec accounts_config_deprecate_timezone_for_default_timezone(kz_json:object()) -> 'ok'.
+accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig) ->
+    PublicFields = kz_doc:public_fields(AccountsConfig),
+    case kz_json:get_keys(PublicFields) of
+        [] -> 'ok';
+        Keys ->
+            MigratedConfig = deprecate_timezone_for_default_timezone(Keys, AccountsConfig),
+            kz_datamgr:save_doc(?KZ_CONFIG_DB, MigratedConfig),
+            'ok'
+    end.
+
+-spec deprecate_timezone_for_default_timezone(kz_json:keys(), kz_json:object()) ->
+                                                     kz_json:object().
+deprecate_timezone_for_default_timezone(Nodes, AccountsConfig) ->
+    lists:foldl(fun deprecate_timezone_for_node/2, AccountsConfig, Nodes).
+
+-spec deprecate_timezone_for_node(kz_json:key(), kz_json:object()) ->
+                                         kz_json:object().
+deprecate_timezone_for_node(Node, AccountsConfig) ->
+    Timezone = kz_json:get_value([Node, <<"timezone">>], AccountsConfig),
+    DefaultTimezone = kz_json:get_value([Node, <<"default_timezone">>], AccountsConfig),
+    deprecate_timezone_for_node(Node, AccountsConfig, Timezone, DefaultTimezone).
+
+-spec deprecate_timezone_for_node(kz_json:key(), kz_json:object(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+                                         kz_json:object().
+deprecate_timezone_for_node(_Node, AccountsConfig, 'undefined', _Default) ->
+    AccountsConfig;
+deprecate_timezone_for_node(Node, AccountsConfig, Timezone, 'undefined') ->
+    io:format("setting default timezone to ~s for node ~s~n", [Timezone, Node]),
+    kz_json:set_value([Node, <<"default_timezone">>]
+                     ,Timezone
+                     ,kz_json:delete_key([Node, <<"timezone">>], AccountsConfig)
+                     );
+deprecate_timezone_for_node(Node, AccountsConfig, _Timezone, _Default) ->
+    kz_json:delete_key([Node, <<"timezone">>], AccountsConfig).
 
 -spec validate_system_configs() -> [{kz_term:ne_binary(), kz_json:object()}].
 validate_system_configs() ->
@@ -1041,8 +1247,9 @@ flush_account_views() ->
 %% @doc Returns all views related to account database by first trying fetching
 %% from process dictionary otherwise reads from file system.
 %%
-%% If account's views were read from file system, it put them inside
-%% `account_view' process dictionary.
+%% @deprecated Views refresh functionality is now handled from database. View
+%% definitions in database are updated during system startup and refreshing views
+%% is now reading view definition from database not from file system.
 %% @see read_all_account_views/0
 %% @see flush_account_views/0
 %% @end
@@ -1056,70 +1263,73 @@ get_all_account_views() ->
             Views;
         Views -> Views
     end.
+
 %%------------------------------------------------------------------------------
-%% @doc Returns all account related views from file system.
-%%
-%% Currently reads account's related views from these apps:
-%% <ul>
-%% <li>{@link kazoo_apps}</li>
-%% <li>{@link conference}</li>
-%% <li>{@link webhooks}</li>
-%% <li>{@link crossbar}</li>
-%% <li>{@link callflow}</li>>
-%% </ul>
+%% @doc Returns all account database related views from file system (only those
+%% files within {@link kazoo_apps} private couch views directory.
+%% @see read_all_account_views/0
 %% @end
 %%------------------------------------------------------------------------------
 -spec read_all_account_views() -> kz_datamgr:views_listing().
 read_all_account_views() ->
-    [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-    ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
-    ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
-     |kapps_util:get_views_json('crossbar', "account")
-     ++ kapps_util:get_views_json('callflow', "views")
-    ].
+    kapps_util:get_views_json(?APP, "account").
 
 %%------------------------------------------------------------------------------
-%% @doc Initialize and update core database views from file system.
+%% @doc Update account's MODB and account's specific view definitions in database.
 %%
-%% This includes reading views from file system and revise below views docs:
-%% <ul>
-%% <li>`maintenance' view in `sip_auth' database</li>
-%% <li>`accounts', `maintenance' and `search' views for `accounts' database</li>
-%% <li>`dedicated_ips' database views</li>
-%% </ul>
+%% This function reads all account and account's MODB related views updates (or
+%% creates) them in `system_data' database.
+%% Refreshing views will read those views from this this database.
 %%
-%% This function is always called by {@link init_system/0} during system startup.
-%% @end
-%%------------------------------------------------------------------------------
--spec init_dbs() -> 'ok'.
-init_dbs() ->
-    SipViews = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)],
-    _ = kapps_util:update_views(?KZ_SIP_DB, SipViews, 'false'),
-    Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-            ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
-            ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
-            ],
-    _ = kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'false'),
-    _ = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB, 'kazoo_ips', "views"),
-    'ok'.
-
-%%------------------------------------------------------------------------------
-%% @doc Read all account and account's MODB views from file system and put/update
-%% them `system_data' database to be read by refresh views later.
-%%
-%% This function reads all account and account's MODB related views from various
-%% application and classify each view and creates and updates them in
-%% `system_data' database. Refreshing views will read account's views from this
-%% this database.
-%%
-%% This function is always called by {@link init_system/0} during system startup.
+%% During system startup this function should always be called (by
+%% {@link init_system/0}) to make sure account's view definitions are updated to
+%% latest version.
 %% @end
 %%------------------------------------------------------------------------------
 -spec register_account_views() -> 'ok'.
 register_account_views() ->
     kazoo_modb_maintenance:register_views(),
     Views = read_all_account_views(),
-    kz_datamgr:register_views('account', Views).
+    kz_datamgr:register_views(?APP, Views).
+
+%%------------------------------------------------------------------------------
+%% @doc Update view definitions for core system databases.
+%%
+%% During system startup this function should always be called (by
+%% {@link init_system/0}) to make sure account's view definitions are updated.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_system_dbs_views() -> 'ok'.
+register_system_dbs_views() ->
+    Views = [kapps_util:get_view_json(?APP, ?ACCOUNTS_AGG_VIEW_FILE)
+            ,kapps_util:get_view_json(?APP, ?MAINTENANCE_VIEW_FILE)
+            ,kapps_util:get_view_json(?APP, ?SEARCH_VIEW_FILE)
+            ,kapps_util:get_view_json(?APP, <<"views/alerts.json">>)
+            ,kapps_util:get_view_json(?APP, <<"views/system_configs.json">>)
+            ,kapps_util:get_view_json(?APP, <<"views/pending_notify.json">>)
+            ,kapps_util:get_view_json(?APP, <<"views/rates.json">>)
+            ,kapps_util:get_view_json(?APP, <<"views/token_auth.json">>)
+             | kapps_util:get_views_json('kazoo_ips', "views")
+            ],
+    kz_datamgr:register_views(?APP, Views).
+
+-spec refresh_system_views() -> 'ok'.
+refresh_system_views() ->
+    Databases = [?KZ_ACCOUNTS_DB
+                ,?KZ_ALERTS_DB
+                ,?KZ_CONFIG_DB
+                ,?KZ_DEDICATED_IP_DB
+                ,?KZ_PENDING_NOTIFY_DB
+                ,?KZ_RATES_DB
+                ,?KZ_TOKEN_DB
+                ],
+    refresh_system_views(Databases).
+
+-spec refresh_system_views(kz_term:ne_binaries()) -> 'ok'.
+refresh_system_views([]) -> 'ok';
+refresh_system_views([Db | Dbs]) ->
+    refresh(Db),
+    refresh_system_views(Dbs).
 
 %%------------------------------------------------------------------------------
 %% @doc Initialize and update core database views and register account's views.
@@ -1128,14 +1338,13 @@ register_account_views() ->
 %% startup to update core views and register account views.
 %%
 %% @see kapps_controller:start_link/0. `kapps_controller' for system startup
-%% @see crossbar_maintenance:db_init/0. `crossbar_maintenance:db_init/0' for
-%% updating other system databases views and system schema.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init_system() -> 'ok'.
 init_system() ->
-    init_dbs(),
     register_account_views(),
+    register_system_dbs_views(),
+    refresh_system_views(),
     lager:notice("system initialized").
 
 -spec check_release() -> 'ok' | 'error'.

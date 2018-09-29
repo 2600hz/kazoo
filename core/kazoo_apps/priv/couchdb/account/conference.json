@@ -1,0 +1,16 @@
+{
+    "_id": "_design/conference",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "listing_by_number": {
+            "map": "function(doc) { if (doc.pvt_type != 'conference' || doc.pvt_deleted) return; if (typeof doc.moderator == 'object' && doc.moderator.numbers) doc.moderator.numbers.forEach(function (Num) {emit(Num, null)}); if (typeof doc.member == 'object' && doc.member.numbers) doc.member.numbers.forEach(function (Num) {emit(Num, null)}); if (doc.conference_numbers) doc.conference_numbers.forEach(function (Num) {emit(Num, null)});}"
+        }
+    }
+}

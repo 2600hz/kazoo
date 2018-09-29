@@ -1,5 +1,12 @@
 {
     "_id": "_design/faxbox",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "faxes"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "cloud": {

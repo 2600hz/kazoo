@@ -1,0 +1,19 @@
+{
+    "_id": "_design/token_auth",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "token_auth"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "listing_by_ctime": {
+            "map": "function(doc) { emit(doc.created || doc.pvt_created, doc._rev); }"
+        },
+        "listing_by_mtime": {
+            "map": "function(doc) { emit(doc.modified || doc.pvt_modified, doc._rev); }"
+        }
+    }
+}

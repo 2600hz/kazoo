@@ -1,9 +1,0 @@
-{
-    "_id": "_design/ts_accounts",
-    "language": "javascript",
-    "views": {
-        "crossbar_listing": {
-            "map": "function(doc) { if (doc.type != 'sys_info' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'realm': doc.account.auth_realm, 'primary': doc.account.primary, 'trunks': doc.account.trunks, 'credits': doc.account.credits}); }"
-        }
-    }
-}

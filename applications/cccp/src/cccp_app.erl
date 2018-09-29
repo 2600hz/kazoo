@@ -18,6 +18,8 @@
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
+    _ = kapps_maintenance:bind_and_register_views('cccp', 'cccp_util', 'register_views'),
+    cccp_util:init_db(),
     _ = declare_exchanges(),
     cccp_sup:start_link().
 
@@ -27,6 +29,7 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = kapps_maintenance:unbind('register_views', 'cccp_util', 'register_views'),
     'ok'.
 
 

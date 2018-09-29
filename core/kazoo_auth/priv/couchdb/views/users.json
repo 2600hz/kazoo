@@ -1,5 +1,12 @@
 {
     "_id": "_design/users",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_auth"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "list_linked_users": {

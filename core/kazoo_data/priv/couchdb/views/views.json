@@ -1,9 +1,30 @@
 {
     "_id": "_design/views",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_data"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "views_by_classification": {
-            "map": "function(doc) {if (doc.pvt_type != 'view_definition' || doc.pvt_deleted) return; emit(doc.classification, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'view_definition' || doc.pvt_deleted) return;",
+                "  if (!doc.kazoo || !doc.kazoo.view_map) return;",
+                "  for (i in doc.kazoo.view_map) {",
+                "    var map = doc.kazoo.view_map[i];",
+                "    if (map.classification) {",
+                "      emit(map.classification, null);",
+                "    }",
+                "    if (map.database) {",
+                "      emit(map.database, null);",
+                "    }",
+                "  }",
+                "}"
+            ]
         }
     }
 }

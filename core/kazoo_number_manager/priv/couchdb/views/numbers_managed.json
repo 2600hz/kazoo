@@ -1,5 +1,12 @@
 {
     "_id": "_design/numbers_managed",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "numbers/managed"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "status": {

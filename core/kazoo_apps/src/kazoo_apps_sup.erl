@@ -36,7 +36,6 @@
                   ,?CACHE_ARGS(?KAPPS_CONFIG_CACHE, ?KAPPS_CONFIG_PROPS)
                   ,?WORKER('kapps_controller')
                   ,?CACHE_ARGS(?KAPPS_GETBY_CACHE, ?KAPPS_GETBY_PROPS)
-                  ,?WORKER('kazoo_apps_maint_listener')
                   ]).
 -endif.
 

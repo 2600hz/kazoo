@@ -1,5 +1,12 @@
 {
     "_id": "_design/numbers_inum",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "numbers/inum"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "status": {

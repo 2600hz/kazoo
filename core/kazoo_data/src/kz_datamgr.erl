@@ -87,12 +87,13 @@
         ,change_notice/0
         ]).
 
--export([register_view/2, register_view/3
-        ,register_views/2,register_views/3
-        ,refresh_views/1
-        ,register_views_from_folder/1
+-export([refresh_views/1]).
+-export([register_view/2
+        ]).
+-export([register_views/2
+        ]).
+-export([register_views_from_folder/1
         ,register_views_from_folder/2
-        ,register_views_from_folder/3
         ]).
 
 -type update_option() :: {'update', kz_json:flat_proplist()} |
@@ -1516,37 +1517,48 @@ init_dbs() ->
     revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>),
     Result.
 
--spec register_views(kz_term:ne_binary() | db_classification(), views_listing()) -> 'ok'.
-register_views(Classification, Views) ->
-    App = kz_util:calling_app(),
-    register_views(Classification, kz_term:to_atom(App, 'true'), Views).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_views(atom(), views_listing() | [string()]) -> 'ok'.
+register_views(_, []) ->
+    'ok';
+register_views(App, [View | Other]) ->
+    _ = register_view(App, View),
+    register_views(App, Other).
 
-
--spec register_views(kz_term:ne_binary() | db_classification(), atom(), views_listing()) -> 'ok'.
-register_views(_Classification, _App, []) -> 'ok';
-register_views(Classification, App, [View | Other]) ->
-    _ = register_view(Classification, App, View),
-    register_views(Classification, App, Other).
-
--spec register_view(kz_term:ne_binary() | db_classification(), view_listing()) ->
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_view(atom(), view_listing() | string() | kz_term:ne_binary()) ->
                            {'ok', kz_json:object()} |
                            data_error().
-register_view(Classification, View) ->
-    App = kz_util:calling_app(),
-    register_view(Classification, kz_term:to_atom(App, 'true'), View).
+register_view(App, {_, ViewJObj}=View) ->
+    Validate = validate_view_map(kz_json:get_ne_json_value(<<"kazoo">>, ViewJObj)),
+    maybe_register_view(View, App, Validate);
+register_view(App, ViewName) ->
+    register_view(App, kzs_util:get_view_json(App, ViewName)).
 
--spec register_view(kz_term:ne_binary() | db_classification(), atom(), view_listing() | string() | kz_term:ne_binary()) ->
-                           {'ok', kz_json:object()} |
-                           data_error().
-register_view(Classification, App, {<<"_design/", Name/binary>>, View}) ->
+-spec maybe_register_view(view_listing(), atom(), {'error', any()} | {kz_term:ne_binary() | kz_json:objects()}) ->
+                                 {'ok', kz_json:object()} |
+                                 data_error().
+maybe_register_view({<<"_design/", _Name/binary>>, _}, _App, {'error', _Reason}=Error) ->
+    lager:error("can not register the view ~s for app ~s: ~s", [_Name, _App, _Reason]),
+    Error;
+maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps}) ->
     Version = kz_util:application_version(App),
     AppName = kz_term:to_binary(App),
-    DocId = <<(kz_term:to_binary(Classification))/binary, "-", AppName/binary, "-", Name/binary>>,
+    DocId = <<ClassId/binary, "-", AppName/binary, "-", Name/binary>>,
 
-    Update = [{<<"view_definition">>, View}],
+    log_register_views(Name, DocId, App, ViewMaps),
+
+    Update = [{<<"kazoo">>, kz_json:from_list([{<<"view_map">>, ViewMaps}])}
+             ,{<<"view_definition">>, kz_json:delete_key(<<"kazoo">>, View)}
+             ],
     ExtraUpdate = [{<<"version">>, Version}],
     Create = [{<<"application">>, AppName}
-             ,{<<"classification">>, kz_term:to_binary(Classification)}
              ,{<<"name">>, Name}
              ,{<<"pvt_type">>, <<"view_definition">>}
              ],
@@ -1556,29 +1568,85 @@ register_view(Classification, App, {<<"_design/", Name/binary>>, View}) ->
                     ,{'create', Create}
                     ],
 
-    update_doc(?KZ_DATA_DB, DocId, UpdateOptions);
-register_view(Classification, App, ViewName) ->
-    register_view(Classification, App, kzs_util:get_view_json(App, ViewName)).
+    update_doc(?KZ_DATA_DB, DocId, UpdateOptions).
 
--spec register_views_from_folder(kz_term:ne_binary() | db_classification()) -> 'ok'.
-register_views_from_folder(Classification) ->
-    register_views_from_folder(Classification, kz_term:to_atom(kz_util:calling_app(), 'true')).
+log_register_views(_, _, _, []) ->
+    'ok';
+log_register_views(Name, DocId, App, [ViewMap | ViewMaps]) ->
+    Dest = kz_json:get_value(<<"database">>, ViewMap, kz_json:get_value(<<"classification">>, ViewMap)),
+    lager:debug("trying to register view ~s with id ~s for app ~s, with destination ~s"
+               ,[Name, DocId, App, Dest]
+               ),
+    log_register_views(Name, DocId, App, ViewMaps).
 
--spec register_views_from_folder(kz_term:ne_binary() | db_classification(), atom()) -> 'ok'.
-register_views_from_folder(Classification, App) ->
-    register_views_from_folder(Classification, App, "views").
+-spec validate_view_map(kz_term:api_object()) ->
+                               {kz_term:ne_binary(), kz_json:objects()} |
+                               {'error', kz_term:ne_binary()}.
+validate_view_map('undefined') ->
+    {'error', <<"no_view_registration_info">>};
+validate_view_map(JObj) ->
+    ViewMap = kz_json:get_list_value(<<"view_map">>, JObj, []),
+    validate_view_map(ViewMap, []).
 
--spec register_views_from_folder(kz_term:ne_binary() | db_classification(), atom(), kz_term:ne_binary() | nonempty_string()) -> 'ok'.
-register_views_from_folder(Classification, App, Folder) ->
+-spec validate_view_map('undefined' | kz_term:objects(), kz_term:objects() | {'error', kz_term:ne_binary()}) ->
+                               {kz_term:ne_binary(), kz_json:objects()} |
+                               {'error', any()}.
+validate_view_map(_, {'error', _}=Error) ->
+    Error;
+validate_view_map([], []) ->
+    validate_view_map('undefined');
+validate_view_map([], [JObj]) ->
+    DbOrClass = kz_json:get_value(<<"database">>
+                                 ,JObj
+                                 ,kz_json:get_value(<<"classification">>, JObj)
+                                 ),
+    {DbOrClass, [JObj]};
+validate_view_map([], [_|_]=ViewMap) ->
+    {<<"multi_db">>, ViewMap};
+validate_view_map([JObj | JObjs], ViewMaps) ->
+    Db = kz_json:get_ne_binary_value(<<"database">>, JObj),
+    Class= kz_json:get_ne_binary_value(<<"classification">>, JObj),
+    case kz_json:is_json_object(JObj) of
+        'true' ->
+            validate_view_map(JObjs, only_one_of(Db, Class, [JObj | ViewMaps]));
+        'false' ->
+            {'error', <<"not_valid_registration_info">>}
+    end.
+
+only_one_of('undefined', 'undefined', _Acc) ->
+    {'error', <<"not_valid_registration_info">>};
+only_one_of('undefined', _Class, Acc) ->
+    Acc;
+only_one_of(_DbName, 'undefined', Acc) ->
+    Acc;
+only_one_of(_DbName, _Class, _Acc) ->
+    {'error', <<"database_and_classification_are_exclusive">>}.
+
+%% @equiv register_views_from_folder(App, "views")
+-spec register_views_from_folder(atom()) -> 'ok'.
+register_views_from_folder(App) ->
+    register_views_from_folder(App, "views").
+
+%%------------------------------------------------------------------------------
+%% @doc Read all database view JSON files from the private folder of the calling
+%% application and register them in `system_data' database.
+%% @end
+%%------------------------------------------------------------------------------
+-spec register_views_from_folder(atom(), nonempty_string()) -> 'ok'.
+register_views_from_folder(App, Folder) ->
     Views = kzs_util:get_views_json(App, Folder),
-    register_views(Classification, App, Views).
+    register_views(App, Views).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec refresh_views(kz_term:ne_binary()) -> boolean() | {'error', 'invalid_db_name'}.
 refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     suppress_change_notice(),
     Classification = kzs_util:db_classification(DbName),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
-    Updated = case view_definitions(Classification) of
+    Updated = case view_definitions(DbName, Classification) of
                   [] -> 'false';
                   Views ->
                       Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
@@ -1600,9 +1668,10 @@ refresh_views(DbName) ->
         {'error', _}=E -> E
     end.
 
--spec view_definitions(atom() | kz_term:ne_binary()) -> views_listing().
-view_definitions(Classification) when is_atom(Classification) ->
-    case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [kz_term:to_binary(Classification)]) of
+-spec view_definitions(kz_term:ne_binary(), atom() | kz_term:ne_binary()) -> views_listing().
+view_definitions(DbName, Classification) ->
+    ViewOptions = [kz_util:uri_decode(DbName), kz_term:to_binary(Classification)],
+    case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, ViewOptions) of
         {'error', _} -> [];
         {'ok', JObjs} ->
             ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],

@@ -878,13 +878,13 @@ maybe_created_db(DbName, 'false') ->
     case kz_datamgr:db_exists(DbName) of
         'true' ->
             lager:debug("database ~s already created, refreshing view", [DbName]),
-            kz_datamgr:revise_views_from_folder(DbName, 'acdc');
+            kapps_maintenance:refresh(DbName);
         'false' ->
             lager:debug("modb ~s was not created", [DbName])
     end;
 maybe_created_db(DbName, 'true') ->
     lager:debug("created db ~s, adding views", [DbName]),
-    kz_datamgr:revise_views_from_folder(DbName, 'acdc').
+    kapps_maintenance:refresh(DbName).
 
 -spec call_stat_id(kz_json:object()) -> kz_term:ne_binary().
 call_stat_id(JObj) ->

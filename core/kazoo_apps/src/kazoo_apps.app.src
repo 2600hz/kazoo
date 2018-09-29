@@ -1,7 +1,7 @@
 {application,kazoo_apps,
              [{applications,[cowlib,kazoo,kazoo_amqp,kazoo_bindings,
                              kazoo_caches,kazoo_config,kazoo_data,
-                             kazoo_documents,kazoo_globals,kazoo_maintenance,
+                             kazoo_documents,kazoo_globals,
                              kazoo_modb,kazoo_proper,kazoo_schemas,
                              kazoo_services,kazoo_speech,kazoo_stdlib,kernel,
                              lager,stdlib]},

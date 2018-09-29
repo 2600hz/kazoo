@@ -319,8 +319,6 @@ cleanup_task(API, Data) ->
 init([]) ->
     _ = process_flag('trap_exit', 'true'),
     lager:info("ensuring db ~s exists", [?KZ_TASKS_DB]),
-    'true' = kz_datamgr:db_create(?KZ_TASKS_DB),
-    kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, ?APP),
     {'ok', #state{}}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).

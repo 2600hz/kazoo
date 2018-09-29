@@ -13,29 +13,30 @@
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% @deprecated This function is deprecated, please use
+%% {@link kapps_maintenance:refresh/0} instead.
 %% @end
 %%------------------------------------------------------------------------------
 -spec blocking_refresh() -> 'ok'.
 blocking_refresh() ->
-    lists:foreach(fun(AccountDb) ->
-                          refresh(AccountDb)
-                  end, kapps_util:get_all_accounts()),
-    ok.
+    io:format("This function is deprecated, please use kapps_maintenance:refresh() instead.").
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% @deprecated This function is deprecated, please use
+%% {@link kapps_maintenance:refresh/0} instead.
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec refresh() -> 'started'.
 refresh() ->
-    _ = kz_util:spawn(fun blocking_refresh/0),
-    'started'.
+    io:format("This function is deprecated, please use kapps_maintenance:refresh() instead.").
 
--spec refresh(kz_term:text()) -> 'ok'.
-refresh(<<Account/binary>>) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    Views = kapps_util:get_views_json('conference', "views"),
-    kapps_util:update_views(AccountDb, Views);
-refresh(Account) ->
-    refresh(kz_term:to_binary(Account)).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @deprecated This function is deprecated, please use
+%% {@link kapps_maintenance:refresh/1} instead.
+%% @end
+%%------------------------------------------------------------------------------
+-spec refresh(any()) -> 'started'.
+refresh(_Account) ->
+    io:format("This function is deprecated, please use kapps_maintenance:refresh(~p) instead.", [_Account]).

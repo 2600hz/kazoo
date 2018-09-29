@@ -19,7 +19,9 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
-    _ = stepswitch_maintenance:refresh(),
+    kapps_maintenance:bind_and_register_views('stepswitch', 'stepswitch_maintenance', 'register_views'),
+    kapps_maintenance:refresh(?KZ_SIP_DB),
+    kapps_maintenance:refresh(?KZ_OFFNET_DB),
     stepswitch_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -32,6 +34,7 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
+    _ = kapps_maintenance:unbind('register_views', 'stepswitch_maintenance', 'register_views'),
     _ = kapi_authn:declare_exchanges(),
     _ = kapi_call:declare_exchanges(),
     _ = kapi_dialplan:declare_exchanges(),

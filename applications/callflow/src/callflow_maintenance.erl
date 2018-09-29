@@ -91,30 +91,27 @@ do_show_calls([Srv|Srvs], Total) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% @deprecated Refresh view functionality is moved to read and update views from
+%% database instead. Please use {@link kapps_maintenance:refresh()} instead.
 %% @end
 %%------------------------------------------------------------------------------
 -spec blocking_refresh() -> 'ok'.
 blocking_refresh() ->
-    lists:foreach(fun(AccountDb) ->
-                          refresh(AccountDb)
-                  end, kapps_util:get_all_accounts()).
+    io:format("This function is deprecated please use kapps_maintenance:refresh() instead.").
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% @deprecated Refresh view functionality is moved to read and update views from
+%% database instead. Please use {@link kapps_maintenance:refresh()} instead.
 %% @end
 %%------------------------------------------------------------------------------
--spec refresh() -> 'started'.
+-spec refresh() -> 'ok'.
 refresh() ->
-    _ = kz_util:spawn(fun blocking_refresh/0),
-    'started'.
+    io:format("This function is deprecated please use kapps_maintenance:refresh() instead.").
 
--spec refresh(binary() | string()) -> boolean().
-refresh(<<Account/binary>>) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    Views = kapps_util:get_views_json('callflow', "views"),
-    kapps_util:update_views(AccountDb, Views);
+-spec refresh(binary() | string()) -> 'ok'.
 refresh(Account) ->
-    refresh(kz_term:to_binary(Account)).
+    io:format("This function is deprecated please use kapps_maintenance:refresh(~p) instead.", [Account]).
 
 %%------------------------------------------------------------------------------
 %% @doc

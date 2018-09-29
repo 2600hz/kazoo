@@ -1,5 +1,12 @@
 {
     "_id": "_design/sms",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "pending": {

@@ -1,5 +1,12 @@
 {
     "_id": "_design/resources",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "jobs_listing": {

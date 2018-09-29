@@ -1,9 +1,0 @@
-{
-    "_id": "_design/lookup_monitor",
-    "language": "javascript",
-    "views": {
-        "lookup_monitor": {
-            "map": "function(doc) { if(doc.type != 'sys_info' ) return; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs) { if (srv[1].monitor.monitor_enabled == true) { emit(doc._id, srv[1].monitor); } } } }"
-        }
-    }
-}

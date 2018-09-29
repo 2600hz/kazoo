@@ -385,7 +385,7 @@ refresh_selectors_index(Db) ->
 init_db(Db) ->
     _Created = kz_datamgr:db_create(Db),
     lager:debug("created ~s: ~s", [Db, _Created]),
-    {'ok', _} = kz_datamgr:revise_doc_from_file(Db, 'crossbar', "views/rates.json"),
+    kapps_maintenance:refresh(Db),
     lager:info("initialized new ratedeck ~s", [Db]).
 
 -spec maybe_delete_rate(kz_json:object(), dict:dict()) -> kz_json:object() | 'false'.

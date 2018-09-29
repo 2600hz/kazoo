@@ -1,5 +1,12 @@
 {
     "_id": "_design/providers",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "system_auth"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "list_by_account_id": {

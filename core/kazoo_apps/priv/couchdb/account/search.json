@@ -1,0 +1,91 @@
+{
+    "_id": "_design/search",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "search_by_name": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || !doc.pvt_type) return;",
+                "  var actual_name = '', name = '';",
+                "  var obj = {};",
+                "  if (doc.hasOwnProperty('first_name') || doc.hasOwnProperty('last_name')) {",
+                "    obj.first_name = (doc.first_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "    obj.last_name = (doc.last_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "    name = obj.first_name + obj.last_name;",
+                "    actual_name = (doc.first_name || '') + (doc.first_name && doc.last_name ? ' ' : '') + (doc.last_name || '');",
+                "  }",
+                "  if (doc.hasOwnProperty('pvt_alphanum_name')) {",
+                "    name = doc.pvt_alphanum_name;",
+                "  } else if (doc.hasOwnProperty('name')) {",
+                "    name = doc.name.toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "    actual_name = doc.name;",
+                "  } else if (name === '') {",
+                "    name = doc._id.toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "  }",
+                "  obj.id = doc._id;",
+                "  obj.name = actual_name ? actual_name : doc.hasOwnProperty('name') ? doc.name : name;",
+                "  emit([doc.pvt_type, name], obj);",
+                "}"
+            ]
+        },
+        "search_by_name_and_number": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || !doc.pvt_type) return;",
+                "  var actual_name = '', name = '';",
+                "  var name_obj = {};",
+                "  if (doc.hasOwnProperty('first_name') || doc.hasOwnProperty('last_name')) {",
+                "    name_obj.first_name = (doc.first_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "    name_obj.last_name = (doc.last_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "    name = name_obj.first_name + name_obj.last_name;",
+                "    actual_name = (doc.first_name || '') + (doc.first_name && doc.last_name ? ' ' : '') + (doc.last_name || '');",
+                "  }",
+                "  if (doc.hasOwnProperty('pvt_alphanum_name')) {",
+                "    name = doc.pvt_alphanum_name;",
+                "  } else if (doc.hasOwnProperty('name')) {",
+                "    name = doc.name.toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "    actual_name = doc.name;",
+                "  } else if (name === '') {",
+                "    name = doc._id.toLowerCase().replace(/[^a-z0-9]/g, '');",
+                "  }",
+                "  name_obj.id = doc._id;",
+                "  name_obj.name = actual_name ? actual_name : doc.hasOwnProperty('name') ? doc.name : name;",
+                "  if (doc.hasOwnProperty('numbers')) name_obj.numbers = doc.numbers;",
+                "  emit([doc.pvt_type, name], name_obj);",
+                "  if (doc.hasOwnProperty('numbers')) {",
+                "    for (var i in doc.numbers) {",
+                "      emit([doc.pvt_type, doc.numbers[i].toLowerCase().replace(/[^a-z0-9]/g, '')], {",
+                "        'id': doc._id,",
+                "        'name': actual_name,",
+                "        'numbers': doc.numbers",
+                "      });",
+                "    }",
+                "  }",
+                "}"
+            ]
+        },
+        "search_by_number": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || !doc.pvt_type) return;",
+                "  if (doc.hasOwnProperty('numbers')) {",
+                "    for (var i in doc.numbers) {",
+                "      emit([doc.pvt_type, doc.numbers[i].toLowerCase().replace(/[^a-z0-9]/g, '')], {",
+                "        'id': doc._id,",
+                "        'name': doc.name,",
+                "        'numbers': doc.numbers",
+                "      });",
+                "    }",
+                "  }",
+                "}"
+            ]
+        }
+    }
+}

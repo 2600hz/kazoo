@@ -1,5 +1,12 @@
 {
     "_id": "_design/faxes",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "faxes"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

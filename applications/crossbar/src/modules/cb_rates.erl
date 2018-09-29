@@ -63,7 +63,7 @@ init() ->
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_RATES_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, "views/rates.json").
+    kapps_maintenance:refresh(?KZ_RATES_DB).
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
@@ -175,7 +175,6 @@ ratedeck_db(Context) ->
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    _ = init_db(),
     _ = kz_util:spawn(fun upload_csv/1, [Context]),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 

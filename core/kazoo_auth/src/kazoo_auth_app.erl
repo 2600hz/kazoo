@@ -17,6 +17,7 @@
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
+    kapps_maintenance:bind_and_register_views('kazoo_auth', 'kazoo_auth_maintenance', 'register_views'),
     _ = kazoo_auth_maintenance:refresh(),
     _ = kazoo_auth_maintenance:register_common_providers(),
     _ = kazoo_auth_maintenance:ensure_secret(),
@@ -28,4 +29,5 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    kapps_maintenance:unbind('register_views', 'kazoo_auth_maintenance', 'register_views'),
     'ok'.

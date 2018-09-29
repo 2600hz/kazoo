@@ -1,0 +1,119 @@
+{
+    "_id": "_design/attributes",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "active_resources_by_rules": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options,'flags':doc.flags||[]}); }"
+        },
+        "endpoints_lookup": {
+            "map": "function(doc) { if (typeof doc.caller_id === 'undefined') return; for(var type in doc.caller_id) emit([doc.caller_id[type].number, type], doc.pvt_type); }"
+        },
+        "groups": {
+            "map": "function (doc) {if (doc.pvt_type != 'group' || doc.pvt_deleted || !doc.endpoints) return;emit(null, doc.endpoints);}"
+        },
+        "hotdesk_id": {
+            "map": "function(doc) { if (!doc.hotdesk || !doc.hotdesk.id || doc.pvt_deleted) return; emit(doc.hotdesk.id, null); }"
+        },
+        "hotdesk_users": {
+            "map": [
+                "function (doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  var has_users = false, o = (doc.hotdesk || {}).users || {};",
+                "  for (var p in o)",
+                "    if (o.hasOwnProperty(p)) {",
+                "      has_users = true;",
+                "      break;",
+                "    }",
+                "  if (doc.hotdesk && doc.hotdesk.users && has_users) {",
+                "    for (owner_id in doc.hotdesk.users) {",
+                "      emit(owner_id, null);",
+                "    };",
+                "  }",
+                "}"
+            ]
+        },
+        "mailbox_number": {
+            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return; emit(doc.mailbox, null); }"
+        },
+        "owned": {
+            "map": [
+                "function (doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  var has_users = false, o = (doc.hotdesk || {}).users || {};",
+                "  for (var p in o)",
+                "    if (o.hasOwnProperty(p)) {",
+                "      has_users = true;",
+                "      break;",
+                "    }",
+                "  if (doc.hotdesk && doc.hotdesk.users && has_users) {",
+                "    for (owner_id in doc.hotdesk.users) {",
+                "      emit([owner_id, doc.pvt_type], doc._id);",
+                "    };",
+                "  } else if (doc.owner_id) {",
+                "    emit([doc.owner_id, doc.pvt_type], doc._id);",
+                "  }",
+                "}"
+            ]
+        },
+        "owner": {
+            "map": [
+                "function (doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  var has_users = false, o = (doc.hotdesk || {}).users || {};",
+                "  for (var p in o)",
+                "    if (o.hasOwnProperty(p)) {",
+                "      has_users = true;",
+                "      break;",
+                "    }",
+                "  if (doc.hotdesk && doc.hotdesk.users && has_users) {",
+                "    for (owner_id in doc.hotdesk.users) {",
+                "      emit(doc._id, owner_id);",
+                "    };",
+                "  } else if (doc.owner_id) {",
+                "    emit(doc._id, doc.owner_id);",
+                "  }",
+                "}"
+            ]
+        },
+        "sip_username": {
+            "map": [
+                "function (doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  var owners;",
+                "  var users = [], o = (doc.hotdesk || {}).users || {};",
+                "  for (var p in o)",
+                "    if (o.hasOwnProperty(p))",
+                "      users.push(p);",
+                "  if (doc.hotdesk && doc.hotdesk.users && users.length) {",
+                "    owners = users;",
+                "  } else if (doc.owner_id) {",
+                "    owners = new Array();",
+                "    owners.push(doc.owner_id);",
+                "  } else {",
+                "    owners = new Array();",
+                "  }",
+                "  if (doc.sip && doc.sip.username && doc.sip.method == 'password' && !doc.pvt_deleted) {",
+                "    emit(doc.sip.username, owners);",
+                "  } else if (doc.pvt_type === 'sys_info' && !doc.pvt_deleted) {",
+                "    for (i in doc.servers) {",
+                "      var auth = doc.servers[i].auth;",
+                "      if (auth.auth_user && auth.auth_method == 'password') {",
+                "        emit(auth.auth_user, owners);",
+                "      }",
+                "    }",
+                "  }",
+                "}"
+            ]
+        },
+        "temporal_rules": {
+            "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, null); }"
+        }
+    }
+}

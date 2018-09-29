@@ -9,6 +9,9 @@
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
+-define(KZ_MANAGED_DB, <<"numbers%2Fmanaged">>).
+-define(KZ_INUM_DB,<<"numbers%2Finum">>).
+
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
 -define(IS_US_TOLLFREE(Prefix)

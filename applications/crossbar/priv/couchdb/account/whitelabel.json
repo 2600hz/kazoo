@@ -1,9 +1,0 @@
-{
-    "_id": "_design/whitelabel",
-    "language": "javascript",
-    "views": {
-        "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'whitelabel' || doc.pvt_deleted) return; emit(doc._id, null);}"
-        }
-    }
-}

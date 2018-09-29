@@ -1,9 +1,0 @@
-{
-    "_id": "_design/registrations",
-    "language": "javascript",
-    "views": {
-        "newest": {
-            "map": "function(doc) { var t = parseInt(doc['Event-Timestamp'], 10); emit([doc['Realm'], doc['Username'], t], null); }"
-        }
-    }
-}

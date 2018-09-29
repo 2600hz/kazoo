@@ -1,0 +1,19 @@
+{
+    "_id": "_design/cdrs",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": "function(doc) {if (doc.pvt_deleted || doc.pvt_type != 'cdr') return; emit(doc.pvt_created, null);}"
+        },
+        "listing_by_owner": {
+            "map": "function(doc) {if (doc.pvt_type != 'cdr' || doc.pvt_deleted || !doc.custom_channel_vars || !doc.custom_channel_vars.owner_id) return;emit([doc.custom_channel_vars.owner_id, doc.pvt_created], {'owner_id': doc.custom_channel_vars.owner_id,'id': doc._id})}"
+        }
+    }
+}

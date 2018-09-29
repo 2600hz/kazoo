@@ -1,0 +1,20 @@
+{
+    "_id": "_design/allotments",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "consumed": {
+            "map": "function (doc) { if (doc.pvt_type != 'allotment_consumption' || doc.pvt_deleted) return; emit([doc.classification, doc.pvt_created], doc.seconds); }",
+            "reduce": "_sum"
+        },
+        "consumed_by_callid": {
+            "map": "function (doc) { if (doc.pvt_type != 'allotment_consumption' || doc.pvt_deleted) return; emit(doc.call_id, doc.seconds);}"
+        }
+    }
+}

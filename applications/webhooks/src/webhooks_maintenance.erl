@@ -12,9 +12,10 @@
         ,failure_status/0, failure_status/1
         ,enable_account_hooks/1
         ,enable_descendant_hooks/1
-        ,reset_webhooks_list/0
         ,flush_account_failures/1
         ,flush_hook_failures/2
+
+        ,register_views/0
         ]).
 
 -include("webhooks.hrl").
@@ -114,11 +115,6 @@ enable_account_hooks(AccountId) ->
 enable_descendant_hooks(AccountId) ->
     webhooks_util:reenable(AccountId, <<"descendants">>).
 
--spec reset_webhooks_list() -> 'ok'.
-reset_webhooks_list() ->
-    _ = kapi_maintenance:refresh_database(?KZ_WEBHOOKS_DB),
-    _ = kapi_maintenance:refresh_views(?KZ_WEBHOOKS_DB).
-
 -spec flush_account_failures(kz_term:ne_binary()) -> 'ok'.
 flush_account_failures(AccountId) ->
     io:format("flushed ~p failure entries~n"
@@ -130,3 +126,7 @@ flush_hook_failures(AccountId, HookId) ->
     io:format("flushed ~p failure entries for ~s~n"
              ,[webhooks_disabler:flush_failures(AccountId, HookId), HookId]
              ).
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(?APP).

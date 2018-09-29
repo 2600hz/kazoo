@@ -1,5 +1,12 @@
 {
     "_id": "_design/ledgers",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
     "language": "javascript",
     "views": {
         "list_by_source": {

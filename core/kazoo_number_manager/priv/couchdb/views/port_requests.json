@@ -1,0 +1,108 @@
+{
+    "_id": "_design/port_requests",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "port_requests"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "active_port_request": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'unconfirmed' || doc.pvt_port_state == 'completed' || doc.pvt_port_state == 'canceled') return;",
+                "  emit(doc.pvt_account_id, doc.pvt_port_state);",
+                "}"
+            ]
+        },
+        "all_port_in_numbers": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "  for (i in doc.numbers) {",
+                "    emit([doc.pvt_account_id, i], null);",
+                "  }",
+                "}"
+            ]
+        },
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_account_id, doc._id], null);",
+                "}"
+            ]
+        },
+        "listing_by_descendant_state": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "  var t = doc.pvt_tree.slice(0);",
+                "  for (var i in t) {",
+                "    emit([t[i], doc.pvt_port_state, doc.pvt_modified], null);",
+                "  }",
+                "}"
+            ]
+        },
+        "listing_by_modified": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_modified, doc.pvt_port_state], null);",
+                "}"
+            ]
+        },
+        "listing_by_state": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_account_id, doc.pvt_port_state, doc.pvt_modified], null);",
+                "}"
+            ]
+        },
+        "listing_submitted": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type !== 'port_request' || doc.pvt_deleted) return;",
+                "  if (doc.pvt_port_state !== 'submitted') return;",
+                "  if (doc.pvt_sent === true) return;",
+                "  emit([doc.pvt_account_id, doc._id], null);",
+                "}"
+            ]
+        },
+        "phone_numbers_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type !== 'port_request' || doc.pvt_deleted) return;",
+                "  if (doc.pvt_port_state === 'unconfirmed' || doc.pvt_port_state === 'canceled' || doc.pvt_port_state == 'completed')",
+                "    return;",
+                "  for (var i in doc.numbers) {",
+                "    var number = doc.numbers[i];",
+                "    emit([doc.pvt_account_id, i], {",
+                "      'state': 'port_in',",
+                "      'features': [],",
+                "      'assigned_to': doc.pvt_account_id,",
+                "      'used_by': number.used_by,",
+                "      'created': doc.pvt_created,",
+                "      'updated': doc.pvt_modified,",
+                "      'port_id': doc._id,",
+                "      'port_state': doc.pvt_port_state",
+                "    });",
+                "  }",
+                "}"
+            ]
+        },
+        "port_in_numbers": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'unconfirmed' || doc.pvt_port_state == 'completed' || doc.pvt_port_state == 'rejected' || doc.pvt_port_state == 'canceled') return;",
+                "  for (i in doc.numbers) {",
+                "    emit(i, doc.pvt_account_id);",
+                "  }",
+                "}"
+            ]
+        }
+    }
+}
