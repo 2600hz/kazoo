@@ -256,7 +256,7 @@ get_database_sort(Db1, Db2) ->
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    _Pid = spawn('kapi_maintenance', 'refresh_views', [Database]),
+    _ = kapi_maintenance:refresh_views(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
