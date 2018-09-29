@@ -1,0 +1,84 @@
+{
+    "_id": "_design/interactions",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "interaction_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || doc.pvt_type != 'cdr') return;",
+                "  var channel_time = doc.channel_created_time || (doc.timestamp - doc.duration_seconds);",
+                "  emit([doc.interaction_time, doc.interaction_key, channel_time], {",
+                "    id: doc._id,",
+                "    channel_time: channel_time,",
+                "    leg: doc.channel_loopback_leg || '_'",
+                "  });",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values) {",
+                "  var compare_fun = function(a, b) {",
+                "    if (a === null) return 1;",
+                "    else if (b === null) return -1;",
+                "    else if (a.channel_time < b.channel_time) return -1;",
+                "    else if (a.channel_time > b.channel_time) return 1;",
+                "    else if (a.leg < b.leg) return -1;",
+                "    else if (a.leg > b.leg) return 1;",
+                "    else return 0;",
+                "  };",
+                "  return values.sort(compare_fun).shift();",
+                "}"
+            ]
+        },
+        "interaction_listing_by_id": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'cdr' || doc.pvt_deleted) return;",
+                "  emit([doc.interaction_id, doc.channel_created_time], null)",
+                "}"
+            ]
+        },
+        "interaction_listing_by_owner": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || doc.pvt_type != 'cdr' || !doc.custom_channel_vars || !doc.custom_channel_vars.owner_id) return;",
+                "  emit([doc.custom_channel_vars.owner_id, doc.interaction_time, doc.interaction_key, doc.channel_created_time], {",
+                "    id: doc._id,",
+                "    channel_time: doc.channel_created_time,",
+                "    leg: doc.channel_loopback_leg || '_'",
+                "  });",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values, rereduce) {",
+                "  if (rereduce) {",
+                "    return values.reduce(function(a, b) {",
+                "      return a == null ? b",
+                "                       : b == null ? a",
+                "                                   : a.channel_time < b.channel_time ? a",
+                "                                                                     : a.channel_time > b.channel_time ? b",
+                "                                                                                                       : a.leg < b.leg ? a",
+                "                                                                                                                       : b",
+                "    })",
+                "  } else {",
+                "    v = values.reduce(function(a, b) {",
+                "      return a == null ? b",
+                "                       : b == null ? a",
+                "                                   : a.channel_time < b.channel_time ? a",
+                "                                                                     : a.channel_time > b.channel_time ? b",
+                "                                                                                                       : a.leg < b.leg ? a",
+                "                                                                                                                       : b",
+                "    });",
+                "    return v;",
+                "}",
+                "}"
+            ]
+        }
+    }
+}

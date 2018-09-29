@@ -216,7 +216,7 @@ split(Count, List) ->
 parallel_migrate(_, [], Refs) -> wait_for_parallel_migrate(Refs);
 parallel_migrate(Pause, [{Accounts, Others}|Remaining], Refs) ->
     Self = self(),
-    Dbs = lists:sort(fun get_database_sort/2, lists:usort(Accounts ++ Others)),
+    Dbs = kzs_util:sort_by_priority(Accounts ++ Others),
     Ref = make_ref(),
     _Pid = kz_util:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Dbs, Self]),
     parallel_migrate(Pause, Remaining, [Ref|Refs]).
@@ -309,11 +309,7 @@ refresh([Database|Databases], Pause, Total) ->
 -spec get_databases() -> kz_term:ne_binaries().
 get_databases() ->
     {'ok', Databases} = kz_datamgr:db_info(),
-    lists:sort(fun get_database_sort/2, lists:usort(Databases ++ ?KZ_SYSTEM_DBS)).
-
--spec get_database_sort(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
-get_database_sort(Db1, Db2) ->
-    kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
+    kzs_util:sort_by_priority(Databases ++ ?KZ_SYSTEM_DBS).
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->

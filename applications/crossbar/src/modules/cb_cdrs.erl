@@ -38,9 +38,9 @@
 
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
--define(CB_INTERACTION_LIST, <<"cdrs/interaction_listing">>).
--define(CB_INTERACTION_LIST_BY_USER, <<"cdrs/interaction_listing_by_owner">>).
--define(CB_INTERACTION_LIST_BY_ID, <<"cdrs/interaction_listing_by_id">>).
+-define(CB_INTERACTION_LIST, <<"interactions/interaction_listing">>).
+-define(CB_INTERACTION_LIST_BY_USER, <<"interactions/interaction_listing_by_owner">>).
+-define(CB_INTERACTION_LIST_BY_ID, <<"interactions/interaction_listing_by_id">>).
 -define(CB_SUMMARY_VIEW, <<"cdrs/summarize_cdrs">>).
 -define(CB_SUMMARY_LIST, <<"format_summary">>).
 
