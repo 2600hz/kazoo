@@ -190,7 +190,8 @@ db_priority(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month) = Db, MODBPrior
     db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
 db_priority(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month) = Db, MODBPriority) ->
     db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
-db_priority(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month), _) -> 22;
+db_priority(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month) = Db, MODBPriority) ->
+    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
 db_priority(?MATCH_RESOURCE_SELECTORS_UNENCODED(_AccountId), _) -> 26;
 db_priority(?MATCH_RESOURCE_SELECTORS_encoded(_AccountId), _) -> 26;
 db_priority(?MATCH_RESOURCE_SELECTORS_ENCODED(_AccountId), _) -> 26;
