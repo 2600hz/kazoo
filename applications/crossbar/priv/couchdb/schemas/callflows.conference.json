@@ -15,12 +15,10 @@
             "type": "string"
         },
         "moderator": {
-            "default": false,
             "description": "Is the caller entering the conference as a moderator",
             "type": "boolean"
         },
         "play_entry_tone": {
-            "default": true,
             "description": "Should the Entry Tone be played",
             "type": [
                 "boolean",
@@ -28,7 +26,6 @@
             ]
         },
         "play_exit_tone": {
-            "default": true,
             "description": "Should the Exit Tone be played",
             "type": [
                 "boolean",

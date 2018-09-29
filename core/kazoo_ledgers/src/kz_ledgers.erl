@@ -109,7 +109,7 @@ get_sources_total(Account, Options) ->
         {'ok', []} ->
             {'error', 'missing_ledgers'};
         {'ok', JObjs} ->
-            sum_sources(Account, Options, JObjs);
+            sum_sources(JObjs);
         {'error', 'db_not_found'}=Error ->
             lager:info("unable to get balance for ~s, database does not exist", [Account]),
             Error;
@@ -123,29 +123,13 @@ get_sources_total(Account, Options) ->
             Error
     end.
 
--spec sum_sources(kz_term:ne_binary(), kazoo_modb:view_options(), kz_json:objects()) ->
-                         kz_currency:available_units_return().
-sum_sources(Account, Options, JObjs) ->
+-spec sum_sources(kz_json:objects()) -> kz_currency:available_units_return().
+sum_sources(JObjs) ->
     case lists:foldl(fun sum_sources_foldl/2, {'false', 0}, JObjs) of
         {'false', _Total} ->
             {'error', 'missing_rollover'};
-        {'true', Total} ->
-            log_sources_sum(Account, Options, Total)
+        {'true', Total} -> {'ok', Total}
     end.
-
--spec log_sources_sum(kz_term:ne_binary(), kazoo_modb:view_options(), kz_currency:units()) ->
-                             kz_currency:available_units_return().
-log_sources_sum(Account, Options, Total) ->
-    {DefaultYear, DefaultMonth, _} = erlang:date(),
-    Year = props:get_integer_value('year', Options, DefaultYear),
-    Month = props:get_integer_value('month', Options, DefaultMonth),
-    lager:debug("account ~s ledger total for ~p-~p is $~p"
-               ,[Account
-                ,Year
-                ,Month
-                ,kz_currency:units_to_dollars(Total)]
-               ),
-    {'ok', Total}.
 
 -spec sum_sources_foldl(kz_json:object(), {boolean(), kz_currency:units()}) ->
                                {boolean(), kz_currency:units()}.

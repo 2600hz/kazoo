@@ -1939,12 +1939,10 @@
                     "type": "string"
                 },
                 "moderator": {
-                    "default": false,
                     "description": "Is the caller entering the conference as a moderator",
                     "type": "boolean"
                 },
                 "play_entry_tone": {
-                    "default": true,
                     "description": "Should the Entry Tone be played",
                     "type": [
                         "boolean",
@@ -1952,7 +1950,6 @@
                     ]
                 },
                 "play_exit_tone": {
-                    "default": true,
                     "description": "Should the Exit Tone be played",
                     "type": [
                         "boolean",
@@ -28112,25 +28109,36 @@
                     "properties": {
                         "default": {
                             "default": {
+                                "alone-sound": "prompt://system_media/conf-alone/en-us",
                                 "caller-controls": "default",
                                 "comfort-noise": 1000,
+                                "deaf-sound": "prompt://system_media/conf-deaf/en-us",
                                 "energy-level": 20,
                                 "enter-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                                "exit-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
                                 "interval": 20,
+                                "locked-sound": "prompt://system_media/conf-max_participants/en-us",
+                                "max-members-sound": "prompt://system_media/conf-max_participants/en-us",
+                                "member-enter-sound": "prompt://system_media/conf-joining_conference/en-us",
+                                "moderator-controls": "default",
                                 "moh-sound": "$${hold_music}",
-                                "rate": 8000
+                                "muted-sound": "prompt://system_media/conf-muted/en-us",
+                                "rate": 16000,
+                                "undeaf-sound": "prompt://system_media/conf-undeaf/en-us",
+                                "unmuted-sound": "prompt://system_media/conf-unmuted/en-us"
                             },
                             "description": "conferences default",
                             "type": "object"
                         },
                         "page": {
                             "default": {
-                                "caller-controls": "default",
+                                "caller-controls": "paging",
                                 "comfort-noise": 1000,
                                 "energy-level": 20,
-                                "enter-sound": "",
+                                "enter-sound": "silence_stream://1",
+                                "exit-sound": "silence_stream://1",
                                 "interval": 20,
-                                "moh-sound": "",
+                                "moh-sound": "silence_stream://1",
                                 "rate": 8000
                             },
                             "description": "conferences page",

@@ -38,14 +38,20 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_bookkeepers:update_req_v(JObj),
-    ?APP_NAME = kz_json:get_value(<<"Bookkeeper-Type">>, JObj),
-    sync(#request{request_jobj=JObj
-                 ,account_id=kz_json:get_value(<<"Account-ID">>, JObj)
-                 ,items=kz_json:get_value(<<"Items">>, JObj, [])
-                 ,vendor_id=kz_json:get_value(<<"Vendor-ID">>, JObj)
-                 ,bookkeeper_id=kz_json:get_value(<<"Bookkeeper-ID">>, JObj)
-                 }
-        ).
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    lager:debug("received service update notification for ~s", [AccountId]),
+    case kz_json:get_value(<<"Bookkeeper-Type">>, JObj) =:= ?APP_NAME of
+        'false' ->
+            lager:debug("skipping service update for another bookkeeper");
+        'true' ->
+            sync(#request{request_jobj=JObj
+                         ,account_id=AccountId
+                         ,items=kz_json:get_value(<<"Items">>, JObj, [])
+                         ,vendor_id=kz_json:get_value(<<"Vendor-ID">>, JObj)
+                         ,bookkeeper_id=kz_json:get_value(<<"Bookkeeper-ID">>, JObj)
+                         }
+                )
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
