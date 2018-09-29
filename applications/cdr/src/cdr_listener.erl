@@ -21,7 +21,7 @@
         ]).
 
 -include("cdr.hrl").
--define(VIEW_TO_UPDATE, <<"cdrs/interaction_listing">>).
+-define(VIEW_TO_UPDATE, <<"interactions/interaction_listing">>).
 -define(REFRESH_THRESHOLD, kapps_config:get_integer(?CONFIG_CAT, <<"refresh_view_threshold">>, 10)).
 -define(REFRESH_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, <<"refresh_view_timeout">>, 900)).
 -define(REFRESH_ENABLED, kapps_config:get_is_true(?CONFIG_CAT, <<"refresh_view_enabled">>, 'false')).
