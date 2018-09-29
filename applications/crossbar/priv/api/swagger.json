@@ -34,38 +34,17 @@
             ],
             "type": "object"
         },
-        "account_config.accounts": {
-            "description": "Schema for accounts account_config",
-            "properties": {
-                "min_callflow_length": {
-                    "default": 1,
-                    "description": "accounts min_callflow_length",
-                    "type": "integer"
-                },
-                "min_device_length": {
-                    "default": 3,
-                    "description": "accounts min_device_length",
-                    "type": "integer"
-                },
-                "min_user_length": {
-                    "default": 3,
-                    "description": "accounts min_user_length",
-                    "type": "integer"
-                },
-                "min_vmbox_length": {
-                    "default": 3,
-                    "description": "accounts min_vmbox_length",
-                    "type": "integer"
-                }
-            },
-            "type": "object"
-        },
         "account_config.callflow": {
             "description": "Schema for callflow account_config",
             "properties": {
                 "dialog_subscribed_mwi_prefix": {
                     "description": "callflow dialog_subscribed_mwi_prefix",
                     "type": "string"
+                },
+                "min_callflow_length": {
+                    "default": 1,
+                    "description": "callflow min_callflow_length",
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -239,6 +218,17 @@
             },
             "type": "object"
         },
+        "account_config.device": {
+            "description": "Schema for device account_config",
+            "properties": {
+                "min_device_length": {
+                    "default": 3,
+                    "description": "device min_device_length",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "account_config.doodle": {
             "description": "Schema for doodle account_config",
             "properties": {
@@ -399,6 +389,28 @@
                     "default": "kazoo",
                     "description": "Default privacy mode for anonymous calls",
                     "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.user": {
+            "description": "Schema for user account_config",
+            "properties": {
+                "min_user_length": {
+                    "default": 3,
+                    "description": "user min_user_length",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.voicemail": {
+            "description": "Schema for voicemail account_config",
+            "properties": {
+                "min_vmbox_length": {
+                    "default": 3,
+                    "description": "voicemail min_vmbox_length",
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -27249,30 +27261,6 @@
                 "master_account_id": {
                     "description": "accounts master account id",
                     "type": "string"
-                },
-                "min_callflow_length": {
-                    "default": 1,
-                    "description": "The minimum allowed length of a callflow number",
-                    "minimum": 1,
-                    "type": "integer"
-                },
-                "min_device_length": {
-                    "default": 3,
-                    "description": "The minimum allowed length of a device SIP username",
-                    "minimum": 2,
-                    "type": "integer"
-                },
-                "min_user_length": {
-                    "default": 3,
-                    "description": "The minimum allowed length of a username",
-                    "minimum": 1,
-                    "type": "integer"
-                },
-                "min_vmbox_length": {
-                    "default": 3,
-                    "description": "The minimum allowed length of a voicemail box number",
-                    "minimum": 1,
-                    "type": "integer"
                 }
             },
             "type": "object"
@@ -27695,6 +27683,12 @@
                 "min_bucket_cost": {
                     "default": 5,
                     "description": "callflow minimum bucket cost",
+                    "type": "integer"
+                },
+                "min_callflow_length": {
+                    "default": 1,
+                    "description": "The minimum allowed length of a callflow number",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "mwi_send_unsolicited_updates": {
@@ -29047,6 +29041,18 @@
                 "performance": {
                     "description": "datamgr performance",
                     "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.device": {
+            "description": "Schema for device system_config",
+            "properties": {
+                "min_device_length": {
+                    "default": 3,
+                    "description": "The minimum allowed length of a device SIP username",
+                    "minimum": 2,
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -33045,6 +33051,30 @@
                     "default": true,
                     "description": "trunkstore ring ready offnet",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.user": {
+            "description": "Schema for user system_config",
+            "properties": {
+                "min_user_length": {
+                    "default": 3,
+                    "description": "The minimum allowed length of a username",
+                    "minimum": 1,
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.voicemail": {
+            "description": "Schema for voicemail system_config",
+            "properties": {
+                "min_vmbox_length": {
+                    "default": 3,
+                    "description": "The minimum allowed length of a voicemail box number",
+                    "minimum": 1,
+                    "type": "integer"
                 }
             },
             "type": "object"

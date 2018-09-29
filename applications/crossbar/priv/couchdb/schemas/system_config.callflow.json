@@ -52,6 +52,12 @@
             "description": "callflow minimum bucket cost",
             "type": "integer"
         },
+        "min_callflow_length": {
+            "default": 1,
+            "description": "The minimum allowed length of a callflow number",
+            "minimum": 1,
+            "type": "integer"
+        },
         "mwi_send_unsolicited_updates": {
             "default": true,
             "description": "callflow mwi send unsolicited updates",

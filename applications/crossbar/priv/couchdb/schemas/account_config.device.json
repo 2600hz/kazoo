@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.device",
+    "description": "Schema for device account_config",
+    "properties": {
+        "min_device_length": {
+            "default": 3,
+            "description": "device min_device_length",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.user",
+    "description": "Schema for user system_config",
+    "properties": {
+        "min_user_length": {
+            "default": 3,
+            "description": "The minimum allowed length of a username",
+            "minimum": 1,
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

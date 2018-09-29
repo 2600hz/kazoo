@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.user",
+    "description": "Schema for user account_config",
+    "properties": {
+        "min_user_length": {
+            "default": 3,
+            "description": "user min_user_length",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

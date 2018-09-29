@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.device",
+    "description": "Schema for device system_config",
+    "properties": {
+        "min_device_length": {
+            "default": 3,
+            "description": "The minimum allowed length of a device SIP username",
+            "minimum": 2,
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

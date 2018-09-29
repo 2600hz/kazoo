@@ -16,30 +16,6 @@
         "master_account_id": {
             "description": "accounts master account id",
             "type": "string"
-        },
-        "min_callflow_length": {
-            "default": 1,
-            "description": "The minimum allowed length of a callflow number",
-            "minimum": 1,
-            "type": "integer"
-        },
-        "min_device_length": {
-            "default": 3,
-            "description": "The minimum allowed length of a device SIP username",
-            "minimum": 2,
-            "type": "integer"
-        },
-        "min_user_length": {
-            "default": 3,
-            "description": "The minimum allowed length of a username",
-            "minimum": 1,
-            "type": "integer"
-        },
-        "min_vmbox_length": {
-            "default": 3,
-            "description": "The minimum allowed length of a voicemail box number",
-            "minimum": 1,
-            "type": "integer"
         }
     },
     "type": "object"

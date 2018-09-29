@@ -6,6 +6,11 @@
         "dialog_subscribed_mwi_prefix": {
             "description": "callflow dialog_subscribed_mwi_prefix",
             "type": "string"
+        },
+        "min_callflow_length": {
+            "default": 1,
+            "description": "callflow min_callflow_length",
+            "type": "integer"
         }
     },
     "type": "object"

@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.voicemail",
+    "description": "Schema for voicemail account_config",
+    "properties": {
+        "min_vmbox_length": {
+            "default": 3,
+            "description": "voicemail min_vmbox_length",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

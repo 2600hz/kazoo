@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.voicemail",
+    "description": "Schema for voicemail system_config",
+    "properties": {
+        "min_vmbox_length": {
+            "default": 3,
+            "description": "The minimum allowed length of a voicemail box number",
+            "minimum": 1,
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}
