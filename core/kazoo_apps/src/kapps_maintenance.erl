@@ -19,6 +19,7 @@
         ]).
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
+        ,refresh_account/1
         ,refresh_account_db/1
         ,maybe_delete_db/1
         ]).
@@ -316,29 +317,25 @@ get_database_sort(Db1, Db2) ->
 
 -spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    refresh_views(Database, kz_datamgr:db_classification(Database)).
-
--spec refresh_views(kz_term:ne_binary(), kz_datamgr:db_classification() | kz_term:ne_binary()) -> 'ok'.
-refresh_views(_Database, 'undefined') ->
-    'ok';
-refresh_views(Database, 'modb') ->
-    kazoo_modb:refresh_views(Database),
-    _ = kazoo_bindings:map(binding({'refresh', Database}), [Database]),
-    'ok';
-refresh_views(Database, 'account') ->
-    refresh_account_db(Database);
-refresh_views(Database, _) ->
     _ = kz_datamgr:refresh_views(Database),
     _ = kazoo_bindings:map(binding({'refresh', Database}), [Database]),
+    refresh_by_classification(Database, kz_datamgr:db_classification(Database)).
+
+refresh_by_classification(Database, 'account') ->
+    AccountDb = kz_util:format_account_id(Database, 'encoded'),
+    AccountId = kz_util:format_account_id(Database, 'raw'),
+    _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
+    'ok';
+refresh_by_classification(_, _) ->
     'ok'.
+
+-spec refresh_account(kz_term:ne_binary()) -> 'ok'.
+refresh_account(AccountId) ->
+    refresh_account_db(AccountId).
 
 -spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    AccountDb = kz_util:format_account_id(Database, 'encoded'),
-    AccountId = kz_util:format_account_id(Database, 'raw'),
-    _ = kz_datamgr:refresh_views(AccountDb),
-    _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
-    'ok'.
+    refresh(kz_util:format_account_db(Database)).
 
 %%------------------------------------------------------------------------------
 %% @doc
