@@ -8,6 +8,7 @@
 -export([db_classification/1
         ,db_priority/1
         ,bind_db_classify/3, unbind_db_classify/3
+        ,sort_by_priority/1
         ]).
 
 -export([get_view_json/1, get_view_json/2, get_views_json/2]).
@@ -115,47 +116,103 @@ unbind_db_classify(Database, M, F) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_priority(kz_term:text()) -> non_neg_integer().
-db_priority(Db) when not is_binary(Db) ->
-    db_priority(kz_term:to_binary(Db));
-db_priority(?KZ_CONFIG_DB) -> 0;
-db_priority(?KZ_DATA_DB) -> 1;
-db_priority(?KZ_OFFNET_DB) -> 2;
-db_priority(?KZ_ACCOUNTS_DB) -> 3;
-db_priority(?KZ_SIP_DB) -> 4;
-db_priority(?KZ_AUTH_DB) -> 5;
-db_priority(?KZ_WEBHOOKS_DB) -> 6;
-db_priority(?KZ_RATES_DB) -> 7;
-db_priority(?KZ_ACDC_DB) -> 8;
-db_priority(?KZ_FAXES_DB) -> 9;
-db_priority(?KZ_SCHEMA_DB) -> 10;
-db_priority(?KZ_SERVICES_DB) -> 11;
-db_priority(?KZ_PORT_REQUESTS_DB) -> 12;
-db_priority(?KZ_TASKS_DB) -> 13;
-db_priority(?KZ_PENDING_NOTIFY_DB) -> 13;
-db_priority(?KZ_DEDICATED_IP_DB) -> 14;
-db_priority(?KZ_ALERTS_DB) -> 15;
-db_priority(?KZ_MEDIA_DB) -> 16;
-db_priority(?KZ_OAUTH_DB) -> 17;
-db_priority(?KZ_TOKEN_DB) -> 18;
-db_priority(<<?KNM_DB_PREFIX, _/binary>>) -> 19;
-db_priority(<<?KNM_DB_PREFIX_ENCODED, _/binary>>) -> 19;
-db_priority(<<?KNM_DB_PREFIX_encoded, _/binary>>) -> 19;
-db_priority(?MATCH_ACCOUNT_UNENCODED(_AccountId)) -> 21;
-db_priority(?MATCH_ACCOUNT_encoded(_AccountId)) -> 21;
-db_priority(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 21;
-db_priority(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month)) -> 22;
-db_priority(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month)) -> 22;
-db_priority(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month)) -> 22;
-db_priority(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month)) -> 22;
-db_priority(?MATCH_RESOURCE_SELECTORS_UNENCODED(_AccountId)) -> 23;
-db_priority(?MATCH_RESOURCE_SELECTORS_encoded(_AccountId)) -> 23;
-db_priority(?MATCH_RESOURCE_SELECTORS_ENCODED(_AccountId)) -> 23;
-db_priority(?MATCH_RESOURCE_SELECTORS_RAW(_AccountId)) -> 23;
-db_priority(?MATCH_PROVISIONER_ENCODED(_AccountId)) -> 24;
-db_priority(?MATCH_PROVISIONER_encoded(_AccountId)) -> 24;
-db_priority(_Database) -> 24.
+-spec sort_by_priority(kz_term:ne_binaries()) -> kz_term:ne_binaries().
+sort_by_priority(Databases) ->
+    MODBPriority = modb_priority(),
+    lists:sort(fun(Db1, Db2) -> sort_by_priority(Db1, Db2, MODBPriority) end, lists:usort(Databases)).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec sort_by_priority(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> boolean().
+sort_by_priority(Db1, Db2, MODBPriority) ->
+    db_priority(Db1, MODBPriority) < db_priority(Db2, MODBPriority).
+
+-spec modb_priority() -> map().
+modb_priority() ->
+    {Year, Month, _Day} = erlang:date(),
+    {PrevYear1, PrevMonth1} = prev_year_month(Year, Month),
+    {PrevYear2, PrevMonth2} = prev_year_month(Year, Month),
+    #{current=> {kz_term:to_binary(Year), kz_date:pad_month(Month)}
+     ,prev => {kz_term:to_binary(PrevYear1), kz_date:pad_month(PrevMonth1)}
+     ,preprev => {kz_term:to_binary(PrevYear2), kz_date:pad_month(PrevMonth2)}
+     }.
+
+-spec prev_year_month(kz_time:year(), kz_time:month()) -> {kz_time:year(), kz_time:month()}.
+prev_year_month(Year, 1) -> {Year - 1, 12};
+prev_year_month(Year, Month) -> {Year, Month - 1}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec db_priority(kz_term:text()) -> non_neg_integer().
+db_priority(Db) ->
+    db_priority(Db, modb_priority()).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec db_priority(kz_term:text(), map()) -> non_neg_integer().
+db_priority(Db, MODBPriority) when not is_binary(Db) ->
+    db_priority(kz_term:to_binary(Db), MODBPriority);
+db_priority(?KZ_CONFIG_DB, _) -> 0;
+db_priority(?KZ_DATA_DB, _) -> 1;
+db_priority(?KZ_OFFNET_DB, _) -> 2;
+db_priority(?KZ_ACCOUNTS_DB, _) -> 3;
+db_priority(?KZ_SIP_DB, _) -> 4;
+db_priority(?KZ_AUTH_DB, _) -> 5;
+db_priority(?KZ_WEBHOOKS_DB, _) -> 6;
+db_priority(?KZ_RATES_DB, _) -> 7;
+db_priority(?KZ_ACDC_DB, _) -> 8;
+db_priority(?KZ_FAXES_DB, _) -> 9;
+db_priority(?KZ_SCHEMA_DB, _) -> 10;
+db_priority(?KZ_SERVICES_DB, _) -> 11;
+db_priority(?KZ_PORT_REQUESTS_DB, _) -> 12;
+db_priority(?KZ_TASKS_DB, _) -> 13;
+db_priority(?KZ_PENDING_NOTIFY_DB, _) -> 13;
+db_priority(?KZ_DEDICATED_IP_DB, _) -> 14;
+db_priority(?KZ_ALERTS_DB, _) -> 15;
+db_priority(?KZ_MEDIA_DB, _) -> 16;
+db_priority(?KZ_OAUTH_DB, _) -> 17;
+db_priority(?KZ_TOKEN_DB, _) -> 18;
+db_priority(<<?KNM_DB_PREFIX, _/binary>>, _) -> 19;
+db_priority(<<?KNM_DB_PREFIX_ENCODED, _/binary>>, _) -> 19;
+db_priority(<<?KNM_DB_PREFIX_encoded, _/binary>>, _) -> 19;
+db_priority(?MATCH_ACCOUNT_UNENCODED(_AccountId), _) -> 21;
+db_priority(?MATCH_ACCOUNT_encoded(_AccountId), _) -> 21;
+db_priority(?MATCH_ACCOUNT_ENCODED(_AccountId), _) -> 21;
+db_priority(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month) = Db, MODBPriority) ->
+    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
+db_priority(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month) = Db, MODBPriority) ->
+    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
+db_priority(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month) = Db, MODBPriority) ->
+    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
+db_priority(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month), _) -> 22;
+db_priority(?MATCH_RESOURCE_SELECTORS_UNENCODED(_AccountId), _) -> 26;
+db_priority(?MATCH_RESOURCE_SELECTORS_encoded(_AccountId), _) -> 26;
+db_priority(?MATCH_RESOURCE_SELECTORS_ENCODED(_AccountId), _) -> 26;
+db_priority(?MATCH_RESOURCE_SELECTORS_RAW(_AccountId), _) -> 26;
+db_priority(?MATCH_PROVISIONER_ENCODED(_AccountId), _) -> 27;
+db_priority(?MATCH_PROVISIONER_encoded(_AccountId), _) -> 27;
+db_priority(_Database, _) -> 27.
+
+db_priority_modb(?MATCH_MODB_SUFFIX_RAW(_Account, Year, Month)
+                ,#{current := {Year, Month}}
+                ) ->
+    22;
+db_priority_modb(?MATCH_MODB_SUFFIX_RAW(_Account, Year, Month)
+                ,#{prev := {Year, Month}}
+                ) ->
+    23;
+db_priority_modb(?MATCH_MODB_SUFFIX_RAW(_Account, Year, Month)
+                ,#{preprev := {Year, Month}}
+                ) ->
+    24;
+db_priority_modb(_, _) ->
+    25.
 
 -spec get_views_json(atom(), string()) -> kz_datamgr:views_listing().
 get_views_json(App, Folder) ->
