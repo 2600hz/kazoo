@@ -197,6 +197,7 @@ js_quantify_map() ->
        "                    emit(['number_services', index], 1);"
        "                }"
        "            }"
+       "            if (features.local) return;"
       ,kazoo_number_manager_maintenance:generate_js_classifiers(FunMatchBlock),
        "            break;"
        "        case 'qubicle_queue':"
