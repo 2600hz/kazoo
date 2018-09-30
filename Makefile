@@ -290,7 +290,7 @@ circle-codechecks:
 	@./scripts/code_checks.bash $(CHANGED)
 	@$(MAKE) code_checks
 	@$(MAKE) app_applications
-	@./scripts/validate-js.sh $(CHANGED)
+	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
 
 circle-fmt:
 	@$(MAKE) fmt
