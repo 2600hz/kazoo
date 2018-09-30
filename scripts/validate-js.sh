@@ -34,40 +34,36 @@ def fmap(F, data):
     elif isinstance(data, int):
         pass
 
-# couchjs is query server now, and need to talk with qith CouchDB Query Server Protocol
-# and I don't think that it has view validation anymore
 def couchjs((field, js)):
-    pass
-    # JS = ''.join(js) + '\n'
-    # if 'Object.keys' in JS:
-    #     print field, 'contains "Object.keys" which is not available until ECMA2015'
-    #     exit(1)
-    # TMP = '_'
-    # with open(TMP, 'w') as wd:
-    #     wd.write(JS)
-    #     wd.close()
-    #     try:
-    #         # couchjs_exe='~/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
-    #         couchjs_exe='couchjs'
-    #         code = call([couchjs_exe, TMP])
-    #         if code != 0:
-    #             print_field_js(field, js)
-    #             exit(1)
-    #     except Exception as e:
-    #         print 'failed running: ', couchjs, TMP
-    #         raise e
-    #     finally:
-    #         os.remove(TMP)
+    JS = ''.join(js) + '\n'
+    if 'Object.keys' in JS:
+        print field, 'contains "Object.keys" which is not available until ECMA2015'
+        exit(1)
+    TMP = '_'
+    with open(TMP, 'w') as wd:
+        wd.write(JS)
+        wd.close()
+        try:
+            # couchjs_exe='~/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
+            couchjs_exe='couchjs'
+            code = call([couchjs_exe, TMP])
+            if code != 0:
+                print_field_js(field, js)
+                exit(1)
+        except Exception as e:
+            print 'failed running: ', couchjs, TMP
+            raise e
+        finally:
+            os.remove(TMP)
 
-# def print_field_js(field, js):
-    # print 'Key:', field
-    # print 'Code:'
-    # if list == type(js):
-    #     for line in js:
-    #         print line
-    # else:
-    #     print js
-
+def print_field_js(field, js):
+    print 'Key:', field
+    print 'Code:'
+    if list == type(js):
+        for line in js:
+            print line
+    else:
+        print js
 
 def basename2(file_name):
     ## http://stackoverflow.com/a/678242/1418165
@@ -85,19 +81,19 @@ def check_name(file_name, JSON_name):
         print '\t', fname, u' ≠ ', jname
         exit(1)
 
-def get_app_cat_index(exploded):
+def get_app_cat_index(filename, exploded):
     for cat in ['applications', 'core']:
         try:
             appcat = exploded.index(cat)
         except ValueError:
             pass
     if appcat is None:
-        print 'file is not in kazoo core or applications'
+        print 'file {} is not in kazoo core or applications'.format(filename)
         exit(1)
     return appcat
 
-def get_appname(exploded):
-    app_cat_index = get_app_cat_index(exploded)
+def get_appname(filename, exploded):
+    app_cat_index = get_app_cat_index(filename, exploded)
     return exploded[app_cat_index + 1]
 
 def get_view_destinations(filename, data, app_name, view_name, all_view_destinations):
@@ -152,7 +148,7 @@ def kz_check_views_destination(data, filename, exploded, view_definition_ids, al
     For example no view definition doc in system_data can have account-kazoo_apps-user id.
     """
     if design_pattern.match(data['_id']):
-        app_name = get_appname(exploded)
+        app_name = get_appname(filename, exploded)
         if app_name == 'webseq':
             # it is bad to ignore by app name, but anyway webseq is special since we
             # don't know where its belong
