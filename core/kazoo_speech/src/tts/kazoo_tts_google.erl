@@ -3,8 +3,8 @@
 -behaviour(gen_tts_provider).
 
 -export([create/4
+        ,decode/3
         ,get_supported_voices/0
-        ,decode_responce/3
         ,set_api_key/1
         ]).
 
@@ -87,33 +87,28 @@ make_request(Text, Voice, GoogleFormat, Options, EngineData) ->
             create_response(Response, EngineData)
     end.
 
--spec decode_responce(kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
-decode_responce(Content, EngineData) ->
-    {BinaryContent, NewRequestMeta} = decode_responce(Content, EngineData, []),
-    ContentType = kz_json:get_binary_value(<<"content_type">>, NewRequestMeta),
-    {BinaryContent, ContentType}.
-
--spec decode_responce(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> {kz_term:ne_binary(), kz_json:object()}.
-decode_responce(Content, EngineData, RequestMeta) ->
-    Base64Result = kz_json:get_binary_value(<<"audioContent">>, kz_json:decode(Content)),
+-spec decode(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> {kz_term:ne_binary(), kz_json:object()}.
+decode(Contents, RequestMeta, EngineData) ->
     ContentType = kz_json:get_binary_value(<<"content_type">>, EngineData),
     NewRequestMeta = kz_json:set_value(<<"content_type">>, ContentType, RequestMeta),
-    {base64:decode(Base64Result), NewRequestMeta}.
+    {decode(Contents), NewRequestMeta}.
 
--spec create_response(kz_http:ret(), kz_json:object()) ->
-                             kz_http:req_id() |
-                             {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                             {'error', 'tts_provider_failure', binary()}.
+-spec decode(kz_term:ne_binary()) -> kz_term:ne_binary().
+decode(Contents) ->
+    Base64Result = kz_json:get_binary_value(<<"audioContent">>, kz_json:decode(Contents)),
+    base64:decode(Base64Result).
+
+-spec create_response(kz_http:ret(), kz_json:object()) -> create_resp().
 create_response({'error', _R}, _EngineData) ->
     lager:warning("creating speech file failed with error ~p", [_R]),
     {'error', 'tts_provider_failure', <<"unexpected error encountered accessing provider">>};
 create_response({'http_req_id', ReqID}, EngineData) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
-    {'ok', ReqID, EngineData};
+    {'async', ReqID, EngineData};
 create_response({'ok', 200, _Headers, Content}, EngineData) ->
-    {BinaryContent, ContentType} = decode_responce(Content, EngineData),
+    ContentType = kz_json:get_binary_value(<<"content_type">>, EngineData),
     lager:debug("created speech file ~s", [ContentType]),
-    {'ok', kz_term:to_binary(ContentType), BinaryContent};
+    {'ok', ContentType, decode(Content)};
 create_response({'ok', _Code, RespHeaders, Content}, _EngineData) ->
     lager:warning("creating speech file failed with code ~p: ~p", [_Code, Content]),
     _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],

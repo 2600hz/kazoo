@@ -38,7 +38,8 @@
                ,kz_http_req_id :: kz_http:req_id()
                ,reqs :: [{pid(), reference()}]
                ,meta :: kz_json:object()
-               ,engine_data = kz_json:new() :: kz_json:object()
+               ,engine = kz_term:ne_binary()
+               ,engine_data = 'undefined' :: any()
                ,timer_ref :: reference()
                ,id :: kz_term:ne_binary() %% used in publishing doc_deleted
                }).
@@ -86,7 +87,7 @@ init([Id, JObj]) ->
     Format = kz_json:get_value(<<"Format">>, JObj, <<"wav">>),
     Engine = kz_json:get_value(<<"Engine">>, JObj),
 
-    {'ok', ReqID, EngineData} = kazoo_tts:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
+    {'async', ReqID, EngineData} = kazoo_tts:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
 
     lager:debug("text '~s' has id '~s'", [Text, Id]),
 
@@ -97,6 +98,7 @@ init([Id, JObj]) ->
     {'ok', #state{kz_http_req_id = ReqID
                  ,status = 'streaming'
                  ,meta = Meta
+                 ,engine = Engine
                  ,engine_data = EngineData
                  ,contents = <<>>
                  ,reqs = []
@@ -191,12 +193,30 @@ handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_i
 handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
                                                                   ,contents=Contents
                                                                   ,meta=Meta
+                                                                  ,engine_data='undefined'
+                                                                  ,reqs=Reqs
+                                                                  ,timer_ref=TRef
+                                                                  }=State) ->
+    _ = stop_timer(TRef),
+    Res = {Meta, Contents},
+    _ = [gen_server:reply(From, Res) || From <- Reqs],
+
+    lager:debug("finished receiving file contents: ~p", [kz_util:pretty_print_bytes(byte_size(Contents))]),
+    {'noreply', State#state{status=ready
+                           ,timer_ref=start_timer()
+                           }
+    ,'hibernate'
+    };
+handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
+                                                                  ,contents=Contents
+                                                                  ,meta=Meta
+                                                                  ,engine=Engine
                                                                   ,engine_data=EngineData
                                                                   ,reqs=Reqs
                                                                   ,timer_ref=TRef
                                                                   }=State) ->
     _ = stop_timer(TRef),
-    {BinaryContents, NewMeta} = kazoo_tts_google:decode_responce(Contents, EngineData, Meta),
+    {BinaryContents, NewMeta} = kazoo_tts:decode(Engine, Contents, Meta, EngineData),
     Res = {NewMeta, BinaryContents},
     _ = [gen_server:reply(From, Res) || From <- Reqs],
 

@@ -113,7 +113,7 @@ create_response({'error', _R}) ->
     {'error', 'tts_provider_failure', <<"unexpected error encountered accessing provider">>};
 create_response({'http_req_id', ReqID}) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
-    {'ok', ReqID};
+    {'async', ReqID, 'undefined'};
 create_response({'ok', 200, Headers, Content}) ->
     ContentType = props:get_value("content-type", Headers),
     ContentLength = props:get_value("content-length", Headers),
