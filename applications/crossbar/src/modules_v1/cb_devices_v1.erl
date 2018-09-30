@@ -315,7 +315,11 @@ prepare_outbound_flags(DeviceId, Context) ->
             _Else ->
                 kz_json:set_value(<<"outbound_flags">>, [], cb_context:req_data(Context))
         end,
-    prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
+    Validators = [{fun is_sip_username_min_length/2, []}
+                 ,{fun prepare_device_realm/2, []}
+                 ],
+    C = cb_context:set_resp_status(Context, 'success'),
+    cb_modules_util:apply_validators(DeviceId, cb_context:set_req_data(C, JObj), Validators).
 
 -spec prepare_device_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
@@ -332,31 +336,17 @@ prepare_device_realm(DeviceId, Context) ->
 -spec validate_device_creds(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
                                    cb_context:context().
 validate_device_creds(Realm, DeviceId, Context) ->
-    Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
-    case is_sip_username_min_length(Context, Username, DeviceId) of
-        'true'->
-            case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
-                <<"password">> -> validate_device_password(Realm, DeviceId, Context);
-                <<"ip">> ->
-                    IP = cb_context:req_value(Context, [<<"sip">>, <<"ip">>]),
-                    validate_device_ip(IP, DeviceId, Context);
-                Else ->
-                    C = cb_context:add_validation_error([<<"sip">>, <<"method">>]
-                                                       ,<<"enum">>
-                                                       ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
-                                                                          ,{<<"target">>, [<<"password">>, <<"ip">>]}
-                                                                          ,{<<"cause">>, Else}
-                                                                          ])
-                                                       ,Context
-                                                       ),
-                    check_emergency_caller_id(DeviceId, C)
-            end;
-        'false'->
-            lager:error("SIP user name ~s does not meet minimum length requirements", [Username]),
-            C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
-                                               ,<<"minLength">>
-                                               ,kz_json:from_list([{<<"message">>, <<"SIP username does not meet minimum length requirement">>}
-                                                                  ,{<<"cause">>, Username}
+    case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
+        <<"password">> -> validate_device_password(Realm, DeviceId, Context);
+        <<"ip">> ->
+            IP = cb_context:req_value(Context, [<<"sip">>, <<"ip">>]),
+            validate_device_ip(IP, DeviceId, Context);
+        Else ->
+            C = cb_context:add_validation_error([<<"sip">>, <<"method">>]
+                                               ,<<"enum">>
+                                               ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
+                                                                  ,{<<"target">>, [<<"password">>, <<"ip">>]}
+                                                                  ,{<<"cause">>, Else}
                                                                   ])
                                                ,Context
                                                ),
@@ -413,13 +403,13 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec is_sip_username_min_length(cb_context:context(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
-is_sip_username_min_length(Context, Username, DeviceId) ->
+-spec is_sip_username_min_length(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+is_sip_username_min_length(DeviceId, Context) ->
+    Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
     case is_sip_username_unchanged(cb_context:account_db(Context), Username, DeviceId) of
-        'true' -> 'true';
+        'true' -> Context;
         'false' ->
-            MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"accounts">>, <<"min_device_length">>, 3),
-            MinLength =< byte_size(Username)
+            check_min_length(Context, Username)
     end.
 
 -spec is_sip_username_unchanged(kz_term:api_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
@@ -430,6 +420,22 @@ is_sip_username_unchanged(AccountDb, Username, DeviceId) ->
         {'error', _} ->
             lager:debug("failed to load device from account"),
             'false'
+    end.
+
+-spec check_min_length(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+check_min_length(Context, Username) ->
+    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"device">>, <<"min_device_length">>, 3),
+    case MinLength =< byte_size(Username) of
+        'true' -> Context;
+        'false' ->
+            lager:error("SIP user name ~s does not meet minimum length requirements", [Username]),
+            cb_context:add_validation_error([<<"sip">>, <<"username">>]
+                                           ,<<"minLength">>
+                                           ,kz_json:from_list([{<<"message">>, <<"SIP username does not meet minimum length requirement">>}
+                                                              ,{<<"cause">>, Username}
+                                                              ])
+                                           ,Context
+                                           )
     end.
 
 -spec check_emergency_caller_id(kz_term:api_binary(), cb_context:context()) ->

@@ -611,7 +611,10 @@ normalization_format(Context) ->
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(VMBoxId, Context) ->
-    validate_unique_vmbox(VMBoxId, Context).
+    Validators = [{fun is_mailbox_min_length/2, []}
+                 ,{fun validate_unique_vmbox/2, []}
+                 ],
+    cb_modules_util:apply_validators(VMBoxId, cb_context:set_resp_status(Context, 'success'), Validators).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -626,18 +629,11 @@ validate_unique_vmbox(VMBoxId, Context) ->
 validate_unique_vmbox(VMBoxId, Context, 'undefined') ->
     check_vmbox_schema(VMBoxId, Context);
 validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
-    case is_mailbox_min_length(VMBoxId, Context) of
-        'true' ->
-            case check_uniqueness(VMBoxId, Context) of
-                'true' -> check_vmbox_schema(VMBoxId, Context);
-                'false' ->
-                    Msg = kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}]),
-                    C = cb_context:add_validation_error(<<"mailbox">>, <<"unique">>, Msg, Context),
-                    check_vmbox_schema(VMBoxId, C)
-            end;
+    case check_uniqueness(VMBoxId, Context) of
+        'true' -> check_vmbox_schema(VMBoxId, Context);
         'false' ->
-            Msg = kz_json:from_list([{<<"message">>, <<"Mailbox number does not meet minimum length requirement">>}]),
-            C = cb_context:add_validation_error(<<"mailbox">>, <<"minLength">>, Msg, Context),
+            Msg = kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}]),
+            C = cb_context:add_validation_error(<<"mailbox">>, <<"unique">>, Msg, Context),
             check_vmbox_schema(VMBoxId, C)
     end.
 
@@ -645,16 +641,23 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_mailbox_min_length(kz_term:api_binary(), cb_context:context()) -> boolean().
+-spec is_mailbox_min_length(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 is_mailbox_min_length(VMBoxId, Context) ->
+    case is_mailbox_unchanged(VMBoxId, Context) of
+        'true' -> Context;
+        'false' -> check_min_length(Context)
+    end.
+
+-spec check_min_length(cb_context:context()) -> cb_context:context().
+check_min_length(Context) ->
     AccountId = cb_context:account_id(Context),
     Mailbox = kz_json:get_value(<<"mailbox">>, cb_context:req_data(Context)),
-    case is_mailbox_unchanged(VMBoxId, Context) of
-        'true' ->
-            'true';
+    MinLength = kapps_account_config:get_global(AccountId, <<"voicemail">>, <<"min_vmbox_length">>, 3),
+    case MinLength =< byte_size(Mailbox) of
+        'true' -> Context;
         'false' ->
-            MinLength = kapps_account_config:get_global(AccountId, <<"accounts">>, <<"min_vmbox_length">>, 3),
-            MinLength =< byte_size(Mailbox)
+            Msg = kz_json:from_list([{<<"message">>, <<"Mailbox number does not meet minimum length requirement">>}]),
+            cb_context:add_validation_error(<<"mailbox">>, <<"minLength">>, Msg, Context)
     end.
 
 %%------------------------------------------------------------------------------

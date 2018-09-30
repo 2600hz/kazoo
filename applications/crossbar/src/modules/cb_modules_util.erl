@@ -29,6 +29,8 @@
 
         ,get_request_action/1
         ,normalize_alphanum_name/1
+
+        ,apply_validators/3
         ]).
 
 -include("crossbar.hrl").
@@ -380,3 +382,13 @@ normalize_alphanum_name(Context) ->
     Doc = cb_context:doc(Context),
     Name = kz_json:get_ne_binary_value(<<"name">>, Doc),
     cb_context:set_doc(Context, kz_json:set_value(<<"pvt_alphanum_name">>, normalize_alphanum_name(Name), Doc)).
+
+-spec apply_validators(kz_term:api_binary(), cb_context:context(), cb_context:setters()) -> cb_context:context().
+apply_validators(_, Context, []) -> Context;
+apply_validators(Id, Context, [{Validator, Args}|Validators]) ->
+    case cb_context:has_errors(Context) of
+        'true' -> Context;
+        'false' ->
+            C1 = erlang:apply(Validator, [Id, Context | Args]),
+            apply_validators(Id, C1, Validators)
+    end.
