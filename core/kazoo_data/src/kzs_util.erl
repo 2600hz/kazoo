@@ -38,7 +38,7 @@ db_classification(<<"registrations">>) -> 'deprecated';
 db_classification(<<"crossbar%2Fsessions">>) -> 'deprecated';
 db_classification(<<"sms">>) -> 'deprecated';
 db_classification(<<"cccps">>) -> 'system';
-db_classification(<<"signups">>) -> 'system'; %% Soon to be deprecated
+db_classification(<<"signups">>) -> 'deprecated';
 db_classification(?KZ_RATES_DB) -> 'ratedeck';
 db_classification(?MATCH_RATEDECK_DB_ENCODED(_)) -> 'ratedeck';
 db_classification(?MATCH_RATEDECK_DB_encoded(_)) -> 'ratedeck';
