@@ -89,7 +89,7 @@ jobs:
     - run: JOBS="2" make -C ${KAZOO_ROOT}
     - run: make -C ${KAZOO_ROOT} code_checks
     - run: make -C ${KAZOO_ROOT} app_applications
-    - run: ${KAZOO_ROOT}/scripts/validate-js.sh ${CHANGED}
+    - run: ${KAZOO_ROOT}/scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
     - run: make -C ${KAZOO_ROOT} apis
     - run: make -C ${KAZOO_ROOT} docs || true
     - run: make -C ${KAZOO_ROOT} validate-schemas

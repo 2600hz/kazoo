@@ -87,7 +87,7 @@ jobs:
     - run: JOBS="2" make
     - run: make code_checks
     - run: make app_applications
-    - run: ./scripts/validate-js.sh $CHANGED
+    - run: ./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
     - run: make apis
     - run: make docs
     - run: make validate-schemas

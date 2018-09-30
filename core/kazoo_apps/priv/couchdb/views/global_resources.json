@@ -1,9 +1,0 @@
-{
-    "_id": "_design/global_resources",
-    "language": "javascript",
-    "views": {
-        "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'enabled': doc.enabled, 'weight_cost': doc.weight_cost,'classifiers': doc.classifiers}); }"
-        }
-    }
-}
