@@ -1082,15 +1082,15 @@ get_hangup_code(Props) ->
 -spec get_billing_seconds(kz_term:proplist()) -> integer().
 get_billing_seconds(Props) ->
     case props:get_integer_value(<<"variable_billmsec">>, Props) of
-        'undefined' -> props:get_integer_value(<<"variable_billsec">>, Props);
+        'undefined' -> props:get_integer_value(<<"variable_billsec">>, Props, 0);
         Billmsec -> kz_term:ceiling(Billmsec / 1000)
     end.
 
 -spec get_ringing_seconds(kz_term:proplist()) -> integer().
 get_ringing_seconds(Props) ->
-    DurationS = props:get_integer_value(<<"variable_duration">>, Props),
+    DurationS = props:get_integer_value(<<"variable_duration">>, Props, 0),
     BillingS = get_billing_seconds(Props),
-    ProgressS = props:get_integer_value(<<"variable_progresssec">>, Props),
+    ProgressS = props:get_integer_value(<<"variable_progresssec">>, Props, 0),
 
     DurationS - BillingS - ProgressS.
 
