@@ -106,11 +106,11 @@ normalize(Nums)
 
 -spec normalize(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary();
                (kz_term:ne_binaries(), kz_term:api_ne_binary()) -> kz_term:ne_binaries().
-normalize(Num=?NE_BINARY, undefined) ->
+normalize(Num=?NE_BINARY, 'undefined') ->
     normalize(Num);
 normalize(Num=?NE_BINARY, AccountId) ->
     (?CONVERTER_MOD):normalize(Num, AccountId);
-normalize(Nums, undefined)
+normalize(Nums, 'undefined')
   when is_list(Nums) ->
     normalize(Nums);
 normalize(Nums, AccountId)
@@ -271,7 +271,7 @@ get_classifier_regex(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec correct_depreciated_classifiers(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+-spec correct_depreciated_classifiers(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
                                                  kz_json:object().
 correct_depreciated_classifiers(Classifier, ?NE_BINARY=Regex, JObj) ->
     J = kz_json:from_list([{<<"regex">>, Regex}
