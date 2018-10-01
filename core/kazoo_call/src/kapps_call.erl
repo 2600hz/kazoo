@@ -1137,7 +1137,7 @@ handle_ccvs_remove(Keys, #kapps_call{ccvs=CCVs}=Call) ->
                ,Keys
                ).
 
--spec set_custom_channel_var(kz_json:path(), kz_json:json_term(), call()) -> call().
+-spec set_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
 -ifdef(TEST).
 set_custom_channel_var(Key, Value, Call) ->
     insert_custom_channel_var(Key, Value, Call).
@@ -1147,7 +1147,7 @@ set_custom_channel_var(Key, Value, Call) ->
     insert_custom_channel_var(Key, Value, Call).
 -endif.
 
--spec insert_custom_channel_var(kz_json:path(), kz_json:json_term(), call()) -> call().
+-spec insert_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
 insert_custom_channel_var(Key, Value, #kapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(kz_json:set_value(Key, Value, CCVs), Call).
 
