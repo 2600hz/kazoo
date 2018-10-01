@@ -170,27 +170,31 @@ get_view_options(_) ->
 %% @doc Loads CDR docs from database and normalized the them.
 %% @end
 %%------------------------------------------------------------------------------
--spec cdrs_listing_mapper(cb_context:context(), kz_json:objects()) -> kz_json:objects().
+-spec cdrs_listing_mapper(cb_context:context(), kz_json:objects()) -> kz_json:objects() | {'error', kz_term:ne_binary()}.
 cdrs_listing_mapper(Context, JObjs) ->
     CallIds = [kz_json:get_value([<<"doc">>, <<"call_id">>], JObj) || JObj <- JObjs],
 
     lager:debug("filtering ~p call_ids", [length(CallIds)]),
-    FilteredCallIds = filter_callids(CallIds),
+    case filter_callids(CallIds) of
+        {'ok', FilteredCallIds} ->
+            lager:debug("found ~p dialogues", [length(FilteredCallIds)]),
 
-    lager:debug("found ~p dialogues", [length(FilteredCallIds)]),
-
-    [cb_cdrs:normalize_cdr(Context, <<"json">>, JObj)
-     || JObj <- JObjs,
-        lists:member(kz_json:get_value([<<"doc">>, <<"call_id">>], JObj), FilteredCallIds)
-    ].
+            [cb_cdrs:normalize_cdr(Context, <<"json">>, JObj)
+             || JObj <- JObjs,
+                lists:member(kz_json:get_value([<<"doc">>, <<"call_id">>], JObj), FilteredCallIds)
+            ];
+        {'error', _} = Error ->
+            Error
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Send a filter request to call_inspector application to filter
 %% which cdr_id is on call_inspector data store
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_callids(kz_term:ne_binaries()) -> kz_term:ne_binaries().
-filter_callids([]) -> [];
+-spec filter_callids(kz_term:ne_binaries()) -> {'ok', kz_term:ne_binaries()} |
+                                               {'error', kz_term:ne_binary()}.
+filter_callids([]) -> {'ok', []};
 filter_callids(CallIds) ->
     Req = [{<<"Call-IDs">>, CallIds}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -202,13 +206,12 @@ filter_callids(CallIds) ->
     of
         {'ok', JObjs} ->
             FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
-            lists:usort(lists:flatmap(FilterIds, JObjs));
+            {'ok', lists:usort(lists:flatmap(FilterIds, JObjs))};
         {'timeout', JObjs} ->
-            lager:debug("timeout ~s", [kz_json:encode(JObjs)]),
-            FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
-            lists:usort(lists:flatmap(FilterIds, JObjs));
-        {'error', _E} ->
-            lager:debug("error: ~p", [_E]),
-            []
+            lager:debug("timeout: got ~b response jobj though", [length(JObjs)]),
+            {'error', <<"timeout during querying call inspector">>};
+        {'error', _Reason} ->
+            lager:debug("error: ~p", [_Reason]),
+            {'error', <<"unknown error occurred during querying call inspector">>}
     end.
 

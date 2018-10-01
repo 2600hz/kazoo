@@ -48,7 +48,9 @@ build_with_mapper(Context, UserMapper) ->
 -spec build_with_mapper(cb_context:context(), crossbar_view:user_mapper_fun(), boolean()) -> crossbar_view:mapper_fun().
 build_with_mapper(Context, UserMapper, 'false') when is_function(UserMapper, 3) ->
     fun(Object, Acc) -> UserMapper(Context, Object, Acc) end;
-build_with_mapper(_, UserMapper, 'false') ->
+build_with_mapper(_, UserMapper, 'false') when UserMapper =:= 'undefined'
+                                               orelse is_function(UserMapper, 1)
+                                               orelse is_function(UserMapper, 2) ->
     UserMapper;
 build_with_mapper(Context, UserMapper, 'true') ->
     FilterFun = build(Context, 'true'),
