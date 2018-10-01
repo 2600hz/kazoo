@@ -750,13 +750,14 @@ reconcile(Account) ->
                    ,'hydrate_invoices'
                    ,'skip_cache'
                    ],
-    Services = kz_services:maybe_save_services_jobj(
-                 kz_services:fetch(AccountId, FetchOptions)
-                ),
+    CurrentServices = kz_services:fetch(AccountId, FetchOptions),
+    CurrentJObj = kz_services:current_services_jobj(CurrentServices),
+    Services = kz_services:maybe_save_services_jobj(CurrentServices),
     case kz_services:is_dirty(Services) of
         'false' -> 'no_return';
         'true' ->
-            io:format("    quantity discrepancy corrected!~n", [])
+            ReconciledJObj = kz_services:services_jobj(Services),
+            log_discrepancy_correction(CurrentJObj, ReconciledJObj)
     end.
 
 -spec get_all_accounts() -> kz_term:ne_binaries().
@@ -769,6 +770,33 @@ get_all_accounts() ->
     lists:reverse(
       [kz_json:get_value(<<"id">>, JObj) || JObj <- JObjs]
      ).
+
+-spec log_discrepancy_correction(kz_json:object(), kz_json:object()) -> 'no_return'.
+log_discrepancy_correction(CurrentJObj, ReconciledJObj) ->
+    io:format("    quantity discrepancy corrected!~n", []),
+    CurrentQuantities = kz_json:get_ne_json_value(<<"quantities">>, CurrentJObj, kz_json:new()),
+    ReconciledQuantities = kz_json:get_ne_json_value(<<"quantities">>, ReconciledJObj, kz_json:new()),
+    FlattenedCurrent = flatten_quantities(CurrentQuantities),
+    _ = [io:format("      updated ~s from ~p to ~p~n"
+                  ,[kz_binary:join(Key, <<".">>)
+                   ,CurrentValue
+                   ,ReconciledValue
+                   ]
+                  )
+         || {Key, ReconciledValue} <- flatten_quantities(ReconciledQuantities)
+                ,(CurrentValue = proplists:get_value(Key, FlattenedCurrent)) =/= ReconciledValue
+        ],
+    'no_return'.
+
+-spec flatten_quantities(kz_json:object()) -> kz_term:proplist().
+flatten_quantities(JObj) ->
+    [{[Type, Category, Item]
+     ,kz_json:get_integer_value([Type, Category, Item], JObj, 0)
+     }
+     || Type <- [<<"manual">>, <<"account">>, <<"cascade">>]
+            ,Category <- kz_json:get_keys(Type, JObj)
+            ,Item <- kz_json:get_keys([Type, Category], JObj)
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc runs an immediate sync with a bookkeeper without dirtying the
