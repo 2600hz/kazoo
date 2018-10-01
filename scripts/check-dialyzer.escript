@@ -10,8 +10,7 @@
 
 main([]) ->
     print_help();
-main([_KazooPLT]) ->
-    print_help();
+main([_KazooPLT]) -> 'ok';
 main([KazooPLT | CommandLineArgs]) ->
     {'ok', Options, Args} = parse_args(CommandLineArgs),
     handle(KazooPLT, Options, Args).
