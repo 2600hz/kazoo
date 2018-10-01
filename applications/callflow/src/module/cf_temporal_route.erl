@@ -129,7 +129,9 @@ process_rules(#temporal{local_sec=LSec
                      _ ->
                          kz_date:normalize({Y, M, D - 1})
                  end,
-    BaseDate = next_rule_date(Rule, SearchDate),
+    BaseDate = kz_date:normalize(
+                 next_rule_date(Rule, SearchDate)
+                ),
     BaseTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
 
     case {BaseTime + TStart, BaseTime + TStop} of

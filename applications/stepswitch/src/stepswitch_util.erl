@@ -124,7 +124,8 @@ should_deny_reclassified_number(CorrectedNumber, DeniedCallRestrictions) ->
     lager:debug("re-classified corrected number ~s as ~s, testing for call restrictions"
                ,[CorrectedNumber, Classification]
                ),
-    not kz_json:is_defined([Classification, <<"action">>], DeniedCallRestrictions).
+    kz_json:get_ne_binary_value([Classification, <<"action">>], DeniedCallRestrictions)
+        =:= <<"deny">>.
 
 -spec shortdial_correction_length(kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
 shortdial_correction_length(Number, CIDNum) ->

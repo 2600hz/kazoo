@@ -451,7 +451,10 @@ calculate_phone_numbers_updates(JObj, Updates) ->
     Number = kz_doc:id(JObj),
     Classification = knm_converters:classify(Number),
     Key = [<<"phone_numbers">>, Classification],
-    [{Key, 1} | Updates].
+    case kz_json:get_value([<<"pvt_features">>, <<"local">>], JObj) =:= 'undefined' of
+        'false' -> Updates;
+        'true' -> [{Key, 1} | Updates]
+    end.
 
 -spec calculate_number_carriers_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 calculate_number_carriers_updates(JObj, Updates) ->

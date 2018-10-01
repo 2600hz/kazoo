@@ -9,11 +9,11 @@
     },
     "language": "javascript",
     "views": {
-        "by_tree": {
+        "by_tree_length": {
             "map": [
                 "function (doc) {",
                 "  if (doc.pvt_type != 'service' || doc.pvt_deleted) return;",
-                "  emit(doc.pvt_type, null);",
+                "  emit(doc.pvt_tree.length, null);",
                 "}"
             ]
         },
