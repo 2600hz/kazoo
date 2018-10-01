@@ -13,41 +13,66 @@
 
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 
--type non_null_json_term() :: boolean()
-                            | json_string() | <<>>
-                            | json_number()
-                            | object()
-                            | json_array().
-%% Denotes term definitions for JSON.
+-type non_object_json_term() :: boolean()
+                              | json_string() | <<>>
+                              | json_number()
+                              | json_array().
 
--type json_term() :: non_null_json_term() | 'null'.
-%% Denotes term definitions or null object for JSON.
+-type non_null_json_term() :: non_object_json_term()
+                            | object().
+
+%% Denotes term definitions for JSON.
 
 -type flat_json_term() :: boolean()
                         | json_string() | <<>>
                         | json_number()
-                        | json_array().
+                        | flat_json_array().
 %% Denotes all valid term definitions for JSON for a flatten JSON.
 
 -type api_json_term() :: json_term() | 'undefined'.
 %% Denotes all valid term definitions or `undefined' for JSON.
 
--type json_terms() :: [json_term()].
-%% Denotes all valid term definitions for JSON.
-
--type json_array()  :: json_terms().
-%% Denotes array in JSON.
-
 -ifdef(PROPER).
 %% PropEr will blow up the atom table if running this in an interactive shell
 -type json_string() :: kz_term:ne_binary().
+
+-type json_term() :: non_null_json_term() | <<>>.
+
+%% We want non-empty keys when generating objects
+-type keys() :: [key(),...].
+
+%% Denotes a flatten version of JSON proplist, `[{full_path, value}]'.
+-type flat_proplist() :: [{keys(), flat_json_term()},...].
+
+%% Denotes array in JSON.
+-type json_array() :: json_terms() | [].
+
 -else.
 -type json_string() :: kz_term:ne_binary() | atom().
+
+-type json_term() :: non_null_json_term() | 'null'.
+
+%% Denotes a list of JSON keys.
+-type keys() :: [key()].
+
+%% Denotes a flatten version of JSON proplist, `[{full_path, value}]'.
+-type flat_proplist() :: [{keys(), flat_json_term()}].
+
+%% Denotes array in JSON.
+-type json_array() :: json_terms().
+
 -endif.
-%% Denotes string in JSON.
+
+%% Denotes all valid term definitions for JSON.
+-type json_terms() :: [json_term()].
+
+-type flat_json_array() :: [flat_json_term()].
 
 -type json_number() :: integer() | float().
 %% Denotes number in JSON.
+
+-type json_proplist() :: [{key(), json_term()}].
+%% Denotes proplist of JSON object Erlang representation.
 
 -type object() :: ?JSON_WRAPPER(json_proplist()) | ?EMPTY_JSON_OBJECT.
 %% Denotes JSON object Erlang representation, {@link json_proplist} wrapped in `{}'.
@@ -55,29 +80,21 @@
 -type objects() :: [object()].
 %% Denotes a list of {@link object()}.
 
--type flat_proplist() :: [{path(), flat_json_term()}].
-%% Denotes a flatten version of JSON proplist, `[{full_path, value}]'.
-
--type flat_object() :: ?JSON_WRAPPER(flat_proplist()).
 %% Denotes a JSON of flatten version of JSON proplist, same as {@link flat_proplist()} but wrapped in `{}'.
+-type flat_object() :: ?JSON_WRAPPER(flat_proplist()).
 
--type flat_objects() :: [flat_object()].
 %% A list of flatten JSON objects.
+-type flat_objects() :: [flat_object()].
 
--type key() :: json_string().
 %% Denotes a JSON key.
+-type key() :: json_string().
 
--type keys() :: [key()].
-%% Denotes a list of JSON keys.
-
--type path() :: keys() | key() | pos_integer() | [pos_integer()].
+-type path() :: keys() | [pos_integer()].
 %% Denotes a path to (or n-th element of) a value in a JSON.
 
 -type paths() :: [path()].
 %% Denotes a list of paths (or n-th element of) a value in a JSON.
 
--type json_proplist() :: [{key(), json_term()}].
-%% Denotes proplist of JSON object Erlang representation.
 -type json_proplists() :: [json_proplist()].
 
 -type encode_option() :: 'uescape'
