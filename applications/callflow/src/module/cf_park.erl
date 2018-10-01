@@ -93,7 +93,7 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
             direct_park(SlotNumber, Slot, ParkedCalls, Data, Call);
         <<"park">> ->
             lager:info("action is to park the call"),
-            Slot = create_slot(<<>>, PresenceType, SlotNumber, Data, 'true', Call),
+            Slot = create_slot('undefined', PresenceType, SlotNumber, Data, 'true', Call),
             park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
         <<"retrieve">> ->
             lager:info("action is to retrieve a parked call"),

@@ -1953,30 +1953,26 @@ set_recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_doc(kz_json:path()
+-spec update_doc(kz_json:path() | kz_json:key()
                 ,kz_json:api_json_term()
                 ,mailbox() | kz_term:ne_binary()
                 ,kapps_call:call() | kz_term:ne_binary()
                 ) ->
                         'ok' |
                         {'error', atom()}.
+update_doc(Key, Value, ?NE_BINARY = Id, ?NE_BINARY = Db) ->
+    Update = [{Key, Value}],
+    Updates = [{'update', Update}
+              ,{'ensure_saved', 'true'}
+              ],
+    case kz_datamgr:update_doc(Db, Id, Updates) of
+        {'ok', _} -> 'ok';
+        {'error', _R}=Error ->
+            lager:info("unable to update ~s in ~s, ~p", [Id, Db, _R]),
+            Error
+    end;
 update_doc(Key, Value, #mailbox{mailbox_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
-update_doc(Key, Value, Id, ?NE_BINARY = Db) ->
-    case kz_datamgr:open_doc(Db, Id) of
-        {'ok', JObj} ->
-            case kz_datamgr:save_doc(Db, kz_json:set_value(Key, Value, JObj)) of
-                {'error', 'conflict'} ->
-                    update_doc(Key, Value, Id, Db);
-                {'ok', _} -> 'ok';
-                {'error', R}=E ->
-                    lager:info("unable to update ~s in ~s, ~p", [Id, Db, R]),
-                    E
-            end;
-        {'error', R}=E ->
-            lager:info("unable to update ~s in ~s, ~p", [Id, Db, R]),
-            E
-    end;
 update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, kapps_call:account_db(Call)).
 

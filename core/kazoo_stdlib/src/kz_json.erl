@@ -1031,7 +1031,7 @@ get_values(Key, JObj) ->
 -type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()} |
                          fun((object()) -> object()).
 -type set_value_funs() :: [set_value_fun(),...].
--type set_value_kv() :: {key() | path(), json_term()}.
+-type set_value_kv() :: {key() | path(), api_json_term() | 'null'}.
 -type set_value_kvs() :: [set_value_kv()].
 
 -spec set_values(set_value_kvs() | set_value_funs(), object()) -> object().
