@@ -85,6 +85,10 @@ This is a great option if you have a beefier computer available. It will take th
 !!!warning
 CPU/memory/time intensive.
 
+### `make dialyze-changed`
+
+Dialyzes all the changed files (compared to the parent branch) in a batch (vs 5 at a time like CI does) but doesn't pull in unknown modules like `dialyze-hard` does. Still memory/CPU intesive but not as bad as `hard` mode.
+
 ### Scripts
 
 There's also a couple scripts which are nice:
