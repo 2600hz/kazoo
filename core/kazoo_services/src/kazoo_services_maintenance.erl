@@ -383,7 +383,7 @@ store_migrated_services_plan(AccountDb, JObj) ->
 -spec migrate_services() -> 'ok'.
 migrate_services() ->
     ViewOptions = ['descending'],
-    {'ok', JObjs} = kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/by_tree">>, ViewOptions),
+    {'ok', JObjs} = kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/by_tree_length">>, ViewOptions),
     migrate_services(JObjs).
 
 -spec migrate_services(kz_json:objects()|kz_services:services()) -> 'ok'.
