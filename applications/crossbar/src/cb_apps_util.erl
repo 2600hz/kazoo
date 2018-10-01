@@ -235,8 +235,8 @@ is_authorized(AccountId, UserId, AppId, AppStoreJObj) ->
 
 -spec get_specific_ids(kz_json:ne_binaries()) -> kz_term:ne_binaries().
 get_specific_ids(Users) ->
-    [UserId || UserId <- Users,
-               'undefined' =/= UserId
+    [Id || User <- Users,
+           (Id = kz_doc:id(User)) =/= 'undefined'
     ].
 
 -spec add_permissions(kz_json:object(), kz_json:object()) -> kz_json:object().
