@@ -240,7 +240,7 @@ maybe_start_from_node_name(Verbose) ->
                     [KApp];
                 _Else -> 'false'
             end;
-        'false' -> 'false'
+        _Else -> 'false'
     end.
 
 -spec maybe_start_from_node_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
