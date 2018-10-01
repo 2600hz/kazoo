@@ -305,21 +305,13 @@ publish_notify(Req, ContentType) ->
                               ,ContentType
                               ).
 
--spec notify_realm(kz_term:api_terms()) -> kz_term:api_binary().
-notify_realm(Props) when is_list(Props) ->
-    notify_value(Props, <<"Realm">>, fun props:get_value/2);
-notify_realm(JObj) ->
-    notify_value(JObj, <<"Realm">>, fun kz_json:get_value/2).
+-spec notify_realm(kz_term:api_terms()) -> kz_term:api_ne_binary().
+notify_realm(API) ->
+    get_value(API, <<"Realm">>, 'undefined').
 
--spec notify_username(kz_term:api_terms()) -> kz_term:api_binary().
-notify_username(Props) when is_list(Props) ->
-    notify_value(Props, <<"Username">>, fun props:get_value/2);
-notify_username(JObj) ->
-    notify_value(JObj, <<"Username">>, fun kz_json:get_value/2).
-
--spec notify_value(kz_term:api_terms(), kz_term:ne_binary(), fun()) -> kz_term:api_binary().
-notify_value(API, Key, Get) ->
-    Get(Key, API).
+-spec notify_username(kz_term:api_terms()) -> kz_term:api_ne_binary().
+notify_username(API) ->
+    get_value(API, <<"Username">>, 'undefined').
 
 -spec publish_command(kz_term:api_terms()) -> 'ok'.
 publish_command(JObj) ->
@@ -336,16 +328,16 @@ publish_reply(Queue, Req) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun fs_reply/1),
     kz_amqp_util:targeted_publish(Queue, Payload).
 
--spec check_fs_node(kz_term:api_terms()) -> kz_term:api_binary().
-check_fs_node(Props) ->
-    get_value(Props, <<"FreeSWITCH-Node">>, <<"*">>).
+-spec check_fs_node(kz_term:api_terms()) -> kz_term:api_ne_binary().
+check_fs_node(API) ->
+    get_value(API, <<"FreeSWITCH-Node">>, <<"*">>).
 
--spec get_value(kz_term:api_terms(), kz_json:path(), kz_term:ne_binary()) -> kz_term:api_binary().
+-spec get_value(kz_term:api_terms(), kz_json:key(), Default) -> kz_term:ne_binary() | Default.
 get_value(Props, Key, Default) when is_list(Props) ->
-    get_value(Props, Key, fun props:get_value/3, Default);
+    get_value(Props, Key, Default, fun props:get_value/3);
 get_value(JObj, Key, Default) ->
-    get_value(JObj, Key, fun kz_json:get_value/3, Default).
+    get_value(JObj, Key, Default, fun kz_json:get_value/3).
 
--spec get_value(kz_term:api_terms(), kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> kz_term:api_binary().
-get_value(API, Key, Get, Default) ->
+-spec get_value(kz_term:api_terms(), kz_json:key(), Default, fun()) -> kz_term:ne_binary() | Default.
+get_value(API, Key, Default, Get) ->
     Get(Key, API, Default).

@@ -48,7 +48,7 @@
 -type json_array() :: json_terms() | [].
 
 -else.
--type json_string() :: kz_term:ne_binary() | atom().
+-type json_string() :: kz_term:ne_binary().
 
 -type json_term() :: non_null_json_term() | 'null'.
 
