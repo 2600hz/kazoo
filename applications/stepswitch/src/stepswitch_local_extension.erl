@@ -386,7 +386,7 @@ local_extension_timeout(OffnetReq) ->
     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, <<"local extension request timed out">>}
-    ,{<<"To-DID">>, kapi_offnet_req:to_did(OffnetReq)}
+    ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -398,7 +398,7 @@ local_extension_error(CallEvt, OffnetReq) ->
     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, kz_call_event:error_message(CallEvt, <<"failed to process request">>)}
-    ,{<<"To-DID">>, kapi_offnet_req:to_did(OffnetReq)}
+    ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
