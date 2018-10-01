@@ -10,7 +10,8 @@
 
 -record(voice_desc, {voice_name :: kz_term:ne_binary()
                     ,language_code :: kz_term:ne_binary()
-                    ,gender :: voice_gender()}).
+                    ,gender :: voice_gender()
+                    }).
 
 -type voice_desc() :: #voice_desc{}.
 -type voice_gender() :: 'male'   |
