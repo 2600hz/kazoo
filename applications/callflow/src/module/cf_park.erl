@@ -276,32 +276,33 @@ wait_for_hangup(Call) ->
 %% @doc Builds the json object representing the call in the parking slot
 %% @end
 %%------------------------------------------------------------------------------
--spec create_slot(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), boolean(), kapps_call:call()) -> kz_json:object().
+-spec create_slot(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), boolean(), kapps_call:call()) -> kz_json:object().
 create_slot(ParkerCallId, PresenceType, SlotNumber, Data, Attended, Call) ->
     CallId = cf_exe:callid(Call),
     RingbackId = maybe_get_ringback_id(Call),
     SlotCallId = kz_binary:rand_hex(16),
     User = slot_presence_id(SlotNumber, Data, Call),
     Realm = kapps_call:account_realm(Call),
-    kz_json:from_list(
-      [{<<"Call-ID">>, CallId}
-      ,{<<"Attended">>, Attended}
-      ,{<<"Slot-Call-ID">>, SlotCallId}
-      ,{<<"Switch-URI">>, kapps_call:switch_uri(Call)}
-      ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
-      ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
-      ,{<<"Parker-Call-ID">>, ParkerCallId}
-      ,{<<"Ringback-ID">>, RingbackId}
-      ,{<<"Presence-User">>, User}
-      ,{<<"Presence-Realm">>, Realm}
-      ,{<<"Presence-ID">>, <<User/binary, "@", Realm/binary>>}
-      ,{<<"Node">>, kapps_call:switch_nodename(Call)}
-      ,{<<"CID-Number">>, kapps_call:caller_id_number(Call)}
-      ,{<<"CID-Name">>, kapps_call:caller_id_name(Call)}
-      ,{<<"CID-URI">>, kapps_call:from(Call)}
-      ,{<<"Hold-Media">>, kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call)}
-      ,{?PRESENCE_TYPE_KEY, PresenceType}
-      ]).
+    kz_json:set_values([{<<"Call-ID">>, CallId}
+                       ,{<<"Attended">>, Attended}
+                       ,{<<"Slot-Call-ID">>, SlotCallId}
+                       ,{<<"Switch-URI">>, kapps_call:switch_uri(Call)}
+                       ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
+                       ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
+                       ,{<<"Parker-Call-ID">>, ParkerCallId}
+                       ,{<<"Ringback-ID">>, RingbackId}
+                       ,{<<"Presence-User">>, User}
+                       ,{<<"Presence-Realm">>, Realm}
+                       ,{<<"Presence-ID">>, <<User/binary, "@", Realm/binary>>}
+                       ,{<<"Node">>, kapps_call:switch_nodename(Call)}
+                       ,{<<"CID-Number">>, kapps_call:caller_id_number(Call)}
+                       ,{<<"CID-Name">>, kapps_call:caller_id_name(Call)}
+                       ,{<<"CID-URI">>, kapps_call:from(Call)}
+                       ,{<<"Hold-Media">>, kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call)}
+                       ,{?PRESENCE_TYPE_KEY, PresenceType}
+                       ]
+                      ,kz_json:new()
+                      ).
 
 -spec slot_presence_id(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
 slot_presence_id(SlotNumber, Data, Call) ->
