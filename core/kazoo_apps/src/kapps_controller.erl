@@ -295,4 +295,12 @@ unbinding_fetch_app(Module, Function, Payload) ->
 %%------------------------------------------------------------------------------
 -spec is_kapp(atom()) -> boolean().
 is_kapp(App) ->
-    {'ok', 'true'} =:= application:get_env(App, 'is_kazoo_app').
+    {'ok', 'true'} =:= load_application_env(App).
+
+-spec load_application_env(atom()) -> {'ok', boolean()} | 'undefined'.
+load_application_env(App) ->
+    case application:get_key(App, 'applications') of
+        'undefined' ->
+            {'ok', 'non_existing' =/= code:where_is_file(atom_to_list(App) ++ ".app")};
+        {'ok', _} -> application:get_env(App, 'is_kazoo_app')
+    end.
