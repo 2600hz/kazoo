@@ -232,11 +232,15 @@ log_verbose('true', Fmt, Args) ->
 -spec maybe_start_from_node_name(boolean()) -> 'false' | kz_term:atoms().
 maybe_start_from_node_name(Verbose) ->
     KApp = kapp_from_node_name(),
-    case is_kapp(KApp) of
-        'false' -> 'false';
-        _Else ->
-            log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
-            [KApp]
+    case application:load(KApp) of
+        'ok' ->
+            case is_kapp(KApp) of
+                'true' ->
+                    log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
+                    [KApp];
+                _Else -> 'false'
+            end;
+        'false' -> 'false'
     end.
 
 -spec maybe_start_from_node_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
@@ -295,12 +299,4 @@ unbinding_fetch_app(Module, Function, Payload) ->
 %%------------------------------------------------------------------------------
 -spec is_kapp(atom()) -> boolean().
 is_kapp(App) ->
-    {'ok', 'true'} =:= load_application_env(App).
-
--spec load_application_env(atom()) -> {'ok', boolean()} | 'undefined'.
-load_application_env(App) ->
-    case application:get_key(App, 'applications') of
-        'undefined' ->
-            {'ok', 'non_existing' =/= code:where_is_file(atom_to_list(App) ++ ".app")};
-        {'ok', _} -> application:get_env(App, 'is_kazoo_app')
-    end.
+    {'ok', 'true'} =:= application:get_env(App, 'is_kazoo_app').
