@@ -399,8 +399,10 @@ get_new_caller_id(Call, [JObj | Entries], ListId, KeyDest) ->
             end
     end.
 
--spec get_key_and_dest(kapps_call:call(), kz_json:objects(), key_dest()) -> key_dest() | {'error', any()}.
-get_key_and_dest(_, _, {CIDKey, _}=KeyDest) ->
+-spec get_key_and_dest(kapps_call:call(), kz_json:object(), key_dest()) ->
+                              key_dest() |
+                              {'error', kz_term:ne_binary()}.
+get_key_and_dest(_Call, _Entry, {CIDKey, _}=KeyDest) ->
     case not kz_term:is_ne_binary(CIDKey) of
         'true' -> KeyDest;
         'false' ->
@@ -410,12 +412,19 @@ get_key_and_dest(Call, Entry, 'undefined') ->
     LengthDigits = kz_json:get_integer_value(<<"capture_group_length">>, Entry, 2),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
 
-    try <<CIDKey:LengthDigits/binary, Destination/binary>> = CaptureGroup,
-         {CIDKey, Destination}
-    catch _E:_T ->
-            lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
-            {'error', <<"entry_failed">>}
-    end.
+    captured_key_and_destination(LengthDigits, CaptureGroup).
+
+-spec captured_key_and_destination(non_neg_integer(), kz_term:ne_binary()) ->
+                                          key_dest() |
+                                          {'error', kz_term:ne_binary()}.
+captured_key_and_destination(LengthDigits, CaptureGroup) when byte_size(CaptureGroup) >= LengthDigits ->
+    <<CIDKey:LengthDigits/binary, Destination/binary>> = CaptureGroup,
+    {CIDKey, Destination};
+captured_key_and_destination(_LengthDigits, _CaptureGroup) ->
+    lager:warning("failed to get cid_key (with length ~b) from capture group '~s'"
+                 ,[_LengthDigits, _CaptureGroup]
+                 ),
+    {'error', <<"entry_failed">>}.
 
 -spec get_cid_length_from_list_document(kapps_call:call(), kz_term:ne_binary()) -> non_neg_integer().
 get_cid_length_from_list_document(Call, ListId) ->
