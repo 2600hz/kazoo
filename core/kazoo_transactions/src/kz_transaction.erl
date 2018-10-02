@@ -757,6 +757,7 @@ attempt_bookkeeper_sale(Transaction) ->
     Result = kz_amqp_worker:call(Request
                                 ,fun kapi_bookkeepers:publish_sale_req/1
                                 ,fun kapi_bookkeepers:sale_resp_v/1
+                                ,20 * ?MILLISECONDS_IN_SECOND
                                 ),
     handle_bookkeeper_result(Transaction, Result).
 

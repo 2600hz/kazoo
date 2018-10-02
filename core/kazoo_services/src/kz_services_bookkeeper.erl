@@ -197,4 +197,5 @@ update_bookkeeper(Type, Invoice, Services, AuditJObj) ->
     kz_amqp_worker:call(Request
                        ,fun kapi_bookkeepers:publish_update_req/1
                        ,fun kapi_bookkeepers:update_resp_v/1
+                       ,20 * ?MILLISECONDS_IN_SECOND
                        ).

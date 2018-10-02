@@ -9,11 +9,35 @@
     },
     "language": "javascript",
     "views": {
+        "by_plan": {
+            "map": [
+                "function (doc) {",
+                "  if (doc.pvt_type != 'service' || doc.pvt_deleted) return;",
+                "  for (var key in doc.plans) {",
+                "      emit(key, doc.plans[key]);",
+                "  }",
+                "}"
+            ],
+            "reduce": "_count"
+        },
         "by_tree_length": {
             "map": [
                 "function (doc) {",
                 "  if (doc.pvt_type != 'service' || doc.pvt_deleted) return;",
                 "  emit(doc.pvt_tree.length, null);",
+                "}"
+            ]
+        },
+        "by_tree_length_with_plans": {
+            "map": [
+                "function (doc) {",
+                "  if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.plans ) return;",
+                "    for (var key in doc.plans) {",
+                "      if(doc.plans.hasOwnProperty(key)) {",
+                "        emit(doc.pvt_tree.length, null);",
+                "        return;",
+                "      }",
+                "    }",
                 "}"
             ]
         },
