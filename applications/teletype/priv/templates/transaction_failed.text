@@ -11,7 +11,7 @@ There was a problem processing your credit card.
 -------------------------
 
 Failed Reason: {{transaction.response}}
-Total Amount to Charge: {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
+Total Amount to Charge: {{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
 Credit Card Last Digits: {{transaction.card_last_four|default:"No Credit Card info on file"}}
 
 -------------------------

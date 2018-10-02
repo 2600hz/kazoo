@@ -49,7 +49,7 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">
-                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">We've successfully charged <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %} to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date.local|date:"n/j/Y"}}</b>.</p>
+                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">We've successfully charged <b>{{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %} to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date.local|date:"n/j/Y"}}</b>.</p>
                     </td>
                 </tr>
             </table>
