@@ -683,15 +683,15 @@ try_save_document(Call, MsgJObj, Loop) ->
 %%------------------------------------------------------------------------------
 -spec fake_vmbox_jobj(kapps_call:call(), kz_term:proplist()) -> kz_json:object().
 fake_vmbox_jobj(Call, Props) ->
-    kz_json:from_list(
-      [{<<"_id">>, props:get_value(<<"Box-Id">>, Props)}
-      ,{<<"mailbox">>, props:get_value(<<"Box-Num">>, Props)}
-      ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)}
-      ,{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
-      ,{<<"pvt_account_id">>, kapps_call:account_id(Call)}
-      ,{<<"pvt_account_db">>, kapps_call:account_db(Call)}
-      ]
-     ).
+    kz_json:set_values([{<<"_id">>, props:get_value(<<"Box-Id">>, Props)}
+                       ,{<<"mailbox">>, props:get_value(<<"Box-Num">>, Props)}
+                       ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)}
+                       ,{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
+                       ,{<<"pvt_account_id">>, kapps_call:account_id(Call)}
+                       ,{<<"pvt_account_db">>, kapps_call:account_db(Call)}
+                       ]
+                      ,kz_json:new()
+                      ).
 
 -spec store_recording(kz_term:ne_binary(), kz_term:ne_binary() | sotre_media_url(), kapps_call:call(), kz_term:ne_binary()) ->
                              'ok' |

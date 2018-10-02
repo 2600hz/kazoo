@@ -120,17 +120,17 @@ handle_static(Data, Call, CaptureGroup) ->
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->
-    maybe_proceed_with_call(get_list_entry(Data, Call), Data, Call).
+    maybe_proceed_with_call(Data, Call, get_list_entry(Data, Call)).
 
 -spec handle_lists(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_lists(Data, Call) ->
-    ListId = kz_json:get_ne_binary_value(<<"id">>, Data),
-    maybe_proceed_with_call(get_caller_id_from_entries(Call, ListId, 'undefined'), Data, Call).
+    ListId = kz_doc:id(Data),
+    maybe_proceed_with_call(Data, Call, get_caller_id_from_entries(Call, ListId, 'undefined')).
 
--spec maybe_proceed_with_call(list_cid_entry(), kz_json:object(), kapps_call:call()) -> 'ok'.
-maybe_proceed_with_call({CIDName, CIDNumber, CaptureGroup}, Data, Call) ->
+-spec maybe_proceed_with_call(kz_json:object(), kapps_call:call(), list_cid_entry()) -> 'ok'.
+maybe_proceed_with_call(Data, Call, {CIDName, CIDNumber, CaptureGroup}) ->
     update_call_and_continue(Data, Call, CIDNumber, CIDName, CaptureGroup, <<"lists">>);
-maybe_proceed_with_call(_, _, Call) ->
+maybe_proceed_with_call(_Data, Call, {'error', _}) ->
     lager:debug("failed to find cid name/number and destination from list(s), hanging up."),
     cf_exe:stop_bad_destination(Call).
 
@@ -349,8 +349,9 @@ maybe_key_and_dest_using_data(Data, Call) ->
             {CIDKey, Destination}
     end.
 
--spec get_caller_id_from_entries(kapps_call:call(), kz_term:api_ne_binary(), key_dest()) -> list_cid_entry().
-get_caller_id_from_entries(_, 'undefined', _) ->
+-spec get_caller_id_from_entries(kapps_call:call(), kz_term:api_ne_binary(), key_dest()) ->
+                                        list_cid_entry().
+get_caller_id_from_entries(_Call, 'undefined', _KeyDest) ->
     lager:warning("list id is missing"),
     {'error', 'not_found'};
 get_caller_id_from_entries(Call, ListId, KeyDest) ->
@@ -363,7 +364,8 @@ get_caller_id_from_entries(Call, ListId, KeyDest) ->
             Error
     end.
 
--spec get_new_caller_id(kapps_call:call(), kz_json:objects(), kz_term:ne_binary(), key_dest()) -> list_cid_entry().
+-spec get_new_caller_id(kapps_call:call(), kz_json:objects(), kz_term:ne_binary(), key_dest()) ->
+                               list_cid_entry().
 get_new_caller_id(Call, [], _ListId, {_, Destination}) ->
     lager:warning("no entries were found in list ~p", [_ListId]),
     {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
@@ -380,7 +382,7 @@ get_new_caller_id(Call, [], ListId, 'undefined') ->
             {'error', 'not_found'}
     end;
 get_new_caller_id(Call, [JObj | Entries], ListId, KeyDest) ->
-    Entry = kz_json:get_value(<<"value">>, JObj),
+    Entry = kz_json:get_json_value(<<"value">>, JObj),
 
     case get_key_and_dest(Call, Entry, KeyDest) of
         {'error', _}=Error ->

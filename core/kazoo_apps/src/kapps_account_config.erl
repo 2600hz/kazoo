@@ -100,7 +100,7 @@ to_pos_integer(Value, Default) ->
 %% @equiv get_global(Account, Category, Key, undefined)
 
 -spec get_global(api_account(), kz_term:ne_binary(), config_key()) ->
-                        kz_json:json_term().
+                        kz_json:api_json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
 
@@ -110,8 +110,8 @@ get_global(Account, Category, Key) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec get_global(api_account(), kz_term:ne_binary(), config_key(), kz_json:api_json_term()) ->
-                        kz_json:json_term().
+-spec get_global(api_account(), kz_term:ne_binary(), config_key(), Default) ->
+                        kz_json:json_term() | Default.
 get_global(Account, Category, Key, Default) ->
     case load_config_from_account(account_id(Account), Category) of
         {'ok', JObj} ->

@@ -507,11 +507,11 @@ attachment(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec attachment(doc(), kz_json:path()) -> kz_term:api_object().
+-spec attachment(doc(), kz_json:key()) -> kz_term:api_object().
 attachment(JObj, AName) ->
     attachment(JObj, AName, 'undefined').
 
--spec attachment(doc(), kz_json:path(), Default) -> doc() | Default.
+-spec attachment(doc(), kz_json:key(), Default) -> doc() | Default.
 attachment(JObj, AName, Default) ->
     kz_json:get_json_value(AName, attachments(JObj, kz_json:new()), Default).
 
@@ -560,17 +560,17 @@ attachment_content_type(JObj, AName, Default) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec attachment_property(doc(), kz_term:ne_binary(), kz_json:path()) ->
+-spec attachment_property(doc(), kz_term:ne_binary(), kz_json:get_key()) ->
                                  kz_json:api_json_term().
 attachment_property(JObj, AName, Key) ->
     attachment_property(JObj, AName, Key, 'undefined').
 
--spec attachment_property(doc(), kz_term:ne_binary(), kz_json:path(), Default) ->
+-spec attachment_property(doc(), kz_term:ne_binary(), kz_json:get_key(), Default) ->
                                  Default | kz_json:json_term().
 attachment_property(JObj, AName, Key, Default) ->
     attachment_property(JObj, AName, Key, Default, fun kz_json:get_value/3).
 
--spec attachment_property(doc(), kz_term:ne_binary(), kz_json:path(), Default, fun((kz_json:path(), doc(), Default) -> Default | kz_json:json_term())) ->
+-spec attachment_property(doc(), kz_term:ne_binary(), kz_json:get_key(), Default, fun((kz_json:get_key(), doc(), Default) -> Default | kz_json:json_term())) ->
                                  Default | kz_json:json_term().
 attachment_property(JObj, AName, Key, Default, Get) when is_function(Get, 3) ->
     Get(Key, attachment(JObj, AName, kz_json:new()), Default).
