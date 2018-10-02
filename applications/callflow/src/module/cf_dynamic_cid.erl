@@ -101,7 +101,6 @@ handle_manual(Data, Call, CaptureGroup) ->
             cf_exe:stop(Call)
     end.
 
-
 %%------------------------------------------------------------------------------
 %% @doc Handle static mode of dynamic cid
 %% @end
@@ -406,8 +405,7 @@ get_entry_caller_id(Call, Entry, CIDKey, Destination) ->
 get_key_and_dest(_Call, _Entry, {CIDKey, _}=KeyDest) ->
     case not kz_term:is_ne_binary(CIDKey) of
         'true' -> KeyDest;
-        'false' ->
-            {'error', <<"key_dest_failed">>}
+        'false' -> {'error', <<"key_dest_failed">>}
     end;
 get_key_and_dest(Call, Entry, 'undefined') ->
     LengthDigits = kz_json:get_integer_value(<<"capture_group_length">>, Entry, 2),
@@ -433,12 +431,12 @@ get_cid_length_from_list_document(Call, ListId) ->
         {'ok', ListJObj} ->
             case kz_json:get_integer_value(<<"length">>, ListJObj, 2) of
                 I when is_integer(I), I > 0 -> I;
-                _ ->
-                    lager:info("cid length from ~s is least than '1', using default '2'", [ListId]),
+                _Length ->
+                    lager:info("cid length from ~s is less than '1', using default '2'", [ListId]),
                     2
             end;
         {'error', _Reason} ->
-            lager:info("failed to load list document ~s using default length '2': ~p", [ListId, _Reason]),
+            lager:info("failed to load list document ~s; using default length '2': ~p", [ListId, _Reason]),
             2
     end.
 

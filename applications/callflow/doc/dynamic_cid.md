@@ -1,6 +1,6 @@
-### Callflow Dynamic CID
+# Callflow Dynamic CID
 
-#### About Dynamic CID
+## About Dynamic CID
 
 The Dynamic CID callflow enables you to dynamically change the Caller ID (CID). There are different methods for doing that:
 
@@ -9,7 +9,7 @@ The Dynamic CID callflow enables you to dynamically change the Caller ID (CID). 
 * **lists:** almost the same as list mode but you can use account's lists feature to configure entries
 * **static** set the caller id to a value in a `caller_id.name` and `caller_id.number` property in the data object. This works with and without a capture group
 
-##### Callflow fields
+## Callflow fields
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -25,19 +25,18 @@ Key | Description | Type | Default | Required
 `min_digits` | minimum digits length to collect for `manual` action | `integer` | 10 | `false`
 `whitelist_regex` | the regex that will run over collected digits for number verification | `string` | `"\\d+"` | `false`
 
-#### Manual action mode
+## Manual action mode
 
-In this method user is prompted to dial a new Caller ID number. The length of the dialed new Caller ID is checked to be
-in the default(or configured) boundary and it is also matched against the default(or configured) regex, if these checks are passed the call will proceed.
+In this method user is prompted to dial a new Caller ID number. The length of the dialed new Caller ID is checked to be in the default(or configured) boundary and it is also matched against the default(or configured) regex, if these checks are passed the call will proceed.
 
 > **Notes** You can only set the Caller ID number with this method.
 
-###### Example Scenario
+### Example Scenario
 
 User dial `*212223332222` (assuming you set the feature code to `*2` by setting callflow patterns to `"^\\*2([0-9]{2,})$"`) and
 prompted to dial the new Caller ID number, then the call will send onto real destination which in this case is `12223332222`.
 
-##### Manual callflow settings
+### Manual callflow settings
 
 You may want to customize `manual` behavior in `system_configs/callflow.dynamic_cid`.
 
@@ -50,7 +49,7 @@ Key | Description | Type | Default | Required
 `min_digits` | Minimum length of the new caller id number | `integer` | 10 | `false`
 `whitelist_regex` | The regex to use for number to be matched against | `string` | `"\\d+"` | `false`
 
-#### List action mode
+## List action mode
 
 In this method you have flexibility to define multiple Caller ID, each assign to a specific number using account's list. You can set both the Caller ID name and
 number in a document in database. This callflow's module use that information to set new Caller ID. You can create your list and list's entries using [List Crossbar API](../../crossbar/doc/lists.md).
@@ -61,7 +60,7 @@ This behavior is exactly same as `lists` action, the only difference is that you
 
 > **Notes** You can set  both the Caller ID number and name with this method.
 
-##### List Entry document fields
+### List Entry document fields
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -70,7 +69,7 @@ Key | Description | Type | Default | Required
 `number` | Caller ID number | `string` | | `true`
 `name` | Caller ID name | `string` | | `true`
 
-###### Example 1: Two digits as CID selector
+### Example 1: Two digits as CID selector
 
 Consider that the user wants to call number `5149072508` using the caller id `16139999999`. We assume that callflow patterns set as follow:
 
@@ -98,7 +97,7 @@ These are the steps will happen if a user dial `*2015149072508` in handset:
 3. Selected CID will be set for the call
 3. `5149072508` becomes `+15149072508` and gets dialed as such
 
-###### Example 1: One digits as CID selector
+### Example 2: One digits as CID selector
 
 Another example which uses number with length of 1 to select the Caller ID:
 
@@ -113,15 +112,15 @@ Another example which uses number with length of 1 to select the Caller ID:
 
 Dialing number `*205149072508` will cause number "5149072508" gets dialed with CID number set to "16139999999" CID name to "Awesome Co.".
 
-#### Lists action mode
+## Lists action mode
 
 Almost the same as [list mode](#list-action-mode) using account's lists feature to configure entries.
 
-#### Static action mode
+## Static action mode
 
 In this method the new Caller ID number and name would be set to `caller_id` value sets in the callflow Data object.
 
-###### Example Callflow Data
+### Example Callflow Data
 
 ```json
 {
