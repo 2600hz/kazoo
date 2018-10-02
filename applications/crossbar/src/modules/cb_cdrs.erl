@@ -488,7 +488,7 @@ col_dialed_number(JObj, _Timestamp, _Context) -> dialed_number(JObj).
 col_calling_from(JObj, _Timestamp, _Context) -> calling_from(JObj).
 col_pretty_print(_JObj, Timestamp, Context) ->
     UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UTC_OFFSET),
-    kz_time:pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
+    pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
 col_unix_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
 col_rfc1036(_JObj, Timestamp, _Context) -> kz_time:rfc1036(Timestamp).
 col_iso8601(_JObj, Timestamp, _Context) -> kz_date:to_iso8601_extended(Timestamp).
@@ -503,6 +503,14 @@ col_call_priority(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<
 
 col_reseller_cost(JObj, _Timestamp, _Context) -> kz_term:to_binary(reseller_cost(JObj)).
 col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
+
+-spec pretty_print_datetime(kz_time:datetime() | kz_time:gregorian_second()) -> kz_term:ne_binary().
+pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
+    pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
+pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w"
+                                  ,[Y, Mo, D, H, Mi, S]
+                                  )).
 
 -spec handle_utc_time_offset(kz_time:gregorian_seconds(), kz_term:api_integer()) -> kz_time:gregorian_seconds().
 handle_utc_time_offset(Timestamp, 'undefined') -> Timestamp;
