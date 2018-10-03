@@ -1488,7 +1488,7 @@ set_current_doc(PN=#knm_phone_number{}, JObj) ->
 modified(#knm_phone_number{modified = 'undefined'}) -> kz_time:now_s();
 modified(#knm_phone_number{modified = Modified}) -> Modified.
 
--spec set_modified(knm_phone_number(), kz_time:gregorian_seconds()) -> knm_phone_number().
+-spec set_modified(knm_phone_number(), kz_time:gregorian_seconds() | 'undefined') -> knm_phone_number().
 set_modified(PN=#knm_phone_number{modified = 'undefined'}, 'undefined') ->
     ?DIRTY(PN#knm_phone_number{modified = kz_time:now_s()});
 set_modified(PN=#knm_phone_number{modified = V}, V) -> PN;
@@ -1767,7 +1767,7 @@ save_to(SplitBy, ErrorF, T0) ->
                 knm_numbers:add_oks(PNs, T);
             FF (Db, PNs, T) ->
                 ?LOG_DEBUG("saving to ~s", [Db]),
-                Docs = [to_json(PN) || PN <- PNs],
+                Docs = [to_json(set_modified(PN, kz_time:now_s())) || PN <- PNs],
                 IsNumberDb = 'numbers' =:= kz_datamgr:db_classification(Db),
                 case save_docs(Db, Docs) of
                     {'ok', JObjs} ->
