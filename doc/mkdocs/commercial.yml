@@ -11,6 +11,7 @@ pages:
   - 'Quick Start':
     - 'applications/crossbar/doc/basics.md'
     - 'applications/crossbar/doc/api_authentication.md'
+    - 'applications/crossbar/doc/sdks.md'
   - 'Common Tasks':
 #BUILD Intro to accounts (what they are for, when to use them, encourage the user to do this last)
     - 'Account Management' : 'applications/crossbar/doc/accounts.md'
