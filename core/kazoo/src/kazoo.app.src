@@ -1,6 +1,5 @@
 {application,kazoo,
-             [{applications,[inet_cidr,inets,kazoo_stdlib,kernel,lager,
-                             observer,recon,stdlib]},
+             [{applications,[inets,kazoo_stdlib,kernel,lager,recon,stdlib]},
               {description,"Kazoo Helpers"},
               {vsn,"4.0.0"},
               {modules,[]},

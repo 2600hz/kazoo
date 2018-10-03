@@ -1,134 +1,81 @@
-# This configuration was automatically generated from a CircleCI 1.0 config.
-# It should include any build commands you had along with commands that CircleCI
-# inferred from your project structure. We strongly recommend you read all the
-# comments in this file to understand the structure of CircleCI 2.0, as the idiom
-# for configuration has changed substantially in 2.0 to allow arbitrary jobs rather
-# than the prescribed lifecycle of 1.0. In general, we recommend using this generated
-# configuration as a reference rather than using it in production, though in most
-# cases it should duplicate the execution of your original 1.0 config.
 version: 2
 jobs:
   build:
     shell: /bin/bash --login
-    # CircleCI 2.0 does not support environment variables that refer to each other the same way as 1.0 did.
-    # If any of these refer to each other, rewrite them so that they don't or see https://circleci.com/docs/2.0/env-vars/#interpolating-environment-variables-to-set-other-environment-variables .
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       TZ: "/usr/share/zoneinfo/UTC"
-    # In CircleCI 1.0 we used a pre-configured image with a large number of languages and other packages.
-    # In CircleCI 2.0 you can now specify your own image, or use one of our pre-configured images.
-    # The following configuration line tells CircleCI to use the specified docker image as the runtime environment for you job.
-    # We have selected a pre-built image that mirrors the build environment we use on
-    # the 1.0 platform, but we recommend you choose an image more tailored to the needs
-    # of each job. For more information on choosing an image (or alternatively using a
-    # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
-    # To see the list of pre-built images that CircleCI provides for most common languages see
-    # https://circleci.com/docs/2.0/circleci-images/
     docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
       command: /sbin/init
     - image: couchdb:2.1.1
     - image: rabbitmq:3.7
     - image: circleci/python:3.6.1
-
     steps:
     - run: |
         APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
         APP=${APP_DASH/-/_}
         echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
     - run: echo -e "export KAZOO_ROOT=${HOME}/${CIRCLE_PROJECT_USERNAME}/kazoo\nexport APP_PATH=applications/${KAZOO_APP}\n\n" >> $BASH_ENV
-          # Restore the dependency cache
     - restore_cache:
         keys:
-        # This branch if available
         - v1-dep-{{ .Branch }}-
-        # Default branch if not
         - v1-dep-master-
-        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1-dep-
     - checkout
     - run: |
         if [ ! -d ${KAZOO_ROOT} ]; then
           git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
         fi
+    - run: mkdir -p $CIRCLE_ARTIFACTS
     - run: ${KAZOO_ROOT}/scripts/circleci.bash
-    - run: echo -e "export OTP_VERSION=$(<${HOME}/${CIRCLE_PROJECT_USERNAME}/kazoo/make/erlang_version)\nexport PATH=${HOME}/.kerl/${OTP_VERSION:-19.3}/bin:${PATH}\n" >> $BASH_ENV
+    - run:
+        command: echo -e "export OTP_VERSION=$(<~/2600hz/kazoo/make/erlang_version)\nexport PATH=${HOME}/.kerl/\$OTP_VERSION/bin:${PATH}\n" >> $BASH_ENV
     - run:
         command: bash ${KAZOO_ROOT}/scripts/circleci-build-erlang.sh
         no_output_timeout: 1800s
     - run: which ag >/dev/null 2>&1 || sudo apt-get update; sudo apt-get install silversearcher-ag
     - run: sudo pip install --upgrade pip
     - run: sudo pip install PyYAML mkdocs pyembed-markdown jsonschema
-
-    # Machine Setup
-    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-    # The following `checkout` command checks out your code to your working directory. In 1.0 we did this implicitly. In 2.0 you can choose where in the course of a job your code should be checked out.
-    # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
-    # In many cases you can simplify this from what is generated here.
-    # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
-    - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-    # This is based on your 1.0 configuration file or project settings
-    # This is based on your 1.0 configuration file or project settings
-    - run: echo -e "\n. ~/.kerl/${OTP_VERSION:-19.3}/activate\n" >> $BASH_ENV
-    # Save dependency cache
     - save_cache:
         key: v1-dep-{{ .Branch }}-{{ epoch }}
         paths:
-        # These cache paths were specified in the 1.0 config
         - ~/.kerl
         - ~/.local/
-        - ~/2600hz/kazoo
-    - run: echo -e "\nexport CHANGED=${KAZOO_ROOT}/applications/${KAZOO_APP}/src/*.erl" >> $BASH_ENV
+    - run: echo -e "\n. ~/.kerl/${OTP_VERSION:-19.3}/activate\n" >> $BASH_ENV
+    - run: echo -e "\nexport CHANGED=\"$(find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl" | xargs echo)\"" >> $BASH_ENV
     - run: echo $CHANGED
-    - run: pwd
-    - run: env
     - run: ${KAZOO_ROOT}/scripts/state-of-docs.sh || true
-    - run: ${KAZOO_ROOT}/scripts/code_checks.bash ${CHANGED}
+    - run: ${KAZOO_ROOT}/scripts/code_checks.bash $CHANGED
     - run: TO_FMT="${CHANGED}" make -C ${KAZOO_ROOT} fmt
     - run: JOBS="2" make -C ${KAZOO_ROOT}
     - run: make -C ${KAZOO_ROOT} code_checks
     - run: make -C ${KAZOO_ROOT} app_applications
-    - run: ${KAZOO_ROOT}/scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
+    - run: ${KAZOO_ROOT}/scripts/validate-js.sh $(find -C ${KAZOO_ROOT}/{core,applications}/*/priv/**/* -name *.json)
     - run: make -C ${KAZOO_ROOT} apis
     - run: make -C ${KAZOO_ROOT} docs || true
     - run: make -C ${KAZOO_ROOT} validate-schemas
     - run: ${KAZOO_ROOT}/scripts/state-of-edoc.escript
     - run: make -C ${KAZOO_ROOT} xref
     - run: make -C ${KAZOO_ROOT} sup_completion
-    - run: |
-        if [[ ! -z "${CHANGED}" ]]; then
-          TO_DIALYZE="${CHANGED}" make -C ${KAZOO_ROOT} dialyze
-        fi
+    - restore_cache:
+        keys:
+          - plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+    - run: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
+    - save_cache:
+        key: plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+        paths:
+          - ${KAZOO_ROOT}/.kazoo.plt
     - run: make -C ${KAZOO_ROOT} elvis
     - run: make -C ${KAZOO_ROOT} build-ci-release
     - run: ${KAZOO_ROOT}/scripts/check-unstaged.bash
     - run: KAZOO_CONFIG=${KAZOO_ROOT}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make -C ${KAZOO_ROOT} release
-    - run: |
-        if [[ $(grep -c -v -F 'exit with reason shutdown' ${KAZOO_ROOT}/_rel/kazoo/log/error.log) -gt 0 ]]; then
-          cat ${KAZOO_ROOT}/_rel/kazoo/log/error.log
-          exit 1
-        fi
-    # This is based on your 1.0 configuration file or project settings
-    - run:
-        working_directory: $KAZOO_ROOT
-        command: mkdir $CIRCLE_ARTIFACTS/logs
-    - run:
-        working_directory: $KAZOO_ROOT
-        command: mv ${KAZOO_ROOT}/_rel/kazoo/log/* $CIRCLE_ARTIFACTS/logs/
-    - run:
-        working_directory: $KAZOO_ROOT
-        command: cp ${KAZOO_ROOT}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
-    - run:
-        working_directory: $KAZOO_ROOT
-        command: find ${KAZOO_ROOT}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
-    # Teardown
-    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-    # Save test results
-    - store_test_results:
-        path: /tmp/circleci-test-results
-    # Save artifacts
+    - run: cp ${KAZOO_ROOT}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
+    - run: find ${KAZOO_ROOT}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
     - store_artifacts:
         path: /tmp/circleci-artifacts
-    - store_artifacts:
-        path: /tmp/circleci-test-results
+    - run: |
+        if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+          cat ${CIRCLE_ARTIFACTS}/log/error.log
+          exit 1
+        fi
