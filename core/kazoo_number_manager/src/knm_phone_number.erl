@@ -1767,7 +1767,7 @@ save_to(SplitBy, ErrorF, T0) ->
                 knm_numbers:add_oks(PNs, T);
             FF (Db, PNs, T) ->
                 ?LOG_DEBUG("saving to ~s", [Db]),
-                Docs = [to_json(set_modified(PN, kz_time:now_s())) || PN <- PNs],
+                Docs = [to_json(PN) || PN <- PNs],
                 IsNumberDb = 'numbers' =:= kz_datamgr:db_classification(Db),
                 case save_docs(Db, Docs) of
                     {'ok', JObjs} ->
