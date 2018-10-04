@@ -28,6 +28,7 @@
 -define(DEFAULT_POOL_SIZE, 150).
 -define(DEFAULT_POOL_OVERFLOW, 100).
 -define(DEFAULT_POOL_THRESHOLD, 5).
+-define(DEFAULT_POOL_SERVER_CONFIRMS, true).
 
 %%% Move the section to kazoo_apps or ecallmgr for per-vm control
 
@@ -41,6 +42,7 @@
                   ]).
 
 -define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
+-define(POOL_SERVER_CONFIRMS, kz_config:get_boolean(?CONFIG_SECTION, 'pool_server_confirms', ?DEFAULT_POOL_SERVER_CONFIRMS)).
 
 -define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges, ServerAck),
         [[{'worker_module', 'kz_amqp_worker'}
@@ -169,6 +171,7 @@ init([]) ->
             [] -> ?POOL_THRESHOLD;
             [Threshold|_] -> Threshold
         end,
+    PoolServerConfirms = kz_config:get_boolean(?CONFIG_SECTION, 'pool_server_confirms', ?DEFAULT_POOL_SERVER_CONFIRMS),
 
     PoolArgs = [{'worker_module', 'kz_amqp_worker'}
                ,{'name', {'local', ?POOL_NAME}}
@@ -176,6 +179,7 @@ init([]) ->
                ,{'max_overflow', PoolOverflow}
                ,{'strategy', 'fifo'}
                ,{'neg_resp_threshold', PoolThreshold}
+               ,{'amqp_server_confirms', PoolServerConfirms}
                ],
 
     Children = ?CHILDREN ++ [?POOL_NAME_ARGS(?POOL_NAME, [PoolArgs])],
