@@ -8,6 +8,10 @@
 -export([extra_validator/3
         ]).
 
+-ifdef(TEST).
+-export([find_invalid_regexps/1]).
+-endif.
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(INVALID_STORAGE_ATTACHMENT_REFERENCE(R), <<"invalid reference '", R/binary, "' to attachments">>).
@@ -98,6 +102,8 @@ extra_validation(<<"storage.attachment.onedrive.oauth_doc_id">>, Value, State) -
     validate_attachment_oauth_doc_id(Value, State);
 extra_validation(<<"storage.attachment.dropbox.oauth_doc_id">>, Value, State) ->
     validate_attachment_oauth_doc_id(Value, State);
+extra_validation(<<"faxbox.smtp_permission_list">>, Values, State) ->
+    validate_smtp_permission_list(Values, State);
 extra_validation(_Key, _Value, State) ->
     lager:debug("extra validation of ~s not handled for value ~p", [_Key, _Value]),
     State.
@@ -157,3 +163,29 @@ check_param_stability_level(_SystemSLInt, _ParamSLInt) ->
 stability_level_to_int(<<"stable">>) -> 3;
 stability_level_to_int(<<"beta">>) -> 2;
 stability_level_to_int(<<"alpha">>) -> 1.
+
+-spec validate_smtp_permission_list([binary()], jesse_state:state()) -> jesse_state:state().
+validate_smtp_permission_list(Regexps, State) ->
+    case find_invalid_regexps(Regexps) of
+        [] ->
+            State;
+        FailingRegexps ->
+            Failed = binary:list_to_bin(lists:join(", ", FailingRegexps)),
+            ErrorMsg = <<"Invalid smtp_permission regexp(s): [", Failed/binary,"]">>,
+            jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
+    end.
+
+-spec find_invalid_regexps([binary()]) -> [binary()].
+find_invalid_regexps(Regexps) ->
+    lists:filter(fun is_not_valid_regexp/1, Regexps).
+
+-spec is_not_valid_regexp(binary()) -> boolean().
+is_not_valid_regexp(Regexp) ->
+    case re:compile(Regexp) of
+        {error, _Reason} ->
+            ErrMsg = <<"Invalid smtp_permission regex: '", Regexp/binary,"'">>,
+            lager:debug("~s. Reason: ~p", [ErrMsg, _Reason]),
+            true;
+        _ ->
+            false
+    end.

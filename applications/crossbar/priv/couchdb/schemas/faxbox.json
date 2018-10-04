@@ -225,6 +225,7 @@
             "items": {
                 "type": "string"
             },
+            "kazoo-validation": true,
             "support_level": "supported",
             "type": "array"
         }
