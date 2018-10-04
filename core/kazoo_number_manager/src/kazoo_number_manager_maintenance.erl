@@ -678,8 +678,11 @@ fix_docs({ok, NumDoc}, Doc, _AccountDb, _NumberDb, DID) ->
             ?SUP_LOG_DEBUG("syncing ~s", [DID]),
             %% Replace the document within AccountDb with the doc from NumberDb.
             case kz_datamgr:save_doc(AccountDb, NewNumDoc) of
-                {ok, _} -> ok;
-                {error, _R} -> ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [DID, _R])
+                {ok, _} ->
+                    _ = kz_services:reconcile(AccountDb),
+                    ok;
+                {error, _R} ->
+                    ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [DID, _R])
             end
     end.
 
