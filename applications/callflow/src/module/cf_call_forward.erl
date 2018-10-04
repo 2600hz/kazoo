@@ -58,7 +58,7 @@ handle(Data, Call) ->
             catch({'ok', _} = kapps_call_command:b_prompt(<<"cf-not_available">>, Call)),
             cf_exe:stop(Call);
         CF ->
-            kapps_call_command:answer(Call),
+            kapps_call_command:b_answer(Call),
             CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
 
             CF1 = case kz_json:get_ne_binary_value(<<"action">>, Data) of
@@ -87,6 +87,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
                 ,interdigit_timeout=Interdigit
                 }=CF, CaptureGroup, Call) ->
     lager:info("playing call forwarding menu"),
+
     Prompt = case Enabled of
                  'true' ->
                      kapps_call:get_prompt(Call, <<"cf-enabled_menu">>);
