@@ -1458,7 +1458,7 @@ doc_from_public_fields(JObj) ->
 modified(#knm_phone_number{modified = 'undefined'}) -> kz_time:now_s();
 modified(#knm_phone_number{modified = Modified}) -> Modified.
 
--spec set_modified(knm_phone_number(), kz_time:gregorian_seconds()) -> knm_phone_number().
+-spec set_modified(knm_phone_number(), kz_time:gregorian_seconds() | 'undefined') -> knm_phone_number().
 set_modified(PN=#knm_phone_number{modified = 'undefined'}, 'undefined') ->
     ?DIRTY(PN#knm_phone_number{modified = kz_time:now_s()});
 set_modified(PN=#knm_phone_number{modified = V}, V) -> PN;
