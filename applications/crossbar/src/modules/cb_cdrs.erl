@@ -77,6 +77,7 @@
         ,{<<"unix_timestamp">>, fun col_unix_timestamp/3}
         ,{<<"rfc_1036">>, fun col_rfc1036/3}
         ,{<<"iso_8601">>, fun col_iso8601/3}
+        ,{<<"iso_8601_combined">>, fun col_iso8601_combined/3}
         ,{<<"call_type">>, fun col_account_call_type/3}
         ,{<<"rate">>, fun col_rate/3}
         ,{<<"rate_name">>, fun col_rate_name/3}
@@ -492,6 +493,7 @@ col_pretty_print(_JObj, Timestamp, Context) ->
 col_unix_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
 col_rfc1036(_JObj, Timestamp, _Context) -> kz_time:rfc1036(Timestamp).
 col_iso8601(_JObj, Timestamp, _Context) -> kz_date:to_iso8601_extended(Timestamp).
+col_iso8601_combined(_JObj, Timestamp, _Context) -> kz_time:iso8601(Timestamp).
 col_account_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
 col_rate(JObj, _Timestamp, _Context) -> kz_term:to_binary(kz_currency:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
 col_rate_name(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
