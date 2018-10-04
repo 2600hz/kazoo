@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "regexp",
+    "description": "test kazoo-regexp",
+    "properties": {
+        "item": {
+            "description": "accepts regular expression",
+            "kazoo-regexp": true,
+            "type": "string"
+        },
+        "list": {
+            "description": "accepts regular expressions",
+            "items": {
+                "kazoo-regexp": true,
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}
