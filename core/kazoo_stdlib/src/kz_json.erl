@@ -77,11 +77,9 @@
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
--ifdef(TEST).
 -export([fixture/1
         ,fixture/2
         ]).
--endif.
 
 -export([normalize_jobj/1
         ,normalize_jobj/3
@@ -1289,7 +1287,6 @@ load_fixture_from_file(App, Dir, File) ->
             {'error', Reason}
     end.
 
--ifdef(TEST).
 -spec fixture(file:filename_all()) -> {ok, object()} | {error, not_found}.
 fixture(Path) ->
     case file:read_file(Path) of
@@ -1300,7 +1297,6 @@ fixture(Path) ->
 -spec fixture(atom(), file:filename_all()) -> {ok, object()} | {error, not_found}.
 fixture(App, Path) when is_atom(App) ->
     fixture(filename:join(code:lib_dir(App, test), Path)).
--endif.
 
 %%------------------------------------------------------------------------------
 %% @doc Normalize a JSON object for storage as a Document.

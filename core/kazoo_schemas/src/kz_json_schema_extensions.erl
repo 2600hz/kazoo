@@ -17,8 +17,27 @@
 extra_validator(Value, State, Options) ->
     Routines = [fun stability_level/3
                ,fun extended_validation/3
+               ,fun extended_regexp/3
                ],
     lists:foldl(fun(Fun, AccState) -> Fun(Value, AccState, Options) end, State, Routines).
+
+-spec extended_regexp(jesse:json_term(), jesse_state:state(), kz_json_schema:extra_validator_options()) -> jesse_state:state().
+extended_regexp(Value, State, _Options) ->
+    Schema = jesse_state:get_current_schema(State),
+    case kz_json:is_true(<<"kazoo-regexp">>, Schema, 'false') of
+        'true' -> regexp_validation(Value, State);
+        'false' -> State
+    end.
+
+-spec regexp_validation(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
+regexp_validation(Value, State) ->
+    case re:compile(Value) of
+        {error, _Reason} ->
+            ErrMsg = <<"invalid regular expression: '", Value/binary,"'">>,
+            jesse_error:handle_data_invalid('external_error', ErrMsg, State);
+        _ ->
+            State
+    end.
 
 -spec extended_validation(jesse:json_term(), jesse_state:state(), kz_json_schema:extra_validator_options()) -> jesse_state:state().
 extended_validation(Value, State, _Options) ->
