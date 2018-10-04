@@ -174,7 +174,7 @@
             "description": "The realm of the account, ie: 'account1.2600hz.com'",
             "maxLength": 253,
             "minLength": 4,
-            "pattern": "^[.\\w_-]+$",
+            "pattern": "^[.\\w-]+$",
             "support_level": "supported",
             "type": "string"
         },
