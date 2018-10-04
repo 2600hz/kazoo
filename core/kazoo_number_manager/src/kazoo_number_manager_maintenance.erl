@@ -460,15 +460,15 @@ log_saved_failed(AccountDb, Db, Props) ->
 
 -spec fix_number(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
-    UsedBy = app_using(knm_converters:normalize(Num), AccountDb),
-    Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
-               ,fun knm_phone_number:remove_denied_features/1
-               ],
     Options = [{auth_by, AuthBy}
               ,{dry_run, 'false'}
               ,{batch_run, 'false'}
               ],
-    knm_number:update(Num, Routines, Options).
+    NumberDb = knm_converters:to_db(knm_converters:normalize(Num)),
+    case fix_docs(AccountDb, NumberDb, Num) of
+        'ok' -> knm_number:get(Num, Options);
+        Error -> Error
+    end.
 
 -spec migrate() -> 'ok'.
 migrate() ->
@@ -644,52 +644,45 @@ fix_docs(AccountDb, NumberDb, DID) ->
 
 fix_docs({error, timeout}, _AccountDb, _, _DID) ->
     ?SUP_LOG_DEBUG("getting ~s from ~s timed out, skipping", [_DID, _AccountDb]);
-fix_docs({error, _R}, AccountDb, _, DID) ->
+fix_docs({error, _R}, AccountDb, NumberDb, DID) ->
     ?SUP_LOG_DEBUG("failed to get ~s from ~s (~p), creating it", [DID, AccountDb, _R]),
-    Date = kz_time:iso8601(kz_time:now_s()),
-    Updates = [{fun knm_phone_number:set_used_by/2, app_using(DID, AccountDb)}
-              ,{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"fixed_by">>, <<"maintenance at ", Date/binary>>}])}
-              ,fun knm_phone_number:remove_denied_features/1
-              ],
-    %% knm_number:update/2,3 ensures creation of doc in AccountDb
-    case knm_number:update(DID, Updates, options()) of
-        {ok, _} -> ok;
-        {error, _E} -> ?SUP_LOG_DEBUG("creating ~s failed: ~p", [DID, _E])
-    end;
+    %% The document will be created in the next step
+    Res = kz_datamgr:open_doc(NumberDb, DID),
+    fix_docs(Res, kz_json:new(), AccountDb, NumberDb, DID);
 fix_docs({ok, Doc}, AccountDb, NumberDb, DID) ->
     Res = kz_datamgr:open_doc(NumberDb, DID),
     fix_docs(Res, Doc, AccountDb, NumberDb, DID).
 
 fix_docs({error, timeout}, _, _, _NumberDb, _DID) ->
     ?SUP_LOG_DEBUG("getting ~s from ~s timed out, skipping", [_DID, _NumberDb]);
-fix_docs({error, _R}, _, _, _NumberDb, _DID) ->
-    ?SUP_LOG_DEBUG("~s disappeared from ~s (~p), skipping", [_DID, _NumberDb]);
-fix_docs({ok, NumDoc}, Doc, _AccountDb, NumberDb, DID) ->
+fix_docs({error, _R}, Doc, AccountDb, _NumberDb, _DID) ->
+    ?SUP_LOG_DEBUG("~s disappeared from ~s (~p), deleting from AccountDb", [_DID, _NumberDb]),
+    case kz_datamgr:del_doc(AccountDb, Doc) of
+        {ok, _} -> ok;
+        {error, _R} -> ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [_DID, _R])
+    end;
+fix_docs({ok, NumDoc}, Doc, _AccountDb, _NumberDb, DID) ->
     AccountDb = account_db_from_number_doc(NumDoc),
     ShouldEnsureDocIsInRightAccountDb = _AccountDb =/= AccountDb,
     ShouldEnsureDocIsInRightAccountDb
         andalso ?SUP_LOG_DEBUG("[~s] ~s should be in ~s instead", [_AccountDb, DID, AccountDb]),
-    UsedBy = app_using(DID, AccountDb),
+    NewNumDoc = case kz_doc:revision(Doc) of
+                    'undefined' -> kz_json:delete_keys([<<"_rev">>, <<"rev">>], NumDoc);
+                    Rev -> kz_doc:set_revision(NumDoc, Rev)
+                end,
     case not ShouldEnsureDocIsInRightAccountDb
-        andalso UsedBy =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
-        andalso have_same_pvt_values(NumDoc, Doc)
+        andalso NewNumDoc =:= Doc
     of
         'true' -> ?SUP_LOG_DEBUG("~s already synced", [DID]);
         'false' ->
-            JObj = kz_json:merge_jobjs(kz_doc:public_fields(NumDoc)
-                                      ,kz_doc:public_fields(Doc)
-                                      ),
             ?SUP_LOG_DEBUG("syncing ~s", [DID]),
-            Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
-                       ,{fun knm_phone_number:reset_doc/2, JObj}
-                       ,fun knm_phone_number:remove_denied_features/1
-                       ],
-            try knm_number:update(DID, Routines, options()) of
-                {ok, _} -> ok;
-                {error, _R} -> ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [DID, _R])
-            catch error:function_clause ->
-                    kz_util:log_stacktrace(),
-                    ?SUP_LOG_DEBUG("failed to sync ~s", [DID])
+            %% Replace the document within AccountDb with the doc from NumberDb.
+            case kz_datamgr:save_doc(AccountDb, NewNumDoc) of
+                {ok, _} ->
+                    _ = kz_services:reconcile(AccountDb),
+                    ok;
+                {error, _R} ->
+                    ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [DID, _R])
             end
     end.
 
@@ -749,25 +742,6 @@ get_DIDs_assigned_to(NumberDb, AssignedTo) ->
             lager:debug("failed to get ~s DIDs from ~s: ~p", [AssignedTo, NumberDb, _R]),
             gb_sets:new()
     end.
-
--spec have_same_pvt_values(kz_json:object(), kz_json:object()) -> boolean().
-have_same_pvt_values(NumDoc0, Doc0) ->
-    NumDoc = cleanse(kz_doc:private_fields(NumDoc0)),
-    Doc = cleanse(kz_doc:private_fields(Doc0)),
-    kz_json:are_equal(NumDoc, Doc).
-
--spec cleanse(kz_json:object()) -> kz_json:object().
-cleanse(JObj) ->
-    kz_json:delete_keys([<<"id">>, <<"_id">>
-                        ,<<"_rev">>
-                        ,?PVT_AUTH_BY
-                        ,?PVT_STATE_LEGACY
-                        ,?PVT_MODIFIED
-                        ,?PVT_CREATED
-                        ]
-                       ,JObj
-                       ).
-
 
 -spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 -ifdef(TEST).

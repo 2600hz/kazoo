@@ -73,13 +73,13 @@
 %% timestamp as key.
 
 -type user_mapper_fun() :: 'undefined' |
-                           fun((kz_json:objects()) -> kz_json:objects()) |
-                           fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
-                           fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+                           fun((kz_json:objects()) -> kz_json:objects() | {'error', any()}) |
+                           fun((kz_json:object(), kz_json:objects()) -> kz_json:objects() | {'error', any()}) |
+                           fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects() | {'error', any()}).
 %% A function to filter/map view result. For use in Crossbar modules to call {@link crossbar_view} functions.
 -type mapper_fun() :: 'undefined' |
-                      fun((kz_json:objects()) -> kz_json:objects()) |
-                      fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+                      fun((kz_json:objects()) -> kz_json:objects() | {'error', any()}) |
+                      fun((kz_json:object(), kz_json:objects()) -> kz_json:objects() | {'error', any()}).
 %% A function to filter/map view result. Internal to {@link crossbar_view}.
 
 -type options() :: kazoo_data:view_options() |
@@ -758,7 +758,7 @@ get_results(#{databases := [Db|RestDbs]=Dbs
             try handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
             catch
                 _E:_T ->
-                    lager:debug("exception occurred during querying db ~s for view ~s", [Db, View]),
+                    lager:debug("exception occurred during querying db ~s for view ~s : ~p:~p", [Db, View, _E, _T]),
                     ST = erlang:get_stacktrace(),
                     kz_util:log_stacktrace(ST),
                     LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
@@ -771,35 +771,38 @@ get_results(#{databases := [Db|RestDbs]=Dbs
 %% we're done or shall we continue.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), kz_term:api_pos_integer()) ->
-                                 load_params().
+-spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), kz_term:api_pos_integer()) -> load_params().
 handle_query_result(#{last_key := LastKey
                      ,mapper := Mapper
-                     ,is_chunked := IsChunked
                      ,context := Context
-                     }=LoadMap, [Db|RestDbs]=Dbs, Results, Limit) ->
+                     }=LoadMap, Dbs, Results, Limit) ->
     ResultsLength = erlang:length(Results),
 
     {NewLastKey, JObjs} = last_key(LastKey, Results, Limit, ResultsLength),
 
-    FilteredJObjs = apply_filter(Mapper, JObjs),
+    case apply_filter(Mapper, JObjs) of
+        {'error', Reason} ->
+            LoadMap#{context => cb_context:add_system_error('datastore_fault', kz_term:to_binary(Reason), Context)};
+        FilteredJObjs ->
+            FilteredLength = length(FilteredJObjs),
+            lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, FilteredLength, NewLastKey]),
+            handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey)
+    end.
 
-    Filtered = length(FilteredJObjs),
-
-    lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, Filtered, NewLastKey]),
-
-    case not IsChunked
-        andalso check_page_size_and_length(LoadMap, Filtered, FilteredJObjs, NewLastKey)
-    of
-        'false' ->
-            LoadMap#{last_key => NewLastKey
-                    ,context => cb_context:setters(Context
-                                                  ,[{fun cb_context:set_resp_data/2, FilteredJObjs}
-                                                   ,{fun cb_context:set_account_db/2, Db}
-                                                   ]
-                                                  )
-                    ,previous_chunk_length => Filtered
-                    };
+-spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), non_neg_integer(), last_key()) -> load_params().
+handle_query_result(#{is_chunked := 'true'
+                     ,context := Context
+                     }=LoadMap, [Db|_], FilteredJObjs, FilteredLength, NewLastKey) ->
+    Setters = [{fun cb_context:set_resp_data/2, FilteredJObjs}
+              ,{fun cb_context:set_account_db/2, Db}
+              ],
+    Context1 = cb_context:setters(Context, Setters),
+    LoadMap#{last_key => NewLastKey
+            ,context => Context1
+            ,previous_chunk_length => FilteredLength
+            };
+handle_query_result(LoadMap, [_|RestDbs], FilteredJObjs, FilteredLength, NewLastKey) ->
+    case check_page_size_and_length(LoadMap, FilteredLength, FilteredJObjs, NewLastKey) of
         {'exhausted', LoadMap2} -> LoadMap2;
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})
     end.
@@ -864,26 +867,52 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
     1 + PageSize - TotalQueried.
 
 %%------------------------------------------------------------------------------
-%% @doc Apply filter function if provided while keep maintaining the result
-%% order.
-%% Filter function can be arity 1 (operating on list of JObjs) and
-%% arity 2 (classical Erlang foldl function, e.g. (JObj, Acc)).
+%% @doc Apply filter/mapper function if provided while keep maintaining
+%% the result order.
 %%
-%% For arity 1, the passed JObjs is in the reverse order, reverse
-%% you're response at the end.
+%% Mapper function can be arity 1 (operating on a list of JObjs) and
+%% arity 2 of `(JObj, Acc)'.
+%%
+%% Take note that because of the call to {@link last_key/4} the result set is
+%% in reverse order when passed to the mapper/filter function
+%%
+%% If you use mapper function of arity 1, you have to reverse your result before
+%% returning, for example you can use {@link lists:foldl/3} to do the
+%% folding or {@link lists:reverse/1} when returning the end result.
+%%
+%% If mapper is an arity 2 function, the output should be in the same order
+%% as input, in other words, whatever you're dong, DO NOT change the order!
+%%
+%% If something goes wrong and you want to stop the request return an error tuple
+%% with a reason (preferred as binary) as a second element.
 %% @end
 %%------------------------------------------------------------------------------
--spec apply_filter(mapper_fun(), kz_json:objects()) -> kz_json:objects().
+-spec apply_filter(mapper_fun(), kz_json:objects()) ->
+                          kz_json:objects() |
+                          {'error', any()}.
+apply_filter(_Mapper, []) ->
+    [];
 apply_filter('undefined', JObjs) ->
     lists:reverse(JObjs);
 apply_filter(Mapper, JObjs) when is_function(Mapper, 1) ->
     %% Can I trust you to return sorted result in the correct direction?
     Mapper(JObjs);
 apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
+    filter_foldl(Mapper, JObjs, []).
+
+-spec filter_foldl(mapper_fun(), kz_json:objects(), kz_json:objects()) ->
+                          kz_json:objects() |
+                          {'error', any()}.
+filter_foldl(_Mapper, [], Acc) ->
     [JObj
-     || JObj <- lists:foldl(Mapper, [], JObjs),
+     || JObj <- Acc,
         not kz_term:is_empty(JObj)
-    ].
+    ];
+filter_foldl(Mapper, [JObj | JObjs], Acc) ->
+    case Mapper(JObj, Acc) of
+        {'error', _} = Error -> Error;
+        NewAcc -> filter_foldl(Mapper, JObjs, NewAcc)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Figure out the last key if we have some result and page size is not

@@ -25,6 +25,7 @@
         ,rollover/3
         ,rollover/4
         ]).
+-export([sum_amount/1]).
 
 -include("kazoo_ledgers.hrl").
 
@@ -410,3 +411,15 @@ ledger_type(Total) when Total < 0 ->
     kzd_ledgers:type_debit();
 ledger_type(_Total) ->
     kzd_ledgers:type_credit().
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec sum_amount(ledgers()) -> kz_currency:units().
+sum_amount(Ledgers) ->
+    lists:foldl(fun sum_amount/2, 0, Ledgers).
+
+-spec sum_amount(kz_ledger:ledger(), kz_currency:units()) -> kz_currency:units().
+sum_amount(Ledger, Sum) ->
+    kz_ledger:unit_amount(Ledger) + Sum.

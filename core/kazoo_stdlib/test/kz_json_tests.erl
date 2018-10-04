@@ -17,111 +17,154 @@
 %% PropEr Testing
 -ifdef(PROPER).
 
+-define(MAX_OBJECT_DEPTH, 10).
+
 %% Lifted from Erlang ML
 proper_test_() ->
     {"Runs kz_json PropEr tests"
-    ,{'timeout'
-     ,10000
-     ,[{atom_to_list(F)
+    ,[{'timeout'
+      ,10000
+      ,{atom_to_list(F)
        ,fun () ->
                 ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
-                                                       ,{'numtests', 500}
+                                                       ,{'numtests', 100}
                                                        ]))
         end
        }
-       || {F, 0} <- ?MODULE:module_info('exports'),
-          F > 'prop_',
-          F < 'prop`'
-      ]
-     }
+      }
+      || {F, 0} <- ?MODULE:module_info('exports'),
+         F > 'prop_',
+         F < 'prop`'
+     ]
     }.
 
+%% Checks the depth of keys in generated JSON objects
+%% proper:quickcheck(kz_json_tests:prop_test_object_gen(), 10000).
+%% 67% 1
+%% 19% 0
+%% 11% 2
+%% 1% 3
+%% 0% 4
+%% This means 67% of generated objects in that run had a max depth of 1 (single key/values in the JObj)
+%% 19% were the empty JObj (not helpful)
+%% 11% has 1 level of nested keys (length 2)
+%% and 1% has 2 levels of nested keys and almost none had 3 levels of keys
+%% Changing to the deep_object() generator with the resize/2 to control depth:
+%% | Depth | Runs  | Percentages (ascending range)
+%% |  10   |   100 | 34, 59, 7
+%% |  10   |  1000 | 37, 56, 6, 0
+%% |  10   | 10000 | 38, 54, 6, 0
+
+prop_test_object_gen() ->
+    ?FORALL(JObj
+           ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+           ,collect(to_range(2, kz_json_generators:max_depth(JObj))
+                   ,kz_json:is_valid_json_object(JObj)
+                   )
+           ).
+
+to_range(M, N) ->
+    Base = N div M,
+    {Base * M, (Base+1) * M}.
+
+%% Test lifting common properties out of a list of objects
 prop_lift_common() ->
-    ?FORALL({CommonJObj, UniqueJObj}
-           ,common_and_unique()
-           ,?WHENFAIL(?debugFmt("~nfailed to lift out common ~p~nunique: ~p~n"
-                               ,[CommonJObj, UniqueJObj]
-                               )
-                     ,begin
-                          Merged = kz_json:merge(UniqueJObj, CommonJObj),
-                          {CommonProperties, [UpCommon, UpUnique, UpCommon, UpUnique]} = kz_json:lift_common_properties([CommonJObj, Merged, CommonJObj, Merged]),
-                          kz_json:are_equal(CommonJObj, CommonProperties)
-                              andalso kz_json:are_equal(kz_json:new(), UpCommon)
-                              andalso kz_json:are_equal(UpUnique, UniqueJObj)
-                      end
-                     )
+    ?FORALL({JObj, UniqueJObj}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            }
+           ,begin
+                CommonJObj = remove_unique_from_common(UniqueJObj, JObj),
+                ?WHENFAIL(?debugFmt("~nfailed to lift out common ~p~nunique: ~p~n"
+                                   ,[CommonJObj, UniqueJObj]
+                                   )
+                         ,begin
+                              FlatUnique = kz_json:to_proplist(kz_json:flatten(UniqueJObj)),
+                              Merged = kz_json:set_values(FlatUnique, CommonJObj),
+                              %% Merged = kz_json:merge_recursive(CommonJObj, UniqueJObj),
+                              {CommonProperties, [UpCommon, UpUnique, UpCommon, UpUnique]} = kz_json:lift_common_properties([CommonJObj, Merged, CommonJObj, Merged]),
+                              kz_json:are_equal(CommonJObj, CommonProperties)
+                                  andalso kz_json:are_equal(kz_json:new(), UpCommon)
+                                  andalso kz_json:are_equal(UpUnique, UniqueJObj)
+                          end
+                         )
+            end
            ).
 
 prop_nothing_in_common() ->
-    ?FORALL({CommonJObj, UniqueJObj}
-           ,common_and_unique()
-           ,?WHENFAIL(?debugFmt("~nfailed nothing_in_common:~ncommon ~p~nunique: ~p~n"
-                               ,[CommonJObj, UniqueJObj]
-                               )
-                     ,begin
-                          {CommonProperties, [UpCommon, UpUnique]} = kz_json:lift_common_properties([CommonJObj, UniqueJObj]),
-                          kz_json:are_equal(kz_json:new(), CommonProperties)
-                              andalso kz_json:are_equal(CommonJObj, UpCommon)
-                              andalso kz_json:are_equal(UpUnique, UniqueJObj)
-                      end
-                     )
+    ?FORALL({JObj, UniqueJObj}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            }
+           ,begin
+                CommonJObj = remove_unique_from_common(UniqueJObj, JObj),
+                ?WHENFAIL(?debugFmt("~nfailed nothing_in_common:~ncommon ~p~nunique: ~p~n"
+                                   ,[CommonJObj, UniqueJObj]
+                                   )
+                         ,begin
+                              {CommonProperties, [UpCommon, UpUnique]} = kz_json:lift_common_properties([CommonJObj, UniqueJObj]),
+                              kz_json:are_equal(kz_json:new(), CommonProperties)
+                                  andalso kz_json:are_equal(CommonJObj, UpCommon)
+                                  andalso kz_json:are_equal(UpUnique, UniqueJObj)
+                          end
+                         )
+            end
            ).
 
 prop_lift_common_blacklist() ->
-    ?FORALL({CommonJObj, UniqueJObj}
-           ,common_and_unique()
-           ,?WHENFAIL(?debugFmt("~nfailed to lift out common ~p~nunique: ~p~nmerged: ~p~nblacklisted: ~p~n"
-                               ,[CommonJObj
-                                ,UniqueJObj
-                                ,kz_json:merge(UniqueJObj, CommonJObj)
-                                ,make_blacklist(kz_json:get_keys(CommonJObj))
-                                ]
-                               )
-                     ,begin
-                          Blacklist = make_blacklist(kz_json:get_keys(CommonJObj)),
-                          Merged = kz_json:merge(UniqueJObj, CommonJObj),
-                          {CommonProperties
-                          ,[UpCommon, UpUnique]
-                          } = kz_json:lift_common_properties([CommonJObj, Merged], Blacklist),
+    ?FORALL({JObj, UniqueJObj}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            }
+           ,begin
+                CommonJObj = remove_unique_from_common(UniqueJObj, JObj),
+                ?WHENFAIL(?debugFmt("~nfailed to lift out common ~p~nunique: ~p~nmerged: ~p~nblacklisted: ~p~n"
+                                   ,[CommonJObj
+                                    ,UniqueJObj
+                                    ,kz_json:merge(UniqueJObj, CommonJObj)
+                                    ,make_blacklist(kz_json:get_keys(CommonJObj))
+                                    ]
+                                   )
+                         ,begin
+                              Blacklist = make_blacklist(kz_json:get_keys(CommonJObj)),
+                              Merged = kz_json:merge(UniqueJObj, CommonJObj),
+                              {CommonProperties
+                              ,[UpCommon, UpUnique]
+                              } = kz_json:lift_common_properties([CommonJObj, Merged], Blacklist),
 
-                          kz_json:are_equal(kz_json:delete_keys(Blacklist, CommonJObj), CommonProperties)
-                              andalso kz_json:get_value(Blacklist, UpCommon) =:= kz_json:get_value(Blacklist, CommonJObj)
-                              andalso kz_json:get_value(Blacklist, UpUnique) =:= kz_json:get_value(Blacklist, Merged)
-                      end
-                     )
+                              kz_json:are_equal(kz_json:delete_keys(Blacklist, CommonJObj), CommonProperties)
+                                  andalso kz_json:get_value(Blacklist, UpCommon) =:= kz_json:get_value(Blacklist, CommonJObj)
+                                  andalso kz_json:get_value(Blacklist, UpUnique) =:= kz_json:get_value(Blacklist, Merged)
+                          end
+                         )
+            end
            ).
 
 make_blacklist([]) -> [];
 make_blacklist([H|_]) -> [H].
 
-common_and_unique() ->
-    ?LET(Common
-        ,kz_json_generators:test_object()
-        ,?LET(Unique
-             ,kz_json_generators:test_object()
-             ,{Common, kz_json:foldl(fun(K,_, U) -> kz_json:delete_key(K, U) end, Unique, Common)}
-             )
-        ).
+remove_unique_from_common(Common, Unique) ->
+    kz_json:foldl(fun(K,_, U) -> kz_json:delete_key(K, U) end, Unique, Common).
 
 prop_is_object() ->
     ?FORALL(JObj
-           ,kz_json_generators:test_object()
-           ,?WHENFAIL(?debugFmt("Failed is_json_object with ~p~n", [JObj])
-                     ,kz_json:is_json_object(JObj)
+           ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+           ,?WHENFAIL(?debugFmt("Failed is_valid_json_object with ~p~n", [JObj])
+                     ,kz_json:is_valid_json_object(JObj)
                      )
            ).
 
 prop_from_list() ->
     ?FORALL(Prop
-           ,json_proplist()
+           ,flat_proplist()
            ,?WHENFAIL(?debugFmt("Failed prop_from_list with ~p~n", [Prop])
-                     ,kz_json:is_json_object(kz_json:from_list(Prop))
+                     ,kz_json:is_valid_json_object(kz_json:expand(kz_json:from_list(Prop)))
                      )
            ).
 
 prop_get_value() ->
     ?FORALL(JObj
-           ,kz_json_generators:test_object()
+           ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
            ,?WHENFAIL(?debugFmt("Failed prop_get_value with ~p~n", [JObj])
                      ,begin
                           Prop = kz_json:to_proplist(JObj),
@@ -137,7 +180,7 @@ prop_get_value() ->
 
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}
-           ,{kz_json_generators:test_object(), keys(), non_null_json_term()}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object()), path(), non_object_json_term()}
            ,?TRAPEXIT(
                ?WHENFAIL(?debugFmt("Failed prop_set_value with ~w:~w -> ~p~n"
                                   ,[Key, Value, JObj]
@@ -153,7 +196,7 @@ prop_set_value() ->
 
 prop_delete_key() ->
     ?FORALL({JObj, Key, Value}
-           ,{kz_json_generators:test_object(), key(), non_null_json_term()}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object()), key(), non_object_json_term()}
            ,?TRAPEXIT(
                ?WHENFAIL(?debugFmt("Failed kz_json:set_value(~w, ~w, ~w)~n"
                                   ,[Key, Value, JObj]
@@ -168,18 +211,9 @@ prop_delete_key() ->
               )
            ).
 
-prop_to_proplist() ->
-    ?FORALL(Prop, json_proplist(),
-            ?WHENFAIL(?debugFmt("Failed prop_to_proplist ~p~n", [Prop]),
-                      begin
-                          JObj = kz_json:from_list(Prop),
-                          lists:all(fun(K) -> props:get_value(K, Prop) =/= 'undefined' end, kz_json:get_keys(JObj))
-                      end)
-           ).
-
 prop_flatten_expand() ->
     ?FORALL(JObj
-           ,kz_json_generators:test_object()
+           ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
            ,?WHENFAIL(?debugFmt("Failed to flatten/expand: ~p~n", [JObj])
                      ,kz_json:are_equal(JObj, kz_json:expand(kz_json:flatten(JObj)))
                      )
@@ -187,7 +221,9 @@ prop_flatten_expand() ->
 
 prop_merge_right() ->
     ?FORALL({LeftJObj, RightJObj}
-           ,{kz_json_generators:test_object(), kz_json_generators:test_object()}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            }
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_right/2, LeftJObj, RightJObj),
 
@@ -201,7 +237,9 @@ prop_merge_right() ->
 
 prop_merge_left() ->
     ?FORALL({LeftJObj, RightJObj}
-           ,{kz_json_generators:test_object(), kz_json_generators:test_object()}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            }
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_left/2, LeftJObj, RightJObj),
 
@@ -247,7 +285,8 @@ merge_left_test_() ->
     ].
 
 prop_to_map() ->
-    ?FORALL(JObj, kz_json_generators:test_object()
+    ?FORALL(JObj
+           ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
            ,?WHENFAIL(?debugFmt("failed json->map->json on ~p~n", [JObj])
                      ,kz_json:are_equal(JObj, kz_json:from_map(kz_json:to_map(JObj)))
                      )
@@ -433,7 +472,7 @@ merge_test_() ->
 
 -spec do_merge_recursive(kz_json:object()) -> list().
 do_merge_recursive(J) ->
-    [?_assert(kz_json:is_json_object(J))
+    [?_assert(kz_json:is_valid_json_object(J))
     ,?_assertEqual('undefined', kz_json:get_value(<<"d1k1">>, J))
     ,?_assertEqual(1, kz_json:get_value(<<"d2k1">>, J))
 
@@ -495,18 +534,18 @@ filter_test_() ->
 new_test_() ->
     [?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:new())].
 
-is_json_object_test_() ->
-    [?_assertEqual('false', kz_json:is_json_object('foo'))
-    ,?_assertEqual('false', kz_json:is_json_object(123))
-    ,?_assertEqual('false', kz_json:is_json_object(['boo', 'yah']))
-    ,?_assertEqual('false', kz_json:is_json_object(<<"bin">>))
+is_valid_json_object_test_() ->
+    [?_assertEqual('false', kz_json:is_valid_json_object('foo'))
+    ,?_assertEqual('false', kz_json:is_valid_json_object(123))
+    ,?_assertEqual('false', kz_json:is_valid_json_object(['boo', 'yah']))
+    ,?_assertEqual('false', kz_json:is_valid_json_object(<<"bin">>))
 
-    ,?_assertEqual('true', kz_json:is_json_object(?D1))
-    ,?_assertEqual('true', kz_json:is_json_object(?D2))
-    ,?_assertEqual('true', kz_json:is_json_object(?D3))
-    ,?_assertEqual('true', lists:all(fun kz_json:is_json_object/1, ?D4))
-    ,?_assertEqual('true', kz_json:is_json_object(?D6))
-    ,?_assertEqual('true', kz_json:is_json_object(?D7))
+    ,?_assertEqual('true', kz_json:is_valid_json_object(?D1))
+    ,?_assertEqual('true', kz_json:is_valid_json_object(?D2))
+    ,?_assertEqual('true', kz_json:is_valid_json_object(?D3))
+    ,?_assertEqual('true', lists:all(fun kz_json:is_valid_json_object/1, ?D4))
+    ,?_assertEqual('true', kz_json:is_valid_json_object(?D6))
+    ,?_assertEqual('true', kz_json:is_valid_json_object(?D7))
     ].
 
 %% delete results

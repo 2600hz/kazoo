@@ -723,7 +723,10 @@ fetch(AccountId, 'accounts') ->
                             {'ok', doc()} |
                             kz_datamgr:data_error().
 open_cache_doc(Db, AccountId) ->
-    kz_datamgr:open_cache_doc(Db, AccountId, [{'cache_failures','false'}]).
+    Options = [{'cache_failures','false'}
+              ,{'deleted','true'}
+              ],
+    kz_datamgr:open_cache_doc(Db, AccountId, Options).
 
 -spec fetch_name(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 fetch_name(Account) ->

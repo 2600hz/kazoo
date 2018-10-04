@@ -77,11 +77,9 @@
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
--ifdef(TEST).
 -export([fixture/1
         ,fixture/2
         ]).
--endif.
 
 -export([normalize_jobj/1
         ,normalize_jobj/3
@@ -213,17 +211,13 @@ are_json_objects(JObjs) when is_list(JObjs) ->
     lists:all(fun is_json_object/1, JObjs).
 
 -spec is_valid_json_object(any()) -> boolean().
-is_valid_json_object(MaybeJObj) ->
-    try
-        lists:all(fun(K) ->
-                          is_json_term(get_value([K], MaybeJObj))
-                  end
-                 ,?MODULE:get_keys(MaybeJObj)
-                 )
-    catch
-        'throw':_ -> 'false';
-        'error':_ -> 'false'
-    end.
+is_valid_json_object(?JSON_WRAPPER(_)=JObj) ->
+    lists:all(fun(K) ->
+                      is_json_term(get_value([K], JObj))
+              end
+             ,get_keys(JObj)
+             );
+is_valid_json_object(_) -> 'false'.
 
 -spec is_json_term(json_term()) -> boolean().
 is_json_term('undefined') -> throw({'error', 'no_atom_undefined_in_jobj_please'});
@@ -235,8 +229,7 @@ is_json_term(V) when is_float(V) -> 'true';
 is_json_term(Vs) when is_list(Vs) ->
     lists:all(fun is_json_term/1, Vs);
 is_json_term({'json', IOList}) when is_list(IOList) -> 'true';
-is_json_term(MaybeJObj) ->
-    is_json_object(MaybeJObj).
+is_json_term(MaybeJObj) -> is_valid_json_object(MaybeJObj).
 
 %%------------------------------------------------------------------------------
 %% @doc Finds out whether 2 JSON objects are recursively identical.
@@ -1294,7 +1287,6 @@ load_fixture_from_file(App, Dir, File) ->
             {'error', Reason}
     end.
 
--ifdef(TEST).
 -spec fixture(file:filename_all()) -> {ok, object()} | {error, not_found}.
 fixture(Path) ->
     case file:read_file(Path) of
@@ -1305,7 +1297,6 @@ fixture(Path) ->
 -spec fixture(atom(), file:filename_all()) -> {ok, object()} | {error, not_found}.
 fixture(App, Path) when is_atom(App) ->
     fixture(filename:join(code:lib_dir(App, test), Path)).
--endif.
 
 %%------------------------------------------------------------------------------
 %% @doc Normalize a JSON object for storage as a Document.

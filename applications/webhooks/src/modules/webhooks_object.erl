@@ -96,7 +96,7 @@ handle_event(JObj, _Props) ->
 
     AccountId = find_account_id(JObj),
     case AccountId =/= 'undefined'
-        andalso webhooks_util:find_webhooks(?NAME, AccountId) of
+        andalso webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
         'false' -> 'ok';
         [] ->
             lager:debug("no hooks to handle ~s for ~s"

@@ -80,7 +80,7 @@
                          ,minimum = 0 :: non_neg_integer()
                          ,exceptions = [] :: kz_term:ne_binaries()
                          ,taxes = kz_json:new() :: kz_json:object()
-                         ,changes = 'undefined'
+                         ,changes = 'undefined' :: kz_term:api_ne_binaries()
                          ,item_plan = kz_json:new() :: kz_json:object()
                          ,masqueraded = 'false' :: boolean()
                          }).
@@ -130,6 +130,12 @@ set_item_name(#kz_service_item{}=Item, ItemName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec display_name(item()) -> kz_term:api_binary().
+display_name(#kz_service_item{category_name=CategoryName}=Item)
+    when not is_binary(CategoryName) ->
+    display_name(Item#kz_service_item{category_name=kz_term:to_binary(CategoryName)});
+display_name(#kz_service_item{item_name=ItemName}=Item)
+    when not is_binary(ItemName) ->
+    display_name(Item#kz_service_item{item_name=kz_term:to_binary(ItemName)});
 display_name(#kz_service_item{display_name='undefined'}=Item) ->
     CategoryName = category_name(Item),
     ItemName = item_name(Item),
@@ -309,7 +315,7 @@ set_exceptions(Item, Exceptions) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec changes(item()) -> kz_term:ne_binaries().
+-spec changes(item()) -> kz_term:api_ne_binaries().
 changes(#kz_service_item{changes=Changes}) -> Changes.
 
 %%------------------------------------------------------------------------------
@@ -644,8 +650,7 @@ should_set_discount(Item, DiscountPlan) ->
     BillableQuantity = billable_quantity(Item),
     Minimum = kz_json:get_integer_value(<<"minimum">>, DiscountPlan, 1),
     Rate > 0
-        andalso
-        BillableQuantity >= Minimum.
+        andalso BillableQuantity >= Minimum.
 
 -spec find_tiered_rate(kz_json:object(), non_neg_integer()) -> kz_term:api_float().
 find_tiered_rate(Rates, Quantity) ->

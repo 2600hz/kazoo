@@ -209,3 +209,18 @@ name_and_did(JObj) ->
      }
      || Server <- kz_json:get_value(<<"servers">>, JObj)
     ].
+
+validate_regexp_test_() ->
+    {ok, SchemaJObj} = kz_json:fixture(?APP, "fixtures/schema_regexp.json"),
+
+    JObj1 = kz_json:decode(<<"{\"list\":[\"should@work.com\", \"this_one@too.com\", \"*@fail.com\"]}">>),
+    JObj2 = kz_json:decode(<<"{\"list\":[\"should@work.com\", \"this_one@too.com\", \"@wont-fail.com\"]}">>),
+    JObj3 = kz_json:decode(<<"{\"item\":\"should@work.com\"}">>),
+    JObj4 = kz_json:decode(<<"{\"item\":\"*@fail.com\"}">>),
+    Err = <<"invalid regular expression: '*@fail.com'">>,
+
+    [?_assertMatch({error,[{data_invalid,_, external_error, Err,[<<"list">>,2]}]} ,kz_json_schema:validate(SchemaJObj, JObj1))
+    ,?_assertMatch({ok, _}, kz_json_schema:validate(SchemaJObj, JObj2))
+    ,?_assertMatch({ok, _}, kz_json_schema:validate(SchemaJObj, JObj3))
+    ,?_assertMatch({error,[{data_invalid,_, external_error, Err,[<<"item">>]}]} ,kz_json_schema:validate(SchemaJObj, JObj4))
+    ].

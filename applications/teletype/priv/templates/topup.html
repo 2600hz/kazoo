@@ -49,7 +49,7 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;">
-                        <p style="margin:0;padding:0;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;">Automatic top-up attempt to account <b>{{account.name}}</b> for amount of <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b> was {% if transaction.success %} <b>successful</b>{% else %} <b>unsuccessful</b>{% endif %}.<br><br>Account Balance is now <b>{{balance}}</b></p>
+                        <p style="margin:0;padding:0;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;">Automatic top-up attempt to account <b>{{account.name}}</b> for amount of <b>{{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b> was {% if transaction.success %} <b>successful</b>{% else %} <b>unsuccessful</b>{% endif %}.<br><br>Account Balance is now <b>{{balance}}</b></p>
                     </td>
                 </tr>
             </table>
@@ -74,7 +74,7 @@
                             </tr>
                             <tr>
                                 <td style="padding:3px 10px;text-align:left;font-family:'Open Sans',sans-serif;font-size:.8em;line-height:20px;color:#555555;">
-                                    <b>Total Amount to Charge:</b> {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
+                                    <b>Total Amount to Charge:</b> {{transaction.amount|floatformat:2}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
                                 </td>
                             </tr>
                             <tr>

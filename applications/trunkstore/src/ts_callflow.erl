@@ -247,13 +247,20 @@ was_bridge_blocked(JObj) ->
     Blocked = not kz_call_event:is_authorized(JObj),
     lager:debug("was bridge blocked: ~p", [Blocked]),
     Blocked.
+
+-spec get_event_type(kz_json:object()) -> event_type().
 get_event_type(JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
-    {C, N, get_app(JObj)}.
+    try get_app(JObj) of
+        App -> {C, N, App}
+    catch
+        'error':'badarg' -> {C, N, 'undefined'}
+    end.
 
+-spec get_app(kz_json:object()) -> kz_term:api_binary().
 get_app(JObj) ->
-    case kz_json:get_value(<<"Application-Name">>, JObj) of
-        'undefined' -> kz_json:get_value([<<"Request">>, <<"Application-Name">>], JObj);
+    case kz_json:get_ne_binary_value(<<"Application-Name">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value([<<"Request">>, <<"Application-Name">>], JObj);
         App -> App
     end.
 

@@ -232,11 +232,15 @@ log_verbose('true', Fmt, Args) ->
 -spec maybe_start_from_node_name(boolean()) -> 'false' | kz_term:atoms().
 maybe_start_from_node_name(Verbose) ->
     KApp = kapp_from_node_name(),
-    case is_kapp(KApp) of
-        'false' -> 'false';
-        _Else ->
-            log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
-            [KApp]
+    case application:load(KApp) of
+        'ok' ->
+            case is_kapp(KApp) of
+                'true' ->
+                    log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
+                    [KApp];
+                _Else -> 'false'
+            end;
+        _Else -> 'false'
     end.
 
 -spec maybe_start_from_node_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].

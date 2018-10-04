@@ -35,6 +35,8 @@
 -export([topup_status/0
         ,topup_status/1
         ]).
+-export([get_accounts_by_depth/0]).
+-export([get_accounts_with_plans/0]).
 
 -include("services.hrl").
 
@@ -197,6 +199,7 @@ js_quantify_map() ->
        "                    emit(['number_services', index], 1);"
        "                }"
        "            }"
+       "            if (features.local) return;"
       ,kazoo_number_manager_maintenance:generate_js_classifiers(FunMatchBlock),
        "            break;"
        "        case 'qubicle_queue':"
@@ -381,14 +384,13 @@ store_migrated_services_plan(AccountDb, JObj) ->
 %%------------------------------------------------------------------------------
 -spec migrate_services() -> 'ok'.
 migrate_services() ->
-    ViewOptions = ['descending'],
-    {'ok', JObjs} = kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/by_tree">>, ViewOptions),
-    migrate_services(JObjs).
+    migrate_services(
+      get_accounts_by_depth()
+     ).
 
--spec migrate_services(kz_json:objects()|kz_services:services()) -> 'ok'.
+-spec migrate_services(kz_term:ne_binaries()|kz_services:services()) -> 'ok'.
 migrate_services([]) -> 'ok';
-migrate_services([JObj|JObjs]) ->
-    AccountId = kz_doc:id(JObj),
+migrate_services([AccountId|AccountIds]) ->
     FetchOptions = ['hydrate_account_quantities'
                    ,'hydrate_cascade_quantities'
                    ,'skip_cache'
@@ -396,7 +398,7 @@ migrate_services([JObj|JObjs]) ->
     _ = migrate_services(
           kz_services:fetch(AccountId, FetchOptions)
          ),
-    migrate_services(JObjs);
+    migrate_services(AccountIds);
 migrate_services(Services) ->
     JObj = kz_services:services_jobj(Services),
     case kz_term:to_integer(kz_doc:vsn(JObj, 0)) > 1 of
@@ -727,7 +729,7 @@ reconcile() ->
 
 -spec reconcile(kz_term:text()) -> 'no_return'.
 reconcile('all') ->
-    Accounts = get_all_accounts(),
+    Accounts = get_accounts_by_depth(),
     Total = length(Accounts),
     _ = lists:foldr(fun(Account, Current) ->
                             io:format("reconcile services (~p/~p) '~s'~n", [Current, Total, Account]),
@@ -749,25 +751,42 @@ reconcile(Account) ->
                    ,'hydrate_invoices'
                    ,'skip_cache'
                    ],
-    Services = kz_services:maybe_save_services_jobj(
-                 kz_services:fetch(AccountId, FetchOptions)
-                ),
+    CurrentServices = kz_services:fetch(AccountId, FetchOptions),
+    CurrentJObj = kz_services:current_services_jobj(CurrentServices),
+    Services = kz_services:maybe_save_services_jobj(CurrentServices),
     case kz_services:is_dirty(Services) of
         'false' -> 'no_return';
         'true' ->
-            io:format("    quantity discrepancy corrected!~n", [])
+            ReconciledJObj = kz_services:services_jobj(Services),
+            log_discrepancy_correction(CurrentJObj, ReconciledJObj)
     end.
 
--spec get_all_accounts() -> kz_term:ne_binaries().
-get_all_accounts() ->
-    ViewOptions = ['descending'],
-    {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB
-                                          ,<<"accounts/listing_by_depth">>
-                                          ,ViewOptions
-                                          ),
-    lists:reverse(
-      [kz_json:get_value(<<"id">>, JObj) || JObj <- JObjs]
-     ).
+-spec log_discrepancy_correction(kz_json:object(), kz_json:object()) -> 'no_return'.
+log_discrepancy_correction(CurrentJObj, ReconciledJObj) ->
+    io:format("    quantity discrepancy corrected!~n", []),
+    CurrentQuantities = kz_json:get_ne_json_value(<<"quantities">>, CurrentJObj, kz_json:new()),
+    ReconciledQuantities = kz_json:get_ne_json_value(<<"quantities">>, ReconciledJObj, kz_json:new()),
+    FlattenedCurrent = flatten_quantities(CurrentQuantities),
+    _ = [io:format("      updated ~s from ~p to ~p~n"
+                  ,[kz_binary:join(Key, <<".">>)
+                   ,CurrentValue
+                   ,ReconciledValue
+                   ]
+                  )
+         || {Key, ReconciledValue} <- flatten_quantities(ReconciledQuantities)
+                ,(CurrentValue = proplists:get_value(Key, FlattenedCurrent)) =/= ReconciledValue
+        ],
+    'no_return'.
+
+-spec flatten_quantities(kz_json:object()) -> kz_term:proplist().
+flatten_quantities(JObj) ->
+    [{[Type, Category, Item]
+     ,kz_json:get_integer_value([Type, Category, Item], JObj, 0)
+     }
+     || Type <- [<<"manual">>, <<"account">>, <<"cascade">>]
+            ,Category <- kz_json:get_keys(Type, JObj)
+            ,Item <- kz_json:get_keys([Type, Category], JObj)
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc runs an immediate sync with a bookkeeper without dirtying the
@@ -1013,3 +1032,29 @@ get_notify_threshold(AccountId) ->
         {'ok', JObj} ->
             kzd_accounts:notifications_low_balance_threshold(JObj)
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_accounts_by_depth() -> kz_term:ne_binaries().
+get_accounts_by_depth() ->
+    ViewOptions = [],
+    {'ok', JObjs} = kz_datamgr:get_results(?KZ_SERVICES_DB
+                                          ,<<"services/by_tree_length">>
+                                          ,ViewOptions
+                                          ),
+    [kz_doc:id(JObj) || JObj <- JObjs].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_accounts_with_plans() -> kz_term:ne_binaries().
+get_accounts_with_plans() ->
+    ViewOptions = [],
+    {'ok', JObjs} = kz_datamgr:get_results(?KZ_SERVICES_DB
+                                          ,<<"services/by_tree_length_with_plans">>
+                                          ,ViewOptions
+                                          ),
+    [kz_doc:id(JObj) || JObj <- JObjs].

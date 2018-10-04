@@ -16,7 +16,14 @@ flushed(Name, PointerName, MonitorName) ->
     _ = [flush_table(T) || T <- [Name, PointerName, MonitorName]],
     'ok'.
 
+-spec flush_table(atom()) -> 'ok'.
 flush_table(T) ->
+    flush_table(T, is_running(T)).
+
+-spec flush_table(atom(), boolean()) -> 'ok'.
+flush_table(_T, 'false') ->
+    lager:info("cache ~s is not running", [_T]);
+flush_table(T, 'true') ->
     exec_flush_callbacks(T),
     ets:delete_all_objects(T).
 
@@ -188,6 +195,10 @@ exec_callbacks(Name, MatchSpec, Msg) ->
                 is_function(Callback, 3)
             ],
     'ok'.
+
+-spec is_running(atom()) -> boolean().
+is_running(Name) ->
+    'undefined' =/= ets:info(Name, 'type').
 
 -spec exec_callback(callback_fun(), list()) -> pid().
 exec_callback(Callback, Payload) ->

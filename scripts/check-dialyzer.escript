@@ -8,32 +8,60 @@
 
 %% API
 
+main([]) ->
+    print_help();
 main([_KazooPLT]) -> 'ok';
-main([KazooPLT, "--hard" | Args]) ->
-    main(KazooPLT, Args, 'true');
-main([KazooPLT | Args]) ->
-    main(KazooPLT, Args, 'false');
-main(_Args) ->
-    io:format('user', "invalid usage: ~p~n", [_Args]),
-    usage(0, _Args).
+main([KazooPLT | CommandLineArgs]) ->
+    {'ok', Options, Args} = parse_args(CommandLineArgs),
+    handle(KazooPLT, Options, Args).
 
-main(KazooPLT, Args, GoHard) ->
-    'false' =:= lists:suffix(".plt", KazooPLT)
-        andalso usage(1, [KazooPLT, GoHard | Args]),
+parse_args(CommandLineArgs) ->
+    case getopt:parse(option_spec_list(), CommandLineArgs) of
+        {'ok', {Options, Args}} when is_list(Options) ->
+            {'ok', Options, Args};
+        {'ok', {_O, _A}} ->
+            print_help();
+        {'error', {_O, _A}} ->
+            print_help()
+    end.
+
+-spec option_spec_list() -> list().
+option_spec_list() ->
+    [{'help', $?, "help", 'undefined', "Show the program options"}
+    ,{'hard', $h, "hard", {'boolean', 'false'}, "Include remote modules called by the supplied modules"}
+    ,{'bulk', $b, "bulk", {'boolean', 'false'}, "Dialyze all files together (requires more memory/CPU)"}
+    ].
+
+-spec print_help() -> no_return().
+print_help() ->
+    Script = escript:script_name(),
+    getopt:usage(option_spec_list(), "ERL_LIBS=deps/:core/:applications/ " ++ Script ++ " .kazoo.plt [args] [file.beam | path/ebin/ ...]"),
+    halt(1).
+
+handle(_KazooPLT, _Options, []) ->
+    print_help();
+handle(KazooPLT, Options, Args) ->
+    ".plt" = filename:extension(KazooPLT),
 
     Env = string:tokens(os:getenv("TO_DIALYZE", ""), " "),
 
-    case filter_for_erlang_files(lists:usort(Args ++ Env)) of
-        [] ->
-            io:format("No files to process\n"),
-            usage(0);
-        Paths ->
-            case warn(KazooPLT, Paths, GoHard) of
-                0 -> halt(0);
-                Count ->
-                    io:format("~p Dialyzer warnings~n", [Count]),
-                    halt(Count)
-            end
+    handle_paths(KazooPLT
+                ,Options
+                ,filter_for_erlang_files(lists:usort(Env ++ Args))
+                ).
+
+handle_paths(_KazooPLT, _Options, []) ->
+    io:format("No Erlang files found to process\n"),
+    print_help();
+handle_paths(KazooPLT, Options, Paths) ->
+    case warn(KazooPLT, Options, Paths) of
+        0 -> halt(0);
+        1 ->
+            io:format("1 Dialyzer warning~n"),
+            halt(1);
+        Count ->
+            io:format("~p Dialyzer warnings~n", [Count]),
+            halt(Count)
     end.
 
 filter_for_erlang_files(Files) ->
@@ -78,20 +106,30 @@ file_exists(Filename) ->
         _ -> 'false'
     end.
 
-warn(PLT, Paths, 'true') ->
+warn(PLT, Options, Paths) ->
+    GoHard = props:get_value('hard', Options),
+    Bulk = GoHard
+        orelse props:get_value('bulk', Options),
+
     %% take the beams in Paths and run a dialyzer pass to get unknown functions
     %% add the modules from unknown functions
     %% then run do_warm without GoHard
-    {BeamPaths, 'true'} = lists:foldl(fun get_beam_path/2, {[], 'true'}, Paths),
-    Modules = lists:usort([M || {'warn_unknown', _, {'unknown_function',{M, _F, _Arity}}} <- do_scan_unknown(PLT, BeamPaths)]),
-    do_warn(PLT, [fix_path(MPath) ||
-                     M <- Modules,
-                     MPath <- [code:which(M)],
-                     MPath =/= 'non_existing'
-                 ] ++ BeamPaths, 'true');
-warn(PLT, Paths, 'false') ->
-    {BeamPaths, 'false'} = lists:foldl(fun get_beam_path/2, {[], 'false'}, Paths),
-    do_warn(PLT, BeamPaths, 'false').
+    {BeamPaths, GoHard} = lists:foldl(fun get_beam_path/2, {[], GoHard}, Paths),
+
+    AllModules = find_unknown_modules(PLT, BeamPaths, GoHard),
+
+    do_warn(PLT, AllModules, Bulk).
+
+find_unknown_modules(_PLT, BeamPaths, 'false') -> BeamPaths;
+find_unknown_modules(PLT, BeamPaths, 'true') ->
+    UnknownModules = [M ||
+                         {'warn_unknown', _, {'unknown_function',{M, _F, _Arity}}} <- do_scan_unknown(PLT, BeamPaths)
+                     ],
+    [fix_path(MPath) ||
+        M <- lists:usort(UnknownModules),
+        MPath <- [code:which(M)],
+        MPath =/= 'non_existing'
+    ] ++ BeamPaths.
 
 get_beam_path(Path, {BPs, GoHard}) ->
     {maybe_fix_path(Path, BPs, GoHard), GoHard}.
@@ -128,14 +166,29 @@ fix_path(Path, CWD) ->
         _ -> Path
     end.
 
-do_warn(PLT, Paths, GoHard) ->
-    {Apps, Beams} = lists:partition(fun({'app', _}) -> 'true'; (_) -> 'false' end, Paths),
+do_warn(PLT, Paths, InBulk) ->
+    {Apps, Beams} = maybe_separate_steps(Paths, InBulk),
 
-    {N, _PLT, GoHard} = lists:foldl(fun do_warn_path/2
-                                   ,{0, PLT, GoHard}
+    {N, _PLT, InBulk} = lists:foldl(fun do_warn_path/2
+                                   ,{0, PLT, InBulk}
                                    ,[{'beams', Beams} | Apps]
                                    ),
     N.
+
+maybe_separate_steps(Paths, InBulk) ->
+    lists:foldl(fun(Path, Acc) -> maybe_separate_step(Path, Acc, InBulk) end
+               ,{[], []}
+               ,Paths
+               ).
+
+maybe_separate_step({'app', AppFiles}, {Apps, Beams}, 'true') ->
+    {Apps, AppFiles ++ Beams};
+maybe_separate_step({'app', AppFiles}, {Apps, Beams}, 'false') ->
+    {[{'app', AppFiles} | Apps], Beams};
+maybe_separate_step({'beam', Bs}, {Apps, Beams}, _InBulk) ->
+    {Apps, Bs ++ Beams};
+maybe_separate_step(Beam, {Apps, Beams}, _InBulk) ->
+    {Apps, [Beam | Beams]}.
 
 %% explicitly adding `kz_types' so dialyzer knows about `sup_init_ret', `handle_call_ret_state' and other supervisor,
 %% gen_server, ... critical types defined in `kz_types'. Dialyzer is strict about types for these `init', `handle_*'
@@ -147,22 +200,12 @@ ensure_kz_types(Beams) ->
     end.
 
 do_warn_path({_, []}, Acc) -> Acc;
-do_warn_path({'beams', Beams}, {N, PLT, 'true'}) ->
+do_warn_path({_, Beams}, {N, PLT, 'true'}) ->
     {N + scan_and_print(PLT, Beams), PLT, 'true'};
-do_warn_path({'beams', Beams}, {N, PLT, 'false'}) ->
+do_warn_path({Type, Beams}, {N, PLT, 'false'}) ->
     try lists:split(5, Beams) of
         {Ten, Rest} ->
-            do_warn_path({'beams', Rest}
-                        ,{N + scan_and_print(PLT, Ten), PLT, 'false'}
-                        )
-    catch
-        'error':'badarg' ->
-            {N + scan_and_print(PLT, Beams), PLT, 'false'}
-    end;
-do_warn_path({'app', Beams}, {N, PLT, 'false'}) ->
-    try lists:split(5, Beams) of
-        {Ten, Rest} ->
-            do_warn_path({'app', Rest}
+            do_warn_path({Type, Rest}
                         ,{N + scan_and_print(PLT, Ten), PLT, 'false'}
                         )
     catch
@@ -172,7 +215,6 @@ do_warn_path({'app', Beams}, {N, PLT, 'false'}) ->
 
 scan_and_print(PLT, Bs) ->
     Beams = ensure_kz_types(Bs),
-    %% io:format("scanning ~s~n", [string:join(Beams, " ")]),
     length([print(Beams, W)
             || W <- scan(PLT, Beams),
                filter(W)
@@ -240,15 +282,5 @@ do_scan(PLT, Paths) ->
                                 %% ,specdiffs
                                ]}
                  ]).
-
-usage(Exit) ->
-    usage(Exit, "").
-
-usage(Exit, Msg) ->
-    Arg0 = escript:script_name(),
-    io:format("Usage: ~s <path to .kazoo.plt> <path to ebin/>+~n~p~n"
-             ,[filename:basename(Arg0), Msg]
-             ),
-    halt(Exit).
 
 %% End of Module

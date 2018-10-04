@@ -1102,12 +1102,37 @@ process_chunk(#{context := Context
 
 -spec reset_context_between_chunks(cb_context:context(), boolean()) -> cb_context:context().
 reset_context_between_chunks(Context, StartedChunk) ->
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_resp_data/2, []}
-                       ,{fun cb_context:set_doc/2, kz_json:new()}
-                       ,{fun cb_context:store/3, 'chunking_started', StartedChunk}
-                       ]
-                      ).
+    Context1 = cb_context:setters(Context
+                                 ,[{fun cb_context:set_doc/2, kz_json:new()}
+                                  ,{fun cb_context:store/3, 'chunking_started', StartedChunk}
+                                  ]
+                                 ),
+    reset_context_between_chunks(Context1, StartedChunk, cb_context:resp_status(Context)).
+
+%%------------------------------------------------------------------------------
+%% @doc Reset response data to an empty or check an error message is set.
+%%
+%% Let's check if response is not successful an error message is set
+%% and if not set it to an empty list.
+%% @end
+%%------------------------------------------------------------------------------
+reset_context_between_chunks(Context, _StartedChunk, 'success') ->
+    cb_context:set_resp_data(Context, []);
+reset_context_between_chunks(Context, _StartedChunk, _) ->
+    RespData = cb_context:resp_data(Context),
+    case {kz_json:is_json_object(RespData)
+         ,kz_term:is_ne_binary(RespData)
+         }
+    of
+        {'true', _} ->
+            case kz_json:get_value(<<"message">>, RespData) of
+                'undefined' -> cb_context:set_resp_data(Context, []);
+                _ -> Context
+            end;
+        {'false', 'true'} -> Context;
+        {'false', 'false'} ->
+            cb_context:set_resp_data(Context, [])
+    end.
 
 -spec send_chunk_response(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
                                  {boolean(), cowboy_req:req()}.
