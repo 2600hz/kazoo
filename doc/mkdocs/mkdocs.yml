@@ -10,6 +10,7 @@ pages:
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md'
     - 'applications/crossbar/doc/how_to_authenticate.md'
+    - 'applications/crossbar/doc/sdks.md'
   - 'Authentication':
     - 'applications/crossbar/doc/api_authentication.md'
     - 'applications/crossbar/doc/auth.md'
