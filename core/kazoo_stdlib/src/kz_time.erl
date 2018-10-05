@@ -173,8 +173,8 @@ iso8601(Timestamp) ->
 %% Timezone can be:
 %%
 %% * An offset in seconds ({@link integer()}), negative or positive.
-%% * A {@link kz_term:ne_binary} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
-%% * The name of the timezone {@link kz_term:ne_binary} like `America/Los_Angeles'.
+%% * A {@link kz_term:ne_binary()} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
+%% * The name of the timezone {@link kz_term:ne_binary()} like `America/Los_Angeles'.
 %% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
@@ -352,8 +352,8 @@ from_iso8601(Date, {Time, Offset}) -> adjust_utc_datetime({Date, Time}, Offset).
 %% Adjustment can be:
 %%
 %% * An offset in seconds ({@link integer()}), negative or positive.
-%% * A {@link kz_term:ne_binary} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
-%% * The name of the timezone {@link kz_term:ne_binary} like `America/Los_Angeles'.
+%% * A {@link kz_term:ne_binary()} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
+%% * The name of the timezone {@link kz_term:ne_binary()} like `America/Los_Angeles'.
 %% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
