@@ -159,8 +159,7 @@ decode(JSON, <<"application/json">>) ->
     try unsafe_decode(JSON)
     catch
         _:{'invalid_json', {'error', {_Loc, _Msg}}, _JSON} ->
-            lager:debug("decode error ~s near char # ~b", [_Msg, _Loc]),
-            log_big_binary(JSON),
+            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, JSON]),
             new()
     end.
 
@@ -182,13 +181,6 @@ try_converting(JSON) ->
             lager:debug("unknown encoding: ~p", [_Enc]),
             JSON
     end.
-
--spec log_big_binary(binary()) -> 'ok'.
-log_big_binary(<<Bin:500/binary, Rest/binary>>) ->
-    lager:debug("bin: ~w", [Bin]),
-    log_big_binary(Rest);
-log_big_binary(Bin) ->
-    lager:debug("bin: ~w", [Bin]).
 
 -spec is_defined(path(), object()) -> boolean().
 is_defined(Path, JObj) ->
