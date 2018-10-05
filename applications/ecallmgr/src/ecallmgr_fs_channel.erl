@@ -756,7 +756,7 @@ get_username(Props) ->
 get_realm(Props, CCVs) ->
     case props:get_value(<<"Realm">>, CCVs) of
         'undefined' ->
-            lager:info("no realm in CCVs, checking FS props: ~p", [CCVs]),
+            lager:info("no 'Realm' in CCVs, checking FS props"),
             get_realm_from_props(Props);
         Realm -> Realm
     end.
@@ -766,7 +766,7 @@ get_realm(Props, CCVs) ->
 get_realm_from_props(Props) ->
     case props:get_value(<<"variable_domain_name">>, Props) of
         'undefined' ->
-            lager:info("no realm found in props ~p", [Props]),
+            lager:info("no realm found in 'variable_domain_name' in FS props"),
             'undefined';
         Realm -> kz_term:to_lower_binary(Realm)
     end.
