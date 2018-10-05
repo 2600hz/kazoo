@@ -215,7 +215,7 @@ format_iso8601_offset(Sign, Hour0, Minute0) ->
 format_iso8601({{_Y,_Mo,_D}=Date, {_H, _Mi, _S}=Time}, TimeOffset) ->
     <<(kz_date:to_iso8601_extended(Date))/binary, "T", (iso8601_time(Time))/binary, TimeOffset/binary>>;
 format_iso8601(Timestamp, TimeOffset) ->
-   format_iso8601(calendar:gregorian_seconds_to_datetime(Timestamp), TimeOffset).
+    format_iso8601(calendar:gregorian_seconds_to_datetime(Timestamp), TimeOffset).
 
 %%------------------------------------------------------------------------------
 %% @doc Parse time part of ISO 8601.
