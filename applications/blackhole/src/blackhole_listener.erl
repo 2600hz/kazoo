@@ -72,7 +72,7 @@ handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
     Evt = kz_util:get_event_type(EventJObj),
     lager:debug("recv event ~p (~s)", [Evt, RoutingKey]),
     RK = <<"blackhole.event.", RoutingKey/binary, ".*">>,
-    Res = blackhole_bindings:map(RK, [RoutingKey, EventJObj]),
+    Res = blackhole_bindings:pmap(RK, [RoutingKey, EventJObj]),
     lager:debug("delivered the event ~p (~s) to ~b subscriptions"
                ,[Evt, RoutingKey, length(Res)]
                );
