@@ -26,6 +26,7 @@
 -export([bind/3,bind/4
         ,unbind/3,unbind/4
         ,map/2, map/3
+        ,pmap/2, pmap/3
         ,fold/2
         ,flush/0, flush/1, flush_mod/1
         ,filter/1
@@ -307,6 +308,18 @@ map(Routing, Payload, Bindings) ->
                 ,{'candidates', fun(_) -> Bindings end}
                 ],
     kazoo_bindings:map(Routing, Payload, RTOptions).
+
+-spec pmap(kz_term:ne_binary(), payload()) -> map_results().
+pmap(Routing, Payload) ->
+    RTOptions = [{'matches', fun bh_match/2}],
+    kazoo_bindings:pmap(Routing, Payload, RTOptions).
+
+-spec pmap(kz_term:ne_binary(), payload(), kz_bindings()) -> map_results().
+pmap(Routing, Payload, Bindings) ->
+    RTOptions = [{'matches', fun bh_match/2}
+                ,{'candidates', fun(_) -> Bindings end}
+                ],
+    kazoo_bindings:pmap(Routing, Payload, RTOptions).
 
 bh_match(AParts, BParts) ->
     bh_matches(AParts, BParts)
