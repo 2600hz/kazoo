@@ -153,11 +153,11 @@ iso8601_time(Timestamp) when is_integer(Timestamp) ->
     iso8601_time(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
 %%------------------------------------------------------------------------------
-%% @doc Format date or datetime or Gregorian timestamp according to ISO 8601.
+%% @doc Format date or datetime or Gregorian timestamp (all in UTC)
+%% according to ISO 8601.
 %%
 %% It assumes the input is in UTC.
-%% @throws {error, invalid_offset}
-%% @throws {error, unknown_tz}
+%% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
 -spec iso8601(calendar:datetime() | date() | gregorian_seconds()) -> kz_term:ne_binary().
@@ -167,7 +167,7 @@ iso8601(Timestamp) ->
     iso8601(Timestamp, <<"UTC">>).
 
 %%------------------------------------------------------------------------------
-%% @doc Format Gregorian timestamp or datetime to the local Timezone
+%% @doc Format Gregorian timestamp or datetime (all un UTC) to the local Timezone
 %% according to ISO 8601.
 %%
 %% Timezone can be:
@@ -175,8 +175,7 @@ iso8601(Timestamp) ->
 %% * An offset in seconds ({@link integer()}), negative or positive.
 %% * A {@link kz_term:ne_binary} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
 %% * The name of the timezone {@link kz_term:ne_binary} like `America/Los_Angeles'.
-%% @throws {error, invalid_offset}
-%% @throws {error, unknown_tz}
+%% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
 -spec iso8601(datetime() | gregorian_seconds(), kz_term:ne_binary() | integer()) -> kz_term:ne_binary().
@@ -299,35 +298,37 @@ iso8601_offset(_Time, _NotValid) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Parse date part of ISO 8601.
+%% @throws {error, invalid_date}
 %% @end
 %%------------------------------------------------------------------------------
--spec from_iso8601_date(kz_term:ne_binary()) -> datetime().
+-spec from_iso8601_date(kz_term:ne_binary()) -> date().
 from_iso8601_date(<<Year:4/binary, "-", Month:2/binary, "-", Day:2/binary>>) ->
-    {cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')};
+    from_binary_to_date(Year, Month, Day);
 from_iso8601_date(<<Year:4/binary, Month:2/binary, Day:2/binary>>) ->
-    {cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')};
+    from_binary_to_date(Year, Month, Day);
 from_iso8601_date(_NotValid) ->
     throw({'error', 'invalid_date'}).
 
+-spec from_binary_to_date(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> date().
+from_binary_to_date(Year, Month, Day) ->
+    {cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')}.
+
 %%------------------------------------------------------------------------------
-%% @doc Parse date time formatted in ISO 8601 and convert it to UTC if input
+%% @doc Parse date time formatted in ISO 8601 and convert it to UTC if the input
 %% is in another timezone.
 %%
-%% Assumes UTC if timezone offset part is missing.
-%% @throws {error, invalid_offset}
-%% @throws {error, invalid_time}
-%% @throws {error, invalid_date}
+%% This is very raw parser for ISO 8601, and only supports the date format and
+%% combined(date and time) format. In combined format separators are optional.
+%%
+%% UTC timezone will be used if time offset part is missing!
+%% @throws {error, invalid_offset | invalid_time | invalid_date}
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_iso8601(kz_term:ne_binary()) -> datetime().
 from_iso8601(<<Year:4/binary, "-", Month:2/binary, "-", Day:2/binary, "T", Time/binary>>) ->
-    from_iso8601({cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')}
-                ,from_iso8601_time(Time)
-                );
+    from_iso8601(from_binary_to_date(Year, Month, Day), from_iso8601_time(Time));
 from_iso8601(<<Year:4/binary, Month:2/binary, Day:2/binary, "T", Time/binary>>) ->
-    from_iso8601({cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')}
-                ,from_iso8601_time(Time)
-                );
+    from_iso8601(from_binary_to_date(Year, Month, Day), from_iso8601_time(Time));
 from_iso8601(MaybeDate) ->
     from_iso8601_date(MaybeDate).
 
@@ -339,15 +340,17 @@ from_iso8601(MaybeDate) ->
 from_iso8601(Date, {Time, Offset}) -> adjust_utc_datetime({Date, Time}, Offset).
 
 %%------------------------------------------------------------------------------
-%% @doc Apply the adjustment to the Timestamp.
+%% @doc Apply the adjustment to the UTC Timestamp.
+%%
+%% To convert an UTC timezone to a local timezone by means of adding an offset
+%% or specifying the timezone name.
 %%
 %% Adjustment can be:
 %%
 %% * An offset in seconds ({@link integer()}), negative or positive.
 %% * A {@link kz_term:ne_binary} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
 %% * The name of the timezone {@link kz_term:ne_binary} like `America/Los_Angeles'.
-%% @throws {error, invalid_offset}
-%% @throws {error, unknown_tz}
+%% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
 -spec adjust_utc_timestamp(gregorian_seconds(), integer() | kz_term:ne_binary() | integer()) -> gregorian_seconds().
@@ -384,8 +387,7 @@ adjust_utc_timestamp(Timestamp, Timezone) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Apply the adjustment to the Datetime.
-%% @throws {error, invalid_offset}
-%% @throws {error, unknown_tz}
+%% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
 -spec adjust_utc_datetime(datetime(), integer() | kz_term:ne_binary()) -> datetime().
@@ -393,6 +395,11 @@ adjust_utc_datetime(DateTime, Adjustment) ->
     Adjusted = adjust_utc_timestamp(calendar:datetime_to_gregorian_seconds(DateTime), Adjustment),
     calendar:gregorian_seconds_to_datetime(Adjusted).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @throws {error, any()}
+%% @end
+%%------------------------------------------------------------------------------
 -spec cast_integer(integer(), atom()) -> integer().
 cast_integer(Value, Exception) ->
     try kz_term:to_integer(Value)
