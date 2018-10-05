@@ -225,36 +225,40 @@ format_iso8601(Timestamp, TimeOffset) ->
 -spec from_iso8601_time(binary()) -> time().
 %% HH:MM:SS
 from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary>>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<>>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<>>);
 %% HHMMSS
 from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary>>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<>>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<>>);
 
 %% HH:MM:SSZ
 from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary, "Z">>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"Z">>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<"Z">>);
 %% HHMMSSZ
 from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary, "Z">>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"Z">>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<"Z">>);
 
 %% HH:MM:SS+
 from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary, "+", TzOffset/binary>>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"+", TzOffset/binary>>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<"+", TzOffset/binary>>);
 %% HH:MM:SS-
 from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary, "-", TzOffset/binary>>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"-", TzOffset/binary>>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<"-", TzOffset/binary>>);
 
 %% HHMMSS+
 from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary, "+", TzOffset/binary>>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"+", TzOffset/binary>>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<"+", TzOffset/binary>>);
 %% HHMMSS-
 from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary, "-", TzOffset/binary>>) ->
-    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"-", TzOffset/binary>>);
+    iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<"-", TzOffset/binary>>);
 
 from_iso8601_time(<<>>) ->
     iso8601_offset({0, 0, 0}, <<"Z">>);
 from_iso8601_time(_NotValid) ->
     throw({'error', 'invalid_time'}).
+
+-spec from_binary_to_time(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> time().
+from_binary_to_time(Hour, Minute, Second) ->
+    {cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}.
 
 %%------------------------------------------------------------------------------
 %% @doc Parse timezone offset part of ISO 8601.
