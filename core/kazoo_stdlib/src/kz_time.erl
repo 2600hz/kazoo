@@ -28,6 +28,7 @@
 
         ,weekday/1, month/1
         ,unitfy_seconds/1
+        ,adjust_utc_timestamp/2, adjust_utc_datetime/2
         ]).
 
 -ifdef(TEST).
@@ -155,6 +156,8 @@ iso8601_time(Timestamp) when is_integer(Timestamp) ->
 %% @doc Format date or datetime or Gregorian timestamp according to ISO 8601.
 %%
 %% It assumes the input is in UTC.
+%% @throws {error, invalid_offset}
+%% @throws {error, unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
 -spec iso8601(calendar:datetime() | date() | gregorian_seconds()) -> kz_term:ne_binary().
@@ -172,9 +175,11 @@ iso8601(Timestamp) ->
 %% * An offset in seconds ({@link integer()}), negative or positive.
 %% * A {@link kz_term:ne_binary} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
 %% * The name of the timezone {@link kz_term:ne_binary} like `America/Los_Angeles'.
+%% @throws {error, invalid_offset}
+%% @throws {error, unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
--spec iso8601(datetime() | gregorian_seconds(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec iso8601(datetime() | gregorian_seconds(), kz_term:ne_binary() | integer()) -> kz_term:ne_binary().
 iso8601({{_, _, _}, {_, _, _}}=Datetime, Timezone) ->
     iso8601(calendar:datetime_to_gregorian_seconds(Datetime), Timezone);
 iso8601(Timestamp, Timezone) when is_integer(Timestamp) ->
@@ -215,36 +220,37 @@ format_iso8601(Timestamp, TimeOffset) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Parse time part of ISO 8601.
+%% @throws {error, invalid_time}
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_iso8601_time(binary()) -> time().
 %% HH:MM:SS
-from_iso8601_time(<<Hours:2/binary, ":", Minutes:2/binary, ":", Seconds:2/binary>>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<>>);
+from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary>>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<>>);
 %% HHMMSS
-from_iso8601_time(<<Hours:2/binary, Minutes:2/binary, Seconds:2/binary>>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<>>);
+from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary>>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<>>);
 
 %% HH:MM:SSZ
-from_iso8601_time(<<Hours:2/binary, ":", Minutes:2/binary, ":", Seconds:2/binary, "Z">>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<"Z">>);
+from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary, "Z">>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"Z">>);
 %% HHMMSSZ
-from_iso8601_time(<<Hours:2/binary, Minutes:2/binary, Seconds:2/binary, "Z">>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<"Z">>);
+from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary, "Z">>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"Z">>);
 
 %% HH:MM:SS+
-from_iso8601_time(<<Hours:2/binary, ":", Minutes:2/binary, ":", Seconds:2/binary, "+", TzOffset/binary>>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<"+", TzOffset/binary>>);
+from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary, "+", TzOffset/binary>>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"+", TzOffset/binary>>);
 %% HH:MM:SS-
-from_iso8601_time(<<Hours:2/binary, ":", Minutes:2/binary, ":", Seconds:2/binary, "-", TzOffset/binary>>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<"-", TzOffset/binary>>);
+from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary, "-", TzOffset/binary>>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"-", TzOffset/binary>>);
 
 %% HHMMSS+
-from_iso8601_time(<<Hours:2/binary, Minutes:2/binary, Seconds:2/binary, "+", TzOffset/binary>>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<"+", TzOffset/binary>>);
+from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary, "+", TzOffset/binary>>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"+", TzOffset/binary>>);
 %% HHMMSS-
-from_iso8601_time(<<Hours:2/binary, Minutes:2/binary, Seconds:2/binary, "-", TzOffset/binary>>) ->
-    iso8601_offset({kz_term:to_integer(Hours), kz_term:to_integer(Minutes), kz_term:to_integer(Seconds)}, <<"-", TzOffset/binary>>);
+from_iso8601_time(<<Hour:2/binary, Minute:2/binary, Second:2/binary, "-", TzOffset/binary>>) ->
+    iso8601_offset({cast_integer(Hour, 'invalid_time'), cast_integer(Minute, 'invalid_time'), cast_integer(Second, 'invalid_time')}, <<"-", TzOffset/binary>>);
 
 from_iso8601_time(<<>>) ->
     iso8601_offset({0, 0, 0}, <<"Z">>);
@@ -255,6 +261,7 @@ from_iso8601_time(_NotValid) ->
 %% @doc Parse timezone offset part of ISO 8601.
 %%
 %% Assumes UTC if timezone offset part is missing.
+%% @throws {error, invalid_offset}
 %% @end
 %%------------------------------------------------------------------------------
 -spec iso8601_offset(time(), binary()) -> {time(), integer()}.
@@ -264,28 +271,28 @@ iso8601_offset(Time, <<>>) ->
 iso8601_offset(Time, <<"Z">>) ->
     {Time, 0};
 %% +HH:MM
-iso8601_offset(Time, <<"+", Hours:2/binary, ":", Minutes:2/binary>>) ->
-    Offset = {kz_term:to_integer(Hours), kz_term:to_integer(Minutes), 0},
+iso8601_offset(Time, <<"+", Hour:2/binary, ":", Minute:2/binary>>) ->
+    Offset = {cast_integer(Hour, 'invalid_offset'), cast_integer(Minute, 'invalid_offset'), 0},
     {Time, -1 * calendar:time_to_seconds(Offset)};
 %% -HH:MM
-iso8601_offset(Time, <<"-", Hours:2/binary, ":", Minutes:2/binary>>) ->
-    Offset = {kz_term:to_integer(Hours), kz_term:to_integer(Minutes), 0},
+iso8601_offset(Time, <<"-", Hour:2/binary, ":", Minute:2/binary>>) ->
+    Offset = {cast_integer(Hour, 'invalid_offset'), cast_integer(Minute, 'invalid_offset'), 0},
     {Time, calendar:time_to_seconds(Offset)};
 %% +HHMM
-iso8601_offset(Time, <<"+", Hours:2/binary, Minutes:2/binary>>) ->
-    Offset = {kz_term:to_integer(Hours), kz_term:to_integer(Minutes), 0},
+iso8601_offset(Time, <<"+", Hour:2/binary, Minute:2/binary>>) ->
+    Offset = {cast_integer(Hour, 'invalid_offset'), cast_integer(Minute, 'invalid_offset'), 0},
     {Time, -1 * calendar:time_to_seconds(Offset)};
 %% -HHMM
-iso8601_offset(Time, <<"-", Hours:2/binary, Minutes:2/binary>>) ->
-    Offset = {kz_term:to_integer(Hours), kz_term:to_integer(Minutes), 0},
+iso8601_offset(Time, <<"-", Hour:2/binary, Minute:2/binary>>) ->
+    Offset = {cast_integer(Hour, 'invalid_offset'), cast_integer(Minute, 'invalid_offset'), 0},
     {Time, calendar:time_to_seconds(Offset)};
 %% +HH
-iso8601_offset(Time, <<"+", Hours:2/binary>>) ->
-    Offset = {kz_term:to_integer(Hours), 0, 0},
+iso8601_offset(Time, <<"+", Hour:2/binary>>) ->
+    Offset = {cast_integer(Hour, 'invalid_offset'), 0, 0},
     {Time, -1 * calendar:time_to_seconds(Offset)};
 %% -HH
-iso8601_offset(Time, <<"-", Hours:2/binary>>) ->
-    Offset = {kz_term:to_integer(Hours), 0, 0},
+iso8601_offset(Time, <<"-", Hour:2/binary>>) ->
+    Offset = {cast_integer(Hour, 'invalid_offset'), 0, 0},
     {Time, calendar:time_to_seconds(Offset)};
 iso8601_offset(_Time, _NotValid) ->
     throw({'error', 'invalid_offset'}).
@@ -296,9 +303,9 @@ iso8601_offset(_Time, _NotValid) ->
 %%------------------------------------------------------------------------------
 -spec from_iso8601_date(kz_term:ne_binary()) -> datetime().
 from_iso8601_date(<<Year:4/binary, "-", Month:2/binary, "-", Day:2/binary>>) ->
-    {kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)};
+    {cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')};
 from_iso8601_date(<<Year:4/binary, Month:2/binary, Day:2/binary>>) ->
-    {kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)};
+    {cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')};
 from_iso8601_date(_NotValid) ->
     throw({'error', 'invalid_date'}).
 
@@ -307,13 +314,20 @@ from_iso8601_date(_NotValid) ->
 %% is in another timezone.
 %%
 %% Assumes UTC if timezone offset part is missing.
+%% @throws {error, invalid_offset}
+%% @throws {error, invalid_time}
+%% @throws {error, invalid_date}
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_iso8601(kz_term:ne_binary()) -> datetime().
 from_iso8601(<<Year:4/binary, "-", Month:2/binary, "-", Day:2/binary, "T", Time/binary>>) ->
-    from_iso8601({kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)}, from_iso8601_time(Time));
+    from_iso8601({cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')}
+                ,from_iso8601_time(Time)
+                );
 from_iso8601(<<Year:4/binary, Month:2/binary, Day:2/binary, "T", Time/binary>>) ->
-    from_iso8601({kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)}, from_iso8601_time(Time));
+    from_iso8601({cast_integer(Year, 'invalid_date'), cast_integer(Month, 'invalid_date'), cast_integer(Day, 'invalid_date')}
+                ,from_iso8601_time(Time)
+                );
 from_iso8601(MaybeDate) ->
     from_iso8601_date(MaybeDate).
 
@@ -332,9 +346,11 @@ from_iso8601(Date, {Time, Offset}) -> adjust_utc_datetime({Date, Time}, Offset).
 %% * An offset in seconds ({@link integer()}), negative or positive.
 %% * A {@link kz_term:ne_binary} in format of `<<"+HH:MM">>' or `<<"-HH:MM">>'.
 %% * The name of the timezone {@link kz_term:ne_binary} like `America/Los_Angeles'.
+%% @throws {error, invalid_offset}
+%% @throws {error, unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
--spec adjust_utc_timestamp(gregorian_seconds(), integer() | kz_term:ne_binary()) -> gregorian_seconds().
+-spec adjust_utc_timestamp(gregorian_seconds(), integer() | kz_term:ne_binary() | integer()) -> gregorian_seconds().
 adjust_utc_timestamp(Timestamp, <<"UTC">>) -> Timestamp;
 adjust_utc_timestamp(Timestamp, <<"Etc/UTC">>) -> Timestamp;
 adjust_utc_timestamp(Timestamp, <<"GMT">>) -> Timestamp;
@@ -343,24 +359,47 @@ adjust_utc_timestamp(Timestamp, 0) -> Timestamp;
 adjust_utc_timestamp(Timestamp, Offset) when is_integer(Offset) ->
     Timestamp + Offset;
 adjust_utc_timestamp(Timestamp, <<"+", Hour:2/binary, ":", Minute:2/binary>>) ->
-    OffsetSeconds = calendar:time_to_seconds({kz_term:to_integer(Hour), kz_term:to_integer(Minute), 0}),
+    OffsetSeconds = calendar:time_to_seconds({cast_integer(Hour, 'invalid_offset'), cast_integer(Minute, 'invalid_offset'), 0}),
     Timestamp + OffsetSeconds;
 adjust_utc_timestamp(Timestamp, <<"-", Hour:2/binary, ":", Minute:2/binary>>) ->
-    OffsetSeconds = calendar:time_to_seconds({kz_term:to_integer(Hour), kz_term:to_integer(Minute), 0}),
+    OffsetSeconds = calendar:time_to_seconds({cast_integer(Hour, 'invalid_offset'), cast_integer(Minute, 'invalid_offset'), 0}),
     Timestamp - OffsetSeconds;
+adjust_utc_timestamp(_Timestamp, <<"+", _/binary>>) ->
+    throw({'error', 'invalid_offset'});
+adjust_utc_timestamp(_Timestamp, <<"-", _/binary>>) ->
+    throw({'error', 'invalid_offset'});
 adjust_utc_timestamp(Timestamp, Timezone) ->
-    {{_, _, _}, {_, _, _}} = Datetime =
-        localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), Timezone),
-    calendar:datetime_to_gregorian_seconds(Datetime).
+    try localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), Timezone) of
+        {{_, _, _}, {_, _, _}} = Datetime ->
+            calendar:datetime_to_gregorian_seconds(Datetime);
+        [LocalDatetime, _LocalDstDatetime] ->
+            calendar:datetime_to_gregorian_seconds(LocalDatetime);
+        {'error', 'unknown_tz'}=Error ->
+            throw(Error)
+    catch
+        _:_ ->
+            throw({'error', 'unknown_tz'})
+    end.
+
 
 %%------------------------------------------------------------------------------
 %% @doc Apply the adjustment to the Datetime.
+%% @throws {error, invalid_offset}
+%% @throws {error, unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
 -spec adjust_utc_datetime(datetime(), integer() | kz_term:ne_binary()) -> datetime().
 adjust_utc_datetime(DateTime, Adjustment) ->
     Adjusted = adjust_utc_timestamp(calendar:datetime_to_gregorian_seconds(DateTime), Adjustment),
     calendar:gregorian_seconds_to_datetime(Adjusted).
+
+-spec cast_integer(integer(), atom()) -> integer().
+cast_integer(Value, Exception) ->
+    try kz_term:to_integer(Value)
+    catch
+        'error':'badarg' ->
+            throw({'error', Exception})
+    end.
 
 %% borrowed from cow_date.erl
 -spec weekday(daynum()) -> <<_:24>>.
