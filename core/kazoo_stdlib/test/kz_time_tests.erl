@@ -162,9 +162,20 @@ iso8601_offset_test_() ->
             ,{{{2015,12,12},{12,13,12}}, <<"2015-12-12T15:13:12+03:00">>, 10800}
             ,{63595733389, <<"2015-04-08T12:29:49-05:00">>, -18000}
             ],
-    [?_assertEqual(Expected, kz_time:iso8601(Date, Offset))
+    ThrowsTests = [{63595733389, <<"no">>, 'unknown_tz'}
+                  ,{63595733389, <<"+2:03">>, 'invalid_offset'}
+                  ,{63595733389, <<"+w">>, 'invalid_offset'}
+                  ,{63595733389, <<"-we:03">>, 'invalid_offset'}
+                  ],
+    [{"formatting with offset '" ++ kz_term:to_list(Offset) ++ "'"
+     ,[?_assertEqual(Expected, kz_time:iso8601(Date, Offset))]
+     }
      || {Date, Expected, Offset} <- Tests
-    ].
+    ] ++ [{"formatting with offset '" ++ kz_term:to_list(Offset) ++ "' should throw '" ++ kz_term:to_list(Expected) ++ "'"
+          ,[?_assertThrow({'error', Expected}, kz_time:iso8601(Date, Offset))]
+          }
+          || {Date, Offset, Expected} <- ThrowsTests
+         ].
 
 from_iso8601_test_() ->
     Tests = [{<<"2015-04-07T00:00:00">>, {{2015,4,7},{0,0,0}}}
@@ -178,12 +189,18 @@ from_iso8601_test_() ->
     ThrowsTests = [{<<"2015/04/07T00.00.00">>, 'invalid_date'}
                   ,{<<"2015-04-07T04.33.02-05:00">>, 'invalid_time'}
                   ,{<<"2015-04-07T04:33:02-5:0">>, 'invalid_offset'}
+                  ,{<<"15-4-7T04:33:02-05:00">>, 'invalid_date'}
+                  ,{<<"2015-04-07T04:3:2-5:00">>, 'invalid_time'}
+
+                  ,{<<"201r-04-07T04:33:02-5:0">>, 'invalid_date'}
+                  ,{<<"2015-04-0704:33:02-05:00">>, 'invalid_date'}
+                  ,{<<"2015-04-07T0433:02-05:00">>, 'invalid_time'}
                   ],
-    [{"parsing " ++ kz_term:to_list(Date)
+    [{"parsing '" ++ kz_term:to_list(Date) ++ "'"
      ,[?_assertEqual(Expected, kz_time:from_iso8601(Date))]
      }
      || {Date, Expected} <- Tests
-    ] ++ [{"parser should throws for " ++ kz_term:to_list(Date)
+    ] ++ [{"parser should throws '" ++ kz_term:to_list(Expected) ++ "' for '" ++ kz_term:to_list(Date) ++ "'"
           ,[?_assertThrow({'error', Expected}, kz_time:from_iso8601(Date))]
           }
           || {Date, Expected} <- ThrowsTests
