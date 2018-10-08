@@ -185,13 +185,6 @@ try_converting(JSON) ->
             JSON
     end.
 
--spec log_big_binary(binary()) -> 'ok'.
-log_big_binary(<<Bin:500/binary, Rest/binary>>) ->
-    lager:debug("bin: ~w", [Bin]),
-    log_big_binary(Rest);
-log_big_binary(Bin) ->
-    lager:debug("bin: ~w", [Bin]).
-
 -spec is_defined(get_key(), object()) -> boolean().
 is_defined(Path, JObj) ->
     'undefined' =/= get_value(Path, JObj).
