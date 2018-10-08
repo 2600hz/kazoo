@@ -147,7 +147,7 @@ should_topup(?NE_BINARY=AccountId, AvailableUnits) ->
                           'true' |
                           {'error', error()}.
 should_topup(AccountId, AvailableUnits, ThresholdUnits)
-  when AvailableUnits =< ThresholdUnits ->
+  when AvailableUnits < ThresholdUnits ->
     case do_transactions_have_topup(AccountId)
         orelse do_ledgers_have_topup(AccountId)
     of
