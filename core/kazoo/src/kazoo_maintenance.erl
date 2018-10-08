@@ -18,7 +18,6 @@
 -export([gc_all/0, gc_pids/1
         ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
         ,top_mem_consumers/0, top_mem_consumers/1
-        ,etop/0
 
         ,ets_info/0
         ,mem_info/0
@@ -197,11 +196,6 @@ top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
                        )
          ),
     lists:split(Len, SortHeapDesc).
-
--spec etop() -> 'ok'.
-etop() ->
-    etop:start([{'output', 'text'}]),
-    'ok'.
 
 -spec ets_info() -> 'ok'.
 ets_info() ->

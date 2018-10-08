@@ -1148,7 +1148,7 @@ accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig) ->
         [] -> 'ok';
         Keys ->
             MigratedConfig = deprecate_timezone_for_default_timezone(Keys, AccountsConfig),
-            kz_datamgr:save_doc(?KZ_CONFIG_DB, MigratedConfig),
+            {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, MigratedConfig),
             'ok'
     end.
 
