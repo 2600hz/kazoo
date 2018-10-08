@@ -99,14 +99,18 @@ transfer_set_callid(UUID, _) -> UUID.
 -spec transfer_referred(kz_term:ne_binary(), binary()) -> kz_term:api_binary().
 transfer_referred(UUID, <<"-bleg">>) ->
     case ecallmgr_fs_channel:fetch(UUID, 'record') of
-        {'ok', #channel{presence_id='undefined'}} -> 'undefined';
-        {'ok', #channel{presence_id=PresenceId}} -> <<"<sip:", PresenceId/binary, ">">>;
+        {'ok', #channel{username='undefined'}} -> 'undefined';
+        {'ok', #channel{username=Username
+                       ,realm=Realm
+                       }} -> <<"<sip:", Username/binary, "@", Realm/binary, ">">>;
         _Else -> 'undefined'
     end;
 transfer_referred(UUID, _) ->
     case ecallmgr_fs_channel:fetch_other_leg(UUID, 'record') of
-        {'ok', #channel{presence_id='undefined'}} -> 'undefined';
-        {'ok', #channel{presence_id=PresenceId}} -> <<"<sip:", PresenceId/binary, ">">>;
+        {'ok', #channel{username='undefined'}} -> 'undefined';
+        {'ok', #channel{username=Username
+                       ,realm=Realm
+                       }} -> <<"<sip:", Username/binary, "@", Realm/binary, ">">>;
         _Else -> 'undefined'
     end.
 
