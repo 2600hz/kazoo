@@ -755,7 +755,7 @@ pmap_processor_fold(#kz_binding{binding=Binding
                    ,_Options
                    ) ->
     lager:debug("exact match for ~s", [Binding]),
-    map_responders(Acc, Responders, Payload);
+    pmap_responders(Acc, Responders, Payload);
 pmap_processor_fold(#kz_binding{binding_parts=BParts
                                ,binding_responders=Responders
                                }
