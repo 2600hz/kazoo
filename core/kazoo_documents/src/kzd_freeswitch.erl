@@ -170,9 +170,23 @@ channel_authorized(Props) ->
 outbound_flags(Props) ->
     ccv(Props, <<"Outbound-Flags">>).
 
--spec hunt_destination_number(data()) -> kz_term:api_binary().
+-spec hunt_destination_number(data()) -> kz_term:api_ne_binary().
 hunt_destination_number(Props) ->
-    props:get_value(<<"Hunt-Destination-Number">>, Props).
+    case props:get_value(<<"Hunt-Destination-Number">>, Props) of
+        'undefined' -> sip_req_user(Props);
+        HuntDestinationNumber -> HuntDestinationNumber
+    end.
+
+-spec sip_req_user(data()) -> kz_term:api_ne_binary().
+sip_req_user(Props) ->
+    case props:get_value(<<"variable_sip_req_uri">>, Props) of
+        'undefined' -> 'undefined';
+        ReqURI ->
+            case binary:split(ReqURI, <<"@">>) of
+                [Number, _Realm] -> Number;
+                _Split -> 'undefined'
+            end
+    end.
 
 -spec is_channel_recovering(data()) -> boolean().
 is_channel_recovering(Props) ->
