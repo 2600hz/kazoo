@@ -28,7 +28,7 @@
 -define(DEFAULT_POOL_SIZE, 150).
 -define(DEFAULT_POOL_OVERFLOW, 100).
 -define(DEFAULT_POOL_THRESHOLD, 5).
--define(DEFAULT_POOL_SERVER_CONFIRMS, true).
+-define(DEFAULT_POOL_SERVER_CONFIRMS, false).
 
 %%% Move the section to kazoo_apps or ecallmgr for per-vm control
 
