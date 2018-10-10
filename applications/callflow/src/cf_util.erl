@@ -440,10 +440,9 @@ send_default_response(Cause, Call) ->
 -spec apply_dialplan(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:ne_binary().
 apply_dialplan(N, 'undefined') -> N;
 apply_dialplan(Number, DialPlan) ->
-    Regexs = kz_json:get_keys(DialPlan),
-    case Regexs of
+    case kz_json:get_keys(DialPlan) of
         [] -> Number;
-        _ -> maybe_apply_dialplan(Regexs, DialPlan, Number)
+        Regexps -> maybe_apply_dialplan(Regexps, DialPlan, Number)
     end.
 
 -spec maybe_apply_dialplan(kz_json:path(), kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().

@@ -222,7 +222,7 @@ format_iso8601(Timestamp, TimeOffset) ->
 %% @throws {error, invalid_time}
 %% @end
 %%------------------------------------------------------------------------------
--spec from_iso8601_time(binary()) -> time().
+-spec from_iso8601_time(binary()) -> {time(), integer()}.
 %% HH:MM:SS
 from_iso8601_time(<<Hour:2/binary, ":", Minute:2/binary, ":", Second:2/binary>>) ->
     iso8601_offset(from_binary_to_time(Hour, Minute, Second), <<>>);
@@ -404,7 +404,7 @@ adjust_utc_datetime(DateTime, Adjustment) ->
 %% @throws {error, any()}
 %% @end
 %%------------------------------------------------------------------------------
--spec cast_integer(integer(), atom()) -> integer().
+-spec cast_integer(any(), atom()) -> integer().
 cast_integer(Value, Exception) ->
     try kz_term:to_integer(Value)
     catch

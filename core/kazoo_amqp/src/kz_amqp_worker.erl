@@ -115,7 +115,7 @@
                ,defer = 'undefined' :: 'undefined' | {any(), {pid(), reference()}}
                ,confirm_timeout_ref :: kz_term:api_reference()
                ,confirm_start_time :: kz_time:now() | 'undefined'
-               ,timeout :: non_neg_integer()
+               ,timeout :: non_neg_integer() | 'undefined'
                ,method :: atom()
                ,reply_to :: kz_term:api_pid_ref()
                }).
@@ -855,7 +855,7 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{client_from='relay'
                          ,client_pid=Pid
                          }) ->

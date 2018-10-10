@@ -134,7 +134,7 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 -spec get_master_account_id() -> {'ok', kz_term:ne_binary()} |
                                  {'error', atom()}.
 get_master_account_id() ->
-    case kapps_config:get_ne_binary(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
+    case kapps_config:get_ne_binary(?KZ_ACCOUNTS_DB, <<"master_account_id">>) of
         'undefined' ->
             R = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_id">>, ['include_docs']),
             find_master_account_id(R);
@@ -148,8 +148,8 @@ find_master_account_id({'ok', Accounts}) ->
         find_oldest_doc([kz_json:get_value(<<"doc">>, Account)
                          || Account <- Accounts
                         ]),
-    lager:debug("setting ~s.master_account_id to ~s", [?KZ_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
-    {'ok', _} = kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
+    lager:debug("setting ~s.master_account_id to ~s", [?KZ_ACCOUNTS_DB, OldestAccountId]),
+    {'ok', _} = kapps_config:set(?KZ_ACCOUNTS_DB, <<"master_account_id">>, OldestAccountId),
     Ok.
 
 %%------------------------------------------------------------------------------

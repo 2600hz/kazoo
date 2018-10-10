@@ -372,7 +372,7 @@ channel_status('undefined', _) -> {'error', 'no_channel_id'};
 channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
     Command = channel_status_command(CallId)
         ++ kz_api:default_headers(SrvQueue, ?APP_NAME, ?APP_VERSION),
-    kapi_call:publish_channel_status_req(CallId, Command);
+    kapi_call:publish_channel_status_req(Command, CallId);
 channel_status(Call, SrvQueue) ->
     channel_status(kapps_call:call_id(Call), SrvQueue).
 
@@ -403,7 +403,7 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Resp = kz_amqp_worker:call_collect(Command
-                                      ,fun(C) -> kapi_call:publish_channel_status_req(ChannelId, C) end
+                                      ,fun(C) -> kapi_call:publish_channel_status_req(C, ChannelId) end
                                       ,{'ecallmgr', 'true'}
                                       ),
     case Resp of
@@ -3292,7 +3292,7 @@ maybe_add_debug_data(JObj, Call) ->
 attended_transfer(To, Call) ->
     attended_transfer(To, 'undefined', Call).
 
--spec attended_transfer(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
+-spec attended_transfer(kz_term:ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> 'ok'.
 attended_transfer(To, TransferLeg, Call) ->
     Command = transfer_command(<<"attended">>, To, TransferLeg, Call),
     send_command(Command, Call).
@@ -3319,28 +3319,28 @@ transfer(TransferType, To, TransferLeg, Call) ->
 transfer_command(TransferType, TransferTo, Call) ->
     transfer_command(TransferType, TransferTo, 'undefined', Call).
 
--spec transfer_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:api_terms().
+-spec transfer_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:api_terms().
 transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
-    kz_json:from_list(
-      [{<<"Application-Name">>, <<"transfer">>}
-      ,{<<"Transfer-Type">>, TransferType}
-      ,{<<"Transfer-To">>, TransferTo}
-      ,{<<"Transfer-Leg">>, TransferLeg}
-      ,{<<"Caller-ID-Number">>, kapps_call:callee_id_number(Call)}
-      ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
-      ,{<<"Insert-At">>, <<"now">>}
-      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-      ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-      ]).
+    kz_json:from_list([{<<"Application-Name">>, <<"transfer">>}
+                      ,{<<"Transfer-Type">>, TransferType}
+                      ,{<<"Transfer-To">>, TransferTo}
+                      ,{<<"Transfer-Leg">>, TransferLeg}
+                      ,{<<"Caller-ID-Number">>, kapps_call:callee_id_number(Call)}
+                      ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
+                      ,{<<"Insert-At">>, <<"now">>}
+                      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                      ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+                      ]
+                     ).
 
 -spec play_macro_command(kz_term:ne_binaries(), kapps_call:call()) -> kz_term:api_terms().
 play_macro_command(Media, Call) ->
-    kz_json:from_list(
-      [{<<"Application-Name">>, <<"play_macro">>}
-      ,{<<"Media-Macro">>, Media}
-      ,{<<"Insert-At">>, <<"now">>}
-      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-      ]).
+    kz_json:from_list([{<<"Application-Name">>, <<"play_macro">>}
+                      ,{<<"Media-Macro">>, Media}
+                      ,{<<"Insert-At">>, <<"now">>}
+                      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                      ]
+                     ).
 
 -spec b_play_macro(kz_term:ne_binaries(), kapps_call:call()) -> kapps_api_std_return().
 b_play_macro(Media, Call) ->
