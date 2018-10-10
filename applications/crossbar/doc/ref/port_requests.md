@@ -75,6 +75,16 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 ```
 
+## Patch
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
+```
+
 ## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}

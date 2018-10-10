@@ -734,7 +734,40 @@ curl -v -X POST \
     "status": "success"
 }
 ```
+## Patch a port request
 
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"your_custom_info":{"carrier_port_id": "apc-8535937-gtk123", "carrier_name": "ace phone co"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630097779,
+        "id": "{PORT_REQUEST_ID}",
+        "name": "{PORT_REQUEST_NAME}",
+        "numbers": {
+            "{PHONE_NUMBER}": {
+                "state": "NY"
+            }
+        },
+        "port_state": "unconfirmed",
+        "sent": false,
+        "updated": 63630104652,
+        "uploads": {},
+        "your_custom_info": {
+            "carrier_port_id": "apc-8535937-gtk123",
+            "carrier_name": "ace phone co"
+        }
+    }
+}
+```
 
 #### DELETE a port request
 

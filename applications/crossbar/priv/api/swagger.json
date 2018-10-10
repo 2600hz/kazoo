@@ -41009,6 +41009,24 @@
                     }
                 }
             },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/PORT_REQUEST_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
             "post": {
                 "parameters": [
                     {
