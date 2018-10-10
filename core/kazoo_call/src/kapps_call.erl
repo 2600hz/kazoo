@@ -1120,24 +1120,26 @@ message_left(#kapps_call{message_left=MessageLeft}) ->
 set_message_left(MessageLeft, #kapps_call{}=Call) when is_boolean(MessageLeft) ->
     Call#kapps_call{message_left=MessageLeft}.
 
--spec remove_custom_channel_vars(kz_json:path(), call()) -> call().
+-spec remove_custom_channel_vars(kz_json:keys(), call()) -> call().
 remove_custom_channel_vars(Keys, #kapps_call{}=Call) ->
     kapps_call_command:set(kz_json:from_list([{Key, <<>>} || Key <- Keys]), 'undefined', Call),
     handle_ccvs_remove(Keys, Call).
 
--spec handle_ccvs_remove(kz_json:path(), call()) -> call().
+-spec handle_ccvs_remove(kz_json:keys(), call()) -> call().
 handle_ccvs_remove(Keys, #kapps_call{ccvs=CCVs}=Call) ->
-    lists:foldl(fun(Key, C) ->
-                        case props:get_value(Key, ?SPECIAL_VARS) of
-                            'undefined' -> C;
-                            Index -> setelement(Index, C, 'undefined')
-                        end
-                end
+    lists:foldl(fun ccv_remove_fold/2
                ,Call#kapps_call{ccvs=kz_json:delete_keys(Keys, CCVs)}
                ,Keys
                ).
 
--spec set_custom_channel_var(kz_json:path(), kz_json:json_term(), call()) -> call().
+-spec ccv_remove_fold(kz_json:key(), call()) -> call().
+ccv_remove_fold(Key, Call) ->
+    case props:get_value(Key, ?SPECIAL_VARS) of
+        'undefined' -> Call;
+        Index -> setelement(Index, Call, 'undefined')
+    end.
+
+-spec set_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
 -ifdef(TEST).
 set_custom_channel_var(Key, Value, Call) ->
     insert_custom_channel_var(Key, Value, Call).
@@ -1147,7 +1149,7 @@ set_custom_channel_var(Key, Value, Call) ->
     insert_custom_channel_var(Key, Value, Call).
 -endif.
 
--spec insert_custom_channel_var(kz_json:path(), kz_json:json_term(), call()) -> call().
+-spec insert_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
 insert_custom_channel_var(Key, Value, #kapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(kz_json:set_value(Key, Value, CCVs), Call).
 
@@ -1217,11 +1219,11 @@ custom_application_vars(#kapps_call{cavs=CAVs}) ->
 set_custom_sip_header(Key, Value, #kapps_call{sip_headers=SHs}=Call) ->
     Call#kapps_call{sip_headers=kz_json:set_value(Key, Value, SHs)}.
 
--spec custom_sip_header(kz_json:path(), call()) -> kz_json:api_json_term().
+-spec custom_sip_header(kz_json:get_key(), call()) -> kz_json:api_json_term().
 custom_sip_header(Key, #kapps_call{}=Call) ->
     custom_sip_header(Key, 'undefined', Call).
 
--spec custom_sip_header(kz_json:path(), Default, call()) -> kz_json:json_term() | Default.
+-spec custom_sip_header(kz_json:get_key(), Default, call()) -> kz_json:json_term() | Default.
 custom_sip_header(Key, Default, #kapps_call{sip_headers=SHs}) ->
     kz_json:get_value(Key, SHs, Default).
 

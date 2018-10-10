@@ -101,7 +101,6 @@ handle_manual(Data, Call, CaptureGroup) ->
             cf_exe:stop(Call)
     end.
 
-
 %%------------------------------------------------------------------------------
 %% @doc Handle static mode of dynamic cid
 %% @end
@@ -115,22 +114,23 @@ handle_static(Data, Call, CaptureGroup) ->
 %% @doc Read CID info from a list of CID defined in database
 %% @end
 %%------------------------------------------------------------------------------
--type list_cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), binary()} |
+-type cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), binary()}.
+-type list_cid_entry() :: list_cid_entry() |
                           {'error', kz_datamgr:data_error()}.
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->
-    maybe_proceed_with_call(get_list_entry(Data, Call), Data, Call).
+    maybe_proceed_with_call(Data, Call, get_list_entry(Data, Call)).
 
 -spec handle_lists(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_lists(Data, Call) ->
-    ListId = kz_json:get_ne_binary_value(<<"id">>, Data),
-    maybe_proceed_with_call(get_caller_id_from_entries(Call, ListId, 'undefined'), Data, Call).
+    ListId = kz_doc:id(Data),
+    maybe_proceed_with_call(Data, Call, get_caller_id_from_entries(Call, ListId, 'undefined')).
 
--spec maybe_proceed_with_call(list_cid_entry(), kz_json:object(), kapps_call:call()) -> 'ok'.
-maybe_proceed_with_call({CIDName, CIDNumber, CaptureGroup}, Data, Call) ->
+-spec maybe_proceed_with_call(kz_json:object(), kapps_call:call(), list_cid_entry()) -> 'ok'.
+maybe_proceed_with_call(Data, Call, {CIDName, CIDNumber, CaptureGroup}) ->
     update_call_and_continue(Data, Call, CIDNumber, CIDName, CaptureGroup, <<"lists">>);
-maybe_proceed_with_call(_, _, Call) ->
+maybe_proceed_with_call(_Data, Call, {'error', _}) ->
     lager:debug("failed to find cid name/number and destination from list(s), hanging up."),
     cf_exe:stop_bad_destination(Call).
 
@@ -349,8 +349,9 @@ maybe_key_and_dest_using_data(Data, Call) ->
             {CIDKey, Destination}
     end.
 
--spec get_caller_id_from_entries(kapps_call:call(), kz_term:api_ne_binary(), key_dest()) -> list_cid_entry().
-get_caller_id_from_entries(_, 'undefined', _) ->
+-spec get_caller_id_from_entries(kapps_call:call(), kz_term:api_ne_binary(), key_dest()) ->
+                                        list_cid_entry().
+get_caller_id_from_entries(_Call, 'undefined', _KeyDest) ->
     lager:warning("list id is missing"),
     {'error', 'not_found'};
 get_caller_id_from_entries(Call, ListId, KeyDest) ->
@@ -363,7 +364,8 @@ get_caller_id_from_entries(Call, ListId, KeyDest) ->
             Error
     end.
 
--spec get_new_caller_id(kapps_call:call(), kz_json:objects(), kz_term:ne_binary(), key_dest()) -> list_cid_entry().
+-spec get_new_caller_id(kapps_call:call(), kz_json:objects(), kz_term:ne_binary(), key_dest()) ->
+                               list_cid_entry().
 get_new_caller_id(Call, [], _ListId, {_, Destination}) ->
     lager:warning("no entries were found in list ~p", [_ListId]),
     {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
@@ -372,48 +374,56 @@ get_new_caller_id(Call, [], ListId, 'undefined') ->
     lager:warning("no entries were found, maybe finding destination number using specified index"),
     LengthDigits = get_cid_length_from_list_document(Call, ListId),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
-    try <<_:LengthDigits/binary, Destination/binary>> = CaptureGroup,
-         {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
-         {CidName, CidNumber, Destination}
-    catch _E:_T ->
-            lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
-            {'error', 'not_found'}
-    end;
+    captured_key_and_destination(LengthDigits, CaptureGroup);
 get_new_caller_id(Call, [JObj | Entries], ListId, KeyDest) ->
-    Entry = kz_json:get_value(<<"value">>, JObj),
+    Entry = kz_json:get_json_value(<<"value">>, JObj),
 
     case get_key_and_dest(Call, Entry, KeyDest) of
-        {'error', _}=Error ->
-            Error;
+        {'error', _}=Error -> Error;
         {CIDKey, Destination} ->
-            case kz_json:get_ne_binary_value(<<"capture_group_key">>, Entry) of
-                CIDKey ->
-                    Name = kz_json:get_ne_binary_value(<<"name">>, Entry),
-                    Number = kz_json:get_ne_binary_value(<<"number">>, Entry),
-                    {CidName, CidNumber} = maybe_set_default_cid(Name, Number, Call),
-                    {CidName, CidNumber, Destination};
-                _ ->
-                    get_new_caller_id(Call, Entries, ListId, KeyDest)
+            case get_entry_caller_id(Call, Entry, CIDKey, Destination) of
+                'undefined' -> get_new_caller_id(Call, Entries, ListId, KeyDest);
+                {_, _, _}=CID -> CID
             end
     end.
 
--spec get_key_and_dest(kapps_call:call(), kz_json:objects(), key_dest()) -> key_dest() | {'error', any()}.
-get_key_and_dest(_, _, {CIDKey, _}=KeyDest) ->
+-spec get_entry_caller_id(kapps_call:call(), kz_json:object(), kz_term:ne_binary(), binary()) ->
+                                 cid_entry() | 'undefined'.
+get_entry_caller_id(Call, Entry, CIDKey, Destination) ->
+    case kz_json:get_ne_binary_value(<<"capture_group_key">>, Entry) of
+        CIDKey ->
+            Name = kz_json:get_ne_binary_value(<<"name">>, Entry),
+            Number = kz_json:get_ne_binary_value(<<"number">>, Entry),
+            {CidName, CidNumber} = maybe_set_default_cid(Name, Number, Call),
+            {CidName, CidNumber, Destination};
+        _Key -> 'undefined'
+    end.
+
+-spec get_key_and_dest(kapps_call:call(), kz_json:object(), key_dest()) ->
+                              key_dest() |
+                              {'error', kz_term:ne_binary() | atom()}.
+get_key_and_dest(_Call, _Entry, {CIDKey, _}=KeyDest) ->
     case not kz_term:is_ne_binary(CIDKey) of
         'true' -> KeyDest;
-        'false' ->
-            {'error', <<"key_dest_failed">>}
+        'false' -> {'error', <<"key_dest_failed">>}
     end;
 get_key_and_dest(Call, Entry, 'undefined') ->
     LengthDigits = kz_json:get_integer_value(<<"capture_group_length">>, Entry, 2),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
 
-    try <<CIDKey:LengthDigits/binary, Destination/binary>> = CaptureGroup,
-         {CIDKey, Destination}
-    catch _E:_T ->
-            lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
-            {'error', <<"entry_failed">>}
-    end.
+    captured_key_and_destination(LengthDigits, CaptureGroup).
+
+-spec captured_key_and_destination(non_neg_integer(), kz_term:ne_binary()) ->
+                                          key_dest() |
+                                          {'error', 'not_found'}.
+captured_key_and_destination(LengthDigits, CaptureGroup) when byte_size(CaptureGroup) >= LengthDigits ->
+    <<CIDKey:LengthDigits/binary, Destination/binary>> = CaptureGroup,
+    {CIDKey, Destination};
+captured_key_and_destination(_LengthDigits, _CaptureGroup) ->
+    lager:warning("failed to get cid_key (with length ~b) from capture group '~s'"
+                 ,[_LengthDigits, _CaptureGroup]
+                 ),
+    {'error', 'not_found'}.
 
 -spec get_cid_length_from_list_document(kapps_call:call(), kz_term:ne_binary()) -> non_neg_integer().
 get_cid_length_from_list_document(Call, ListId) ->
@@ -421,12 +431,12 @@ get_cid_length_from_list_document(Call, ListId) ->
         {'ok', ListJObj} ->
             case kz_json:get_integer_value(<<"length">>, ListJObj, 2) of
                 I when is_integer(I), I > 0 -> I;
-                _ ->
-                    lager:info("cid length from ~s is least than '1', using default '2'", [ListId]),
+                _Length ->
+                    lager:info("cid length from ~s is less than '1', using default '2'", [ListId]),
                     2
             end;
         {'error', _Reason} ->
-            lager:info("failed to load list document ~s using default length '2': ~p", [ListId, _Reason]),
+            lager:info("failed to load list document ~s; using default length '2': ~p", [ListId, _Reason]),
             2
     end.
 

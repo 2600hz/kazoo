@@ -324,7 +324,7 @@ handle_query_channels(JObj, _Props) ->
 handle_channel_status(JObj, _Props) ->
     'true' = kapi_call:channel_status_req_v(JObj),
     _ = kz_util:put_callid(JObj),
-    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    CallId = kz_api:call_id(JObj),
     lager:debug("channel status request received"),
     case ecallmgr_fs_channel:fetch(CallId) of
         {'error', 'not_found'} ->
@@ -349,7 +349,7 @@ handle_channel_status(JObj, _Props) ->
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ]
                  ),
-            kapi_call:publish_channel_status_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
+            kapi_call:publish_channel_status_resp(kz_api:server_id(JObj), Resp)
     end.
 
 -spec maybe_send_empty_channel_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
@@ -367,7 +367,7 @@ send_empty_channel_resp(CallId, JObj) ->
            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kapi_call:publish_channel_status_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
+    kapi_call:publish_channel_status_resp(kz_api:server_id(JObj), Resp).
 
 %%%=============================================================================
 %%% gen_server callbacks

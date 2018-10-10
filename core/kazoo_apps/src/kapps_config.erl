@@ -59,7 +59,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -type config_category() :: kz_json:key() | nonempty_string().
--type config_key() :: kz_json:path() | nonempty_string().
+-type config_key() :: kz_json:path() | kz_json:key() | nonempty_string().
 -type config_node() :: atom() | kz_term:ne_binary().
 
 -type update_option() :: {'node_specific', boolean()} |
