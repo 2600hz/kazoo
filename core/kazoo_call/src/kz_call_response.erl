@@ -154,7 +154,7 @@ send_default_response(Call, Response) ->
 get_response(Cause, Call) ->
     Default = case default_response(Cause) of
                   'undefined' -> 'undefined';
-                  Props -> kz_json:set_values(Props, kz_json:new())
+                  Props -> kz_json:from_list(Props)
               end,
     AccountId = kapps_call:account_id(Call),
     kapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause, Default).

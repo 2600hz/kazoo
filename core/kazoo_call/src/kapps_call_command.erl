@@ -3321,28 +3321,26 @@ transfer_command(TransferType, TransferTo, Call) ->
 
 -spec transfer_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:api_terms().
 transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
-    kz_json:set_values([{<<"Application-Name">>, <<"transfer">>}
-                       ,{<<"Transfer-Type">>, TransferType}
-                       ,{<<"Transfer-To">>, TransferTo}
-                       ,{<<"Transfer-Leg">>, TransferLeg}
-                       ,{<<"Caller-ID-Number">>, kapps_call:callee_id_number(Call)}
-                       ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
-                       ,{<<"Insert-At">>, <<"now">>}
-                       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-                       ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-                       ]
-                      ,kz_json:new()
-                      ).
+    kz_json:from_list([{<<"Application-Name">>, <<"transfer">>}
+                      ,{<<"Transfer-Type">>, TransferType}
+                      ,{<<"Transfer-To">>, TransferTo}
+                      ,{<<"Transfer-Leg">>, TransferLeg}
+                      ,{<<"Caller-ID-Number">>, kapps_call:callee_id_number(Call)}
+                      ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
+                      ,{<<"Insert-At">>, <<"now">>}
+                      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                      ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+                      ]
+                     ).
 
 -spec play_macro_command(kz_term:ne_binaries(), kapps_call:call()) -> kz_term:api_terms().
 play_macro_command(Media, Call) ->
-    kz_json:set_values([{<<"Application-Name">>, <<"play_macro">>}
-                       ,{<<"Media-Macro">>, Media}
-                       ,{<<"Insert-At">>, <<"now">>}
-                       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-                       ]
-                      ,kz_json:new()
-                      ).
+    kz_json:from_list([{<<"Application-Name">>, <<"play_macro">>}
+                      ,{<<"Media-Macro">>, Media}
+                      ,{<<"Insert-At">>, <<"now">>}
+                      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                      ]
+                     ).
 
 -spec b_play_macro(kz_term:ne_binaries(), kapps_call:call()) -> kapps_api_std_return().
 b_play_macro(Media, Call) ->
