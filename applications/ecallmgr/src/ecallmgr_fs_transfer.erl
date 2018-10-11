@@ -40,7 +40,8 @@ attended(Node, UUID, JObj) ->
     Arg = [Export, [[",", Exported] || Exported <- Exports] ],
     {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])}.
 
--spec blind(atom(), kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec blind(atom(), kz_term:ne_binary(), kz_json:object()) ->
+                   [{kz_term:ne_binary(), kz_term:ne_binary()}].
 blind(Node, UUID, JObj) ->
     TransferTo = kz_json:get_ne_binary_value(<<"Transfer-To">>, JObj),
 

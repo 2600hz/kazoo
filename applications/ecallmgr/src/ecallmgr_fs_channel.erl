@@ -559,23 +559,26 @@ fetch_channel(UUID) ->
         {'ok', Channel} -> Channel
     end.
 
--spec fetch_remote(kz_term:ne_binary()) -> kz_term:api_object().
+-spec fetch_remote(kz_term:ne_binary()) -> kz_term:proplist() | 'undefined'.
 fetch_remote(UUID) ->
-    Command = [{<<"Call-ID">>, UUID}
-              ,{<<"Active-Only">>, <<"true">>}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    case kz_amqp_worker:call(Command
-                            ,fun(C) -> kapi_call:publish_channel_status_req(UUID, C) end
-                            ,fun kapi_call:channel_status_resp_v/1
-                            )
-    of
+    case get_active_channel_status(UUID) of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
             Props = kz_json:recursive_to_proplist(kz_json:normalize(JObj)),
             CCVs = props:get_value(<<"custom_channel_vars">>, Props, []),
             Props ++ CCVs
     end.
+
+-spec get_active_channel_status(kz_term:ne_binary()) -> kz_amqp_worker:request_return().
+get_active_channel_status(UUID) ->
+    Command = [{<<"Call-ID">>, UUID}
+              ,{<<"Active-Only">>, <<"true">>}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    kz_amqp_worker:call(Command
+                       ,fun(API) -> kapi_call:publish_channel_status_req(API, UUID) end
+                       ,fun kapi_call:channel_status_resp_v/1
+                       ).
 
 -spec channel_not_found(atom(), kz_term:ne_binary()) -> 'ok'.
 channel_not_found(Node, FetchId) ->
