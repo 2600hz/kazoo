@@ -185,9 +185,10 @@ maybe_start_plaintext(Dispatch, IP) ->
                                    ,{'num_acceptors', Workers}
                                    ]
                                   ,#{'env' => #{'dispatch' => Dispatch
-                                               ,'timeout' => ReqTimeout
                                                }
                                     ,'stream_handlers' => maybe_add_compression_handler()
+                                    ,'shutdown_timeout' => ReqTimeout
+                                    ,'idle_timeout' => 120 * ?MILLISECONDS_IN_SECOND
                                     }
                                   )
             of
@@ -230,9 +231,10 @@ start_ssl(Dispatch, IP) ->
                                   | SSLOpts
                                  ]
                                 ,#{'env' => #{'dispatch' => Dispatch
-                                             ,'timeout' => ReqTimeout
                                              }
                                   ,'stream_handlers' => maybe_add_compression_handler()
+                                  ,'shutdown_timeout' => ReqTimeout
+                                  ,'idle_timeout' => 120 * ?MILLISECONDS_IN_SECOND
                                   }
                                 )
             of
