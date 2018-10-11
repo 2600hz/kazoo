@@ -399,7 +399,7 @@ save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
         {error, not_found} ->
             ?SUP_LOG_DEBUG(" [~s] creating new number db '~s'", [AccountId, Db]),
             'true' = kz_datamgr:db_create(Db),
-            {ok, _} = kapps_maintenance:refresh(Db),
+            kapps_maintenance:refresh(Db),
             save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
         {error, timeout} ->
             ?SUP_LOG_ERROR(" [~s] failed to save numbers to ~s: timeout, maybe trying again...", [AccountId, Db]),
