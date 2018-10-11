@@ -28,23 +28,20 @@
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    JObj = get_custom_channel_vars(Data),
-    Routines = [{fun kapps_call:insert_custom_channel_var/3, Key, Value}
-                || {Key, Value} <- kz_json:to_proplist(JObj)
-               ],
-    Export = kz_json:is_true(<<"export">>, JObj),
-    _ = set_variables(Export, JObj, cf_exe:update_call(Call, Routines)),
-    cf_exe:continue(Call).
+    CAVs = get_custom_application_vars(Data),
+    Export = kz_json:is_true(<<"export">>, Data),
+    Call1 = cf_exe:update_call(set_variables(Export, CAVs, Call)),
+    cf_exe:continue(Call1).
 
--spec get_custom_channel_vars(kz_json:object()) -> kz_json:object().
-get_custom_channel_vars(Data) ->
+-spec get_custom_application_vars(kz_json:object()) -> kz_term:proplist().
+get_custom_application_vars(Data) ->
     JObj = kz_json:get_json_value(<<"custom_application_vars">>, Data, kz_json:new()),
-    kz_json:from_list(kapps_call_util:filter_ccvs(JObj)).
+    kz_json:to_proplist(JObj).
 
--spec set_variables(boolean(), kz_json:object(), kapps_call:call()) -> 'ok'.
-set_variables('true', JObj, Call) ->
-    lager:debug("exporting custom app vars: ~p", [JObj]),
-    kapps_call_command:set('undefined', 'undefined', JObj, Call);
-set_variables('false', JObj, Call) ->
-    lager:debug("setting custom app vars: ~p", [JObj]),
-    kapps_call_command:set('undefined', 'undefined', JObj, Call).
+-spec set_variables(boolean(), kz_term:proplist(), kapps_call:call()) -> kapps_call:call().
+set_variables('true', CAVs, Call) ->
+    lager:debug("exporting custom app vars: ~p", [CAVs]),
+    kapps_call:set_custom_application_vars(CAVs, Call);
+set_variables('false', CAVs, Call) ->
+    lager:debug("setting custom app vars: ~p", [CAVs]),
+    kapps_call:set_custom_application_vars(CAVs, Call).
