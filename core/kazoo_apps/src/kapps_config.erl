@@ -69,6 +69,11 @@
 -type fetch_ret() :: {'ok', kzd_system_configs:doc()} |
                      {'error', any()}.
 
+-export_type([config_category/0
+             ,config_key/0
+             ,config_node/0
+             ]).
+
 -define(KEY_DEFAULT, <<"default">>).
 
 %%------------------------------------------------------------------------------
@@ -641,7 +646,7 @@ set_node(Category, Key, Value, Node) ->
 -spec update_category(config_category(), config_key(), any(), kz_term:ne_binary() | atom(), update_options()) ->
                              'ok' |
                              {'ok', kz_json:object()} |
-                             {'error', any()}.
+                             {'error', kz_datamgr:data_error()}.
 -ifdef(TEST).
 update_category(_, _, _, _, _) -> 'ok'.
 -else.
@@ -673,8 +678,8 @@ update_category(Category, Keys, Value, Node, Options) ->
             E
     end.
 
--spec update_category(config_category(), config_key(), any(), kz_term:ne_binary(), update_options(), kz_json:object())
-                     -> {'ok', kz_json:object()}.
+-spec update_category(config_category(), config_key(), any(), kz_term:ne_binary(), update_options(), kz_json:object()) ->
+                             {'ok', kz_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
     NodePath = [Node | Keys],
