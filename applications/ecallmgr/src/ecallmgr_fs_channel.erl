@@ -576,7 +576,7 @@ get_active_channel_status(UUID) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Command
-                       ,fun(API) -> kapi_call:publish_channel_status_req(API, UUID) end
+                       ,fun kapi_call:publish_channel_status_req/1
                        ,fun kapi_call:channel_status_resp_v/1
                        ).
 

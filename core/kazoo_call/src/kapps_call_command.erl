@@ -372,7 +372,7 @@ channel_status('undefined', _) -> {'error', 'no_channel_id'};
 channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
     Command = channel_status_command(CallId)
         ++ kz_api:default_headers(SrvQueue, ?APP_NAME, ?APP_VERSION),
-    kapi_call:publish_channel_status_req(Command, CallId);
+    kapi_call:publish_channel_status_req(Command);
 channel_status(Call, SrvQueue) ->
     channel_status(kapps_call:call_id(Call), SrvQueue).
 
@@ -403,7 +403,7 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Resp = kz_amqp_worker:call_collect(Command
-                                      ,fun(C) -> kapi_call:publish_channel_status_req(C, ChannelId) end
+                                      ,fun kapi_call:publish_channel_status_req/1
                                       ,{'ecallmgr', 'true'}
                                       ),
     case Resp of
