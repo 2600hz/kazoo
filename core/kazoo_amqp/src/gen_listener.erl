@@ -995,13 +995,10 @@ remove_binding(Binding, Props, Q) ->
 create_binding(Binding, Props, Q) when not is_binary(Binding) ->
     create_binding(kz_term:to_binary(Binding), Props, Q);
 create_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]),
+    Wapi = kz_term:to_atom(list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]), 'true'),
     declare_binding_exchanges(Wapi),
-    try (kz_term:to_atom(Wapi, 'true')):bind_q(Q, Props)
-    catch
-        'error':'undef' ->
-            erlang:error({'api_module_undefined', Wapi})
-    end.
+    'true' = kz_module:is_exported(Wapi, 'bind_q', 2),
+    Wapi:bind_q(Q, Props).
 
 -spec declare_binding_exchanges(module()) -> 'ok'.
 declare_binding_exchanges(Wapi) ->
