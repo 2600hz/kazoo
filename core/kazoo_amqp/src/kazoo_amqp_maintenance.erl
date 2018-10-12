@@ -450,55 +450,65 @@ print_consumer_details({[Consumer], Continuation}) ->
     print_consumer_details(ets:select(Continuation));
 print_consumer_details(Consumer) when is_pid(Consumer) ->
     _ = io:format("Consumer ~p:~n", [Consumer]),
-    _ = case kz_amqp_assignments:find(Consumer) of
-            {'error', _} ->
-                io:format("  ~-10s: Not currently assigned AMQP channel!~n"
-                         ,["Status"]
-                         );
-            #kz_amqp_assignment{channel='undefined'
-                               ,type='sticky'
-                               ,broker=Broker
-                               } ->
-                io:format("  ~-10s: Waiting for sticky channel from ~s~n"
-                         ,["Status", Broker]
-                         );
-            #kz_amqp_assignment{channel='undefined'
-                               ,type='float'
-                               } ->
-                io:format("  ~-10s: Waiting for float channel from any broker~n"
-                         ,["Status"]
-                         );
-            #kz_amqp_assignment{broker=Broker
-                               ,channel=Channel
-                               ,connection=Connection
-                               ,type=Type
-                               } ->
-                io:format("  ~-10s: Assigned AMQP channel~n", ["Status"]),
-                io:format("  ~-10s: ~s~n", ["Broker", Broker]),
-                io:format("  ~-10s: ~p~n", ["Channel", Channel]),
-                io:format("  ~-10s: ~p~n", ["Connection", Connection]),
-                io:format("  ~-10s: ~p~n", ["Type", Type])
-        end,
+    print_consumer_assignment(Consumer),
+    print_consumer_history(Consumer),
+    print_consumer_backtrace(Consumer),
+    io:format("~n").
+
+print_consumer_backtrace(Consumer) ->
+    case is_process_alive(Consumer) of
+        'false' -> 'ok';
+        'true' ->
+            io:format("  ~-10s:~n    ", ["Backtrace"]),
+            {'backtrace', Backtrace} = process_info(Consumer, 'backtrace'),
+            io:format(binary:replace(Backtrace, <<"\n">>, <<"~n    ">>, ['global']), [])
+    end.
+
+print_consumer_assignment(Consumer) ->
+    print_consumer_assignment(Consumer, kz_amqp_assignments:find(Consumer)).
+
+print_consumer_assignment(_Consumer, {'error', _}) ->
+    io:format("  ~-10s: Not currently assigned AMQP channel!~n"
+             ,["Status"]
+             );
+print_consumer_assignment(_Consumer, #kz_amqp_assignment{channel='undefined'
+                                                        ,type='sticky'
+                                                        ,broker=Broker
+                                                        }) ->
+    io:format("  ~-10s: Waiting for sticky channel from ~s~n"
+             ,["Status", Broker]
+             );
+print_consumer_assignment(_Consumer, #kz_amqp_assignment{channel='undefined'
+                                                        ,type='float'
+                                                        }) ->
+    io:format("  ~-10s: Waiting for float channel from any broker~n"
+             ,["Status"]
+             );
+print_consumer_assignment(_Consumer, #kz_amqp_assignment{broker=Broker
+                                                        ,channel=Channel
+                                                        ,connection=Connection
+                                                        ,type=Type
+                                                        } )->
+    io:format("  ~-10s: Assigned AMQP channel~n", ["Status"]),
+    io:format("  ~-10s: ~s~n", ["Broker", Broker]),
+    io:format("  ~-10s: ~p~n", ["Channel", Channel]),
+    io:format("  ~-10s: ~p~n", ["Connection", Connection]),
+    io:format("  ~-10s: ~p~n", ["Type", Type]).
+
+-spec print_consumer_history(pid()) -> 'ok'.
+print_consumer_history(Consumer) ->
     _ = case kz_amqp_history:get(Consumer) of
             [] -> 'ok';
             History ->
                 io:format("  ~-10s:~n", ["History"]),
-                print_consumer_history(History)
-        end,
-    _ = case is_process_alive(Consumer) of
-            'false' -> 'ok';
-            'true' ->
-                io:format("  ~-10s:~n    ", ["Backtrace"]),
-                {'backtrace', Backtrace} = process_info(Consumer, 'backtrace'),
-                io:format(binary:replace(Backtrace, <<"\n">>, <<"~n    ">>, ['global']), [])
-        end,
-    io:format("~n", []).
+                [print_consumer_command(Command) || Command <- History],
+                'ok'
+        end.
 
-print_consumer_history([]) -> 'ok';
-print_consumer_history([Command|Commands]) ->
+-spec print_consumer_command(kz_amqp_command()) -> 'ok'.
+print_consumer_command(Command) ->
     {'$lager_record', Name, Props} = lager:pr(Command, ?MODULE),
-    io:format("    ~s~n      ~p~n", [Name, Props]),
-    print_consumer_history(Commands).
+    io:format("    ~s~n      ~p~n", [Name, Props]).
 
 -spec gc_pools() -> 'ok'.
 gc_pools() ->
