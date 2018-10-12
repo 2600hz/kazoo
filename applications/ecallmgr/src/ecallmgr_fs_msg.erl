@@ -225,11 +225,11 @@ build_message_headers(JObj, Endpoint) ->
                ]),
     kz_json:foldl(fun headers_foldl/3, Header, CCVs).
 
--spec headers_foldl(kz_json:path(), kz_json:json_term(), kz_term:proplist()) -> kz_term:proplist().
+-spec headers_foldl(kz_json:get_key(), kz_json:json_term(), kz_term:proplist()) -> kz_term:proplist().
 headers_foldl(K, V, Acc) ->
     [{kz_term:to_list(?GET_CCV(K)), kz_term:to_list(V)} | Acc].
 
--spec get_uri(kz_term:api_binary()) -> kz_term:api_binary().
+-spec get_uri(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 get_uri('undefined') -> 'undefined';
 get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
 get_uri(<<"sip", _/binary>>=Uri) -> Uri;
