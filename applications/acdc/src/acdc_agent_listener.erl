@@ -815,7 +815,7 @@ handle_cast('call_status_req', #state{call=Call, my_q=Q}=State) ->
                | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ],
 
-    kapi_call:publish_channel_status_req(Command, CallId),
+    _ = kapi_call:publish_channel_status_req(Command),
     {'noreply', State};
 
 handle_cast({'call_status_req', CallId}, #state{my_q=Q}=State) when is_binary(CallId) ->
@@ -823,7 +823,7 @@ handle_cast({'call_status_req', CallId}, #state{my_q=Q}=State) when is_binary(Ca
               ,{<<"Server-ID">>, Q}
                | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ],
-    kapi_call:publish_channel_status_req(CallId, Command),
+    _ = kapi_call:publish_channel_status_req(Command),
     {'noreply', State};
 handle_cast({'call_status_req', Call}, State) ->
     handle_cast({'call_status_req', kapps_call:call_id(Call)}, State);

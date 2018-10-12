@@ -706,7 +706,7 @@ get_channel_status(TargetCallId) ->
     kz_amqp_worker:call_collect([{<<"Call-ID">>, TargetCallId}
                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                 ]
-                               ,fun(API) -> kapi_call:publish_channel_status_req(API, TargetCallId) end
+                               ,fun kapi_call:publish_channel_status_req/1
                                ,{'ecallmgr', 'true'}
                                ).
 

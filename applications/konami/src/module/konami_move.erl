@@ -84,7 +84,7 @@ source_leg_of_dtmf(Data, Call) ->
 get_originate_req(Data, Call) ->
     SourceOfDTMF = kz_json:get_value(<<"dtmf_leg">>, Data),
 
-    Params = kz_json:set_values([{<<"source">>, ?MODULE}
+    Params = kz_json:set_values([{<<"source">>, <<?MODULE_STRING>>}
                                 ,{<<"can_call_self">>, 'true'}
                                 ]
                                ,Data

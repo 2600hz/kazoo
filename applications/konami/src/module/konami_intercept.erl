@@ -91,7 +91,7 @@ get_originate_req(Data, Call) ->
     TargetId = kz_json:get_value(<<"target_id">>, Data),
     UnbridgedOnly = kz_json:is_true(<<"unbridged_only">>, Data, 'true'),
 
-    Params = kz_json:set_values([{<<"source">>, ?MODULE}
+    Params = kz_json:set_values([{<<"source">>, <<?MODULE_STRING>>}
                                 ,{<<"can_call_self">>, 'true'}
                                 ]
                                ,Data
