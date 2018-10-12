@@ -164,6 +164,8 @@ handle_event(JObj, #state{name=Name}) ->
     'ignore'.
 
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) -> 'ok';
+terminate('normal', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:info("terminating: ~p", [_Reason]).
 
