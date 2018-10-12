@@ -176,7 +176,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
+handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
     handle_down_msg(find_reference(Ref), Reason),
     {'noreply', State, 'hibernate'};
@@ -232,21 +232,26 @@ import_pending_channels() ->
 -spec release_assignments({kz_amqp_assignments(), ets:continuation()} | '$end_of_table') -> 'ok'.
 release_assignments('$end_of_table') -> 'ok';
 release_assignments({[#kz_amqp_assignment{consumer_ref=Ref}=Assignment]
-                    ,Continuation})
+                    ,Continuation
+                    })
   when is_reference(Ref) ->
     demonitor(Ref, ['flush']),
     release_assignments({[Assignment#kz_amqp_assignment{consumer_ref='undefined'}]
                         ,Continuation});
 release_assignments({[#kz_amqp_assignment{channel_ref=Ref}=Assignment]
-                    ,Continuation})
+                    ,Continuation
+                    })
   when is_reference(Ref) ->
     demonitor(Ref, ['flush']),
     release_assignments({[Assignment#kz_amqp_assignment{channel_ref='undefined'}]
-                        ,Continuation});
+                        ,Continuation
+                        });
 release_assignments({[#kz_amqp_assignment{channel=Channel
                                          ,consumer=Consumer
                                          }=Assignment
-                     ], Continuation})
+                     ]
+                    ,Continuation
+                    })
   when is_pid(Channel) ->
     Commands = kz_amqp_history:get(Consumer),
     _ = (catch kz_amqp_channel:close(Channel, Commands)),
@@ -255,7 +260,9 @@ release_assignments({[#kz_amqp_assignment{channel=Channel
 release_assignments({[#kz_amqp_assignment{timestamp=Timestamp
                                          ,consumer=Consumer
                                          }
-                     ], Continuation}) ->
+                     ]
+                    ,Continuation
+                    }) ->
     lager:debug("removed assignment for consumer ~p", [Consumer]),
     _ = ets:delete(?TAB, Timestamp),
     release_assignments(ets:match(Continuation)).
@@ -674,12 +681,15 @@ handle_down_msg([Match|Matches], Reason) ->
 
 -spec handle_down_match(down_match(), any()) -> 'ok'.
 handle_down_match({'consumer', #kz_amqp_assignment{consumer=Consumer}=Assignment}
-                 ,_Reason) ->
+                 ,_Reason
+                 ) ->
     lager:debug("consumer ~p, went down without closing channel: ~p"
-               ,[Consumer, _Reason]),
+               ,[Consumer, _Reason]
+               ),
     _ = log_short_lived(Assignment),
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
-    release_assignments(ets:match_object(?TAB, Pattern, 1));
+    release_assignments(ets:match_object(?TAB, Pattern, 1)),
+    kz_amqp_history:remove(Pid);
 handle_down_match({'channel', #kz_amqp_assignment{timestamp=Timestamp
                                                  ,channel=Channel
                                                  ,broker=Broker
