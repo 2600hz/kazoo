@@ -176,7 +176,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
+handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
     handle_down_msg(find_reference(Ref), Reason),
     {'noreply', State, 'hibernate'};
@@ -689,32 +689,39 @@ handle_down_match({'consumer', #kz_amqp_assignment{consumer=Consumer}=Assignment
     _ = log_short_lived(Assignment),
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     release_assignments(ets:match_object(?TAB, Pattern, 1)),
-    kz_amqp_history:remove(Pid);
+    kz_amqp_history:remove(Consumer);
 handle_down_match({'channel', #kz_amqp_assignment{timestamp=Timestamp
                                                  ,channel=Channel
                                                  ,broker=Broker
-                                                 ,consumer='undefined'}}
-                 ,Reason) ->
+                                                 ,consumer='undefined'
+                                                 }}
+                 ,Reason
+                 ) ->
     lager:debug("unused channel ~p on ~s went down: ~p"
-               ,[Channel, Broker, Reason]),
+               ,[Channel, Broker, Reason]
+               ),
     ets:delete(?TAB, Timestamp);
 handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
                                                  ,type='float'
                                                  ,broker=Broker
                                                  ,consumer=Consumer
                                                  }=Assignment}
-                 ,Reason) ->
+                 ,Reason
+                 ) ->
     lager:debug("floating channel ~p on ~s went down while still assigned to consumer ~p: ~p"
-               ,[Channel, Broker, Consumer, Reason]),
+               ,[Channel, Broker, Consumer, Reason]
+               ),
     maybe_defer_reassign(Assignment, Reason);
 handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
                                                  ,type='sticky'
                                                  ,broker=Broker
                                                  ,consumer=Consumer
                                                  }=Assignment}
-                 ,Reason) ->
+                 ,Reason
+                 ) ->
     lager:debug("sticky channel ~p on ~s went down while still assigned to consumer ~p: ~p"
-               ,[Channel, Broker, Consumer, Reason]),
+               ,[Channel, Broker, Consumer, Reason]
+               ),
     maybe_defer_reassign(Assignment, Reason).
 
 -spec maybe_defer_reassign(#kz_amqp_assignment{}, any()) -> 'ok'.
