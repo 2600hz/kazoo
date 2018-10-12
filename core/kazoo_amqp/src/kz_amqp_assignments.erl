@@ -726,17 +726,21 @@ handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
 
 -spec maybe_defer_reassign(#kz_amqp_assignment{}, any()) -> 'ok'.
 maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
-                    ,{'shutdown',{'server_initiated_close', 404, _Msg}}) ->
+                    ,{'shutdown',{'server_initiated_close', 404, _Msg}}
+                    ) ->
     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
     kz_util:spawn(
       fun() ->
               timer:sleep(?SERVER_RETRY_PERIOD),
               gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})
-      end);
+      end
+     );
 maybe_defer_reassign(#kz_amqp_assignment{timestamp=Timestamp
                                         ,consumer=Consumer
                                         ,type=Type
-                                        }, _) ->
+                                        }
+                    ,_Reason
+                    ) ->
     Props = reassign_props(Type),
     ets:update_element(?TAB, Timestamp, Props),
     gen_server:cast(?SERVER, {'maybe_reassign', Consumer}).
@@ -788,9 +792,9 @@ wait_for_assignment(Timeout) ->
         Timeout -> {'error', 'timeout'}
     end.
 
--spec request_and_wait(pid(), kz_term:api_binary(), 'infinity') -> kz_amqp_assignment();
-                      (pid(), kz_term:api_binary(), non_neg_integer()) -> kz_amqp_assignment() |
-                                                                          {'error', 'timeout'}.
+-spec request_and_wait(pid(), kz_term:api_ne_binary(), timeout()) ->
+                              kz_amqp_assignment() |
+                              {'error', 'timeout'}.
 request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
     case request_channel(Consumer, Broker) of
         #kz_amqp_assignment{channel=Channel}=Assignment
@@ -827,19 +831,19 @@ find_reference(Ref) ->
 -spec log_short_lived(kz_amqp_assignment()) -> 'ok'.
 log_short_lived(#kz_amqp_assignment{assigned='undefined'}) -> 'ok';
 log_short_lived(#kz_amqp_assignment{assigned=Timestamp}=Assignment) ->
-    Duration = kz_time:elapsed_s(Timestamp),
-    case Duration < 5 of
-        'false' -> 'ok';
-        'true' ->
-            #kz_amqp_assignment{consumer=Consumer
-                               ,type=Type
-                               ,channel=Channel
-                               ,broker=Broker
-                               } = Assignment,
-            lager:warning("short lived assignment (~ps) for ~p (channel ~p type ~p broker ~p)"
-                         ,[Duration, Consumer, Channel, Type, Broker]
-                         )
-    end.
+    log_short_lived(Assignment, kz_time:elapsed_s(Timestamp)).
+
+-spec log_short_lived(kz_amqp_assignment(), non_neg_integer()) -> 'ok'.
+log_short_lived(#kz_amqp_assignment{consumer=Consumer
+                                   ,type=Type
+                                   ,channel=Channel
+                                   ,broker=Broker
+                                   }
+               ,DurationS) when DurationS < 5 ->
+    lager:warning("short lived assignment (~ps) for ~p (channel ~p type ~p broker ~p)"
+                 ,[DurationS, Consumer, Channel, Type, Broker]
+                 );
+log_short_lived(_Assignment, _DurationS) -> 'ok'.
 
 -spec register_channel_handlers(pid(), pid()) -> 'ok'.
 register_channel_handlers(Channel, Consumer) ->
