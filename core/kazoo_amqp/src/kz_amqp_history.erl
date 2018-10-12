@@ -32,8 +32,7 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {consumers = sets:new() :: sets:set(pid())
-               ,exchanges = dict:new() :: dict:dict(kz_term:ne_binary(), kz_amqp_exchange())
+-record(state, {exchanges = dict:new() :: dict:dict(kz_term:ne_binary(), kz_amqp_exchange())
                ,connections = sets:new() :: sets:set(pid())
                }).
 -type state() :: #state{}.
@@ -71,8 +70,7 @@ handle_command(Consumer, #'basic.cancel'{consumer_tag=Tag}) ->
     _ = kz_amqp_history_ets:delete_consumer_consume(Consumer, Tag),
     'ok';
 handle_command(Consumer, Command) ->
-    kz_amqp_history_ets:add_consumer_command(Consumer, Command),
-    gen_server:cast(?SERVER, {'new_consumer', Consumer}).
+    kz_amqp_history_ets:add_consumer_command(Consumer, Command).
 
 -spec update_consumer_tag(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_consumer_tag(Consumer, OldTag, NewTag) ->
@@ -82,7 +80,7 @@ update_consumer_tag(Consumer, OldTag, NewTag) ->
 remove(#kz_amqp_assignment{consumer=Consumer}) -> remove(Consumer);
 remove(Consumer) when is_pid(Consumer) ->
     _ = kz_amqp_history_ets:delete_consumer(Consumer),
-    gen_server:cast(?SERVER, {'remove', Consumer});
+    'ok';
 remove(_) -> 'ok'.
 
 -spec get(kz_term:api_pid()) -> kz_amqp_commands().
@@ -156,15 +154,6 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({'new_consumer', Consumer}, #state{consumers=Consumers}=State) ->
-    case sets:is_element(Consumer, Consumers) of
-        'true' -> {'noreply', State};
-        'false' ->
-            _Ref = monitor('process', Consumer),
-            {'noreply', State#state{consumers=sets:add_element(Consumer, Consumers)}}
-    end;
-handle_cast({'remove', Consumer}, #state{consumers=Consumers}=State) ->
-    {'noreply', State#state{consumers=sets:del_element(Consumer, Consumers)}};
 handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
            ,#state{exchanges=Exchanges
                   ,connections=Connections
@@ -181,16 +170,15 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'remove_history', Consumer}, State) ->
-    _ = remove(Consumer),
-    {'noreply', State};
 handle_info({'DOWN', _, 'process', Pid, _Reason}
-           ,#state{connections=Connections}=State) ->
+           ,#state{connections=Connections}=State
+           ) ->
     case sets:is_element(Pid, Connections) of
         'true' ->
             lager:debug("connection ~p went down: ~p", [Pid, _Reason]),
             {'noreply', State#state{connections=sets:del_element(Pid, Connections)}};
         'false' ->
+            %% Consumer will be torn down when kz_amqp_assignments is done processing it
             {'noreply', State}
     end;
 handle_info(_Info, State) ->
