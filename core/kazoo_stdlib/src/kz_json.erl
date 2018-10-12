@@ -505,7 +505,7 @@ order_by(Path, Ids, ListOfJObjs)
 lift_common_properties(JObjs) ->
     lift_common_properties(JObjs, []).
 
--spec lift_common_properties(objects(), paths()) ->
+-spec lift_common_properties(objects(), [get_key()]) ->
                                     {object(), objects()}.
 lift_common_properties([], _Unliftable) -> {new(), []};
 lift_common_properties([JObj], _Unliftable) -> {new(), [JObj]};
@@ -517,7 +517,7 @@ lift_common_properties([JObj | JObjs], Unliftable) ->
     ,remove_common_properties([JObj | JObjs], CommonProperties)
     }.
 
--spec lift_common_properties(objects(), paths(), flat_proplist()) -> flat_object().
+-spec lift_common_properties(objects(), [get_key()], flat_proplist()) -> flat_object().
 lift_common_properties(_JObjs, _Unliftable, []) -> new();
 lift_common_properties([], _Unliftable, CommonProperties) ->
     from_list(CommonProperties);

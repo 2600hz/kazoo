@@ -489,9 +489,9 @@ unserialize_fs_prop(KV) -> KV.
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(kz_term:to_list(VarStr), ",")].
 
--spec get_setting(kz_json:path()) -> {'ok', any()}.
-get_setting(<<"default_ringback">>) ->
-    {'ok', kapps_config:get(?APP_NAME, <<"default_ringback">>, <<"%(2000,4000,440,480)">>)};
+-spec get_setting(kz_json:get_key()) -> {'ok', any()}.
+get_setting(<<"default_ringback">>=Key) ->
+    {'ok', kapps_config:get(?APP_NAME, Key, <<"%(2000,4000,440,480)">>)};
 get_setting(Setting) -> {'ok', kapps_config:get(?APP_NAME, Setting)}.
 
 -spec get_setting(kz_json:path(), Default) -> {'ok', Default | any()}.
