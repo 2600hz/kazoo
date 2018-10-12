@@ -55,27 +55,37 @@ add_command(Assignment, Command) ->
     add_command(Assignment, Command, 'async').
 
 -spec add_command(kz_amqp_assignment(), kz_amqp_command(), 'sync' | 'async') -> 'ok'.
-add_command(#kz_amqp_assignment{consumer=Consumer}, Command, Method) ->
+add_command(#kz_amqp_assignment{consumer=Consumer}, Command, _Method) ->
     case kz_amqp_history_ets:is_existing_command(Consumer, Command) of
-        'false' -> send_command(Consumer, Command, Method);
+        'false' -> handle_command(Consumer, Command);
         'true' ->
             lager:debug("not tracking history for known command ~s from ~p"
                        ,[element(1, Command), Consumer]
                        )
     end.
 
-send_command(Consumer, Command, 'async') ->
-    gen_server:cast(?SERVER, {'command', Consumer, Command});
-send_command(Consumer, Command, 'sync') ->
-    gen_server:call(?SERVER, {'command', Consumer, Command}).
+-spec handle_command(pid(), kz_amqp_command()) -> 'ok'.
+handle_command(Consumer, #'queue.delete'{queue=Queue}) ->
+    _ = kz_amqp_history_ets:delete_consumer_queue(Consumer, Queue),
+    'ok';
+handle_command(Consumer, #'queue.unbind'{}=Unbind) ->
+    _ = kz_amqp_history_ets:unbind_queue(Consumer, Unbind),
+    'ok';
+handle_command(Consumer, #'basic.cancel'{consumer_tag=Tag}) ->
+    _ = kz_amqp_history_ets:delete_consumer_consume(Consumer, Tag),
+    'ok';
+handle_command(Consumer, Command) ->
+    kz_amqp_history_ets:add_consumer_command(Consumer, Command),
+    gen_server:cast(?SERVER, {'new_consumer', Consumer}).
 
 -spec update_consumer_tag(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_consumer_tag(Consumer, OldTag, NewTag) ->
-    gen_server:cast(?SERVER, {'update_consumer_tag', Consumer, OldTag, NewTag}).
+    handle_update_consumer_tag(Consumer, OldTag, NewTag).
 
 -spec remove(kz_amqp_assignment() | kz_term:api_pid()) -> 'ok'.
 remove(#kz_amqp_assignment{consumer=Consumer}) -> remove(Consumer);
 remove(Consumer) when is_pid(Consumer) ->
+    _ = kz_amqp_history_ets:delete_consumer(Consumer),
     gen_server:cast(?SERVER, {'remove', Consumer});
 remove(_) -> 'ok'.
 
@@ -123,9 +133,6 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call({'command', Consumer, #'queue.unbind'{}=Unbind}, _From, State) ->
-    kz_amqp_history_ets:unbind_queue(Consumer, Unbind),
-    {'reply', 'ok', State};
 handle_call('list_exchanges', {Connection, _}, #state{exchanges=Exchanges
                                                      ,connections=Connections
                                                      }=State) ->
@@ -153,20 +160,7 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({'update_consumer_tag', Consumer, OldTag, NewTag}, State) ->
-    handle_update_consumer_tag(Consumer, OldTag, NewTag),
-    {'noreply', State};
-handle_cast({'command', Consumer, #'queue.delete'{queue=Queue}}, State) ->
-    _ = kz_amqp_history_ets:delete_consumer_queue(Consumer, Queue),
-    {'noreply', State};
-handle_cast({'command', Consumer, #'queue.unbind'{}=Unbind}, State) ->
-    kz_amqp_history_ets:unbind_queue(Consumer, Unbind),
-    {'noreply', State};
-handle_cast({'command', Consumer, #'basic.cancel'{consumer_tag=Tag}}, State) ->
-    _ = kz_amqp_history_ets:delete_consumer_consume(Consumer, Tag),
-    {'noreply', State};
-handle_cast({'command', Consumer, Command}, #state{consumers=Consumers}=State) ->
-    kz_amqp_history_ets:add_consumer_command(Consumer, Command),
+handle_cast({'new_consumer', Consumer}, #state{consumers=Consumers}=State) ->
     case sets:is_element(Consumer, Consumers) of
         'true' -> {'noreply', State};
         'false' ->
@@ -174,7 +168,6 @@ handle_cast({'command', Consumer, Command}, #state{consumers=Consumers}=State) -
             {'noreply', State#state{consumers=sets:add_element(Consumer, Consumers)}}
     end;
 handle_cast({'remove', Consumer}, #state{consumers=Consumers}=State) ->
-    _ = kz_amqp_history_ets:delete_consumer(Consumer),
     {'noreply', State#state{consumers=sets:del_element(Consumer, Consumers)}};
 handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
            ,#state{exchanges=Exchanges
