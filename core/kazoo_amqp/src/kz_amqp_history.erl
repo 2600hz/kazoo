@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([add_command/2, add_command/3]).
+-export([add_command/2]).
 -export([update_consumer_tag/3]).
 -export([remove/1]).
 -export([get/1]).
@@ -51,11 +51,7 @@ start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec add_command(kz_amqp_assignment(), kz_amqp_command()) -> 'ok'.
-add_command(Assignment, Command) ->
-    add_command(Assignment, Command, 'async').
-
--spec add_command(kz_amqp_assignment(), kz_amqp_command(), 'sync' | 'async') -> 'ok'.
-add_command(#kz_amqp_assignment{consumer=Consumer}, Command, _Method) ->
+add_command(#kz_amqp_assignment{consumer=Consumer}, Command) ->
     case kz_amqp_history_ets:is_existing_command(Consumer, Command) of
         'false' -> handle_command(Consumer, Command);
         'true' ->

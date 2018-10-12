@@ -395,8 +395,9 @@ handle_command_result(#'queue.unbind_ok'{}
                                      }=Command
                      ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p"
-               ,[Queue, Exchange, RoutingKey, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command, 'sync'),
+               ,[Queue, Exchange, RoutingKey, Channel]
+               ),
+    _ = kz_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result(#'queue.bind_ok'{}
                      ,#'queue.bind'{exchange=_Exchange
