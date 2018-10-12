@@ -17,6 +17,7 @@
 -export([is_consuming/2
         ,is_bound/4
         ]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -37,12 +38,6 @@
                }).
 -type state() :: #state{}.
 
--record(kz_amqp_history, {timestamp = os:timestamp() :: kz_time:now() | '_'
-                         ,consumer :: kz_term:api_pid() | '_'
-                         ,command :: kz_amqp_command() | '_'
-                         }).
--type kz_amqp_history() :: #kz_amqp_history{}.
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -61,20 +56,12 @@ add_command(Assignment, Command) ->
 
 -spec add_command(kz_amqp_assignment(), kz_amqp_command(), 'sync' | 'async') -> 'ok'.
 add_command(#kz_amqp_assignment{consumer=Consumer}, Command, Method) ->
-    MatchSpec = [{#kz_amqp_history{consumer=Consumer
-                                  ,command=Command
-                                  ,_='_'
-                                  }
-                 ,[]
-                 ,['true']
-                 }],
-    case ets:select_count(?TAB, MatchSpec) =:= 0 of
-        'false' ->
+    case kz_amqp_history_ets:is_existing_command(Consumer, Command) of
+        'false' -> send_command(Consumer, Command, Method);
+        'true' ->
             lager:debug("not tracking history for known command ~s from ~p"
                        ,[element(1, Command), Consumer]
-                       );
-        'true' ->
-            send_command(Consumer, Command, Method)
+                       )
     end.
 
 send_command(Consumer, Command, 'async') ->
@@ -86,7 +73,7 @@ send_command(Consumer, Command, 'sync') ->
 update_consumer_tag(Consumer, OldTag, NewTag) ->
     gen_server:cast(?SERVER, {'update_consumer_tag', Consumer, OldTag, NewTag}).
 
--spec remove(kz_amqp_assignment() | pid() | 'undefined') -> 'ok'.
+-spec remove(kz_amqp_assignment() | kz_term:api_pid()) -> 'ok'.
 remove(#kz_amqp_assignment{consumer=Consumer}) -> remove(Consumer);
 remove(Consumer) when is_pid(Consumer) ->
     gen_server:cast(?SERVER, {'remove', Consumer});
@@ -95,13 +82,7 @@ remove(_) -> 'ok'.
 -spec get(kz_term:api_pid()) -> kz_amqp_commands().
 get('undefined') -> [];
 get(Consumer) ->
-    Pattern = #kz_amqp_history{consumer=Consumer
-                              ,_='_'
-                              },
-    [Command
-     || #kz_amqp_history{command=Command}
-            <- ets:match_object(?TAB, Pattern)
-    ].
+    kz_amqp_history_ets:get_consumer_history(Consumer).
 
 -spec add_exchange(kz_amqp_exchange()) -> 'ok'.
 add_exchange(#'exchange.declare'{}=Exchange) ->
@@ -113,41 +94,15 @@ list_exchanges() ->
 
 -spec list_consume(pid()) -> kz_amqp_commands().
 list_consume(Consumer) ->
-    Pattern = #kz_amqp_history{consumer=Consumer
-                              ,command=#'basic.consume'{_='_'}
-                              ,_='_'
-                              },
-    [Command
-     || #kz_amqp_history{command=Command} <- ets:match_object(?TAB, Pattern)
-    ].
+    kz_amqp_history_ets:get_consumer_basic_consumes(Consumer).
 
 -spec is_consuming(pid(), kz_term:ne_binary()) -> boolean().
 is_consuming(Consumer, Queue) ->
-    MatchSpec = [{#kz_amqp_history{consumer=Consumer
-                                  ,command=#'basic.consume'{queue=Queue
-                                                           ,_='_'
-                                                           }
-                                  ,_='_'
-                                  }
-                 ,[]
-                 ,['true']
-                 }],
-    ets:select_count(?TAB, MatchSpec) =/= 0.
+    kz_amqp_history_ets:is_consumer_queue_consuming(Consumer, Queue).
 
 -spec is_bound(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_bound(Consumer, Exchange, Queue, RoutingKey) when is_pid(Consumer) ->
-    MatchSpec = [{#kz_amqp_history{consumer=Consumer
-                                  ,command=#'queue.bind'{queue=Queue
-                                                        ,exchange=Exchange
-                                                        ,routing_key=RoutingKey
-                                                        ,_='_'
-                                                        }
-                                  ,_='_'
-                                  }
-                 ,[]
-                 ,['true']
-                 }],
-    ets:select_count(?TAB, MatchSpec) =/= 0.
+    kz_amqp_history_ets:is_consumer_queue_bound_to_exchange(Consumer, Queue, Exchange, RoutingKey).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -160,11 +115,7 @@ is_bound(Consumer, Exchange, Queue, RoutingKey) when is_pid(Consumer) ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
-    _ = ets:new(?TAB, ['named_table'
-                      ,{'keypos', #kz_amqp_history.timestamp}
-                      ,'protected'
-                      ,'ordered_set'
-                      ]),
+    _ = kz_amqp_history_ets:create(),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
@@ -173,7 +124,7 @@ init([]) ->
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'command', Consumer, #'queue.unbind'{}=Unbind}, _From, State) ->
-    unbind_queue(Consumer, Unbind),
+    kz_amqp_history_ets:unbind_queue(Consumer, Unbind),
     {'reply', 'ok', State};
 handle_call('list_exchanges', {Connection, _}, #state{exchanges=Exchanges
                                                      ,connections=Connections
@@ -184,7 +135,8 @@ handle_call('list_exchanges', {Connection, _}, #state{exchanges=Exchanges
 handle_call({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
            , _From
            ,#state{exchanges=Exchanges
-                  ,connections=Connections}=State) ->
+                  ,connections=Connections
+                  }=State) ->
     case dict:find(Name, Exchanges) of
         'error' ->
             _ = [(catch kz_amqp_connection:new_exchange(Connection, Exchange))
@@ -202,34 +154,19 @@ handle_call(_Msg, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'update_consumer_tag', Consumer, OldTag, NewTag}, State) ->
-    Pattern = #kz_amqp_history{consumer=Consumer
-                              ,command=#'basic.consume'{consumer_tag=OldTag
-                                                       ,_='_'}
-                              ,_='_'},
-    _ = update_consumer_tag(ets:match_object(?TAB, Pattern, 1), NewTag),
+    handle_update_consumer_tag(Consumer, OldTag, NewTag),
     {'noreply', State};
 handle_cast({'command', Consumer, #'queue.delete'{queue=Queue}}, State) ->
-    Pattern = #kz_amqp_history{consumer=Consumer
-                              ,command=#'queue.declare'{queue=Queue
-                                                       ,_='_'
-                                                       }
-                              ,_='_'
-                              },
-    _ = ets:match_delete(?TAB, Pattern),
+    _ = kz_amqp_history_ets:delete_consumer_queue(Consumer, Queue),
     {'noreply', State};
 handle_cast({'command', Consumer, #'queue.unbind'{}=Unbind}, State) ->
-    unbind_queue(Consumer, Unbind),
+    kz_amqp_history_ets:unbind_queue(Consumer, Unbind),
     {'noreply', State};
-handle_cast({'command', Consumer, #'basic.cancel'{consumer_tag=CTag}}, State) ->
-    Pattern = #kz_amqp_history{consumer=Consumer
-                              ,command=#'basic.consume'{consumer_tag=CTag
-                                                       ,_='_'}
-                              ,_='_'},
-    _ = ets:match_delete(?TAB, Pattern),
+handle_cast({'command', Consumer, #'basic.cancel'{consumer_tag=Tag}}, State) ->
+    _ = kz_amqp_history_ets:delete_consumer_consume(Consumer, Tag),
     {'noreply', State};
 handle_cast({'command', Consumer, Command}, #state{consumers=Consumers}=State) ->
-    _ = ets:insert(?TAB, #kz_amqp_history{consumer=Consumer
-                                         ,command=Command}),
+    kz_amqp_history_ets:add_consumer_command(Consumer, Command),
     case sets:is_element(Consumer, Consumers) of
         'true' -> {'noreply', State};
         'false' ->
@@ -237,12 +174,12 @@ handle_cast({'command', Consumer, Command}, #state{consumers=Consumers}=State) -
             {'noreply', State#state{consumers=sets:add_element(Consumer, Consumers)}}
     end;
 handle_cast({'remove', Consumer}, #state{consumers=Consumers}=State) ->
-    Pattern = #kz_amqp_history{consumer=Consumer, _='_'},
-    _ = ets:match_delete(?TAB, Pattern),
+    _ = kz_amqp_history_ets:delete_consumer(Consumer),
     {'noreply', State#state{consumers=sets:del_element(Consumer, Consumers)}};
 handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
            ,#state{exchanges=Exchanges
-                  ,connections=Connections}=State) ->
+                  ,connections=Connections
+                  }=State) ->
     _ = [(catch kz_amqp_connection:new_exchange(Connection, Exchange))
          || Connection <- sets:to_list(Connections)
         ],
@@ -255,8 +192,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'remove_history', Pid}, State) ->
-    _ = remove(Pid),
+handle_info({'remove_history', Consumer}, State) ->
+    _ = remove(Consumer),
     {'noreply', State};
 handle_info({'DOWN', _, 'process', Pid, _Reason}
            ,#state{connections=Connections}=State) ->
@@ -268,7 +205,8 @@ handle_info({'DOWN', _, 'process', Pid, _Reason}
             %% Allow kz_amqp_assignments time to get the history so it
             %% can cleanly remove queues/consumers/etc
             lager:debug("removing AMQP history for consumer ~p in 2.5s: ~p"
-                       ,[Pid, _Reason]),
+                       ,[Pid, _Reason]
+                       ),
             erlang:send_after(2500, self(), {'remove_history', Pid}),
             {'noreply', State}
     end;
@@ -304,27 +242,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_consumer_tag({kz_amqp_history(), ets:continuation()} | '$end_of_table', kz_term:ne_binary()) -> 'ok'.
-update_consumer_tag('$end_of_table', _) -> 'ok';
-update_consumer_tag({[#kz_amqp_history{timestamp=Timestamp
-                                      ,command=Command}
-                     ], Continuation}, NewTag) ->
-    Props = [{#kz_amqp_history.command, Command#'basic.consume'{consumer_tag=NewTag}}],
-    _ = ets:update_element(?TAB, Timestamp, Props),
-    update_consumer_tag(ets:match_object(Continuation), NewTag).
+-spec handle_update_consumer_tag(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+handle_update_consumer_tag(Consumer, OldTag, NewTag) ->
+    lager:debug("updating consumer ~p tag ~p to ~p", [Consumer, OldTag, NewTag]),
+    ConsumerTags = kz_amqp_history_ets:get_consumer_commands_by_tag(Consumer, OldTag),
+    update_old_tags(ConsumerTags, NewTag).
 
--spec unbind_queue(pid(), #'queue.unbind'{}) -> 'ok'.
-unbind_queue(Consumer, #'queue.unbind'{queue=Queue
-                                      ,exchange=Exchange
-                                      ,routing_key=RoutingKey
-                                      }) ->
-    Pattern = #kz_amqp_history{consumer=Consumer
-                              ,command=#'queue.bind'{queue=Queue
-                                                    ,exchange=Exchange
-                                                    ,routing_key=RoutingKey
-                                                    ,_='_'
-                                                    }
-                              ,_='_'
-                              },
-    ets:match_delete(?TAB, Pattern),
+-spec update_old_tags([kz_amqp_history_ets:history()], kz_term:ne_binary()) -> 'ok'.
+update_old_tags(History, NewTag) ->
+    _ = [kz_amqp_history_ets:update_command_tag(H, NewTag) || H <- History],
     'ok'.

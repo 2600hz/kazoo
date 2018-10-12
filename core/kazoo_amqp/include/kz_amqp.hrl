@@ -148,7 +148,6 @@
 -define(EXCHANGE_TASKS, <<"tasks">>).
 -define(TYPE_TASKS, <<"topic">>).
 
-
 -type kz_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
                            #'queue.bind'{} | #'queue.unbind'{} |
                            #'basic.consume'{} | #'basic.cancel'{} |
