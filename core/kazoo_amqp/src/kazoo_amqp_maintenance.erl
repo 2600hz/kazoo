@@ -558,7 +558,9 @@ print_gc_summary(Results) ->
                              ]
                             ,<<" < ">>
                             ),
-    io:format("  Min/Avg/Max of ~p workers: ~s~n", [Count, Summary]).
+    io:format("  Min/Avg/Max of ~p workers: ~s (total: ~s)~n"
+             ,[Count, Summary, kz_util:pretty_print_bytes(kz_term:words_to_bytes(Sum), 'truncated')]
+             ).
 
 -spec gc_summary([{pid(), integer(), integer(), integer()}]) ->
                         {integer(), integer(), integer(), integer()}.
