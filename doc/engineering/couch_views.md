@@ -66,7 +66,9 @@ To put it all together, the application initialization should include some lines
 
 ```erlang
 my_app_maintenance:register_views(),
-kapps_maintenance:bind(?APP, 'my_app_maintenance', 'register_views'),
+%% Optionally bind to register_views maintenance binding to assist developers
+%% to easily edit and re-register the views on run time:
+%% kapps_maintenance:bind(?APP, 'my_app_maintenance', 'register_views'),
 my_app_maintenance:init_dbs(),
 ```
 
@@ -81,7 +83,10 @@ register_views() ->
 -spec init_dbs() -> 'ok'.
 init_dbs() ->
     _ = kz_datamgr:db_create(?MY_DB_NAME),
-    _ = kz_datamgr:refresh_views(?MY_DB_NAME)
+    %% Optionally refresh database views. Keep in mind this is not recommended for
+    %% large databases, since updating the views for larg databases triggers view
+    %% cache update in CouchDB for that databases and it turn can put pressure on database.
+    %% _ = kz_datamgr:refresh_views(?MY_DB_NAME)
     'ok'.
 ```
 
@@ -136,4 +141,4 @@ After making sure `couchjs` is available you can run the script like below:
 ./scripts/validate-js.sh `find */*/priv/**/* -name '*.json'`
 ```
 
-This will make sure the `map` function doesn't have any syntax error and parasble by CouchDB JavaScript engine, the JSON file has correct format and `kazoo` meta data for views are causing the views re-writing each other on the same database or classifications.
+This will make sure the `map` function doesn't have any syntax error and is parasble by CouchDB JavaScript engine, the JSON file has correct format and `kazoo` meta data for views are not causing the views re-writing each other on the same database or classifications.
