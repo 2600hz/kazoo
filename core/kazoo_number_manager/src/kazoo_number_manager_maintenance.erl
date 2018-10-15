@@ -260,12 +260,12 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ?SUP_LOG_DEBUG("########## fixing [~s] ##########", [AccountDb]),
     ?SUP_LOG_DEBUG("[~s] getting numbers from account db", [AccountDb]),
     DisplayPNs = get_DIDs(AccountDb, <<"phone_numbers/crossbar_listing">>),
-    put(callflow_DIDs, get_DIDs_callflow(AccountDb)),
-    put(trunkstore_DIDs, get_DIDs_trunkstore(AccountDb)),
+    put('callflow_DIDs', get_DIDs_callflow(AccountDb)),
+    put('trunkstore_DIDs', get_DIDs_trunkstore(AccountDb)),
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
 
     Malt = [1
-           ,{processes, schedulers}
+           ,{'processes', 'schedulers'}
            ],
     Leftovers =
         plists:fold(fun (NumberDb, Leftovers) ->
@@ -298,13 +298,13 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ToRm = [DID
             || DID <- ToRm0,
                'false' =:= is_assigned_to(AccountDb, DID, AccountId),
-               ok =:= ?SUP_LOG_DEBUG("########## will remove [~s] doc: ~s ##########", [AccountDb, DID])
+               'ok' =:= ?SUP_LOG_DEBUG("########## will remove [~s] doc: ~s ##########", [AccountDb, DID])
            ],
     _ = kz_datamgr:del_docs(AccountDb, ToRm),
     ?SUP_LOG_DEBUG("########## updating view [~s] ##########", [AccountDb]),
     update_number_services_view(AccountDb),
-    erase(callflow_DIDs),
-    erase(trunkstore_DIDs),
+    erase('callflow_DIDs'),
+    erase('trunkstore_DIDs'),
     ?SUP_LOG_DEBUG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
@@ -460,9 +460,9 @@ log_saved_failed(AccountDb, Db, Props) ->
 
 -spec fix_number(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
-    Options = [{auth_by, AuthBy}
-              ,{dry_run, 'false'}
-              ,{batch_run, 'false'}
+    Options = [{'auth_by', AuthBy}
+              ,{'dry_run', 'false'}
+              ,{'batch_run', 'false'}
               ],
     NumberDb = knm_converters:to_db(knm_converters:normalize(Num)),
     case fix_docs(AccountDb, NumberDb, Num) of
@@ -637,31 +637,31 @@ pforeach(Fun, Arg1s)
     %%        ],
     lists:foreach(Fun, Arg1s).
 
--spec fix_docs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
+-spec fix_docs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 fix_docs(AccountDb, NumberDb, DID) ->
     Res = kz_datamgr:open_doc(AccountDb, DID),
     fix_docs(Res, AccountDb, NumberDb, DID).
 
-fix_docs({error, timeout}, _AccountDb, _, _DID) ->
+fix_docs({'error', 'timeout'}, _AccountDb, _, _DID) ->
     ?SUP_LOG_DEBUG("getting ~s from ~s timed out, skipping", [_DID, _AccountDb]);
-fix_docs({error, _R}, AccountDb, NumberDb, DID) ->
+fix_docs({'error', _R}, AccountDb, NumberDb, DID) ->
     ?SUP_LOG_DEBUG("failed to get ~s from ~s (~p), creating it", [DID, AccountDb, _R]),
     %% The document will be created in the next step
     Res = kz_datamgr:open_doc(NumberDb, DID),
     fix_docs(Res, kz_json:new(), AccountDb, NumberDb, DID);
-fix_docs({ok, Doc}, AccountDb, NumberDb, DID) ->
+fix_docs({'ok', Doc}, AccountDb, NumberDb, DID) ->
     Res = kz_datamgr:open_doc(NumberDb, DID),
     fix_docs(Res, Doc, AccountDb, NumberDb, DID).
 
-fix_docs({error, timeout}, _, _, _NumberDb, _DID) ->
+fix_docs({'error', 'timeout'}, _, _, _NumberDb, _DID) ->
     ?SUP_LOG_DEBUG("getting ~s from ~s timed out, skipping", [_DID, _NumberDb]);
-fix_docs({error, _R}, Doc, AccountDb, _NumberDb, _DID) ->
+fix_docs({'error', _R}, Doc, AccountDb, _NumberDb, _DID) ->
     ?SUP_LOG_DEBUG("~s disappeared from ~s (~p), deleting from AccountDb", [_DID, _NumberDb]),
     case kz_datamgr:del_doc(AccountDb, Doc) of
-        {ok, _} -> ok;
-        {error, _R} -> ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [_DID, _R])
+        {'ok', _} -> 'ok';
+        {'error', _R} -> ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [_DID, _R])
     end;
-fix_docs({ok, NumDoc}, Doc, _AccountDb, _NumberDb, DID) ->
+fix_docs({'ok', NumDoc}, Doc, _AccountDb, _NumberDb, DID) ->
     AccountDb = account_db_from_number_doc(NumDoc),
     ShouldEnsureDocIsInRightAccountDb = _AccountDb =/= AccountDb,
     ShouldEnsureDocIsInRightAccountDb
@@ -671,17 +671,17 @@ fix_docs({ok, NumDoc}, Doc, _AccountDb, _NumberDb, DID) ->
                     Rev -> kz_doc:set_revision(NumDoc, Rev)
                 end,
     case not ShouldEnsureDocIsInRightAccountDb
-        andalso NewNumDoc =:= Doc
+        andalso kz_json:are_equal(NewNumDoc, Doc)
     of
         'true' -> ?SUP_LOG_DEBUG("~s already synced", [DID]);
         'false' ->
             ?SUP_LOG_DEBUG("syncing ~s", [DID]),
             %% Replace the document within AccountDb with the doc from NumberDb.
             case kz_datamgr:save_doc(AccountDb, NewNumDoc) of
-                {ok, _} ->
+                {'ok', _} ->
                     _ = kz_services:reconcile(AccountDb),
-                    ok;
-                {error, _R} ->
+                    'ok';
+                {'error', _R} ->
                     ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [DID, _R])
             end
     end.
