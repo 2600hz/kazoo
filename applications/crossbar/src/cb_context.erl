@@ -145,11 +145,11 @@ new() -> #cb_context{}.
 is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
--spec req_value(context(), kz_json:path()) -> kz_json:api_json_term().
+-spec req_value(context(), kz_json:get_key()) -> kz_json:api_json_term().
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 
--spec req_value(context(), kz_json:path(), Default) -> kz_json:json_term() | Default.
+-spec req_value(context(), kz_json:get_key(), Default) -> kz_json:json_term() | Default.
 req_value(#cb_context{req_data=ReqData
                      ,query_json=QS
                      ,req_json=JObj
@@ -1055,7 +1055,7 @@ build_system_error(Code, Error, JObj, Context) ->
 %% @doc Add a validation error to the list of request errors.
 %% @end
 %%------------------------------------------------------------------------------
--spec add_validation_error(kz_json:path(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
+-spec add_validation_error(kz_json:get_key(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
                                   context().
 add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->
     add_validation_error([Property], Code, Message, Context);
@@ -1103,7 +1103,7 @@ maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) 
     end;
 maybe_fix_js_type(_, JObj) -> JObj.
 
--spec maybe_fix_js_integer(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+-spec maybe_fix_js_integer(kz_json:get_key(), kz_json:json_term(), kz_json:object()) ->
                                   kz_json:object().
 maybe_fix_js_integer(Key, Value, JObj) ->
     try kz_term:to_integer(Value) of
@@ -1114,7 +1114,7 @@ maybe_fix_js_integer(Key, Value, JObj) ->
             JObj
     end.
 
--spec maybe_fix_js_boolean(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+-spec maybe_fix_js_boolean(kz_json:get_key(), kz_json:json_term(), kz_json:object()) ->
                                   kz_json:object().
 maybe_fix_js_boolean(Key, Value, JObj) ->
     try kz_term:to_boolean(Value) of
@@ -1125,7 +1125,7 @@ maybe_fix_js_boolean(Key, Value, JObj) ->
             JObj
     end.
 
--spec maybe_fix_index(kz_json:path() | kz_json:path()) -> kz_json:path() | kz_json:path().
+-spec maybe_fix_index(kz_json:get_key()) -> kz_json:get_key().
 maybe_fix_index(Keys)
   when is_list(Keys) ->
     [case is_integer(K) of
