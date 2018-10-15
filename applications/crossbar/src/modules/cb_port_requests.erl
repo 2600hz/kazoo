@@ -50,7 +50,6 @@
 -define(DESCENDANTS, <<"descendants">>).
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
-
 -define(PATH_TOKEN_TIMELINE, <<"timeline">>).
 -define(PATH_TOKEN_LAST_SUBMITTED, <<"last_submitted">>).
 
@@ -263,19 +262,19 @@ validate(Context) ->
 validate(Context, ?PATH_TOKEN_LAST_SUBMITTED) ->
     last_submitted(Context);
 validate(Context, ?PORT_UNCONFIRMED = Type) ->
-    validate_load_summary(Context, Type);
+    load_summary_by_type(Context, Type);
 validate(Context, ?PORT_SUBMITTED = Type) ->
-    validate_load_summary(Context, Type);
+    load_summary_by_type(Context, Type);
 validate(Context, ?PORT_PENDING = Type) ->
-    validate_load_summary(Context, Type);
+    load_summary_by_type(Context, Type);
 validate(Context, ?PORT_SCHEDULED = Type) ->
-    validate_load_summary(Context, Type);
+    load_summary_by_type(Context, Type);
 validate(Context, ?PORT_COMPLETED = Type) ->
-    validate_load_summary(Context, Type);
+    load_summary_by_type(Context, Type);
 validate(Context, ?PORT_REJECTED = Type) ->
-    validate_load_summary(Context, Type);
+    load_summary_by_type(Context, Type);
 validate(Context, ?PORT_CANCELED = Type) ->
-    validate_load_summary(Context, Type);
+    load_summary_by_type(Context, Type);
 validate(Context, Id) ->
     validate_port_request(Context, Id, cb_context:req_verb(Context)).
 
@@ -471,24 +470,8 @@ load_port_request(Context, Id) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_load_summary(cb_context:context(), kz_term:ne_binary()) ->
-                                   cb_context:context().
-validate_load_summary(Context, ?PORT_COMPLETED = Type) ->
-    load_summary_by_type(Context, Type);
-validate_load_summary(Context, ?PORT_CANCELED = Type) ->
-    load_summary_by_type(Context, Type);
-validate_load_summary(Context, <<_/binary>> = Type) ->
-    lager:debug("loading summary for ~s", [Type]),
-    maybe_normalize_summary_results(load_summary(Context, view_key_options(Context, Type, 'false'))).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec validate_port_requests(cb_context:context(), req_nouns(), http_method()) ->
                                     cb_context:context().
-validate_port_requests(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
-    search_by_number(Context);
 validate_port_requests(Context, _, ?HTTP_GET) ->
     summary(Context);
 validate_port_requests(Context, _, ?HTTP_PUT) ->
@@ -623,9 +606,37 @@ update(Context, Id) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     case cb_context:req_value(Context, <<"by_number">>) of
-        'undefined' -> load_summary_by_type(Context, <<"all">>);
+        'undefined' -> summarize_by_types(Context);
         Number -> load_summary_by_number(Context, Number)
     end.
+
+-spec summarize_by_types(cb_context:context()) -> cb_context:context().
+summarize_by_types(Context) ->
+    case cb_context:req_value(Context, <<"by_types">>) of
+        'undefined' -> load_summary_by_types(Context, ?PORT_ACTIVE_STATES);
+        <<"all">> -> load_summary_by_types(Context, ?PORT_STATES);
+        <<"progressing">> -> load_summary_by_types(Context, ?PORT_PROGRESSING_STATES);
+        <<"suspended">> -> load_summary_by_types(Context, ?PORT_SUSPENDED_STATES);
+        <<"completed">> -> load_summary_by_types(Context, ?PORT_COMPLETED_STATES);
+        Types -> summarize_by_types(Context, Types)
+    end.
+
+-spec summarize_by_types(cb_context:context(), any()) -> cb_context:context().
+summarize_by_types(Context, Types) when is_list(Types) ->
+    case lists:partition(fun(Type) -> lists:member(Type, ?PORT_STATES) end
+                        ,[kz_binary:strip(Type) || Type <- Types]
+                        )
+    of
+        {Satisfying, []} ->
+            load_summary_by_types(Context, Satisfying);
+        {_, Unsatisfying} ->
+            Message = <<"query string by_types contained invalid values: "
+                       ,(kz_binary:join(Unsatisfying))/binary
+                      >>,
+            cb_context:add_system_error('invalid_request', Message, Context)
+    end;
+summarize_by_types(Context, Types) ->
+    summarize_by_types(Context, binary:split(kz_term:to_binary(Types), <<",">>)).
 
 %%%=============================================================================
 %%% Load Summary By Range
@@ -636,24 +647,32 @@ summary(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_summary_by_type(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_summary_by_type(Context, <<"all">>) ->
-    lager:debug("loading summary for all port requests"),
-    Funs = fun(?PORT_SUBMITTED=Type, C) -> load_summary_fold(C, Type, 'false');
-              (?PORT_PENDING=Type, C) -> load_summary_fold(C, Type, 'false');
-              (?PORT_SCHEDULED=Type, C) -> load_summary_fold(C, Type, 'false');
-              (?PORT_REJECTED=Type, C) -> load_summary_fold(C, Type, 'false');
-              (Type, C) -> load_summary_fold(C, Type, 'true')
+load_summary_by_type(Context, Type) ->
+    lager:debug("loading summary for ~s", [Type]),
+    IsRanged = should_range_summary(Type),
+    maybe_normalize_summary_results(
+      load_summary(Context, view_key_options(Context, Type, IsRanged))
+     ).
+
+-spec load_summary_by_types(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
+load_summary_by_types(Context, Types) ->
+    lager:debug("loading summary for port requests with types ~s"
+               ,[kz_binary:join(Types)]
+               ),
+    Funs = fun(Type, C) ->
+                   IsRanged = should_range_summary(Type),
+                   load_summary_fold(C, Type, IsRanged)
            end,
     Context1 = cb_context:setters(Context
                                  ,[{fun cb_context:set_resp_data/2, []}
                                   ,{fun cb_context:set_resp_status/2, 'success'}
                                   ]
                                  ),
-    maybe_normalize_summary_results(lists:foldl(Funs, Context1, ?PORT_STATES));
-load_summary_by_type(Context, Type) ->
-    maybe_normalize_summary_results(
-      load_summary(Context, view_key_options(Context, Type, 'true'))
-     ).
+    maybe_normalize_summary_results(lists:foldl(Funs, Context1, Types)).
+
+-spec should_range_summary(kz_term:ne_binary()) -> boolean().
+should_range_summary(Type) ->
+    lists:member(Type, ?PORT_COMPLETED_STATES).
 
 -spec load_summary_fold(cb_context:context(), kz_term:ne_binary(), boolean()) -> cb_context:context().
 load_summary_fold(Context, Type, IsRanged) ->
@@ -694,6 +713,14 @@ view_key_options(Context, Type, 'false') ->
      ]
     }.
 
+
+-spec get_summarize_view_name(cb_context:context()) -> kz_term:ne_binary().
+get_summarize_view_name(Context) ->
+    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
+        [_AccountId, ?DESCENDANTS] -> ?DESCENDANT_LISTING_BY_STATE;
+        _Params -> ?LISTING_BY_STATE
+    end.
+
 -spec maybe_normalize_summary_results(cb_context:context()) -> cb_context:context().
 maybe_normalize_summary_results(Context) ->
     case cb_context:resp_status(Context) of
@@ -731,13 +758,6 @@ get_account_names(Keys) ->
              || JObj <- JObjs
             ];
         {'error', _} -> []
-    end.
-
--spec get_summarize_view_name(cb_context:context()) -> kz_term:ne_binary().
-get_summarize_view_name(Context) ->
-    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
-        [_AccountId, ?DESCENDANTS] -> ?DESCENDANT_LISTING_BY_STATE;
-        _Params -> ?LISTING_BY_STATE
     end.
 
 %%%=============================================================================
@@ -951,27 +971,6 @@ successful_validation(Context, _Id) ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     cb_context:set_doc(Context, Normalized).
 
--spec search_by_number(cb_context:context()) -> cb_context:context().
-search_by_number(Context) ->
-    case cb_context:req_value(Context, <<"by_number">>) of
-        'undefined' ->
-            cb_context:add_system_error('invalid_request', <<"missing query string by_number">>, Context);
-        Number ->
-            E164 = knm_converters:normalize(Number),
-            fetch_by_number(Context, E164)
-    end.
-
--spec fetch_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-fetch_by_number(Context, Number) ->
-    Options = [{'mapper', fun normalize_view_results/2}
-              ,{'keymap', Number}
-              ,{'databases', [?KZ_PORT_REQUESTS_DB]}
-              ,{'unchunkable', 'true'}
-              ,{'should_paginate', 'false'}
-              ,'include_docs'
-              ],
-    crossbar_view:load(Context, ?PORT_REQ_NUMBERS, Options).
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -988,6 +987,17 @@ check_number_portability(PortId, Number, Context) ->
             check_number_portability(PortId, Number, Context1, E164, DataResp);
         _ -> Context1
     end.
+
+-spec fetch_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+fetch_by_number(Context, Number) ->
+    Options = [{'mapper', fun normalize_view_results/2}
+              ,{'keymap', Number}
+              ,{'databases', [?KZ_PORT_REQUESTS_DB]}
+              ,{'unchunkable', 'true'}
+              ,{'should_paginate', 'false'}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, ?PORT_REQ_NUMBERS, Options).
 
 -spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:objects()) ->
                                       cb_context:context().
