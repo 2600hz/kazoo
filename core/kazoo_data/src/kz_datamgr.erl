@@ -1588,7 +1588,7 @@ validate_view_map(JObj) ->
     ViewMap = kz_json:get_list_value(<<"view_map">>, JObj, []),
     validate_view_map(ViewMap, []).
 
--spec validate_view_map('undefined' | kz_term:objects(), kz_term:objects() | {'error', kz_term:ne_binary()}) ->
+-spec validate_view_map(kz_json:objects(), kz_json:objects() | {'error', kz_term:ne_binary()}) ->
                                {kz_term:ne_binary(), kz_json:objects()} |
                                {'error', any()}.
 validate_view_map(_, {'error', _}=Error) ->
