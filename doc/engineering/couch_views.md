@@ -46,3 +46,41 @@ Of course, applications can create their own classifications as well; they need 
 Once the design document is updated with the `kazoo` metadata, the application will need to register the views. Generally speaking, design documents are stored in `{APP}/priv/couchdb/views/` which means the `{APP}_app` (or other init routine) would call `kz_datamgr:register_views_from_folder('{APP}', "views")`.
 
 Once registered, `kapps_maintenance:migrate/0` and `kapps_maintenance:refresh/0` will ensure that what is on disk matches what's registered and will ensure all databases are updated as necessary with the appropriate version of the relevant design docs.
+
+## Multiline views
+
+While the `map` functions in Kazoo's CouchDB views are generally pretty small and simple, there are occassions where writing the `map` function as one long string isn't so great for reading the function.
+
+Kazoo thus allows you to specify the `map` function using an array of strings to allow you to write the Javascript as you might in a normal `.js` file and Kazoo will take care of flattening it into a string before loading into CouchDB.
+
+Consider the `faxes.json` design doc. The `crossbar_listing` function is defined as:
+
+```json
+{...
+    "views": {
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted)",
+                "    return;",
+                "  emit(doc._id, {",
+                "    'modified': doc.pvt_modified",
+                "  });",
+                "}"
+            ]
+        },
+...
+}
+```
+
+Here we see the function defined over multiple lines which aid in reading what the function is meant to do.
+
+Contrast that with the "flattened" version":
+
+```json
+...,"views":{"crossbar_listing":{"map":"function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted) return; emit([doc.pvt_created, doc._id], {'id': doc._id, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"},...
+```
+
+And this is a straightforward `map` function!
+
+It is, therefore, recommended to use the multiline definitions for the on-disk design documents.
