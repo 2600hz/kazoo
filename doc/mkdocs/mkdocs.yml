@@ -456,7 +456,7 @@ pages:
   - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
   - 'Call Recording': 'doc/engineering/call_recording.md'
   - 'Caller ID Formatting': 'doc/reference/caller_id_formatting.md'
-  - 'CouchDB Views': 'doc/enginerring/couch_views.md'
+  - 'CouchDB Views': 'doc/engineering/couch_views.md'
   - 'Documentation':
     - 'How to write docs': 'doc/engineering/documentation.md'
     - 'How to Write Erlang Documentation': 'doc/engineering/erlang-documentation.md'
