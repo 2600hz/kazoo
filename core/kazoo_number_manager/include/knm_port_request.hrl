@@ -41,5 +41,25 @@
                      ,?PORT_CANCELED
                      ]).
 
+-define(PORT_ACTIVE_STATES, [?PORT_UNCONFIRMED
+                            ,?PORT_SUBMITTED
+                            ,?PORT_PENDING
+                            ,?PORT_SCHEDULED
+                            ,?PORT_REJECTED
+                            ]).
+
+-define(PORT_PROGRESSING_STATES, [?PORT_SUBMITTED
+                                 ,?PORT_PENDING
+                                 ,?PORT_SCHEDULED
+                                 ]).
+
+-define(PORT_SUSPENDED_STATES, [?PORT_UNCONFIRMED
+                               ,?PORT_REJECTED
+                               ]).
+
+-define(PORT_COMPLETED_STATES, [?PORT_COMPLETED
+                               ,?PORT_CANCELED
+                               ]).
+
 -define(KNM_PORT_REQUEST_HRL, 'true').
 -endif.
