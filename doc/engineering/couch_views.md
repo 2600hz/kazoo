@@ -4,7 +4,7 @@ Kazoo uses views to query CouchDB. Basically views are JavaScript codes which wi
 
 Traditionally Kazoo have all design documents in simple JSON files store in each application's private directory. After a view is updated system administrator required to run a maintenance command (`kapps_maintenance refresh [Database]`) to read the view files and update them in databases. As long as Kazoo is deploy as a single node, there was no issue. Deploying Kazoo in multi-node scenario where each node is just running a subset of applications would potentially result in breaking this refresh maintenance command. For example if you run this command for refreshing views for an account database in a node which doesn't have Crossbar application installed will failed, since it can not find required account's database views.
 
-With Kazoo 4.2, some views (account and MODB for example) are read from the JSON files and put in a specific database (`system_data` database). This process is called registering the views. Subsequence refresh command would read the view definitions from this database and is not required to run on a specific node.
+With Kazoo 4.2, some views (account and MODB for example) are read from the JSON files and put in a specific database (`system_data` database). This process is called registering the views. Subsequent refresh command would read the view definitions from this database and is not required to run on a specific node.
 
 This has been improved in Kazoo 4.3 by putting all views that Kazoo uses into `system_data` database. Upon system startup, each application is now responsible for registering the views that it provides (and creating their specific database if they have one) and optionally refreshing it.
 
@@ -26,7 +26,7 @@ First, an example:
         ]
     },
     "language":"javascript",
-    "views": { // impement your views here }
+    "views": { // implement your views here }
 }
 ```
 
@@ -84,7 +84,7 @@ register_views() ->
 init_dbs() ->
     _ = kz_datamgr:db_create(?MY_DB_NAME),
     %% Optionally refresh database views. Keep in mind this is not recommended for
-    %% large databases, since updating the views for larg databases triggers view
+    %% large databases, since updating the views for large databases triggers view
     %% cache update in CouchDB for that databases and it turn can put pressure on database.
     %% _ = kz_datamgr:refresh_views(?MY_DB_NAME)
     'ok'.
@@ -92,7 +92,7 @@ init_dbs() ->
 
 Once registered, `kapps_maintenance:migrate/0` and `kapps_maintenance:refresh/0` will ensure that what is on disk matches what's registered and will ensure all databases are updated as necessary with the appropriate version of the relevant design docs.
 
-## Multiline views
+## Multi-line views
 
 While the `map` functions in Kazoo's CouchDB views are generally pretty small and simple, there are occasions where writing the `map` function as one long string isn't so great for reading the function.
 
@@ -129,7 +129,7 @@ Contrast that with the "flattened" version":
 
 And this is a straightforward `map` function!
 
-It is, therefore, recommended to use the multiline definitions for the on-disk design documents.
+It is, therefore, recommended to use the multi-line definitions for the on-disk design documents.
 
 ## Validate CouchDB Views
 
@@ -141,4 +141,4 @@ After making sure `couchjs` is available you can run the script like below:
 ./scripts/validate-js.sh `find */*/priv/**/* -name '*.json'`
 ```
 
-This will make sure the `map` function doesn't have any syntax error and is parasble by CouchDB JavaScript engine, the JSON file has correct format and `kazoo` meta data for views are not causing the views re-writing each other on the same database or classifications.
+This will make sure the `map` function doesn't have any syntax error and is parsable by CouchDB JavaScript engine, the JSON file has correct format and `kazoo` meta data for views are not causing the views re-writing each other on the same database or classifications.
