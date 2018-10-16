@@ -218,15 +218,18 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
                               data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
-        'true' -> ensure_saved(DbName, JObj);
+        'true' ->
+            ensure_saved(DbName, JObj);
         'false' -> {'ok', JObj}
     end.
 
 -spec should_update(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
-        {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
-        _ -> 'true'
+        {'ok', Doc} ->
+            kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc)
+                andalso (not kz_json:is_empty(kz_json:diff(JObj, Doc)));
+        {'error', _} -> 'true'
     end.
 
 %%------------------------------------------------------------------------------
