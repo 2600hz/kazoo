@@ -218,17 +218,19 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
                               data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
+        'false' -> {'ok', JObj};
         'true' ->
-            ensure_saved(DbName, JObj);
-        'false' -> {'ok', JObj}
+            Updates = kz_json:to_proplist(kz_json:flatten(JObj)),
+            Update = [{'update', Updates}
+                     ,{'ensure_saved', 'true'}
+                     ],
+            update_doc(DbName, kz_doc:id(JObj), Update)
     end.
 
 -spec should_update(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
-        {'ok', Doc} ->
-            kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc)
-                andalso (not kz_json:is_empty(kz_json:diff(JObj, Doc)));
+        {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
         {'error', _} -> 'true'
     end.
 
@@ -915,11 +917,18 @@ update_doc(DbName, Id, Options) ->
                                     {'ok', kz_json:object()} |
                                     data_error().
 apply_updates_and_save(DbName, Id, Options, CurrentDoc) ->
-    UpdateProps = props:get_value('update', Options),
+    apply_updates_and_save(DbName, Id, Options, CurrentDoc, props:get_value('update', Options)).
+
+apply_updates_and_save(_DbName, _Id, _Options, CurrentDoc, []) ->
+    lager:debug("no updates to apply, returning current doc ~s", [_Id]),
+    {'ok', CurrentDoc};
+apply_updates_and_save(DbName, Id, Options, CurrentDoc, UpdateProps) ->
     UpdatedDoc = kz_json:set_values(UpdateProps, CurrentDoc),
 
     case kz_json:are_equal(CurrentDoc, UpdatedDoc) of
-        'true' -> {'ok', CurrentDoc};
+        'true' ->
+            lager:debug("updates to ~s result in the same doc", [Id]),
+            {'ok', CurrentDoc};
         'false' ->
             save_update(DbName, Id, Options, UpdatedDoc)
     end.
