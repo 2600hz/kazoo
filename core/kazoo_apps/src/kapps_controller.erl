@@ -185,7 +185,10 @@ initialize_kapps() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = kapps_maintenance:init_system(),
     kapps_config:migrate(),
-    ToStart = lists:sort(fun sysconf_first/2, [kz_term:to_atom(KApp, 'true') || KApp <- start_which_kapps()]),
+    ToStart = lists:sort(fun sysconf_first/2
+                        ,[kz_term:to_atom(KApp, 'true')
+                          || KApp <- start_which_kapps()
+                         ]),
     Started = [KApp || KApp <- ToStart,
                        {'ok',_} <- [start_app(KApp)]
               ],
@@ -233,13 +236,16 @@ maybe_start_from_node_name(Verbose) ->
     KApp = kapp_from_node_name(),
     case application:load(KApp) of
         'ok' ->
+            log_verbose(Verbose, "loaded node-name ~s from ~s", [KApp, node()]),
             case is_kapp(KApp) of
                 'true' ->
                     log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
                     [KApp];
                 _Else -> 'false'
             end;
-        _Else -> 'false'
+        _Else ->
+            log_verbose(Verbose, "node name ~s not an app", [KApp]),
+            'false'
     end.
 
 -spec maybe_start_from_node_config(boolean()) -> 'false' | kz_term:ne_binaries().
