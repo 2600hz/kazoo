@@ -540,6 +540,12 @@ handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, 
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
+handle_info({'DOWN', Ref, 'process', Pid, 'killed'}, #state{cf_module_pid={Pid, Ref}
+                                                           ,call=Call
+                                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
+    {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                                           ,call=Call
                                                           }=State) ->
@@ -556,6 +562,12 @@ handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
+handle_info({'EXIT', Pid, 'killed'}, #state{cf_module_pid={Pid, Ref}
+                                           ,call=Call
+                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("cf module ~s killed normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
+    {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                           ,call=Call
                                           }=State) ->
@@ -569,6 +581,12 @@ handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_old_action', Call)]),
+    {'noreply', State#state{cf_module_old_pid='undefined'}};
+handle_info({'EXIT', Pid, 'killed'}, #state{cf_module_old_pid={Pid, Ref}
+                                           ,call=Call
+                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("cf module ~s killed normally", [kapps_call:kvs_fetch('cf_old_action', Call)]),
     {'noreply', State#state{cf_module_old_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_old_pid={Pid, Ref}
                                           ,call=Call
@@ -907,7 +925,7 @@ handle_channel_pivoted(Self, PidRef, JObj, Call) ->
 
 -spec maybe_stop_action(kz_term:api_pid_ref()) -> 'ok'.
 maybe_stop_action({Pid, _Ref}) ->
-    exit(Pid, 'normal');
+    exit(Pid, 'kill');
 maybe_stop_action('undefined') -> 'ok'.
 
 -spec stop_bad_destination(kapps_call:call()) -> 'ok'.

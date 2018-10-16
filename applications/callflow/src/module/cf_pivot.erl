@@ -77,9 +77,10 @@ wait_for_pivot(Data, Call) ->
                 {<<"pivot">>,<<"failed">>} ->
                     lager:warning("pivot failed failing back to next callflow action"),
                     cf_exe:continue(Call);
-                _ ->
+                _Other ->
                     wait_for_pivot(Data, Call)
             end;
         {'error', 'timeout'} ->
-            wait_for_pivot(Data, Call)
+            lager:error("timeout waiting for pivot response, continuing"),
+            cf_exe:continue(Call)
     end.
