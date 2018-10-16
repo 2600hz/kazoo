@@ -713,55 +713,56 @@ do_launch_cf_module(#state{call=Call
     Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
     Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
 
-    {PidRef, Action} =
-        case maybe_start_cf_module(Module, Data, Call) of
-            {{Pid, _Ref}=PR, _Action}=Resp ->
-                link(get_pid(PR)),
-                Resp;
-            Resp -> Resp
-        end,
+    case find_cf_module(Module) of
+        'undefined' ->
+            lager:error("unknown callflow action, reverting to last action"),
+            continue(self()),
+            OldAction = kapps_call:kvs_fetch('cf_last_action', Call),
+            State#state{cf_module_pid='undefined'
+                       ,cf_module_old_pid=OldPidRef
+                       ,call=update_actions(OldAction, Call)
+                       };
+        Action ->
+            lager:info("moving to action '~s'", [Action]),
+            %% Actions need to be updated before the module is spawned, in case
+            %% the module calls cf_exe:set_call/1 - that would undo the later
+            %% old_action/last_action update
+            Call1 = update_actions(Action, Call),
+            PidRef = spawn_cf_module(Action, Data, Call1),
+            link(get_pid(PidRef)),
+            State#state{cf_module_pid=PidRef
+                       ,cf_module_old_pid=OldPidRef
+                       ,call=Call1
+                       }
+    end.
 
+-spec find_cf_module(kz_term:ne_binary()) -> kz_term:api_atom().
+find_cf_module(ModuleBin) ->
+    CFModule = kz_term:to_atom(ModuleBin, 'true'),
+    case kz_module:is_exported(CFModule, 'handle', 2) of
+        'true' -> CFModule;
+        'false' ->
+            lager:debug("failed to find callflow module ~s", [CFModule]),
+            'undefined'
+    end.
+
+-spec update_actions(atom(), kapps_call:call()) -> kapps_call:call().
+update_actions(Action, Call) ->
     OldAction = kapps_call:kvs_fetch('cf_last_action', Call),
     Routines = [{fun kapps_call:kvs_store/3, 'cf_old_action', OldAction}
                ,{fun kapps_call:kvs_store/3, 'cf_last_action', Action}
                ],
-    State#state{cf_module_pid=PidRef
-               ,cf_module_old_pid=OldPidRef
-               ,call=kapps_call:exec(Routines, Call)
-               }.
-
--spec maybe_start_cf_module(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                   {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
-maybe_start_cf_module(ModuleBin, Data, Call) ->
-    CFModule = kz_term:to_atom(ModuleBin, 'true'),
-    case kz_module:is_exported(CFModule, 'handle', 2) of
-        'true' ->
-            lager:info("moving to action '~s'", [CFModule]),
-            spawn_cf_module(CFModule, Data, Call);
-        'false' ->
-            lager:debug("failed to find callflow module ~s", [CFModule]),
-            cf_module_not_found(Call)
-    end.
-
--spec cf_module_not_found(kapps_call:call()) ->
-                                 {'undefined', atom()}.
-cf_module_not_found(Call) ->
-    lager:error("unknown callflow action, reverting to last action"),
-    continue(self()),
-    {'undefined', kapps_call:kvs_fetch('cf_last_action', Call)}.
+    kapps_call:exec(Routines, Call).
 
 %%------------------------------------------------------------------------------
 %% @doc Helper function to spawn a linked callflow module, from the entry
 %% point 'handle' having set the callid on the new process first.
 %% @end
 %%------------------------------------------------------------------------------
--spec spawn_cf_module(CFModule, kz_json:object(), kapps_call:call()) ->
-                             {kz_term:pid_ref(), CFModule}.
+-spec spawn_cf_module(atom(), kz_json:object(), kapps_call:call()) -> kz_term:pid_ref().
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
-    {kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
-    ,CFModule
-    }.
+    kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer]).
 
 -spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid()) -> any().
 cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
