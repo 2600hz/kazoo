@@ -339,29 +339,45 @@ originate_call(_C2CId, Context, Contact, 'false') ->
     crossbar_util:response_400(<<"Contact doesn't match whitelist">>, Contact, Context);
 originate_call(C2CId, Context, Contact, 'true') ->
     Request = build_originate_req(Contact, Context),
+    do_originate_call(C2CId, Context, Contact, Request, cb_context:req_value(Context, <<"blocking">>, 'false')).
+
+do_originate_call(C2CId, Context, Contact, Request, 'false') ->
     _Pid = kz_util:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
-    crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
+    crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request));
+do_originate_call(C2CId, Context, Contact, Request, 'true') ->
+    Resp = exec_originate(Request),
+    case handle_response(C2CId, Context, Contact, Resp) of
+        {'ok', HistoryItem} -> crossbar_doc:handle_json_success(HistoryItem, Context);
+        {'error', Error} -> crossbar_doc:handle_datamgr_error(Error, C2CId, Context)
+    end.
 
--spec do_originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:proplist()) -> 'ok'.
+handle_response(C2CId, Context, Contact, Resp) ->
+    AccountId = cb_context:account_id(Context),
+    Modb = cb_context:account_modb(Context),
+
+    JObj = kz_json:from_list(create_c2c_history_item(Resp, C2CId, Contact)),
+    Options = [{'account_id', cb_context:account_id(Context)}
+              ,{'type', <<"c2c_history">>}
+              ],
+    HistoryItem = kz_doc:update_pvt_parameters(crossbar_doc:update_pvt_parameters(JObj, Context)
+                                              ,Modb
+                                              ,Options
+                                              ),
+    _ = kazoo_modb:save_doc(AccountId, HistoryItem).
+
+-spec do_originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:proplist()) ->
+                               {'ok', kz_json:object()} |
+                               kz_datamgr:data_error().
 do_originate_call(C2CId, Context, Contact, Request) ->
     ReqId = cb_context:req_id(Context),
     kz_util:put_callid(ReqId),
 
-    AccountId = cb_context:account_id(Context),
-    Modb = cb_context:account_modb(Context),
+    Resp = exec_originate(Request),
+    lager:debug("got status for ~p", [Resp]),
 
-    Status = exec_originate(Request),
-    lager:debug("got status ~p", [Status]),
-
-    JObj = kz_json:from_list(create_c2c_history_item(Status, C2CId, Contact)),
-    Options = [{'account_id', AccountId}
-              ,{'type', <<"c2c_history">>}
-              ],
-    HistoryItem = kz_doc:update_pvt_parameters(crossbar_doc:update_pvt_parameters(JObj, Context), Modb, Options),
-    _ = kazoo_modb:save_doc(AccountId, HistoryItem),
-    'ok'.
+    handle_response(C2CId, Context, Contact, Resp).
 
 -spec match_regexps(kz_term:binaries(), kz_term:ne_binary()) -> boolean().
 match_regexps([Pattern | Rest], Number) ->
@@ -372,34 +388,35 @@ match_regexps([Pattern | Rest], Number) ->
 match_regexps([], _Number) -> 'false'.
 
 -spec exec_originate(kz_term:api_terms()) ->
-                            {'success', kz_term:ne_binary()} |
+                            {'success', kz_json:object()} |
                             {'error', kz_term:ne_binary()}.
 exec_originate(Request) ->
-    handle_originate_resp(
-      kz_amqp_worker:call_collect(Request
-                                 ,fun kapi_resource:publish_originate_req/1
-                                 ,fun is_resp/1
-                                 ,20 * ?MILLISECONDS_IN_SECOND
-                                 )
-     ).
+    Resp = kz_amqp_worker:call_collect(Request
+                                      ,fun kapi_resource:publish_originate_req/1
+                                      ,fun is_resp/1
+                                      ,20 * ?MILLISECONDS_IN_SECOND
+                                      ),
+    handle_originate_resp(Resp).
 
 -spec handle_originate_resp({'ok', kz_json:objects()} |
                             {'returned', kz_json:object(), kz_json:object()} |
                             {'error', _} |
                             {'timeout', _}
                            ) ->
-                                   {'success', kz_term:ne_binary()} |
+                                   {'success', kz_json:object()} |
                                    {'error', kz_term:ne_binary()}.
 handle_originate_resp({'ok', [Resp|_]}) ->
     AppResponse = kz_json:get_first_defined([<<"Application-Response">>
                                             ,<<"Hangup-Cause">>
                                             ,<<"Error-Message">>
-                                            ], Resp),
+                                            ]
+                                           ,Resp
+                                           ),
     case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
         'true' ->
-            {'success', kz_json:get_value(<<"Call-ID">>, Resp)};
+            {'success', Resp};
         'false' when AppResponse =:= 'undefined' ->
-            {'success', kz_json:get_value(<<"Call-ID">>, Resp)};
+            {'success', Resp};
         'false' ->
             lager:debug("app response ~s not successful: ~p", [AppResponse, Resp]),
             {'error', AppResponse}
@@ -529,11 +546,11 @@ get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
     knm_converters:normalize(kz_http_util:urlencode(Contact)).
 
--spec create_c2c_history_item({'success' | 'error', kz_term:ne_binary()}, kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
-create_c2c_history_item({'success', CallId}, C2CId, Contact) ->
+-spec create_c2c_history_item({'success' | 'error', kz_json:object()}, kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+create_c2c_history_item({'success', Resp}, C2CId, Contact) ->
     [{<<"timestamp">>, kz_time:now_s()}
     ,{<<"contact">>, Contact}
-    ,{<<"call_id">>, CallId}
+    ,{<<"call_id">>, kz_api:call_id(Resp)}
     ,{<<"result">>, <<"success">>}
     ,{<<"pvt_clicktocall_id">>, C2CId}
     ];
