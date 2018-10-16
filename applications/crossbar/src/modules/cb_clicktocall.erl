@@ -46,18 +46,20 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.clicktocall">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.clicktocall">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.validate.clicktocall">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.clicktocall">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.clicktocall">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.clicktocall">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.clicktocall">>, ?MODULE, 'delete'),
-    ok.
+    Bindings = [{<<"*.allowed_methods.clicktocall">>, 'allowed_methods'}
+               ,{<<"*.resource_exists.clicktocall">>, 'resource_exists'}
+               ,{<<"*.authenticate">>, 'authenticate'}
+               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.validate.clicktocall">>, 'validate'}
+               ,{<<"*.execute.put.clicktocall">>, 'put'}
+               ,{<<"*.execute.post.clicktocall">>, 'post'}
+               ,{<<"*.execute.patch.clicktocall">>, 'patch'}
+               ,{<<"*.execute.delete.clicktocall">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
