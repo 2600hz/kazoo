@@ -235,20 +235,27 @@ log_verbose('true', Fmt, Args) ->
 maybe_start_from_node_name(Verbose) ->
     KApp = kapp_from_node_name(),
     case application:load(KApp) of
-        'ok' ->
-            log_verbose(Verbose, "loaded node-name ~s from ~s", [KApp, node()]),
-            case is_kapp(KApp) of
-                'true' ->
-                    log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
-                    [KApp];
-                _Else -> 'false'
-            end;
+        'ok' -> maybe_start_from_node_name(Verbose, KApp);
+        {'error', {'already_loaded', KApp}} ->
+            maybe_start_from_node_name(Verbose, KApp);
         _Else ->
             log_verbose(Verbose, "node name ~s not an app", [KApp]),
             'false'
     end.
 
--spec maybe_start_from_node_config(boolean()) -> 'false' | kz_term:ne_binaries().
+-spec maybe_start_from_node_name(boolean(), atom()) -> 'false' | kz_term:atoms().
+maybe_start_from_node_name(Verbose, KApp) ->
+    log_verbose(Verbose, "loaded node-name ~s from ~s", [KApp, node()]),
+    case is_kapp(KApp) of
+        'true' ->
+            log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
+            [KApp];
+        _Else ->
+            log_verbose(Verbose, "app ~s is not a kazoo app", [KApp]),
+            'false'
+    end.
+
+-spec maybe_start_from_node_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
 maybe_start_from_node_config(Verbose) ->
     case kapps_config:get_node_value(?MODULE, <<"kapps">>) of
         'undefined' -> 'false';
