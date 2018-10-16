@@ -3973,11 +3973,6 @@
                     "description": "Determines if this click to call requires valid auth-tokens when invoked",
                     "type": "boolean"
                 },
-                "blocking": {
-                    "default": false,
-                    "description": "Whether to block the API response until the call has been originated",
-                    "type": "boolean"
-                },
                 "bypass_media": {
                     "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
                     "enum": [

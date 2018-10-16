@@ -514,9 +514,9 @@ build_originate_req(Contact, Context) ->
 get_caller_callee(<<"extension">>, Contact, Extension) -> {Contact, Extension};
 get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
--spec get_ignore_early_media(kz_json:object()) -> boolean().
-get_ignore_early_media(JObj) ->
-    kz_term:is_true([<<"media">>, <<"ignore_early_media">>], JObj, 'true').
+-spec get_ignore_early_media(kzd_clicktocall:doc()) -> boolean().
+get_ignore_early_media(C2CDoc) ->
+    kzd_clicktocall:media_ignore_early_media(C2CDoc, 'true').
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);
@@ -524,7 +524,7 @@ is_resp(JObj) ->
     kapi_resource:originate_resp_v(JObj)
         orelse kz_api:error_resp_v(JObj).
 
--spec get_c2c_contact(kz_term:api_binary()) -> kz_term:api_binary().
+-spec get_c2c_contact(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
     knm_converters:normalize(kz_http_util:urlencode(Contact)).

@@ -11,7 +11,6 @@ Click-to-call allows you to create URLs that can be POSTed to with a phone numbe
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `auth_required` | Determines if this click to call requires valid auth-tokens when invoked | `boolean()` | `true` | `false` |  
-`blocking` | Whether to block the API response until the call has been originated | `boolean()` | `false` | `false` |  
 `bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false` |  
 `caller_id_number` | Explicitly set caller id number | `string()` |   | `false` |  
 `custom_application_vars./[a-zA-Z0-9\-_]+/` |   | `string()` |   | `false` |  

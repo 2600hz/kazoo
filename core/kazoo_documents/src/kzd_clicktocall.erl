@@ -7,7 +7,6 @@
 
 -export([new/0]).
 -export([auth_required/1, auth_required/2, set_auth_required/2]).
--export([blocking/1, blocking/2, set_blocking/2]).
 -export([bypass_media/1, bypass_media/2, set_bypass_media/2]).
 -export([caller_id_number/1, caller_id_number/2, set_caller_id_number/2]).
 -export([custom_application_vars/1, custom_application_vars/2, set_custom_application_vars/2]).
@@ -51,18 +50,6 @@ auth_required(Doc, Default) ->
 -spec set_auth_required(doc(), boolean()) -> doc().
 set_auth_required(Doc, AuthRequired) ->
     kz_json:set_value([<<"auth_required">>], AuthRequired, Doc).
-
--spec blocking(doc()) -> boolean().
-blocking(Doc) ->
-    blocking(Doc, false).
-
--spec blocking(doc(), Default) -> boolean() | Default.
-blocking(Doc, Default) ->
-    kz_json:get_boolean_value([<<"blocking">>], Doc, Default).
-
--spec set_blocking(doc(), boolean()) -> doc().
-set_blocking(Doc, Blocking) ->
-    kz_json:set_value([<<"blocking">>], Blocking, Doc).
 
 -spec bypass_media(doc()) -> any().
 bypass_media(Doc) ->
