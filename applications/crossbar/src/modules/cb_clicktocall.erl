@@ -431,14 +431,18 @@ handle_originate_resp({'timeout', _T}) ->
 -spec build_originate_req(kz_term:ne_binary(), cb_context:context()) -> kz_term:proplist().
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
-    JObj = cb_context:doc(Context),
-    Exten = knm_converters:normalize(kz_json:get_binary_value(<<"extension">>, JObj)),
-    CalleeName = kz_json:get_binary_value(<<"outbound_callee_id_name">>, JObj, Exten),
-    CalleeNumber = knm_converters:normalize(kz_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
-    FriendlyName = kz_json:get_ne_value(<<"name">>, JObj, <<>>),
-    OutboundNumber = kz_json:get_value(<<"caller_id_number">>, JObj, Contact),
+    C2CDoc = cb_context:doc(Context),
+    Exten = knm_converters:normalize(kzd_clicktocall:extension(C2CDoc)),
+    CalleeName = kzd_clicktocall:outbound_callee_id_name(C2CDoc, Exten),
+    CalleeNumber = knm_converters:normalize(kzd_clicktocall:outbound_callee_id_number(C2CDoc, Exten)),
+
+    FriendlyName = kzd_clicktocall:name(C2CDoc, <<>>),
+    OutboundNumber = kzd_clicktocall:caller_id_number(C2CDoc, Contact),
     AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
-    {Caller, Callee} = get_caller_callee(kz_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
+
+    DialFirst = kzd_clicktocall:dial_first(C2CDoc, <<"extension">>),
+
+    {Caller, Callee} = get_caller_callee(DialFirst
                                         ,#contact{number = OutboundNumber
                                                  ,name = FriendlyName
                                                  ,route = Contact
@@ -451,14 +455,15 @@ build_originate_req(Contact, Context) ->
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
     {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
+    AccountRealm = kzd_accounts:realm(AccountDoc),
 
     CCVs = [{<<"Account-ID">>, AccountId}
            ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
-           ,{<<"Authorizing-ID">>, kz_doc:id(JObj)}
+           ,{<<"Authorizing-ID">>, kz_doc:id(C2CDoc)}
            ,{<<"Authorizing-Type">>, <<"clicktocall">>}
-           ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kzd_accounts:realm(AccountDoc))/binary>>}
-           ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kzd_accounts:realm(AccountDoc))/binary>>}
-           ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kzd_accounts:realm(AccountDoc))/binary>>}
+           ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", AccountRealm/binary>>}
+           ,{<<"From-URI">>, <<CalleeNumber/binary, "@", AccountRealm/binary>>}
+           ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", AccountRealm/binary>>}
            ,{<<"Inherit-Codec">>, 'false'}
            ,{<<"Retain-CID">>, 'true'}
            ],
@@ -467,32 +472,31 @@ build_originate_req(Contact, Context) ->
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Callee#contact.route}
                ,{<<"To-DID">>, Callee#contact.route}
-               ,{<<"To-Realm">>, kzd_accounts:realm(AccountDoc)}
-               ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+               ,{<<"To-Realm">>, AccountRealm}
                ],
 
-    MsgId = kz_json:get_value(<<"msg_id">>, JObj, kz_binary:rand_hex(16)),
-    CallId = <<(kz_binary:rand_hex(18))/binary, "-clicktocall">>,
+    MsgId = kz_binary:rand_hex(8),
+    CallId = kz_binary:join([<<"c2c">>, kz_doc:id(C2CDoc), kz_binary:rand_hex(5)], <<"-">>),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
       ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Caller#contact.route}])}
       ,{<<"Msg-ID">>, MsgId}
       ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
-      ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, JObj, 30)}
-      ,{<<"Ignore-Early-Media">>, get_ignore_early_media(JObj)}
-      ,{<<"Media">>, kz_json:get_value(<<"media">>, JObj)}
-      ,{<<"Hold-Media">>, kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)}
-      ,{<<"Presence-ID">>, kz_json:get_value(<<"presence_id">>, JObj)}
+      ,{<<"Timeout">>, kzd_clicktocall:timeout(C2CDoc, 30)}
+      ,{<<"Ignore-Early-Media">>, get_ignore_early_media(C2CDoc)}
+      ,{<<"Bypass-Media">>, kzd_clicktocall:bypass_media(C2CDoc, 'undefined')}
+      ,{<<"Hold-Media">>, kzd_clicktocall:music_on_hold_media_id(C2CDoc)}
+      ,{<<"Presence-ID">>, kzd_clicktocall:presence_id(C2CDoc)}
       ,{<<"Outbound-Callee-ID-Name">>, Callee#contact.name}
       ,{<<"Outbound-Callee-ID-Number">>, Callee#contact.number}
       ,{<<"Outbound-Caller-ID-Name">>, Caller#contact.name}
       ,{<<"Outbound-Caller-ID-Number">>, Caller#contact.number}
       ,{<<"Outbound-Call-ID">>, CallId}
-      ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, JObj)}
+      ,{<<"Ringback">>, kzd_clicktocall:ringback(C2CDoc)}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
       ,{<<"Continue-On-Fail">>, 'true'}
-      ,{<<"Custom-SIP-Headers">>, kz_json:get_value(<<"custom_sip_headers">>, JObj)}
+      ,{<<"Custom-SIP-Headers">>, kzd_clicktocall:custom_sip_headers(C2CDoc)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
@@ -512,7 +516,7 @@ get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
 -spec get_ignore_early_media(kz_json:object()) -> boolean().
 get_ignore_early_media(JObj) ->
-    kz_term:is_true(kz_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
+    kz_term:is_true([<<"media">>, <<"ignore_early_media">>], JObj, 'true').
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);
