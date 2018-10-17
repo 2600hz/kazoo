@@ -6,7 +6,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_call_events).
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 -include("ecallmgr.hrl").
 
@@ -33,7 +33,6 @@
 -export([publish_event/1]).
 -export([process_channel_event/1]).
 -export([transfer/3]).
--export([handle_publisher_usurp/2]).
 -export([get_application_name/1]).
 -export([get_event_name/1]).
 -export([queue_name/1
@@ -45,17 +44,9 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/2
         ,terminate/2
         ,code_change/3
         ]).
-
--define(RESPONDERS, [{{?MODULE, 'handle_publisher_usurp'}
-                     ,[{<<"call_event">>, <<"usurp_publisher">>}]
-                     }]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
 -record(state, {node :: atom()
                ,call_id :: kz_term:api_binary()
@@ -80,16 +71,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link(atom(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Node, CallId) ->
-    Bindings = [{'call', [{'callid', CallId}
-                         ,{'restrict_to', ['publisher_usurp']}
-                         ]}
-               ],
-    gen_listener:start_link(?SERVER, [{'bindings', Bindings}
-                                     ,{'responders', ?RESPONDERS}
-                                     ,{'queue_name', ?QUEUE_NAME}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Node, CallId]).
+    gen_server:start_link(?SERVER, [Node, CallId], []).
 
 -spec graceful_shutdown(atom(), kz_term:ne_binary()) -> 'ok'.
 graceful_shutdown(Node, UUID) ->
@@ -132,29 +114,6 @@ queue_name(Srv) -> gen_listener:queue_name(Srv).
 -spec to_json(kz_term:proplist()) -> kz_json:object().
 to_json(Props) ->
     kz_json:from_list(create_event(Props)).
-
--spec handle_publisher_usurp(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_publisher_usurp(JObj, Props) ->
-    CallId = props:get_value('call_id', Props),
-    Ref = props:get_value('reference', Props),
-    Node = kz_term:to_binary(props:get_value('node', Props)),
-
-    lager:debug("received publisher usurp for ~s on ~s (if ~s != ~s)"
-               ,[kz_json:get_value(<<"Call-ID">>, JObj)
-                ,kz_json:get_value(<<"Media-Node">>, JObj)
-                ,Ref
-                ,kz_json:get_value(<<"Reference">>, JObj)
-                ]),
-
-    case CallId =:= kz_json:get_value(<<"Call-ID">>, JObj)
-        andalso Node =:= kz_json:get_value(<<"Media-Node">>, JObj)
-        andalso Ref =/= kz_json:get_value(<<"Reference">>, JObj)
-    of
-        'false' -> 'ok';
-        'true' ->
-            kz_util:put_callid(CallId),
-            gen_listener:cast(props:get_value('server', Props), {'passive'})
-    end.
 
 %%%=============================================================================
 %%% gen_listener callbacks
@@ -231,9 +190,6 @@ handle_cast({'update_node', Node}, #state{node=OldNode
     erlang:monitor_node(OldNode, 'false'),
     unregister_for_events(OldNode, CallId),
     {'noreply', State#state{node=Node}, 0};
-handle_cast({'passive'}, State) ->
-    lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode"),
-    {'noreply', State#state{passive='true'}};
 handle_cast({'channel_redirected', Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props),
@@ -452,6 +408,19 @@ handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
                                                      }=State) ->
     NewUUID = handle_bowout(Node, Props, ResigningUUID),
     {'noreply', State#state{call_id=NewUUID}};
+handle_info({'usurp_publisher', CallId, RefId, _JObj}, #state{ref=RefId
+                                                             ,call_id=CallId
+                                                             } = State) ->
+    {'noreply', State};
+handle_info({'usurp_publisher', CallId, _RefId, JObj}, #state{call_id=CallId
+                                                             ,node=Node
+                                                             } = State) ->
+    case kz_json:get_atom_value(<<"Media-Node">>, JObj) of
+        Node -> {'noreply', State};
+        OtherNode ->
+            lager:debug("publisher has been usurp'd by newer process on ~s, moving to passive mode", [OtherNode]),
+            {'noreply', State#state{passive='true'}}
+    end;
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -478,20 +447,6 @@ handle_bowout(Node, Props, ResigningUUID) ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
             ResigningUUID
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers.
-%% @end
-%%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(_JObj, #state{ref=Ref
-                          ,call_id=CallId
-                          ,node=Node
-                          }) ->
-    {'reply', [{'reference', Ref}
-              ,{'call_id', CallId}
-              ,{'node', Node}
-              ]}.
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_listener' when it is about to
@@ -1120,7 +1075,8 @@ usurp_other_publishers(#state{node=Node
             ,{<<"Reference">>, Ref}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    kapi_call:publish_usurp_publisher(CallId, Usurp).
+    kapi_call:publish_usurp_publisher(CallId, Usurp),
+    ecallmgr_usurp_monitor:register('usurp_publisher', CallId, Ref).
 
 -spec get_is_loopback(kz_term:api_binary()) -> atom().
 get_is_loopback('undefined') -> 'undefined';

@@ -120,10 +120,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% ecallmgr.  Since our call_events will get a bad session if we
     %% try to handle call more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
-    Bindings = [{'call', [{'callid', CallId}
-                         ,{'restrict_to', [<<"usurp_control">>]}
-                         ]}
-               ,{'dialplan', []}
+    Bindings = [{'dialplan', []}
                ,{'self', []}
                ],
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
@@ -236,9 +233,6 @@ handle_cast('init', State) ->
     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
-handle_cast({'usurp_control', _}, State) ->
-    lager:debug("the call has been usurped by an external process"),
-    {'stop', 'normal', State};
 handle_cast({'update_node', Node}, #state{node=OldNode}=State) ->
     lager:debug("channel has moved from ~s to ~s", [OldNode, Node]),
     {'noreply', State#state{node=Node}};
@@ -329,6 +323,15 @@ handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
             lager:debug("ignoring bowout for ~s", [_UUID]),
             {'noreply', State}
     end;
+handle_info({'usurp_control', CallId, FetchId, _JObj}, #state{call_id = CallId
+                                                             ,fetch_id = FetchId
+                                                             } = State) ->
+    {'noreply', State};
+handle_info({'usurp_control', CallId, _FetchId, _JObj}, #state{call_id = CallId} = State) ->
+    lager:debug("the call has been usurped by an external process"),
+    {'stop', 'normal', State};
+handle_info({'usurp_control', _CallId, _FetchId, _JObj}, State) ->
+    {'noreply', State};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -338,11 +341,10 @@ handle_info(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, #state{fetch_id=FetchId}) ->
+handle_event(JObj, _State) ->
     _ = case kz_util:get_event_type(JObj) of
             {<<"call">>, <<"command">>} -> handle_call_command(JObj);
             {<<"conference">>, <<"command">>} -> handle_conference_command(JObj);
-            {<<"call_event">>, _} -> handle_call_events(JObj, FetchId);
             {<<"error">>, _EvtName} -> lager:debug("ignoring error event for ~s", [_EvtName])
         end,
     'ignore'.
@@ -354,18 +356,6 @@ handle_call_command(JObj) ->
 -spec handle_conference_command(kz_json:object()) -> 'ok'.
 handle_conference_command(JObj) ->
     gen_listener:cast(self(), {'dialplan', JObj}).
-
--spec handle_call_events(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-handle_call_events(JObj, FetchId) ->
-    kz_util:put_callid(kz_json:get_value(<<"Call-ID">>, JObj)),
-    case kz_api:event_name(JObj) of
-        <<"usurp_control">> ->
-            case kz_json:get_ne_binary_value(<<"Fetch-ID">>, JObj) =/= FetchId of
-                'true' -> gen_listener:cast(self(), {'usurp_control', JObj});
-                'false' -> 'ok'
-            end;
-        _Else -> 'ok'
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_listener' when it is about to
@@ -402,9 +392,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
-call_control_ready(#state{controller_q=ControllerQ}=State) ->
-    'undefined' =/= ControllerQ
-        andalso publish_route_win(State),
+call_control_ready(#state{controller_q='undefined'}) -> 'ok';
+call_control_ready(State) ->
+    publish_route_win(State),
     publish_usurp(State).
 
 -spec publish_usurp(state()) -> 'ok'.
@@ -423,7 +413,8 @@ publish_usurp(CallId, FetchId, Node) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending control usurp for fetch-id ~s(~s)", [FetchId, CallId]),
-    kapi_call:publish_usurp_control(CallId, Usurp).
+    kapi_call:publish_usurp_control(CallId, Usurp),
+    ecallmgr_usurp_monitor:register('usurp_control', CallId, FetchId).
 
 -spec publish_route_win(state()) -> 'ok'.
 publish_route_win(#state{call_id=CallId
