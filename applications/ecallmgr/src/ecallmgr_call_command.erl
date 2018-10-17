@@ -686,13 +686,7 @@ prepare_app(Target, Node, UUID, JObj) ->
                                   {'execute', atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()} |
                                   {'error', kz_term:ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
-    case kz_amqp_worker:call_collect([{<<"Call-ID">>, TargetCallId}
-                                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                     ]
-                                    ,fun(C) -> kapi_call:publish_channel_status_req(TargetCallId, C) end
-                                    ,{'ecallmgr', 'true'}
-                                    )
-    of
+    case get_channel_status(TargetCallId) of
         {'ok', JObjs} ->
             lager:debug("got response to channel query, checking if ~s is active.", [TargetCallId]),
             case prepare_app_status_filter(JObjs) of
@@ -706,6 +700,15 @@ prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
             lager:debug("error querying for channels for ~s: ~p", [TargetCallId, _E]),
             {'error', <<"failed to find target callid ", TargetCallId/binary>>}
     end.
+
+-spec get_channel_status(kz_term:ne_binary()) -> kz_amqp_worker:request_return().
+get_channel_status(TargetCallId) ->
+    kz_amqp_worker:call_collect([{<<"Call-ID">>, TargetCallId}
+                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                ]
+                               ,fun(API) -> kapi_call:publish_channel_status_req(API, TargetCallId) end
+                               ,{'ecallmgr', 'true'}
+                               ).
 
 -spec prepare_app_status_filter(kz_json:objects()) ->
                                        {'ok', kz_json:object()} |

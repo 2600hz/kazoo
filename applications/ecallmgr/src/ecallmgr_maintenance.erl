@@ -101,6 +101,17 @@
 
 -include("ecallmgr.hrl").
 
+-type config_fun() :: fun((kapps_config:config_category(), kapps_config:config_key(), any()) ->
+                                 {'ok', kz_json:object()} |
+                                 {'error', kz_datamgr:data_error()}
+                                     ) |
+                      fun((kapps_config:config_category(), kapps_config:config_key(), any(), node()) ->
+                                 {'ok', kz_json:object()} |
+                                 {'error', kz_datamgr:data_error()}
+                                     ).
+
+-type acl_fun() :: fun((kz_term:ne_binary()) -> kz_json:object()).
+
 -spec add_fs_node(kz_term:text()) -> 'ok'.
 add_fs_node(FSNode) ->
     FSNodes = get_fs_nodes(node()),
@@ -179,7 +190,8 @@ allow_carrier(Name, IP, 'true') ->
 allow_carrier(Name, IP, 'false') ->
     allow_carrier(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
--spec allow_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
+-spec allow_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), config_fun()) ->
+                           'no_return'.
 allow_carrier(Name, IP, ACLs, SetterFun) ->
     modify_acls(Name, IP, ACLs, fun carrier_acl/1, SetterFun).
 
@@ -197,7 +209,8 @@ deny_carrier(Name, IP, 'true') ->
 deny_carrier(Name, IP, 'false') ->
     deny_carrier(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
--spec deny_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
+-spec deny_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), config_fun()) ->
+                          'no_return'.
 deny_carrier(Name, IP, ACLs, SetterFun) ->
     modify_acls(Name, IP, ACLs, fun(_) -> carrier_acl(IP, <<"deny">>) end, SetterFun).
 
@@ -239,7 +252,7 @@ allow_sbc(Name, IP, 'true') ->
 allow_sbc(Name, IP, 'false') ->
     allow_sbc(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
--spec allow_sbc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
+-spec allow_sbc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), config_fun()) -> 'no_return'.
 allow_sbc(Name, IP, ACLs, SetterFun) ->
     modify_acls(Name, IP, ACLs, fun sbc_acl/1, SetterFun).
 
@@ -257,7 +270,7 @@ deny_sbc(Name, IP, 'true') ->
 deny_sbc(Name, IP, 'false') ->
     deny_sbc(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
--spec deny_sbc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function()) -> 'no_return'.
+-spec deny_sbc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), config_fun()) -> 'no_return'.
 deny_sbc(Name, IP, ACLs, SetterFun) ->
     modify_acls(Name, IP, ACLs, fun(_) -> sbc_acl(IP, <<"deny">>) end, SetterFun).
 
@@ -506,7 +519,9 @@ check_sync(Username, Realm) ->
                              ,<<"check-sync">>
                              ).
 
--spec add_fs_node(kz_term:text(), kz_term:ne_binaries(), function()) -> 'ok' | {'error', any()}.
+-spec add_fs_node(kz_term:text(), kz_term:ne_binaries(), config_fun()) ->
+                         'ok' |
+                         {'error', any()}.
 add_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->
     add_fs_node(kz_term:to_binary(FSNode), FSNodes, ConfigFun);
 add_fs_node(FSNode, FSNodes, ConfigFun) ->
@@ -514,11 +529,11 @@ add_fs_node(FSNode, FSNodes, ConfigFun) ->
             'true' -> 'ok';
             'false' ->
                 io:format("adding ~s to ecallmgr system config~n", [FSNode]),
-                ConfigFun(?APP_NAME, <<"fs_nodes">>, [FSNode | FSNodes])
+                run_config_fun(ConfigFun, <<"fs_nodes">>, [FSNode | FSNodes])
         end,
     ecallmgr_fs_nodes:add(kz_term:to_atom(FSNode, 'true')).
 
--spec remove_fs_node(kz_term:text(), kz_term:ne_binaries(), function()) -> 'ok' | {'error', any()}.
+-spec remove_fs_node(kz_term:text(), kz_term:ne_binaries(), config_fun()) -> 'ok' | {'error', any()}.
 remove_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->
     remove_fs_node(kz_term:to_binary(FSNode), FSNodes, ConfigFun);
 remove_fs_node(FSNode, FSNodes, ConfigFun) ->
@@ -526,7 +541,7 @@ remove_fs_node(FSNode, FSNodes, ConfigFun) ->
             'false' -> 'ok';
             'true' ->
                 io:format("removing ~s from ecallmgr system config~n", [FSNode]),
-                ConfigFun(?APP_NAME, <<"fs_nodes">>, lists:delete(FSNode, FSNodes))
+                run_config_fun(ConfigFun, <<"fs_nodes">>, lists:delete(FSNode, FSNodes))
         end,
     ecallmgr_fs_nodes:remove(kz_term:to_atom(FSNode, 'true')).
 
@@ -540,7 +555,8 @@ get_fs_nodes(Node) ->
             []
     end.
 
--spec modify_acls(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), function(), function()) -> 'no_return'.
+-spec modify_acls(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), acl_fun(), config_fun()) ->
+                         'no_return'.
 modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
     case kz_network_utils:resolve(IP0) of
         [] ->
@@ -568,11 +584,15 @@ modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
             maybe_reload_acls(Name, 'modify', 4)
     end.
 
+-spec run_config_fun(config_fun(), kz_json:key(), kz_json:json_term()) ->
+                            {'ok', kz_json:object()} |
+                            {'error', kz_datamgr:data_error()}.
 run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 3) ->
     ConfigFun(?APP_NAME, Key, Value);
 run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 4) ->
     ConfigFun(?APP_NAME, Key, Value, node()).
 
+-spec remove_acl(kz_term:ne_binary(), kz_json:object(), config_fun()) -> 'no_return'.
 remove_acl(Name, ACLs, ConfigFun) ->
     FilteredACLs = filter_acls(ACLs),
     _ = case kz_json:get_value(Name, FilteredACLs) of
@@ -583,7 +603,7 @@ remove_acl(Name, ACLs, ConfigFun) ->
                           ,Name
                           ,kz_json:get_value(<<"cidr">>, ACL)
                           ]),
-                ConfigFun(?APP_NAME, <<"acls">>, kz_json:set_value(Name, 'null', FilteredACLs))
+                run_config_fun(ConfigFun, <<"acls">>, kz_json:set_value(Name, 'null', FilteredACLs))
         end,
     maybe_reload_acls(Name, 'remove', 4).
 

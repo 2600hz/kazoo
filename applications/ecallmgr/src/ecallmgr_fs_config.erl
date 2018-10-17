@@ -359,8 +359,8 @@ fix_conference_profile(FSNode, Resp) ->
                    ),
     kz_json:set_value(<<"Profiles">>, FixedProfiles, Resp).
 
--spec fix_conference_profile(kz_json:path(), kz_json:object(), atom()) ->
-                                    {kz_json:path(), kz_json:object()}.
+-spec fix_conference_profile(kz_term:ne_binary(), kz_json:object(), atom()) ->
+                                    {kz_tern:ne_binary(), kz_json:object()}.
 fix_conference_profile(Name, Profile, FSNode) ->
     lager:debug("fixing up conference profile ~s", [Name]),
     Routines = [fun(J) -> maybe_fix_profile_tts(J, FSNode) end
