@@ -44,13 +44,16 @@ retry504s(Fun) when is_function(Fun, 0) ->
 -spec retry504s(fun(() -> retry504_ret()), 0..3) -> retry504_ret().
 retry504s(_Fun, 3) ->
     lager:debug("504 retry failed"),
-    kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
     kazoo_stats:increment_counter(<<"bigcouch-request">>),
     try Fun() of
         {'error', {'ok', 504, _, _}} ->
             kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
+            timer:sleep(100 * (Cnt+1)),
+            retry504s(Fun, Cnt+1);
+        {'error', {'ok', 500, _, _}} ->
+            kazoo_stats:increment_counter(<<"bigcouch-500-error">>),
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
@@ -276,14 +279,14 @@ format_error({'ok', 500, _Headers, Body}) ->
             'server_error'
     end;
 format_error({'bad_response',{500, _Headers, Body}}) ->
+    lager:warning_unsafe("server error - headers: ~p", [_Headers]),
+    lager:warning_unsafe("server error - body : ~s", [Body]),
     kz_json:get_first_defined([<<"reason">>, <<"error">>], kz_json:decode(Body), 'unknown_error');
 format_error({'bad_response',{Code, _Headers, Body}}) ->
-    try kz_json:decode(Body) of
-        BodyJObj -> iolist_to_binary([integer_to_list(Code), ": ", kz_json:get_value(<<"error">>, BodyJObj)])
-    catch
-        _:_ ->
-            io_lib:format("response code ~b not expected", [Code])
-    end;
+    lager:warning_unsafe("server error - headers: ~p : ~p", [Code, _Headers]),
+    lager:warning_unsafe("server error - body : ~p ~s", [Code, Body]),
+    BodyJObj = kz_json:decode(Body),
+    iolist_to_binary([integer_to_list(Code), ": ", kz_json:get_value(<<"error">>, BodyJObj, <<"unknown error">>)]);
 format_error('timeout') -> 'timeout';
 format_error('conflict') -> 'conflict';
 format_error('not_found') -> 'not_found';
