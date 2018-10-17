@@ -139,13 +139,13 @@ add_event_bindings_fold(#{requested := Requested
                          ,listeners := Listeners
                          }, {Context, Subs}) ->
     SessionBindings = bh_context:bindings(Context),
-    Subscribe = Subscribed -- SessionBindings,
-    lists:foreach(fun(B) -> bind(Context, Requested, B) end, Subscribe),
+    Subscribe = [{Requested, Sub} || Sub <- Subscribed] -- SessionBindings,
+    lists:foreach(fun(B) -> bind(Context, B) end, Subscribe),
     blackhole_listener:add_bindings(Listeners),
     Ctx = bh_context:add_listeners(Context, Listeners),
-    {bh_context:set_bindings(Ctx, SessionBindings ++ Subscribe), Subs ++ Subscribe}.
+    {bh_context:set_bindings(Ctx, SessionBindings ++ Subscribe), Subs ++ Subscribed}.
 
-bind(Context, ReqKey, Key) ->
+bind(Context, {ReqKey, Key}) ->
     SessionPid = bh_context:websocket_pid(Context),
     SessionId = bh_context:websocket_session_id(Context),
     Binding =  #{subscribed_key => ReqKey
@@ -153,8 +153,7 @@ bind(Context, ReqKey, Key) ->
                 ,session_pid => SessionPid
                 ,session_id => SessionId
                 },
-    KSession = base64:encode(SessionId),
-    BHKey = <<"blackhole.event.", Key/binary, ".", KSession/binary>>,
+    BHKey = <<"blackhole.event.", Key/binary>>,
     blackhole_bindings:bind(BHKey, ?MODULE, 'event', Binding).
 
 -spec remove_event_bindings(bh_context:context(), [map()]) -> bh_context:context().
@@ -168,19 +167,27 @@ remove_event_bindings(Context, BindingResults) ->
 
 -spec remove_event_bindings_fold(map(), {bh_context:context(), list()}) ->
                                         {bh_context:context(), list()}.
-remove_event_bindings_fold(#{subscribed := Subscribed
+remove_event_bindings_fold(#{requested := Requested
+                            ,subscribed := Subscribed
                             ,listeners := Listeners
                             }, {Context, Subs}) ->
     SessionBindings = bh_context:bindings(Context),
-    lists:foreach(fun(B) -> unbind(Context, B) end, Subscribed),
+    Removed = [{Requested, Sub} || Sub <- Subscribed] -- SessionBindings,
+    lists:foreach(fun(B) -> unbind(Context, B) end, Removed),
     blackhole_listener:remove_bindings(Listeners),
     Ctx = bh_context:remove_listeners(Context, Listeners),
-    {bh_context:set_bindings(Ctx, SessionBindings -- Subscribed), Subs ++ Subscribed}.
+    {bh_context:set_bindings(Ctx, SessionBindings -- Removed), Subs ++ Subscribed}.
 
-unbind(Context, Key) ->
-    KSession = base64:encode(bh_context:websocket_session_id(Context)),
-    BHKey = <<"blackhole.event.", Key/binary, ".", KSession/binary>>,
-    blackhole_bindings:flush(BHKey).
+unbind(Context, {ReqKey, Key}) ->
+    BHKey = <<"blackhole.event.", Key/binary>>,
+    SessionPid = bh_context:websocket_pid(Context),
+    SessionId = bh_context:websocket_session_id(Context),
+    Binding =  #{subscribed_key => ReqKey
+                ,subscription_key => Key
+                ,session_pid => SessionPid
+                ,session_id => SessionId
+                },
+    blackhole_bindings:unbind(BHKey, ?MODULE, 'event', Binding).
 
 -spec close(bh_context:context()) -> bh_context:context().
 close(Context) ->
@@ -192,3 +199,4 @@ close(Context) ->
                ,{fun bh_context:remove_bindings/2, Bindings}
                ],
     bh_context:setters(Context, Routines).
+
