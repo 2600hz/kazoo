@@ -14,6 +14,8 @@
 -export([bill_postal_code/1, bill_postal_code/2, set_bill_postal_code/2]).
 -export([bill_region/1, bill_region/2, set_bill_region/2]).
 -export([bill_street_address/1, bill_street_address/2, set_bill_street_address/2]).
+-export([bill_street_number/1, bill_street_number/2, set_bill_street_number/2]).
+-export([bill_street_type/1, bill_street_type/2, set_bill_street_type/2]).
 -export([comments/1, comments/2, set_comments/2]).
 -export([name/1, name/2, set_name/2]).
 -export([notifications/1, notifications/2, set_notifications/2]).
@@ -22,6 +24,8 @@
 -export([numbers/1, numbers/2, set_numbers/2]).
 -export([number/2, number/3, set_number/3]).
 -export([port_state/1, port_state/2, set_port_state/2]).
+-export([signee_name/1, signee_name/2, set_signee_name/2]).
+-export([signing_date/1, signing_date/2, set_signing_date/2]).
 -export([transfer_date/1, transfer_date/2, set_transfer_date/2]).
 
 
@@ -132,6 +136,30 @@ bill_street_address(Doc, Default) ->
 set_bill_street_address(Doc, BillStreetAddress) ->
     kz_json:set_value([<<"bill">>, <<"street_address">>], BillStreetAddress, Doc).
 
+-spec bill_street_number(doc()) -> kz_term:api_binary().
+bill_street_number(Doc) ->
+    bill_street_number(Doc, 'undefined').
+
+-spec bill_street_number(doc(), Default) -> binary() | Default.
+bill_street_number(Doc, Default) ->
+    kz_json:get_binary_value([<<"bill">>, <<"street_number">>], Doc, Default).
+
+-spec set_bill_street_number(doc(), binary()) -> doc().
+set_bill_street_number(Doc, BillStreetNumber) ->
+    kz_json:set_value([<<"bill">>, <<"street_number">>], BillStreetNumber, Doc).
+
+-spec bill_street_type(doc()) -> kz_term:api_binary().
+bill_street_type(Doc) ->
+    bill_street_type(Doc, 'undefined').
+
+-spec bill_street_type(doc(), Default) -> binary() | Default.
+bill_street_type(Doc, Default) ->
+    kz_json:get_binary_value([<<"bill">>, <<"street_type">>], Doc, Default).
+
+-spec set_bill_street_type(doc(), binary()) -> doc().
+set_bill_street_type(Doc, BillStreetType) ->
+    kz_json:set_value([<<"bill">>, <<"street_type">>], BillStreetType, Doc).
+
 -spec comments(doc()) -> kz_term:api_objects().
 comments(Doc) ->
     comments(Doc, 'undefined').
@@ -227,6 +255,30 @@ port_state(Doc, Default) ->
 -spec set_port_state(doc(), binary()) -> doc().
 set_port_state(Doc, PortState) ->
     kz_json:set_value([<<"port_state">>], PortState, Doc).
+
+-spec signee_name(doc()) -> kz_term:api_binary().
+signee_name(Doc) ->
+    signee_name(Doc, 'undefined').
+
+-spec signee_name(doc(), Default) -> binary() | Default.
+signee_name(Doc, Default) ->
+    kz_json:get_binary_value([<<"signee_name">>], Doc, Default).
+
+-spec set_signee_name(doc(), binary()) -> doc().
+set_signee_name(Doc, SigneeName) ->
+    kz_json:set_value([<<"signee_name">>], SigneeName, Doc).
+
+-spec signing_date(doc()) -> kz_term:api_integer().
+signing_date(Doc) ->
+    signing_date(Doc, 'undefined').
+
+-spec signing_date(doc(), Default) -> integer() | Default.
+signing_date(Doc, Default) ->
+    kz_json:get_integer_value([<<"signing_date">>], Doc, Default).
+
+-spec set_signing_date(doc(), integer()) -> doc().
+set_signing_date(Doc, SigningDate) ->
+    kz_json:set_value([<<"signing_date">>], SigningDate, Doc).
 
 -spec transfer_date(doc()) -> kz_term:api_integer().
 transfer_date(Doc) ->

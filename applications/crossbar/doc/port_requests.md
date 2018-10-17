@@ -76,7 +76,9 @@ Key | Description | Type | Default | Required | Support Level
 `bill.name` | The losing carrier billing/account name | `string()` |   | `false` |
 `bill.postal_code` | The zip/postal code of the billing address the losing carrier has on record | `string()` |   | `false` |
 `bill.region` | The region (state) of the billing address the losing carrier has on record | `string()` |   | `false` |
-`bill.street_address` | The address of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill.street_address` | The street name of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill.street_number` | The street number of the billing address the losing carrier has on record | `string()` |   | `false` |
+`bill.street_type` | The street type of the billing address the losing carrier has on record | `string()` |   | `false` |
 `bill` | Billing information of the losing carrier | `object()` |   | `false` |
 `comments` | The history of comments made on a port request | `array(object())` |   | `false` |
 `name` | A friendly name for the port request | `string(1..128)` |   | `true` |
@@ -87,6 +89,8 @@ Key | Description | Type | Default | Required | Support Level
 `numbers./\+?[0-9]+/` |   | `object()` |   | `false` |
 `numbers` | The numbers to port in | `object()` |   | `true` |
 `port_state` | What state the port request is currently in | `string('unconfirmed' | 'pending' | 'submitted' | 'scheduled' | 'completed' | 'rejected' | 'canceled')` | `unconfirmed` | `false` |
+`signee_name` | The name of the person authorizing the release of numbers from the losing carrier | `string()` |   | `false` |
+`signing_date` | The date in Gregorian timestamp on which the document releasing the numbers from the losing carrier was signed | `integer()` |   | `false` |
 `transfer_date` | Requested transfer date in Gregorian timestamp | `integer()` |   | `false` |
 
 

@@ -31,7 +31,15 @@
                     "type": "string"
                 },
                 "street_address": {
-                    "description": "The address of the billing address the losing carrier has on record",
+                    "description": "The street name of the billing address the losing carrier has on record",
+                    "type": "string"
+                },
+                "street_number": {
+                    "description": "The street number of the billing address the losing carrier has on record",
+                    "type": "string"
+                },
+                "street_type": {
+                    "description": "The street type of the billing address the losing carrier has on record",
                     "type": "string"
                 }
             },
@@ -97,6 +105,14 @@
                 "canceled"
             ],
             "type": "string"
+        },
+        "signee_name": {
+            "description": "The name of the person authorizing the release of numbers from the losing carrier",
+            "type": "string"
+        },
+        "signing_date": {
+            "description": "The date in Gregorian timestamp on which the document releasing the numbers from the losing carrier was signed",
+            "type": "integer"
         },
         "transfer_date": {
             "description": "Requested transfer date in Gregorian timestamp",
