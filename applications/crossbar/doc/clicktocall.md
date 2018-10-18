@@ -44,7 +44,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-## Fetch
+## List all clicktocall endpoints
 
 > GET /v2/accounts/{ACCOUNT_ID}/clicktocall
 
@@ -54,14 +54,54 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 ```
 
-## Create
+```json
+{
+    "auth_token":"{AUTH_TOKEN}",
+    "data": [
+        {
+            "extension": "{EXTENSION}",
+            "id": "{C2C_ID}",
+            "name": "{NAME}"
+        }
+    ],
+    "node": "{NODE_HASH}",
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.3.1"
+}
+```
+
+## Create a clicktocall endpoint
 
 > PUT /v2/accounts/{ACCOUNT_ID}/clicktocall
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"name":"{NAME}, "auth_required":false, "extension":"{EXTENSION}"}}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
+```
+
+```json
+{
+    "auth_token":"{AUTH_TOKEN}",
+    "data": {
+        "auth_required": false,
+        "custom_application_vars": {},
+        "extension": "{EXTENSION}",
+        "id": "{C2C_ID}",
+        "name": "{NAME}"
+    },
+    "node": "{NODE_HASH}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.3.1"
+}
 ```
 
 ## Fetch
@@ -72,6 +112,26 @@ curl -v -X PUT \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
+```
+
+```json
+{
+    "auth_token":"{AUTH_TOKEN}",
+    "data": {
+        "auth_required": false,
+        "custom_application_vars": {},
+        "extension": "{EXTENSION}",
+        "id": "{C2C_ID}",
+        "name": "{NAME}"
+    },
+    "node": "{NODE_HASH}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.3.1"
+}
+
 ```
 
 ## Change
@@ -114,14 +174,77 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history
 ```
 
-## Fetch
+## Execute the clicktocall with a supplied number
 
-> GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect
+> GET/POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect
+
+### Non-blocking version
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect?contact={CONTACT}
+```
+
+Will return immediately with a 202
+
+```json
+    "data": {
+        "application_data": {
+            "route": "{CONTACT}"
+        },
+        "application_name": "transfer",
+        "continue_on_fail": true,
+        "custom_application_vars": {
+            "contact": "{CONTACT}"
+        },
+        "custom_channel_vars": {
+            "account_id": "{ACCOUNT_ID}",
+            "authorizing_id": "{C2C_ID}",
+            "authorizing_type": "clicktocall",
+            "auto_answer_loopback": true,
+            "from_uri": "{EXTENSION}@{ACCOUNT_REALM}",
+            "inherit_codec": false,
+            "loopback_request_uri": "{CONTACT}@{ACCOUNT_REALM}",
+            "request_uri": "{CONTACT}@{ACCOUNT_REALM}",
+            "retain_cid": true
+        },
+        "dial_endpoint_method": "single",
+        "endpoints": [
+            {
+                "invite_format": "loopback",
+                "route": "{EXTENSION}",
+                "to_did": "{EXTENSION}",
+                "to_realm": "{ACCOUNT_REALM}"
+            }
+        ],
+        "export_custom_channel_vars": [
+            "Account-ID",
+            "Authorizing-ID",
+            "Authorizing-Type",
+            "Loopback-Request-URI",
+            "From-URI",
+            "Request-URI"
+        ],
+        "ignore_early_media": true,
+        "loopback_bowout": "false",
+        "outbound_call_id": "c2c-{C2C_ID}-{RANDOM}",
+        "outbound_callee_id_name": "{EXTENSION}",
+        "outbound_callee_id_number": "{EXTENSION}",
+        "outbound_caller_id_name": "{C2C NAME}",
+        "outbound_caller_id_number": "{CONTACT}",
+        "simplify_loopback": "false",
+        "start_control_process": "false",
+        "timeout": 30
+    },
+    "node": "{NODE_HASH}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.3.1"
+}
+
 ```
 
 ## Change
