@@ -496,6 +496,7 @@ build_originate_req(Contact, Context) ->
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
       ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Caller#contact.route}])}
+      ,{<<"Call-ID">>, CallId}
       ,{<<"Msg-ID">>, MsgId}
       ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
       ,{<<"Timeout">>, kzd_clicktocall:timeout(C2CDoc, 30)}

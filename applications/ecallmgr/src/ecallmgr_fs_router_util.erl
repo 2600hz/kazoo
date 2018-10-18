@@ -134,7 +134,7 @@ route_resp_xml(_, Section, JObj, Props) ->
 -spec route_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> kz_term:proplist().
 route_req(CallId, FetchId, Props, Node) ->
     AccountId = kzd_freeswitch:account_id(Props),
-    lager:debug("route req from ~p", [Props]),
+    lager:debug("route req for ~s (~s)", [CallId, kzd_freeswitch:origination_call_id(Props)]),
     props:filter_empty(
       [{<<"Body">>, get_body(Props)}
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
