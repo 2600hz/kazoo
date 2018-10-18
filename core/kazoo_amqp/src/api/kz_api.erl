@@ -24,7 +24,7 @@
         ,default_headers/4
         ,default_headers/5
 
-        ,call_id/1
+        ,call_id/1, call_id/2
         ,account_id/1
         ,server_id/1
         ,queue_id/1
@@ -125,11 +125,15 @@ account_id(Props) when is_list(Props) ->
 account_id(JObj) ->
     kz_json:get_value(?KEY_API_ACCOUNT_ID, JObj).
 
--spec call_id(kz_term:api_terms()) -> kz_term:api_binary().
-call_id(Props) when is_list(Props) ->
-    props:get_value(?KEY_API_CALL_ID, Props);
-call_id(JObj) ->
-    kz_json:get_value(?KEY_API_CALL_ID, JObj).
+-spec call_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
+call_id(API) ->
+    call_id(API, 'undefined').
+
+-spec call_id(kz_term:api_terms(), Default) -> kz_term:ne_binary() | Default.
+call_id(Props, Default) when is_list(Props) ->
+    props:get_value(?KEY_API_CALL_ID, Props, Default);
+call_id(JObj, Default) ->
+    kz_json:get_value(?KEY_API_CALL_ID, JObj, Default).
 
 -spec defer_response(kz_term:api_terms()) -> kz_term:api_binary().
 defer_response(Props) when is_list(Props) ->
