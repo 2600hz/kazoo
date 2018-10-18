@@ -520,9 +520,9 @@ build_originate_req(Contact, Context) ->
                                           ,<<"From-URI">>, <<"Request-URI">>
                                           ]
        }
-      ,{<<"Simplify-Loopback">>, 'true'}
-      ,{<<"Loopback-Bowout">>, 'true'}
-      ,{<<"Start-Control-Process">>, 'true'}
+      ,{<<"Simplify-Loopback">>, 'false'}
+      ,{<<"Loopback-Bowout">>, 'false'}
+      ,{<<"Start-Control-Process">>, 'false'}
        | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
