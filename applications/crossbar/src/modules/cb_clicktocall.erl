@@ -68,7 +68,6 @@ init() ->
 %% Failure here returns `405 Method Not Allowed'.
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
@@ -88,7 +87,6 @@ allowed_methods(_C2CId, ?HISTORY) ->
 %% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
@@ -510,6 +508,7 @@ build_originate_req(Contact, Context) ->
       ,{<<"Outbound-Caller-ID-Name">>, Caller#contact.name}
       ,{<<"Outbound-Caller-ID-Number">>, Caller#contact.number}
       ,{<<"Outbound-Call-ID">>, CallId}
+      ,{<<"Origination-Call-ID">>, CallId}
       ,{<<"Ringback">>, kzd_clicktocall:ringback(C2CDoc)}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
       ,{<<"Continue-On-Fail">>, 'true'}
@@ -521,9 +520,9 @@ build_originate_req(Contact, Context) ->
                                           ,<<"From-URI">>, <<"Request-URI">>
                                           ]
        }
-      ,{<<"Simplify-Loopback">>, <<"false">>}
-      ,{<<"Loopback-Bowout">>, <<"false">>}
-      ,{<<"Start-Control-Process">>, <<"false">>}
+      ,{<<"Simplify-Loopback">>, 'true'}
+      ,{<<"Loopback-Bowout">>, 'true'}
+      ,{<<"Start-Control-Process">>, 'true'}
        | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
