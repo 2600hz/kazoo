@@ -79,6 +79,7 @@
 
 -define(PROMPT_ENTER_PERSON_LASTNAME, <<"dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
 -define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
+-define(PROMPT_ENTER_PERSON_NAME, <<"dir-enter_person_name">>). %% Please enter the first few letters of the person's name
 -define(PROMPT_FIRSTNAME, <<"dir-first_name">>). %% first name
 -define(PROMPT_LASTNAME, <<"dir-last_name">>). %% last name
 -define(PROMPT_SPECIFY_MINIMUM, <<"dir-specify_minimum">>). %% You need to specify a minimum of two digits
@@ -106,6 +107,7 @@
 -type directory_users() :: [directory_user()].
 
 -record(directory, {sort_by = 'last' :: 'first' | 'last'
+                   ,search_fields = 'both' :: 'first' | 'last' | 'both'
                    ,min_dtmf :: pos_integer()
                    ,max_dtmf :: non_neg_integer()
                    ,confirm_match = 'false' :: boolean()
@@ -136,14 +138,16 @@ handle(Data, Call) ->
     of
         {'ok', Users} ->
             State = #directory{sort_by = get_sort_by(kz_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>))
+                              ,search_fields = get_search_fields(kz_json:get_value(<<"search_fields">>, DirJObj, <<"both">>))
                               ,min_dtmf = kz_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3)
                               ,max_dtmf = kz_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0)
                               ,confirm_match = kz_json:is_true(<<"confirm_match">>, DirJObj, 'false')
                               ,digits_collected = <<>>
                               ,users = Users
                               },
-            _ = log(Users),
-            directory_start(Call, State, Users);
+            Users1 = sort_users(Users, State#directory.sort_by),
+            _ = log(Users1),
+            directory_start(Call, State, Users1);
         {'error', 'no_users_in_directory'} ->
             _ = play_no_users_found(Call),
             cf_exe:continue(Call);
@@ -168,7 +172,7 @@ directory_start(Call, _State, _CurrUsers, 0) ->
     cf_exe:stop(Call);
 directory_start(Call, State, CurrUsers, Loop) ->
     _ = kapps_call_command:flush_dtmf(Call),
-    case play_directory_instructions(Call, sort_by(State)) of
+    case play_directory_instructions(Call, search_fields(State)) of
         {'ok', <<>>} -> directory_start(Call, State, CurrUsers, Loop - 1);
         {'ok', DTMF} -> collect_digits(Call, State, CurrUsers, DTMF);
         {'error', _Error} ->
@@ -194,7 +198,7 @@ collect_digits(Call, State, CurrUsers, DTMF) ->
 
 -spec maybe_match(kapps_call:call(), directory(), directory_users()) -> 'ok'.
 maybe_match(Call, State, CurrUsers) ->
-    case filter_users(CurrUsers, dtmf_collected(State), sort_by(State)) of
+    case filter_users(CurrUsers, dtmf_collected(State), search_fields(State)) of
         [] ->
             lager:info("no users left matching DTMF string"),
             _ = play_no_users_found(Call),
@@ -334,13 +338,15 @@ maybe_play_media(Call, User, MediaId) ->
         {'error', _} -> {'tts', <<39, (full_name(User))/binary, 39>>}
     end.
 
--spec play_directory_instructions(kapps_call:call(), 'first' | 'last' | kz_term:ne_binary()) ->
+-spec play_directory_instructions(kapps_call:call(), 'first' | 'last' | 'both' | kz_term:ne_binary()) ->
                                          {'ok', binary()} |
                                          {'error', atom()}.
 play_directory_instructions(Call, 'first') ->
     play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->
-    play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_LASTNAME}]).
+    play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_LASTNAME}]);
+play_directory_instructions(Call, 'both') ->
+    play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_NAME}]).
 
 -spec play_no_users(kapps_call:call()) -> kz_term:ne_binary(). % noop id
 play_no_users(Call) ->
@@ -366,7 +372,7 @@ play_and_collect(Call, AudioMacro, NumDigits) ->
 %%------------------------------------------------------------------------------
 %% Directory State Functions
 %%------------------------------------------------------------------------------
-sort_by(#directory{sort_by=SB}) -> SB.
+search_fields(#directory{search_fields=SF}) -> SF.
 dtmf_collected(#directory{digits_collected=Collected}) -> Collected.
 confirm_match(#directory{confirm_match=CM}) -> CM.
 users(#directory{users=Us}) -> Us.
@@ -404,6 +410,11 @@ media_name(#directory_user{name_audio_id = ID}) -> ID.
 get_sort_by(<<"first", _/binary>>) -> 'first';
 get_sort_by(_) -> 'last'.
 
+-spec get_search_fields(kz_term:ne_binary()) -> 'first' | 'last' | 'both'.
+get_search_fields(<<"both">>) -> 'both';
+get_search_fields(<<"first", _/binary>>) -> 'first';
+get_search_fields(_) -> 'last'.
+
 -spec get_directory_listing(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    {'ok', directory_users()} |
                                    {'error', any()}.
@@ -434,36 +445,51 @@ get_directory_user(U, CallflowId) ->
                    ,name_audio_id = kz_json:get_value(?RECORDED_NAME_KEY, U)
                    }.
 
--spec filter_users(directory_users(), kz_term:ne_binary(), 'last' | 'first') -> directory_users().
-filter_users(Users, DTMFs, 'last') ->
+-spec sort_users(directory_users(), 'first' | 'last') -> directory_users().
+sort_users(Users, 'first') ->
+    lists:sort(fun sort_by_first/2, Users);
+sort_users(Users, 'last') ->
+    lists:sort(fun sort_by_last/2, Users).
+
+-spec sort_by_first(directory_user(), directory_user()) -> boolean().
+sort_by_first(#directory_user{first_name=AFirst, last_name=ALast}, #directory_user{first_name=AFirst, last_name=BLast}) ->
+    ALast < BLast;
+sort_by_first(#directory_user{first_name=AFirst}, #directory_user{first_name=BFirst}) ->
+    AFirst < BFirst.
+
+-spec sort_by_last(directory_user(), directory_user()) -> boolean().
+sort_by_last(#directory_user{first_name=AFirst, last_name=ALast}, #directory_user{first_name=BFirst, last_name=ALast}) ->
+    AFirst < BFirst;
+sort_by_last(#directory_user{last_name=ALast}, #directory_user{last_name=BLast}) ->
+    ALast < BLast.
+
+-spec filter_users(directory_users(), kz_term:ne_binary(), 'last' | 'first' | 'both') -> directory_users().
+filter_users(Users, DTMFs, FirstCheck) ->
     lager:info("filtering users by ~s", [DTMFs]),
     Size = byte_size(DTMFs),
     queue:to_list(
-      lists:foldl(fun(U, Q) -> maybe_queue_user(U, Q, DTMFs, Size, 'last') end
-                 ,queue:new()
-                 ,Users
-                 )
-     );
-filter_users(Users, DTMFs, 'first') ->
-    lager:info("filtering users by ~s", [DTMFs]),
-    Size = byte_size(DTMFs),
-    queue:to_list(
-      lists:foldl(fun(U, Q) -> maybe_queue_user(U, Q, DTMFs, Size, 'first') end
+      lists:foldl(fun(U, Q) -> maybe_queue_user(U, Q, DTMFs, Size, FirstCheck) end
                  ,queue:new()
                  ,Users
                  )
      ).
 
--spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer(), 'last' | 'first') ->
+-spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer(), 'last' | 'first' | 'both') ->
                               queue:queue().
-maybe_queue_user(User, Queue, DTMFs, Size, FirstCheck) ->
-    case maybe_dtmf_matches(DTMFs, Size, first_check(FirstCheck, User)) of
-        'true' -> queue:in_r(User, Queue);
+maybe_queue_user(User, Queue, DTMFs, Size, 'both') ->
+    case maybe_dtmf_matches(DTMFs, Size, first_check('first', User)) of
+        'true' -> queue:in(User, Queue);
         'false' ->
-            case maybe_dtmf_matches(DTMFs, Size, second_check(FirstCheck, User)) of
+            case maybe_dtmf_matches(DTMFs, Size, first_check('last', User)) of
                 'true' -> queue:in(User, Queue);
                 'false' -> Queue
             end
+    end;
+
+maybe_queue_user(User, Queue, DTMFs, Size, FirstCheck) ->
+    case maybe_dtmf_matches(DTMFs, Size, first_check(FirstCheck, User)) of
+        'true' -> queue:in(User, Queue);
+        'false' -> Queue
     end.
 
 -spec first_check('last' | 'first', directory_user()) -> kz_term:ne_binary().
@@ -471,12 +497,6 @@ first_check('last', User) ->
     last_first_dtmfs(User);
 first_check('first', User) ->
     first_last_dtmfs(User).
-
--spec second_check('last' | 'first', directory_user()) -> kz_term:ne_binary().
-second_check('last', User) ->
-    first_last_dtmfs(User);
-second_check('first', User) ->
-    last_first_dtmfs(User).
 
 -spec maybe_dtmf_matches(kz_term:ne_binary(), pos_integer(), kz_term:ne_binary()) -> boolean().
 maybe_dtmf_matches(_, 0, _) -> 'false';
