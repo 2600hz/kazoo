@@ -435,7 +435,9 @@ handle_bowout(Node, Props, ResigningUUID) ->
             lager:debug("call id after bowout remains the same"),
             ResigningUUID;
         {ResigningUUID, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
-            lager:debug("loopback bowout detected, replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
+            lager:debug("loopback bowout detected, replacing ~s with ~s"
+                       ,[ResigningUUID, AcquiringUUID]
+                       ),
             _ = register_event_process(Node, AcquiringUUID),
             register_for_events(Node, AcquiringUUID),
             unregister_for_events(Node, ResigningUUID),

@@ -457,8 +457,10 @@ handle_cast('control_usurped', State) ->
 handle_cast('channel_destroyed', #state{stop_on_destroy='true'
                                        ,cf_module_pid='undefined'
                                        }=State) ->
+    lager:info("recv channel destroyed, going down"),
     {'stop', 'normal', State};
 handle_cast('channel_destroyed', State) ->
+    lager:info("recv channel destroyed, noting but staying up"),
     {'noreply', State#state{destroyed='true'}};
 handle_cast('stop_on_destroy', State) ->
     {'noreply', State#state{stop_on_destroy='true'}};
