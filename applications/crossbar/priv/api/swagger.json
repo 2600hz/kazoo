@@ -31909,7 +31909,7 @@
             "properties": {
                 "conference_moh": {
                     "default": "$${hold_music}",
-                    "description": "pivot twiml conference_moh",
+                    "description": "Default MOH for conferences dialed via TwiML",
                     "type": "string"
                 }
             },
