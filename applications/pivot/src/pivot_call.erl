@@ -586,6 +586,8 @@ store_debug(Call, DebugJObj) ->
             lager:debug("failed to save debug doc: ~p", [_E])
     end.
 
+-spec debug_doc(kapps_call:call(), kz_json:object(), kz_term:ne_binary()) ->
+                       kz_json:object().
 debug_doc(Call, DebugJObj, AccountModDb) ->
     WithCallJObj = kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
                                       ,{<<"iteration">>, kzt_util:iteration(Call)}

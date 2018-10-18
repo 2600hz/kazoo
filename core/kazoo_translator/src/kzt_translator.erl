@@ -27,7 +27,7 @@ exec(RequesterQ, Call, CT, Cmds) ->
          ] of
         [] -> throw({'error', 'unrecognized_cmds'});
         [{Translator, Cmds1}|_] ->
-            publish_processing(RequesterQ, Call),
+            _ = publish_processing(RequesterQ, Call),
             Translator:exec(Call, Cmds1)
     end.
 
