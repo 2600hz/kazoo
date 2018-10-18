@@ -348,7 +348,7 @@ do_originate_call(C2CId, Context, Contact, Request, 'true') ->
     Resp = exec_originate(Request),
     case handle_response(C2CId, Context, Contact, Resp) of
         {'ok', HistoryItem} -> crossbar_doc:handle_json_success(HistoryItem, Context);
-        {'error', Error} -> crossbar_doc:handle_datamgr_error(Error, C2CId, Context)
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, C2CId, Context)
     end.
 
 handle_response(C2CId, Context, Contact, Resp) ->
