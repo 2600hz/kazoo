@@ -435,7 +435,7 @@ conference_profile(AccountId, ConfProps) ->
       ,{<<"max-members">>, get_max_participants(ConfProps)}
       ,{<<"member-flags">>, conference_member_flags(ConfProps)}
       ,{<<"moderator-controls">>, props:get_binary_value('moderatorControls', ConfProps, <<"default">>)}
-      ,{<<"moh-sound">>, props:get_binary_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
+      ,{<<"moh-sound">>, props:get_binary_value('waitUrl', ConfProps, <<"$${hold_music}">>)}
       ,{<<"rate">>, props:get_integer_value('rate', ConfProps, 48000)}
       ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
       ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
