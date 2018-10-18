@@ -31904,6 +31904,17 @@
             },
             "type": "object"
         },
+        "system_config.pivot.twiml": {
+            "description": "Schema for pivot.twiml system_config",
+            "properties": {
+                "conference_moh": {
+                    "default": "$${hold_music}",
+                    "description": "pivot twiml conference_moh",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.privacy": {
             "description": "Schema for privacy system_config",
             "properties": {

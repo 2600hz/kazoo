@@ -1,0 +1,1 @@
+{"type":"object","properties":{"conference_moh":{"type":"string","description":"pivot twiml conference_moh","default":"$${hold_music}"}},"description":"Schema for pivot.twiml system_config","_id":"system_config.pivot.twiml","$schema":"http://json-schema.org/draft-04/schema#"}

@@ -435,18 +435,25 @@ conference_profile(AccountId, ConfProps) ->
       ,{<<"max-members">>, get_max_participants(ConfProps)}
       ,{<<"member-flags">>, conference_member_flags(ConfProps)}
       ,{<<"moderator-controls">>, props:get_binary_value('moderatorControls', ConfProps, <<"default">>)}
-      ,{<<"moh-sound">>, props:get_binary_value('waitUrl', ConfProps, <<"$${hold_music}">>)}
-      ,{<<"rate">>, props:get_integer_value('rate', ConfProps, 48000)}
+      ,{<<"moh-sound">>, get_moh(ConfProps)}
+      ,{<<"rate">>, props:get_integer_value('rate', ConfProps, 16000)}
       ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
       ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
       ]).
 
+-spec get_moh(kz_term:proplist()) -> kz_term:ne_binary_value().
+get_moh(ConfProps) ->
+    Default = kapps_config:get_ne_binary(<<"pivot.twiml">>, <<"conference_moh">>, <<"$${hold_music}">>),
+    props:get_binary_value('waitUrl', ConfProps, Default).
+
+-spec conference_flags(kz_term:proplist()) -> kz_term:api_ne_binary_value().
 conference_flags(ConfProps) ->
     case props:get_is_true('startConferenceOnEnter', ConfProps, 'true') of
         'true' -> 'undefined';
         'false' -> <<"wait-mod">>
     end.
 
+-spec conference_member_flags(kz_term:proplist()) -> kz_term:api_ne_binary_value().
 conference_member_flags(ConfProps) ->
     case props:get_is_true('endConferenceOnExit', ConfProps, 'false') of
         'true' -> <<"endconf">>;
