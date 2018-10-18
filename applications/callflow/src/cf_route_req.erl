@@ -18,63 +18,64 @@
 -define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
 -define(ROUTE_WIN_TIMEOUT, kapps_config:get_integer(?CF_CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
 
--spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_req(JObj, Props) ->
-    CallId = kapi_route:call_id(JObj),
+-spec handle_req(kapi_route:req(), kz_term:proplist()) -> 'ok'.
+handle_req(RouteReq, Props) ->
+    CallId = kapi_route:call_id(RouteReq),
     kz_util:put_callid(CallId),
-    'true' = kapi_route:req_v(JObj),
+    'true' = kapi_route:req_v(RouteReq),
     gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
                ],
-    Call = kapps_call:exec(Routines, kapps_call:from_route_req(JObj)),
+    Call = kapps_call:exec(Routines, kapps_call:from_route_req(RouteReq)),
     case is_binary(kapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
     of
         'true' ->
             lager:info("received request ~s asking if callflows can route the call to ~s"
-                      ,[kapi_route:fetch_id(JObj), kapps_call:request_user(Call)]
+                      ,[kapi_route:fetch_id(RouteReq), kapps_call:request_user(Call)]
                       ),
+            lager:info("route req: ~p", [RouteReq]),
             AllowNoMatch = allow_no_match(Call),
             case cf_flow:lookup(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch)
                                            orelse AllowNoMatch ->
-                    maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch);
+                    maybe_prepend_preflow(RouteReq, Props, Call, Flow, NoMatch);
                 {'ok', _, 'true'} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
                     lager:info("unable to find callflow ~p", [R])
             end;
         'false' ->
-            lager:debug("callflow not handling fetch-id ~s", [kapi_route:fetch_id(JObj)])
+            lager:debug("callflow not handling fetch-id ~s", [kapi_route:fetch_id(RouteReq)])
     end.
 
--spec maybe_prepend_preflow(kz_json:object(), kz_term:proplist()
+-spec maybe_prepend_preflow(kapi_route:req(), kz_term:proplist()
                            ,kapps_call:call(), kzd_callflow:doc()
                            ,boolean()
                            ) -> 'ok'.
-maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
+maybe_prepend_preflow(RouteReq, Props, Call, Callflow, NoMatch) ->
     AccountId = kapps_call:account_id(Call),
     case kzd_accounts:fetch(AccountId) of
         {'error', _E} ->
             lager:warning("could not open account doc ~s : ~p", [AccountId, _E]),
-            maybe_reply_to_req(JObj, Props, Call, Callflow, NoMatch);
+            maybe_reply_to_req(RouteReq, Props, Call, Callflow, NoMatch);
         {'ok', AccountDoc} ->
             case kzd_accounts:preflow_id(AccountDoc) of
                 'undefined' ->
                     lager:debug("ignore preflow, not set"),
-                    maybe_reply_to_req(JObj, Props, Call, Callflow, NoMatch);
+                    maybe_reply_to_req(RouteReq, Props, Call, Callflow, NoMatch);
                 PreflowId ->
                     NewCallflow = kzd_callflow:prepend_preflow(Callflow, PreflowId),
-                    maybe_reply_to_req(JObj, Props, Call, NewCallflow, NoMatch)
+                    maybe_reply_to_req(RouteReq, Props, Call, NewCallflow, NoMatch)
             end
     end.
 
--spec maybe_reply_to_req(kz_json:object(), kz_term:proplist()
+-spec maybe_reply_to_req(kapi_route:req(), kz_term:proplist()
                         ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
-maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
+maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
                                                              ,kapps_call:account_id(Call)
                                                              ,kapps_call:request_user(Call)
@@ -84,7 +85,7 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
         'true' ->
             ControllerQ = props:get_value('queue', Props),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
-            send_route_response(Flow, JObj, NewCall)
+            send_route_response(Flow, RouteReq, NewCall)
     end.
 
 %%------------------------------------------------------------------------------
@@ -139,24 +140,24 @@ callflow_should_respond(Call) ->
 %% process.
 %% @end
 %%------------------------------------------------------------------------------
--spec send_route_response(kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
-send_route_response(Flow, JObj, Call) ->
+-spec send_route_response(kz_json:object(), kapi_route:req(), kapps_call:call()) -> 'ok'.
+send_route_response(Flow, RouteReq, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
     Resp = props:filter_undefined(
-             [{?KEY_MSG_ID, kz_api:msg_id(JObj)}
+             [{?KEY_MSG_ID, kz_api:msg_id(RouteReq)}
              ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
              ,{<<"Routes">>, []}
              ,{<<"Method">>, <<"park">>}
-             ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
-             ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
+             ,{<<"Transfer-Media">>, get_transfer_media(Flow, RouteReq)}
+             ,{<<"Ringback-Media">>, get_ringback_media(Flow, RouteReq)}
              ,{<<"Pre-Park">>, pre_park_action(Call)}
              ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
              ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    ServerId = kz_api:server_id(JObj),
+    ServerId = kz_api:server_id(RouteReq),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
     case kz_amqp_worker:call(Resp
                             ,Publisher

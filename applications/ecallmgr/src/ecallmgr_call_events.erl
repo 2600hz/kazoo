@@ -509,7 +509,7 @@ maybe_manual_bowout(Node, <<"att_xfer">>, <<"originator">>, UUID) ->
         {'ok', #channel{loopback_other_leg=OtherLeg, is_loopback='true'}} ->
             _ = freeswitch:api(Node, 'uuid_setvar', <<UUID/binary, " ", "loopback_bowout true">>),
             _ = freeswitch:api(Node, 'uuid_setvar', <<OtherLeg/binary, " ", "loopback_bowout true">>),
-            'ok';
+            lager:info("performed manual loopback bowout on ~s and ~s", [UUID, OtherLeg]);
         _ -> 'ok'
     end;
 maybe_manual_bowout(_Node, _App, _Role, _UUID) -> 'ok'.
