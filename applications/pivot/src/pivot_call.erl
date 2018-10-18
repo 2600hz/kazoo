@@ -345,6 +345,7 @@ handle_info({'DOWN', Ref, 'process', Pid, 'normal'}
            ,#state{response_pid=Pid
                   ,response_ref=Ref
                   }=State) ->
+    lager:debug("response processing finished for ~p(~p)", [Pid, Ref]),
     {'noreply', State#state{response_pid='undefined'}, 'hibernate'};
 handle_info({'DOWN', Ref, 'process', Pid, Reason}
            ,#state{response_pid=Pid
@@ -467,7 +468,7 @@ process_resp(RequesterQ, Call, Hdrs, RespBody) when is_list(Hdrs) ->
     handle_resp(RequesterQ, Call, props:get_value(<<"content-type">>, Hdrs), RespBody);
 process_resp(RequesterQ, Call, CT, RespBody) ->
     lager:info("finding translator for content type ~s", [CT]),
-    try kzt_translator:exec(Call, RespBody, CT) of
+    try kzt_translator:exec(RequesterQ, Call, CT, RespBody) of
         {'stop', _Call1}=Stop ->
             lager:debug("translator says stop"),
             Stop;

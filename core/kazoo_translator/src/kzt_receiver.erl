@@ -23,11 +23,11 @@
 -record(dial_req, {call :: kapps_call:call()
                   ,hangup_dtmf :: kz_term:api_binary()
                   ,collect_dtmf = 'false' :: boolean()
-                  ,record_call :: boolean()
+                  ,record_call :: kz_term:api_boolean()
                   ,call_timeout :: timeout() | 'undefined'
-                  ,call_time_limit :: timeout()
+                  ,call_time_limit :: timeout() | 'undefined'
                   ,start :: kz_time:now()
-                  ,call_b_leg :: kz_term:api_binary()
+                  ,call_b_leg :: kz_term:api_ne_binary()
                   }).
 -type dial_req() :: #dial_req{}.
 
@@ -625,6 +625,19 @@ process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
                     lager:info("conference has been destroyed"),
                     kapps_call_command:park(Call),
                     {'ok', Call};
+                <<"add-member">> ->
+                    case kz_api:call_id(JObj) =:= kapps_call:call_id_direct(Call) of
+                        'true' ->
+                            lager:info("call added as member of the conference"),
+                            wait_for_conference_events(
+                              update_offnet_timers(
+                                OffnetReq#dial_req{call_timeout='undefined'}
+                               )
+                             );
+                        'false' ->
+                            lager:debug("member event not for us, skipping"),
+                            wait_for_conference_events(update_offnet_timers(OffnetReq))
+                    end;
                 _Event ->
                     lager:debug("ignoring conference event ~s", [_Event]),
                     wait_for_conference_events(update_offnet_timers(OffnetReq))

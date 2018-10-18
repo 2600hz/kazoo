@@ -77,6 +77,9 @@ wait_for_pivot(Data, Call) ->
                 {<<"pivot">>,<<"failed">>} ->
                     lager:warning("pivot failed failing back to next callflow action"),
                     cf_exe:continue(Call);
+                {<<"pivot">>,<<"processing">>} ->
+                    lager:info("pivot is processing the response, bowing out"),
+                    cf_exe:stop(Call);
                 _Other ->
                     wait_for_pivot(Data, Call)
             end;

@@ -8,29 +8,36 @@
 %%%-----------------------------------------------------------------------------
 -module(kzt_translator).
 
--export([exec/2, exec/3
+-export([exec/4
         ,get_user_vars/1
         ,set_user_vars/2
         ]).
 
 -include("kzt.hrl").
 
--spec exec(kapps_call:call(), binary()) -> exec_return().
-exec(Call, Cmds) ->
-    exec(Call, Cmds, <<"text/xml">>).
-
--spec exec(kapps_call:call(), binary(), kz_term:api_binary() | list()) -> exec_return().
-exec(Call, Cmds, 'undefined') ->
-    exec(Call, Cmds, <<"text/xml">>);
-exec(Call, Cmds, CT) when not is_binary(CT) ->
-    exec(Call, Cmds, kz_term:to_binary(CT));
-exec(Call, Cmds, CT) ->
+-spec exec(kz_term:ne_binary(), kapps_call:call(), binary(), kz_term:api_binary() | list()) ->
+                  exec_return().
+exec(RequesterQ, Call, 'undefined', Cmds) ->
+    exec(RequesterQ, Call, <<"text/xml">>, Cmds);
+exec(RequesterQ, Call, CT, Cmds) when not is_binary(CT) ->
+    exec(RequesterQ, Call, kz_term:to_binary(CT), Cmds);
+exec(RequesterQ, Call, CT, Cmds) ->
     case [{M, Cmd1} || M <- find_candidate_translators(just_the_type(CT)),
                        begin {IsRecognized, Cmd1} = is_recognized(M, Cmds), IsRecognized end
          ] of
         [] -> throw({'error', 'unrecognized_cmds'});
-        [{Translator, Cmds1}|_] -> Translator:exec(Call, Cmds1)
+        [{Translator, Cmds1}|_] ->
+            publish_processing(RequesterQ, Call),
+            Translator:exec(Call, Cmds1)
     end.
+
+publish_processing(RequesterQ, Call) ->
+    PubFun = fun(P) -> kapi_pivot:publish_processing(RequesterQ, P) end,
+    kz_amqp_worker:cast([{<<"Call-ID">>, kapps_call:call_id(Call)}
+                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        ]
+                       ,PubFun
+                       ).
 
 -spec just_the_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 just_the_type(ContentType) ->
