@@ -620,7 +620,7 @@ handle_info(_Msg, State) ->
 %% @doc Handle call messages, sometimes forward them on.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_call_event:doc(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{cf_module_pid=PidRef
                          ,call=Call
                          ,self=Self
@@ -633,7 +633,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                  ModPid -> [ModPid | Others]
              end,
 
-    case {kz_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
+    case {kz_util:get_event_type(JObj), kz_call_event:call_id(JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers);
         {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
