@@ -1,0 +1,1 @@
+{"type":"object","required":["Call-ID"],"properties":{"Event-Name":{"type":"string","enum":["processing"]},"Event-Category":{"type":"string","enum":["pivot"]},"Call-ID":{"type":"string"}},"description":"AMQP API for pivot.processing","_id":"kapi.pivot.processing","$schema":"http://json-schema.org/draft-04/schema#"}

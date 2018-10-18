@@ -19328,6 +19328,30 @@
             ],
             "type": "object"
         },
+        "kapi.pivot.processing": {
+            "description": "AMQP API for pivot.processing",
+            "properties": {
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "pivot"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "processing"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call-ID"
+            ],
+            "type": "object"
+        },
         "kapi.pivot.req": {
             "description": "AMQP API for pivot.req",
             "properties": {
