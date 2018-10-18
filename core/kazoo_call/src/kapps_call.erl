@@ -275,6 +275,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
         end,
 
     Call1#kapps_call{call_id=CallId
+                    ,origination_call_id=kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, RouteReq, origination_call_id(Call1))
                     ,request=Request
                     ,request_user=to_e164(RequestUser)
                     ,request_realm=RequestRealm
