@@ -38,8 +38,7 @@ kz_attributes_test_() ->
 setup_db() ->
     ?LOG_DEBUG(":: Starting Kazoo FixtureDB"),
     {ok, _} = application:ensure_all_started(kazoo_config),
-    {ok, Pid} = kazoo_data_link_sup:start_link(),
-    Pid.
+    kazoo_fixturedb:start().
 
 terminate_db(Pid) ->
     _DataLink = erlang:exit(Pid, normal),

@@ -26,7 +26,7 @@ setup() ->
 
     {ok, _} = application:ensure_all_started(kazoo_bindings),
     {ok, _} = application:ensure_all_started(kazoo_config),
-    {ok, LinkPid} = kazoo_data_link_sup:start_link(),
+    LinkPid = kazoo_fixturedb:start(),
     {ok, FarmPid} = teletype_farms_sup:start_link(),
 
     lager:set_loglevel(lager_console_backend, none),

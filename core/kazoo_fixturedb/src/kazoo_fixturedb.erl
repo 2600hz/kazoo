@@ -5,6 +5,8 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_fixturedb).
 
+-export([start/0, start/1]).
+
 %% Driver callbacks
 -export([new_connection/1
         ,format_error/1
@@ -227,3 +229,11 @@ get_results_count(Server, DbName, Design, Options) ->
 -spec all_docs(server_map(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 all_docs(Server, DbName, Options) ->
     kz_fixturedb_view:all_docs(Server, DbName, Options).
+
+-spec start() -> pid().
+start() ->
+    start('false').
+
+-spec start(boolean()) -> pid().
+start(SilentLager) ->
+    kz_fixturedb_util:start_me(SilentLager).

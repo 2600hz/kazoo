@@ -10,8 +10,7 @@
 setup_db() ->
     ?LOG_DEBUG(":: Starting Kazoo FixtureDB"),
     {'ok', _} = application:ensure_all_started('kazoo_config'),
-    {'ok', Pid} = kazoo_data_link_sup:start_link(),
-    Pid.
+    kazoo_fixturedb:start().
 
 -spec terminate_db(pid()) -> any().
 terminate_db(Pid) ->

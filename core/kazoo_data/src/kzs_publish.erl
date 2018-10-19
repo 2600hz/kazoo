@@ -55,7 +55,8 @@ maybe_publish_doc(Db, Doc, JObj) ->
 publish_db(_, _) -> 'true'.
 -else.
 publish_db(DbName, Action) ->
-    _ = kz_util:spawn(fun() -> do_publish_db(DbName, Action) end),
+    SupressChange = kz_datamgr:change_notice(),
+    _ = kz_util:spawn(fun() -> do_publish_db(SupressChange, DbName, Action) end),
     'true'.
 
 -spec should_publish_doc(kz_json:object()) -> boolean().
@@ -88,8 +89,9 @@ publish_doc(DbName, Doc, JObj) ->
     end.
 
 -ifndef(TEST).
--spec do_publish_db(kz_term:ne_binary(), kapi_conf:action()) -> 'ok'.
-do_publish_db(DbName, Action) ->
+-spec do_publish_db(boolean(), kz_term:ne_binary(), kapi_conf:action()) -> 'ok'.
+do_publish_db('false', _DbName, _Action) -> 'ok';
+do_publish_db('true', DbName, Action) ->
     Props =
         [{<<"Type">>, <<"database">>}
         ,{<<"ID">>, DbName}

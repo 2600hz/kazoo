@@ -34,7 +34,6 @@
                   ,?CACHE_ARGS(?KAZOO_DATA_PLAN_CACHE, ?DP_CACHE_PROPS)
                   ,?SUPER('kz_dataconnection_sup')
                   ,?WORKER('kz_dataconnections')
-                  ,?WORKER('kazoo_data_bootstrap')
                   ]).
 
 %%==============================================================================

@@ -171,6 +171,16 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
+-spec exec_bindings(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+exec_bindings(Name, JObj) ->
+    Db = kz_json:get_ne_binary_value(<<"Database">>, JObj),
+    Type = kz_json:get_ne_binary_value(<<"Type">>, JObj),
+    Id = kz_json:get_ne_binary_value(<<"ID">>, JObj),
+    Event = kz_api:event_name(JObj),
+    RK = kz_binary:join([<<"kapi.conf">>, Name, Db, Type, Event, Id], <<".">>),
+    kazoo_bindings:pmap(RK, JObj),
+    'ok'.
+
 -spec handle_document_change(kz_json:object(), atom()) -> 'ok' | 'false'.
 handle_document_change(JObj, Name) ->
     'true' = kapi_conf:doc_update_v(JObj),
@@ -178,6 +188,8 @@ handle_document_change(JObj, Name) ->
     Db = kz_json:get_ne_binary_value(<<"Database">>, JObj),
     Type = kz_json:get_ne_binary_value(<<"Type">>, JObj),
     Id = kz_json:get_ne_binary_value(<<"ID">>, JObj),
+
+    _ = kz_util:spawn(fun exec_bindings/2, [kz_term:to_binary(Name), JObj]),
 
     _Keys = handle_document_change(Db, Type, Id, Name),
     _Keys =/= []

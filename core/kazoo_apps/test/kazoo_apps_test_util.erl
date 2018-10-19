@@ -13,7 +13,7 @@ setup() ->
 
     {'ok', _} = application:ensure_all_started('kazoo_config'),
 
-    _ = kazoo_data_link_sup:start_link(),
+    FixturesPid = kazoo_fixturedb:start(),
 
     {'ok', KappsCachePid} = kz_cache_sup:start_link('kapps_config_cache'),
 
@@ -25,15 +25,18 @@ setup() ->
      ,system_config => get_fixture_value(<<"default">>, ?KZ_CONFIG_DB, ?TEST_CAT)
      ,system_only => get_fixture_value(<<"default">>, ?KZ_CONFIG_DB, ?SYSTEM_ONLY)
      ,kapps_cache_pid => KappsCachePid
+     ,fixtures_pid => FixturesPid
      }.
 
 cleanup(#{kapps_cache_pid := KappsCachePid
+         ,fixtures_pid := FixturesPid
          }) ->
     try
         process_flag('trap_exit', 'true'),
         exit(KappsCachePid, 'shutdown'),
+        exit(FixturesPid, 'shutdown'),
 
-        wait_for_shutdown(KappsCachePid),
+        wait_for_shutdown([KappsCachePid, FixturesPid]),
 
         _ = application:stop('kazoo_services'),
         _ = application:stop('kazoo_data'),
@@ -47,12 +50,14 @@ cleanup(#{kapps_cache_pid := KappsCachePid
 cleanup(_Msg) ->
     ?LOG_DEBUG("unmatched clause: ~p", [_Msg]).
 
-wait_for_shutdown(Pid) ->
+wait_for_shutdown([]) -> 'ok';
+wait_for_shutdown(Pids) ->
     receive
-        {'EXIT', Pid, _Reason} -> 'ok';
+        {'EXIT', Pid, _Reason} ->
+            wait_for_shutdown(lists:delete(Pid, Pids));
         Msg ->
-            ?LOG_DEBUG("waiting for ~p: ~p", [Pid, Msg]),
-            wait_for_shutdown(Pid)
+            ?LOG_DEBUG("waiting for ~p: ~p", [Pids, Msg]),
+            wait_for_shutdown(Pids)
     after 5000 ->
-            ?LOG_DEBUG("timed out waiting for ~p", [Pid])
+            ?LOG_DEBUG("timed out waiting for ~p", [Pids])
     end.

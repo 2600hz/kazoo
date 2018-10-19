@@ -23,7 +23,7 @@ setup() ->
 
     {'ok', _} = application:ensure_all_started('kazoo_config'),
     {'ok', CachesPid} = kazoo_caches_sup:start_link(),
-    {'ok', LinkPid} = kazoo_data_link_sup:start_link(),
+    LinkPid = kazoo_fixturedb:start(),
 
     %% NOTE: The child services doc does not exist in the fixture so as
     %%       to test creation on first request
