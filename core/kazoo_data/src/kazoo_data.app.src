@@ -1,5 +1,5 @@
 {application,kazoo_data,
- [{applications,[kazoo,kazoo_attachments,kazoo_caches,
+ [{applications,[kazoo,kazoo_attachments,kazoo_bindings,kazoo_caches,
                  kazoo_config,kazoo_stdlib,kernel,
                  lager,stdlib]},
   {description,"Kazoo Data Access abstraction layer"},

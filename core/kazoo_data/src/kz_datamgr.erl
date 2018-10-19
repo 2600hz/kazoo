@@ -11,7 +11,7 @@
 -export([max_bulk_insert/0
         ,max_bulk_read/0
         ]).
--export([init_dbs/0]).
+-export([init_dbs/1]).
 %% format
 -export([format_error/1]).
 
@@ -1507,15 +1507,25 @@ add_doc_type_from_view(View, Options) ->
         _ -> Options
     end.
 
--spec init_dbs() -> boolean().
-init_dbs() ->
-    Result = case db_exists(?KZ_ACCOUNTS_DB) of
-                 'true' -> 'false';
-                 'false' -> [db_create(DbName) || DbName <- ?KZ_SYSTEM_DBS],
-                            'true'
-             end,
-    revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>),
-    Result.
+-spec init_dbs(map()) -> boolean().
+init_dbs(Server) ->
+    _ = suppress_change_notice(),
+    Fun = fun(DB, Acc) ->
+                  [init_db(Server, DB) | Acc]
+          end,
+    Result = lists:foldl(Fun, [], ?KZ_SYSTEM_DBS),
+    revise_docs_from_folder(?KZ_DATA_DB, ?APP, <<"views">>),
+    _ = enable_change_notice(),
+    lists:any(fun kz_term:is_true/1, Result).
+
+-spec init_db(map(), kz_term:ne_binary()) -> boolean().
+init_db(Server, Db) ->
+    case kzs_db:db_exists(Server, Db) of
+        'true' -> 'false';
+        'false' ->
+            lager:info("creating database ~s", [Db]),
+            kzs_db:db_create(Server, Db, [])
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

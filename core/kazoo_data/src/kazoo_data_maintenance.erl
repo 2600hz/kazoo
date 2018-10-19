@@ -27,16 +27,17 @@
 
 -export([cache_strategy/0, set_cache_strategy/1]).
 
+-export([dataplan_reload/0, dataplan_reload/1]).
+
 -spec flush() -> 'ok'.
 flush() ->
     _ = kz_datamgr:flush_cache_docs(),
-    _ = kzs_plan:flush(),
+    _ = dataplan_reload(),
     io:format("flushed all data manager caches~n").
 
 -spec flush_data_plans() -> 'ok'.
 flush_data_plans() ->
-    _ = kzs_plan:flush(),
-    io:format("flushed all data plans~n").
+    dataplan_reload().
 
 -spec flush_docs() -> 'ok'.
 flush_docs() ->
@@ -142,3 +143,13 @@ print_strategy_details('async') ->
     ?STRATEGY_DETAILS('false', 'true');
 print_strategy_details('stampede_async') ->
     ?STRATEGY_DETAILS('true', 'true').
+
+-spec dataplan_reload() -> 'ok'.
+dataplan_reload() ->
+    _ = kzs_plan:reload(),
+    io:format("dataplans reloaded~n").
+
+-spec dataplan_reload(kz_term:ne_binary()) -> 'ok'.
+dataplan_reload(AccountId) ->
+    _ = kzs_plan:reload(AccountId),
+    io:format("dataplan for account ~s reloaded~n", [AccountId]).

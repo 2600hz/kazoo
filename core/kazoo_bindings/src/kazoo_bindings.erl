@@ -24,7 +24,7 @@
 
 %% API
 -export([start_link/0
-        ,bind/3, bind/4
+        ,bind/2, bind/3, bind/4
         ,unbind/3, unbind/4
         ,map/2, map/3, pmap/2, pmap/3
         ,fold/2, fold/3
@@ -298,6 +298,11 @@ stop() -> gen_server:cast(?SERVER, 'stop').
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), fun()) ->
+                  bind_result() | bind_results().
+bind(Bindings, Fun) ->
+    bind(Bindings, 'undefined', Fun).
+
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
@@ -309,6 +314,9 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
+bind(Binding, 'undefined' = Module, Fun, Payload) ->
+    lager:debug("adding binding ~s for ~p (~p)", [Binding, Fun, Payload]),
+    gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity');
 bind(Binding, Module, Fun, Payload) ->
     lager:debug("adding binding ~s for ~s:~s (~p)", [Binding, Module, Fun, Payload]),
     gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity').
@@ -793,7 +801,7 @@ apply_map_responder(#kz_responder{module=M
                                  ,payload=ResponderPayload
                                  }, MapPayload) ->
     Payload = maybe_merge_payload(ResponderPayload, MapPayload),
-    try erlang:apply(M, F, Payload)
+    try apply_map_responder(M, F, Payload)
     catch
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
@@ -814,6 +822,12 @@ apply_map_responder(#kz_responder{module=M
             kz_util:log_stacktrace(ST),
             {'EXIT', Exp}
     end.
+
+-spec apply_map_responder(atom(), atom() | fun(), payload()) -> any().
+apply_map_responder('undefined', Fun, Payload) ->
+    Fun(Payload);
+apply_map_responder(M, F, Payload) ->
+    erlang:apply(M, F, Payload).
 
 -spec maybe_merge_payload(payload(), payload()) -> payload().
 maybe_merge_payload('undefined', MapPayload) -> MapPayload;

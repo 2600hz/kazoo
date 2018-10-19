@@ -10,10 +10,7 @@ setup() ->
     ?LOG_DEBUG(":: Setting up Kazoo FixtureDB"),
 
     {ok, _} = application:ensure_all_started(kazoo_config),
-    case kazoo_data_link_sup:start_link() of
-        {'ok', LinkPid} -> LinkPid;
-        {'error', {'already_started', LinkPid}} -> LinkPid
-    end.
+    kazoo_fixturedb:start().
 
 cleanup(LinkPid) ->
     _DataLink = erlang:exit(LinkPid, normal),

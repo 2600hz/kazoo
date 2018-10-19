@@ -140,6 +140,7 @@ start_me(SilentLager) ->
     ?LOG_DEBUG(":: Starting up Kazoo FixtureDB"),
     {ok, _} = application:ensure_all_started(kazoo_config),
     {ok, Pid} = kazoo_data_link_sup:start_link(),
+    'ignore' = kazoo_data_bootstrap:start_link(),
 
     _ = case SilentLager of
             true ->
