@@ -21842,6 +21842,9 @@
                 "Orig-Port": {
                     "type": "string"
                 },
+                "Origination-Call-ID": {
+                    "type": "string"
+                },
                 "Prepend-CID-Name": {
                     "type": "string"
                 },
