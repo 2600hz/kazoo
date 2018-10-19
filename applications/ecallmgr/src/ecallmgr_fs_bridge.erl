@@ -263,6 +263,14 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
                                                                ,<<"To-Realm">>
                                                                ,<<"To-User">>
                                                                ,<<"To-Username">>
+
+                                                                    %% Per FS-3792, group confirm must be
+                                                                    %% set per-channel, not globally
+                                                                    %% otherwise double prompting
+                                                               ,<<"Confirm-Cancel-Timeout">>
+                                                               ,<<"Confirm-File">>
+                                                               ,<<"Confirm-Key">>
+                                                               ,<<"Confirm-Read-Timeout">>
                                                                ]),
     UpdatedJObj = kz_json:set_value(<<"Endpoints">>, UniqueEndpoints, kz_json:merge(JObj, Common)),
 
