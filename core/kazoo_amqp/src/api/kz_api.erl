@@ -131,9 +131,9 @@ call_id(API) ->
 
 -spec call_id(kz_term:api_terms(), Default) -> kz_term:ne_binary() | Default.
 call_id(Props, Default) when is_list(Props) ->
-    props:get_value(?KEY_API_CALL_ID, Props, Default);
+    props:get_ne_binary_value(?KEY_API_CALL_ID, Props, Default);
 call_id(JObj, Default) ->
-    kz_json:get_value(?KEY_API_CALL_ID, JObj, Default).
+    kz_json:get_ne_binary_value(?KEY_API_CALL_ID, JObj, Default).
 
 -spec defer_response(kz_term:api_terms()) -> kz_term:api_binary().
 defer_response(Props) when is_list(Props) ->
