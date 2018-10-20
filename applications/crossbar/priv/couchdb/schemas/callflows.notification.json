@@ -1,8 +1,23 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "callflows.customer_defined_notification",
-    "description": "Validator for the customer_defined_notification callflow's data object",
+    "_id": "callflows.notification",
+    "description": "Validator for the 'notification' callflow's data object",
     "properties": {
+        "comments": {
+            "description": "Text message that need to include into notification",
+            "type": "string"
+        },
+        "notification_media": {
+            "description": "What is media need to use for notification",
+            "items": {
+                "enum": [
+                    "email",
+                    "sms"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
         "recipients": {
             "default": [],
             "description": "One or more specific email addresses, Kazoo user ids or a combination of both",

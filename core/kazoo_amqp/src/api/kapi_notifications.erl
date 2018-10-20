@@ -1210,6 +1210,8 @@ cf_notification_definition() ->
                                         ,<<"To-Realm">>
                                         ,<<"To-User">>
                                         ,<<"Timestamp">>
+                                        ,<<"Comments">>
+                                        ,<<"Notification-Media">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]
                     ,values = ?NOTIFY_VALUES(<<"cf_notification">>)

@@ -66,6 +66,8 @@ send_notification(Call, Notify, Data) ->
         TemplateID ->
             lager:debug("trying to send customer defined notification \"~s\" for call-id ~s", [TemplateID, kapps_call:call_id_direct(Call)]),
             Emails = find_email_addresses(Call, kz_json:get_value(<<"recipients">>, Data, [])),
+            Comments = kz_json:get_value(<<"comments">>, Data),
+            NotificationMedia = kz_json:get_value(<<"notification_media">>, Data),
             Props = props:filter_undefined(
                       [{<<"From-User">>, kapps_call:from_user(Call)}
                       ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
@@ -81,6 +83,8 @@ send_notification(Call, Notify, Data) ->
                       ,{<<"Message-Left">>, kapps_call:message_left(Call)}
                       ,{<<"Template-ID">>, TemplateID}
                       ,{<<"To">>, Emails}
+                      ,{<<"Comments">>, Comments}
+                      ,{<<"Notification-Media">>, NotificationMedia}
                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]
                      ),

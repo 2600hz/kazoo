@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.notifications.customer_defined_notification",
-    "description": "AMQP API for notifications.customer_defined_notification",
+    "_id": "kapi.notifications.cf_notification",
+    "description": "AMQP API for notifications.cf_notification",
     "properties": {
         "Account-DB": {
             "type": "string"
@@ -30,6 +30,9 @@
         "Cc": {
             "type": "string"
         },
+        "Comments": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "notification"
@@ -38,7 +41,7 @@
         },
         "Event-Name": {
             "enum": [
-                "customer_defined_notification"
+                "cf_notification"
             ],
             "type": "string"
         },
@@ -56,6 +59,13 @@
         },
         "Message-Left": {
             "type": "integer"
+        },
+        "Notification-Media": {
+            "enum": [
+                "email",
+                "sms"
+            ],
+            "type": "string"
         },
         "Notify": {
             "type": "string"
