@@ -5,7 +5,7 @@
 %%% @author Sergey Safarov <s.safarov@gmail.com>, Sponsored by Audian
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(teletype_customer_defined_notification).
+-module(teletype_cf_notification).
 
 -export([init/0
         ,handle_req/1
@@ -14,7 +14,7 @@
 -include("teletype.hrl").
 
 
--define(TEMPLATE_ID, <<"customer_defined_notification">>).
+-define(TEMPLATE_ID, <<"cf_notification">>).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -47,16 +47,16 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"customer_defined_notification">>, ?MODULE, 'handle_req').
+    teletype_bindings:bind(<<"cf_notification">>, ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
-    handle_req(JObj, kapi_notifications:customer_defined_notification_v(JObj)).
+    handle_req(JObj, kapi_notifications:cf_notification_v(JObj)).
 
 -spec handle_req(kz_json:object(), boolean()) -> template_response().
 handle_req(_, 'false') ->
-    lager:debug("invalid data for customer_defined_notification"),
-    teletype_util:notification_failed(<<"customer_defined_notification">>, <<"validation_failed">>);
+    lager:debug("invalid data for cf_notification"),
+    teletype_util:notification_failed(<<"cf_notification">>, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
@@ -64,13 +64,13 @@ handle_req(JObj, 'true') ->
     case teletype_templates:templates_source(TemplateId, AccountId) of
         'undefined' ->
             lager:warning("cannot determine '~s' template notification source", [TemplateId]),
-            teletype_util:notification_failed(<<"customer_defined_notification">>, <<"validation_failed">>);
+            teletype_util:notification_failed(<<"cf_notification">>, <<"validation_failed">>);
         'not_found' ->
             lager:warning("template notification '~s' is not exists", [TemplateId]),
-            teletype_util:notification_failed(<<"customer_defined_notification">>, <<"validation_failed">>);
+            teletype_util:notification_failed(<<"cf_notification">>, <<"validation_failed">>);
         ?KZ_CONFIG_DB ->
             lager:warning("template notification '~s' is system global and cannot be used", [TemplateId]),
-            teletype_util:notification_failed(<<"customer_defined_notification">>, <<"validation_failed">>);
+            teletype_util:notification_failed(<<"cf_notification">>, <<"validation_failed">>);
         AccountId ->
             lager:debug("valid data for '~s' notification, processing...", [TemplateId]),
             case teletype_util:is_notice_enabled(AccountId, JObj, TemplateId) of
@@ -79,7 +79,7 @@ handle_req(JObj, 'true') ->
             end;
         _Resseler ->
             lager:warning("template notification '~s' is defined in resseler account and cannot be used", [TemplateId]),
-            teletype_util:notification_failed(<<"customer_defined_notification">>, <<"validation_failed">>)
+            teletype_util:notification_failed(<<"cf_notification">>, <<"validation_failed">>)
     end.
 
 -spec process_req(kz_json:object(), kz_json:ne_api_binary()) -> template_response().

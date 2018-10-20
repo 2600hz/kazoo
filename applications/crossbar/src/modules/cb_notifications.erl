@@ -391,7 +391,7 @@ set_system_macros(Context) ->
             JObj = cb_context:doc(Context),
             cb_context:set_doc(Context, kz_json:set_value(?MACROS, Macros, JObj));
         _Status ->
-            CustomerDefinedTemplateId = <<"notification.customer_defined_notification">>,
+            CustomerDefinedTemplateId = <<"notification.cf_notification">>,
             SysContext2 = read_system(Context, CustomerDefinedTemplateId),
             case cb_context:resp_status(SysContext2) of
                 'success' ->

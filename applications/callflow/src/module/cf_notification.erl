@@ -25,7 +25,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cf_customer_defined_notification).
+-module(cf_notification).
 
 -behaviour(gen_cf_action).
 
@@ -84,7 +84,7 @@ send_notification(Call, Notify, Data) ->
                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]
                      ),
-            kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_customer_defined_notification/1)
+            kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_cf_notification/1)
     end.
 
 %%------------------------------------------------------------------------------
