@@ -14,39 +14,9 @@
 -include("teletype.hrl").
 
 
--define(TEMPLATE_ID, <<"cf_notification">>).
-
--define(TEMPLATE_MACROS
-       ,kz_json:from_list(
-          ?DEFAULT_CALL_MACROS
-          ++ ?USER_MACROS
-          ++ ?COMMON_TEMPLATE_MACROS
-         )
-       ).
-
--define(TEMPLATE_SUBJECT, <<"Customer defined notification for Call-ID {{call_id}}">>).
--define(TEMPLATE_CATEGORY, <<"sip">>).
--define(TEMPLATE_NAME, <<"Customer Defined Notification">>).
-
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
--define(TEMPLATE_FROM, teletype_util:default_from_address()).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
-
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'subject', ?TEMPLATE_SUBJECT}
-                                          ,{'category', ?TEMPLATE_CATEGORY}
-                                          ,{'friendly_name', ?TEMPLATE_NAME}
-                                          ,{'to', ?TEMPLATE_TO}
-                                          ,{'from', ?TEMPLATE_FROM}
-                                          ,{'cc', ?TEMPLATE_CC}
-                                          ,{'bcc', ?TEMPLATE_BCC}
-                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]),
     teletype_bindings:bind(<<"cf_notification">>, ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> template_response().
