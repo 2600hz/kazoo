@@ -346,7 +346,7 @@ sender_account_id(_Context, AccountId) ->
 put(Context) ->
     case cb_context:req_value(Context, <<"action">>) of
         'undefined' ->
-            Context1 = crossbar_doc:save(Context),
+            Context1 = crossbar_doc:save(set_system_macros(Context)),
             case cb_context:resp_status(Context1) of
                 'success' -> leak_doc_id(Context1);
                 _Status -> Context1
@@ -909,7 +909,7 @@ merge_ancestor_attachments(Context, Id, AccountId, AccountId) ->
     lager:debug("trying attachments in ~s", [?KZ_CONFIG_DB]),
     case kz_doc:attachments(cb_context:doc(read_system(Context, Id))) of
         'undefined' ->
-            lager:error("the ~s ~s template is missing", [?KZ_CONFIG_DB, Id]),
+            lager:debug("the ~s ~s template is missing", [?KZ_CONFIG_DB, Id]),
             Context;
         Attachments ->
             lager:debug("found attachments in ~s", [?KZ_CONFIG_DB]),
