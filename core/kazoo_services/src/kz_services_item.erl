@@ -5,14 +5,14 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_services_item).
 
+-export([item_plan/1
+        ,set_item_plan/2
+        ]).
 -export([category_name/1
         ,set_category_name/2
         ]).
 -export([item_name/1
         ,set_item_name/2
-        ]).
--export([display_name/1
-        ,set_display_name/2
         ]).
 -export([quantity/1
         ,set_quantity/2
@@ -20,8 +20,8 @@
 -export([billable_quantity/1
         ,set_billable_quantity/2
         ]).
--export([rate/1
-        ,set_rate/2
+-export([billing_rate/1
+        ,set_billing_rate/2
         ]).
 -export([single_discount_rate/1
         ,set_single_discount_rate/2
@@ -32,27 +32,19 @@
 -export([cumulative_discount_rate/1
         ,set_cumulative_discount_rate/2
         ]).
--export([activation_charge/1
-        ,set_activation_charge/2
-        ]).
--export([minimum/1
-        ,set_minimum/2
-        ]).
--export([exceptions/1
-        ,set_exceptions/2
-        ]).
 -export([changes/1
         ,set_changes/2
         ]).
 -export([taxes/1
         ,set_taxes/2
         ]).
--export([item_plan/1
-        ,set_item_plan/2
+-export([display_name/1]).
+-export([rate/1]).
+-export([minimum/1
+        ,maximum/1
         ]).
--export([masqueraded/1
-        ,set_masqueraded/2
-        ]).
+-export([masquerade_as/1]).
+-export([should_cascade/1]).
 
 -export([empty/0]).
 -export([setters/1
@@ -62,6 +54,7 @@
 
 -export([create/4]).
 -export([reset/1]).
+-export([is_masquerading/1]).
 -export([has_changes/1]).
 -export([has_additions/1]).
 -export([has_billable_additions/1]).
@@ -70,16 +63,12 @@
 
 -record(kz_service_item, {category_name :: kz_term:api_binary()
                          ,item_name :: kz_term:api_binary()
-                         ,display_name :: kz_term:api_binary()
                          ,quantity = 0 :: non_neg_integer()
                          ,billable_quantity = 0 :: non_neg_integer()
-                         ,rate = 0.0 :: float()
+                         ,billing_rate = 0.0 :: float()
                          ,single_discount_rate = 0.00 :: float()
                          ,cumulative_discount_quantity = 0 :: non_neg_integer()
                          ,cumulative_discount_rate = 0.00 :: float()
-                         ,activation_charge = 0.00 :: float()
-                         ,minimum = 0 :: non_neg_integer()
-                         ,exceptions = [] :: kz_term:ne_binaries()
                          ,taxes = kz_json:new() :: kz_json:object()
                          ,changes = 'undefined' :: kz_term:api_object()
                          ,item_plan = kz_json:new() :: kz_json:object()
@@ -93,6 +82,21 @@
              ,setter_fun/0
              ,setter_funs/0
              ]).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec item_plan(item()) -> kz_json:object().
+item_plan(#kz_service_item{item_plan=ItemPlan}) -> ItemPlan.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_item_plan(item(), kz_json:object()) -> item().
+set_item_plan(Item, ItemPlan) ->
+    Item#kz_service_item{item_plan=ItemPlan}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -125,35 +129,6 @@ item_name(#kz_service_item{item_name=ItemName}) ->
 -spec set_item_name(item(), kz_term:ne_binary()) -> item().
 set_item_name(#kz_service_item{}=Item, ItemName) ->
     Item#kz_service_item{item_name=ItemName}.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec display_name(item()) -> kz_term:api_binary().
-display_name(#kz_service_item{category_name=CategoryName}=Item)
-  when not is_binary(CategoryName) ->
-    display_name(Item#kz_service_item{category_name=kz_term:to_binary(CategoryName)});
-display_name(#kz_service_item{item_name=ItemName}=Item)
-  when not is_binary(ItemName) ->
-    display_name(Item#kz_service_item{item_name=kz_term:to_binary(ItemName)});
-display_name(#kz_service_item{display_name='undefined'}=Item) ->
-    CategoryName = category_name(Item),
-    ItemName = item_name(Item),
-    case kzd_service_plan:all_items_key() =:= ItemName of
-        'true' -> CategoryName;
-        'false' -> <<CategoryName/binary, "/", ItemName/binary>>
-    end;
-display_name(#kz_service_item{display_name=DisplayName}) ->
-    DisplayName.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec set_display_name(item(), kz_term:ne_binary()) -> item().
-set_display_name(#kz_service_item{}=Item, DisplayName) ->
-    Item#kz_service_item{display_name=DisplayName}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -195,19 +170,19 @@ set_billable_quantity(#kz_service_item{}=Item, BillableQuantity) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec rate(item()) -> float().
-rate(#kz_service_item{rate=Rate}) ->
+-spec billing_rate(item()) -> float().
+billing_rate(#kz_service_item{billing_rate=Rate}) ->
     Rate.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_rate(item(), kz_term:api_binary() | float()) -> item().
-set_rate(#kz_service_item{}=Item, 'undefined') ->
-    Item#kz_service_item{rate=0.0};
-set_rate(#kz_service_item{}=Item, Rate) ->
-    Item#kz_service_item{rate=kz_term:to_float(Rate)}.
+-spec set_billing_rate(item(), kz_term:api_binary() | float()) -> item().
+set_billing_rate(#kz_service_item{}=Item, 'undefined') ->
+    Item#kz_service_item{billing_rate=0.0};
+set_billing_rate(#kz_service_item{}=Item, Rate) ->
+    Item#kz_service_item{billing_rate=kz_term:to_float(Rate)}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -267,56 +242,7 @@ set_cumulative_discount_rate(#kz_service_item{}=Item, Rate) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec activation_charge(item()) -> float().
-activation_charge(#kz_service_item{activation_charge=Charge}) -> Charge.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec set_activation_charge(item(), kz_term:api_binary() | float()) -> item().
-set_activation_charge(Item, 'undefined') ->
-    Item#kz_service_item{activation_charge=0.0};
-set_activation_charge(Item, Charge) ->
-    Item#kz_service_item{activation_charge=kz_term:to_float(Charge)}.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec minimum(item()) -> non_neg_integer().
-minimum(#kz_service_item{minimum=Minimum}) -> Minimum.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec set_minimum(item(), kz_term:api_binary() | non_neg_integer()) -> item().
-set_minimum(Item, 'undefined') ->
-    Item#kz_service_item{minimum=0};
-set_minimum(Item, Minimum) ->
-    Item#kz_service_item{minimum=kz_term:to_integer(Minimum)}.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec exceptions(item()) -> kz_term:ne_binaries().
-exceptions(#kz_service_item{exceptions=Exceptions}) -> Exceptions.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec set_exceptions(item(), kz_term:ne_binaries()) -> item().
-set_exceptions(Item, Exceptions) ->
-    Item#kz_service_item{exceptions=Exceptions}.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec changes(item()) -> kz_term:api_object().
+-spec changes(item()) -> kz_term:api_ne_binaries().
 changes(#kz_service_item{changes=Changes}) -> Changes.
 
 %%------------------------------------------------------------------------------
@@ -346,32 +272,66 @@ set_taxes(Item, Taxes) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec item_plan(item()) -> kz_json:object().
-item_plan(#kz_service_item{item_plan=ItemPlan}) -> ItemPlan.
+-spec display_name(item()) -> kz_term:api_binary().
+display_name(Item) ->
+    kzd_item_plan:name(item_plan(Item), default_display_name(Item)).
+
+-spec default_display_name(item()) -> kz_term:ne_binary().
+default_display_name(Item) ->
+    CategoryName =
+        kz_term:to_binary(
+          category_name(Item)
+         ),
+    ItemName =
+        kz_term:to_binary(
+          masquerade_as(Item)
+         ),
+    case kzd_service_plan:all_items_key() =:= item_name(Item) of
+        'true' -> CategoryName;
+        'false' -> <<CategoryName/binary, "/", ItemName/binary>>
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_item_plan(item(), kz_json:object()) -> item().
-set_item_plan(Item, ItemPlan) ->
-    Item#kz_service_item{item_plan=ItemPlan}.
+-spec rate(item()) -> float().
+rate(Item) ->
+    kzd_item_plan:rate(item_plan(Item)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec masqueraded(item()) -> boolean().
-masqueraded(#kz_service_item{masqueraded=Masqueraded}) ->
-    Masqueraded.
+-spec minimum(item()) -> non_neg_integer().
+minimum(Item) ->
+    kzd_item_plan:minimum(item_plan(Item)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_masqueraded(item(), boolean()) -> item().
-set_masqueraded(Item, Masqueraded) ->
-    Item#kz_service_item{masqueraded=Masqueraded}.
+-spec maximum(item()) -> non_neg_integer().
+maximum(Item) ->
+    kzd_item_plan:maximum(item_plan(Item)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec masquerade_as(item()) -> kz_term:ne_binary().
+masquerade_as(Item) ->
+    kzd_item_plan:masquerade_as(item_plan(Item)
+                               ,item_name(Item)
+                               ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec should_cascade(item()) -> boolean().
+should_cascade(Item) ->
+    kzd_item_plan:should_cascade(item_plan(Item)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -411,13 +371,15 @@ public_json(Item) ->
     Props =
         props:filter_undefined(
           [{<<"category">>, category_name(Item)}
-          ,{<<"item">>, item_name(Item)}
+          ,{<<"item">>, masquerade_as(Item)}
           ,{<<"name">>, display_name(Item)}
           ,{<<"quantity">>, quantity(Item)}
           ,{<<"billable">>, billable_quantity(Item)}
-          ,{<<"rate">>, rate(Item)}
+          ,{<<"rate">>, billing_rate(Item)}
           ,{<<"discounts">>, undefine_empty(discounts(Item))}
           ,{<<"minimum">>, undefine_empty(minimum(Item))}
+          ,{<<"maximum">>, undefine_empty(maximum(Item))}
+          ,{<<"prorate">>, kzd_item_plan:prorate(item_plan(Item))}
           ,{<<"taxes">>, undefine_empty(taxes(Item))}
           ,{<<"total">>, calculate_total(Item)}
           ,{<<"changes">>, undefine_empty(changes(Item))}
@@ -458,7 +420,7 @@ calculate_discount_total(Item) ->
 
 -spec calculate_total(item()) -> float().
 calculate_total(Item) ->
-    (billable_quantity(Item) * rate(Item)) - calculate_discount_total(Item).
+    (billable_quantity(Item) * billing_rate(Item)) - calculate_discount_total(Item).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -466,32 +428,23 @@ calculate_total(Item) ->
 %%------------------------------------------------------------------------------
 -spec create(kz_services:services(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> item().
 create(Services, ItemPlan, CategoryName, ItemName) ->
-    Quantity = get_quantity(Services, ItemPlan, CategoryName, ItemName),
-    {Rate, BillableQuantity} = get_rate_at_quantity(ItemPlan, CategoryName, ItemName, Quantity),
-    ActivationCharge = kzd_item_plan:activation_charge(ItemPlan),
-    Minimum =  kzd_item_plan:minimum(ItemPlan),
-    DisplayName = kzd_item_plan:name(ItemPlan),
-    Exceptions = kzd_item_plan:exceptions(ItemPlan),
-    %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
-    As = kzd_item_plan:masquerade_as(ItemPlan, ItemName),
     Setters = [{fun set_item_plan/2, ItemPlan}
               ,{fun set_category_name/2, CategoryName}
-              ,{fun set_item_name/2, As}
-              ,{fun set_display_name/2, DisplayName}
-              ,{fun set_quantity/2, Quantity}
-              ,{fun set_billable_quantity/2, BillableQuantity}
-              ,{fun set_rate/2, Rate}
-              ,{fun set_activation_charge/2, ActivationCharge}
-              ,{fun set_minimum/2, Minimum}
-              ,{fun set_exceptions/2, Exceptions}
-               %% NOTE: Ensure rate has been set in item before this is executed!
-              ,{fun maybe_set_discounts/2, ItemPlan}
-              ,{fun set_masqueraded/2, ItemName =/= As}
+              ,{fun set_item_name/2, ItemName}
               ],
-    log_item(setters(Setters)).
+    Routines = [fun calculate_quantity/2
+               ,fun calculate_billable_quantity/2
+               ,fun calculate_rate/2
+               ,fun calculate_discounts/2
+               ,fun log_item/2
+               ],
+    lists:foldl(fun(F, I) -> F(Services, I) end
+               ,setters(Setters)
+               ,Routines
+               ).
 
--spec log_item(item()) -> item().
-log_item(Item) ->
+-spec log_item(kz_services:services(), item()) -> item().
+log_item(_Services, Item) ->
     case billable_quantity(Item) > 0 of
         'false' -> Item;
         'true' ->
@@ -506,70 +459,156 @@ log_item(Item) ->
             Item
     end.
 
--spec get_quantity(kz_services:services(), kzd_item_plan:doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
-get_quantity(Services, ItemPlan, CategoryName, ItemName) ->
-    case kzd_service_plan:all_items_key() =:= ItemName of
-        'true' -> get_category_quantity(Services, ItemPlan, CategoryName);
-        'false' -> get_item_quantity(Services, ItemPlan, CategoryName, ItemName)
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec calculate_quantity(kz_services:services(), item()) -> item().
+calculate_quantity(Services, Item) ->
+    ItemName = item_name(Item),
+    Quantity =
+        case kzd_service_plan:all_items_key() =:= ItemName of
+            'true' -> get_category_quantity(Services, Item);
+            'false' -> get_item_quantity(Services, Item)
+        end,
+    set_quantity(Item, Quantity).
+
+-spec get_category_quantity(kz_services:services(), item()) -> non_neg_integer().
+get_category_quantity(Services, Item) ->
+    CategoryName = category_name(Item),
+    Exceptions = kzd_item_plan:exceptions(item_plan(Item)),
+    case should_cascade(Item) of
+        'false' ->
+            kz_services_quantities:category(Services, CategoryName, Exceptions);
+        'true' ->
+            kz_services_quantities:cascade_category(Services, CategoryName, Exceptions)
     end.
 
--spec get_category_quantity(kz_services:services(), kzd_item_plan:doc(), kz_term:ne_binary()) -> non_neg_integer().
-get_category_quantity(Services, ItemPlan, CategoryName) ->
-    Exceptions = kzd_item_plan:exceptions(ItemPlan),
-    case kzd_item_plan:should_cascade(ItemPlan) of
-        'false' -> kz_services_quantities:category(Services, CategoryName, Exceptions);
-        'true' -> kz_services_quantities:cascade_category(Services, CategoryName, Exceptions)
+-spec get_item_quantity(kz_services:services(), item()) -> non_neg_integer().
+get_item_quantity(Services, Item) ->
+    CategoryName = category_name(Item),
+    ItemName = item_name(Item),
+    case should_cascade(Item) of
+        'false' ->
+            kz_services_quantities:item(Services, CategoryName, ItemName);
+        'true' ->
+            kz_services_quantities:cascade_item(Services, CategoryName, ItemName)
     end.
 
--spec get_item_quantity(kz_services:services(), kzd_item_plan:doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
-get_item_quantity(Services, ItemPlan, CategoryName, ItemName) ->
-    case kzd_item_plan:should_cascade(ItemPlan) of
-        'false' -> kz_services_quantities:item(Services, CategoryName, ItemName);
-        'true' -> kz_services_quantities:cascade_item(Services, CategoryName, ItemName)
-    end.
-
--spec get_billable_quantity(kzd_item_plan:doc(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer()) -> non_neg_integer().
-get_billable_quantity(ItemPlan, CategoryName, ItemName, Quantity) ->
-    case kzd_item_plan:minimum(ItemPlan) of
-        Minimum when Minimum > Quantity ->
-            lager:debug("minimum '~s/~s' not met with ~p, enforcing quantity ~p"
-                       ,[CategoryName, ItemName, Quantity, Minimum]
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec calculate_billable_quantity(kz_services:services(), item()) -> item().
+calculate_billable_quantity(_Services, Item) ->
+    Step = kzd_item_plan:step(item_plan(Item)),
+    Minimum = minimum(Item),
+    Maximum = maximum(Item),
+    case
+        kz_term:ceiling(
+          quantity(Item) / Step
+         )
+    of
+        BillableQuantity when BillableQuantity < Minimum ->
+            lager:debug("minimum '~s' not met with ~p, enforcing quantity ~p"
+                       ,[display_name(Item), BillableQuantity, Minimum]
                        ),
-            Minimum;
-        _ -> Quantity
-    end.
-
--spec get_rate_at_quantity(kzd_item_plan:doc(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer()) -> {float(), non_neg_integer()}.
-get_rate_at_quantity(ItemPlan, CategoryName, ItemName, Quantity) ->
-    BillableQuantity = get_billable_quantity(ItemPlan, CategoryName, ItemName, Quantity),
-    case get_rate(ItemPlan, BillableQuantity) of
-        {'false', Rate} -> {Rate, BillableQuantity};
-        {'true', Rate} ->
-            lager:debug("~s/~s should be billed as a flat rate"
-                       ,[CategoryName
-                        ,ItemName
-                        ]
+            set_billable_quantity(Item, Minimum);
+        BillableQuantity when BillableQuantity > Maximum ->
+            lager:debug("maximum '~s' exceeded with ~p, enforcing quantity ~p"
+                       ,[display_name(Item), BillableQuantity, Maximum]
                        ),
-            {Rate, 1}
+            set_billable_quantity(Item, Maximum);
+        BillableQuantity ->
+            set_billable_quantity(Item, BillableQuantity)
     end.
 
--spec get_rate(kzd_item_plan:doc(), non_neg_integer()) -> {boolean(), float()}.
-get_rate(ItemPlan, BillableQuantity) ->
-    case maybe_get_flat_rate(ItemPlan, BillableQuantity) of
-        'undefined' -> {'false', get_quantity_rate(ItemPlan, BillableQuantity)};
-        Rate -> {'true', Rate}
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec calculate_rate(kz_services:services(), item()) -> item().
+calculate_rate(Services, Item) ->
+    Routines = [fun calculate_flat_rates/2
+               ,fun calculate_flat_rate/2
+               ,fun calculate_quantity_rates/2
+               ,fun calculate_quantity_rate/2
+               ],
+    calculate_rate(Services, Item, Routines).
+
+calculate_rate(_Services, Item, []) ->
+    Item;
+calculate_rate(Services, Item, [Routine|Routines]) ->
+    case Routine(Services, Item) of
+        'undefined' ->
+            calculate_rate(Services, Item, Routines);
+        UpdatedItem ->
+            UpdatedItem
     end.
 
--spec maybe_get_flat_rate(kzd_item_plan:doc(), non_neg_integer()) -> kz_term:api_float().
-maybe_get_flat_rate(ItemPlan, BillableQuantity) ->
-    find_tiered_rate(kzd_item_plan:flat_rates(ItemPlan), BillableQuantity).
-
--spec get_quantity_rate(kzd_item_plan:doc(), non_neg_integer()) -> float().
-get_quantity_rate(ItemPlan, BillableQuantity) ->
-    case find_tiered_rate(kzd_item_plan:rates(ItemPlan), BillableQuantity) of
-        'undefined' -> kzd_item_plan:rate(ItemPlan);
-        Rate -> Rate
+-spec calculate_flat_rates(kz_services:services(), item()) -> item() | 'undefined'.
+calculate_flat_rates(_Services, Item) ->
+    Rates = kzd_item_plan:flat_rates(item_plan(Item)),
+    case find_tiered_rate(Rates, billable_quantity(Item)) of
+        'undefined' -> 'undefined';
+        Rate ->
+            lager:debug("~s should be billed as a flat rate"
+                       ,[display_name(Item)]
+                       ),
+            Setters = [{fun set_billing_rate/2, Rate}
+                      ,{fun set_billable_quantity/2, 1}
+                      ],
+            setters(Item, Setters)
     end.
+
+-spec calculate_flat_rate(kz_services:services(), item()) -> item() | 'undefined'.
+calculate_flat_rate(_Services, Item) ->
+    case kzd_item_plan:flat_rate(item_plan(Item)) of
+        'undefined' -> 'undefined';
+        Rate ->
+            lager:debug("~s should be billed as a flat rate"
+                       ,[display_name(Item)]
+                       ),
+            Setters = [{fun set_billing_rate/2, Rate}
+                      ,{fun set_billable_quantity/2, 1}
+                      ],
+            setters(Item, Setters)
+    end.
+
+-spec calculate_quantity_rates(kz_services:services(), item()) -> item().
+calculate_quantity_rates(_Services, Item) ->
+    Rates = kzd_item_plan:rates(item_plan(Item)),
+    case find_tiered_rate(Rates, billable_quantity(Item)) of
+        'undefined' -> 'undefined';
+        Rate -> set_billing_rate(Item, Rate)
+    end.
+
+-spec calculate_quantity_rate(kz_services:services(), item()) -> item().
+calculate_quantity_rate(_Services, Item) ->
+    set_billing_rate(Item, rate(Item)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec calculate_discounts(kz_services:services(), item()) -> item().
+calculate_discounts(Services, Item) ->
+    calculate_single_discount(Services, Item).
+
+-spec calculate_single_discount(kz_services:services(), item()) -> item().
+calculate_single_discount(_Services, Item) ->
+    DiscountPlan = kzd_item_plan:single_discount(item_plan(Item)),
+    case should_set_discount(Item, DiscountPlan) of
+        'false' -> Item;
+        'true' ->
+            Rate = kz_json:get_float_value(<<"rate">>, DiscountPlan, rate(Item)),
+            set_single_discount_rate(Item, Rate)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 
 -type discount_routine() :: fun((kzd_item_plan:doc(), item()) ->
                                        item()).
@@ -654,6 +693,10 @@ should_set_discount(Item, DiscountPlan) ->
     Rate > 0
         andalso BillableQuantity >= Minimum.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec find_tiered_rate(kz_json:object(), non_neg_integer()) -> kz_term:api_float().
 find_tiered_rate(Rates, Quantity) ->
     L1 = [kz_term:to_integer(K) || K <- kz_json:get_keys(Rates)],
@@ -673,6 +716,14 @@ reset(Item) ->
               ,{fun maybe_set_discounts/2, item_plan(Item)}
               ],
     setters(Item, Setters).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_masquerading(item()) -> boolean().
+is_masquerading(Item) ->
+    masquerade_as(Item) =:= item_name(Item).
 
 %%------------------------------------------------------------------------------
 %% @doc
