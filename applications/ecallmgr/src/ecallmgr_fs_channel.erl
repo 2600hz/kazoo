@@ -705,7 +705,7 @@ props_to_record(Props, Node) ->
             ,node=Node
             ,timestamp=kz_time:now_s()
             ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
-            ,context=props:get_value(<<"Caller-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT)
+            ,context=kzd_freeswitch:context(Props, ?DEFAULT_FREESWITCH_CONTEXT)
             ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
             ,other_leg=OtherLeg
             ,handling_locally=handling_locally(Props, OtherLeg)
@@ -750,7 +750,9 @@ get_username(Props) ->
                                 ,Props
                                 )
     of
-        'undefined' -> 'undefined';
+        'undefined' ->
+            lager:debug("no username in CCVs or variable_user_name"),
+            'undefined';
         Username -> kz_term:to_lower_binary(Username)
     end.
 
@@ -789,7 +791,7 @@ props_to_update(Props) ->
       ,{#channel.bridge_id, props:get_value(<<"Bridge-ID">>, CCVs, UUID)}
       ,{#channel.callflow_id, props:get_value(<<"CallFlow-ID">>, CCVs)}
       ,{#channel.cavs, CAVs}
-      ,{#channel.context, props:get_value(<<"Caller-Context">>, Props)}
+      ,{#channel.context, kzd_freeswitch:context(Props)}
       ,{#channel.destination, props:get_value(<<"Caller-Destination-Number">>, Props)}
       ,{#channel.dialplan, props:get_value(<<"Caller-Dialplan">>, Props)}
       ,{#channel.direction, kzd_freeswitch:call_direction(Props)}

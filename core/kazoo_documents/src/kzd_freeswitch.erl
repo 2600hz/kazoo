@@ -19,6 +19,7 @@
         ,ccvs/1, ccv/2, ccv/3
         ,channel_authorized/1
         ,conference_name/1, conference_profile_name/1, conference_uuid/1
+        ,context/1, context/2
         ,dialed_number/1
         ,disposition/1
         ,event_name/1
@@ -485,6 +486,14 @@ conference_profile_name(Props) ->
 -spec conference_uuid(data()) -> kz_term:api_ne_binary().
 conference_uuid(Props) ->
     props:get_ne_binary_value(<<"Conference-Unique-ID">>, Props).
+
+-spec context(data()) -> kz_term:api_ne_binary().
+context(Props) ->
+    context(Props, 'undefined').
+
+-spec context(data(), Default) -> kz_term:ne_binary() | Default.
+context(Props, Default) ->
+    props:get_ne_binary_value(<<"Caller-Context">>, Props, Default).
 
 -spec join_time(data()) -> kz_time:gregorian_seconds().
 join_time(Props) ->

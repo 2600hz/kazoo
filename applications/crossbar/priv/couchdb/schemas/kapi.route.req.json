@@ -21,6 +21,9 @@
         "Codecs": {
             "type": "string"
         },
+        "Context": {
+            "type": "string"
+        },
         "Cost-Parameters": {
             "properties": {
                 "Max-Incremental-Cost": {

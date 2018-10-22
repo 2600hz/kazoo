@@ -26,6 +26,7 @@
                                     ,<<"Custom-Channel-Vars">>
                                     ,<<"Custom-Routing-Headers">>
                                     ,<<"Custom-SIP-Headers">>
+                                    ,<<"Context">>
                                     ,<<"From-Network-Addr">>
                                     ,<<"From-Network-Port">>
                                     ,<<"From-Tag">>
