@@ -749,14 +749,10 @@ read_system(Context, Id) ->
                                 ,cb_context:set_account_db(Context, ?KZ_CONFIG_DB)
                                 ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())
                                 ),
-    case {cb_context:resp_error_code(Context1)
-         ,cb_context:resp_status(Context1)
-         }
-    of
-        {404, 'error'} -> Context1;
-        {_Code, 'success'} ->
+    case cb_context:resp_status(Context1) of
+        'success' ->
             cb_context:store(Context1, 'attachments_db', ?KZ_CONFIG_DB);
-        {_Code, _status} -> Context1
+        _Status -> Context1
     end.
 
 -spec read_account(cb_context:context(), kz_term:ne_binary(), load_from()) -> cb_context:context().
@@ -780,17 +776,17 @@ read_account(Context, Id, LoadFrom) ->
 
 -spec maybe_read_from_parent(cb_context:context(), kz_term:ne_binary(), load_from(), kz_term:api_binary()) -> cb_context:context().
 maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
-    lager:debug("~s not found in account and reseller is undefined, reading from master", [Id]),
+    lager:debug("~s not found in account and reseller is undefined, reading from system_config", [Id]),
     read_system_for_account(Context, Id, LoadFrom);
 maybe_read_from_parent(Context, Id, LoadFrom, ResellerId) ->
     AccountId = kz_util:format_account_id(cb_context:account_db(Context)),
     case AccountId =/= ResellerId
         andalso get_parent_account_id(AccountId) of
         'false' ->
-            lager:debug("~s not found in account and reached to reseller, reading from master", [Id]),
+            lager:debug("~s not found in account and reached to reseller, reading from system_config", [Id]),
             read_system_for_account(Context, Id, LoadFrom);
         'undefined' ->
-            lager:debug("~s not found in account and parent is undefined, reading from master", [Id]),
+            lager:debug("~s not found in account and parent is undefined, reading from system_config", [Id]),
             read_system_for_account(Context, Id, LoadFrom);
         ParentId ->
             ParentDb = kz_util:format_account_db(ParentId),
@@ -804,14 +800,14 @@ read_system_for_account(Context, Id, LoadFrom) ->
     Context1 = read_system(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' when LoadFrom =:= 'system' ->
-            lager:debug("read template ~s from master account", [Id]),
+            lager:debug("read template ~s from system_config", [Id]),
             revert_context_to_account(Context, Context1);
         'success' when LoadFrom =:= 'system_migrate' ->
-            lager:debug("read template ~s from master account, now migrating it", [Id]),
+            lager:debug("read template ~s from system_config account, now migrating it", [Id]),
             migrate_template_to_account(revert_context_to_account(Context, Context1), Id);
         _Status ->
-            lager:debug("failed to read master db for ~s", [Id]),
-            Context1
+            lager:debug("failed to read system_config db for ~s", [Id]),
+            revert_context_to_account(Context, Context1)
     end.
 
 -spec get_parent_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
@@ -1076,9 +1072,21 @@ maybe_update(Context, Id) ->
 
 -spec update_notification(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 update_notification(Context, Id) ->
-    Context1 = maybe_inherit_defaults(Context, cb_context:doc(read(Context, Id))),
-    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"notifications">>, Context1, OnSuccess).
+    Context1 = read(Context, Id),
+    IsPreview = is_preview(cb_context:req_nouns(Context)),
+    case {cb_context:resp_error_code(Context1)
+         ,cb_context:resp_status(Context1)
+         }
+    of
+        {_, 'success'} ->
+            Context2 = maybe_inherit_defaults(Context, cb_context:doc(Context1)),
+            OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+            cb_context:validate_request_data(<<"notifications">>, Context2, OnSuccess);
+        {404, 'error'} when IsPreview ->
+            OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+            cb_context:validate_request_data(<<"notifications">>, Context1, OnSuccess);
+        {_Code, _Status} -> Context1
+    end.
 
 -spec maybe_inherit_defaults(cb_context:context(), kz_term:api_object()) ->
                                     cb_context:context().
@@ -1332,22 +1340,29 @@ on_successful_validation(Id, Context) ->
     of
         {'error', 404} ->
             lager:debug("load/merge of ~s failed with a 404", [Id]),
-            handle_missing_account_notification(CleanedContext, Id, cb_context:req_nouns(CleanedContext));
+            handle_missing_account_notification(CleanedContext, Id, is_preview(cb_context:req_nouns(CleanedContext)));
         {'success', _} -> Context1;
         {_Status, _Code} ->
             lager:debug("load/merge of ~s failed with ~p / ~p", [Id, _Status, _Code]),
             Context1
     end.
 
--spec handle_missing_account_notification(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) ->
+-spec is_preview(req_nouns()) -> boolean().
+is_preview([{<<"notifications">>, [_Id, ?PREVIEW]}|_]) -> 'true';
+is_preview(_) -> 'false'.
+
+-spec handle_missing_account_notification(cb_context:context(), kz_term:ne_binary(), boolean()) ->
                                                  cb_context:context().
-handle_missing_account_notification(Context, Id, [{<<"notifications">>, [_Id, ?PREVIEW]}|_]) ->
+handle_missing_account_notification(Context, Id, 'true') ->
     lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
     Context;
-handle_missing_account_notification(Context, Id, _ReqNouns) ->
+handle_missing_account_notification(Context, Id, 'false') ->
     _ = maybe_hard_delete(Context, Id),
-    _Context = read_system_for_account(Context, Id, 'system_migrate'),
-    on_successful_validation(Id, Context).
+    Context1 = read_system_for_account(Context, Id, 'system_migrate'),
+    case cb_context:resp_status(Context1) of
+        'success' -> on_successful_validation(Id, Context);
+        _Status -> Context1
+    end.
 
 -spec handle_missing_system_config_notification(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                                        cb_context:context().
