@@ -1719,8 +1719,9 @@ encryption_method_map(CCVs, Endpoint) ->
 
 -spec set_sip_invite_domain(ccv_acc()) -> ccv_acc().
 set_sip_invite_domain({Endpoint, Call, CallFwd, CCVs}) ->
+    SipRealm = get_sip_realm(Endpoint, Call, kapps_call:request_realm(Call)),
     {Endpoint, Call, CallFwd
-    ,kz_json:set_value(<<"SIP-Invite-Domain">>, kapps_call:request_realm(Call), CCVs)
+    ,kz_json:set_value(<<"SIP-Invite-Domain">>, SipRealm, CCVs)
     }.
 
 -spec maybe_set_call_waiting(ccv_acc()) -> ccv_acc().
