@@ -4,6 +4,7 @@
     "description": "Describes a service plan item",
     "properties": {
         "activation_charge": {
+            "default": 0.0,
             "description": "What to charge when activating an Item",
             "type": "number"
         },
@@ -12,6 +13,7 @@
             "type": "string"
         },
         "cascade": {
+            "default": false,
             "description": "Whether to count quantities among all sub-accounts or just the account",
             "type": "boolean"
         },
@@ -26,6 +28,16 @@
                         "rate": {
                             "description": "The discount to apply, up to maximum Items (if applicable)",
                             "type": "number"
+                        },
+                        "rates": {
+                            "description": "Takes precedence over rate, sets the discount based on the billable quantity",
+                            "patternProperties": {
+                                "^[0-9]+$": {
+                                    "description": "The amount to apply if the quantity is under the indicated in the key",
+                                    "type": "number"
+                                }
+                            },
+                            "type": "object"
                         }
                     },
                     "type": "object"
@@ -33,11 +45,37 @@
                 "single": {
                     "properties": {
                         "rate": {
-                            "description": "A single discount amount to apply if there are more than 0 units",
+                            "description": "A single discount amount to apply if there are more than 0 units and no match in rates",
                             "type": "number"
+                        },
+                        "rates": {
+                            "description": "Takes precedence over rate, sets the discount based on the billable quantity",
+                            "patternProperties": {
+                                "^[0-9]+$": {
+                                    "description": "The amount to apply if the quantity is under the indicated in the key",
+                                    "type": "number"
+                                }
+                            },
+                            "type": "object"
                         }
                     },
                     "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "flat_rate": {
+            "default": 0.0,
+            "description": "Takes precedence over rates and rate, charges only the provided amount",
+            "type": "number"
+        },
+        "flat_rates": {
+            "default": {},
+            "description": "Takes precedence over flat_rate, rates and rate, charges only the provided amount",
+            "patternProperties": {
+                "^[0-9]+$": {
+                    "description": "The rate to charge when under the quantity indicated in the key",
+                    "type": "number"
                 }
             },
             "type": "object"
@@ -51,24 +89,32 @@
             ],
             "type": "string"
         },
+        "maximum": {
+            "description": "The maximum quantity of items to bill for",
+            "type": "integer"
+        },
         "minimum": {
-            "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
+            "default": 0,
+            "description": "The minimum quantity of items to bill for",
             "type": "integer"
         },
         "name": {
             "description": "Friendly name for this Item",
             "type": "string"
         },
-        "quantity": {
-            "description": "How many of the item are allowed",
-            "type": "integer"
+        "prorate": {
+            "default": false,
+            "description": "Should this item be prorated",
+            "type": "boolean"
         },
         "rate": {
-            "description": "The rate to charge",
+            "default": 0.0,
+            "description": "Used if no flat_rates, flat_rate or rates apply, resulting charges is billable quantity multipled with rate",
             "type": "number"
         },
         "rates": {
-            "description": "Tiers of rates based on quantities",
+            "default": {},
+            "description": "Takes precedence over rate, resulting charges is billable quantity multipled with tiered rate",
             "patternProperties": {
                 "^[0-9]+$": {
                     "description": "The rate to charge when under the quantity indicated in the key",
@@ -76,6 +122,11 @@
                 }
             },
             "type": "object"
+        },
+        "step": {
+            "default": 1,
+            "description": "Step size for quantity",
+            "type": "integer"
         },
         "taxes": {
             "items": {
