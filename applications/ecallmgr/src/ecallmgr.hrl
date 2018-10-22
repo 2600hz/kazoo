@@ -21,7 +21,9 @@
 
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
--define(DEFAULT_FREESWITCH_CONTEXT, kapps_config:get_ne_binary(?APP_NAME, <<"freeswitch_context">>, <<"context_2">>)).
+-define(DEFAULT_FREESWITCH_CONTEXT
+       ,kapps_config:get_ne_binary(?APP_NAME, <<"freeswitch_context">>, <<"context_2">>)
+       ).
 
 -define(SIP_INTERFACE, "sipinterface_1").
 -define(DEFAULT_FS_PROFILE, "sipinterface_1").

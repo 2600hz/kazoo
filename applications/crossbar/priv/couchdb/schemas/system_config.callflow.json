@@ -3,6 +3,18 @@
     "_id": "system_config.callflow",
     "description": "Schema for callflow system_config",
     "properties": {
+        "allow_authz_context_overrides": {
+            "description": "callflow allow_authz_context_overrides",
+            "type": "boolean"
+        },
+        "authz_contexts": {
+            "default": [],
+            "description": "callflow authz_contexts",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "call_recording": {
             "properties": {
                 "extension": {

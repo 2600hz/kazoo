@@ -145,6 +145,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"Caller-ID-Number">>
        ,kzd_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
        }
+      ,{<<"Context">>, kzd_freeswitch:context(Props)}
       ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
       ,{<<"Custom-Routing-Headers">>, props:get_value(<<"Custom-Routing-Headers">>, Props)}

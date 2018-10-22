@@ -27,6 +27,9 @@
 -export([set_other_leg_call_id/2, other_leg_call_id/1]).
 -export([call_id_helper/2, clear_call_id_helper/1]).
 -export([set_origination_call_id/2, origination_call_id/1]).
+
+-export([context/1, context/2, set_context/2]).
+
 -export([set_control_queue/2, control_queue/1, control_queue_direct/1]).
 -export([control_queue_helper/2, clear_control_queue_helper/1]).
 -export([set_controller_queue/2, controller_queue/1]).
@@ -156,6 +159,7 @@
 -record(kapps_call, {call_id :: kz_term:api_binary()                       %% The UUID of the call
                     ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                     ,origination_call_id :: kz_term:api_ne_binary() %% need to track the originating call id, if found
+                    ,context :: kz_term:api_ne_binary()
                     ,control_q :: kz_term:api_binary()                   %% The control queue provided on route win
                     ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                     ,controller_q :: kz_term:api_binary()                %%
@@ -279,6 +283,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
 
     Call1#kapps_call{call_id=CallId
                     ,origination_call_id=kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, RouteReq, origination_call_id(Call1))
+                    ,context=kz_json:get_ne_binary_value(<<"Context">>, RouteReq)
                     ,request=Request
                     ,request_user=to_e164(RequestUser)
                     ,request_realm=RequestRealm
@@ -613,6 +618,18 @@ call_id_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 -spec clear_call_id_helper(call()) -> call().
 clear_call_id_helper(Call) ->
     Call#kapps_call{call_id_helper=fun default_helper_function/2}.
+
+-spec context(call()) -> kz_term:api_ne_binary().
+context(Call) ->
+    context(Call, 'undefined').
+
+-spec context(call(), Default) -> kz_term:ne_binary() | Default.
+context(#kapps_call{context='undefined'}, Default) -> Default;
+context(#kapps_call{context=Context}, _Default) -> Context.
+
+-spec set_context(call(), kz_term:ne_binary()) -> call().
+set_context(#kapps_call{}=Call, Context) ->
+    Call#kapps_call{context=Context}.
 
 -spec set_control_queue(kz_term:ne_binary(), call()) -> call().
 set_control_queue(ControlQ, #kapps_call{}=Call) when is_binary(ControlQ) ->

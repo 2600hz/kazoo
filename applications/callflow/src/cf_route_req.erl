@@ -97,7 +97,20 @@ maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
 allow_no_match(Call) ->
     is_valid_endpoint(kapps_call:custom_channel_var(<<"Referred-By">>, Call), Call)
         orelse is_valid_endpoint(kapps_call:custom_channel_var(<<"Redirected-By">>, Call), Call)
-        orelse allow_no_match_type(Call).
+        orelse allow_no_match_type(Call)
+        orelse is_authz_context(Call).
+
+-spec is_authz_context(kapps_call:call()) -> boolean().
+is_authz_context(Call) ->
+    is_authz_context(Call, kapps_config:is_true(?APP_NAME, <<"allow_authz_context_overrides">>)).
+
+-spec is_authz_context(kapps_call:call(), boolean()) -> boolean().
+is_authz_context(_Call, 'false') ->
+    lager:debug("authz context overrides disabled"),
+    'false';
+is_authz_context(Call, 'true') ->
+    AuthzContexts = kapps_config:get_ne_binaries(?APP_NAME, <<"authz_contexts">>, []),
+    lists:member(kapps_call:context(Call), AuthzContexts).
 
 -spec allow_no_match_type(kapps_call:call()) -> boolean().
 allow_no_match_type(Call) ->
