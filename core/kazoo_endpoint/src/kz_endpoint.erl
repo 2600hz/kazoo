@@ -1366,6 +1366,7 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
               [{<<"Invite-Format">>, <<"route">>}
               ,{<<"Ignore-Early-Media">>, <<"true">>}
               ,{<<"Route">>, Route}
+              ,{<<"To-Realm">>, get_sip_realm(Endpoint, kapps_call:account_id(Call))}
               ,{<<"Ignore-Early-Media">>, <<"true">>}
               ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
               ,{<<"Endpoint-Delay">>, get_delay(Properties)}
@@ -1912,7 +1913,7 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
     case kzd_devices:sip_realm(SIPJObj) of
         'undefined' ->
             case kzd_accounts:fetch_realm(AccountId) of
-                undefined -> Default;
+                'undefined' -> Default;
                 Realm -> Realm
             end;
         Realm -> Realm
