@@ -178,7 +178,7 @@ exec_bindings(Name, JObj) ->
     Id = kz_json:get_ne_binary_value(<<"ID">>, JObj),
     Event = kz_api:event_name(JObj),
     RK = kz_binary:join([<<"kapi.conf">>, Name, Db, Type, Event, Id], <<".">>),
-    kazoo_bindings:pmap(RK, JObj),
+    _ = kazoo_bindings:pmap(RK, JObj),
     'ok'.
 
 -spec handle_document_change(kz_json:object(), atom()) -> 'ok' | 'false'.

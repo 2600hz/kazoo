@@ -242,7 +242,7 @@ maybe_start_from_node_name(Verbose) ->
         _Else -> 'false'
     end.
 
--spec maybe_start_from_node_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
+-spec maybe_start_from_node_config(boolean()) -> 'false' | kz_term:ne_binaries().
 maybe_start_from_node_config(Verbose) ->
     case kapps_config:get_node_value(?MODULE, <<"kapps">>) of
         'undefined' -> 'false';

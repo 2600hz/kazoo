@@ -82,9 +82,11 @@
 -type matches_fun() :: fun((kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean()).
 -type candidates_fun() :: fun((kz_term:ne_binary()) -> kz_bindings()).
 
--record(kz_responder, {module :: atom()
-                      ,function :: atom()
-                      ,payload :: any()
+-type responder_fun() :: atom() | fun().
+
+-record(kz_responder, {module :: module()
+                      ,function :: responder_fun()
+                      ,payload :: payload()
                       }).
 -type kz_responder() :: #kz_responder{}.
 -type kz_responders() :: [kz_responder()].
@@ -298,19 +300,19 @@ stop() -> gen_server:cast(?SERVER, 'stop').
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 
--spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), fun()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), responder_fun()) ->
                   bind_result() | bind_results().
 bind(Bindings, Fun) ->
     bind(Bindings, 'undefined', Fun).
 
--spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
     [bind(Binding, Module, Fun) || Binding <- Bindings];
 bind(Binding, Module, Fun) when is_binary(Binding) ->
     bind(Binding, Module, Fun, 'undefined').
 
--spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun(), payload()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
@@ -325,14 +327,14 @@ bind(Binding, Module, Fun, Payload) ->
                          {'error', 'not_found'}.
 -type unbind_results() :: [unbind_result()].
 
--spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
+-spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun()) ->
                     unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun) ->
     [unbind(Binding, Module, Fun) || Binding <- Bindings];
 unbind(Binding, Module, Fun) when is_binary(Binding) ->
     unbind(Binding, Module, Fun, 'undefined').
 
--spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
+-spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun(), payload()) ->
                     unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun, Payload) ->
     [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings];
@@ -346,10 +348,10 @@ flush() -> gen_server:cast(?SERVER, 'flush').
 -spec flush(kz_term:ne_binary()) -> 'ok'.
 flush(Binding) -> gen_server:cast(?SERVER, {'flush', Binding}).
 
--spec flush_mod(atom()) -> 'ok'.
+-spec flush_mod(module()) -> 'ok'.
 flush_mod(Module) -> gen_server:cast(?SERVER, {'flush_mod', Module}).
 
--type filter_fun() :: fun((kz_term:ne_binary(), atom(), atom(), any()) -> boolean()).
+-type filter_fun() :: fun((kz_term:ne_binary(), module(), responder_fun(), payload()) -> boolean()).
 -spec filter(filter_fun()) -> 'ok'.
 filter(Predicate) when is_function(Predicate, 4) ->
     gen_server:cast(?SERVER, {'filter', Predicate}).
@@ -412,7 +414,7 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
--spec maybe_add_binding(kz_term:ne_binary(), atom(), atom(), any()) ->
+-spec maybe_add_binding(kz_term:ne_binary(), module(), responder_fun(), payload()) ->
                                'ok' |
                                {'error', 'exists'}.
 maybe_add_binding(Binding, Mod, Fun, Payload) ->
@@ -445,7 +447,7 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
             end
     end.
 
--spec maybe_rm_binding(kz_term:ne_binary(), atom(), atom(), any()) ->
+-spec maybe_rm_binding(kz_term:ne_binary(), module(), responder_fun(), payload()) ->
                               {'ok', 'deleted_binding' | 'updated_binding'} |
                               {'error', 'not_found'}.
 maybe_rm_binding(Binding, Mod, Fun, Payload) ->
@@ -513,7 +515,7 @@ handle_cast({'filter', Predicate}, State) ->
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
--spec flush_mod(atom(), kz_binding()) -> boolean().
+-spec flush_mod(module(), kz_binding()) -> boolean().
 flush_mod(ClientMod, #kz_binding{binding=Binding
                                 ,binding_responders=Responders
                                 }) ->
@@ -613,13 +615,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% previous payload being passed to the next invocation.
 %% @end
 %%------------------------------------------------------------------------------
--spec fold_bind_results(kz_responders(), any(), kz_term:ne_binary()) -> any().
+-spec fold_bind_results(kz_responders(), payload(), kz_term:ne_binary()) -> payload().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
 fold_bind_results([], Payload, _Route) -> Payload;
 fold_bind_results(Responders, Payload, Route) ->
     fold_bind_results(Responders, Payload, Route, length(Responders), []).
 
--spec fold_bind_results(kz_responders(), any(), kz_term:ne_binary(), non_neg_integer(), kz_responders()) -> any().
+-spec fold_bind_results(kz_responders(), payload(), kz_term:ne_binary(), non_neg_integer(), kz_responders()) -> payload().
 fold_bind_results([#kz_responder{module=M
                                 ,function=F
                                 ,payload='undefined'
@@ -674,7 +676,7 @@ fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
             Payload
     end.
 
--spec log_undefined(atom(), atom(), non_neg_integer(), list()) -> 'ok'.
+-spec log_undefined(module(), responder_fun(), non_neg_integer(), list()) -> 'ok'.
 log_undefined(M, F, Length, [{M, F, _Args,_}|_]) ->
     ?LOG_DEBUG("undefined function ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
@@ -795,7 +797,7 @@ pmap_responders(Acc, Responders, Payload) ->
               )
         ++ Acc.
 
--spec apply_map_responder(kz_responder(), payload()) -> any().
+-spec apply_map_responder(kz_responder(), payload()) -> payload().
 apply_map_responder(#kz_responder{module=M
                                  ,function=F
                                  ,payload=ResponderPayload
@@ -823,7 +825,7 @@ apply_map_responder(#kz_responder{module=M
             {'EXIT', Exp}
     end.
 
--spec apply_map_responder(atom(), atom() | fun(), payload()) -> any().
+-spec apply_map_responder(module() | 'undefined', responder_fun(), payload()) -> payload().
 apply_map_responder('undefined', Fun, Payload) ->
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
@@ -833,7 +835,7 @@ apply_map_responder(M, F, Payload) ->
 maybe_merge_payload('undefined', MapPayload) -> MapPayload;
 maybe_merge_payload(ResponderPayload, MapPayload) -> [ResponderPayload|MapPayload].
 
--spec maybe_log_undefined(atom(), atom(), list(), list()) -> 'ok'.
+-spec maybe_log_undefined(module(), responder_fun(), list(), list()) -> 'ok'.
 maybe_log_undefined(M, F, Payload, [{M, F, Arity, _}|_])
   when is_integer(Arity),
        length(Payload) == Arity -> 'ok';
@@ -841,7 +843,7 @@ maybe_log_undefined(M, F, Payload, [{M, F, Payload, _}|_]) -> 'ok';
 maybe_log_undefined(M, F, Payload, ST) ->
     log_undefined(M, F, length(Payload), ST).
 
--spec maybe_log_function_clause(atom(), atom(), list(), list()) -> 'ok'.
+-spec maybe_log_function_clause(module(), responder_fun(), list(), list()) -> 'ok'.
 maybe_log_function_clause(M, F, Payload, [{M, F, Arity, _}|_])
   when is_integer(Arity),
        length(Payload) == Arity -> 'ok';

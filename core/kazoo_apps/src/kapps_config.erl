@@ -59,7 +59,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -type config_category() :: kz_json:key() | nonempty_string().
--type config_key() :: kz_json:path() | kz_json:key() | nonempty_string().
+-type config_key() :: kz_json:key_path().
 -type config_node() :: atom() | kz_term:ne_binary().
 
 -type update_option() :: {'node_specific', boolean()} |
@@ -428,15 +428,15 @@ get_ne_binaries(Category, Key, Default, Node) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec get_node_value(config_category(), config_key()) -> any() | 'undefined'.
+-spec get_node_value(config_category(), config_key()) -> kz_json:api_json_term().
 get_node_value(Category, Key) ->
     get_node_value(Category, Key, 'undefined').
 
--spec get_node_value(config_category(), config_key(), Default) -> any() | Default.
+-spec get_node_value(config_category(), config_key(), Default) -> kz_json:json_term() | Default.
 get_node_value(Category, Key, Default) ->
     get_node_value(Category, Key, Default, node()).
 
--spec get_node_value(config_category(), config_key(), Default, config_node()) -> any() | Default.
+-spec get_node_value(config_category(), config_key(), Default, config_node()) -> kz_json:json_term() | Default.
 get_node_value(Category, Key, Default, Node) when not is_list(Key) ->
     get_node_value(Category, [kz_term:to_binary(Key)], Default, Node);
 get_node_value(Category, Keys, Default, Node) when not is_binary(Category) ->
@@ -459,15 +459,15 @@ get_node_value(Category, Keys, Default, Node) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec get(config_category(), config_key()) -> any() | 'undefined'.
+-spec get(config_category(), config_key()) -> kz_json:api_json_term().
 get(Category, Key) ->
     get(Category, Key, 'undefined').
 
--spec get(config_category(), config_key(), Default) -> any() | Default.
+-spec get(config_category(), config_key(), Default) -> kz_json:json_term() | Default.
 get(Category, Key, Default) ->
     get(Category, Key, Default, node()).
 
--spec get(config_category(), config_key(), Default, config_node()) -> any() | Default.
+-spec get(config_category(), config_key(), Default, config_node()) -> kz_json:json_term() | Default.
 get(Category, Key, Default, 'undefined') ->
     get(Category, Key, Default, ?KEY_DEFAULT);
 get(Category, Key, Default, Node) when not is_list(Key) ->
@@ -488,15 +488,15 @@ get(Category, Keys, Default, Node) ->
             Default
     end.
 
--spec get_current(config_category(), config_key()) -> any() | 'undefined'.
+-spec get_current(config_category(), config_key()) -> kz_json:api_json_term().
 get_current(Category, Key) ->
     get_current(Category, Key, 'undefined').
 
--spec get_current(config_category(), config_key(), Default) -> any() | Default.
+-spec get_current(config_category(), config_key(), Default) -> kz_json:json_term() | Default.
 get_current(Category, Key, Default) ->
     get_current(Category, Key, Default, node()).
 
--spec get_current(config_category(), config_key(), Default, config_node()) -> any() | Default.
+-spec get_current(config_category(), config_key(), Default, config_node()) -> kz_json:json_term() | Default.
 get_current(Category, Key, Default, 'undefined') ->
     get_current(Category, Key, Default, ?KEY_DEFAULT);
 get_current(Category, Key, Default, Node) when not is_list(Key) ->
