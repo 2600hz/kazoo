@@ -144,6 +144,21 @@ rfc1036_test_() ->
      || {Date, Expected} <- Tests
     ].
 
+rfc2822_test_() ->
+    Tests = [{{{2015,4,7},{1,3,2}}, <<"Tue, 07 Apr 2015 01:03:02 +0000">>}
+            ,{{{2015,12,12},{12,13,12}}, <<"Sat, 12 Dec 2015 12:13:12 +0000">>}
+            ,{63595733389, <<"Wed, 08 Apr 2015 17:29:49 +0000">>}
+            ,{{{2018,10,23},{15,53,1}}, <<"PST">>, <<"Tue, 23 Oct 2018 15:53:01 +0700">>}
+            ],
+    [rfc2822_assert(Test)
+     || Test <- Tests
+    ].
+
+rfc2822_assert({Date, Expected}) ->
+    ?_assertEqual(Expected, kz_time:rfc2822(Date));
+rfc2822_assert({Date, TZ, Expected}) ->
+    ?_assertEqual(Expected, kz_time:rfc2822(Date, TZ)).
+
 iso8601_test_() ->
     Tests = [{{2015,4,7}, <<"2015-04-07">>}
             ,{{{2015,4,7},{0,0,0}}, <<"2015-04-07T00:00:00Z">>}
