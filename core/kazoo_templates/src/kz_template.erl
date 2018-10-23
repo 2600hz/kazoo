@@ -22,6 +22,7 @@
 -type template() :: nonempty_string() | kz_term:ne_binary().
 
 -type template_result() :: {'ok', iolist() | atom()} |
+                           'ok' |
                            {'error', any()}.
 
 %% copied from erlydtl.erl
