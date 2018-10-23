@@ -706,35 +706,41 @@ launch_cf_module(#state{call=Call
     end.
 
 -spec do_launch_cf_module(state()) -> state().
+do_launch_cf_module(#state{flow=Flow}=State) ->
+    Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
+    do_launch_cf_module(State, find_cf_module(Module)).
+
+-spec do_launch_cf_module(state(), atom()) -> state().
+do_launch_cf_module(#state{call=Call
+                          ,cf_module_pid=OldPidRef
+                          }=State
+                   ,'undefined'
+                   ) ->
+    lager:error("unknown callflow action, reverting to last action"),
+    continue(self()),
+    OldAction = kapps_call:kvs_fetch('cf_last_action', Call),
+    State#state{cf_module_pid='undefined'
+               ,cf_module_old_pid=OldPidRef
+               ,call=update_actions(OldAction, Call)
+               };
 do_launch_cf_module(#state{call=Call
                           ,flow=Flow
                           ,cf_module_pid=OldPidRef
-                          }=State) ->
-    Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
+                          }=State
+                   ,Action
+                   ) ->
     Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
-
-    case find_cf_module(Module) of
-        'undefined' ->
-            lager:error("unknown callflow action, reverting to last action"),
-            continue(self()),
-            OldAction = kapps_call:kvs_fetch('cf_last_action', Call),
-            State#state{cf_module_pid='undefined'
-                       ,cf_module_old_pid=OldPidRef
-                       ,call=update_actions(OldAction, Call)
-                       };
-        Action ->
-            lager:info("moving to action '~s'", [Action]),
-            %% Actions need to be updated before the module is spawned, in case
-            %% the module calls cf_exe:set_call/1 - that would undo the later
-            %% old_action/last_action update
-            Call1 = update_actions(Action, Call),
-            PidRef = spawn_cf_module(Action, Data, Call1),
-            link(get_pid(PidRef)),
-            State#state{cf_module_pid=PidRef
-                       ,cf_module_old_pid=OldPidRef
-                       ,call=Call1
-                       }
-    end.
+    lager:info("moving to action '~s'", [Action]),
+    %% Actions need to be updated before the module is spawned, in case
+    %% the module calls cf_exe:set_call/1 - that would undo the later
+    %% old_action/last_action update
+    Call1 = update_actions(Action, Call),
+    PidRef = spawn_cf_module(Action, Data, Call1),
+    link(get_pid(PidRef)),
+    State#state{cf_module_pid=PidRef
+               ,cf_module_old_pid=OldPidRef
+               ,call=Call1
+               }.
 
 -spec find_cf_module(kz_term:ne_binary()) -> kz_term:api_atom().
 find_cf_module(ModuleBin) ->
