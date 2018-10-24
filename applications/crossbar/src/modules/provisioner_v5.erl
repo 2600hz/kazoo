@@ -455,9 +455,12 @@ settings_audio(JObj) ->
            ],
     settings_audio(Codecs, Keys, kz_json:new()).
 
+
 -spec settings_audio(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
-settings_audio([], _, JObj) -> JObj;
-settings_audio(_, [], JObj) -> JObj;
+settings_audio([], [], JObj) -> JObj;
+settings_audio([], [Key|Keys], JObj) ->
+    %% kz_json:set_value does not let you set null values so this does that...
+    settings_audio([], Keys, kz_json:from_list([{Key, 'null'} | kz_json:to_proplist(JObj)]));
 settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
     settings_audio(Codecs, Keys, kz_json:set_value(Key, Codec, JObj)).
 
