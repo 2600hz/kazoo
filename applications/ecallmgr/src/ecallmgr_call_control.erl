@@ -345,7 +345,8 @@ handle_event(JObj, _State) ->
     _ = case kz_util:get_event_type(JObj) of
             {<<"call">>, <<"command">>} -> handle_call_command(JObj);
             {<<"conference">>, <<"command">>} -> handle_conference_command(JObj);
-            {<<"error">>, _EvtName} -> lager:debug("ignoring error event for ~s", [_EvtName])
+            {<<"error">>, _EvtName} -> lager:debug("ignoring error event for ~s", [_EvtName]);
+            {_Cat, _Name} -> lager:debug("ignoring ~s: ~s", [_Cat, _Name])
         end,
     'ignore'.
 
@@ -658,12 +659,10 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
     lager:info("updating callid from ~s to ~s", [CallId, ReplacedBy]),
     unbind_from_events(Node, CallId),
     unreg_for_call_related_events(CallId),
-    gen_listener:rm_binding(self(), 'call', [{'callid', CallId}]),
 
     kz_util:put_callid(ReplacedBy),
     bind_to_events(Node, ReplacedBy),
     reg_for_call_related_events(ReplacedBy),
-    gen_listener:add_binding(self(), 'call', [{'callid', ReplacedBy}]),
 
     lager:info("...call id updated, continuing post-transfer"),
     Commands = [kz_json:set_value(<<"Call-ID">>, ReplacedBy, JObj)
@@ -678,9 +677,9 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_channel_create(kz_term:proplist(), state()) -> state().
+-spec handle_channel_create(kzd_freeswitch:data(), state()) -> state().
 handle_channel_create(Props, #state{call_id=CallId}=State) ->
-    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    LegId = kzd_freeswitch:call_id(Props),
     case ecallmgr_fs_channel:get_other_leg(LegId, Props) of
         'undefined' -> State;
         CallId -> add_leg(Props, LegId, State);
@@ -766,9 +765,9 @@ replace_call_id([Prop|T], Call1, Call2, Swap) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_channel_destroy(kz_term:proplist(), state()) -> state().
+-spec handle_channel_destroy(kzd_freeswitch:data(), state()) -> state().
 handle_channel_destroy(Props, #state{call_id=CallId}=State) ->
-    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    LegId = kzd_freeswitch:call_id(Props),
     case ecallmgr_fs_channel:get_other_leg(LegId, Props) =:= CallId of
         'true' -> remove_leg(Props, State);
         'false' -> State
