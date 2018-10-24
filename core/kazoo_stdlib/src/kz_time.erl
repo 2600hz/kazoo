@@ -11,6 +11,7 @@
         ,to_gregorian_seconds/2
         ,pretty_print_datetime/1
         ,rfc1036/1, rfc1036/2
+        ,rfc2822/1, rfc2822/2
         ,iso8601/1, iso8601/2
         ,iso8601_time/1
         ,from_iso8601/1
@@ -135,6 +136,37 @@ rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
     >>;
 rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
     rfc1036(calendar:gregorian_seconds_to_datetime(Timestamp), TZ).
+
+-spec rfc2822(calendar:datetime() | gregorian_seconds()) -> kz_term:ne_binary().
+rfc2822(Timestamp) ->
+    rfc2822(Timestamp, <<"GMT">>).
+
+-spec rfc2822(calendar:datetime() | gregorian_seconds(), kz_term:ne_binary()) -> kz_term:ne_binary().
+rfc2822(Timestamp, TZ) when is_integer(Timestamp) ->
+    rfc2822(calendar:gregorian_seconds_to_datetime(Timestamp), TZ);
+rfc2822(Datetime = {Date={Y, Mo, D}, {H, Mi, S}}, TZ) ->
+    Wday = calendar:day_of_the_week(Date),
+    <<(weekday(Wday))/binary, ", ",
+      (kz_binary:pad_left(kz_term:to_binary(D), 2, <<"0">>))/binary, " ",
+      (month(Mo))/binary, " ",
+      (kz_term:to_binary(Y))/binary, " ",
+      (kz_binary:pad_left(kz_term:to_binary(H), 2, <<"0">>))/binary, ":",
+      (kz_binary:pad_left(kz_term:to_binary(Mi), 2, <<"0">>))/binary, ":",
+      (kz_binary:pad_left(kz_term:to_binary(S), 2, <<"0">>))/binary,
+      " ", (tz_offset(Datetime, TZ))/binary
+    >>.
+
+-spec tz_offset(calendar:datetime(), kz_term:ne_binary()) -> kz_term:ne_binary().
+tz_offset(Datetime, FromTz) ->
+    case localtime:tz_shift(Datetime, FromTz, <<"UTC">>) of
+        0 -> <<"+0000">>;
+        {'error', 'unknown_tz'} -> <<"+0000">>;
+        {Sign, H, M} ->
+            list_to_binary([kz_term:to_binary(Sign)
+                           ,kz_binary:pad_left(kz_term:to_binary(H), 2, <<"0">>)
+                           ,kz_binary:pad_left(kz_term:to_binary(M), 2, <<"0">>)
+                           ])
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Format time part of ISO 8601.
