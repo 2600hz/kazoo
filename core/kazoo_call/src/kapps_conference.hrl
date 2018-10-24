@@ -17,6 +17,7 @@
 
 -define(DEFAULT_PROFILE_CONFIG, [{<<"alone-sound">>, <<"conf-alone">>}
                                 ,{<<"caller-controls">>, <<"default">>}
+                                ,{<<"channels">>, 2}
                                 ,{<<"comfort-noise">>, 1000}
                                 ,{<<"deaf-sound">>, <<"conf-deaf">>}
                                 ,{<<"energy-level">>, 20}
