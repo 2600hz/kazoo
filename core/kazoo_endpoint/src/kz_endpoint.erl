@@ -1720,7 +1720,7 @@ encryption_method_map(CCVs, Endpoint) ->
 
 -spec set_sip_invite_domain(ccv_acc()) -> ccv_acc().
 set_sip_invite_domain({Endpoint, Call, CallFwd, CCVs}) ->
-    SipRealm = get_sip_realm(Endpoint, Call, kapps_call:request_realm(Call)),
+    SipRealm = get_sip_realm(Endpoint, kapps_call:account_id(Call), kapps_call:request_realm(Call)),
     {Endpoint, Call, CallFwd
     ,kz_json:set_value(<<"SIP-Invite-Domain">>, SipRealm, CCVs)
     }.
