@@ -35,14 +35,14 @@
                                 ,{<<"unmuted-sound">>, <<"conf-unmuted">>}
                                 ]).
 
--define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                             ,{<<"caller-controls">>, <<"paging">>}
-                             ,{<<"interval">>, 20}
-                             ,{<<"energy-level">>, 20}
+-define(PAGE_PROFILE_CONFIG, [{<<"caller-controls">>, <<"paging">>}
                              ,{<<"comfort-noise">>, 1000}
-                             ,{<<"moh-sound">>, <<"silence_stream://1">>}
+                             ,{<<"energy-level">>, 20}
                              ,{<<"enter-sound">>, <<"silence_stream://1">>}
                              ,{<<"exit-sound">>, <<"silence_stream://1">>}
+                             ,{<<"interval">>, 20}
+                             ,{<<"moh-sound">>, <<"silence_stream://1">>}
+                             ,{<<"rate">>, 8000}
                              ]).
 
 -define(DEFAULT_CONTROLS, [kz_json:from_list([{<<"action">>, <<"mute">>},     {<<"digits">>, <<"*1">>}])
