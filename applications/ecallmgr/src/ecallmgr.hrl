@@ -561,5 +561,7 @@
         ,<<"presence">>
         ]).
 
+-define(HTTP_GET_PREFIX, "http_cache://").
+
 -define(ECALLMGR_HRL, 'true').
 -endif.

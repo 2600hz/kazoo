@@ -387,7 +387,7 @@ maybe_fix_profile_tts(Profile, FSNode) ->
 fix_flite_tts(Profile, FSNode) ->
     case ecallmgr_fs_nodes:has_capability(FSNode, <<"tts">>) of
         'false' ->
-            lager:info("node ~s doesn't have tts capabilities"),
+            lager:info("node ~s doesn't have tts capabilities", [FSNode]),
             kz_json:delete_keys([<<"tts-voice">>
                                 ,<<"tts-engine">>
                                 ,<<"announce-count">>
@@ -408,6 +408,14 @@ conference_sound(Key, Value, Profile) ->
     maybe_convert_sound(kz_binary:reverse(Key), Key, Value, Profile).
 
 -spec maybe_convert_sound(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+maybe_convert_sound(_Rev, <<"moh-sound">>=Key, Value, Profile) ->
+    MediaName =
+        case ecallmgr_util:media_path(Value, 'new', kz_util:get_callid(), kz_json:new()) of
+            <<?HTTP_GET_PREFIX, Media/binary>> -> Media;
+            Media -> Media
+        end,
+    lager:debug("fixed up ~s from ~s to ~s", [Key, Value, MediaName]),
+    kz_json:set_value(Key, MediaName, Profile);
 maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
     MediaName = ecallmgr_util:media_path(Value, 'new', kz_util:get_callid(), kz_json:new()),
     lager:debug("fixed up ~s from ~s to ~s", [Key, Value, MediaName]),
