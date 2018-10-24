@@ -57,8 +57,6 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
--define(HTTP_GET_PREFIX, "http_cache://").
-
 -define(FS_MULTI_VAR_SEP, kapps_config:get_ne_binary(?APP_NAME, <<"multivar_separator">>, <<"~">>)).
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 
