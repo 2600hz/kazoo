@@ -30,7 +30,7 @@
                                 ,{<<"moderator-controls">>, <<"default">>}
                                 ,{<<"moh-sound">>, <<"$${hold_music}">>}
                                 ,{<<"muted-sound">>, <<"conf-muted">>}
-                                ,{<<"rate">>, 16000}
+                                ,{<<"rate">>, 48000}
                                 ,{<<"undeaf-sound">>, <<"conf-undeaf">>}
                                 ,{<<"unmuted-sound">>, <<"conf-unmuted">>}
                                 ]).
