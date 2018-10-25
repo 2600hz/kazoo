@@ -924,12 +924,18 @@ publish_event(Call, SlotNumber, Event) ->
           ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
           ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
           ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-          ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+          ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
           ,{<<"Event-Name">>, Event}
           ,{<<"Parking-Slot">>, kz_term:to_binary(SlotNumber)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapi_call:publish_event(Cmd).
+
+-spec custom_channel_vars(kapps_call:call()) -> kz_json:object().
+custom_channel_vars(Call) ->
+    JObj = kapps_call:custom_channel_vars(Call),
+    Realm = kapps_call:account_realm(Call),
+    kz_json:set_value(<<"Realm">>, Realm, JObj).
 
 -spec get_slot(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_slot(SlotNumber, AccountDb) ->
