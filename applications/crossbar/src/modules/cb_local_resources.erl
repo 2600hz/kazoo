@@ -165,18 +165,24 @@ maybe_aggregate_resource(Context, 'success') ->
         'false' ->
             maybe_remove_aggregate(ResourceId, Context);
         'true' ->
-            lager:debug("adding resource to the sip auth aggregate"),
-            Update = [{kz_doc:path_revision(), 'null'}],
-            UpdateOptions = [{'update', Update}
-                            ,{'create', kz_json:to_proplist(cb_context:doc(Context))}
-                            ,{'ensure_saved', 'true'}
-                            ],
-            {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, ResourceId, UpdateOptions),
+            aggregate_resource(kz_doc:set_id(cb_context:doc(Context), ResourceId)),
             _ = kapi_switch:publish_reload_gateways(),
             _ = kapi_switch:publish_reload_acls(),
             'true'
     end;
 maybe_aggregate_resource(_Context, _Status) -> 'false'.
+
+-spec aggregate_resource(kz_json:object()) -> 'ok'.
+aggregate_resource(Resource) ->
+    lager:debug("adding resource to the sip auth aggregate"),
+    Doc = kz_doc:delete_revision(Resource),
+    Update = kz_json:to_proplist(kz_json:flatten(Doc)),
+    UpdateOptions = [{'update', Update}
+                    ,{'create', []}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Resource), UpdateOptions),
+    'ok'.
 
 -spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggregate(ResourceId, Context) ->
@@ -282,13 +288,7 @@ maybe_aggregate_resources([Resource|Resources]) ->
                   )
     of
         'true' ->
-            lager:debug("adding resource to the sip auth aggregate"),
-            Update = [{kz_doc:path_revision(), 'null'}],
-            UpdateOptions = [{'update', Update}
-                            ,{'create', kz_json:to_proplist(Resource)}
-                            ,{'ensure_saved', 'true'}
-                            ],
-            {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Resource), UpdateOptions),
+            aggregate_resource(Resource),
             _ = kapi_switch:publish_reload_gateways(),
             _ = kapi_switch:publish_reload_acls(),
             maybe_aggregate_resources(Resources);
