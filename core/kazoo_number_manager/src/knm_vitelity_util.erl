@@ -23,6 +23,8 @@
         ,xml_resp_info/1
         ,xml_resp_response/1
         ,xml_els_to_proplist/1
+
+        ,migrate/0
         ]).
 
 -include("knm.hrl").
@@ -30,12 +32,26 @@
 
 -export_type([query_options/0]).
 
+-define(DEFAULT_HOST, "api.vitelity.net").
+-define(DEFAULT_URL, <<"https://" ?DEFAULT_HOST "/api.php">>).
 -define(API_URL
        ,kapps_config:get_ne_binary(?KNM_VITELITY_CONFIG_CAT
                                   ,<<"api_uri">>
-                                  ,<<"https://api.vitelity.net/api.php">>
+                                  ,?DEFAULT_URL
                                   )
        ).
+
+-spec migrate() -> 'ok'.
+migrate() ->
+    case ?API_URL of
+        <<"http://", ?DEFAULT_HOST, "/api.php">> =_OldHost ->
+            io:format(?MODULE_STRING": migrating from old ~s to new ~s~n"
+                     ,[_OldHost, ?DEFAULT_URL]
+                     ),
+            {'ok', _} = kapps_config:set_default(?KNM_VITELITY_CONFIG_CAT, <<"api_url">>, ?DEFAULT_URL),
+            'ok';
+        _URL -> 'ok'
+    end.
 
 -spec api_uri() -> kz_term:ne_binary().
 api_uri() -> ?API_URL.

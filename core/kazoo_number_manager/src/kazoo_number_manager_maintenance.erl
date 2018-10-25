@@ -479,7 +479,8 @@ migrate() ->
     lager:info("migrating all accounts"),
     pforeach(fun migrate/1, kapps_util:get_all_accounts()),
     lager:info("migrating unassigned numbers"),
-    migrate_unassigned_numbers().
+    migrate_unassigned_numbers(),
+    migrate_carrier_module_settings().
 
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
 migrate(Account) ->
@@ -1013,3 +1014,8 @@ ensure_adminonly_features_are_reachable() ->
                      ,[list_features(ToAdd)]),
             set_features_on_system_config(ToAdd ++ Configured)
     end.
+
+-spec migrate_carrier_module_settings() -> 'ok'.
+migrate_carrier_module_settings() ->
+    %% carrier modules needing to migrate settings
+    knm_vitelity_util:migrate().
