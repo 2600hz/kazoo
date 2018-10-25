@@ -4,6 +4,7 @@
     "description": "Schema for callflow system_config",
     "properties": {
         "allow_authz_context_overrides": {
+            "default": false,
             "description": "callflow allow_authz_context_overrides",
             "type": "boolean"
         },
