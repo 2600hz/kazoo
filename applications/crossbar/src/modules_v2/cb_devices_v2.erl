@@ -723,28 +723,34 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec maybe_aggregate_device(kz_term:api_binary(), cb_context:context()) -> boolean().
+-spec maybe_aggregate_device(kz_term:api_ne_binary(), cb_context:context()) -> boolean().
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 
--spec maybe_aggregate_device(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> boolean().
+-spec maybe_aggregate_device(kz_term:api_ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_device(DeviceId, Context, 'success') ->
     case kz_term:is_true(cb_context:fetch(Context, 'aggregate_device'))
         andalso ?DEVICES_ALLOW_AGGREGATES
     of
         'false' -> maybe_remove_aggregate(DeviceId, Context);
         'true' ->
-            lager:debug("adding device to the sip auth aggregate"),
-            Update = [{kz_doc:path_revision(), 'null'}],
-            UpdateOptions = [{'update', Update}
-                            ,{'create', kz_json:to_proplist(cb_context:doc(Context))}
-                            ,{'ensure_saved', 'true'}
-                            ],
-            {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, DeviceId, UpdateOptions),
+            aggregate_device(cb_context:doc(Context)),
             _ = kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
+
+-spec aggregate_device(kz_json:object()) -> 'ok'.
+aggregate_device(Device) ->
+    lager:debug("adding device to the sip auth aggregate"),
+    Doc = kz_doc:delete_revision(Device),
+    Update = kz_json:to_proplist(kz_json:flatten(Doc)),
+    UpdateOptions = [{'update', Update}
+                    ,{'create', []}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Device), UpdateOptions),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
