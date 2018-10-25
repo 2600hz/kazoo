@@ -33,7 +33,7 @@
 -define(API_URL
        ,kapps_config:get_ne_binary(?KNM_VITELITY_CONFIG_CAT
                                   ,<<"api_uri">>
-                                  ,<<"http://api.vitelity.net/api.php">>
+                                  ,<<"https://api.vitelity.net/api.php">>
                                   )
        ).
 
