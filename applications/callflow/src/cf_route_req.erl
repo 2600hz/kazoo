@@ -102,7 +102,7 @@ allow_no_match(Call) ->
 
 -spec is_authz_context(kapps_call:call()) -> boolean().
 is_authz_context(Call) ->
-    is_authz_context(Call, kapps_config:is_true(?APP_NAME, <<"allow_authz_context_overrides">>)).
+    is_authz_context(Call, kapps_config:is_true(?APP_NAME, <<"allow_authz_context_overrides">>, 'false')).
 
 -spec is_authz_context(kapps_call:call(), boolean()) -> boolean().
 is_authz_context(_Call, 'false') ->
