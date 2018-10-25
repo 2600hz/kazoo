@@ -242,7 +242,7 @@ import_template_doc(Id, TemplateDb, AccountId, AccountDb, JObj) ->
               ],
 
     UpdateOptions = [{'update', Updates}
-                    ,{'create', kz_json:to_proplist(kz_doc:flatten(JObj))}
+                    ,{'create', kz_json:to_proplist(kz_json:flatten(JObj))}
                     ,{'ensure_saved', 'true'}
                     ],
     _ = kz_datamgr:update_doc(AccountDb, Id, UpdateOptions),
