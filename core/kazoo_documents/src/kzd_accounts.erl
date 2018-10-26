@@ -1344,21 +1344,9 @@ ensure_account_has_realm(_AccountId, {Doc, Errors}) ->
 
 -spec ensure_account_has_timezone(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
 ensure_account_has_timezone(_AccountId, {Doc, Errors}) ->
-    case timezone(Doc) of
-        'undefined' ->
-            Timezone = get_timezone_from_parent(Doc),
-            lager:debug("selected timezone: ~s", [Timezone]),
-            {set_timezone(Doc, Timezone), Errors};
-        _Timezone -> {Doc, Errors}
-    end.
-
--spec get_timezone_from_parent(doc()) -> kz_term:ne_binary().
-get_timezone_from_parent(Doc) ->
-    case create_new_tree(Doc) of
-        'error' -> default_timezone();
-        [] -> default_timezone();
-        Tree -> timezone(lists:last(Tree))
-    end.
+    Timezone = timezone(Doc),
+    lager:debug("selected timezone: ~s", [Timezone]),
+    {set_timezone(Doc, Timezone), Errors}.
 
 -spec random_realm() -> kz_term:ne_binary().
 random_realm() ->
