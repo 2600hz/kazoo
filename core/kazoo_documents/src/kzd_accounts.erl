@@ -1299,7 +1299,8 @@ is_alphanumeric(_) ->
 -type validation_errors() :: [validation_error()].
 -spec validate(kz_term:api_ne_binary(), doc()) ->
                       {'true', doc()} |
-                      {'validation_errors', validation_errors()}.
+                      {'validation_errors', validation_errors()} |
+                      {'system_error', atom()}.
 validate(AccountId, ReqJObj) ->
     ValidateFuns = [fun ensure_account_has_realm/2
                    ,fun ensure_account_has_timezone/2
@@ -1310,9 +1311,11 @@ validate(AccountId, ReqJObj) ->
                    ,fun validate_schema/2
                    ,fun normalize_alphanum_name/2
                    ],
-    case validate(AccountId, ReqJObj, ValidateFuns) of
+    try validate(AccountId, ReqJObj, ValidateFuns) of
         {AccountDoc, []} -> {'true', AccountDoc};
         {_AccountDoc, ValidationErrors} -> {'validation_errors', ValidationErrors}
+    catch
+        'throw':SystemError -> SystemError
     end.
 
 -type validate_acc() :: {doc(), validation_errors()}.
