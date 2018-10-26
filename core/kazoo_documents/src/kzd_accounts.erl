@@ -1625,7 +1625,9 @@ create_new_tree(Doc) ->
 
 create_tree_from_master() ->
     case kapps_util:get_master_account_id() of
-        {'ok', MasterAccountId} -> [MasterAccountId];
+        {'ok', MasterAccountId} ->
+            lager:debug("using master account ~s as tree", [MasterAccountId]),
+            [MasterAccountId];
         {'error', _} ->
             case kapps_util:get_all_accounts() of
                 [] -> [];
