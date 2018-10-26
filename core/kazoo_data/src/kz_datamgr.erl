@@ -947,11 +947,15 @@ save_update(DbName, Id, Options, UpdatedDoc) ->
     EnsureSaved = props:is_true('ensure_saved', Options, 'false'),
 
     case save_doc(DbName, ExtraUpdatedDoc) of
-        {'ok', _}=OK -> OK;
+        {'ok', _Saved}=OK ->
+            lager:debug("saved ~s/~s: ~s", [DbName, Id, kz_json:encode(_Saved)]),
+            OK;
         {'error', 'conflict'} when EnsureSaved ->
             lager:debug("saving ~s to ~s resulted in a conflict, trying again", [Id, DbName]),
             update_doc(DbName, Id, Options);
-        {'error', _}=E -> E
+        {'error', _E}=Error ->
+            lager:debug("failed to save ~s: ~p", [Id, _E]),
+            Error
     end.
 
 -spec update_not_found(kz_term:ne_binary(), docid(), update_options()) ->
@@ -967,6 +971,7 @@ update_not_found(DbName, Id, Options) ->
                                  ++ props:get_value('extra_update', Options, [])
                                 ,JObj
                                 ),
+    lager:debug("attempting to create ~s: ~s", [Id, kz_json:encode(Updated)]),
     save_doc(DbName, Updated).
 
 %%------------------------------------------------------------------------------
