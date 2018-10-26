@@ -221,6 +221,9 @@ maybe_update_doc(DbName, JObj) ->
         'false' -> {'ok', JObj};
         'true' ->
             Updates = kz_json:to_proplist(kz_json:flatten(JObj)),
+            lager:debug("updates to jobj: ~p", [JObj]),
+            lager:debug("~p", [Updates]),
+
             Update = [{'update', Updates}
                      ,{'ensure_saved', 'true'}
                      ],
@@ -930,6 +933,7 @@ apply_updates_and_save(DbName, Id, Options, CurrentDoc, UpdateProps) ->
             lager:debug("updates to ~s result in the same doc", [Id]),
             {'ok', CurrentDoc};
         'false' ->
+            lager:debug("attempting to save ~s", [kz_json:encode(UpdatedDoc)]),
             save_update(DbName, Id, Options, UpdatedDoc)
     end.
 
