@@ -219,6 +219,7 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
         'false' -> {'ok', JObj};
+        'undefined' -> save_doc(DbName, JObj);
         'true' ->
             Updates = kz_json:to_proplist(kz_json:flatten(JObj)),
             lager:debug("updates to jobj: ~p", [JObj]),
@@ -230,10 +231,11 @@ maybe_update_doc(DbName, JObj) ->
             update_doc(DbName, kz_doc:id(JObj), Update)
     end.
 
--spec should_update(kz_term:ne_binary(), kz_json:object()) -> boolean().
+-spec should_update(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_boolean().
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
         {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
+        {'error', 'not_found'} -> 'undefined';
         {'error', _} -> 'true'
     end.
 
