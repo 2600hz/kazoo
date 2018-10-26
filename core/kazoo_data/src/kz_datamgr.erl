@@ -222,9 +222,6 @@ maybe_update_doc(DbName, JObj) ->
         'undefined' -> save_doc(DbName, JObj);
         'true' ->
             Updates = kz_json:to_proplist(kz_json:flatten(JObj)),
-            lager:debug("updates to jobj: ~p", [JObj]),
-            lager:debug("~p", [Updates]),
-
             Update = [{'update', Updates}
                      ,{'ensure_saved', 'true'}
                      ],
