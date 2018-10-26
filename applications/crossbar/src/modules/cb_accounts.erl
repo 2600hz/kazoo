@@ -501,9 +501,13 @@ validate_request(AccountId, Context) ->
 
     case kzd_accounts:validate(AccountId, ReqJObj) of
         {'true', AccountJObj} ->
-            Context1 = cb_context:set_req_data(Context, AccountJObj),
-            Context2 = cb_context:set_doc(Context1, AccountJObj),
-            extra_validation(AccountId, Context2);
+            lager:debug("validated account object"),
+            Updates = [{fun cb_context:set_req_data/2, AccountJObj}
+                      ,{fun cb_context:set_doc/2, AccountJObj}
+                      ,{fun cb_context:set_resp_status/2, 'success'}
+                      ],
+            Context1 = cb_context:setters(Context, Updates),
+            extra_validation(AccountId, Context1);
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on account"),
             add_validation_errors(Context, ValidationErrors);
