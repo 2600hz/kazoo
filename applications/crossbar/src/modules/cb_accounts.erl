@@ -503,9 +503,22 @@ validate_request(AccountId, Context) ->
         {'true', AccountJObj} ->
             Context1 = cb_context:set_req_data(Context, AccountJObj),
             extra_validation(AccountId, Context1);
-        {'false', {Path, Reason, Msg}} ->
-            cb_context:add_validation_error(Path, Reason, Msg, Context)
+        {'validation_errors', ValidationErrors} ->
+            lager:info("validation errors on account"),
+            add_validation_errors(Context, ValidationErrors);
+        {'system_error', Error} ->
+            lager:info("system error validating account: ~p", [Error]),
+            cb_context:add_system_error(Error, Context)
     end.
+
+add_validation_errors(Context, ValidationErrors) ->
+    lists:foldl(fun add_validation_error/2
+               ,Context
+               ,ValidationErrors
+               ).
+
+add_validation_error({Path, Reason, Msg}, Context) ->
+    cb_context:add_validation_error(Path, Reason, Msg, Context).
 
 extra_validation(AccountId, Context) ->
     Extra = [fun(_, C) ->  maybe_import_enabled(C) end
