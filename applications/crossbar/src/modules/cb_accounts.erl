@@ -22,9 +22,6 @@
         ]).
 
 -export([notify_new_account/1]).
--export([is_unique_realm/2
-        ,is_unique_account_name/2
-        ]).
 
 -export([delete_account/1]).
 
@@ -45,9 +42,6 @@
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 
--define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
--define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
-
 -define(PVT_TYPE, kzd_accounts:type()).
 -define(CHILDREN, <<"children">>).
 -define(DESCENDANTS, <<"descendants">>).
@@ -57,15 +51,8 @@
 -define(PARENTS, <<"parents">>).
 -define(RESELLER, <<"reseller">>).
 
--define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
 
--define(ACCOUNT_REALM_SUFFIX
-       ,kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>)
-       ).
--define(RANDOM_REALM_STRENGTH
-       ,kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3)
-       ).
 -define(ALLOW_DIRECT_CLIENTS
        ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true')
        ).
@@ -276,6 +263,11 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
         _Else -> Context1
     end.
 
+-spec add_pvt_api_key(cb_context:context()) -> cb_context:context().
+add_pvt_api_key(Context) ->
+    JObj = cb_context:doc(Context),
+    cb_context:set_doc(Context, kzd_accounts:add_pvt_api_key(JObj)).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -325,7 +317,8 @@ put(Context, PathAccountId) ->
     WithPVTs = crossbar_doc:update_pvt_parameters(ReqJObj, Context),
 
     lager:info("creating new account with id ~s", [NewAccountId]),
-    try kzdb_account:create(NewAccountId, WithPVTs) of
+    WithParent = kz_json:set_value(<<"pvt_parent_id">>, PathAccountId, WithPVTs),
+    try kzdb_account:create(NewAccountId, WithParent) of
         'undefined' ->
             ContextErr = cb_context:add_system_error('datastore_fault', Context),
             unroll(ContextErr, NewAccountId);
@@ -502,126 +495,55 @@ prepare_context(Context, AccountId, AccountDb) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 validate_request(AccountId, Context) ->
-    ValidateFuns = [fun ensure_account_has_realm/2
-                   ,fun ensure_account_has_timezone/2
-                   ,fun remove_spaces/2
-                   ,fun cleanup_leaky_keys/2
-                   ,fun validate_realm_is_unique/2
-                   ,fun validate_account_name_is_unique/2
-                   ,fun validate_account_schema/2
-                   ,fun disallow_direct_clients/2
-                   ,fun(_, C) -> cb_modules_util:normalize_alphanum_name(C) end
-                   ],
+    ReqJObj = cb_context:req_data(Context),
+
+    case kzd_accounts:validate(AccountId, ReqJObj) of
+        {'true', AccountJObj} ->
+            Context1 = cb_context:set_req_data(Context, AccountJObj),
+            extra_validation(AccountId, Context1);
+        {'false', {Path, Reason, Msg}} ->
+            cb_context:add_validation_error(Path, Reason, Msg, Context)
+    end.
+
+extra_validation(AccountId, Context) ->
+    Extra = [fun(_, C) ->  maybe_import_enabled(C) end
+            ,fun disallow_direct_clients/2
+            ],
     lists:foldl(fun(F, C) -> F(AccountId, C) end
                ,Context
-               ,ValidateFuns
+               ,Extra
                ).
 
--spec ensure_account_has_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-ensure_account_has_realm(_AccountId, Context) ->
-    JObj = cb_context:req_data(Context),
-    case kzd_accounts:realm(JObj) of
-        'undefined' ->
-            Realm = random_realm(),
-            lager:debug("req has no realm, creating random realm '~s'", [Realm]),
-            cb_context:set_req_data(Context, kzd_accounts:set_realm(JObj, Realm));
-        _Realm ->
-            lager:debug("req has realm '~s'", [_Realm]),
-            Context
-    end.
+-spec disallow_direct_clients(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+disallow_direct_clients(AccountId, Context) ->
+    ShouldAllow = ?ALLOW_DIRECT_CLIENTS,
+    lager:debug("will allow direct clients: ~s", [ShouldAllow]),
+    maybe_disallow_direct_clients(AccountId, Context, ShouldAllow).
 
--spec ensure_account_has_timezone(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-ensure_account_has_timezone(_AccountId, Context) ->
-    JObj = cb_context:req_data(Context),
-    Timezone = kz_json:get_value(<<"timezone">>, JObj, get_timezone_from_parent(Context)),
-    lager:debug("selected timezone: ~s", [Timezone]),
-    cb_context:set_req_data(Context, kzd_accounts:set_timezone(JObj, Timezone)).
-
--spec get_timezone_from_parent(cb_context:context()) -> kz_term:ne_binary().
-get_timezone_from_parent(Context) ->
-    case create_new_tree(Context) of
-        'error' -> kzd_accounts:default_timezone();
-        [] -> kzd_accounts:default_timezone();
-        Tree -> kzd_accounts:timezone(lists:last(Tree))
-    end.
-
--spec random_realm() -> kz_term:ne_binary().
-random_realm() ->
-    <<(kz_binary:rand_hex(?RANDOM_REALM_STRENGTH))/binary, ".", (?ACCOUNT_REALM_SUFFIX)/binary>>.
-
--spec remove_spaces(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-remove_spaces(_AccountId, Context) ->
-    ReqData = lists:foldl(fun remove_spaces_fold/2, cb_context:req_data(Context), ?REMOVE_SPACES),
-    cb_context:set_req_data(Context, ReqData).
-
--spec remove_spaces_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
-remove_spaces_fold(Key, Acc) ->
-    case kz_json:get_value(Key, Acc) of
-        'undefined' -> Acc;
-        Value ->
-            NoSpaces = binary:replace(Value, <<" ">>, <<>>, ['global']),
-            kz_json:set_value(Key, NoSpaces, Acc)
-    end.
-
--spec cleanup_leaky_keys(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-cleanup_leaky_keys(_AccountId, Context) ->
-    RemoveKeys = [<<"wnm_allow_additions">>
-                 ,<<"superduper_admin">>
-                 ,<<"billing_mode">>
-                 ],
-    ReqData = kz_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
-    cb_context:set_req_data(Context, ReqData).
-
--spec validate_realm_is_unique(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_realm_is_unique(AccountId, Context) ->
-    Realm = kzd_accounts:realm(cb_context:req_data(Context)),
-    case is_unique_realm(AccountId, Realm) of
-        'true' ->
-            lager:debug("realm ~s is indeed unique", [Realm]),
-            Context;
+-spec maybe_disallow_direct_clients(kz_term:api_binary(), cb_context:context(), boolean()) ->
+                                           cb_context:context().
+maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
+    Context;
+maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    AuthUserReseller = kz_services_reseller:get_id(AuthAccountId),
+    case AuthUserReseller =/= MasterAccountId
+        orelse kz_services_reseller:is_reseller(AuthAccountId)
+    of
+        'true' -> Context;
         'false' ->
+            lager:debug("direct account ~p is disallowed from creating sub-accounts", [AuthAccountId]),
             Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Account realm already in use">>}
-                    ,{<<"cause">>, Realm}
+                    [{<<"message">>, <<"Direct account is not allowed to create sub-accounts">>}
+                    ,{<<"cause">>, AuthAccountId}
                     ]),
-            cb_context:add_validation_error([<<"realm">>], <<"unique">>, Msg, Context)
+            cb_context:add_validation_error([<<"account">>], <<"forbidden">>, Msg, Context)
     end.
 
--spec validate_account_name_is_unique(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_account_name_is_unique(AccountId, Context) ->
-    Name = kzd_accounts:name(cb_context:req_data(Context)),
-    case maybe_is_unique_account_name(AccountId, Name) of
-        'true' ->
-            lager:debug("name ~s is indeed unique", [Name]),
-            Context;
-        'false' ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Account name already in use">>}
-                    ,{<<"cause">>, Name}
-                    ]),
-            cb_context:add_validation_error([<<"name">>], <<"unique">>, Msg, Context)
-    end.
-
--spec validate_account_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_account_schema(AccountId, Context) ->
-    lager:debug("validating payload"),
-    OnSuccess = fun(C) ->
-                        lager:debug("account payload is valid"),
-                        on_successful_validation(AccountId, C)
-                end,
-    cb_context:validate_request_data(<<"accounts">>, Context, OnSuccess).
-
--spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
-    set_private_properties(Context);
-on_successful_validation(AccountId, Context) ->
-    Context1 = crossbar_doc:load_merge(AccountId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
-    maybe_import_enabled(Context1).
-
--spec maybe_import_enabled(cb_context:context()) ->
-                                  cb_context:context().
+-spec maybe_import_enabled(cb_context:context()) -> cb_context:context().
 maybe_import_enabled(Context) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
         'true' ->
@@ -654,33 +576,6 @@ maybe_import_enabled(Context, Doc, IsEnabled) ->
                  'false' -> kzd_accounts:disable(Doc)
              end,
     cb_context:set_doc(Context, NewDoc).
-
--spec disallow_direct_clients(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-disallow_direct_clients(AccountId, Context) ->
-    ShouldAllow = ?ALLOW_DIRECT_CLIENTS,
-    lager:debug("will allow direct clients: ~s", [ShouldAllow]),
-    maybe_disallow_direct_clients(AccountId, Context, ShouldAllow).
-
--spec maybe_disallow_direct_clients(kz_term:api_binary(), cb_context:context(), boolean()) ->
-                                           cb_context:context().
-maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
-    Context;
-maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    AuthAccountId = cb_context:auth_account_id(Context),
-    AuthUserReseller = kz_services_reseller:get_id(AuthAccountId),
-    case AuthUserReseller =/= MasterAccountId
-        orelse kz_services_reseller:is_reseller(AuthAccountId)
-    of
-        'true' -> Context;
-        'false' ->
-            lager:debug("direct account ~p is disallowed from creating sub-accounts", [AuthAccountId]),
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Direct account is not allowed to create sub-accounts">>}
-                    ,{<<"cause">>, AuthAccountId}
-                    ]),
-            cb_context:add_validation_error([<<"account">>], <<"forbidden">>, Msg, Context)
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Load an account document from the database
@@ -1146,107 +1041,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @doc This function returns the private fields to be added to a new account
-%% document
-%% @end
-%%------------------------------------------------------------------------------
--spec set_private_properties(cb_context:context()) -> cb_context:context().
-set_private_properties(Context) ->
-    PvtFuns = [fun add_pvt_type/1
-              ,fun add_pvt_vsn/1
-              ,fun maybe_add_pvt_api_key/1
-              ,fun maybe_add_pvt_tree/1
-              ,fun add_pvt_enabled/1
-              ],
-    lists:foldl(fun(F, C) -> F(C) end, Context, PvtFuns).
-
--spec add_pvt_type(cb_context:context()) -> cb_context:context().
-add_pvt_type(Context) ->
-    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
-
--spec add_pvt_vsn(cb_context:context()) -> cb_context:context().
-add_pvt_vsn(Context) ->
-    cb_context:set_doc(Context, kz_doc:set_vsn(cb_context:doc(Context), <<"1">>)).
-
--spec add_pvt_enabled(cb_context:context()) -> cb_context:context().
-add_pvt_enabled(Context) ->
-    JObj = cb_context:doc(Context),
-    case lists:reverse(kzd_accounts:tree(JObj)) of
-        [ParentId | _] ->
-            ParentDb = kz_util:format_account_id(ParentId, 'encoded'),
-            case (not kz_term:is_empty(ParentId))
-                andalso kz_datamgr:open_doc(ParentDb, ParentId)
-            of
-                {'ok', Parent} ->
-                    case kzd_accounts:is_enabled(Parent) of
-                        'true'  -> cb_context:set_doc(Context, kzd_accounts:enable(JObj));
-                        'false' -> cb_context:set_doc(Context, kzd_accounts:disable(JObj))
-                    end;
-                _Else -> Context
-            end;
-        [] ->
-            Context
-    end.
-
--spec maybe_add_pvt_api_key(cb_context:context()) -> cb_context:context().
-maybe_add_pvt_api_key(Context) ->
-    JObj = cb_context:doc(Context),
-    case kzd_accounts:api_key(JObj) of
-        'undefined' -> add_pvt_api_key(Context);
-        _Else -> Context
-    end.
-
--spec add_pvt_api_key(cb_context:context()) -> cb_context:context().
-add_pvt_api_key(Context) ->
-    JObj = cb_context:doc(Context),
-    APIKey = kz_term:to_hex_binary(crypto:strong_rand_bytes(32)),
-    cb_context:set_doc(Context, kzd_accounts:set_api_key(JObj, APIKey)).
-
--spec maybe_add_pvt_tree(cb_context:context()) -> cb_context:context().
-maybe_add_pvt_tree(Context) ->
-    case kzd_accounts:tree(cb_context:doc(Context)) of
-        [_|_] -> Context;
-        _Else -> add_pvt_tree(Context)
-    end.
-
--spec add_pvt_tree(cb_context:context()) -> cb_context:context().
-add_pvt_tree(Context) ->
-    case create_new_tree(Context) of
-        'error' -> cb_context:add_system_error('empty_tree_accounts_exist', Context);
-        Tree -> cb_context:set_doc(Context, kzd_accounts:set_tree(cb_context:doc(Context), Tree))
-    end.
-
--spec create_new_tree(cb_context:context() | kz_term:api_binary()) -> kz_term:ne_binaries() | 'error'.
-create_new_tree('undefined') ->
-    case kapps_util:get_master_account_id() of
-        {'ok', MasterAccountId} -> [MasterAccountId];
-        {'error', _} ->
-            case kapps_util:get_all_accounts() of
-                [] -> [];
-                _Else -> 'error'
-            end
-    end;
-create_new_tree(Parent) when is_binary(Parent) ->
-    ParentId = kz_util:format_account_id(Parent, 'raw'),
-    ParentDb = kz_util:format_account_id(Parent, 'encoded'),
-    case kz_datamgr:open_doc(ParentDb, ParentId) of
-        {'error', _} -> create_new_tree('undefined');
-        {'ok', JObj} ->
-            kzd_accounts:tree(JObj) ++ [ParentId]
-    end;
-create_new_tree(Context) ->
-    create_new_tree(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
-
-create_new_tree(_Context, ?HTTP_PUT, [{?KZ_ACCOUNTS_DB, [Parent]}]) ->
-    create_new_tree(Parent);
-create_new_tree(Context, _Verb, _Nouns) ->
-    JObj = cb_context:auth_doc(Context),
-    case kz_json:is_json_object(JObj) of
-        'false' -> create_new_tree('undefined');
-        'true' -> create_new_tree(kz_json:get_value(<<"account_id">>, JObj))
-    end.
-
-%%------------------------------------------------------------------------------
 %% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
@@ -1297,45 +1091,6 @@ after_create(Context, AccountDoc) ->
     _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [Context1]),
     lager:debug("started ~ps timer for new account notification", [Delay]),
     Context1.
-
-%%------------------------------------------------------------------------------
-%% @doc This function will determine if the realm in the request is
-%% unique or belongs to the request being made
-%% @end
-%%------------------------------------------------------------------------------
--spec is_unique_realm(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
-is_unique_realm(AccountId, Realm) ->
-    ViewOptions = [{'key', kz_term:to_lower_binary(Realm)}],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> kz_doc:id(JObj) =:= AccountId;
-        {'error', 'not_found'} -> 'true';
-        _Else -> 'false'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc This function will determine if the account name is unique
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_is_unique_account_name(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
-maybe_is_unique_account_name(AccountId, Name) ->
-    case kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"ensure_unique_name">>, 'true') of
-        'true' -> is_unique_account_name(AccountId, Name);
-        'false' -> 'true'
-    end.
-
--spec is_unique_account_name(kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
-is_unique_account_name(AccountId, Name) ->
-    AccountName = kzd_accounts:normalize_name(Name),
-    ViewOptions = [{'key', AccountName}],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'error', 'not_found'} -> 'true';
-        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= AccountId;
-        _Else ->
-            lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?KZ_ACCOUNTS_DB]),
-            'false'
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Send a notification that the account has been created

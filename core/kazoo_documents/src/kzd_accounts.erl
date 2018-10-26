@@ -102,6 +102,14 @@
 
         ,is_in_account_hierarchy/2, is_in_account_hierarchy/3
         ,normalize_name/1
+
+        ,validate/2
+        ,add_pvt_api_key/1
+
+        ,cpaas_token/1
+        ,set_cpaas_token/1, set_cpaas_token/2, maybe_set_cpaas_token/1
+
+        ,is_unique_realm/2
         ]).
 
 -include("kz_documents.hrl").
@@ -110,6 +118,28 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"accounts">>).
+-define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
+-define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
+
+-define(ACCOUNTS_CONFIG_CAT, <<"crossbar.accounts">>).
+-define(CONFIG_CAT, <<"crossbar">>).
+
+-define(SHOULD_ENSURE_SCHEMA_IS_VALID
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'true')
+       ).
+
+-define(SHOULD_FAIL_ON_INVALID_DATA
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false')
+       ).
+
+-define(ACCOUNT_REALM_SUFFIX
+       ,kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>)
+       ).
+-define(RANDOM_REALM_STRENGTH
+       ,kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3)
+       ).
+
+-define(REMOVE_SPACES, [<<"realm">>]).
 
 -spec new() -> doc().
 new() ->
@@ -1239,7 +1269,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %% This can possibly return an empty binary.
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_name(kz_term:api_binary()) -> kz_term:api_binary().
+-spec normalize_name(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 normalize_name('undefined') -> 'undefined';
 normalize_name(AccountName) ->
     << <<Char>>
@@ -1257,3 +1287,364 @@ is_alphanumeric(Char)
     'true';
 is_alphanumeric(_) ->
     'false'.
+
+%%------------------------------------------------------------------------------
+%% @doc Validate a requested account can be created
+%%
+%% Returns the updated account doc (with relevant defaults)
+%% or returns the validation error {Path, ErrorType, ErrorMessage}
+%% @end
+%%------------------------------------------------------------------------------
+-type validation_error() :: {kz_json:path(), kz_term:ne_binary(), kz_json:object()}.
+-type validation_errors() :: [validation_error()].
+-spec validate(kz_term:api_ne_binary(), doc()) ->
+                      {'true', doc()} |
+                      {'validation_errors', validation_errors()}.
+validate(AccountId, ReqJObj) ->
+    ValidateFuns = [fun ensure_account_has_realm/2
+                   ,fun ensure_account_has_timezone/2
+                   ,fun remove_spaces/2
+                   ,fun cleanup_leaky_keys/2
+                   ,fun validate_realm_is_unique/2
+                   ,fun validate_account_name_is_unique/2
+                   ,fun validate_schema/2
+                   ,fun normalize_alphanum_name/2
+                   ],
+    case validate(AccountId, ReqJObj, ValidateFuns) of
+        {AccountDoc, []} -> {'true', AccountDoc};
+        {_AccountDoc, ValidationErrors} -> {'validation_errors', ValidationErrors}
+    end.
+
+-type validate_acc() :: {doc(), validation_errors()}.
+-type validate_fun() :: fun((kz_term:api_ne_binary(), validate_acc()) -> validate_acc()).
+
+-spec validate(kz_term:api_ne_binary(), doc(), [validate_fun()]) ->
+                      {'true', doc()} |
+                      {'validation_errors', validation_errors()}.
+validate(AccountId, ReqJObj, ValidateFuns) ->
+    lists:foldl(fun(F, Acc) -> F(AccountId, Acc) end
+               ,{ReqJObj, []}
+               ,ValidateFuns
+               ).
+
+-spec ensure_account_has_realm(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+ensure_account_has_realm(_AccountId, {Doc, Errors}) ->
+    case kzd_accounts:realm(Doc) of
+        'undefined' ->
+            Realm = random_realm(),
+            lager:debug("doc has no realm, creating random realm '~s'", [Realm]),
+            {kzd_accounts:set_realm(Doc, Realm), Errors};
+        _Realm ->
+            lager:debug("doc has realm '~s'", [_Realm]),
+            {Doc, Errors}
+    end.
+
+-spec ensure_account_has_timezone(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+ensure_account_has_timezone(_AccountId, {Doc, Errors}) ->
+    case timezone(Doc) of
+        'undefined' ->
+            Timezone = get_timezone_from_parent(Doc),
+            lager:debug("selected timezone: ~s", [Timezone]),
+            {set_timezone(Doc, Timezone), Errors};
+        _Timezone -> {Doc, Errors}
+    end.
+
+-spec get_timezone_from_parent(doc()) -> kz_term:ne_binary().
+get_timezone_from_parent(Doc) ->
+    case create_new_tree(Doc) of
+        'error' -> default_timezone();
+        [] -> default_timezone();
+        Tree -> timezone(lists:last(Tree))
+    end.
+
+-spec random_realm() -> kz_term:ne_binary().
+random_realm() ->
+    <<(kz_binary:rand_hex(?RANDOM_REALM_STRENGTH))/binary, ".", (?ACCOUNT_REALM_SUFFIX)/binary>>.
+
+-spec remove_spaces(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+remove_spaces(_AccountId, {Doc, Errors}) ->
+    {lists:foldl(fun remove_spaces_fold/2, Doc, ?REMOVE_SPACES)
+    ,Errors
+    }.
+
+-spec remove_spaces_fold(kz_json:path(), doc()) -> doc().
+remove_spaces_fold(Key, Doc) ->
+    case kz_json:get_ne_binary_value(Key, Doc) of
+        'undefined' -> Doc;
+        Value ->
+            NoSpaces = binary:replace(Value, <<" ">>, <<>>, ['global']),
+            kz_json:set_value(Key, NoSpaces, Doc)
+    end.
+
+-spec cleanup_leaky_keys(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+cleanup_leaky_keys(_AccountId, {Doc, Errors}) ->
+    RemoveKeys = [<<"wnm_allow_additions">>
+                 ,<<"superduper_admin">>
+                 ,<<"billing_mode">>
+                 ],
+    {kz_json:delete_keys(RemoveKeys, Doc)
+    ,Errors
+    }.
+
+-spec validate_realm_is_unique(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+validate_realm_is_unique(AccountId, {Doc, Errors}) ->
+    Realm = realm(Doc),
+    case is_unique_realm(AccountId, Realm) of
+        'true' ->
+            lager:debug("realm ~s is indeed unique", [Realm]),
+            {Doc, Errors};
+        'false' ->
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Account realm already in use">>}
+                    ,{<<"cause">>, Realm}
+                    ]),
+            {Doc, [{[<<"realm">>], <<"unique">>, Msg} | Errors]}
+    end.
+
+
+%%------------------------------------------------------------------------------
+%% @doc This function will determine if the realm in the request is
+%% unique or belongs to the request being made
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_unique_realm(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
+is_unique_realm(AccountId, Realm) ->
+    ViewOptions = [{'key', kz_term:to_lower_binary(Realm)}],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= AccountId;
+        {'error', 'not_found'} -> 'true';
+        _Else -> 'false'
+    end.
+
+-spec validate_account_name_is_unique(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+validate_account_name_is_unique(AccountId, {Doc, Errors}) ->
+    Name = kzd_accounts:name(Doc),
+    case maybe_is_unique_account_name(AccountId, Name) of
+        'true' ->
+            lager:debug("name ~s is indeed unique", [Name]),
+            {Doc, Errors};
+        'false' ->
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Account name already in use">>}
+                    ,{<<"cause">>, Name}
+                    ]),
+            {Doc, [{[<<"name">>], <<"unique">>, Msg} | Errors]}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc This function will determine if the account name is unique
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_is_unique_account_name(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
+maybe_is_unique_account_name(AccountId, Name) ->
+    case kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"ensure_unique_name">>, 'true') of
+        'true' -> is_unique_account_name(AccountId, Name);
+        'false' -> 'true'
+    end.
+
+-spec is_unique_account_name(kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
+is_unique_account_name(AccountId, Name) ->
+    AccountName = normalize_name(Name),
+    ViewOptions = [{'key', AccountName}],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'error', 'not_found'} -> 'true';
+        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= AccountId;
+        _Else ->
+            lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?KZ_ACCOUNTS_DB]),
+            'false'
+    end.
+
+-spec validate_schema(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+validate_schema(AccountId, {Doc, Errors}) ->
+    lager:debug("validating payload against schema"),
+    SchemaRequired = ?SHOULD_ENSURE_SCHEMA_IS_VALID,
+
+    case kz_json_schema:load(<<"accounts">>) of
+        {'ok', SchemaJObj} -> validate_account_schema(AccountId, Doc, Errors, SchemaJObj);
+        {'error', 'not_found'} when SchemaRequired ->
+            lager:error("accounts schema not found and is required"),
+            throw({'system_error', <<"schema accounts not found.">>});
+        {'error', 'not_found'} ->
+            lager:error("accounts schema not found, continuing anyway"),
+            validate_passed(AccountId, {Doc, Errors})
+    end.
+
+-spec validate_passed(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+validate_passed('undefined', {Doc, Errors}) ->
+    {set_private_properties(Doc), Errors};
+validate_passed(AccountId, {Doc, Errors}) ->
+    case update(AccountId, kz_json:to_proplist(kz_json:flatten(Doc))) of
+        {'ok', UpdatedAccount} -> {UpdatedAccount, Errors};
+        {'error', _E} -> {Doc, Errors}
+    end.
+
+-spec validate_account_schema(kz_term:api_ne_binary(), doc(), validation_errors(), kz_json:object()) ->
+                                     validate_acc().
+validate_account_schema(AccountId, Doc, ValidationErrors, SchemaJObj) ->
+    Strict = ?SHOULD_FAIL_ON_INVALID_DATA,
+    SystemSL = kapps_config:get_binary(<<"crossbar">>, <<"stability_level">>),
+    Options = [{'extra_validator_options', [{'stability_level', SystemSL}]}],
+
+    try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(Doc), Options) of
+        {'ok', JObj} ->
+            lager:debug("account payload is valid"),
+            validate_passed(AccountId, {JObj, ValidationErrors});
+        {'error', SchemaErrors} when Strict ->
+            lager:error("validation errors when strictly validating"),
+            validate_failed(Doc, ValidationErrors, SchemaErrors);
+        {'error', SchemaErrors} ->
+            lager:error("validation errors but not strictly validating, trying to fix request"),
+            maybe_fix_js_types(AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj)
+    catch
+        'error':'function_clause' ->
+            ST = erlang:get_stacktrace(),
+            lager:error("function clause failure"),
+            kz_util:log_stacktrace(ST),
+            throw({'system_error', <<"validation failed to run on the server">>})
+    end.
+
+-spec maybe_fix_js_types(kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_message()], kz_json:object()) ->
+                                validate_acc().
+maybe_fix_js_types(AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj) ->
+    case kz_json_schema:fix_js_types(Doc, SchemaErrors) of
+        'false' -> validate_failed(Doc, ValidationErrors, SchemaErrors);
+        {'true', NewDoc} ->
+            validate_account_schema(AccountId, NewDoc, ValidationErrors, SchemaJObj)
+    end.
+
+-spec validate_failed(doc(), validation_errors(), [jesse_error:error_reason()]) -> validate_acc().
+validate_failed(Doc, ValidationErrors, SchemaErrors) ->
+    {Doc
+    ,[validation_error(Error) || Error <- SchemaErrors] ++ ValidationErrors
+    }.
+
+-spec validation_error(jesse_error:error_reason()) -> validation_error().
+validation_error(Error) ->
+    {_ErrorCode, ErrorMessage, ErrorJObj} = kz_json_schema:error_to_jobj(Error),
+    [Key] = kz_json:get_keys(ErrorJObj),
+    {[JObj], [_Code]} = kz_json:get_values(Key, ErrorJObj),
+    lager:info("adding error prop ~s ~s: ~p", [Key, ErrorMessage, JObj]),
+    {Key, ErrorMessage, JObj}.
+
+-spec normalize_alphanum_name(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+normalize_alphanum_name(_AccountId, {Doc, Errors}) ->
+    Normalized = normalize_name(name(Doc)),
+    {kz_json:set_value(<<"pvt_alphanum_name">>, Normalized, Doc)
+    ,Errors
+    }.
+
+%%------------------------------------------------------------------------------
+%% @doc This function returns the private fields to be added to a new account
+%% document
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_private_properties(doc()) -> doc().
+set_private_properties(Doc) ->
+    PvtFuns = [fun add_pvt_type/1
+              ,fun add_pvt_vsn/1
+              ,fun maybe_add_pvt_api_key/1
+              ,fun maybe_add_pvt_tree/1
+              ,fun maybe_set_cpaas_token/1
+              ,fun add_pvt_enabled/1
+              ],
+    lists:foldl(fun(F, D) -> F(D) end, Doc, PvtFuns).
+
+-spec add_pvt_type(doc()) -> doc().
+add_pvt_type(Doc) ->
+    kz_doc:set_type(Doc, type()).
+
+-spec add_pvt_vsn(doc()) -> doc().
+add_pvt_vsn(Doc) ->
+    kz_doc:set_vsn(Doc, <<"1">>).
+
+-spec add_pvt_enabled(doc()) -> doc().
+add_pvt_enabled(Doc) ->
+    case lists:reverse(kzd_accounts:tree(Doc)) of
+        [] -> Doc;
+        [ParentId | _] ->
+            add_pvt_enabled(Doc, ParentId, (not kz_term:is_empty(ParentId)))
+    end.
+
+-spec add_pvt_enabled(doc(), kz_term:api_ne_binary(), boolean()) -> doc().
+add_pvt_enabled(Doc, _ParentId, 'false') -> Doc;
+add_pvt_enabled(Doc, ParentId, 'true') ->
+    case fetch(ParentId) of
+        {'ok', Parent} ->
+            case kzd_accounts:is_enabled(Parent) of
+                'true'  -> kzd_accounts:enable(Doc);
+                'false' -> kzd_accounts:disable(Doc)
+            end;
+        _Else -> Doc
+    end.
+
+-spec maybe_add_pvt_api_key(doc()) -> doc().
+maybe_add_pvt_api_key(Doc) ->
+    case kzd_accounts:api_key(Doc) of
+        'undefined' -> add_pvt_api_key(Doc);
+        _Else -> Doc
+    end.
+
+-spec add_pvt_api_key(doc()) -> doc().
+add_pvt_api_key(Doc) ->
+    APIKey = kz_term:to_hex_binary(crypto:strong_rand_bytes(32)),
+    set_api_key(Doc, APIKey).
+
+-spec maybe_set_cpaas_token(doc()) -> doc().
+maybe_set_cpaas_token(AccountDoc) ->
+    case cpaas_token(AccountDoc) of
+        'undefined' -> set_cpaas_token(AccountDoc);
+        _Token -> AccountDoc
+    end.
+
+-spec cpaas_token(doc()) -> kz_term:api_ne_binary().
+cpaas_token(AccountDoc) ->
+    kz_json:get_ne_binary_value(<<"pvt_cpaas_token">>, AccountDoc).
+
+-spec set_cpaas_token(doc()) -> doc().
+set_cpaas_token(AccountDoc) ->
+    APIKey = kz_term:to_hex_binary(crypto:strong_rand_bytes(32)),
+    set_cpaas_token(AccountDoc, APIKey).
+
+-spec set_cpaas_token(doc(), kz_term:ne_binary()) -> doc().
+set_cpaas_token(AccountDoc, Token) ->
+    kz_json:set_value(<<"pvt_cpaas_token">>, Token, AccountDoc).
+
+-spec maybe_add_pvt_tree(doc()) -> doc().
+maybe_add_pvt_tree(Doc) ->
+    case kzd_accounts:tree(Doc) of
+        [_|_] -> Doc;
+        _Else -> add_pvt_tree(Doc)
+    end.
+
+-spec add_pvt_tree(doc()) -> doc().
+add_pvt_tree(Doc) ->
+    case create_new_tree(Doc) of
+        'error' -> throw({'system_error', 'empty_tree_accounts_exist'});
+        Tree -> kzd_accounts:set_tree(Doc, Tree)
+    end.
+
+-spec create_new_tree(doc()) -> kz_term:ne_binaries() | 'error'.
+create_new_tree(Doc) ->
+    case kz_json:get_ne_binary_value(<<"pvt_parent_id">>, Doc) of
+        'undefined' -> create_tree_from_master();
+        ParentId -> create_tree_from_parent(ParentId)
+    end.
+
+create_tree_from_master() ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} -> [MasterAccountId];
+        {'error', _} ->
+            case kapps_util:get_all_accounts() of
+                [] -> [];
+                _Else -> 'error'
+            end
+    end.
+
+create_tree_from_parent(ParentId) ->
+    case fetch(ParentId) of
+        {'error', _} -> create_tree_from_master();
+        {'ok', ParentJObj} ->
+            kzd_accounts:tree(ParentJObj) ++ [ParentId]
+    end.

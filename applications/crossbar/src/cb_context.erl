@@ -1087,9 +1087,7 @@ maybe_update_error_message(_Old, New) -> New.
 
 -spec maybe_fix_js_types(kz_json:object(), context(), after_fun(), after_fun(), validation_errors()) -> context().
 maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors) ->
-    JObj = req_data(Context),
-
-    case kz_json_schema:fix_js_types(JObj, Errors) of
+    case kz_json_schema:fix_js_types(req_data(Context), Errors) of
         'false' -> validate_failed(SchemaJObj, Context, Errors, OnFailure);
         {'true', NewJObj} ->
             validate_request_data(SchemaJObj, set_req_data(Context, NewJObj), OnSuccess, OnFailure)

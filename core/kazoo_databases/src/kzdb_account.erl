@@ -1,6 +1,8 @@
 -module(kzdb_account).
 
--export([create/2]).
+-export([create/2
+        ,validate/1
+        ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
@@ -23,6 +25,7 @@ create(AccountId, ReqJObj) ->
             create(Doc)
     end.
 
+-spec create(kz_json:object()) -> kzd_accounts:doc().
 create(ReqJObj) ->
     lists:foldl(fun(F, Req) -> F(Req) end
                ,ReqJObj
@@ -122,3 +125,28 @@ set_trial_expires(JObj) ->
     TrialTime = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
     Expires = kz_time:now_s() + TrialTime,
     kzd_accounts:set_trial_expiration(JObj, Expires).
+
+
+%%------------------------------------------------------------------------------
+%% @doc This function will determine if the account name is unique
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_is_unique_account_name(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
+maybe_is_unique_account_name(AccountId, Name) ->
+    case kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"ensure_unique_name">>, 'true') of
+        'true' -> is_unique_account_name(AccountId, Name);
+        'false' -> 'true'
+    end.
+
+-spec is_unique_account_name(kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
+is_unique_account_name(AccountId, Name) ->
+    AccountName = kzd_accounts:normalize_name(Name),
+    ViewOptions = [{'key', AccountName}],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'error', 'not_found'} -> 'true';
+        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= AccountId;
+        _Else ->
+            lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?KZ_ACCOUNTS_DB]),
+            'false'
+    end.

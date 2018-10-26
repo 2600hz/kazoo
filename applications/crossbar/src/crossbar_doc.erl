@@ -270,9 +270,9 @@ load_merge(DocId, DataJObj, Context, Options) ->
                         cb_context:context().
 load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
     Context1 = load(DocId, Context, Options),
-    case success =:= cb_context:resp_status(Context1) of
-        false -> Context1;
-        true ->
+    case 'success' =:= cb_context:resp_status(Context1) of
+        'false' -> Context1;
+        'true' ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, kz_doc:revision(cb_context:doc(Context1))]),
             Merged = kz_json:merge_jobjs(kz_doc:private_fields(cb_context:doc(Context1)), DataJObj),
             handle_datamgr_success(Merged, Context1)
