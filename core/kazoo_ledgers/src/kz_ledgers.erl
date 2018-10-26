@@ -251,7 +251,7 @@ get_ranged(View, Options) ->
 
 -spec get_ranged(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries(), kz_json:objects()) ->
                         {'ok', kz_json:objects() | ledgers()} |
-                        {'error', any()}.
+                        kz_datamgr:data_error().
 get_ranged(_View, _Options, [], Results) -> {'ok', Results};
 get_ranged(View, Options, [MODb|MODbs], Results) ->
     HasDoc = props:get_value('result_key', Options) =:= <<"doc">>,

@@ -31,7 +31,7 @@
 %% needed for API docs in cb_api_endpoints
 -export([allowed_methods_on_account/2]).
 
--compile({no_auto_import,[put/2]}).
+-compile({'no_auto_import', [put/2]}).
 
 -include("crossbar.hrl").
 
@@ -61,11 +61,14 @@
 -define(MOVE, <<"move">>).
 
 -define(ACCOUNT_REALM_SUFFIX
-       ,kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>)).
+       ,kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>)
+       ).
 -define(RANDOM_REALM_STRENGTH
-       ,kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3)).
+       ,kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3)
+       ).
 -define(ALLOW_DIRECT_CLIENTS
-       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true')).
+       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true')
+       ).
 
 -spec init() -> 'ok'.
 init() ->
@@ -316,30 +319,43 @@ put(Context) ->
 
 -spec put(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 put(Context, PathAccountId) ->
-    JObj = cb_context:doc(Context),
-    NewAccountId = kz_doc:id(JObj, kz_datamgr:get_uuid()),
+    ReqJObj = cb_context:doc(Context),
+    NewAccountId = kz_doc:id(ReqJObj, kz_datamgr:get_uuid()),
+
+    WithPVTs = crossbar_doc:update_pvt_parameters(ReqJObj, Context),
 
     lager:info("creating new account with id ~s", [NewAccountId]),
-    try create_new_account_db(prepare_context(NewAccountId, Context)) of
-        C ->
-            Tree = kzd_accounts:tree(JObj),
+    try kzdb_account:create(NewAccountId, WithPVTs) of
+        'undefined' ->
+            ContextErr = cb_context:add_system_error('datastore_fault', Context),
+            unroll(ContextErr, NewAccountId);
+        AccountJObj ->
+            Context1 = prepare_context(NewAccountId, Context),
+            Context2 = after_create(Context1, AccountJObj),
+            Tree = kzd_accounts:tree(ReqJObj),
             _ = maybe_update_descendants_count(Tree),
             _ = create_apps_store_doc(NewAccountId),
-            leak_pvt_fields(PathAccountId, C)
+            leak_pvt_fields(PathAccountId, Context2)
     catch
-        'throw':C ->
-            lager:debug("failed to create account, unrolling changes"),
-
-            case cb_context:is_context(C) of
-                'true' -> delete(C, NewAccountId);
-                'false' ->
-                    _ = delete(Context, NewAccountId),
-                    cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
-            end;
+        'throw':'datastore_fault' ->
+            ContextErr = cb_context:add_system_error('datastore_fault', Context),
+            unroll(ContextErr, NewAccountId);
+        'throw':ContextErr ->
+            unroll(ContextErr, NewAccountId);
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
+            unroll(Context, NewAccountId)
+    end.
+
+-spec unroll(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+unroll(Context, NewAccountId) ->
+    lager:debug("failed to create account, unrolling changes"),
+
+    case cb_context:is_context(Context) of
+        'true' -> delete(Context, NewAccountId);
+        'false' ->
             _ = delete(Context, NewAccountId),
             cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
     end.
@@ -1265,116 +1281,22 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
 %% then spawn a short initial function
 %% @end
 %%------------------------------------------------------------------------------
--spec create_new_account_db(cb_context:context()) -> cb_context:context().
-create_new_account_db(Context) ->
-    AccountDb = cb_context:account_db(Context),
-    case kapps_util:is_account_db(AccountDb)
-        andalso kz_datamgr:db_create(AccountDb)
-    of
-        'false' ->
-            lager:debug("failed to create database: ~s", [AccountDb]),
-            throw(cb_context:add_system_error('datastore_fault', Context));
-        'true' ->
-            lager:debug("created account database: ~s", [AccountDb]),
-            C = create_account_definition(prepare_context(AccountDb, Context)),
-            lager:debug("created account definition"),
+-spec after_create(cb_context:context(), kzd_accounts:doc()) -> cb_context:context().
+after_create(Context, AccountDoc) ->
+    Context1 = cb_context:setters(Context
+                                 ,[{fun cb_context:set_doc/2, AccountDoc}
+                                  ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(AccountDoc)}
+                                  ,{fun cb_context:set_resp_status/2, 'success'}
+                                  ]),
 
-            _ = load_initial_views(C),
-            lager:debug("loaded initial views"),
+    _ = crossbar_bindings:map(<<"account.created">>, Context1),
+    lager:debug("alerted listeners of new account"),
 
-            _ = crossbar_bindings:map(<<"account.created">>, C),
-            lager:debug("alerted listeners of new account"),
-
-            _ = create_account_mod(cb_context:account_id(C)),
-            lager:debug("created this month's MODb for account"),
-
-            _ = crossbar_services:reconcile(AccountDb),
-            lager:debug("performed initial services reconcile"),
-
-            _ = create_first_transaction(cb_context:account_id(C)),
-            lager:debug("created first transaction for account"),
-
-            _ = maybe_set_notification_preference(C),
-            lager:debug("set notification preference"),
-
-            %% Give onboarding tools time to add initial users...
-            Delay = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"new_account_notify_delay_s">>, 30),
-            _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [C]),
-            lager:debug("started ~ps timer for new account notification", [Delay]),
-            C
-    end.
-
--spec maybe_set_notification_preference(cb_context:context()) -> 'ok'.
-maybe_set_notification_preference(Context) ->
-    AccountId = cb_context:account_id(Context),
-    ResellerId = kz_services_reseller:find_id(AccountId),
-    case kzd_accounts:fetch(ResellerId) of
-        {'error', _E} ->
-            lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
-        {'ok', AccountJObj} ->
-            case kzd_accounts:notification_preference(AccountJObj) of
-                'undefined' ->
-                    lager:debug("notification preference not set on reseller '~s'", [ResellerId]);
-                Preference ->
-                    set_notification_preference(Context, Preference)
-            end
-    end.
-
--spec set_notification_preference(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
-set_notification_preference(Context, Preference) ->
-    AccountDefinition = kzd_accounts:set_notification_preference(cb_context:doc(Context), Preference),
-    case kzd_accounts:save(AccountDefinition) of
-        {'error', _R} ->
-            lager:error("failed to update account definition: ~p", [_R]);
-        {'ok', _AccountDef} ->
-            lager:info("notification_preference set to '~s'", [Preference])
-    end.
-
--spec create_account_mod(kz_term:ne_binary()) -> any().
-create_account_mod(AccountId) ->
-    Db = kz_util:format_account_mod_id(AccountId),
-    kazoo_modb:create(Db).
-
--spec create_first_transaction(kz_term:ne_binary()) -> any().
-create_first_transaction(AccountId) ->
-    {Year, Month, _} = erlang:date(),
-    kz_currency:rollover(AccountId, Year, Month, 0).
-
--spec create_account_definition(cb_context:context()) -> cb_context:context().
-create_account_definition(Context) ->
-    Doc = crossbar_doc:update_pvt_parameters(cb_context:doc(Context), Context),
-    JObj = maybe_set_trial_expires(kz_doc:set_id(Doc, cb_context:account_id(Context))),
-
-    case kzd_accounts:save(JObj) of
-        {'ok', AccountDef} ->
-            lager:debug("account definition created: ~s", [kz_doc:revision(AccountDef)]),
-            cb_context:setters(Context
-                              ,[{fun cb_context:set_doc/2, AccountDef}
-                               ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(AccountDef)}
-                               ,{fun cb_context:set_resp_status/2, 'success'}
-                               ]);
-        {'error', _R} ->
-            lager:debug("unable to create account definition: ~p", [_R]),
-            throw(cb_context:add_system_error('datastore_fault', Context))
-    end.
-
--spec maybe_set_trial_expires(kz_json:object()) -> kz_json:object().
-maybe_set_trial_expires(JObj) ->
-    case kzd_accounts:is_trial_account(JObj) of
-        'false' -> JObj;
-        'true' -> set_trial_expires(JObj)
-    end.
-
--spec set_trial_expires(kz_json:object()) -> kz_json:object().
-set_trial_expires(JObj) ->
-    TrialTime = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
-    Expires = kz_time:now_s() + TrialTime,
-    kzd_accounts:set_trial_expiration(JObj, Expires).
-
--spec load_initial_views(cb_context:context()) -> 'ok'.
-load_initial_views(Context)->
-    _ = kz_datamgr:refresh_views(cb_context:account_db(Context)),
-    'ok'.
+    %% Give onboarding tools time to add initial users...
+    Delay = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"new_account_notify_delay_s">>, 30),
+    _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [Context1]),
+    lager:debug("started ~ps timer for new account notification", [Delay]),
+    Context1.
 
 %%------------------------------------------------------------------------------
 %% @doc This function will determine if the realm in the request is
