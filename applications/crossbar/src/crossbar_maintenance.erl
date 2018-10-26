@@ -408,17 +408,8 @@ create_account(AccountName, Realm, Username, Password)
     try create_account_and_user(Account, User) of
         {'ok', _Context} -> 'ok'
     catch
-        'throw':Errors ->
-            io:format("failed to create '~s': ~s~n", [AccountName, kz_json:encode(Errors)]),
-            lager:error("errors thrown when creating account: ~s", [kz_json:encode(Errors)]),
-            'failed';
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:error("crashed creating account: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-
-            io:format("failed to create '~s': ~p~n", [AccountName, _R]),
-            'failed'
+        Type:Reason ->
+            log_error(Type, Reason, erlang:get_stacktrace(), AccountName)
     end;
 create_account(AccountName, Realm, Username, Password) ->
     create_account(kz_term:to_binary(AccountName)
@@ -426,6 +417,14 @@ create_account(AccountName, Realm, Username, Password) ->
                   ,kz_term:to_binary(Username)
                   ,kz_term:to_binary(Password)
                   ).
+
+log_error(Type, Reason, ST, AccountName) ->
+    lager:error("crashed creating account: ~s: ~p", [Type, Reason]),
+    kz_util:log_stacktrace(ST),
+
+    io:format("failed to create '~s': ~p~n", [AccountName, Reason]),
+    'failed'.
+
 
 -spec maybe_promote_account(cb_context:context()) -> {'ok', cb_context:context()}.
 maybe_promote_account(Context) ->
@@ -582,13 +581,19 @@ maybe_load_ref({_Property, Schema}) ->
 %%------------------------------------------------------------------------------
 -spec validate_account(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_account(JObj, Context) ->
+    Nouns = case kapps_util:get_master_account_id() of
+                {'ok', MasterAccountId} -> [MasterAccountId];
+                {'error', 'not_fonud'} -> []
+            end,
+
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
-                                  ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, []}]}
+                                  ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, Nouns}]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
                                   ,{fun cb_context:set_api_version/2, ?VERSION_2}
                                   ])
+               | Nouns
               ],
     Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
     case cb_context:resp_status(Context1) of
