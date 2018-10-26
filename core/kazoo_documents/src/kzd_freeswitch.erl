@@ -29,6 +29,7 @@
         ,hangup_code/1, hangup_cause/1
         ,hostname/1, hostname/2
         ,hunt_destination_number/1
+        ,hunt_context/1, hunt_context/2
         ,is_channel_recovering/1, is_channel_recovering/2
         ,is_consuming_global_resource/1, is_consuming_global_resource/2
         ,is_loopback/1, loopback_other_leg/1, loopback_leg_name/1
@@ -494,6 +495,14 @@ context(Props) ->
 -spec context(data(), Default) -> kz_term:ne_binary() | Default.
 context(Props, Default) ->
     props:get_ne_binary_value(<<"Caller-Context">>, Props, Default).
+
+-spec hunt_context(data()) -> kz_term:api_ne_binary().
+hunt_context(Props) ->
+    hunt_context(Props, 'undefined').
+
+-spec hunt_context(data(), Default) -> kz_term:ne_binary() | Default.
+hunt_context(Props, Default) ->
+    props:get_ne_binary_value(<<"Hunt-Context">>, Props, Default).
 
 -spec join_time(data()) -> kz_time:gregorian_seconds().
 join_time(Props) ->
