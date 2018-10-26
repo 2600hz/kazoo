@@ -10,6 +10,7 @@
         ,load/1, fload/1
         ,flush/0, flush/1
         ,validate/2, validate/3
+        ,fix_js_types/2
         ,errors_to_jobj/1, errors_to_jobj/2
         ,error_to_jobj/1, error_to_jobj/2
         ,validation_error/4
@@ -883,3 +884,58 @@ fix_path(Path) ->
 -spec fix_el(kz_json:key() | non_neg_integer()) -> kz_json:key() | non_neg_integer().
 fix_el(I) when is_integer(I) -> I+1;
 fix_el(El) -> El.
+
+-spec fix_js_types(kz_json:object(), [jesse_error:error_reason()]) ->
+                          {'true', kz_json:object()} |
+                          'false'.
+fix_js_types(JObj, ValidationErrors) ->
+    case lists:foldl(fun maybe_fix_js_type/2, {'false', JObj}, ValidationErrors) of
+        {'false', _} -> 'false';
+        {'true', _}=Fixed -> Fixed
+    end.
+
+-spec maybe_fix_js_type(validation_error(), {boolean(), kz_json:object()}) ->
+                               {boolean(), kz_json:object()}.
+maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, {WasFixed, JObj}) ->
+    case kz_json:get_value(<<"type">>, SchemaJObj) of
+        <<"integer">> -> maybe_fix_js_integer(Key, Value, WasFixed, JObj);
+        <<"boolean">> -> maybe_fix_js_boolean(Key, Value, WasFixed, JObj);
+        _Type -> {WasFixed, JObj}
+    end;
+maybe_fix_js_type(_, Acc) -> Acc.
+
+-spec maybe_fix_js_integer(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
+                                  {boolean(), kz_json:object()}.
+maybe_fix_js_integer(Key, Value, WasFixed, JObj) ->
+    try kz_term:to_integer(Value) of
+        V ->
+            {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}
+    catch
+        _E:_R ->
+            lager:debug("error converting ~p to integer ~p: ~p", [Value, _E, _R]),
+            {WasFixed, JObj}
+    end.
+
+-spec maybe_fix_js_boolean(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
+                                  {boolean(), kz_json:object()}.
+maybe_fix_js_boolean(Key, Value, WasFixed, JObj) ->
+    try kz_term:to_boolean(Value) of
+        V ->
+            {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}
+    catch
+        _E:_R ->
+            lager:debug("error converting ~p to boolean ~p: ~p", [Value, _E, _R]),
+            {WasFixed, JObj}
+    end.
+
+-spec maybe_fix_index(kz_json:get_key()) -> kz_json:get_key().
+maybe_fix_index(Keys)
+  when is_list(Keys) ->
+    [case is_integer(K) of
+         'true' -> K + 1;
+         'false' -> K
+     end
+     || K <- Keys
+    ];
+maybe_fix_index(Key) ->
+    Key.

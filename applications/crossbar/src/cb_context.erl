@@ -110,11 +110,11 @@
 -define(KEY_ACCEPT_CHARGES, <<"accept_charges">>).
 
 -define(SHOULD_ENSURE_SCHEMA_IS_VALID
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, true)
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'true')
        ).
 
 -define(SHOULD_FAIL_ON_INVALID_DATA
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false')
        ).
 
 -define(PAGINATION_PAGE_SIZE
@@ -1088,54 +1088,12 @@ maybe_update_error_message(_Old, New) -> New.
 -spec maybe_fix_js_types(kz_json:object(), context(), after_fun(), after_fun(), validation_errors()) -> context().
 maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors) ->
     JObj = req_data(Context),
-    case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
-        JObj -> validate_failed(SchemaJObj, Context, Errors, OnFailure);
-        NewJObj ->
+
+    case kz_json_schema:fix_js_types(JObj, Errors) of
+        'false' -> validate_failed(SchemaJObj, Context, Errors, OnFailure);
+        {'true', NewJObj} ->
             validate_request_data(SchemaJObj, set_req_data(Context, NewJObj), OnSuccess, OnFailure)
     end.
-
--spec maybe_fix_js_type(validation_error(), kz_json:object()) -> kz_json:object().
-maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) ->
-    case kz_json:get_value(<<"type">>, SchemaJObj) of
-        <<"integer">> -> maybe_fix_js_integer(Key, Value, JObj);
-        <<"boolean">> -> maybe_fix_js_boolean(Key, Value, JObj);
-        _Type -> JObj
-    end;
-maybe_fix_js_type(_, JObj) -> JObj.
-
--spec maybe_fix_js_integer(kz_json:get_key(), kz_json:json_term(), kz_json:object()) ->
-                                  kz_json:object().
-maybe_fix_js_integer(Key, Value, JObj) ->
-    try kz_term:to_integer(Value) of
-        V -> kz_json:set_value(maybe_fix_index(Key), V, JObj)
-    catch
-        _E:_R ->
-            lager:debug("error converting ~p to integer ~p: ~p", [Value, _E, _R]),
-            JObj
-    end.
-
--spec maybe_fix_js_boolean(kz_json:get_key(), kz_json:json_term(), kz_json:object()) ->
-                                  kz_json:object().
-maybe_fix_js_boolean(Key, Value, JObj) ->
-    try kz_term:to_boolean(Value) of
-        V -> kz_json:set_value(maybe_fix_index(Key), V, JObj)
-    catch
-        _E:_R ->
-            lager:debug("error converting ~p to boolean ~p: ~p", [Value, _E, _R]),
-            JObj
-    end.
-
--spec maybe_fix_index(kz_json:get_key()) -> kz_json:get_key().
-maybe_fix_index(Keys)
-  when is_list(Keys) ->
-    [case is_integer(K) of
-         true -> K + 1;
-         false -> K
-     end
-     || K <- Keys
-    ];
-maybe_fix_index(Key) ->
-    Key.
 
 -spec system_properties(context()) -> kz_json:object().
 system_properties(Context) ->
