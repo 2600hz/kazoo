@@ -314,7 +314,6 @@ put(Context, PathAccountId) ->
     ReqJObj = cb_context:doc(Context),
     NewAccountId = kz_doc:id(ReqJObj, kz_datamgr:get_uuid()),
 
-    lager:debug("update pvt ~p", [ReqJObj]),
     WithPVTs = crossbar_doc:update_pvt_parameters(ReqJObj, Context),
 
     lager:info("creating new account with id ~s (parent ~s)", [NewAccountId, PathAccountId]),
@@ -376,7 +375,8 @@ put(Context, AccountId, ?RESELLER) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_account(kz_term:ne_binary()) -> 'ok' | 'error'.
+-spec delete_account(kz_term:api_ne_binary()) -> 'ok' | 'error'.
+delete_account('undefined') -> 'ok';
 delete_account(?MATCH_ACCOUNT_RAW(AccountId)) ->
     Context = prepare_context(AccountId, cb_context:new()),
     lager:info("attempting to delete ~s(~s)", [cb_context:account_id(Context)
@@ -1147,7 +1147,8 @@ delete_remove_services(Context) ->
     catch
         _E:_R ->
             lager:error("failed to delete services: ~s: ~p", [_E, _R]),
-            crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
+            C1 = crossbar_util:response('error', <<"unable to cancel services">>, 500, Context),
+            delete_free_numbers(C1)
     end.
 
 -spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().
