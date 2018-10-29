@@ -31,3 +31,8 @@ Possible `privacy_mode` values:
 #### Configuring Privacy on Resource
 
 `privacy_mode` can be defined on resource root document and/or per gateway. Values are same as system wide config.
+
+#### Custom patterns for Caller ID Name and Caller ID Number
+
+*`anonymous_cids`*
+:   Some carriers when using Caller ID Blocking present the call using non-standard format for the Caller ID Name and Caller ID Number values. To ensure these are able to be blocked, the `anonymous_cids` configuration parameter was added to allow matching and blocking of these non-standard patterns. This setting only impact the `anonymous call rejection` feature applied to inbound calls, settings defined in this list extend the default anonymous call rejection feature to trigger on a list of numbers and names instead of merely `anonymous` Caller ID  Name and `0000000000` for Caller ID Number. Default values are `anonymous`, `0000000000`, `Anonymous`, `Restrcted`, and `restricted`, which are the most commonly used patterns for indicating a call with Caller ID blocking configured. This list can be extended to include more patterns as required. All the patterns in this list are compared to both the Caller ID Name and the Caller ID Number when determining if a call is anonymous.
