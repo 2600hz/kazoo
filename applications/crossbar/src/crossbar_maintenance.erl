@@ -581,11 +581,7 @@ maybe_load_ref({_Property, Schema}) ->
 %%------------------------------------------------------------------------------
 -spec validate_account(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_account(JObj, Context) ->
-    Nouns = case kapps_util:get_master_account_id() of
-                {'ok', MasterAccountId} -> [MasterAccountId];
-                {'error', 'not_fonud'} -> []
-            end,
-
+    Nouns = account_nouns(),
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
                                   ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, Nouns}]}
@@ -595,14 +591,22 @@ validate_account(JObj, Context) ->
                                   ])
                | Nouns
               ],
-    Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
+    Context1 = apply('cb_accounts', 'validate', Payload),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', Context1};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
-            io:format("failed to validate account: ~p ~s~n", [_Code, _Msg]),
+            AccountId = cb_context:account_id(Context1),
+            io:format("failed to validate account ~s: ~p ~s~n", [AccountId, _Code, _Msg]),
+            cb_accounts:delete_account(AccountId),
             throw(Errors)
+    end.
+
+account_nouns() ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} -> [MasterAccountId];
+        {'error', 'not_fonud'} -> []
     end.
 
 %%------------------------------------------------------------------------------
@@ -638,7 +642,7 @@ validate_user(JObj, Context) ->
 %%------------------------------------------------------------------------------
 -spec create_account(cb_context:context()) -> {'ok', cb_context:context()}.
 create_account(Context) ->
-    Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.accounts">>, [Context]),
+    Context1 = apply('cb_accounts', 'put', [Context | account_nouns()]),
     AccountId = cb_context:account_id(Context1),
     AccountDb = cb_context:account_db(Context1),
     case cb_context:resp_status(Context1) of
