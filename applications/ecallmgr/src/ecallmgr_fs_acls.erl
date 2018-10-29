@@ -101,9 +101,12 @@ collect(ACLs, PidRefs, Timeout) ->
             ACLs
     end.
 
--spec system_config_acls(kz_term:ne_binary()) -> acls().
+-spec system_config_acls(kz_term:ne_binary()) -> acls() | {'error', any()}.
 system_config_acls(Node) ->
-    kapps_config:get_current(?APP_NAME, <<"acls">>, kz_json:new(), Node).
+    case kapps_config:fetch_category(?APP_NAME, 'false') of
+        {'ok', JObj} -> kz_json:get_json_value([Node, <<"acls">>], JObj, kz_json:new());
+        Error -> Error
+    end.
 
 -spec sip_auth_ips(pid()) -> 'ok'.
 sip_auth_ips(Collector) ->
