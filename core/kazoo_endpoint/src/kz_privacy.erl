@@ -20,9 +20,7 @@
 -define(KEY_LEGACY_ANONYMIZER, [<<"caller_id_options">>, <<"anonymizer">>]).
 -define(ANON_NAME, <<"anonymous">>).
 -define(ANON_NUMBER, <<"0000000000">>).
--define(DEFAULT_ANON_CIDS, [?ANON_NAME
-                           ,?ANON_NUMBER
-                           ,<<"Anonymous">>
+-define(DEFAULT_ANON_CIDS, [<<"Anonymous">>
                            ,<<"Restricted">>
                            ,<<"restricted">>
                            ]).
