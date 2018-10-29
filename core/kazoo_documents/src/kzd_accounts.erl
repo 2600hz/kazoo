@@ -1172,7 +1172,9 @@ save(AccountJObj) ->
         {'error', _R}=E ->
             lager:info("failed to save account doc: ~p", [_R]),
             E;
-        {'ok', SavedJObj} -> save_accounts_doc(SavedJObj)
+        {'ok', SavedJObj} ->
+            lager:info("saved account doc ~s(~s)", [kz_doc:id(SavedJObj), kz_doc:revision(SavedJObj)]),
+            save_accounts_doc(SavedJObj)
     end.
 
 -spec save_accounts_doc(doc()) ->
@@ -1199,9 +1201,12 @@ save_accounts_doc(AccountDoc) ->
 
 -spec handle_saved_accounts_doc(doc(), kz_datamgr:data_error() | {'ok', doc()}) ->
                                        kz_datamgr:data_error() | {'ok', doc()}.
-handle_saved_accounts_doc(AccountDoc, {'ok', _}) ->
+handle_saved_accounts_doc(AccountDoc, {'ok', _AccountsDoc}) ->
+    lager:info("saved accounts doc ~s(~s)", [kz_doc:id(_AccountsDoc), kz_doc:revision(_AccountsDoc)]),
     {'ok', AccountDoc};
-handle_saved_accounts_doc(_, Error) -> Error.
+handle_saved_accounts_doc(_AccountDoc, Error) ->
+    lager:info("error saving ~s: ~p", [kz_doc:id(_AccountDoc), Error]),
+    Error.
 
 -spec update(kz_term:ne_binary(), kz_json:flat_proplist()) ->
                     {'ok', doc()} |
