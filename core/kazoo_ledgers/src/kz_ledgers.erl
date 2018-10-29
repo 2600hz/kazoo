@@ -399,6 +399,14 @@ rollover(Account, Year, Month, Total) ->
                           ,{'month', Month}
                           ],
             get_sources_total(Account, ViewOptions);
+        {'error', 'conflict'} ->
+            lager:info("ledger rollover for ~s ~p-~p exists already"
+                      ,[Account, Year, Month]
+                      ),
+            ViewOptions = [{'year', Year}
+                          ,{'month', Month}
+                          ],
+            get_sources_total(Account, ViewOptions);
         {'error', _Reason} = Error ->
             lager:warning("unable to save ledger rollover for ~s ~p-~p: ~p"
                          ,[Account, Year, Month, _Reason]
