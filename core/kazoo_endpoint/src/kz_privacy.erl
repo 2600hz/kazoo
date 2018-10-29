@@ -22,6 +22,8 @@
 -define(ANON_NUMBER, <<"0000000000">>).
 -define(KEY_ANON_NAME, <<"privacy_name">>).
 -define(KEY_ANON_NUMBER, <<"privacy_number">>).
+-define(KEY_ANON_NAMES, <<"privacy_names">>).
+-define(KEY_ANON_NUMBERS, <<"privacy_numbers">>).
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
@@ -112,7 +114,28 @@ is_anonymous(JObj) ->
     IsCallerNumberZero
         orelse IsPrivacyName
         orelse IsPrivacyNumber
-        orelse HasPrivacyFlags.
+        orelse HasPrivacyFlags
+        orelse is_anonymous_cid_number(JObj)
+        orelse is_anonymous_cid_name(JObj).
+
+-spec is_anonymous_cid_number(kz_json:object()) -> boolean().
+is_anonymous_cid_number(JObj) ->
+    matches_restriction(kapps_config:get_binary(?PRIVACY_CAT, ?KEY_ANON_NUMBERS, [?ANON_NUMBER])
+                           ,kz_json:get_value(<<"Caller-ID-Number">>, JObj)).
+
+-spec is_anonymous_cid_name(kz_json:object()) -> boolean().
+is_anonymous_cid_name(JObj) ->
+    matches_restriction(kapps_config:get_binary(?PRIVACY_CAT, ?KEY_ANON_NAMES, [?ANON_NAME])
+                         ,kz_json:get_value(<<"Caller-ID-Name">>, JObj)).
+
+-spec matches_restriction(kz_term:ne_binaries(), kz_term:ne_binary()) -> boolean().
+matches_restriction([Match|Matches], Value)->
+    case Match =:= Value of
+        'true' -> 'true';
+        'false' -> matches_restriction(Matches, Value)
+    end;
+matches_restriction([], _Value) ->
+    'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Default anonymous Caller IDs from System wide config, or Account
