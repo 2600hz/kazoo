@@ -118,8 +118,22 @@ is_anonymous(JObj) ->
         orelse IsPrivacyName
         orelse IsPrivacyNumber
         orelse HasPrivacyFlags
-        orelse is_anonymous_cid_number(JObj)
-        orelse is_anonymous_cid_name(JObj).
+        orelse check_anonymous_cid_number(JObj)
+        orelse check_anonymous_cid_name(JObj).
+
+-spec check_anonymous_cid_number(kz_json:object()) -> boolean().
+check_anonymous_cid_number(JObj) ->
+    case kapps_config:get_is_true(?PRIVACY_CAT, <<"check_anonymous_numbers">>, 'false') of
+        'true' -> is_anonymous_cid_number(JObj);
+        'false' -> 'false'
+    end.
+
+-spec check_anonymous_cid_name(kz_json:object()) -> boolean().
+check_anonymous_cid_name(JObj) ->
+    case kapps_config:get_is_true(?PRIVACY_CAT, <<"check_anonymous_names">>, 'false') of
+        'true' -> is_anonymous_cid_name(JObj);
+        'false' -> 'false'
+    end.
 
 -spec is_anonymous_cid_number(kz_json:object()) -> boolean().
 is_anonymous_cid_number(JObj) ->
