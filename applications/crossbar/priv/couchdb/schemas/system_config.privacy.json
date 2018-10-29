@@ -22,6 +22,16 @@
             "description": "Controls blocking of anonymous calls",
             "type": "boolean"
         },
+        "check_anonymous_names": {
+            "default": false,
+            "description": "use the anonymous_cids values to check if a name is anonymous",
+            "type": "boolean"
+        },
+        "check_anonymous_numbers": {
+            "default": false,
+            "description": "use the anonymous_cids values to check if a number is anonymous",
+            "type": "boolean"
+        },
         "privacy_mode": {
             "default": "kazoo",
             "description": "Default privacy mode for anonymous calls",

@@ -118,19 +118,31 @@ is_anonymous(JObj) ->
         orelse IsPrivacyName
         orelse IsPrivacyNumber
         orelse HasPrivacyFlags
-        orelse is_anonymous_cid_number(JObj)
-        orelse is_anonymous_cid_name(JObj).
+        orelse check_anonymous_cid_number(JObj)
+        orelse check_anonymous_cid_name(JObj).
+
+-spec check_anonymous_cid_number(kz_json:object()) -> boolean().
+check_anonymous_cid_number(JObj) ->
+    case kapps_config:get_is_true(?PRIVACY_CAT, <<"check_anonymous_numbers">>, 'false') of
+        'true' -> is_anonymous_cid_number(JObj);
+        'false' -> 'false'
+    end.
+
+-spec check_anonymous_cid_name(kz_json:object()) -> boolean().
+check_anonymous_cid_name(JObj) ->
+    case kapps_config:get_is_true(?PRIVACY_CAT, <<"check_anonymous_names">>, 'false') of
+        'true' -> is_anonymous_cid_name(JObj);
+        'false' -> 'false'
+    end.
 
 -spec is_anonymous_cid_number(kz_json:object()) -> boolean().
 is_anonymous_cid_number(JObj) ->
-    lager:debug("checking if we should block caller id number: ~p filters: ~p", [kz_json:get_value(<<"Caller-ID-Number">>, JObj), kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)]),
     lists:member(kz_json:get_value(<<"Caller-ID-Number">>, JObj)
                 ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)
                 ).
 
 -spec is_anonymous_cid_name(kz_json:object()) -> boolean().
 is_anonymous_cid_name(JObj) ->
-    lager:debug("checking if we should block caller id name: ~p filters; ~p", [kz_json:get_value(<<"Caller-ID-Name">>, JObj), kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)]),
     lists:member(kz_json:get_value(<<"Caller-ID-Name">>, JObj)
                 ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)
                 ).
