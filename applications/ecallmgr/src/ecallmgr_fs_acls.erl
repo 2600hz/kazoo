@@ -58,11 +58,11 @@ get(Node) ->
 %% @doc Fetches just the system_config ACLs
 %% @end
 %%------------------------------------------------------------------------------
--spec system() -> acls().
+-spec system() -> acls() | {'error', any()}.
 system() ->
     system(kz_term:to_binary(node())).
 
--spec system(kz_term:ne_binary()) -> acls().
+-spec system(kz_term:ne_binary()) -> acls() | {'error', any()}.
 system(Node) ->
     system_config_acls(Node).
 
