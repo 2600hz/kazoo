@@ -314,9 +314,10 @@ put(Context, PathAccountId) ->
     ReqJObj = cb_context:doc(Context),
     NewAccountId = kz_doc:id(ReqJObj, kz_datamgr:get_uuid()),
 
+    lager:debug("update pvt ~p", [ReqJObj]),
     WithPVTs = crossbar_doc:update_pvt_parameters(ReqJObj, Context),
 
-    lager:info("creating new account with id ~s", [NewAccountId]),
+    lager:info("creating new account with id ~s (parent ~s)", [NewAccountId, PathAccountId]),
     WithParent = kz_json:set_value(<<"pvt_parent_id">>, PathAccountId, WithPVTs),
     try kzdb_account:create(NewAccountId, WithParent) of
         'undefined' ->
@@ -344,7 +345,7 @@ put(Context, PathAccountId) ->
 
 -spec unroll(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 unroll(Context, NewAccountId) ->
-    lager:debug("failed to create account, unrolling changes"),
+    lager:error("failed to create account, unrolling changes"),
 
     case cb_context:is_context(Context) of
         'true' -> delete(Context, NewAccountId);
