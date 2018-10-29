@@ -120,22 +120,16 @@ is_anonymous(JObj) ->
 
 -spec is_anonymous_cid_number(kz_json:object()) -> boolean().
 is_anonymous_cid_number(JObj) ->
-    matches_restriction(kapps_config:get_binary(?PRIVACY_CAT, ?KEY_ANON_NUMBERS, [?ANON_NUMBER])
-                           ,kz_json:get_value(<<"Caller-ID-Number">>, JObj)).
+    lists:member(kz_json:get_value(<<"Caller-ID-Number">>, JObj)
+                       ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANON_NUMBERS, [?ANON_NUMBER])
+                       ).
 
 -spec is_anonymous_cid_name(kz_json:object()) -> boolean().
 is_anonymous_cid_name(JObj) ->
-    matches_restriction(kapps_config:get_binary(?PRIVACY_CAT, ?KEY_ANON_NAMES, [?ANON_NAME])
-                         ,kz_json:get_value(<<"Caller-ID-Name">>, JObj)).
+    lists:member(kz_json:get_value(<<"Caller-ID-Name">>, JObj)
+                ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANON_NAMES, [?ANON_NAME])
+                ).
 
--spec matches_restriction(kz_term:ne_binaries(), kz_term:ne_binary()) -> boolean().
-matches_restriction([Match|Matches], Value)->
-    case Match =:= Value of
-        'true' -> 'true';
-        'false' -> matches_restriction(Matches, Value)
-    end;
-matches_restriction([], _Value) ->
-    'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Default anonymous Caller IDs from System wide config, or Account
