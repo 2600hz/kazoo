@@ -3,6 +3,20 @@
     "_id": "system_config.privacy",
     "description": "Schema for privacy system_config",
     "properties": {
+        "anonymous_cids": {
+            "default": [
+                "anonymous",
+                "0000000000",
+                "Anonymous",
+                "Restricted",
+                "restricted"
+            ],
+            "description": "a list of Caller ID Names and Caller ID Numbers that indicate an incoming call is anonymous",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "block_anonymous_caller_id": {
             "default": false,
             "description": "Controls blocking of anonymous calls",
