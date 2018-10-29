@@ -1087,7 +1087,11 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
                                               {set_value1(T, Value, E), {Pos + 1, Pos}};
                                          (E, {Pos, Idx}) ->
                                               {E, {Pos + 1, Idx}}
-                                      end, {1, Key1}, JObjs))
+                                      end
+                                     ,{1, Key1}
+                                     ,JObjs
+                                     )
+                   )
     end;
 
 %% Figure out how to set the current key in an existing object
