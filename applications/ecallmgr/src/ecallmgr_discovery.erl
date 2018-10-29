@@ -168,7 +168,7 @@ sbc_acl(IPs) ->
     kz_json:from_list([{<<"type">>, <<"allow">>}
                       ,{<<"network-list-name">>, ?FS_SBC_ACL_LIST}
                       ,{<<"cidr">>, CIDRs}
-                      ,{<<"ports">>, lists:flatten([Ports || {_, Ports} <- IPs])}
+                      ,{<<"ports">>, lists:usort(lists:flatten([Ports || {_, Ports} <- IPs]))}
                       ]).
 
 sbc_acls(Nodes) ->
@@ -176,8 +176,18 @@ sbc_acls(Nodes) ->
 
 -spec sbc_discovery() -> any().
 sbc_discovery() ->
-    DefaultACLs = ecallmgr_fs_acls:system(<<"default">>),
-    ACLs = filter_acls(DefaultACLs),
+    sbc_discovery(<<"default">>).
+
+-spec sbc_discovery(kz_term:ne_binary()) -> any().
+sbc_discovery(Node) ->
+    case ecallmgr_fs_acls:system(Node) of
+        {'error', Error} -> lager:warning("error fetching current acls - ~p", [Error]);
+        CurrentACLs -> sbc_discovery(Node, CurrentACLs)
+    end.
+
+-spec sbc_discovery(kz_term:ne_binary(), kz_json:object()) -> any().
+sbc_discovery(ConfigNode, CurrentACLs) ->
+    ACLs = filter_acls(CurrentACLs),
     CIDRs = sbc_cidrs(ACLs),
     Nodes = [sbc_node(Node) || Node <- kz_nodes:with_role(<<"Proxy">>, 'true')],
     case lists:foldl(fun(A, C) -> sbc_discover(A, CIDRs, C) end, [], Nodes) of
@@ -187,7 +197,7 @@ sbc_discovery() ->
             lager:debug("adding authoritative acls for ~s", [kz_binary:join(Names)]),
             ToUpdate = lists:filter(fun({Node, _IPs}) -> lists:member(Node, Names) end , Nodes),
             SBCACLs = sbc_acls(ToUpdate),
-            NewAcls = kz_json:set_values(SBCACLs, ACLs),
-            _ = kapps_config:set_default(?APP_NAME, <<"acls">>, NewAcls),
+            NewAcls = kz_json:set_values(SBCACLs, CurrentACLs),
+            _ = kapps_config:set_node(?APP_NAME, <<"acls">>, NewAcls, ConfigNode),
             ecallmgr_maintenance:reload_acls()
     end.
