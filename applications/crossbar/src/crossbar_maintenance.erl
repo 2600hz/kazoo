@@ -581,13 +581,18 @@ maybe_load_ref({_Property, Schema}) ->
 %%------------------------------------------------------------------------------
 -spec validate_account(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_account(JObj, Context) ->
-    Nouns = account_nouns(),
+    {Nouns, User} = account_nouns_and_user(),
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
                                   ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, Nouns}]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
                                   ,{fun cb_context:set_api_version/2, ?VERSION_2}
+                                  ,{fun cb_context:set_auth_doc/2, User}
+                                   | case Nouns of
+                                         [] -> [];
+                                         [Id] -> [{fun cb_context:set_auth_account_id/2, Id}]
+                                     end
                                   ])
                | Nouns
               ],
@@ -603,10 +608,30 @@ validate_account(JObj, Context) ->
             throw(Errors)
     end.
 
+account_nouns_and_user() ->
+    case account_nouns() of
+        [] -> {[], 'undefined'};
+        [AccountId] -> {[AccountId], master_admin(AccountId)}
+    end.
+
 account_nouns() ->
     case kapps_util:get_master_account_id() of
         {'ok', MasterAccountId} -> [MasterAccountId];
         {'error', 'not_fonud'} -> []
+    end.
+
+master_admin(MasterAccountId) ->
+    AccountDb = kz_util:format_account_db(MasterAccountId),
+    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, []) of
+        {'ok', Users} -> find_first_admin(Users);
+        {'error', _} -> 'undefined'
+    end.
+
+find_first_admin([]) -> 'undefined';
+find_first_admin([User|Users]) ->
+    case kz_json:get_ne_binary_value([<<"value">>, <<"priv_level">>], User) of
+        <<"admin">> -> kz_json:get_json_value(<<"value">>, User);
+        _ -> find_first_admin(Users)
     end.
 
 %%------------------------------------------------------------------------------
