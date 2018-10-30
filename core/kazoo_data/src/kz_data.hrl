@@ -81,7 +81,7 @@
                        'inclusive_end' |
                        'reduce' |
                        'override_existing_document' |
-                       {max_bulk_read, pos_integer()} |
+                       {'max_bulk_read', pos_integer()} |
                        {'transform',transform_fun()} |
                        {'end_docid', binary()} |
                        {'endkey', key_range()} |
