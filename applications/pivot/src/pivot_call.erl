@@ -109,15 +109,16 @@ maybe_relay_event(JObj, Props) ->
                 [kapps_call_command:relay_event(P, JObj) || P <- Pids];
             _ -> 'ok'
         end,
-    relay_cdr_event(JObj, Props).
+    handle_call_event(JObj, Props).
 
--spec relay_cdr_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
-relay_cdr_event(JObj, Props) ->
+-spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
+handle_call_event(JObj, Props) ->
     case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             Pid = props:get_value('server', Props),
             gen_listener:cast(Pid, {'cdr', JObj});
-        _ -> 'ok'
+        {_, _Evt} ->
+            lager:info("ignoring event ~s", [_Evt])
     end.
 
 %%%=============================================================================
@@ -299,13 +300,17 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
                   ,requester_queue=RequesterQ
                   }=State) ->
     RespHeaders = normalize_resp_headers(FinalHeaders),
-    maybe_debug_resp(Debug, Call, <<"200">>, RespHeaders, RespBody),
+    Body = unicode:characters_to_binary(RespBody, 'unicode', 'unicode'),
+    maybe_debug_resp(Debug, Call, <<"200">>, RespHeaders, Body),
+
+    AMQPConsumer = kz_amqp_channel:consumer_pid(),
     HandleArgs = [RequesterQ
                  ,kzt_util:set_amqp_listener(self(), Call)
                  ,props:get_value(<<"content-type">>, RespHeaders)
-                 ,RespBody
+                 ,Body
+                 ,AMQPConsumer
                  ],
-    {Pid, Ref} = kz_util:spawn_monitor(fun handle_resp/4, HandleArgs),
+    {Pid, Ref} = kz_util:spawn_monitor(fun handle_resp/5, HandleArgs),
     lager:debug("processing resp with ~p(~p)", [Pid, Ref]),
     {'noreply'
     ,State#state{request_id = 'undefined'
@@ -345,6 +350,7 @@ handle_info({'DOWN', Ref, 'process', Pid, 'normal'}
            ,#state{response_pid=Pid
                   ,response_ref=Ref
                   }=State) ->
+    lager:debug("response processing finished for ~p(~p)", [Pid, Ref]),
     {'noreply', State#state{response_pid='undefined'}, 'hibernate'};
 handle_info({'DOWN', Ref, 'process', Pid, Reason}
            ,#state{response_pid=Pid
@@ -438,8 +444,10 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 normalize_resp_headers(Headers) ->
     [{kz_term:to_lower_binary(K), kz_term:to_binary(V)} || {K, V} <- Headers].
 
--spec handle_resp(kz_term:api_binary(), kapps_call:call(), kz_term:ne_binary(), binary()) -> 'ok'.
-handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody) ->
+-spec handle_resp(kz_term:api_binary(), kapps_call:call(), kz_term:ne_binary(), binary(), pid()) -> 'ok'.
+handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody, AMQPConsumer) ->
+    _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
+
     kz_util:put_callid(kapps_call:call_id(Call)),
     Srv = kzt_util:get_amqp_listener(Call),
 
@@ -464,10 +472,10 @@ process_resp(_, Call, _, <<>>) ->
     lager:debug("no response body, finishing up"),
     {'stop', Call};
 process_resp(RequesterQ, Call, Hdrs, RespBody) when is_list(Hdrs) ->
-    handle_resp(RequesterQ, Call, props:get_value(<<"content-type">>, Hdrs), RespBody);
+    handle_resp(RequesterQ, Call, props:get_value(<<"content-type">>, Hdrs), RespBody, kz_amqp_channel:consumer_pid());
 process_resp(RequesterQ, Call, CT, RespBody) ->
     lager:info("finding translator for content type ~s", [CT]),
-    try kzt_translator:exec(Call, RespBody, CT) of
+    try kzt_translator:exec(RequesterQ, Call, CT, RespBody) of
         {'stop', _Call1}=Stop ->
             lager:debug("translator says stop"),
             Stop;
@@ -585,6 +593,8 @@ store_debug(Call, DebugJObj) ->
             lager:debug("failed to save debug doc: ~p", [_E])
     end.
 
+-spec debug_doc(kapps_call:call(), kz_json:object(), kz_term:ne_binary()) ->
+                       kz_json:object().
 debug_doc(Call, DebugJObj, AccountModDb) ->
     WithCallJObj = kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
                                       ,{<<"iteration">>, kzt_util:iteration(Call)}

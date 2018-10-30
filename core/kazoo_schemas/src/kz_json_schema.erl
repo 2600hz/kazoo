@@ -133,8 +133,8 @@ add_defaults(JObj, <<_/binary>> = Schema) ->
 add_defaults(JObj, SchemaJObj) ->
     try validate(SchemaJObj, JObj) of
         {'ok', WithDefaultsJObj} -> WithDefaultsJObj;
-        {'error', Err} ->
-            lager:debug("schema has errors : ~p ", [Err]),
+        {'error', Errors} ->
+            lager:info("errors applying defaults : ~p", [errors_to_jobj(Errors)]),
             JObj
     catch
         _Ex:_Err ->
@@ -843,7 +843,7 @@ default_object(Schema) ->
         {'ok', JObj} -> JObj;
         {'error', Err} ->
             lager:debug("failed to build default object for ~s due to errors: ~p"
-                       , [kz_doc:id(Schema), Err]
+                       ,[kz_doc:id(Schema), Err]
                        ),
             kz_json:new()
     catch

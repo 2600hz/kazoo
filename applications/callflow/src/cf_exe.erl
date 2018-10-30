@@ -96,12 +96,15 @@ start_link(Call) ->
     Bindings = [{'call', [{'callid', CallId}]}
                ,{'self', []}
                ],
-    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                     ,{'bindings', Bindings}
-                                     ,{'queue_name', ?QUEUE_NAME}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Call]).
+
+    GenListenerOptions = [{'responders', ?RESPONDERS}
+                         ,{'bindings', Bindings}
+                         ,{'queue_name', ?QUEUE_NAME}
+                         ,{'queue_options', ?QUEUE_OPTIONS}
+                         ,{'consume_options', ?CONSUME_OPTIONS}
+                         ],
+
+    gen_listener:start_link(?SERVER, GenListenerOptions, [Call]).
 
 -spec get_call(pid() | kapps_call:call()) -> {'ok', kapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
@@ -435,20 +438,24 @@ handle_cast({'continue', Key}, #state{flow=Flow
         NewFlow ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
-handle_cast({'stop', _}, #state{stop_on_destroy='true'
-                               ,destroyed='true'
-                               }=State) ->
+handle_cast({'stop', _Cause}, #state{stop_on_destroy='true'
+                                    ,destroyed='true'
+                                    }=State) ->
+    lager:info("instructed to stop after channel already destroyed, ignoring cause: ~p", [_Cause]),
     {'stop', 'normal', State};
 handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
+    lager:info("instructed to stop and no flows left"),
     {'stop', 'normal', State};
 handle_cast({'stop', Cause}, #state{flows=[]
                                    ,call=Call
                                    }=State) ->
     hangup_call(Call, Cause),
+    lager:info("sent call hangup: ~s", [Cause]),
     {'noreply', State};
 handle_cast({'stop', _Cause}, #state{flows=[Flow|Flows]}=State) ->
     {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
 handle_cast('hard_stop', State) ->
+    lager:info("instructed to hard_stop"),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
@@ -457,8 +464,10 @@ handle_cast('control_usurped', State) ->
 handle_cast('channel_destroyed', #state{stop_on_destroy='true'
                                        ,cf_module_pid='undefined'
                                        }=State) ->
+    lager:info("recv channel destroyed, going down"),
     {'stop', 'normal', State};
 handle_cast('channel_destroyed', State) ->
+    lager:info("recv channel destroyed, noting but staying up"),
     {'noreply', State#state{destroyed='true'}};
 handle_cast('stop_on_destroy', State) ->
     {'noreply', State#state{stop_on_destroy='true'}};
@@ -603,7 +612,7 @@ handle_info(_Msg, State) ->
 %% @doc Handle call messages, sometimes forward them on.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_call_event:doc(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{cf_module_pid=PidRef
                          ,call=Call
                          ,self=Self
@@ -616,7 +625,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                  ModPid -> [ModPid | Others]
              end,
 
-    case {kz_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
+    case {kz_util:get_event_type(JObj), kz_call_event:call_id(JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers);
         {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->

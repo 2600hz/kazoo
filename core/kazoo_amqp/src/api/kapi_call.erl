@@ -332,7 +332,7 @@ publish_event(Event) -> publish_event(Event, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_event(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_event(Event, ContentType) when is_list(Event) ->
-    CallId = props:get_first_defined([<<"Origination-Call-ID">>, <<"Call-ID">>, <<"Unique-ID">>], Event),
+    CallId = find_event_call_id(Event),
     EventName = props:get_value(<<"Event-Name">>, Event),
     {'ok', Payload} = kz_api:prepare_api_payload(Event
                                                 ,?CALL_EVENT_VALUES
@@ -343,6 +343,14 @@ publish_event(Event, ContentType) when is_list(Event) ->
     kz_amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY(EventName, CallId), Payload, ContentType);
 publish_event(Event, ContentType) ->
     publish_event(kz_json:to_proplist(Event), ContentType).
+
+-spec find_event_call_id(kz_term:proplist()) -> kz_term:api_ne_binary().
+find_event_call_id(Event) ->
+    Keys = case props:is_true(<<"Channel-Is-Loopback">>, Event, 'false') of
+               'true' -> [<<"Call-ID">>, <<"Unique-ID">>];
+               'false' -> [<<"Origination-Call-ID">>, <<"Call-ID">>, <<"Unique-ID">>]
+           end,
+    props:get_first_defined(Keys, Event).
 
 -spec publish_channel_status_req(kz_term:api_terms()) -> 'ok'.
 publish_channel_status_req(API) ->

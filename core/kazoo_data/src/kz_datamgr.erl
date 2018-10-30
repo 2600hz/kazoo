@@ -218,15 +218,22 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
                               data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
-        'true' -> ensure_saved(DbName, JObj);
-        'false' -> {'ok', JObj}
+        'false' -> {'ok', JObj};
+        'undefined' -> save_doc(DbName, JObj);
+        'true' ->
+            Updates = kz_json:to_proplist(kz_json:flatten(JObj)),
+            Update = [{'update', Updates}
+                     ,{'ensure_saved', 'true'}
+                     ],
+            update_doc(DbName, kz_doc:id(JObj), Update)
     end.
 
--spec should_update(kz_term:ne_binary(), kz_json:object()) -> boolean().
+-spec should_update(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_boolean().
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
         {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
-        _ -> 'true'
+        {'error', 'not_found'} -> 'undefined';
+        {'error', _} -> 'true'
     end.
 
 %%------------------------------------------------------------------------------
@@ -912,12 +919,20 @@ update_doc(DbName, Id, Options) ->
                                     {'ok', kz_json:object()} |
                                     data_error().
 apply_updates_and_save(DbName, Id, Options, CurrentDoc) ->
-    UpdateProps = props:get_value('update', Options),
+    apply_updates_and_save(DbName, Id, Options, CurrentDoc, props:get_value('update', Options)).
+
+apply_updates_and_save(_DbName, _Id, _Options, CurrentDoc, []) ->
+    lager:debug("no updates to apply, returning current doc ~s", [_Id]),
+    {'ok', CurrentDoc};
+apply_updates_and_save(DbName, Id, Options, CurrentDoc, UpdateProps) ->
     UpdatedDoc = kz_json:set_values(UpdateProps, CurrentDoc),
 
     case kz_json:are_equal(CurrentDoc, UpdatedDoc) of
-        'true' -> {'ok', CurrentDoc};
+        'true' ->
+            lager:debug("updates to ~s result in the same doc", [Id]),
+            {'ok', CurrentDoc};
         'false' ->
+            lager:debug("attempting to save ~s", [kz_json:encode(UpdatedDoc)]),
             save_update(DbName, Id, Options, UpdatedDoc)
     end.
 
@@ -931,11 +946,15 @@ save_update(DbName, Id, Options, UpdatedDoc) ->
     EnsureSaved = props:is_true('ensure_saved', Options, 'false'),
 
     case save_doc(DbName, ExtraUpdatedDoc) of
-        {'ok', _}=OK -> OK;
+        {'ok', _Saved}=OK ->
+            lager:debug("saved ~s/~s: ~s", [DbName, Id, kz_json:encode(_Saved)]),
+            OK;
         {'error', 'conflict'} when EnsureSaved ->
             lager:debug("saving ~s to ~s resulted in a conflict, trying again", [Id, DbName]),
             update_doc(DbName, Id, Options);
-        {'error', _}=E -> E
+        {'error', _E}=Error ->
+            lager:debug("failed to save ~s: ~p", [Id, _E]),
+            Error
     end.
 
 -spec update_not_found(kz_term:ne_binary(), docid(), update_options()) ->
@@ -951,6 +970,7 @@ update_not_found(DbName, Id, Options) ->
                                  ++ props:get_value('extra_update', Options, [])
                                 ,JObj
                                 ),
+    lager:debug("attempting to create ~s: ~s", [Id, kz_json:encode(Updated)]),
     save_doc(DbName, Updated).
 
 %%------------------------------------------------------------------------------

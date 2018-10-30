@@ -81,7 +81,7 @@ get_finish_key(Props) ->
 
 -spec get_max_length(kz_term:proplist()) -> pos_integer().
 get_max_length(Props) ->
-    Max = kapps_config:get_integer(?MODULE, <<"max_length">>, 3600),
+    Max = kapps_config:get_integer(<<?MODULE_STRING>>, <<"max_length">>, 3600),
     case props:get_integer_value('maxLength', Props) of
         'undefined' -> Max;
         N when N > 0, N =< Max -> N

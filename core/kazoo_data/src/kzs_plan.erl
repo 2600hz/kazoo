@@ -386,7 +386,7 @@ bind() ->
                         ], <<".">>),
     kazoo_bindings:bind(RK, fun handle_new/1).
 
--spec handle_new(kz_json:object()) -> 'ok'.
+-spec handle_new(kz_json:objects()) -> 'ok'.
 handle_new([JObj]) ->
     AccountId = kz_json:get_ne_binary_value(<<"ID">>, JObj),
     lager:warning("received new storage for account ~s", [AccountId]),

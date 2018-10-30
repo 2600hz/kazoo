@@ -71,20 +71,17 @@ init() ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec allowed_methods() ->
-                             http_methods().
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
--spec allowed_methods(path_token()) ->
-                             http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_DeviceId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
 
--spec allowed_methods(path_token(), path_token()) ->
-                             http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 

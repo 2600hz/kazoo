@@ -102,14 +102,14 @@ binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
+-spec bind(atom() | {atom(), binary()}, module(), atom()) -> kazoo_bindings:bind_result().
 bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
+-spec unbind(atom() | {atom(), binary()}, module(), atom()) -> kazoo_bindings:unbind_result().
 unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 %%------------------------------------------------------------------------------
@@ -254,7 +254,8 @@ blocking_refresh(Pause) ->
 %%------------------------------------------------------------------------------
 -spec register_views() -> 'ok'.
 register_views() ->
-    kazoo_bindings:map(binding('register_views'), []).
+    _ = kazoo_bindings:map(binding('register_views'), []),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Register views from specific `App' application.
@@ -264,7 +265,8 @@ register_views() ->
 %%------------------------------------------------------------------------------
 -spec register_views(kz_term:ne_binary() | atom()) -> 'ok'.
 register_views(?NE_BINARY=App) ->
-    kazoo_bindings:map(binding({'register_views', App}), []);
+    _ = kazoo_bindings:map(binding({'register_views', App}), []),
+    'ok';
 register_views(App) when is_atom(App) ->
     register_views(kz_term:to_binary(App)).
 
@@ -274,7 +276,7 @@ register_views(App) when is_atom(App) ->
 %%------------------------------------------------------------------------------
 -spec bind_and_register_views(atom() | kz_term:ne_binary(), atom(), atom()) -> 'ok'.
 bind_and_register_views(_AppName, Module, Function) ->
-    bind('register_views', Module, Function),
+    _ = bind('register_views', Module, Function),
     %% bind({'register_views', kz_term:to_binary(AppName)}, Module, Function),
     _ = Module:Function(),
     'ok'.
@@ -994,11 +996,11 @@ show_status(CallId, 'true', Resp) ->
 
 -spec last_migrate_version() -> kz_term:ne_binary().
 last_migrate_version() ->
-    kapps_config:get_ne_binary(?MODULE, <<"migrate_current_version">>, <<"3.22">>).
+    kapps_config:get_ne_binary(<<?MODULE_STRING>>, <<"migrate_current_version">>, <<"3.22">>).
 
 -spec set_last_migrate_version(kz_term:ne_binary()) -> {'ok', kz_json:object()}.
 set_last_migrate_version(Version) ->
-    kapps_config:set(?MODULE, <<"migrate_current_version">>, Version).
+    kapps_config:set(<<?MODULE_STRING>>, <<"migrate_current_version">>, Version).
 
 -spec migrate_system() -> 'ok'.
 migrate_system() ->
