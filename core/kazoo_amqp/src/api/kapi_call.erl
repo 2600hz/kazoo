@@ -346,7 +346,7 @@ publish_event(Event, ContentType) ->
 
 -spec find_event_call_id(kz_term:proplist()) -> kz_term:api_ne_binary().
 find_event_call_id(Event) ->
-    Keys = case props:is_true(<<"Channel-Is-Loopback">>, Event) of
+    Keys = case props:is_true(<<"Channel-Is-Loopback">>, Event, 'false') of
                'true' -> [<<"Call-ID">>, <<"Unique-ID">>];
                'false' -> [<<"Origination-Call-ID">>, <<"Call-ID">>, <<"Unique-ID">>]
            end,
