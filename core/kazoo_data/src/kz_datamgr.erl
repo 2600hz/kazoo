@@ -679,7 +679,7 @@ open_docs(DbName, DocIds, Options) ->
     read_chunked(fun do_open_docs/3, DbName, DocIds, Options).
 
 do_open_docs(DbName, DocIds, Options) ->
-    NewOptions = [{keys, DocIds}, include_docs | Options],
+    NewOptions = [{'keys', DocIds}, 'include_docs' | Options],
     all_docs(DbName, NewOptions).
 
 read_chunked(Opener, DbName, DocIds, Options) ->
@@ -689,22 +689,22 @@ read_chunked(Opener, DbName, DocIds, Options, Acc) ->
         {NewDocIds, DocIdsLeft} ->
             NewAcc = read_chunked_results(Opener, DbName, NewDocIds, Options, Acc),
             read_chunked(Opener, DbName, DocIdsLeft, Options, NewAcc)
-    catch error:badarg ->
+    catch 'error':'badarg' ->
             case read_chunked_results(Opener, DbName, DocIds, Options, Acc) of
-                {error, _R}=E -> E;
-                JObjs -> {ok, lists:flatten(lists:reverse(JObjs))}
+                {'error', _R}=E -> E;
+                JObjs -> {'ok', lists:flatten(lists:reverse(JObjs))}
             end
     end.
 
-read_chunked_results(_, _, _, _, {error,_}=Acc) -> Acc;
+read_chunked_results(_, _, _, _, {'error',_}=Acc) -> Acc;
 read_chunked_results(Opener, DbName, DocIds, Options, Acc) ->
     read_chunked_results(DocIds, Opener(DbName, DocIds, Options), Acc).
 
-read_chunked_results(_DocIds, {ok, JObjs}, Acc) ->
+read_chunked_results(_DocIds, {'ok', JObjs}, Acc) ->
     [JObjs | Acc];
-read_chunked_results(_DocIds, {error,_}=Reason, []) ->
+read_chunked_results(_DocIds, {'error', _}=Reason, []) ->
     Reason;
-read_chunked_results(DocIds, {error, Reason}, Acc) ->
+read_chunked_results(DocIds, {'error', Reason}, Acc) ->
     [kz_json:from_list(
        [{<<"id">>, DocId}
        ,{<<"error">>, Reason}
