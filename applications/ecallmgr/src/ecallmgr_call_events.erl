@@ -435,7 +435,9 @@ handle_bowout(Node, Props, ResigningUUID) ->
             lager:debug("call id after bowout remains the same"),
             ResigningUUID;
         {ResigningUUID, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
-            lager:debug("loopback bowout detected, replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
+            lager:debug("loopback bowout detected, replacing ~s with ~s"
+                       ,[ResigningUUID, AcquiringUUID]
+                       ),
             _ = register_event_process(Node, AcquiringUUID),
             register_for_events(Node, AcquiringUUID),
             unregister_for_events(Node, ResigningUUID),
@@ -507,7 +509,7 @@ maybe_manual_bowout(Node, <<"att_xfer">>, <<"originator">>, UUID) ->
         {'ok', #channel{loopback_other_leg=OtherLeg, is_loopback='true'}} ->
             _ = freeswitch:api(Node, 'uuid_setvar', <<UUID/binary, " ", "loopback_bowout true">>),
             _ = freeswitch:api(Node, 'uuid_setvar', <<OtherLeg/binary, " ", "loopback_bowout true">>),
-            'ok';
+            lager:info("performed manual loopback bowout on ~s and ~s", [UUID, OtherLeg]);
         _ -> 'ok'
     end;
 maybe_manual_bowout(_Node, _App, _Role, _UUID) -> 'ok'.

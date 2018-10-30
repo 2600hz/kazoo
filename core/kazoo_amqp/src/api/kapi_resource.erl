@@ -72,19 +72,20 @@
                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
                                         ,<<"Export-Custom-Channel-Vars">>
                                         ,<<"Originate-Immediate">>
-                                        ,<<"Outbound-Call-ID">>
                                         ,<<"Origination-Call-ID">>
+                                        ,<<"Outbound-Call-ID">>
 
                                              %% Eavesdrop
                                         ,<<"Eavesdrop-Call-ID">>
-                                        ,<<"Eavesdrop-Mode">>
                                         ,<<"Eavesdrop-Group-ID">>
+                                        ,<<"Eavesdrop-Mode">>
+
                                         ,<<"Fax-Identity-Name">>
                                         ,<<"Fax-Identity-Number">>
                                         ,<<"Fax-Timezone">>
                                         ,<<"Intercept-Unbridged-Only">>
-                                        ,<<"Simplify-Loopback">> %% loopback_bowout flag
                                         ,<<"Loopback-Bowout">>
+                                        ,<<"Simplify-Loopback">> %% loopback_bowout flag
                                         ,<<"Start-Control-Process">>
                                              | kapi_dialplan:optional_bridge_req_headers()
                                         ]).

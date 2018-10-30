@@ -26,6 +26,7 @@
 -export([set_call_id/2, call_id/1, call_id_direct/1]).
 -export([set_other_leg_call_id/2, other_leg_call_id/1]).
 -export([call_id_helper/2, clear_call_id_helper/1]).
+-export([set_origination_call_id/2, origination_call_id/1]).
 -export([set_control_queue/2, control_queue/1, control_queue_direct/1]).
 -export([control_queue_helper/2, clear_control_queue_helper/1]).
 -export([set_controller_queue/2, controller_queue/1]).
@@ -148,6 +149,7 @@
 
 -record(kapps_call, {call_id :: kz_term:api_binary()                       %% The UUID of the call
                     ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                    ,origination_call_id :: kz_term:api_ne_binary() %% need to track the originating call id, if found
                     ,control_q :: kz_term:api_binary()                   %% The control queue provided on route win
                     ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                     ,controller_q :: kz_term:api_binary()                %%
@@ -245,7 +247,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                                     ,from=OldFrom
                                     ,to=OldTo
                                     }=Call) ->
-    CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, RouteReq, OldCallId),
+    CallId = kz_api:call_id(RouteReq, OldCallId),
     kz_util:put_callid(CallId),
 
     CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteReq)),
@@ -270,6 +272,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
         end,
 
     Call1#kapps_call{call_id=CallId
+                    ,origination_call_id=kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, RouteReq, origination_call_id(Call1))
                     ,request=Request
                     ,request_user=to_e164(RequestUser)
                     ,request_realm=RequestRealm
@@ -419,6 +422,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
     SHs = kz_json:merge(OldSHs, kz_json:get_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())),
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Call#kapps_call{call_id = kz_json:get_ne_binary_value(<<"Call-ID">>, JObj, call_id_direct(Call))
+                   ,origination_call_id = kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, JObj, origination_call_id(Call))
                    ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
                    ,controller_q = kz_json:get_ne_binary_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
                    ,caller_id_name = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
@@ -570,6 +574,10 @@ application_version(#kapps_call{app_version=AppVersion}) ->
 set_call_id(CallId, #kapps_call{}=Call) ->
     Call#kapps_call{call_id=CallId}.
 
+-spec set_origination_call_id(kz_term:api_ne_binary(), call()) -> call().
+set_origination_call_id(CallId, #kapps_call{}=Call) ->
+    Call#kapps_call{origination_call_id=CallId}.
+
 -spec set_other_leg_call_id(kz_term:api_binary(), call()) -> call().
 set_other_leg_call_id(CallId, #kapps_call{}=Call) ->
     Call#kapps_call{other_leg_call_id=CallId}.
@@ -582,6 +590,10 @@ call_id(#kapps_call{call_id=CallId}=Call) ->
 
 -spec call_id_direct(call()) -> kz_term:api_binary().
 call_id_direct(#kapps_call{call_id=CallId}) ->
+    CallId.
+
+-spec origination_call_id(call()) -> kz_term:api_ne_binary().
+origination_call_id(#kapps_call{origination_call_id=CallId}) ->
     CallId.
 
 -spec other_leg_call_id(call()) -> kz_term:api_binary().

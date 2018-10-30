@@ -35,6 +35,7 @@
                                     ,<<"Message-ID">>
                                     ,<<"Orig-IP">>
                                     ,<<"Orig-Port">>
+                                    ,<<"Origination-Call-ID">>
                                     ,<<"Prepend-CID-Name">>
                                     ,<<"Resource-Type">>
                                     ,<<"Ringback-Media">>

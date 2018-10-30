@@ -46,18 +46,20 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.clicktocall">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.clicktocall">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.validate.clicktocall">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.clicktocall">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.clicktocall">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.clicktocall">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.clicktocall">>, ?MODULE, 'delete'),
-    ok.
+    Bindings = [{<<"*.allowed_methods.clicktocall">>, 'allowed_methods'}
+               ,{<<"*.resource_exists.clicktocall">>, 'resource_exists'}
+               ,{<<"*.authenticate">>, 'authenticate'}
+               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.validate.clicktocall">>, 'validate'}
+               ,{<<"*.execute.put.clicktocall">>, 'put'}
+               ,{<<"*.execute.post.clicktocall">>, 'post'}
+               ,{<<"*.execute.patch.clicktocall">>, 'patch'}
+               ,{<<"*.execute.delete.clicktocall">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -66,7 +68,6 @@ init() ->
 %% Failure here returns `405 Method Not Allowed'.
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
@@ -86,7 +87,6 @@ allowed_methods(_C2CId, ?HISTORY) ->
 %% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
@@ -337,29 +337,45 @@ originate_call(_C2CId, Context, Contact, 'false') ->
     crossbar_util:response_400(<<"Contact doesn't match whitelist">>, Contact, Context);
 originate_call(C2CId, Context, Contact, 'true') ->
     Request = build_originate_req(Contact, Context),
+    do_originate_call(C2CId, Context, Contact, Request, cb_context:req_value(Context, <<"blocking">>, 'false')).
+
+do_originate_call(C2CId, Context, Contact, Request, 'false') ->
     _Pid = kz_util:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
-    crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
+    crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request));
+do_originate_call(C2CId, Context, Contact, Request, 'true') ->
+    Resp = exec_originate(Request),
+    case handle_response(C2CId, Context, Contact, Resp) of
+        {'ok', HistoryItem} -> crossbar_doc:handle_json_success(HistoryItem, Context);
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, C2CId, Context)
+    end.
 
--spec do_originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:proplist()) -> 'ok'.
+handle_response(C2CId, Context, Contact, Resp) ->
+    AccountId = cb_context:account_id(Context),
+    Modb = cb_context:account_modb(Context),
+
+    JObj = kz_json:from_list(create_c2c_history_item(Resp, C2CId, Contact)),
+    Options = [{'account_id', cb_context:account_id(Context)}
+              ,{'type', <<"c2c_history">>}
+              ],
+    HistoryItem = kz_doc:update_pvt_parameters(crossbar_doc:update_pvt_parameters(JObj, Context)
+                                              ,Modb
+                                              ,Options
+                                              ),
+    _ = kazoo_modb:save_doc(AccountId, HistoryItem).
+
+-spec do_originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:proplist()) ->
+                               {'ok', kz_json:object()} |
+                               kz_datamgr:data_error().
 do_originate_call(C2CId, Context, Contact, Request) ->
     ReqId = cb_context:req_id(Context),
     kz_util:put_callid(ReqId),
 
-    AccountId = cb_context:account_id(Context),
-    Modb = cb_context:account_modb(Context),
+    Resp = exec_originate(Request),
+    lager:debug("got status for ~p", [Resp]),
 
-    Status = exec_originate(Request),
-    lager:debug("got status ~p", [Status]),
-
-    JObj = kz_json:from_list(create_c2c_history_item(Status, C2CId, Contact)),
-    Options = [{'account_id', AccountId}
-              ,{'type', <<"c2c_history">>}
-              ],
-    HistoryItem = kz_doc:update_pvt_parameters(crossbar_doc:update_pvt_parameters(JObj, Context), Modb, Options),
-    _ = kazoo_modb:save_doc(AccountId, HistoryItem),
-    'ok'.
+    handle_response(C2CId, Context, Contact, Resp).
 
 -spec match_regexps(kz_term:binaries(), kz_term:ne_binary()) -> boolean().
 match_regexps([Pattern | Rest], Number) ->
@@ -370,34 +386,35 @@ match_regexps([Pattern | Rest], Number) ->
 match_regexps([], _Number) -> 'false'.
 
 -spec exec_originate(kz_term:api_terms()) ->
-                            {'success', kz_term:ne_binary()} |
+                            {'success', kz_json:object()} |
                             {'error', kz_term:ne_binary()}.
 exec_originate(Request) ->
-    handle_originate_resp(
-      kz_amqp_worker:call_collect(Request
-                                 ,fun kapi_resource:publish_originate_req/1
-                                 ,fun is_resp/1
-                                 ,20 * ?MILLISECONDS_IN_SECOND
-                                 )
-     ).
+    Resp = kz_amqp_worker:call_collect(Request
+                                      ,fun kapi_resource:publish_originate_req/1
+                                      ,fun is_resp/1
+                                      ,20 * ?MILLISECONDS_IN_SECOND
+                                      ),
+    handle_originate_resp(Resp).
 
 -spec handle_originate_resp({'ok', kz_json:objects()} |
                             {'returned', kz_json:object(), kz_json:object()} |
                             {'error', _} |
                             {'timeout', _}
                            ) ->
-                                   {'success', kz_term:ne_binary()} |
+                                   {'success', kz_json:object()} |
                                    {'error', kz_term:ne_binary()}.
 handle_originate_resp({'ok', [Resp|_]}) ->
     AppResponse = kz_json:get_first_defined([<<"Application-Response">>
                                             ,<<"Hangup-Cause">>
                                             ,<<"Error-Message">>
-                                            ], Resp),
+                                            ]
+                                           ,Resp
+                                           ),
     case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
         'true' ->
-            {'success', kz_json:get_value(<<"Call-ID">>, Resp)};
+            {'success', Resp};
         'false' when AppResponse =:= 'undefined' ->
-            {'success', kz_json:get_value(<<"Call-ID">>, Resp)};
+            {'success', Resp};
         'false' ->
             lager:debug("app response ~s not successful: ~p", [AppResponse, Resp]),
             {'error', AppResponse}
@@ -429,14 +446,18 @@ handle_originate_resp({'timeout', _T}) ->
 -spec build_originate_req(kz_term:ne_binary(), cb_context:context()) -> kz_term:proplist().
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
-    JObj = cb_context:doc(Context),
-    Exten = knm_converters:normalize(kz_json:get_binary_value(<<"extension">>, JObj)),
-    CalleeName = kz_json:get_binary_value(<<"outbound_callee_id_name">>, JObj, Exten),
-    CalleeNumber = knm_converters:normalize(kz_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
-    FriendlyName = kz_json:get_ne_value(<<"name">>, JObj, <<>>),
-    OutboundNumber = kz_json:get_value(<<"caller_id_number">>, JObj, Contact),
+    C2CDoc = cb_context:doc(Context),
+    Exten = knm_converters:normalize(kzd_clicktocall:extension(C2CDoc)),
+    CalleeName = kzd_clicktocall:outbound_callee_id_name(C2CDoc, Exten),
+    CalleeNumber = knm_converters:normalize(kzd_clicktocall:outbound_callee_id_number(C2CDoc, Exten)),
+
+    FriendlyName = kzd_clicktocall:name(C2CDoc, <<>>),
+    OutboundNumber = kzd_clicktocall:caller_id_number(C2CDoc, Contact),
     AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
-    {Caller, Callee} = get_caller_callee(kz_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
+
+    DialFirst = kzd_clicktocall:dial_first(C2CDoc, <<"extension">>),
+
+    {Caller, Callee} = get_caller_callee(DialFirst
                                         ,#contact{number = OutboundNumber
                                                  ,name = FriendlyName
                                                  ,route = Contact
@@ -449,14 +470,15 @@ build_originate_req(Contact, Context) ->
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
     {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
+    AccountRealm = kzd_accounts:realm(AccountDoc),
 
     CCVs = [{<<"Account-ID">>, AccountId}
            ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
-           ,{<<"Authorizing-ID">>, kz_doc:id(JObj)}
+           ,{<<"Authorizing-ID">>, kz_doc:id(C2CDoc)}
            ,{<<"Authorizing-Type">>, <<"clicktocall">>}
-           ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kzd_accounts:realm(AccountDoc))/binary>>}
-           ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kzd_accounts:realm(AccountDoc))/binary>>}
-           ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kzd_accounts:realm(AccountDoc))/binary>>}
+           ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", AccountRealm/binary>>}
+           ,{<<"From-URI">>, <<CalleeNumber/binary, "@", AccountRealm/binary>>}
+           ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", AccountRealm/binary>>}
            ,{<<"Inherit-Codec">>, 'false'}
            ,{<<"Retain-CID">>, 'true'}
            ],
@@ -465,32 +487,33 @@ build_originate_req(Contact, Context) ->
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Callee#contact.route}
                ,{<<"To-DID">>, Callee#contact.route}
-               ,{<<"To-Realm">>, kzd_accounts:realm(AccountDoc)}
-               ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+               ,{<<"To-Realm">>, AccountRealm}
                ],
 
-    MsgId = kz_json:get_value(<<"msg_id">>, JObj, kz_binary:rand_hex(16)),
-    CallId = <<(kz_binary:rand_hex(18))/binary, "-clicktocall">>,
+    MsgId = kz_binary:rand_hex(8),
+    CallId = kz_binary:join([<<"c2c">>, kz_doc:id(C2CDoc), kz_binary:rand_hex(5)], <<"-">>),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
       ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Caller#contact.route}])}
+      ,{<<"Call-ID">>, CallId}
       ,{<<"Msg-ID">>, MsgId}
       ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
-      ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, JObj, 30)}
-      ,{<<"Ignore-Early-Media">>, get_ignore_early_media(JObj)}
-      ,{<<"Media">>, kz_json:get_value(<<"media">>, JObj)}
-      ,{<<"Hold-Media">>, kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)}
-      ,{<<"Presence-ID">>, kz_json:get_value(<<"presence_id">>, JObj)}
+      ,{<<"Timeout">>, kzd_clicktocall:timeout(C2CDoc, 30)}
+      ,{<<"Ignore-Early-Media">>, get_ignore_early_media(C2CDoc)}
+      ,{<<"Bypass-Media">>, kzd_clicktocall:bypass_media(C2CDoc, 'undefined')}
+      ,{<<"Hold-Media">>, kzd_clicktocall:music_on_hold_media_id(C2CDoc)}
+      ,{<<"Presence-ID">>, kzd_clicktocall:presence_id(C2CDoc)}
       ,{<<"Outbound-Callee-ID-Name">>, Callee#contact.name}
       ,{<<"Outbound-Callee-ID-Number">>, Callee#contact.number}
       ,{<<"Outbound-Caller-ID-Name">>, Caller#contact.name}
       ,{<<"Outbound-Caller-ID-Number">>, Caller#contact.number}
       ,{<<"Outbound-Call-ID">>, CallId}
-      ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, JObj)}
+      ,{<<"Origination-Call-ID">>, CallId}
+      ,{<<"Ringback">>, kzd_clicktocall:ringback(C2CDoc)}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
       ,{<<"Continue-On-Fail">>, 'true'}
-      ,{<<"Custom-SIP-Headers">>, kz_json:get_value(<<"custom_sip_headers">>, JObj)}
+      ,{<<"Custom-SIP-Headers">>, kzd_clicktocall:custom_sip_headers(C2CDoc)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
@@ -498,9 +521,9 @@ build_originate_req(Contact, Context) ->
                                           ,<<"From-URI">>, <<"Request-URI">>
                                           ]
        }
-      ,{<<"Simplify-Loopback">>, <<"false">>}
-      ,{<<"Loopback-Bowout">>, <<"false">>}
-      ,{<<"Start-Control-Process">>, <<"false">>}
+      ,{<<"Simplify-Loopback">>, 'false'}
+      ,{<<"Loopback-Bowout">>, 'false'}
+      ,{<<"Start-Control-Process">>, 'false'}
        | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -508,9 +531,9 @@ build_originate_req(Contact, Context) ->
 get_caller_callee(<<"extension">>, Contact, Extension) -> {Contact, Extension};
 get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
--spec get_ignore_early_media(kz_json:object()) -> boolean().
-get_ignore_early_media(JObj) ->
-    kz_term:is_true(kz_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
+-spec get_ignore_early_media(kzd_clicktocall:doc()) -> boolean().
+get_ignore_early_media(C2CDoc) ->
+    kzd_clicktocall:media_ignore_early_media(C2CDoc, 'true').
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);
@@ -518,16 +541,16 @@ is_resp(JObj) ->
     kapi_resource:originate_resp_v(JObj)
         orelse kz_api:error_resp_v(JObj).
 
--spec get_c2c_contact(kz_term:api_binary()) -> kz_term:api_binary().
+-spec get_c2c_contact(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
     knm_converters:normalize(kz_http_util:urlencode(Contact)).
 
--spec create_c2c_history_item({'success' | 'error', kz_term:ne_binary()}, kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
-create_c2c_history_item({'success', CallId}, C2CId, Contact) ->
+-spec create_c2c_history_item({'success' | 'error', kz_json:object()}, kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+create_c2c_history_item({'success', Resp}, C2CId, Contact) ->
     [{<<"timestamp">>, kz_time:now_s()}
     ,{<<"contact">>, Contact}
-    ,{<<"call_id">>, CallId}
+    ,{<<"call_id">>, kz_api:call_id(Resp)}
     ,{<<"result">>, <<"success">>}
     ,{<<"pvt_clicktocall_id">>, C2CId}
     ];

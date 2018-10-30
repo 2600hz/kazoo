@@ -185,7 +185,10 @@ initialize_kapps() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = kapps_maintenance:init_system(),
     kapps_config:migrate(),
-    ToStart = lists:sort(fun sysconf_first/2, [kz_term:to_atom(KApp, 'true') || KApp <- start_which_kapps()]),
+    ToStart = lists:sort(fun sysconf_first/2
+                        ,[kz_term:to_atom(KApp, 'true')
+                          || KApp <- start_which_kapps()
+                         ]),
     Started = [KApp || KApp <- ToStart,
                        {'ok',_} <- [start_app(KApp)]
               ],
@@ -232,19 +235,29 @@ log_verbose('true', Fmt, Args) ->
 maybe_start_from_node_name(Verbose) ->
     KApp = kapp_from_node_name(),
     case application:load(KApp) of
-        'ok' ->
-            case is_kapp(KApp) of
-                'true' ->
-                    log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
-                    [KApp];
-                _Else -> 'false'
-            end;
-        _Else -> 'false'
+        'ok' -> maybe_start_from_node_name(Verbose, KApp);
+        {'error', {'already_loaded', KApp}} ->
+            maybe_start_from_node_name(Verbose, KApp);
+        _Else ->
+            log_verbose(Verbose, "node name ~s not an app", [KApp]),
+            'false'
+    end.
+
+-spec maybe_start_from_node_name(boolean(), atom()) -> 'false' | kz_term:atoms().
+maybe_start_from_node_name(Verbose, KApp) ->
+    log_verbose(Verbose, "loaded node-name ~s from ~s", [KApp, node()]),
+    case is_kapp(KApp) of
+        'true' ->
+            log_verbose(Verbose, "starting application based on node name: ~s", [KApp]),
+            [KApp];
+        _Else ->
+            log_verbose(Verbose, "app ~s is not a kazoo app", [KApp]),
+            'false'
     end.
 
 -spec maybe_start_from_node_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
 maybe_start_from_node_config(Verbose) ->
-    case kapps_config:get_node_value(?MODULE, <<"kapps">>) of
+    case kapps_config:get_node_value(<<?MODULE_STRING>>, <<"kapps">>) of
         'undefined' -> 'false';
         KazooApps ->
             log_verbose(Verbose
@@ -257,7 +270,7 @@ maybe_start_from_node_config(Verbose) ->
 -spec start_from_default_config(boolean()) -> 'false' | [kz_term:ne_binary() | atom()].
 start_from_default_config(Verbose) ->
     log_verbose(Verbose, "starting applications from default configuration"),
-    kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS).
+    kapps_config:get(<<?MODULE_STRING>>, <<"kapps">>, ?DEFAULT_KAPPS).
 
 -spec kapp_from_node_name() -> atom().
 kapp_from_node_name() ->
