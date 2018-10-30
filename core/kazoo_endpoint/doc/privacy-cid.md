@@ -36,11 +36,8 @@ Possible `privacy_mode` values:
 
 Some carriers systems, when using Caller ID Blocking, present the call using a non-standard format for the Caller ID Name and Caller ID Number values. To ensure these are able to be blocked, the `anonymous_cids` configuration parameter was added to allow matching and blocking of these non-standard patterns. This setting only impact the `anonymous call rejection` feature applied to inbound calls, settings defined in this list extend the default anonymous call rejection feature to trigger on a list of numbers.
 
-*`check_additional_anonymous_cid_names`*
-:   enables comparing the `anonymous_cids` against caller ID names in the call values for anonymous call rejection.
+`check_additional_anonymous_cid_names` enables comparing the `anonymous_cids` against caller ID names in the call values for anonymous call rejection.
 
-*`check_additional_anonymous_cid_numbers`*
-:   enables comparing the `anonymous_cids` against caller ID numbers in the call values for anonymous call rejection.
+`check_additional_anonymous_cid_numbers` enables comparing the `anonymous_cids` against caller ID numbers in the call values for anonymous call rejection.
 
-*`anonymous_cids`*
-:   a list of values to compare Caller ID Names and/or Caller ID Numbers to for extending the restrictions on anonymous call rejection. The default values are `Anonymous`, `Restricted`, and `restricted`, which are the most commonly used values for indicating a call with Caller ID blocking configured. This list can be extended to include more patterns as required. NOTE: if you include the value `anonymous` you will inadvertently block legitimate calls which contain an empty string "" for the Caller ID Name as kazoo uses this value in place of an empty or missing Caller ID Name. So like, don't do that?
+`anonymous_cids` a list of values to compare Caller ID Names and/or Caller ID Numbers to for extending the restrictions on anonymous call rejection. The default values are `Anonymous`, `Restricted`, and `restricted`, which are the most commonly used values for indicating a call with Caller ID blocking configured. This list can be extended to include more patterns as required. NOTE: if you include the value `anonymous` you will inadvertently block legitimate calls which contain an empty string "" for the Caller ID Name as kazoo uses this value in place of an empty or missing Caller ID Name. So like, don't do that?

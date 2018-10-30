@@ -137,13 +137,13 @@ check_anonymous_cid_name(JObj) ->
 
 -spec is_anonymous_cid_number(kz_json:object()) -> boolean().
 is_anonymous_cid_number(JObj) ->
-    lists:member(kz_json:get_value(<<"Caller-ID-Number">>, JObj)
+    lists:member(kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)
                 ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)
                 ).
 
 -spec is_anonymous_cid_name(kz_json:object()) -> boolean().
 is_anonymous_cid_name(JObj) ->
-    lists:member(kz_json:get_value(<<"Caller-ID-Name">>, JObj)
+    lists:member(kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)
                 ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)
                 ).
 
