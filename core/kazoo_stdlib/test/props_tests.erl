@@ -77,6 +77,14 @@ insert_values_test_() ->
     ,?_assertEqual('true', props:get_value('d', P1))
     ].
 
+take_value_test_() ->
+    P = [{'a', 1}, {'b', 2}],
+    [?_assertEqual({1, [{'b', 2}]}, props:take_value('a', P))
+    ,?_assertEqual({2, [{'a', 1}]}, props:take_value('b', P))
+    ,?_assertEqual({'undefined', [{'a', 1}, {'b', 2}]}, props:take_value('c', P))
+    ,?_assertEqual({4, [{'a', 1}, {'b', 2}]}, props:take_value('d', P, 4))
+    ].
+
 is_defined_test_() ->
     Tests = [{[], 'foo', 'false'}
             ,{['foo'], 'foo', 'true'}

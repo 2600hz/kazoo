@@ -24,6 +24,7 @@
         ,get_values_and_keys/1
         ,set_values/2
         ,set_value/2, set_value/3
+        ,take_value/2, take_value/3
         ,insert_value/2, insert_value/3, insert_values/2
         ,replace_value/3
         ,unique/1
@@ -264,6 +265,22 @@ get_values_and_keys(Props) ->
                ,{[], []}
                ,get_keys(Props)
                ).
+
+%%------------------------------------------------------------------------------
+%% @doc Returns the value at Key (or Default) and the modified `proplist()`
+%%------------------------------------------------------------------------------
+-spec take_value(kz_term:proplist_key(), kz_term:proplist()) ->
+                        {any(), kz_term:proplist()}.
+take_value(Key, Props) ->
+    take_value(Key, Props, 'undefined').
+
+-spec take_value(kz_term:proplist_key(), kz_term:proplist(), Default) ->
+                        {any() | Default, kz_term:proplist()}.
+take_value(Key, Props, Default) ->
+    case get_value(Key, Props) of
+        'undefined' -> {Default, Props};
+        Value -> {Value, delete(Key, Props)}
+    end.
 
 -spec delete(kz_term:proplist_key(), kz_term:proplist()) -> kz_term:proplist().
 delete(K, Props) ->
