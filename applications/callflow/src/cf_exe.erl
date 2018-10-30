@@ -438,20 +438,24 @@ handle_cast({'continue', Key}, #state{flow=Flow
         NewFlow ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
-handle_cast({'stop', _}, #state{stop_on_destroy='true'
-                               ,destroyed='true'
-                               }=State) ->
+handle_cast({'stop', _Cause}, #state{stop_on_destroy='true'
+                                    ,destroyed='true'
+                                    }=State) ->
+    lager:info("instructed to stop after channel already destroyed, ignoring cause: ~p", [_Cause]),
     {'stop', 'normal', State};
 handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
+    lager:info("instructed to stop and no flows left"),
     {'stop', 'normal', State};
 handle_cast({'stop', Cause}, #state{flows=[]
                                    ,call=Call
                                    }=State) ->
     hangup_call(Call, Cause),
+    lager:info("sent call hangup: ~s", [Cause]),
     {'noreply', State};
 handle_cast({'stop', _Cause}, #state{flows=[Flow|Flows]}=State) ->
     {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
 handle_cast('hard_stop', State) ->
+    lager:info("instructed to hard_stop"),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
