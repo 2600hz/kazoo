@@ -35,7 +35,6 @@ handle_req(RouteReq, Props) ->
             lager:info("received request ~s asking if callflows can route the call to ~s"
                       ,[kapi_route:fetch_id(RouteReq), kapps_call:request_user(Call)]
                       ),
-            lager:info("route req: ~p", [RouteReq]),
             AllowNoMatch = allow_no_match(Call),
             case cf_flow:lookup(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
@@ -190,19 +189,19 @@ wait_for_running(Call, N) ->
             end
     end.
 
--spec get_transfer_media(kz_json:object(), kz_json:object()) -> kz_term:api_binary().
-get_transfer_media(Flow, JObj) ->
+-spec get_transfer_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+get_transfer_media(Flow, RouteReq) ->
     case kz_json:get_value([<<"ringback">>, <<"transfer">>], Flow) of
         'undefined' ->
-            kz_json:get_value(<<"Transfer-Media">>, JObj);
+            kz_json:get_ne_binary_value(<<"Transfer-Media">>, RouteReq);
         MediaId -> MediaId
     end.
 
--spec get_ringback_media(kz_json:object(), kz_json:object()) -> kz_term:api_binary().
-get_ringback_media(Flow, JObj) ->
+-spec get_ringback_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+get_ringback_media(Flow, RouteReq) ->
     case kz_json:get_value([<<"ringback">>, <<"early">>], Flow) of
         'undefined' ->
-            kz_json:get_value(<<"Ringback-Media">>, JObj);
+            kz_json:get_ne_binary_value(<<"Ringback-Media">>, RouteReq);
         MediaId -> MediaId
     end.
 

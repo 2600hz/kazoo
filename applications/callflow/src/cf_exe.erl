@@ -95,28 +95,16 @@ start_link(Call) ->
     CallId = kapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
                ,{'self', []}
-                | maybe_bind_origination_call_id(Call)
                ],
-    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                     ,{'bindings', Bindings}
-                                     ,{'queue_name', ?QUEUE_NAME}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Call]).
 
--spec maybe_bind_origination_call_id(kapps_call:call()) ->
-                                            kz_term:proplist().
-maybe_bind_origination_call_id(Call) ->
-    case {kapps_call:call_id(Call)
-         ,kapps_call:origination_call_id(Call)
-         }
-    of
-        {_CallId, 'undefined'} -> [];
-        {CallId, CallId} -> [];
-        {_CallId, OriginationCallId} ->
-            lager:debug("adding bindings for origination call id ~s", [OriginationCallId]),
-            [{'call', [{'callid', OriginationCallId}]}]
-    end.
+    GenListenerOptions = [{'responders', ?RESPONDERS}
+                         ,{'bindings', Bindings}
+                         ,{'queue_name', ?QUEUE_NAME}
+                         ,{'queue_options', ?QUEUE_OPTIONS}
+                         ,{'consume_options', ?CONSUME_OPTIONS}
+                         ],
+
+    gen_listener:start_link(?SERVER, GenListenerOptions, [Call]).
 
 -spec get_call(pid() | kapps_call:call()) -> {'ok', kapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
