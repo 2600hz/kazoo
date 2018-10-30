@@ -32,14 +32,14 @@ Possible `privacy_mode` values:
 
 `privacy_mode` can be defined on resource root document and/or per gateway. Values are same as system wide config.
 
-## Check anonymity in Caller ID Name and Caller ID Number
+## Optionally check for anonymity in Caller ID Name and Caller ID Number
 
-Some carriers, when using Caller ID Blocking, present the call using a non-standard format for the Caller ID Name and Caller ID Number values. To ensure these are able to be blocked, the `anonymous_cids` configuration parameter was added to allow matching and blocking of these non-standard patterns. This setting only impact the `anonymous call rejection` feature applied to inbound calls, settings defined in this list extend the default anonymous call rejection feature to trigger on a list of numbers.
+Some carriers systems, when using Caller ID Blocking, present the call using a non-standard format for the Caller ID Name and Caller ID Number values. To ensure these are able to be blocked, the `anonymous_cids` configuration parameter was added to allow matching and blocking of these non-standard patterns. This setting only impact the `anonymous call rejection` feature applied to inbound calls, settings defined in this list extend the default anonymous call rejection feature to trigger on a list of numbers.
 
-*`check_anonymous_names`*
+*`check_additional_anonymous_cid_names`*
 :   enables comparing the `anonymous_cids` against caller ID names in the call values for anonymous call rejection.
 
-*`check_anonymous_numbers`*
+*`check_additional_anonymous_cid_numbers`*
 :   enables comparing the `anonymous_cids` against caller ID numbers in the call values for anonymous call rejection.
 
 *`anonymous_cids`*
