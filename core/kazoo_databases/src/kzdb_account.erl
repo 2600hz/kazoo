@@ -24,8 +24,9 @@ create(AccountId, ReqJObj) ->
             Doc = lists:foldl(fun({F, V}, J) -> F(J, V) end
                              ,ReqJObj
                              ,[{fun kz_doc:set_id/2, AccountId}
-                              ,{fun kz_doc:set_account_db/2, AccountDb}
                               ,{fun kz_doc:set_account_id/2, AccountId}
+                              ,{fun kz_doc:update_pvt_parameters/2, AccountDb}
+                              ,{fun kz_doc:set_type/2, kzd_accounts:type()}
                               ]
                              ),
             create(Doc)
@@ -41,17 +42,15 @@ create(ReqJObj) ->
                 ,fun reconcile/1
                 ,fun create_first_transaction/1
                 ,fun set_notification_preference/1
+                ,fun add_apps_store_doc/1
                 ]
                ).
 
 -spec create_account_definition(kz_json:object()) -> kz_json:object().
 create_account_definition(ReqJObj) ->
     JObj = maybe_set_trial_expires(ReqJObj),
-
     case kzd_accounts:save(JObj) of
-        {'ok', AccountDef} ->
-            lager:info("account definition created: ~s", [kz_doc:revision(AccountDef)]),
-            AccountDef;
+        {'ok', AccountDef} -> AccountDef;
         {'error', _R} ->
             lager:info("unable to create account definition: ~p", [_R]),
             throw('datastore_fault')
@@ -132,3 +131,10 @@ set_trial_expires(JObj) ->
     TrialTime = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
     Expires = kz_time:now_s() + TrialTime,
     kzd_accounts:set_trial_expiration(JObj, Expires).
+
+-spec add_apps_store_doc(kzd_accounts:doc()) -> kzd_accounts:doc().
+add_apps_store_doc(AccountJObj) ->
+    AppsStoreDoc = kzd_apps_store:new(kz_doc:id(AccountJObj)),
+    {'ok', _} = kz_datamgr:save_doc(kz_doc:account_db(AccountJObj), AppsStoreDoc),
+    lager:info("created initial apps store doc"),
+    AccountJObj.
