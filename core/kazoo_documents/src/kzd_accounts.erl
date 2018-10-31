@@ -103,7 +103,7 @@
         ,is_in_account_hierarchy/2, is_in_account_hierarchy/3
         ,normalize_name/1
 
-        ,validate/2
+        ,validate/3
         ,add_pvt_api_key/1
 
         ,cpaas_token/1
@@ -143,7 +143,12 @@
 
 -spec new() -> doc().
 new() ->
-    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
+    kz_doc:update_pvt_parameters(kz_json_schema:default_object(?SCHEMA)
+                                ,'undefined'
+                                ,[{'type', type()}
+                                 ,{'now', kz_time:now_s()}
+                                 ]
+                                ).
 
 -spec call_recording(doc()) -> kz_term:api_object().
 call_recording(Doc) ->
@@ -1302,21 +1307,21 @@ is_alphanumeric(_) ->
 %%------------------------------------------------------------------------------
 -type validation_error() :: {kz_json:path(), kz_term:ne_binary(), kz_json:object()}.
 -type validation_errors() :: [validation_error()].
--spec validate(kz_term:api_ne_binary(), doc()) ->
+-spec validate(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc()) ->
                       {'true', doc()} |
                       {'validation_errors', validation_errors()} |
                       {'system_error', atom()}.
-validate(AccountId, ReqJObj) ->
+validate(ParentId, AccountId, ReqJObj) ->
     ValidateFuns = [fun ensure_account_has_realm/2
                    ,fun ensure_account_has_timezone/2
                    ,fun remove_spaces/2
                    ,fun cleanup_leaky_keys/2
                    ,fun validate_realm_is_unique/2
                    ,fun validate_account_name_is_unique/2
-                   ,fun validate_schema/2
+                   ,fun(AID, Acc) ->  validate_schema(ParentId, AID, Acc) end
                    ,fun normalize_alphanum_name/2
                    ],
-    try validate(AccountId, ReqJObj, ValidateFuns) of
+    try do_validation(AccountId, ReqJObj, ValidateFuns) of
         {AccountDoc, []} -> {'true', AccountDoc};
         {_AccountDoc, ValidationErrors} -> {'validation_errors', ValidationErrors}
     catch
@@ -1326,10 +1331,10 @@ validate(AccountId, ReqJObj) ->
 -type validate_acc() :: {doc(), validation_errors()}.
 -type validate_fun() :: fun((kz_term:api_ne_binary(), validate_acc()) -> validate_acc()).
 
--spec validate(kz_term:api_ne_binary(), doc(), [validate_fun()]) ->
-                      {'true', doc()} |
-                      {'validation_errors', validation_errors()}.
-validate(AccountId, ReqJObj, ValidateFuns) ->
+-spec do_validation(kz_term:api_ne_binary(), doc(), [validate_fun()]) ->
+                           {'true', doc()} |
+                           {'validation_errors', validation_errors()}.
+do_validation(AccountId, ReqJObj, ValidateFuns) ->
     lists:foldl(fun(F, Acc) -> F(AccountId, Acc) end
                ,{ReqJObj, []}
                ,ValidateFuns
@@ -1452,33 +1457,34 @@ is_unique_account_name(AccountId, Name) ->
             'false'
     end.
 
--spec validate_schema(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
-validate_schema(AccountId, {Doc, Errors}) ->
+-spec validate_schema(kz_term:api_ne_binary(), kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+validate_schema(ParentId, AccountId, {Doc, Errors}) ->
     lager:debug("validating payload against schema"),
     SchemaRequired = ?SHOULD_ENSURE_SCHEMA_IS_VALID,
 
     case kz_json_schema:load(<<"accounts">>) of
-        {'ok', SchemaJObj} -> validate_account_schema(AccountId, Doc, Errors, SchemaJObj);
+        {'ok', SchemaJObj} -> validate_account_schema(ParentId, AccountId, Doc, Errors, SchemaJObj);
         {'error', 'not_found'} when SchemaRequired ->
             lager:error("accounts schema not found and is required"),
             throw({'system_error', <<"schema accounts not found.">>});
         {'error', 'not_found'} ->
             lager:error("accounts schema not found, continuing anyway"),
-            validate_passed(AccountId, {Doc, Errors})
+            validate_passed(ParentId, AccountId, {Doc, Errors})
     end.
 
--spec validate_passed(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
-validate_passed('undefined', {Doc, Errors}) ->
-    {set_private_properties(Doc), Errors};
-validate_passed(AccountId, {Doc, Errors}) ->
+-spec validate_passed(kz_term:api_ne_binary(), kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
+validate_passed(ParentId, 'undefined', {Doc, Errors}) ->
+    lager:info("validation passed for new account: ~s", [kz_json:encode(Doc)]),
+    {set_private_properties(ParentId, Doc), Errors};
+validate_passed(_ParentId, AccountId, {Doc, Errors}) ->
     case update(AccountId, kz_json:to_proplist(kz_json:flatten(Doc))) of
         {'ok', UpdatedAccount} -> {UpdatedAccount, Errors};
         {'error', _E} -> {Doc, Errors}
     end.
 
--spec validate_account_schema(kz_term:api_ne_binary(), doc(), validation_errors(), kz_json:object()) ->
+-spec validate_account_schema(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), kz_json:object()) ->
                                      validate_acc().
-validate_account_schema(AccountId, Doc, ValidationErrors, SchemaJObj) ->
+validate_account_schema(ParentId, AccountId, Doc, ValidationErrors, SchemaJObj) ->
     Strict = ?SHOULD_FAIL_ON_INVALID_DATA,
     SystemSL = kapps_config:get_binary(<<"crossbar">>, <<"stability_level">>),
     Options = [{'extra_validator_options', [{'stability_level', SystemSL}]}],
@@ -1486,13 +1492,13 @@ validate_account_schema(AccountId, Doc, ValidationErrors, SchemaJObj) ->
     try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(Doc), Options) of
         {'ok', JObj} ->
             lager:debug("account payload is valid"),
-            validate_passed(AccountId, {JObj, ValidationErrors});
+            validate_passed(ParentId, AccountId, {JObj, ValidationErrors});
         {'error', SchemaErrors} when Strict ->
             lager:error("validation errors when strictly validating"),
             validate_failed(Doc, ValidationErrors, SchemaErrors);
         {'error', SchemaErrors} ->
             lager:error("validation errors but not strictly validating, trying to fix request"),
-            maybe_fix_js_types(AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj)
+            maybe_fix_js_types(ParentId, AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj)
     catch
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
@@ -1501,13 +1507,13 @@ validate_account_schema(AccountId, Doc, ValidationErrors, SchemaJObj) ->
             throw({'system_error', <<"validation failed to run on the server">>})
     end.
 
--spec maybe_fix_js_types(kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_message()], kz_json:object()) ->
+-spec maybe_fix_js_types(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_message()], kz_json:object()) ->
                                 validate_acc().
-maybe_fix_js_types(AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj) ->
+maybe_fix_js_types(ParentId, AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj) ->
     case kz_json_schema:fix_js_types(Doc, SchemaErrors) of
         'false' -> validate_failed(Doc, ValidationErrors, SchemaErrors);
         {'true', NewDoc} ->
-            validate_account_schema(AccountId, NewDoc, ValidationErrors, SchemaJObj)
+            validate_account_schema(ParentId, AccountId, NewDoc, ValidationErrors, SchemaJObj)
     end.
 
 -spec validate_failed(doc(), validation_errors(), [jesse_error:error_reason()]) -> validate_acc().
@@ -1536,12 +1542,12 @@ normalize_alphanum_name(_AccountId, {Doc, Errors}) ->
 %% document
 %% @end
 %%------------------------------------------------------------------------------
--spec set_private_properties(doc()) -> doc().
-set_private_properties(Doc) ->
+-spec set_private_properties(kz_term:api_ne_binary(), doc()) -> doc().
+set_private_properties(ParentId, Doc) ->
     PvtFuns = [fun add_pvt_type/1
               ,fun add_pvt_vsn/1
               ,fun maybe_add_pvt_api_key/1
-              ,fun maybe_add_pvt_tree/1
+              ,fun(D) ->  maybe_add_pvt_tree(ParentId, D) end
               ,fun maybe_set_cpaas_token/1
               ,fun add_pvt_enabled/1
               ],
@@ -1607,31 +1613,36 @@ set_cpaas_token(AccountDoc) ->
 set_cpaas_token(AccountDoc, Token) ->
     kz_json:set_value(<<"pvt_cpaas_token">>, Token, AccountDoc).
 
--spec maybe_add_pvt_tree(doc()) -> doc().
-maybe_add_pvt_tree(Doc) ->
+-spec maybe_add_pvt_tree(kz_term:api_ne_binary(), doc()) -> doc().
+maybe_add_pvt_tree(ParentId, Doc) ->
     case kzd_accounts:tree(Doc) of
-        [_|_] -> Doc;
-        _Else -> add_pvt_tree(Doc)
+        [_|_]=_Tree ->
+            lager:info("tree already defined: ~p", [_Tree]),
+            Doc;
+        _Else ->
+            add_pvt_tree(ParentId, Doc)
     end.
 
--spec add_pvt_tree(doc()) -> doc().
-add_pvt_tree(Doc) ->
-    case create_new_tree(Doc) of
+-spec add_pvt_tree(kz_term:api_ne_binary(), doc()) -> doc().
+add_pvt_tree(ParentId, Doc) ->
+    case create_new_tree(ParentId, Doc) of
         'error' -> throw({'system_error', 'empty_tree_accounts_exist'});
         Tree -> kzd_accounts:set_tree(Doc, Tree)
     end.
 
--spec create_new_tree(doc()) -> kz_term:ne_binaries() | 'error'.
-create_new_tree(Doc) ->
+-spec create_new_tree(kz_term:api_ne_binary(), doc()) -> kz_term:ne_binaries() | 'error'.
+create_new_tree('undefined', Doc) ->
     case kz_json:get_ne_binary_value(<<"pvt_parent_id">>, Doc) of
         'undefined' -> create_tree_from_master();
         ParentId -> create_tree_from_parent(ParentId)
-    end.
+    end;
+create_new_tree(ParentId, _Doc) ->
+    create_tree_from_parent(ParentId).
 
 create_tree_from_master() ->
     case kapps_util:get_master_account_id() of
         {'ok', MasterAccountId} ->
-            lager:debug("using master account ~s as tree", [MasterAccountId]),
+            lager:info("using master account ~s as tree", [MasterAccountId]),
             [MasterAccountId];
         {'error', _} ->
             case kapps_util:get_all_accounts() of
@@ -1642,7 +1653,10 @@ create_tree_from_master() ->
 
 create_tree_from_parent(ParentId) ->
     case fetch(ParentId) of
-        {'error', _} -> create_tree_from_master();
+        {'error', _E} ->
+            lager:info("failed to create tree from parent ~s: ~p", [ParentId, _E]),
+            create_tree_from_master();
         {'ok', ParentJObj} ->
+            lager:info("appending parent to tree"),
             kzd_accounts:tree(ParentJObj) ++ [ParentId]
     end.
