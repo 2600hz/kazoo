@@ -27665,6 +27665,11 @@
                     "description": "callflow dialog_subscribed_mwi_prefix",
                     "type": "string"
                 },
+                "enforce_min_length": {
+                    "default": false,
+                    "description": "callflow enforce_min_length",
+                    "type": "boolean"
+                },
                 "ensure_valid_caller_id": {
                     "default": false,
                     "description": "callflow ensure valid caller id",
@@ -29048,6 +29053,11 @@
         "system_config.device": {
             "description": "Schema for device system_config",
             "properties": {
+                "enforce_min_length": {
+                    "default": false,
+                    "description": "device enforce_min_length",
+                    "type": "boolean"
+                },
                 "min_device_length": {
                     "default": 3,
                     "description": "The minimum allowed length of a device SIP username",
@@ -33058,6 +33068,11 @@
         "system_config.user": {
             "description": "Schema for user system_config",
             "properties": {
+                "enforce_min_length": {
+                    "default": false,
+                    "description": "user enforce_min_length",
+                    "type": "boolean"
+                },
                 "min_user_length": {
                     "default": 3,
                     "description": "The minimum allowed length of a username",
@@ -33070,6 +33085,11 @@
         "system_config.voicemail": {
             "description": "Schema for voicemail system_config",
             "properties": {
+                "enforce_min_length": {
+                    "default": false,
+                    "description": "voicemail enforce_min_length",
+                    "type": "boolean"
+                },
                 "min_vmbox_length": {
                     "default": 3,
                     "description": "The minimum allowed length of a voicemail box number",

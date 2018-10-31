@@ -602,7 +602,33 @@ error_device_type_change(DeviceType, Context) ->
 -spec check_device_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
-    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
+    CheckMinLength = kapps_config:get_is_true(<<"device">>, <<"enforce_min_length">>, 'false') and is_sip_username_changed(DeviceId, Context), %and is check min length enforced?
+    check_device_schema(Context, CheckMinLength, OnSuccess).
+
+-spec check_device_schema(cb_context:context(), boolean(), cb_context:after_fun()) -> cb_context:context().
+check_device_schema(Context, 'false', OnSuccess) ->
+    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess);
+check_device_schema(Context, 'true', OnSuccess) ->
+    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"device">>, <<"min_device_length">>, 3),
+    case kz_json_schema:load(<<"devices">>) of
+        {'ok', Schema} ->
+            Schema1 = kz_json:set_value([<<"properties">>, <<"sip">>, <<"properties">>, <<"username">>, <<"minLength">>], MinLength, Schema),
+            cb_context:validate_request_data(Schema1, Context, OnSuccess);
+        {'error', _E} ->
+            lager:error("failed to find schema devices: ~p", [_E]),
+            cb_context:system_error(Context, <<"schema not found.">>)
+    end.
+
+-spec is_sip_username_changed(kz_term:api_binary(), cb_context:context()) -> boolean().
+is_sip_username_changed(DeviceId, Context) ->
+    Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
+        {'ok', JObj} ->
+            Username =/= kz_json:get_value([<<"sip">>, <<"username">>], JObj);
+        {'error', _} ->
+            lager:debug("failed to load device from account"),
+            'true'
+    end.
 
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->

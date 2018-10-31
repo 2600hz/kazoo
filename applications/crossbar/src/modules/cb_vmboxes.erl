@@ -611,10 +611,7 @@ normalization_format(Context) ->
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(VMBoxId, Context) ->
-    Validators = [{fun is_mailbox_min_length/2, []}
-                 ,{fun validate_unique_vmbox/2, []}
-                 ],
-    cb_modules_util:apply_validators(VMBoxId, cb_context:set_resp_status(Context, 'success'), Validators).
+    validate_unique_vmbox(VMBoxId, Context).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -641,59 +638,50 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_mailbox_min_length(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-is_mailbox_min_length(VMBoxId, Context) ->
-    case is_mailbox_unchanged(VMBoxId, Context) of
-        'true' -> Context;
-        'false' -> check_min_length(Context)
-    end.
-
--spec check_min_length(cb_context:context()) -> cb_context:context().
-check_min_length(Context) ->
-    AccountId = cb_context:account_id(Context),
-    Mailbox = kz_json:get_value(<<"mailbox">>, cb_context:req_data(Context)),
-    MinLength = kapps_account_config:get_global(AccountId, <<"voicemail">>, <<"min_vmbox_length">>, 3),
-    case MinLength =< byte_size(Mailbox) of
-        'true' -> Context;
-        'false' ->
-            Msg = kz_json:from_list([{<<"message">>, <<"Mailbox number does not meet minimum length requirement">>}]),
-            cb_context:add_validation_error(<<"mailbox">>, <<"minLength">>, Msg, Context)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec is_mailbox_unchanged(kz_term:api_binary(), cb_context:context()) -> boolean().
-is_mailbox_unchanged(VMBoxId, Context) ->
-    try kz_json:get_integer_value(<<"mailbox">>, cb_context:req_data(Context)) of
-        Mailbox ->
-            is_mailbox_unchanged(VMBoxId, Context, Mailbox)
-    catch
-        _:_ ->
-            lager:debug("can't convert mailbox number to integer", []),
-            'false'
-    end.
-
--spec is_mailbox_unchanged(kz_term:api_binary(), cb_context:context(), pos_integer()) -> boolean().
-is_mailbox_unchanged(VMBoxId, Context, Mailbox) ->
-    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), VMBoxId) of
-        {'ok', JObj} ->
-            Mailbox =:= kz_json:get_integer_value(<<"mailbox">>, JObj);
-        {'error', _} ->
-            lager:debug("failed to load mailbox from account"),
-            'false'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec check_vmbox_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_vmbox_schema(VMBoxId, Context) ->
     Context1 = maybe_migrate_notification_emails(Context),
     OnSuccess = fun(C) -> on_successful_validation(VMBoxId, C) end,
-    cb_context:validate_request_data(<<"vmboxes">>, Context1, OnSuccess).
+    CheckMinLength = kapps_config:get_is_true(<<"voicemail">>, <<"enforce_min_length">>, 'false') and is_mailbox_changed(VMBoxId, Context), % and check if should check min length by sys admin config
+    check_vmbox_schema(Context1, CheckMinLength, OnSuccess).
+
+-spec check_vmbox_schema(cb_context:context(), boolean(), cb_context:after_fun()) -> cb_context:context().
+check_vmbox_schema(Context, 'false', OnSuccess) ->
+    cb_context:validate_request_data(<<"vmboxes">>, Context, OnSuccess);
+check_vmbox_schema(Context, 'true', OnSuccess) ->
+    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"voicemail">>, <<"min_vmbox_length">>, 3),
+    case kz_json_schema:load(<<"vmboxes">>) of
+        {'ok', Schema} ->
+            Schema1 = kz_json:set_value([<<"properties">>, <<"mailbox">>, <<"minLength">>], MinLength, Schema),
+            cb_context:validate_request_data(Schema1, Context, OnSuccess);
+        {'error', _E} ->
+            lager:error("failed to find schema vmboxes: ~p", [_E]),
+            cb_context:system_error(Context, <<"schema not found.">>)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_mailbox_changed(kz_term:api_binary(), cb_context:context()) -> boolean().
+is_mailbox_changed(VMBoxId, Context) ->
+    try kz_json:get_integer_value(<<"mailbox">>, cb_context:req_data(Context)) of
+        Mailbox ->
+            is_mailbox_changed(VMBoxId, Context, Mailbox)
+    catch
+        _:_ ->
+            lager:debug("can't convert mailbox number to integer", []),
+            'true'
+    end.
+-spec is_mailbox_changed(kz_term:api_binary(), cb_context:context(), pos_integer()) -> boolean().
+is_mailbox_changed(VMBoxId, Context, Mailbox) ->
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), VMBoxId) of
+        {'ok', JObj} ->
+            Mailbox =/= kz_json:get_integer_value(<<"mailbox">>, JObj);
+        {'error', _} ->
+            lager:debug("failed to load mailbox from account"),
+            'true'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

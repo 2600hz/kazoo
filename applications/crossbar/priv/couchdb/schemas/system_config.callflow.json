@@ -32,6 +32,11 @@
             "description": "callflow dialog_subscribed_mwi_prefix",
             "type": "string"
         },
+        "enforce_min_length": {
+            "default": false,
+            "description": "callflow enforce_min_length",
+            "type": "boolean"
+        },
         "ensure_valid_caller_id": {
             "default": false,
             "description": "callflow ensure valid caller id",

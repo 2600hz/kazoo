@@ -492,7 +492,33 @@ is_username_unique(AccountDb, UserId, UserName) ->
 -spec check_user_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_user_schema(UserId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
-    cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
+    CheckMinLength = kapps_config:get_is_true(<<"user">>, <<"enforce_min_length">>, 'false') and is_username_changed(UserId, Context), %and is check min length enforced?
+    check_user_schema(Context, CheckMinLength, OnSuccess).
+
+-spec check_user_schema(cb_context:context(), boolean(), cb_context:after_fun()) -> cb_context:context().
+check_user_schema(Context, 'false', OnSuccess) ->
+    cb_context:validate_request_data(<<"users">>, Context, OnSuccess);
+check_user_schema(Context, 'true', OnSuccess) ->
+    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"user">>, <<"min_user_length">>, 3),
+    case kz_json_schema:load(<<"users">>) of
+        {'ok', Schema} ->
+            Schema1 = kz_json:set_value([<<"properties">>, <<"username">>, <<"minLength">>], MinLength, Schema),
+            cb_context:validate_request_data(Schema1, Context, OnSuccess);
+        {'error', _E} ->
+            lager:error("failed to find schema users: ~p", [_E]),
+            cb_context:system_error(Context, <<"schema not found.">>)
+    end.
+
+-spec is_username_changed(kz_term:api_binary(), cb_context:context()) -> boolean().
+is_username_changed(UserId, Context) ->
+    UserName = cb_context:req_value(Context, <<"username">>),
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
+        {'ok', JObj} ->
+            UserName =/= kz_json:get_value(<<"username">>, JObj);
+        {'error', _} ->
+            lager:debug("failed to load user from account"),
+            'true'
+    end.
 
 -spec check_hotdesk_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_hotdesk_id(UserId, Context) ->

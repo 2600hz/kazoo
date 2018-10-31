@@ -3,6 +3,11 @@
     "_id": "system_config.device",
     "description": "Schema for device system_config",
     "properties": {
+        "enforce_min_length": {
+            "default": false,
+            "description": "device enforce_min_length",
+            "type": "boolean"
+        },
         "min_device_length": {
             "default": 3,
             "description": "The minimum allowed length of a device SIP username",

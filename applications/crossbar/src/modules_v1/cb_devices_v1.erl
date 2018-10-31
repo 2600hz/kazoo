@@ -315,11 +315,7 @@ prepare_outbound_flags(DeviceId, Context) ->
             _Else ->
                 kz_json:set_value(<<"outbound_flags">>, [], cb_context:req_data(Context))
         end,
-    Validators = [{fun is_sip_username_min_length/2, []}
-                 ,{fun prepare_device_realm/2, []}
-                 ],
-    C = cb_context:set_resp_status(Context, 'success'),
-    cb_modules_util:apply_validators(DeviceId, cb_context:set_req_data(C, JObj), Validators).
+    prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
 
 -spec prepare_device_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
@@ -403,52 +399,42 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec is_sip_username_min_length(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-is_sip_username_min_length(DeviceId, Context) ->
-    Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
-    case is_sip_username_unchanged(cb_context:account_db(Context), Username, DeviceId) of
-        'true' -> Context;
-        'false' ->
-            check_min_length(Context, Username)
-    end.
-
--spec is_sip_username_unchanged(kz_term:api_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
-is_sip_username_unchanged(AccountDb, Username, DeviceId) ->
-    case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
-        {'ok', JObj} ->
-            Username =:= kz_json:get_value([<<"sip">>, <<"username">>], JObj);
-        {'error', _} ->
-            lager:debug("failed to load device from account"),
-            'false'
-    end.
-
--spec check_min_length(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-check_min_length(Context, Username) ->
-    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"device">>, <<"min_device_length">>, 3),
-    case MinLength =< byte_size(Username) of
-        'true' -> Context;
-        'false' ->
-            lager:error("SIP user name ~s does not meet minimum length requirements", [Username]),
-            cb_context:add_validation_error([<<"sip">>, <<"username">>]
-                                           ,<<"minLength">>
-                                           ,kz_json:from_list([{<<"message">>, <<"SIP username does not meet minimum length requirement">>}
-                                                              ,{<<"cause">>, Username}
-                                                              ])
-                                           ,Context
-                                           )
-    end.
-
 -spec check_emergency_caller_id(kz_term:api_binary(), cb_context:context()) ->
                                        cb_context:context().
 check_emergency_caller_id(DeviceId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_device_schema(DeviceId, Context1).
 
--spec check_device_schema(kz_term:api_binary(), cb_context:context()) ->
-                                 cb_context:context().
+-spec check_device_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
-    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
+    CheckMinLength = kapps_config:get_is_true(<<"device">>, <<"enforce_min_length">>, 'false') and is_sip_username_changed(DeviceId, Context),
+    check_device_schema(Context, CheckMinLength, OnSuccess).
+
+-spec check_device_schema(cb_context:context(), boolean(), cb_context:after_fun()) -> cb_context:context().
+check_device_schema(Context, 'false', OnSuccess) ->
+    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess);
+check_device_schema(Context, 'true', OnSuccess) ->
+    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"device">>, <<"min_device_length">>, 3),
+    case kz_json_schema:load(<<"devices">>) of
+        {'ok', Schema} ->
+            Schema1 = kz_json:set_value([<<"properties">>, <<"sip">>, <<"properties">>, <<"username">>, <<"minLength">>], MinLength, Schema),
+            cb_context:validate_request_data(Schema1, Context, OnSuccess);
+        {'error', _E} ->
+            lager:error("failed to find schema devices: ~p", [_E]),
+            cb_context:system_error(Context, <<"schema not found.">>)
+    end.
+
+-spec is_sip_username_changed(kz_term:api_binary(), cb_context:context()) -> boolean().
+is_sip_username_changed(DeviceId, Context) ->
+    Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
+        {'ok', JObj} ->
+            Username =/= kz_json:get_value([<<"sip">>, <<"username">>], JObj);
+        {'error', _} ->
+            lager:debug("failed to load device from account"),
+            'true'
+    end.
 
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().

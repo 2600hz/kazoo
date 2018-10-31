@@ -509,10 +509,7 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPT
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(UserId, Context) ->
-    Validators = [{fun is_username_min_length/2, []}
-                 ,{fun prepare_username/2, []}
-                 ],
-    cb_modules_util:apply_validators(UserId, cb_context:set_resp_status(Context, 'success'), Validators).
+    prepare_username(UserId, Context).
 
 -spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(UserId, Context) ->
@@ -563,44 +560,36 @@ is_username_unique(AccountDb, UserId, UserName) ->
             'false'
     end.
 
--spec is_username_min_length(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-is_username_min_length(UserId, Context) ->
-    JObj = cb_context:req_data(Context),
-    UserName = kz_json:get_ne_value(<<"username">>, JObj),
-    case is_username_unchanged(cb_context:account_db(Context), UserName, UserId) of
-        'true' -> Context;
-        'false' ->
-            check_min_length(Context, UserName)
-    end.
-
--spec is_username_unchanged(kz_term:api_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
-is_username_unchanged(AccountDb, UserName, UserId) ->
-    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
-        {'ok', JObj} ->
-            UserName =:= kz_json:get_value(<<"username">>, JObj);
-        {'error', _} ->
-            lager:debug("failed to load user from account"),
-            'false'
-    end.
-
--spec check_min_length(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-check_min_length(Context, UserName) ->
-    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"user">>, <<"min_user_length">>, 3),
-    case MinLength =< byte_size(UserName) of
-        'true' -> Context;
-        'false' ->
-            lager:error("user name ~s does not meet minimum length requirements", [UserName]),
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"User name does not meet minimum length requirements">>}
-                    ,{<<"cause">>, UserName}
-                    ]),
-            cb_context:add_validation_error([<<"username">>], <<"minLength">>, Msg, Context)
-    end.
-
 -spec check_user_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_user_schema(UserId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
-    cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
+    CheckMinLength = kapps_config:get_is_true(<<"user">>, <<"enforce_min_length">>, 'false') and is_username_changed(UserId, Context), %and is check min length enforced?
+    check_user_schema(Context, CheckMinLength, OnSuccess).
+
+-spec check_user_schema(cb_context:context(), boolean(), cb_context:after_fun()) -> cb_context:context().
+check_user_schema(Context, 'false', OnSuccess) ->
+    cb_context:validate_request_data(<<"users">>, Context, OnSuccess);
+check_user_schema(Context, 'true', OnSuccess) ->
+    MinLength = kapps_account_config:get_global(cb_context:account_id(Context), <<"user">>, <<"min_user_length">>, 3),
+    case kz_json_schema:load(<<"users">>) of
+        {'ok', Schema} ->
+            Schema1 = kz_json:set_value([<<"properties">>, <<"username">>, <<"minLength">>], MinLength, Schema),
+            cb_context:validate_request_data(Schema1, Context, OnSuccess);
+        {'error', _E} ->
+            lager:error("failed to find schema users: ~p", [_E]),
+            cb_context:system_error(Context, <<"schema not found.">>)
+    end.
+
+-spec is_username_changed(kz_term:api_binary(), cb_context:context()) -> boolean().
+is_username_changed(UserId, Context) ->
+    UserName = cb_context:req_value(Context, <<"username">>),
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
+        {'ok', JObj} ->
+            UserName =/= kz_json:get_value(<<"username">>, JObj);
+        {'error', _} ->
+            lager:debug("failed to load user from account"),
+            'true'
+    end.
 
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->

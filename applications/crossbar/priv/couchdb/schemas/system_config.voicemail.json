@@ -3,6 +3,11 @@
     "_id": "system_config.voicemail",
     "description": "Schema for voicemail system_config",
     "properties": {
+        "enforce_min_length": {
+            "default": false,
+            "description": "voicemail enforce_min_length",
+            "type": "boolean"
+        },
         "min_vmbox_length": {
             "default": 3,
             "description": "The minimum allowed length of a voicemail box number",

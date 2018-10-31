@@ -3,6 +3,11 @@
     "_id": "system_config.user",
     "description": "Schema for user system_config",
     "properties": {
+        "enforce_min_length": {
+            "default": false,
+            "description": "user enforce_min_length",
+            "type": "boolean"
+        },
         "min_user_length": {
             "default": 3,
             "description": "The minimum allowed length of a username",
