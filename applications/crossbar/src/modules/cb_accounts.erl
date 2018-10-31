@@ -500,21 +500,36 @@ prepare_context(Context, AccountId, AccountDb) ->
 validate_request(AccountId, Context) ->
     ReqJObj = cb_context:req_data(Context),
 
-    case kzd_accounts:validate(AccountId, ReqJObj) of
+    ParentId = get_parent_id_from_req(Context),
+    case kzd_accounts:validate(ParentId, AccountId, ReqJObj) of
         {'true', AccountJObj} ->
             lager:debug("validated account object"),
-            Updates = [{fun cb_context:set_req_data/2, AccountJObj}
-                      ,{fun cb_context:set_doc/2, AccountJObj}
-                      ,{fun cb_context:set_resp_status/2, 'success'}
-                      ],
-            Context1 = cb_context:setters(Context, Updates),
-            extra_validation(AccountId, Context1);
+            update_validated_request(AccountId, Context, AccountJObj);
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on account"),
             add_validation_errors(Context, ValidationErrors);
         {'system_error', Error} ->
             lager:info("system error validating account: ~p", [Error]),
             cb_context:add_system_error(Error, Context)
+    end.
+
+update_validated_request(AccountId, Context, AccountJObj) ->
+    Updates = [{fun cb_context:set_req_data/2, AccountJObj}
+              ,{fun cb_context:set_doc/2, AccountJObj}
+              ,{fun cb_context:set_resp_status/2, 'success'}
+              ],
+    Context1 = cb_context:setters(Context, Updates),
+    extra_validation(AccountId, Context1).
+
+-spec get_parent_id_from_req(cb_context:context()) -> kz_term:api_ne_binary().
+get_parent_id_from_req(Context) ->
+    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
+        [ParentId] -> ParentId;
+        _Nouns ->
+            case cb_context:auth_doc(Context) of
+                'undefined' -> 'undefined';
+                AuthDoc -> kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc)
+            end
     end.
 
 add_validation_errors(Context, ValidationErrors) ->
@@ -527,7 +542,7 @@ add_validation_error({Path, Reason, Msg}, Context) ->
     cb_context:add_validation_error(Path, Reason, Msg, Context).
 
 extra_validation(AccountId, Context) ->
-    Extra = [fun(_, C) ->  maybe_import_enabled(C) end
+    Extra = [fun(_, C) -> maybe_import_enabled(C) end
             ,fun disallow_direct_clients/2
             ],
     lists:foldl(fun(F, C) -> F(AccountId, C) end
