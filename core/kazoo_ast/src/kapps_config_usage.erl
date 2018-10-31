@@ -124,7 +124,7 @@ static_fields(ConfigType, Name, JObj) ->
 
 -spec process_project() -> kz_json:object().
 process_project() ->
-    io:format("processing kapps_config/kapps_account_config/ecallmgr_config usage: "),
+    io:format("processing kapps_config/kapps_account_config usage: "),
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
               ,{'accumulator', new_acc()}
@@ -198,14 +198,6 @@ expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_node', _), Schemas) ->
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS(Source='kapps_config', F, Args), Schemas) ->
     config_to_schema(Source, F, Args, Schemas);
-expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set', _), Schemas) ->
-    Schemas;
-expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_default', _), Schemas) ->
-    Schemas;
-expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_node', _), Schemas) ->
-    Schemas;
-expression_to_schema(?MOD_FUN_ARGS(Source='ecallmgr_config', F, Args), Schemas) ->
-    config_to_schema(Source, F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
 expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_global', Args), Schemas) ->
     config_to_schema(Source, F, Args, Schemas);
 expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_hierarchy', Args), Schemas) ->
@@ -366,12 +358,6 @@ guess_type_by_default(?MOD_FUN_ARGS(M, F, [_Cat, _Key, Default |_]))
   when M =:= kapps_config;
        M =:= kapps_account_config ->
     guess_type(F, Default);
-guess_type_by_default(?MOD_FUN_ARGS('ecallmgr_config', 'get_ne_binaries', [_Key, _Default])) ->
-    [<<"string">>];
-guess_type_by_default(?MOD_FUN_ARGS('ecallmgr_config', F, [_Key, Default])) ->
-    guess_type(F, Default);
-guess_type_by_default(?MOD_FUN_ARGS('ecallmgr_config', F, [_Key, Default, _Node])) ->
-    guess_type(F, Default);
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list', _Args)) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list_recursive', _Args)) -> <<"object">>;
@@ -466,20 +452,6 @@ default_value(?MOD_FUN_ARGS('kz_term', 'to_integer', [Arg])) ->
     default_value(Arg);
 default_value(?MOD_FUN_ARGS(M, 'type', [])) ->
     default_value(M:type());
-default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get', [_Key, Default|_])) ->
-    default_value(Default);
-default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get_jsons', [_Key, Default|_])) ->
-    default_value(Default);
-default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get_integer', [_Key, Default|_])) ->
-    default_value(Default);
-default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get_boolean', [_Key, Default|_])) ->
-    default_value(Default);
-default_value(?MOD_FUN_ARGS('ecallmgr_config', 'is_true', [_Key, Default|_])) ->
-    default_value(Default);
-default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get_default', [_Key, Default|_])) ->
-    default_value(Default);
-default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get_ne_binaries', [_Key, Default])) ->
-    default_value(Default);
 %%TODO: support all kapps_config exports
 default_value(?MOD_FUN_ARGS('kapps_config', 'get', [_Category, _Key, Default])) ->
     default_value(Default);

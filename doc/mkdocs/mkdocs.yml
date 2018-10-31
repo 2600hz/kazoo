@@ -173,6 +173,7 @@ pages:
     - 'applications/ananke/doc/README.md'
   - 'Callflows':
     - 'applications/callflow/doc/README.md'
+    - 'applications/callflow/doc/maintenance.md'
     - 'Endpoints':
         - 'Device': 'applications/callflow/doc/device.md'
         - 'User': 'applications/callflow/doc/user.md'

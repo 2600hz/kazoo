@@ -30,6 +30,11 @@
         ]).
 -export([update_feature_codes/0, update_feature_codes/1]).
 
+-export([allow_authz_context/1, allow_authz_context/2
+        ,deny_authz_context/1
+        ,disable_authz_contexts/0, enable_authz_contexts/0
+        ]).
+
 -include("callflow.hrl").
 
 -define(DOLLAR_SIGN, 36). % = $\$ but makes fmt wonky atm
@@ -487,3 +492,70 @@ maybe_update_feature_code(Db, Pattern, <<"^\\*5([0-9]*)", ?DOLLAR_SIGN>>=_Regex)
     end;
 maybe_update_feature_code(_Db, _Pattern, _Regex) ->
     io:format("skipping pattern ~p\n", [_Regex]).
+
+-spec allow_authz_context(kz_term:ne_binary()) -> 'ok'.
+allow_authz_context(App) ->
+    allow_authz_context(App, kz_binary:rand_hex(6)).
+
+-spec allow_authz_context(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+allow_authz_context(App, DefaultContext) ->
+    Context = fetch_app_context(App, DefaultContext),
+    permit_authz_contexts(),
+    add_allowed_authz_context(Context).
+
+-spec deny_authz_context(kz_term:ne_binary()) -> 'ok'.
+deny_authz_context(App) ->
+    case fetch_app_context(App, 'undefined') of
+        'undefined' ->
+            io:format("app ~s not currently listed in allowed authz contexts~n", [App]);
+        Context ->
+            remove_allowed_authz_context(Context)
+    end.
+
+permit_authz_contexts() ->
+    case kapps_config:is_true(?APP_NAME, <<"allow_authz_context_overrides">>) of
+        'true' -> 'ok';
+        'false' ->
+            {'ok', _} = kapps_config:set_default(?APP_NAME, <<"allow_authz_context_overrides">>, 'true'),
+            io:format("authz context overrides were disabled; now enabled...~n")
+    end.
+
+-spec disable_authz_contexts() -> 'ok'.
+disable_authz_contexts() ->
+    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"allow_authz_context_overrides">>, 'false'),
+    io:format("authz context overrides disabled~n").
+
+-spec enable_authz_contexts() -> 'ok'.
+enable_authz_contexts() ->
+    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"allow_authz_context_overrides">>, 'true'),
+    io:format("authz context overrides enabled~n").
+
+-spec add_allowed_authz_context(kz_term:ne_binary()) -> 'ok'.
+add_allowed_authz_context(Context) ->
+    Contexts = kapps_config:get_ne_binaries(?APP_NAME, <<"authz_contexts">>, []),
+    Updated = lists:usort([Context | Contexts]),
+    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"authz_contexts">>, Updated),
+    io:format("added ~s to allowed authz contexts~n", [Context]).
+
+-spec remove_allowed_authz_context(kz_term:ne_binary()) -> 'ok'.
+remove_allowed_authz_context(Context) ->
+    Contexts = kapps_config:get_ne_binaries(?APP_NAME, <<"authz_contexts">>, []),
+    case lists:member(Context, Contexts) of
+        'false' -> io:format("app context is not currently allowed~n");
+        'true' ->
+            Updated = lists:delete(Context, Contexts),
+            {'ok', _} = kapps_config:set_default(?APP_NAME, <<"authz_contexts">>, Updated),
+            io:format("removed ~s from allowed authz contexts~n", [Context])
+    end.
+
+-spec fetch_app_context(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+fetch_app_context(App, 'undefined') ->
+    kapps_config:get_ne_binary(App, <<"authz_context">>);
+fetch_app_context(App, DefaultContext) ->
+    case kapps_config:get_ne_binary(App, <<"authz_context">>) of
+        'undefined' ->
+            io:format("no authz context set for ~s, setting to ~s~n", [App, DefaultContext]),
+            {'ok', _} = kapps_config:set_default(App, <<"authz_context">>, DefaultContext),
+            DefaultContext;
+        Context -> Context
+    end.
