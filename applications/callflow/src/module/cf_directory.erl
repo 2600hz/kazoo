@@ -310,7 +310,7 @@ play_confirm_match(Call, User) ->
 
     play_and_collect(Call, [{'prompt', ?PROMPT_FOUND}
                            ,UserName
-                           ,{'prompt', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
+                           ,{'prompt', ?PROMPT_CONFIRM_MENU}
                            ]).
 
 -spec username_audio_macro(kapps_call:call(), directory_user()) -> kapps_call_command:audio_macro_prompt().
