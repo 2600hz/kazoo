@@ -1,0 +1,7 @@
+{application,kazoo_provisioner,
+ [{applications,[]},
+  {description,"Kazoo Provisioner - Talks to provisioner backend"},
+  {env,[]},
+  {modules,[]},
+  {registered,[]},
+  {vsn,"4.0.0"}]}.
