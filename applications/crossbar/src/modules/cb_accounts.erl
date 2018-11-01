@@ -376,30 +376,17 @@ put(Context, AccountId, ?RESELLER) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete_account(kz_term:api_ne_binary()) -> 'ok' | 'error'.
-delete_account('undefined') -> 'ok';
-delete_account(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    Context = prepare_context(AccountId, cb_context:new()),
-    lager:info("attempting to delete ~s(~s)", [cb_context:account_id(Context)
-                                              ,cb_context:account_db(Context)
-                                              ]),
-    Context1 = delete(Context, AccountId),
-    case cb_context:resp_status(Context1) of
-        'success' -> lager:info("deleted account ~s", [AccountId]);
-        _Resp ->
-            lager:info("failed to delete account ~s", [AccountId]),
-            'error'
-    end.
+delete_account(AccountId) ->
+    kzdb_account:delete(AccountId).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kapps_util:is_account_db(AccountDb) of
-        'false' ->
-            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, AccountId}]),  Context);
-        'true' ->
-            Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
-            _ = maybe_update_descendants_count(kzd_accounts:tree(cb_context:doc(Context1))),
+
+    case kzdb_account:delete(AccountId) of
+        {'ok', AccountJObj} ->
+            Context1 = cb_context:set_doc(Context, AccountJObj),
+            _ = maybe_update_descendants_count(kzd_accounts:tree(AccountJObj)),
             Context1
     end.
 
@@ -1150,95 +1137,3 @@ notify_new_account(Context, _AuthDoc) ->
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec delete_remove_services(cb_context:context()) -> cb_context:context() | boolean().
-delete_remove_services(Context) ->
-    try kz_services:delete(cb_context:account_id(Context)) of
-        _S -> delete_free_numbers(Context)
-    catch
-        _E:_R ->
-            lager:error("failed to delete services: ~s: ~p", [_E, _R]),
-            C1 = crossbar_util:response('error', <<"unable to cancel services">>, 500, Context),
-            delete_free_numbers(C1)
-    end.
-
--spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().
-delete_free_numbers(Context) ->
-    _ = knm_numbers:free(cb_context:account_id(Context)),
-    delete_remove_sip_aggregates(Context).
-
--spec delete_remove_sip_aggregates(cb_context:context()) -> cb_context:context() | boolean().
-delete_remove_sip_aggregates(Context) ->
-    ViewOptions = ['include_docs'
-                  ,{'key', cb_context:account_id(Context)}
-                  ],
-    _ = case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup_by_account">>, ViewOptions) of
-            {'error', _R} ->
-                lager:debug("unable to clean sip_auth: ~p", [_R]);
-            {'ok', JObjs} ->
-                Docs = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-                kz_datamgr:del_docs(?KZ_SIP_DB, Docs)
-        end,
-    delete_remove_db(Context).
-
--spec delete_remove_db(cb_context:context()) -> cb_context:context() | boolean().
-delete_remove_db(Context) ->
-    Removed = case kz_datamgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
-                  {'ok', _} ->
-                      _ = provisioner_util:maybe_delete_account(Context),
-                      _ = cb_mobile_manager:delete_account(Context),
-                      _Deleted = kz_datamgr:db_delete(cb_context:account_db(Context)),
-                      lager:info("deleting ~s: ~p", [cb_context:account_db(Context), _Deleted]),
-                      delete_mod_dbs(Context);
-                  {'error', 'not_found'} -> 'true';
-                  {'error', _R} ->
-                      lager:debug("failed to open account definition ~s: ~p", [cb_context:account_id(Context), _R]),
-                      'false'
-              end,
-    case Removed of
-        'true' ->
-            lager:debug("deleted db ~s", [cb_context:account_db(Context)]),
-            delete_remove_from_accounts(Context);
-        'false' ->
-            lager:debug("failed to remove database ~s", [cb_context:account_db(Context)]),
-            crossbar_util:response('error', <<"unable to remove database">>, 500, Context)
-    end.
-
--spec delete_mod_dbs(cb_context:context()) -> 'true'.
-delete_mod_dbs(Context) ->
-    AccountId = cb_context:account_id(Context),
-    {Year, Month, _} = erlang:date(),
-    delete_mod_dbs(AccountId, Year, Month).
-
--spec delete_mod_dbs(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'true'.
-delete_mod_dbs(AccountId, Year, Month) ->
-    Db = kz_util:format_account_mod_id(AccountId, Year, Month),
-    case kz_datamgr:db_delete(Db) of
-        'true' ->
-            lager:debug("removed account mod: ~s", [Db]),
-            {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(Year, Month),
-            delete_mod_dbs(AccountId, PrevYear, PrevMonth);
-        'false' ->
-            lager:debug("failed to delete account mod: ~s", [Db]),
-            'true'
-    end.
-
--spec delete_remove_from_accounts(cb_context:context()) -> cb_context:context().
-delete_remove_from_accounts(Context) ->
-    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, cb_context:account_id(Context)) of
-        {'ok', JObj} ->
-            UpdatedContext = cb_context:setters(Context
-                                               ,[{fun cb_context:set_account_db/2, ?KZ_ACCOUNTS_DB}
-                                                ,{fun cb_context:set_doc/2, JObj}
-                                                ]),
-            crossbar_doc:delete(UpdatedContext);
-
-        {'error', 'not_found'} ->
-            crossbar_util:response(kz_json:new(), Context);
-        {'error', _R} ->
-            crossbar_util:response('error', <<"unable to remove account definition">>, 500, Context)
-    end.
