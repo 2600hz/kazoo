@@ -617,7 +617,7 @@ account_nouns_and_user() ->
 account_nouns() ->
     case kapps_util:get_master_account_id() of
         {'ok', MasterAccountId} -> [MasterAccountId];
-        {'error', 'not_fonud'} -> []
+        {'error', _} -> []
     end.
 
 master_admin(MasterAccountId) ->
