@@ -589,8 +589,22 @@ save_jobjs(Context, JObjs0, Options) ->
         {'ok', JObjs1} ->
             Context1 = handle_datamgr_success(JObjs1, Context),
             _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs0]),
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            maybe_send_contact_list(Context1),
             Context1
+    end.
+
+-spec maybe_send_contact_list(cb_context:context()) -> 'ok'.
+maybe_send_contact_list(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/4
+                             ,[cb_context:account_id(Context)
+                              ,cb_context:auth_token(Context)
+                              ,cb_context:doc(Context)
+                              ,cb_context:fetch(Context, 'db_doc')
+                              ]),
+            'ok';
+        _Status -> 'ok'
     end.
 
 -spec save_jobj(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
@@ -603,7 +617,7 @@ save_jobj(Context, JObj0, Options) ->
         {'ok', JObj1} ->
             Context1 = handle_datamgr_success(JObj1, Context),
             _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObj0]),
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            maybe_send_contact_list(Context),
             Context1
     end.
 
@@ -625,7 +639,7 @@ update(Context, DocId, Updates, Creates) ->
         {'ok', Saved} ->
             Context1 = handle_datamgr_success(Saved, Context),
             _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, Saved]),
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            maybe_send_contact_list(Context1),
             Context1
     end.
 
@@ -766,7 +780,7 @@ do_delete(Context, JObj, CouchFun) ->
             _ = case kz_doc:type(JObj) =/= <<"account">> of
                     'true' ->
                         _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, []]),
-                        _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]);
+                        maybe_send_contact_list(Context1);
                     'false' -> lager:debug("not calling services/provisioner routines for deleted account")
                 end,
             Context1

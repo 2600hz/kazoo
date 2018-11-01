@@ -27,7 +27,7 @@ delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
 -spec delete(kz_term:ne_binary(), kzd_accounts:doc()) ->
                     {'ok', kzd_accounts:doc()} |
                     {'error', kz_json_schema:validation_errors()}.
-delete(AccountId, AccountJObj) ->
+delete(_AccountId, AccountJObj) ->
     DeleteRoutines = [fun delete_remove_services/1
                      ,fun delete_free_numbers/1
                      ,fun delete_remove_sip_aggregates/1
@@ -72,7 +72,7 @@ delete_free_numbers({AccountJObj, _Errors}=Acc) ->
     Acc.
 
 -spec delete_remove_sip_aggregates(delete_acc()) -> delete_acc().
-delete_remove_sip_aggregates({AccountJObj, Errors}=Acc) ->
+delete_remove_sip_aggregates({AccountJObj, _Errors}=Acc) ->
     ViewOptions = ['include_docs'
                   ,{'key', kz_doc:id(AccountJObj)}
                   ],
@@ -86,13 +86,11 @@ delete_remove_sip_aggregates({AccountJObj, Errors}=Acc) ->
     end,
     Acc.
 
-delete_aux_services({AccountJObj, _Errors}=Acc) ->
-    _ = provisioner_util:maybe_delete_account(Context),
-    _ = cb_mobile_manager:delete_account(Context),
+delete_aux_services({_AccountJObj, _Errors}=Acc) ->
     Acc.
 
 -spec delete_remove_db(delete_acc()) -> delete_acc().
-delete_remove_db({AccountJObj, Errors}) ->
+delete_remove_db({AccountJObj, Errors}=Acc) ->
     AccountDb = kz_doc:account_db(AccountJObj),
     case kz_datamgr:db_delete(AccountDb) of
         'true' ->
