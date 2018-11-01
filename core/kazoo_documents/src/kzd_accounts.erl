@@ -1342,11 +1342,11 @@ do_validation(AccountId, ReqJObj, ValidateFuns) ->
 
 -spec ensure_account_has_realm(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
 ensure_account_has_realm(_AccountId, {Doc, Errors}) ->
-    case kzd_accounts:realm(Doc) of
+    case realm(Doc) of
         'undefined' ->
             Realm = random_realm(),
             lager:debug("doc has no realm, creating random realm '~s'", [Realm]),
-            {kzd_accounts:set_realm(Doc, Realm), Errors};
+            {set_realm(Doc, Realm), Errors};
         _Realm ->
             lager:debug("doc has realm '~s'", [_Realm]),
             {Doc, Errors}
@@ -1420,7 +1420,7 @@ is_unique_realm(AccountId, Realm) ->
 
 -spec validate_account_name_is_unique(kz_term:api_ne_binary(), validate_acc()) -> validate_acc().
 validate_account_name_is_unique(AccountId, {Doc, Errors}) ->
-    Name = kzd_accounts:name(Doc),
+    Name = name(Doc),
     case maybe_is_unique_account_name(AccountId, Name) of
         'true' ->
             lager:debug("name ~s is indeed unique", [Name]),
@@ -1563,7 +1563,7 @@ add_pvt_vsn(Doc) ->
 
 -spec add_pvt_enabled(doc()) -> doc().
 add_pvt_enabled(Doc) ->
-    case lists:reverse(kzd_accounts:tree(Doc)) of
+    case lists:reverse(tree(Doc)) of
         [] -> Doc;
         [ParentId | _] ->
             add_pvt_enabled(Doc, ParentId, (not kz_term:is_empty(ParentId)))
@@ -1574,16 +1574,16 @@ add_pvt_enabled(Doc, _ParentId, 'false') -> Doc;
 add_pvt_enabled(Doc, ParentId, 'true') ->
     case fetch(ParentId) of
         {'ok', Parent} ->
-            case kzd_accounts:is_enabled(Parent) of
-                'true'  -> kzd_accounts:enable(Doc);
-                'false' -> kzd_accounts:disable(Doc)
+            case is_enabled(Parent) of
+                'true'  -> enable(Doc);
+                'false' -> disable(Doc)
             end;
         _Else -> Doc
     end.
 
 -spec maybe_add_pvt_api_key(doc()) -> doc().
 maybe_add_pvt_api_key(Doc) ->
-    case kzd_accounts:api_key(Doc) of
+    case api_key(Doc) of
         'undefined' -> add_pvt_api_key(Doc);
         _Else -> Doc
     end.
@@ -1615,7 +1615,7 @@ set_cpaas_token(AccountDoc, Token) ->
 
 -spec maybe_add_pvt_tree(kz_term:api_ne_binary(), doc()) -> doc().
 maybe_add_pvt_tree(ParentId, Doc) ->
-    case kzd_accounts:tree(Doc) of
+    case tree(Doc) of
         [_|_]=_Tree ->
             lager:info("tree already defined: ~p", [_Tree]),
             Doc;
@@ -1627,7 +1627,7 @@ maybe_add_pvt_tree(ParentId, Doc) ->
 add_pvt_tree(ParentId, Doc) ->
     case create_new_tree(ParentId, Doc) of
         'error' -> throw({'system_error', 'empty_tree_accounts_exist'});
-        Tree -> kzd_accounts:set_tree(Doc, Tree)
+        Tree -> set_tree(Doc, Tree)
     end.
 
 -spec create_new_tree(kz_term:api_ne_binary(), doc()) -> kz_term:ne_binaries() | 'error'.
@@ -1658,5 +1658,5 @@ create_tree_from_parent(ParentId) ->
             create_tree_from_master();
         {'ok', ParentJObj} ->
             lager:info("appending parent to tree"),
-            kzd_accounts:tree(ParentJObj) ++ [ParentId]
+            tree(ParentJObj) ++ [ParentId]
     end.
