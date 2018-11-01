@@ -332,6 +332,10 @@
                         }
                     },
                     "type": "object"
+                },
+                "id": {
+                    "description": "Provisioner Template ID",
+                    "type": "string"
                 }
             },
             "type": "object"
