@@ -1376,6 +1376,7 @@ get_result_docs(DbName, DesignDoc, Keys) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Returns a page of results and the next `startkey`
+%% @end
 %%------------------------------------------------------------------------------
 -type paginate_options() :: [{'page_size', pos_integer()}] | view_options().
 -spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
