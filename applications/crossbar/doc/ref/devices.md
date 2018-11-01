@@ -57,6 +57,7 @@ Key | Description | Type | Default | Required | Support Level
 `provision.feature_keys./^[0-9]+$/.value` | Feature key value | `string() | integer()` |   | `true` |  
 `provision.feature_keys./^[0-9]+$/` |   | `object() | null()` |   | `false` |  
 `provision.feature_keys` | Feature Keys | `object()` |   | `false` |  
+`provision.id` | Provisioner Template ID | `string()` |   | `false` |  
 `provision` | Provision data | `object()` |   | `false` |  
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean()` | `false` | `false` |  
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false` |  

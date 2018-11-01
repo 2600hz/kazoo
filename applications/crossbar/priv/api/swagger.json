@@ -4973,6 +4973,10 @@
                         "feature_keys": {
                             "description": "Feature Keys",
                             "type": "object"
+                        },
+                        "id": {
+                            "description": "Provisioner Template ID",
+                            "type": "string"
                         }
                     },
                     "type": "object"
