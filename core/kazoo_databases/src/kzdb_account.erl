@@ -24,11 +24,11 @@
                     {'error', delete_errors()}.
 delete('undefined') -> {'ok', 'undefined'};
 delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    lager:info("attempting to delete ~s(~s)", [AccountId]),
-
     case kzd_accounts:fetch(AccountId) of
         {'error', _}=Error -> Error;
-        {'ok', AccountJObj} -> delete(AccountId, AccountJObj)
+        {'ok', AccountJObj} ->
+            lager:info("attempting to delete ~s(~s)", [AccountId, kz_doc:revision(AccountJObj)]),
+            delete(AccountId, AccountJObj)
     end.
 
 -spec delete(kz_term:ne_binary(), kzd_accounts:doc()) ->
