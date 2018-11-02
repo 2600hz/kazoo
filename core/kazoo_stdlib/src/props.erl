@@ -267,7 +267,7 @@ get_values_and_keys(Props) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @doc Returns the value at Key (or Default) and the modified `proplist()`
+%% @doc Returns the value at Key (or Default) and the (maybe modified) proplist()
 %% @end
 %%------------------------------------------------------------------------------
 -spec take_value(kz_term:proplist_key(), kz_term:proplist()) ->

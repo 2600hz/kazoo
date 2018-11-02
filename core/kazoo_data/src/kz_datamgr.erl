@@ -1375,7 +1375,7 @@ get_result_docs(DbName, DesignDoc, Keys) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Returns a page of results and the next `startkey`
+%% @doc Returns a page of results and the next 'startkey'
 %% @end
 %%------------------------------------------------------------------------------
 -type paginate_options() :: [{'page_size', pos_integer()}] | view_options().
