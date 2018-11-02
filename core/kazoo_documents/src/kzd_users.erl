@@ -639,12 +639,17 @@ timezone(Doc) ->
     timezone(Doc, 'undefined').
 
 -spec timezone(doc(), Default) -> binary() | Default.
+-ifndef(TEST).
 timezone(Doc, Default) ->
     case kz_json:get_ne_binary_value([<<"timezone">>], Doc, Default) of
         'undefined' -> kzd_accounts:timezone(kz_doc:account_id(Doc));
         <<"inherit">> -> kzd_accounts:timezone(kz_doc:account_id(Doc)); %% UI-1808
         TZ -> TZ
     end.
+-else.
+timezone(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"timezone">>], Doc, Default).
+-endif.
 
 -spec set_timezone(doc(), binary()) -> doc().
 set_timezone(Doc, Timezone) ->
