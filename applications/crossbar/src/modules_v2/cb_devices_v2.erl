@@ -207,13 +207,15 @@ post(Context, DeviceId) ->
             Context2 = prune_null_provisioner_fields(Context1),
             Context3 = crossbar_doc:save(Context2),
             _ = maybe_aggregate_device(DeviceId, Context3),
-            _ = kz_util:spawn(fun update_device_provisioning/1, [Context1]),
+            _ = kz_util:spawn(fun update_device_provisioning/1, [Context3]),
             maybe_add_mobile_mdn(Context3)
     end.
 
+-spec update_device_provisioning(cb_context:context()) -> 'ok'.
 update_device_provisioning(Context) ->
     update_device_provisioning(Context, cb_context:resp_status(Context)).
 
+-spec update_device_provisioning(cb_context:context(), crossbar_status()) -> 'ok'.
 update_device_provisioning(Context, 'success') ->
     _ = provisioner_util:provision_device(cb_context:doc(Context)
                                          ,cb_context:fetch(Context, 'db_doc')
@@ -297,16 +299,17 @@ delete(Context, DeviceId) ->
             Context1
     end.
 
+-spec maybe_delete_provision(cb_context:context()) -> 'ok'.
 maybe_delete_provision(Context) ->
     maybe_delete_provision(Context, cb_context:resp_status(Context)).
 
+-spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> 'ok'.
 maybe_delete_provision(Context, 'success') ->
     DeviceDoc = cb_context:doc(Context),
     AuthToken = cb_context:auth_token(Context),
     _ = provisioner_util:delete_provision(DeviceDoc, AuthToken),
     'ok';
 maybe_delete_provision(_Context, _Status) -> 'ok'.
-
 
 %%%=============================================================================
 %%% Internal functions
@@ -456,7 +459,8 @@ check_mdn_registered(DeviceId, Context) ->
 -spec get_mac_address(cb_context:context()) -> kz_term:api_binary().
 get_mac_address(Context) ->
     provisioner_util:cleanse_mac_address(
-      cb_context:req_value(Context, ?KEY_MAC_ADDRESS)).
+      cb_context:req_value(Context, ?KEY_MAC_ADDRESS)
+     ).
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->

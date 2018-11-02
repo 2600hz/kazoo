@@ -735,7 +735,7 @@ force_sync_user(AccountId, NewUser) ->
             lager:debug("no user devices to sync");
         {'ok', DeviceDocs} ->
             Realm = kzd_accounts:fetch_realm(AccountId),
-            _ = [send_check_sync(kzd_devices:presence_id(DeviceDoc), Realm, kz_util:get_reqid())
+            _ = [send_check_sync(kzd_devices:presence_id(DeviceDoc), Realm, kz_util:get_callid())
                  || DeviceDoc <- DeviceDocs
                 ],
             'ok'

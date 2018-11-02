@@ -1049,7 +1049,7 @@ insert_value(Key, Value, JObj) ->
         _V -> JObj
     end.
 
--spec insert_values(json_proplist(), object()) -> object().
+-spec insert_values([{get_key(), json_term()}], object()) -> object().
 insert_values(KVs, JObj) ->
     lists:foldl(fun insert_value_fold/2, JObj, KVs).
 
