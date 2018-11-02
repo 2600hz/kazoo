@@ -135,7 +135,7 @@ maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'error', _} -> 'undefined';
         {'ok', UserJObj} ->
-            case kzd_user:presence_id(UserJObj) of
+            case kzd_users:presence_id(UserJObj) of
                 'undefined' -> get_device_presence_id(AccountDb, DeviceId);
                 PresenceId -> PresenceId
             end

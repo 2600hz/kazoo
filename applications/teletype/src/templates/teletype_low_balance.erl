@@ -150,7 +150,7 @@ maybe_add_user_data(Key, Acc, DataJObj) ->
 get_user(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     UserId = kz_json:get_value(<<"user_id">>, DataJObj),
-    case kzd_user:fetch(AccountId, UserId) of
+    case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             ?LOG_DEBUG("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),

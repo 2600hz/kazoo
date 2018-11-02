@@ -500,7 +500,7 @@ merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
 -spec get_user(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_json:object().
 get_user(_AccountDb, 'undefined') -> kz_json:new();
 get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
-    case kzd_user:fetch(AccountDb, OwnerId) of
+    case kzd_users:fetch(AccountDb, OwnerId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->
             lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
@@ -522,7 +522,7 @@ get_users(AccountDb, OwnerIds) ->
     %% Bulk fetch to fill the cache
     _ = kz_datamgr:open_cache_docs(AccountDb, OwnerIds),
     F = fun (UserId, UsersAcc) ->
-                case kzd_user:fetch(AccountDb, UserId) of
+                case kzd_users:fetch(AccountDb, UserId) of
                     {ok, UserJObj} -> [UserJObj|UsersAcc];
                     {error, _R} ->
                         lager:warning("failed to load endpoint owner ~s: ~p", [UserId, _R]),

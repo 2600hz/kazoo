@@ -268,7 +268,7 @@ load_presence_for_user(Context, UserId) ->
 -spec maybe_load_user_devices(cb_context:context()) -> cb_context:context().
 maybe_load_user_devices(Context) ->
     User = cb_context:doc(Context),
-    case kzd_user:presence_id(User) of
+    case kzd_users:presence_id(User) of
         'undefined' -> load_user_devices(Context);
         _PresenceId -> Context
     end.
@@ -388,7 +388,7 @@ publish_presence_update(Context, PresenceId, PresenceState) ->
 find_presence_id(JObj) ->
     case kzd_devices:is_device(JObj) of
         'true' -> kzd_devices:presence_id(JObj);
-        'false' -> kzd_user:presence_id(JObj)
+        'false' -> kzd_users:presence_id(JObj)
     end.
 
 -spec load_report(cb_context:context(), path_token()) -> cb_context:context().

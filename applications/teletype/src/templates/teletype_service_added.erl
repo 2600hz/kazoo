@@ -185,7 +185,7 @@ agent_user_data(DataJObj) ->
     AgentJObj = kz_json:get_json_value([<<"audit_log">>, <<"agent">>], DataJObj, kz_json:new()),
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AgentJObj),
     UserId = kz_json:get_ne_binary_value(<<"type_id">>, AgentJObj),
-    case kzd_user:fetch(AccountId, UserId) of
+    case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
         {'error', _} -> []
     end.

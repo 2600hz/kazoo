@@ -376,10 +376,10 @@ system_params() ->
 
 -spec user_params(kzd_users:doc()) -> kz_term:proplist().
 user_params(UserJObj) ->
-    Ks = [{<<"first_name">>, fun kzd_user:first_name/1}
-         ,{<<"last_name">>, fun kzd_user:last_name/1}
-         ,{<<"email">>, fun kzd_user:email/1}
-         ,{<<"timezone">>, fun kzd_user:timezone/1}
+    Ks = [{<<"first_name">>, fun kzd_users:first_name/1}
+         ,{<<"last_name">>, fun kzd_users:last_name/1}
+         ,{<<"email">>, fun kzd_users:email/1}
+         ,{<<"timezone">>, fun kzd_users:timezone/1}
          ],
     props:filter_undefined(
       [{Key, Fun(UserJObj)} || {Key, Fun} <- Ks]

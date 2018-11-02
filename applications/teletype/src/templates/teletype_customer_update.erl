@@ -102,7 +102,7 @@ process_accounts(DataJObj) ->
 process_account(AccountId, DataJObj) ->
     case kz_json:get_value(<<"user_type">>, DataJObj) of
         ?MATCH_ACCOUNT_RAW(UserId) ->
-            {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
+            {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
             [send_update_to_user(UserJObj, DataJObj)];
         _ ->
             AccountDb = kz_util:format_account_id(AccountId, 'encoded'),

@@ -675,7 +675,7 @@ get_language(AccountId, UserId) ->
 
 -spec get_user_lang(kz_term:ne_binary(), kz_term:ne_binary()) -> 'error' | {'ok', kz_term:ne_binary()}.
 get_user_lang(AccountId, UserId) ->
-    case kzd_user:fetch(AccountId, UserId) of
+    case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserJObj} ->
             case kz_json:get_value(<<"language">>, UserJObj) of
                 'undefined' -> 'error';
@@ -701,7 +701,7 @@ get_account_lang(AccountId) ->
 
 -spec get_user_timezone(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_user_timezone(AccountId, UserId) ->
-    case kzd_user:fetch(AccountId, UserId) of
+    case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> kzd_users:timezone(UserJObj);
         {'error', _E} -> kzd_accounts:timezone(AccountId)
     end.

@@ -249,7 +249,7 @@ mark_migration_complete(MigId, AccountId, Context) ->
 
 -spec get_user_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_user_name(AccountId, UserId) ->
-    case kzd_user:fetch(AccountId, UserId) of
+    case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserDoc} -> kzd_users:name(UserDoc);
         _ -> 'undefined'
     end.
