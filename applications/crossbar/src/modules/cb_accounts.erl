@@ -384,7 +384,10 @@ put(Context, AccountId, ?RESELLER) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_account(kz_term:api_ne_binary()) -> 'ok' | 'error'.
+-spec delete_account(kz_term:api_ne_binary()) ->
+                            {'ok', kzd_accounts:doc() | 'undefined'} |
+                            {'error', kz_json_schema:validation_errors()} |
+                            kz_datamgr:data_error().
 delete_account(AccountId) ->
     kzdb_account:delete(AccountId).
 
@@ -400,7 +403,16 @@ delete(Context, Account) ->
                                                      ,cb_context:auth_token(Context)
                                                      ),
             _ = cb_mobile_manager:delete_account(Context1),
-            Context1
+            Context1;
+        {'error', Errors} when is_list(Errors) ->
+            lists:foldl(fun({'error', Msg, Code}, C) ->
+                                crossbar_util:response('error', Msg, Code, C)
+                        end
+                       ,Context
+                       ,Errors
+                       );
+        {'error', Error} ->
+            crossbar_doc:handle_datamgr_errors(Error, Account, Context)
     end.
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().

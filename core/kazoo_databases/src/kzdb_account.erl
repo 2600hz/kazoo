@@ -7,14 +7,21 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
+-export_type([delete_error/0
+             ,delete_errors/0
+             ]).
+
 -define(ACCOUNTS_CONFIG_CAT, <<"crossbar.accounts">>).
 
 -define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
 
+-type delete_error() :: {'error', kz_term:ne_binary(), pos_integer()}.
+-type delete_errors() :: [delete_error()].
+
 -spec delete(kz_term:api_ne_binary()) ->
                     {'ok', kzd_accounts:doc() | 'undefined'} |
                     kz_datamgr:data_error() |
-                    {'error', atom()}.
+                    {'error', delete_errors()}.
 delete('undefined') -> {'ok', 'undefined'};
 delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     lager:info("attempting to delete ~s(~s)", [AccountId]),
@@ -26,7 +33,7 @@ delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
 
 -spec delete(kz_term:ne_binary(), kzd_accounts:doc()) ->
                     {'ok', kzd_accounts:doc()} |
-                    {'error', kz_json_schema:validation_errors()}.
+                    {'error', delete_errors()}.
 delete(_AccountId, AccountJObj) ->
     DeleteRoutines = [fun delete_remove_services/1
                      ,fun delete_free_numbers/1
@@ -45,8 +52,6 @@ delete(_AccountId, AccountJObj) ->
         {_AccountJObj, Errors} -> {'error', Errors}
     end.
 
--type delete_error() :: {'error', kz_term:ne_binary(), pos_integer()}.
--type delete_errors() :: [delete_error()].
 -type delete_acc() :: {kzd_accounts:doc(), delete_errors()}.
 
 %%------------------------------------------------------------------------------

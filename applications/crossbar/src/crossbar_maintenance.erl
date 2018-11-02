@@ -604,7 +604,7 @@ validate_account(JObj, Context) ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
             AccountId = cb_context:account_id(Context1),
             io:format("failed to validate account ~s: ~p ~s~n", [AccountId, _Code, _Msg]),
-            cb_accounts:delete_account(AccountId),
+            _ = cb_accounts:delete_account(AccountId),
             throw(Errors)
     end.
 
