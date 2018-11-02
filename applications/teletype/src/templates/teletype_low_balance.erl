@@ -135,7 +135,7 @@ maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
 maybe_add_macro_key(_Key, Acc, _DataJObj) ->
     Acc.
 
--spec maybe_add_user_data(kz_json:path(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+-spec maybe_add_user_data(kz_json:key(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
 maybe_add_user_data(Key, Acc, DataJObj) ->
     User = get_user(DataJObj),
     case kz_json:get_value(Key, User) of
@@ -148,8 +148,8 @@ maybe_add_user_data(Key, Acc, DataJObj) ->
 
 -spec get_user(kz_json:object()) -> kz_json:object().
 get_user(DataJObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    UserId = kz_json:get_value(<<"user_id">>, DataJObj),
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
+    UserId = kz_json:get_ne_binary_value(<<"user_id">>, DataJObj),
     case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->

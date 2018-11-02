@@ -876,12 +876,12 @@ vcard_field_divide_by_length(Row, Acc) ->
     [Row | Acc].
 
 -spec normalize_address(kz_json:object()) -> {kz_term:ne_binary(), binary()}.
-normalize_address(Address) ->
-    Types = case kz_json:get_list_value(<<"types">>, Address) of
+normalize_address(AddressJObj) ->
+    Types = case kz_json:get_list_value(<<"types">>, AddressJObj) of
                 'undefined' -> [<<"intl">>, <<"postal">>, <<"parcel">>, <<"work">>];
                 T -> T
             end,
-    Address = kz_json:get_value(<<"address">>, Address),
+    Address = kz_json:get_binary_value(<<"address">>, AddressJObj),
     {kz_binary:join(Types, <<",">>), Address}.
 
 -spec enable(doc()) -> doc().

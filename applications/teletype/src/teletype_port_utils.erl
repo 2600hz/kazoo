@@ -125,7 +125,7 @@ fix_billing(JObj, _DataJObj) ->
                  ,kz_json:get_json_value(<<"bill">>, JObj, kz_json:new())
                  ).
 
--spec fix_billing_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+-spec fix_billing_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
                               kz_json:object().
 fix_billing_fold(Key, Value, Acc) ->
     kz_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
