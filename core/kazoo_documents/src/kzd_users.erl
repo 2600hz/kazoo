@@ -80,7 +80,7 @@
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 -spec call_forward(doc()) -> kz_term:api_object().
 call_forward(Doc) ->
