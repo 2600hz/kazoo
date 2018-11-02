@@ -522,11 +522,11 @@ owned_by([_|_]=OwnerIds, Type, Call) ->
 owned_by(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}], Call).
 
-
--spec owned_by_docs(kz_term:api_binary(), kapps_call:call()) -> kz_term:api_objects().
+-spec owned_by_docs(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) ->
+                           kz_term:api_objects().
 owned_by_docs('undefined', _) -> [];
-owned_by_docs(OwnerId, Call) ->
-    AccountDb = kapps_call:account_db(Call),
+owned_by_docs(OwnerId, ?NE_BINARY=Account) ->
+    AccountDb = kz_util:format_account_db(Account),
     ViewOptions = [{'startkey', [OwnerId]}
                   ,{'endkey', [OwnerId, kz_json:new()]}
                   ,'include_docs'
@@ -536,7 +536,9 @@ owned_by_docs(OwnerId, Call) ->
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
             []
-    end.
+    end;
+owned_by_docs(OwnerId, Call) ->
+    owned_by_docs(OwnerId, kapps_call:account_id(Call)).
 
 -spec owned_by_docs(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_objects().
 owned_by_docs('undefined', _, _) -> [];

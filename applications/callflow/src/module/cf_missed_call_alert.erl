@@ -177,7 +177,7 @@ bulk_read_emails(AccountDb, Ids) ->
                                                ]
                                               )
                           ],
-                Email <- [kzd_user:email(kz_json:get_value(<<"doc">>, J))],
+                Email <- [kzd_users:email(kz_json:get_value(<<"doc">>, J))],
                 kz_term:is_not_empty(Email)
             ];
         {'error', _R} ->

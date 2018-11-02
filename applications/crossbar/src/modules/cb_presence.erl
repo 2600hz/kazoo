@@ -259,7 +259,7 @@ load_device(Context, ThingId) ->
 -spec load_presence_for_user(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_presence_for_user(Context, UserId) ->
     %% load the user_doc if it has a presence_id set, otherwise load all the user's devices
-    Context1 = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())),
+    Context1 = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type())),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_load_user_devices(Context1);
         _ -> Context
@@ -276,7 +276,7 @@ maybe_load_user_devices(Context) ->
 -spec load_user_devices(cb_context:context()) -> cb_context:context().
 load_user_devices(Context) ->
     User = cb_context:doc(Context),
-    Devices = kzd_user:devices(User),
+    Devices = kz_attributes:owned_by_docs(kz_doc:id(User), cb_context:account_id(Context)),
     cb_context:set_doc(Context, Devices).
 
 -spec validate_action(cb_context:context()) -> cb_context:context().

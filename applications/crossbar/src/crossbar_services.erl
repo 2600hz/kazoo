@@ -128,8 +128,8 @@ audit_log_user(Context, UserId) ->
             [{<<"type">>, <<"user">>}
             ,{<<"type_id">>, kz_doc:id(JObj)}
             ,{<<"account_id">>, cb_context:auth_account_id(Context)}
-            ,{<<"first_name">>, kzd_user:first_name(JObj)}
-            ,{<<"last_name">>, kzd_user:last_name(JObj)}
+            ,{<<"first_name">>, kzd_users:first_name(JObj)}
+            ,{<<"last_name">>, kzd_users:last_name(JObj)}
             ]
     end.
 

@@ -93,7 +93,7 @@ process_req(DataJObj) ->
     VMBoxJObj = get_vmbox(DataJObj),
     UserJObj = get_owner(VMBoxJObj, DataJObj),
     BoxEmails = kzd_voicemail_box:notification_emails(VMBoxJObj),
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
+    Emails = maybe_add_user_email(BoxEmails, kzd_users:email(UserJObj), kzd_users:vm_to_email_enabled(UserJObj)),
     Values = [{<<"vmbox_doc">>, VMBoxJObj}
              ,{<<"user">>, UserJObj}
              ,{<<"to">>, Emails}

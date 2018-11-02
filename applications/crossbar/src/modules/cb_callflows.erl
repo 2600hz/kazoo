@@ -529,7 +529,7 @@ maybe_copy_value(Key, Doc, Metadata) ->
 
 -spec metadata_user_name(kz_json:object(), kz_json:object()) -> kz_json:object().
 metadata_user_name(Doc, Metadata) ->
-    case kzd_user:name(Doc) of
+    case kzd_users:name(Doc) of
         <<>> -> Metadata;
         <<" ">> -> Metadata;
         Name -> kz_json:set_value(<<"name">>, Name, Metadata)

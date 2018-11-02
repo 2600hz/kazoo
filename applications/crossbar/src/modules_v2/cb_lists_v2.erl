@@ -262,7 +262,7 @@ validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
                               ),
     JObj3 = set_org(JObj2, Context1),
     JObj4 = set_photo(JObj3, Context1),
-    RespData = kzd_user:to_vcard(JObj4),
+    RespData = kzd_users:to_vcard(JObj4),
     cb_context:set_resp_data(Context1, [RespData, "\n"]).
 
 -spec validate_doc(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().

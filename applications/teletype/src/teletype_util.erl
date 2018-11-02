@@ -374,7 +374,7 @@ system_params() ->
     ,{<<"encoded_node">>, kz_nodes:node_encoded()}
     ].
 
--spec user_params(kzd_user:doc()) -> kz_term:proplist().
+-spec user_params(kzd_users:doc()) -> kz_term:proplist().
 user_params(UserJObj) ->
     Ks = [{<<"first_name">>, fun kzd_user:first_name/1}
          ,{<<"last_name">>, fun kzd_user:last_name/1}
@@ -544,11 +544,11 @@ query_account_for_admin_emails(<<_/binary>> = AccountId) ->
             []
     end.
 
--spec extract_admin_emails(kzd_user:docs()) -> kz_term:ne_binaries().
+-spec extract_admin_emails(kzd_users:docs()) -> kz_term:ne_binaries().
 extract_admin_emails(Users) ->
     [Email
      || Admin <- filter_for_admins(Users),
-        (Email = kzd_user:email(Admin)) =/= 'undefined'
+        (Email = kzd_users:email(Admin)) =/= 'undefined'
     ].
 
 -spec find_reseller_id(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -559,7 +559,7 @@ find_account_admin('undefined') -> 'undefined';
 find_account_admin(?MATCH_ACCOUNT_RAW(AccountId)) ->
     find_account_admin(AccountId, find_reseller_id(AccountId)).
 
--spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_user:doc().
+-spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_users:doc().
 find_account_admin(AccountId, AccountId) ->
     query_for_account_admin(AccountId);
 find_account_admin(AccountId, ResellerId) ->
@@ -568,7 +568,7 @@ find_account_admin(AccountId, ResellerId) ->
         Admin -> Admin
     end.
 
--spec query_for_account_admin(kz_term:ne_binary()) -> 'undefined' | kzd_user:doc().
+-spec query_for_account_admin(kz_term:ne_binary()) -> 'undefined' | kzd_users:doc().
 query_for_account_admin(AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = [{'key', <<"user">>}
@@ -586,12 +586,12 @@ query_for_account_admin(AccountId) ->
             'undefined'
     end.
 
--spec filter_for_admins(kz_json:objects()) -> kzd_user:docs().
+-spec filter_for_admins(kz_json:objects()) -> kzd_users:docs().
 filter_for_admins(Users) ->
     [Doc
      || User <- Users,
         Doc <- [kz_json:get_value(<<"doc">>, User)],
-        kzd_user:is_account_admin(Doc)
+        kzd_users:is_account_admin(Doc)
     ].
 
 -spec should_handle_notification(kz_json:object()) -> boolean().

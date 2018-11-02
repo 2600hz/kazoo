@@ -504,7 +504,7 @@ populate_new_account([{Event, Context}|Props], AccountDb, Results) ->
     JObj = cb_context:doc(Context1),
     case cb_context:response(Context1) of
         {'ok', _} ->
-            case kzd_user:is_account_admin(JObj) of
+            case kzd_users:is_account_admin(JObj) of
                 'true' ->
                     populate_new_account(Props, AccountDb
                                         ,kz_json:set_value(<<"owner_id">>, kz_doc:id(JObj), Results));

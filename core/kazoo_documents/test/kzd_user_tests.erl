@@ -16,15 +16,15 @@
 -define(EMPTY, kz_json:new()).
 
 email_test_() ->
-    [?_assertEqual(<<"email@example.com">>,   kzd_user:email(?DOC))
-    ,?_assertEqual('undefined',               kzd_user:email(?EMPTY))
-    ,?_assertEqual(<<"email@example.com">>,   kzd_user:email(?EMPTY, <<"email@example.com">>))
+    [?_assertEqual(<<"email@example.com">>,   kzd_users:email(?DOC))
+    ,?_assertEqual('undefined',               kzd_users:email(?EMPTY))
+    ,?_assertEqual(<<"email@example.com">>,   kzd_users:email(?EMPTY, <<"email@example.com">>))
     ].
 
 voicemail_notification_enabled_test_() ->
-    [?_assertEqual('true',    kzd_user:voicemail_notification_enabled(?DOC))
-    ,?_assertEqual('false',   kzd_user:voicemail_notification_enabled(?EMPTY))
-    ,?_assertEqual('true',    kzd_user:voicemail_notification_enabled(?EMPTY, 'true'))
+    [?_assertEqual('true',    kzd_users:vm_to_email_enabled(?DOC))
+    ,?_assertEqual('false',   kzd_users:vm_to_email_enabled(?EMPTY))
+    ,?_assertEqual('true',    kzd_users:vm_to_email_enabled(?EMPTY, 'true'))
     ].
 
 to_vcard_test() ->
@@ -34,4 +34,4 @@ to_vcard_test() ->
                    "N:L;F\n"
                    "EMAIL:email@example.com\n"
                    "END:VCARD">>
-                , kzd_user:to_vcard(?DOC)).
+                , kzd_users:to_vcard(?DOC)).

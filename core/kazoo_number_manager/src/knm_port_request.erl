@@ -322,7 +322,7 @@ transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
 
 get_user_name(AuthAccountId, UserId) ->
     case kzd_user:fetch(AuthAccountId, UserId) of
-        {ok, UserJObj} -> {kzd_user:first_name(UserJObj), kzd_user:last_name(UserJObj)};
+        {ok, UserJObj} -> {kzd_users:first_name(UserJObj), kzd_users:last_name(UserJObj)};
         {error, _R} ->
             lager:warning("cannot read ~s's username: ~p", [UserId, _R]),
             {undefined, undefined}

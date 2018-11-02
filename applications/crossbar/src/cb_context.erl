@@ -251,7 +251,7 @@ is_account_admin(Context) ->
     AuthAccountId = auth_account_id(Context),
     AuthUserId = auth_user_id(Context),
     lager:debug("checking if user ~s is account admin of ~s", [AuthAccountId, AuthUserId]),
-    case kzd_user:is_account_admin(AuthAccountId, AuthUserId) of
+    case kzd_users:is_account_admin(AuthAccountId, AuthUserId) of
         'true' ->
             lager:debug("the requestor is an account admin"),
             'true';

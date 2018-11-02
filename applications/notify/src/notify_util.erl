@@ -307,7 +307,7 @@ find_rep_email(JObj) ->
                 lager:debug("finding admins for reseller of account ~s", [AccountId]),
                 find_admin(kz_services_reseller:get_id(AccountId))
         end,
-    kzd_user:email(Admin).
+    kzd_users:email(Admin).
 
 %%------------------------------------------------------------------------------
 %% @doc try to find the first user with admin privileges and an email given
@@ -334,8 +334,8 @@ find_admin([AcctId|Tree]) ->
             case [Doc
                   || User <- Users,
                      Doc <- [kz_json:get_value(<<"doc">>, User)],
-                     kzd_user:is_account_admin(Doc),
-                     kz_term:is_not_empty(kzd_user:email(Doc))
+                     kzd_users:is_account_admin(Doc),
+                     kz_term:is_not_empty(kzd_users:email(Doc))
                  ]
             of
                 [] -> find_admin(Tree);

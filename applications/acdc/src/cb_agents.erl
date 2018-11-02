@@ -257,7 +257,7 @@ publish_update(Context, AgentId, PubFun) ->
 %%------------------------------------------------------------------------------
 -spec read(path_token(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_users:type())).
 
 -define(CB_AGENTS_LIST, <<"users/crossbar_listing">>).
 -spec fetch_all_agent_statuses(cb_context:context()) -> cb_context:context().

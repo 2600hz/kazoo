@@ -61,10 +61,20 @@
 -export([voicemail_notify_callback/1, voicemail_notify_callback/2, set_voicemail_notify_callback/2]).
 
 
+-export([fetch/2]).
+-export([to_vcard/1]).
+-export([enable/1, disable/1]).
+-export([type/0]).
+-export([fax_settings/1]).
+-export([name/1]).
+-export([is_account_admin/1, is_account_admin/2]).
+-export([classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3]).
+
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type docs() :: [doc()].
+-export_type([doc/0, docs/0]).
 
 -define(SCHEMA, <<"users">>).
 
@@ -630,7 +640,11 @@ timezone(Doc) ->
 
 -spec timezone(doc(), Default) -> binary() | Default.
 timezone(Doc, Default) ->
-    kz_json:get_binary_value([<<"timezone">>], Doc, Default).
+    case kz_json:get_ne_binary_value([<<"timezone">>], Doc, Default) of
+        'undefined' -> kzd_accounts:timezone(kz_doc:account_id(Doc));
+        <<"inherit">> -> kzd_accounts:timezone(kz_doc:account_id(Doc)); %% UI-1808
+        TZ -> TZ
+    end.
 
 -spec set_timezone(doc(), binary()) -> doc().
 set_timezone(Doc, Timezone) ->
@@ -707,3 +721,223 @@ voicemail_notify_callback(Doc, Default) ->
 -spec set_voicemail_notify_callback(doc(), kz_json:object()) -> doc().
 set_voicemail_notify_callback(Doc, VoicemailNotifyCallback) ->
     kz_json:set_value([<<"voicemail">>, <<"notify">>, <<"callback">>], VoicemailNotifyCallback, Doc).
+
+-spec fetch(kz_term:api_ne_binary(), kz_term:ne_binary()) ->
+                   {'ok', doc()} |
+                   kz_datamgr:data_error().
+fetch('undefined', _UserId) ->
+    {'error', 'invalid_db_name'};
+fetch(Account, UserId=?NE_BINARY) ->
+    AccountDb = kz_util:format_account_db(Account),
+    kz_datamgr:open_cache_doc(AccountDb, UserId).
+
+-spec to_vcard(doc()) -> binary().
+to_vcard(User) ->
+    %% TODO add SOUND, AGENT (X-ASSISTANT), X-MANAGER
+    Fields = [<<"BEGIN">>
+             ,<<"VERSION">>
+             ,<<"FN">>
+             ,<<"N">>
+             ,<<"ORG">>
+             ,<<"PHOTO">>
+             ,<<"EMAIL">>
+             ,<<"BDAY">>
+             ,<<"NOTE">>
+             ,<<"TITLE">>
+             ,<<"ROLE">>
+             ,<<"TZ">>
+             ,<<"NICKNAME">>
+             ,<<"TEL">>
+             ,<<"ADR">>
+             ,<<"END">>
+             ],
+    NotEmptyFields = lists:foldl(fun vcard_fields_acc/2
+                                ,[]
+                                ,[card_field(Key, User) || Key <- Fields]
+                                ),
+    PackedFields = lists:reverse(
+                     [kz_binary:join([X, Y], <<":">>) ||
+                         {X, Y} <- NotEmptyFields
+                     ]
+                    ),
+    DividedFields = lists:reverse(
+                      lists:foldl(fun vcard_field_divide_by_length/2, [], PackedFields)
+                     ),
+    kz_binary:join(DividedFields, <<"\n">>).
+
+-spec vcard_escape_chars(binary()) -> binary().
+vcard_escape_chars(Val) ->
+    Opts = ['global', {'return', 'binary'}],
+    Val1 = re:replace(Val, "(:|;|,)", "\\\\&", Opts),
+    re:replace(Val1, "\n", "\\\\n", Opts).
+
+-spec vcard_fields_acc(vcard_field(), [{kz_term:ne_binary(), binary()}]) -> [{kz_term:ne_binary(), binary()}].
+vcard_fields_acc({_, Val}, Acc)
+  when Val =:= 'undefined'; Val =:= []; Val =:= <<>> ->
+    Acc;
+vcard_fields_acc({Type, Val}, Acc) ->
+    case vcard_normalize_val(Val) of
+        <<>> -> Acc;
+        ValN ->
+            TypeN = vcard_normalize_type(Type),
+            [{TypeN, ValN} | Acc]
+    end;
+vcard_fields_acc([X | Rest], Acc) ->
+    vcard_fields_acc(Rest, vcard_fields_acc(X, Acc));
+vcard_fields_acc([], Acc) ->
+    Acc.
+
+-spec vcard_normalize_val(binary() | {char(), kz_term:binaries()}) -> binary().
+vcard_normalize_val({Separator, Vals}) when is_list(Vals) ->
+    kz_binary:join([vcard_escape_chars(X) || X <- Vals, not kz_term:is_empty(X)], Separator);
+vcard_normalize_val(Val) when is_binary(Val) ->
+    vcard_escape_chars(Val).
+
+-spec vcard_normalize_type(list() | {kz_term:ne_binary(), kz_term:ne_binary()} | kz_term:ne_binary()) -> kz_term:ne_binary().
+vcard_normalize_type(T) when is_list(T) -> kz_binary:join([vcard_normalize_type(X) || X <- T], <<";">>);
+vcard_normalize_type({T, V}) -> kz_binary:join([T, V], <<"=">>);
+vcard_normalize_type(T) -> T.
+
+-type vcard_val() :: binary() | {char(), kz_term:binaries()} | 'undefined'.
+-type vcard_type_token() :: kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}.
+-type vcard_type() :: [vcard_type_token()] | vcard_type_token().
+-type vcard_field_token() :: {vcard_type(), vcard_val()}.
+-type vcard_field() :: vcard_field_token() | [vcard_field_token()].
+
+-spec card_field(kz_term:ne_binary(), doc()) -> vcard_field().
+card_field(Key = <<"BEGIN">>, _User) ->
+    {Key, <<"VCARD">>};
+card_field(Key = <<"VERSION">>, _User) ->
+    {Key, <<"3.0">>};
+card_field(Key = <<"END">>, _User) ->
+    {Key, <<"VCARD">>};
+card_field(Key = <<"FN">>, User) ->
+    FirstName = first_name(User),
+    LastName = last_name(User),
+    MiddleName = kz_json:get_ne_binary_value(<<"middle_name">>, User),
+    {Key
+    ,kz_binary:join([X || X <- [FirstName, MiddleName, LastName],
+                          not kz_term:is_empty(X)
+                    ]
+                   ,<<" ">>
+                   )
+    };
+card_field(Key = <<"N">>, User) ->
+    FirstName = first_name(User),
+    LastName = last_name(User),
+    MiddleName = kz_json:get_ne_binary_value(<<"middle_name">>, User),
+    {Key, {$;, [LastName, FirstName, MiddleName]}};
+card_field(Key = <<"ORG">>, User) ->
+    {Key, kz_json:get_value(<<"org">>, User)};
+card_field(Key = <<"PHOTO">>, User) ->
+    case kz_json:get_json_value(<<"photo">>, User) of
+        'undefined' -> {Key, 'undefined'};
+        PhotoJObj ->
+            [{CT, PhotoBin}] = kz_json:to_proplist(PhotoJObj),
+            TypeType = content_type_to_type(CT),
+            Data = base64:encode(PhotoBin),
+            {[Key, {<<"ENCODING">>, <<"B">>}, {<<"TYPE">>, TypeType}], Data}
+    end;
+card_field(Key = <<"ADR">>, User) ->
+    Addresses = [normalize_address(A) || A <- kz_json:get_list_value(<<"addresses">>, User, [])],
+    [{[Key, {<<"TYPE">>, Type}], Address} || {Type, Address} <- Addresses];
+card_field(Key = <<"TEL">>, User) ->
+    CallerId = caller_id(User, kz_json:new()),
+    Internal = kz_json:get_ne_binary_value(<<"internal">>, CallerId),
+    External = kz_json:get_ne_binary_value(<<"external">>, CallerId),
+
+    [{Key, Internal}
+    ,{Key, External}
+    ];
+card_field(Key = <<"EMAIL">>, User) ->
+    {Key, email(User)};
+card_field(Key = <<"BDAY">>, User) ->
+    {Key, kz_json:get_value(<<"birthday">>, User)};
+card_field(Key = <<"NOTE">>, User) ->
+    {Key, kz_json:get_value(<<"note">>, User)};
+card_field(Key = <<"TITLE">>, User) ->
+    {Key, kz_json:get_value(<<"title">>, User)};
+card_field(Key = <<"ROLE">>, User) ->
+    {Key, kz_json:get_value(<<"role">>, User)};
+card_field(Key = <<"TZ">>, User) ->
+    {Key, timezone(User)};
+card_field(Key = <<"NICKNAME">>, User) ->
+    {Key, {$,, kz_json:get_list_value(<<"nicknames">>, User, [])}}.
+
+-spec content_type_to_type(kz_term:ne_binary()) -> kz_term:ne_binary().
+content_type_to_type(<<"image/jpeg">>) -> <<"JPEG">>.
+
+-spec vcard_field_divide_by_length(binary(), kz_term:binaries()) -> kz_term:binaries().
+vcard_field_divide_by_length(<<Row:75/binary>>, Acc) ->
+    [Row | Acc];
+vcard_field_divide_by_length(<<Row:75/binary, Rest/binary>>, Acc) ->
+    vcard_field_divide_by_length(Rest, [Row | Acc]);
+vcard_field_divide_by_length(Row, Acc) ->
+    [Row | Acc].
+
+-spec normalize_address(kz_json:object()) -> {kz_term:ne_binary(), binary()}.
+normalize_address(Address) ->
+    Types = case kz_json:get_list_value(<<"types">>, Address) of
+                'undefined' -> [<<"intl">>, <<"postal">>, <<"parcel">>, <<"work">>];
+                T -> T
+            end,
+    Address = kz_json:get_value(<<"address">>, Address),
+    {kz_binary:join(Types, <<",">>), Address}.
+
+-spec enable(doc()) -> doc().
+enable(JObj) ->
+    kz_json:set_value([<<"enabled">>], 'true', JObj).
+
+-spec disable(doc()) -> doc().
+disable(JObj) ->
+    kz_json:set_value([<<"enabled">>], 'false', JObj).
+
+-spec type() -> kz_term:ne_binary().
+type() -> <<"user">>.
+
+-spec fax_settings(doc()) -> doc().
+fax_settings(Doc) ->
+    FaxSettings = kz_json:get_json_value(?FAX_SETTINGS_KEY, Doc, kz_json:new()),
+    UserFaxSettings =
+        case kz_json:get_ne_binary_value(?FAX_TIMEZONE_KEY, FaxSettings) of
+            'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(Doc), FaxSettings);
+            _TZ -> FaxSettings
+        end,
+    AccountFaxSettings = kzd_accounts:fax_settings(kz_doc:account_id(Doc)),
+    kz_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).
+
+-spec name(doc()) -> kz_term:ne_binary().
+name(Doc) ->
+    list_to_binary([first_name(Doc, <<>>), " ", last_name(Doc, <<>>)]).
+
+-spec is_account_admin(kz_term:api_object()) -> boolean().
+is_account_admin('undefined') -> 'false';
+is_account_admin(Doc) ->
+    priv_level(Doc) =:= <<"admin">>.
+
+-spec is_account_admin(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
+is_account_admin('undefined', _) -> 'false';
+is_account_admin(_, 'undefined') -> 'false';
+is_account_admin(Account, UserId) ->
+    case kzd_users:fetch(Account, UserId) of
+        {'ok', JObj} -> is_account_admin(JObj);
+        {'error', _R} ->
+            lager:debug("unable to open user ~s definition in account ~s: ~p", [UserId, Account, _R]),
+            'false'
+    end.
+
+-spec classifier_restriction(doc(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+classifier_restriction(Doc, Classifier) ->
+    classifier_restriction(Doc, Classifier, 'undefined').
+
+-spec classifier_restriction(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
+classifier_restriction(Doc, Classifier, Default) ->
+    Restrictions = call_restriction(Doc),
+    kz_json:get_ne_binary_value([Classifier, <<"action">>], Restrictions, Default).
+
+-spec set_classifier_restriction(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> doc().
+set_classifier_restriction(Doc, Classifier, Action) ->
+    Restrictions = call_restriction(Doc),
+    set_call_restriction(Doc
+                        ,kz_json:set_value([Classifier, <<"action">>], Action, Restrictions)
+                        ).
