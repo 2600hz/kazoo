@@ -919,7 +919,7 @@ is_account_admin(Doc) ->
 is_account_admin('undefined', _) -> 'false';
 is_account_admin(_, 'undefined') -> 'false';
 is_account_admin(Account, UserId) ->
-    case kzd_users:fetch(Account, UserId) of
+    case fetch(Account, UserId) of
         {'ok', JObj} -> is_account_admin(JObj);
         {'error', _R} ->
             lager:debug("unable to open user ~s definition in account ~s: ~p", [UserId, Account, _R]),
