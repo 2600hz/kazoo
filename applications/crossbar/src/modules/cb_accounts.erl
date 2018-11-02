@@ -291,7 +291,7 @@ post(Context, AccountId) ->
 
 -spec update_provisioner_account(cb_context:context()) -> 'ok'.
 update_provisioner_account(Context) ->
-    _ = kz_util:spawn(fun provisioner_util:maybe_update_account/1
+    _ = kz_util:spawn(fun provisioner_util:maybe_update_account/3
                      ,[cb_context:account_id(Context)
                       ,cb_context:auth_token(Context)
                       ,cb_context:doc(Context)
@@ -396,7 +396,9 @@ delete(Context, Account) ->
         {'ok', AccountJObj} ->
             Context1 = cb_context:set_doc(Context, AccountJObj),
             _ = maybe_update_descendants_count(kzd_accounts:tree(AccountJObj)),
-            _ = provisioner_util:maybe_delete_account(Context1),
+            _ = provisioner_util:maybe_delete_account(cb_context:account_id(Context)
+                                                     ,cb_context:auth_token(Context)
+                                                     ),
             _ = cb_mobile_manager:delete_account(Context1),
             Context1
     end.
