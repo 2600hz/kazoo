@@ -151,7 +151,7 @@
               ,fastforward = <<"8">> :: kz_term:ne_binary()
               ,callback = <<"9">> :: kz_term:ne_binary()
 
-                                        %% Greeting or instructions
+                                     %% Greeting or instructions
               ,continue = 'undefined' :: kz_term:api_ne_binary()
               }).
 -type vm_keys() :: #keys{}.
@@ -918,7 +918,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
         {'ok', 'callback'} ->
             case kz_json:get_value(<<"caller_id_number">>,H) of
                 'undefined' ->
-                    lager:info("Message not contains caller_id_number and we cannot callback"),
+                    lager:info("message not contains caller_id_number and we cannot callback"),
                     kapps_call_command:audio_macro([{'prompt', <<"vm-not_available">>}], Call),
                     play_messages(Messages, PrevMessages, Count, Box, Call);
                 Number ->
@@ -939,10 +939,11 @@ play_messages([], _, _, _, _) ->
 -spec maybe_branch_call(kapps_call:call(), kz_term:ne_binary(), mailbox()) -> 'ok'| 'error'.
 maybe_branch_call(Call, Number, #mailbox{owner_id=OwnerId}) ->
     EndpointId = case kapps_call:authorizing_id(Call) of
-                    'undefined' -> OwnerId;
-                    AuthorizingId -> AuthorizingId
+                     'undefined' -> OwnerId;
+                     AuthorizingId -> AuthorizingId
                  end,
-    case EndpointId =:= 'undefined' andalso  kz_endpoint:get(EndpointId, Call) of
+    case EndpointId =:= 'undefined'
+        andalso kz_endpoint:get(EndpointId, Call) of
         'false' ->
             {'ok', AccountJObj} = kzd_accounts:fetch(kapps_call:account_id(Call)),
             maybe_restrict_call(Number, Call, AccountJObj);
@@ -962,13 +963,13 @@ maybe_restrict_call(Number, Call, JObj) ->
         {'false', NewNumber} -> maybe_exist_callflow(NewNumber, Call)
     end.
 
--spec maybe_exist_callflow(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_exist_callflow(kz_term:ne_binary(), kapps_call:call()) -> 'ok' | 'error'.
 maybe_exist_callflow(Number, Call) ->
     AccountId = kapps_call:account_id(Call),
     case cf_flow:lookup(Number, AccountId) of
         {'ok', Flow, _NoMatch} ->
             Updates = [{fun kapps_call:set_request/2
-                      ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
+                       ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
                        }
                       ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
                       ],
@@ -980,7 +981,7 @@ maybe_exist_callflow(Number, Call) ->
             'error'
     end.
 
--spec should_restrict_call(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) -> boolean().
+-spec should_restrict_call(kz_term:ne_binary(), kapps_call:call(), kz_json:object()) -> {boolean(), kz_term:ne_binary()}.
 should_restrict_call(Number, Call, JObj) ->
     AccountId = kapps_call:account_id(Call),
     DialPlan = kz_json:get_json_value(<<"dial_plan">>, JObj, kz_json:new()),
@@ -1141,7 +1142,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
 %% user provides a valid option
 %% @end
 %%------------------------------------------------------------------------------
--type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay' | 'prev' | 'next' | 'forward' | 'rewind' | 'fastforward'}.
+-type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay' | 'prev' | 'next' | 'forward' | 'rewind' | 'fastforward' | 'callback'}.
 
 -spec message_menu(mailbox(), kapps_call:call()) ->
                           {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
