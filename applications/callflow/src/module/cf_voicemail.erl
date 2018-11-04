@@ -149,6 +149,7 @@
               ,delete = <<"7">> :: kz_term:ne_binary()
               ,rewind = <<"5">> :: kz_term:ne_binary()
               ,fastforward = <<"8">> :: kz_term:ne_binary()
+              ,callback = <<"9">> :: kz_term:ne_binary()
 
                                         %% Greeting or instructions
               ,continue = 'undefined' :: kz_term:api_ne_binary()
@@ -914,6 +915,19 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
             lager:info("caller chose to fast forward part of the message"),
             _ = kapps_call_command:seek('fastforward', SeekDuration, Call),
             play_messages(Messages, PrevMessages, Count, Box, Call);
+        {'ok', 'callback'} ->
+            case kz_json:get_value(<<"caller_id_number">>,H) of
+                'undefined' ->
+                    lager:info("Message not contains caller_id_number and we cannot callback"),
+                    kapps_call_command:audio_macro([{'prompt', <<"vm-not_available">>}], Call),
+                    play_messages(Messages, PrevMessages, Count, Box, Call);
+                Number ->
+                    lager:info("caller chose to callback number ~s", [Number]),
+                    case maybe_branch_call(Call, Number) of
+                        'ok' -> 'complete';
+                        _ -> play_messages(Messages, PrevMessages, Count, Box, Call)
+                    end
+            end;
         {'error', _} ->
             _ = kapps_call_command:flush(Call),
             lager:info("error during message playback")
@@ -921,6 +935,56 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
 play_messages([], _, _, _, _) ->
     lager:info("all messages in folder played to caller"),
     'complete'.
+
+-spec maybe_branch_call(kapps_call:call(), kz_term:ne_binary()) -> 'ok'| 'error'.
+maybe_branch_call(Call, Number) ->
+    EndpointId = kapps_call:authorizing_id(Call),
+    case kz_endpoint:get(EndpointId, Call) of
+        {'ok', JObj} -> maybe_restrict_call(Number, Call, JObj);
+        _ ->
+            lager:info("failed to find endpoint ~s", [EndpointId]),
+            kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
+            'error'
+    end.
+
+-spec maybe_restrict_call( kz_term:ne_binary(), kapps_call:call(), kz_json:object()) -> 'ok' | 'error'.
+maybe_restrict_call(Number, Call, JObj) ->
+    case should_restrict_call(Number, Call, JObj) of
+        {'true', _} ->
+            kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
+            'error';
+        {'false', NewNumber} -> maybe_exist_callflow(NewNumber, Call)
+    end.
+
+-spec maybe_exist_callflow(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
+maybe_exist_callflow(Number, Call) ->
+    AccountId = kapps_call:account_id(Call),
+    case cf_flow:lookup(Number, AccountId) of
+        {'ok', Flow, _NoMatch} ->
+            Updates = [{fun kapps_call:set_request/2
+                      ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
+                       }
+                      ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
+                      ],
+            cf_exe:set_call(kapps_call:exec(Updates, Call)),
+            cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call);
+        _ ->
+            lager:info("failed to find a callflow to satisfy ~s", [Number]),
+            kapps_call_command:audio_macro([{'prompt', <<"fault-can_not_be_completed_as_dialed">>}], Call),
+            'error'
+    end.
+
+-spec should_restrict_call(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) -> boolean().
+should_restrict_call(Number, Call, JObj) ->
+    AccountId = kapps_call:account_id(Call),
+    DialPlan = kz_json:get_json_value(<<"dial_plan">>, JObj, kz_json:new()),
+    NewNumber = knm_converters:normalize(Number, AccountId, DialPlan),
+    Classification = knm_converters:classify(NewNumber),
+    lager:debug("classified number ~s as ~s, testing for call restrictions"
+               ,[Number, Classification]
+               ),
+    ShouldRestrict = kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) == <<"deny">>,
+    {ShouldRestrict, NewNumber}.
 
 -spec play_next_message(kz_json:objects(), kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
                                'ok' | 'complete'.
@@ -1091,6 +1155,7 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                         ,return_main=ReturnMain
                                         ,rewind=RW
                                         ,fastforward=FF
+                                        ,callback=Callback
                                         }
                              ,is_ff_rw_enabled=AllowFfRw
                              ,interdigit_timeout=Interdigit
@@ -1116,6 +1181,7 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Next} -> {'ok', 'next'};
         {'ok', RW} when AllowFfRw -> {'ok', 'rewind'};
         {'ok', FF} when AllowFfRw -> {'ok', 'fastforward'};
+        {'ok', Callback} -> {'ok', 'callback'};
         {'error', _}=E -> E;
         _ ->
             _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
