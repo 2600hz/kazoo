@@ -923,7 +923,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
                     play_messages(Messages, PrevMessages, Count, Box, Call);
                 Number ->
                     lager:info("caller chose to callback number ~s", [Number]),
-                    case maybe_branch_call(Call, Number) of
+                    case maybe_branch_call(Call, Number, Box) of
                         'ok' -> 'complete';
                         _ -> play_messages(Messages, PrevMessages, Count, Box, Call)
                     end
@@ -936,10 +936,16 @@ play_messages([], _, _, _, _) ->
     lager:info("all messages in folder played to caller"),
     'complete'.
 
--spec maybe_branch_call(kapps_call:call(), kz_term:ne_binary()) -> 'ok'| 'error'.
-maybe_branch_call(Call, Number) ->
-    EndpointId = kapps_call:authorizing_id(Call),
-    case kz_endpoint:get(EndpointId, Call) of
+-spec maybe_branch_call(kapps_call:call(), kz_term:ne_binary(), mailbox()) -> 'ok'| 'error'.
+maybe_branch_call(Call, Number, #mailbox{owner_id=OwnerId}) ->
+    EndpointId = case kapps_call:authorizing_id(Call) of
+                    'undefined' -> OwnerId;
+                    AuthorizingId -> AuthorizingId
+                 end,
+    case EndpointId =:= 'undefined' andalso  kz_endpoint:get(EndpointId, Call) of
+        'false' ->
+            {'ok', AccountJObj} = kzd_accounts:fetch(kapps_call:account_id(Call)),
+            maybe_restrict_call(Number, Call, AccountJObj);
         {'ok', JObj} -> maybe_restrict_call(Number, Call, JObj);
         _ ->
             lager:info("failed to find endpoint ~s", [EndpointId]),
@@ -966,7 +972,7 @@ maybe_exist_callflow(Number, Call) ->
                        }
                       ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
                       ],
-            cf_exe:set_call(kapps_call:exec(Updates, Call)),
+            cf_exe:update_call(kapps_call:exec(Updates, Call)),
             cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call);
         _ ->
             lager:info("failed to find a callflow to satisfy ~s", [Number]),
