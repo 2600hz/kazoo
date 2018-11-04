@@ -924,7 +924,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
                 Number ->
                     lager:info("caller chose to callback number ~s", [Number]),
                     case maybe_branch_call(Call, Number, Box) of
-                        'ok' -> 'complete';
+                        'ok' -> 'ok';
                         _ -> play_messages(Messages, PrevMessages, Count, Box, Call)
                     end
             end;
