@@ -1177,7 +1177,7 @@ add_pvt_account_id(JObj, Updates, Context) ->
         'false' -> Updates;
         'true' ->
             case cb_context:account_id(Context) of
-                'undefined' -> JObj;
+                'undefined' -> Updates;
                 AccountId -> [{kz_doc:path_account_id(), AccountId} | Updates]
             end
     end.
