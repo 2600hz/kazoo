@@ -727,9 +727,11 @@ set_caller_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
 -ifdef(TEST).
 caller_id_name(#kapps_call{caller_id_name=CIDName}) -> CIDName.
 -else.
-caller_id_name(#kapps_call{caller_id_name=CIDName}) ->
+caller_id_name(#kapps_call{caller_id_name=CIDName
+                          ,account_id=AccountId
+                          }) ->
     case kz_term:is_empty(CIDName) of
-        'true' -> unknown_caller_id_name();
+        'true' -> unknown_caller_id_name(AccountId);
         'false' -> CIDName
     end.
 -endif.

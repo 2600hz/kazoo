@@ -698,10 +698,11 @@ default_cid_number(AccountId) ->
                               ).
 
 -spec default_cid_name(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
-default_cid_name('undefined', _Call) ->
+default_cid_name('undefined', Call) ->
+    AccountId = kapps_call:account_id(Call),
     kapps_config:get_ne_binary(?CONFIG_CAT
                               ,<<"default_caller_id_name">>
-                              ,kapps_call:unknown_caller_id_name()
+                              ,kapps_call:unknown_caller_id_name(AccountId)
                               );
 default_cid_name(<<_/binary>> = Name, _Call) -> Name;
 default_cid_name(Endpoint, Call) ->
