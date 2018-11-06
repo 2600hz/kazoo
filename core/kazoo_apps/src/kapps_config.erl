@@ -14,6 +14,7 @@
         ,get_current/2, get_current/3, get_current/4
         ,get_category/1
         ,fetch_category/1, fetch_category/2
+        ,fetch_current/2, fetch_current/3, fetch_current/4
         ]).
 
 -export([get_node_value/2, get_node_value/3, get_node_value/4]).
@@ -1329,3 +1330,52 @@ maybe_fix_nodename(NodeName) ->
 -spec base_to_doc(kz_term:ne_binary()) -> kz_json:object().
 base_to_doc(ToId) ->
     kz_json:from_list([{<<"_id">>, ToId}]).
+
+-spec fetch_current(config_category(), config_key()) -> kz_json:json_term() | 'undefined' | fetch_ret().
+fetch_current(Category, Key) ->
+    fetch_current(Category, Key, 'undefined', node()).
+
+-spec fetch_current(config_category(), config_key(), Default) -> kz_json:json_term() | Default | fetch_ret().
+fetch_current(Category, Key, Default) ->
+    fetch_current(Category, Key, Default, node()).
+
+-spec fetch_current(config_category(), config_key(), Default, config_node()) -> kz_json:json_term() | Default | fetch_ret().
+fetch_current(Category, Key, Default, 'undefined') ->
+    fetch_current(Category, Key, Default, ?KEY_DEFAULT);
+fetch_current(Category, Key, Default, Node) when not is_list(Key) ->
+    fetch_current(Category, [kz_term:to_binary(Key)], Default, Node);
+fetch_current(Category, Keys, Default, Node) when not is_binary(Category) ->
+    fetch_current(kz_term:to_binary(Category), Keys, Default, Node);
+fetch_current(Category, Keys, Default, Node) when not is_binary(Node) ->
+    fetch_current(Category, Keys, Default, kz_term:to_binary(Node));
+fetch_current(Category, Keys, Default, Node) ->
+    case fetch_category(Category, 'false') of
+        {'ok', JObj} -> fetch_value(Node, Keys, Default, JObj);
+        {'error', _Any} = Error -> Error
+    end.
+
+-spec fetch_value(config_key(), config_key(), Default, kz_json:object()) -> Default | any().
+fetch_value(?KEY_DEFAULT, Keys, Default, JObj) ->
+    fetch_default_value(Keys, Default, JObj);
+fetch_value(Node, Keys, Default, JObj) ->
+    case kz_json:get_value([Node | Keys], JObj) of
+        'undefined' -> fetch_zone_value(Node, Keys, Default, JObj);
+        Else -> Else
+    end.
+
+-spec fetch_zone_value(config_key(), config_key(), Default, kz_json:object()) -> Default | any().
+fetch_zone_value(_Node, Keys, Default, JObj) ->
+    Zone = kz_term:to_binary(kz_config:zone()),
+    case kz_json:get_value([Zone | Keys], JObj) of
+        'undefined' -> fetch_default_value(Keys, Default, JObj);
+        Else -> Else
+    end.
+
+-spec fetch_default_value(config_key(), Default, kz_json:object()) -> Default | any().
+fetch_default_value([?KEY_DEFAULT | _Keys]=Path, Default, JObj) ->
+    case kz_json:get_value(Path, JObj) of
+        'undefined' -> Default;
+        Else -> Else
+    end;
+fetch_default_value(Keys, Default, JObj) ->
+    fetch_default_value([?KEY_DEFAULT | Keys], Default, JObj).
