@@ -34,7 +34,7 @@
 
 -export([maybe_format_caller_id/2, maybe_format_caller_id_str/2]).
 -export([set_caller_id_name/2, caller_id_name/1]).
--export([unknown_caller_id_name/0]).
+-export([unknown_caller_id_name/0, unknown_caller_id_name/1]).
 -export([set_caller_id_number/2, caller_id_number/1]).
 -export([set_callee_id_name/2, callee_id_name/1]).
 -export([set_callee_id_number/2, callee_id_number/1]).
@@ -146,11 +146,14 @@
 
 -include("kapps_call_command.hrl").
 
+-define(CALL_CMD_CAT, <<"call_command">>).
+
 -define(NO_USER, <<"nouser">>).
 -define(NO_REALM, <<"norealm">>).
 -define(NO_USER_REALM, <<"nouser@norealm">>).
 
--define(UNKNOWN_CALLER_ID_NAME, <<"unknown">>).
+-define(DEFAULT_UNKNOWN_CALLER_ID_NAME, <<"unknown">>).
+-define(UNKNOWN_CALLER_ID_NAME_KEY, <<"unknown_cid_name">>).
 
 -record(kapps_call, {call_id :: kz_term:api_binary()                       %% The UUID of the call
                     ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
@@ -731,8 +734,15 @@ caller_id_name(#kapps_call{caller_id_name=CIDName}) ->
     end.
 -endif.
 
+
 -spec unknown_caller_id_name() -> kz_term:ne_binary().
-unknown_caller_id_name() -> ?UNKNOWN_CALLER_ID_NAME.
+unknown_caller_id_name() -> unknown_caller_id_name('undefined').
+
+-spec unknown_caller_id_name(kz_term:api_ne_binary()) -> kz_term:ne_binary().
+unknown_caller_id_name('undefined') ->
+    kapps_config:get_ne_binary(?CALL_CMD_CAT, ?UNKNOWN_CALLER_ID_NAME_KEY, ?DEFAULT_UNKNOWN_CALLER_ID_NAME);
+unknown_caller_id_name(AccountId) ->
+    kapps_account_config:get_global(AccountId, ?CALL_CMD_CAT, ?UNKNOWN_CALLER_ID_NAME_KEY, ?DEFAULT_UNKNOWN_CALLER_ID_NAME).
 
 -spec set_caller_id_number(kz_term:api_binary(), call()) -> call().
 -ifdef(TEST).
