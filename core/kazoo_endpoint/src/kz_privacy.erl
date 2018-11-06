@@ -20,13 +20,18 @@
 -define(KEY_LEGACY_ANONYMIZER, [<<"caller_id_options">>, <<"anonymizer">>]).
 -define(ANON_NAME, <<"anonymous">>).
 -define(ANON_NUMBER, <<"0000000000">>).
--define(DEFAULT_ANON_CIDS, [<<"Anonymous">>
-                           ,<<"Restricted">>
-                           ,<<"restricted">>
-                           ]).
+-define(DEFAULT_ANON_CID_NAMES, [<<"anonymous">>
+                                ,<<"Anonymous">>
+                                ,<<"Restricted">>
+                                ,<<"restricted">>
+                                ]).
+-define(DEFAULT_ANON_CID_NUMBERS, [<<"0000000000">>
+                                   | ?DEFAULT_ANON_CID_NAMES
+                                  ]).
 -define(KEY_ANON_NAME, <<"privacy_name">>).
 -define(KEY_ANON_NUMBER, <<"privacy_number">>).
--define(KEY_ANONS, <<"anonymous_cids">>).
+-define(KEY_ANON_NAMES, <<"anonymous_cid_names">>).
+-define(KEY_ANON_NUMBERS, <<"anonymous_cid_numbers">>).
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
@@ -113,23 +118,25 @@ is_anonymous(JObj) ->
     IsPrivacyNumber = kz_term:is_true(get_value(<<"Caller-Privacy-Number">>, JObj, 'false')),
     IsPrivacyName = kz_term:is_true(get_value(<<"Caller-Privacy-Name">>, JObj, 'false')),
     IsCallerNumberZero = is_zero(kz_json:get_value(<<"Caller-ID-Number">>, JObj)),
+    MatchesNumberRule = maybe_anonymous_cid_number(JObj),
+    MatchesNameRule = maybe_anonymous_cid_name(JObj),
     HasPrivacyFlags = has_flags(JObj),
     IsCallerNumberZero
         orelse IsPrivacyName
         orelse IsPrivacyNumber
         orelse HasPrivacyFlags
-        orelse check_anonymous_cid_number(JObj)
-        orelse check_anonymous_cid_name(JObj).
+        orelse MatchesNumberRule
+        orelse MatchesNameRule.
 
--spec check_anonymous_cid_number(kz_json:object()) -> boolean().
-check_anonymous_cid_number(JObj) ->
+-spec maybe_anonymous_cid_number(kz_json:object()) -> boolean().
+maybe_anonymous_cid_number(JObj) ->
     case kapps_config:get_is_true(?PRIVACY_CAT, <<"check_additional_anonymous_cid_numbers">>, 'false') of
         'true' -> is_anonymous_cid_number(JObj);
         'false' -> 'false'
     end.
 
--spec check_anonymous_cid_name(kz_json:object()) -> boolean().
-check_anonymous_cid_name(JObj) ->
+-spec maybe_anonymous_cid_name(kz_json:object()) -> boolean().
+maybe_anonymous_cid_name(JObj) ->
     case kapps_config:get_is_true(?PRIVACY_CAT, <<"check_additional_anonymous_cid_names">>, 'false') of
         'true' -> is_anonymous_cid_name(JObj);
         'false' -> 'false'
@@ -138,15 +145,14 @@ check_anonymous_cid_name(JObj) ->
 -spec is_anonymous_cid_number(kz_json:object()) -> boolean().
 is_anonymous_cid_number(JObj) ->
     lists:member(kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)
-                ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)
+                ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANON_NUMBERS, ?DEFAULT_ANON_CID_NUMBERS)
                 ).
 
 -spec is_anonymous_cid_name(kz_json:object()) -> boolean().
 is_anonymous_cid_name(JObj) ->
     lists:member(kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)
-                ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANONS, ?DEFAULT_ANON_CIDS)
+                ,kapps_config:get_ne_binaries(?PRIVACY_CAT, ?KEY_ANON_NAMES, ?DEFAULT_ANON_CID_NAMES)
                 ).
-
 
 %%------------------------------------------------------------------------------
 %% @doc Default anonymous Caller IDs from System wide config, or Account
