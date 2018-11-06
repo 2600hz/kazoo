@@ -426,7 +426,7 @@ conference_profile(AccountId, ConfProps) ->
     kz_json:from_list(
       [{<<"announce-count">>, props:get_integer_value('announceCount', ConfProps)}
       ,{<<"caller-controls">>, props:get_binary_value('callerControls', ConfProps, <<"default">>)}
-      ,{<<"caller-id-name">>, props:get_binary_value('callerIdName', ConfProps, kapps_call:unknown_caller_id_name(AccountId))}
+      ,{<<"caller-id-name">>, props:get_binary_value('callerIdName', ConfProps, kapps_call:unknown_caller_id_name())}
       ,{<<"caller-id-number">>, props:get_binary_value('callerIdNumber', ConfProps, kz_privacy:anonymous_caller_id_number(AccountId))}
       ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
       ,{<<"conference-flags">>, conference_flags(ConfProps)}
