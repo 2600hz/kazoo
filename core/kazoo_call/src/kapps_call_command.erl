@@ -217,15 +217,30 @@
         ,hold_control_command/1, hold_control_command/2
         ]).
 
--type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), kz_term:binaries()} |
-                              {'prompt', binary()} | {'prompt', binary(), kz_term:ne_binaries()} | {'prompt', binary(), binary(), binary()} |
-                              {'say', binary()} | {'say', binary(), binary()} |
-                              {'say', binary(), binary(), binary()} |
-                              {'say', binary(), binary(), binary(), binary()} |
-                              {'tones', kz_json:objects()} |
-                              {'tts', kz_term:ne_binary()} |
-                              {'tts', kz_term:ne_binary(), kz_term:ne_binary()} |
-                              {'tts', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+-type audio_macro_prompt() ::
+        %% {'play', MediaName [, Terminators [, Leg]]}
+        {'play', binary()} |
+        {'play', binary(), kz_term:binaries()} |
+        {'play', binary(), kz_term:binaries(), binary()} |
+
+        %% {'prompt', Media [,Lang [,Leg]]}
+        {'prompt', binary()} |
+        {'prompt', binary(), binary()} |
+        {'prompt', binary(), binary(), binary()} |
+
+        %% {'say', Say [, Type [, Method [, Language]]]}
+        {'say', binary()} |
+        {'say', binary(), binary()} |
+        {'say', binary(), binary(), binary()} |
+        {'say', binary(), binary(), binary(), binary()} |
+
+        {'tones', kz_json:objects()} |
+
+        %% {'tts', Text [, Voice [, Lang [, Terminators]]]}
+        {'tts', kz_term:ne_binary()} |
+        {'tts', kz_term:ne_binary(), kz_term:ne_binary()} |
+        {'tts', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
+        {'tts', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()}.
 -type audio_macro_prompts() :: [audio_macro_prompt()].
 -export_type([audio_macro_prompt/0
              ,audio_macro_prompts/0
