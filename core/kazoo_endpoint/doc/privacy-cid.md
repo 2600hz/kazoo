@@ -34,10 +34,14 @@ Possible `privacy_mode` values:
 
 ## Optionally check for anonymity in Caller ID Name and Caller ID Number
 
-Some carriers systems, when using Caller ID Blocking, present the call using a non-standard format for the Caller ID Name and Caller ID Number values. To ensure these are able to be blocked, the `anonymous_cids` configuration parameter was added to allow matching and blocking of these non-standard patterns. This setting only impact the `anonymous call rejection` feature applied to inbound calls, settings defined in this list extend the default anonymous call rejection feature to trigger on a list of numbers.
+Some carrier systems, when using Caller ID Blocking, present the call using a non-standard format, instead of using flags to indicate privacy, some carriers set specific strings in the the Caller ID Name and Caller ID Number values. To ensure these calls are able to be blocked, the `anonymous_cid_names` and `anonymous_cid_numbers` configuration parameters allow for matching and blocking of these non-standard patterns.
 
-`check_additional_anonymous_cid_names` enables comparing the `anonymous_cids` against caller ID names in the call values for anonymous call rejection.
+This setting only impact how the `anonymous call rejection` feature is applied to inbound calls. The list of numbers or names in the `anonymous_cid_names` and `anonymous_cid_numbers` lists are compared to the `Caller-Id-Name` and `Caller-Id-Number` fields of the kazoo call. This enables the rejection of calls which use non-standard patterns, but must be used carefully as any call which matches these rules will be blocked.
 
-`check_additional_anonymous_cid_numbers` enables comparing the `anonymous_cids` against caller ID numbers in the call values for anonymous call rejection.
+`check_additional_anonymous_cid_names` enables enforcement of the configured `anonymous_cid_names` in anonymous call rejection.
 
-`anonymous_cids` a list of values to compare Caller ID Names and/or Caller ID Numbers to for extending the restrictions on anonymous call rejection. The default values are `Anonymous`, `Restricted`, and `restricted`, which are the most commonly used values for indicating a call with Caller ID blocking configured. This list can be extended to include more patterns as required. NOTE: if you include the value `anonymous` you will inadvertently block legitimate calls which contain an empty string "" for the Caller ID Name as kazoo uses this value in place of an empty or missing Caller ID Name. So like, don't do that?
+`check_additional_anonymous_cid_numbers` enables enforcement of the configured `anonymous_cid_numbers` in anonymous call rejection.
+
+
+
+
