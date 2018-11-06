@@ -31837,15 +31837,28 @@
         "system_config.privacy": {
             "description": "Schema for privacy system_config",
             "properties": {
-                "anonymous_cids": {
+                "anonymous_cid_names": {
                     "default": [
                         "anonymous",
-                        "0000000000",
                         "Anonymous",
                         "Restricted",
                         "restricted"
                     ],
-                    "description": "a list of Caller ID Names and Caller ID Numbers that indicate an incoming call is anonymous",
+                    "description": "Additional CID name patterns to match for anonymous call rejection",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "anonymous_cid_numbers": {
+                    "default": [
+                        "0000000000",
+                        "anonymous",
+                        "Anonymous",
+                        "Restricted",
+                        "restricted"
+                    ],
+                    "description": "Additional CID number/userpart patterns to match for anonymous call rejection",
                     "items": {
                         "type": "string"
                     },
@@ -31858,12 +31871,12 @@
                 },
                 "check_additional_anonymous_cid_names": {
                     "default": false,
-                    "description": "use the anonymous_cids values to check if a number is anonymous",
+                    "description": "use the anonymous_cid_names values to check if a number is anonymous",
                     "type": "boolean"
                 },
                 "check_additional_anonymous_cid_numbers": {
                     "default": false,
-                    "description": "use the anonymous_cids values to check if a name is anonymous",
+                    "description": "use the anonymous_cid_numbers values to check if a name is anonymous",
                     "type": "boolean"
                 },
                 "privacy_mode": {
