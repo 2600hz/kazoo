@@ -155,8 +155,8 @@ is_anonymous_cid_name(JObj) ->
 -spec is_anonymous_rule_member(kz_term:ne_binary(), kz_term:ne_binaries()) -> boolean().
 is_anonymous_rule_member(_, []) -> 'false';
 is_anonymous_rule_member(Value, [Match|Matches]) ->
-    LowerMatch = kz_binary:to_lower(Match),
-    LowerValue = kz_binary:to_lower(Value),
+    LowerMatch = kz_term:to_lower_binary(Match),
+    LowerValue = kz_term:to_lower_binary(Value),
     case LowerMatch =:= LowerValue of
         'true' -> 'true';
         'false' -> is_anonymous_rule_member(Value, Matches)
