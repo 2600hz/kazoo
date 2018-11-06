@@ -139,7 +139,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
       ,{<<"Call-ID">>, CallId}
       ,{<<"Caller-ID-Name">>
-       ,kzd_freeswitch:caller_id_name(Props, kapps_call:unknown_caller_id_name())
+       ,kzd_freeswitch:caller_id_name(Props, kapps_call:unknown_caller_id_name(AccountId))
        }
       ,{<<"Caller-ID-Number">>
        ,kzd_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
