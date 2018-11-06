@@ -804,12 +804,14 @@ load_summary_by_number(Context, Number) ->
 load_global_summary_by_number(Context, Number) ->
     load_summary(Context, {'keymap', Number}, ?PORT_REQ_NUMBERS).
 
--spec load_account_summary_by_number(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
+-spec load_account_summary_by_number(cb_context:context(), [kz_term:ne_binaries()]) ->
+                                            cb_context:context().
 load_account_summary_by_number(Context, Keys) ->
     load_summary(Context, {'keys', Keys}, ?ALL_PORT_REQ_NUMBERS).
 
 -spec load_summary(cb_context:context()
-                  ,{'keymap'|'keys', kz_term:ne_binary()}
+                  ,{'keymap', kz_term:ne_binary()} |
+                   {'keys', [kz_term:ne_binaries()]}
                   ,kz_term:ne_binary()
                   ) -> cb_context:context().
 load_summary(Context, Key, View) ->
@@ -832,11 +834,11 @@ load_summary(Context, Key, View) ->
 last_submitted(Context) ->
     AccountId = cb_context:account_id(Context),
     C1 = cb_context:store(Context, 'is_superduper_admin', cb_context:is_superduper_admin(Context)),
-    Options = [{startkey, [AccountId]}
-              ,{endkey, [AccountId, kz_json:new()]}
+    Options = [{'startkey', [AccountId]}
+              ,{'endkey', [AccountId, kz_json:new()]}
               ,{'mapper', fun  normalize_last_submitted/3}
               ,{'databases', [?KZ_PORT_REQUESTS_DB]}
-              ,include_docs
+              ,'include_docs'
               ],
     crossbar_view:load(C1, <<"port_requests/listing_submitted">>, Options).
 
