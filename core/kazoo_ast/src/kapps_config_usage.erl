@@ -323,6 +323,7 @@ guess_type('get_boolean', _) -> <<"boolean">>;
 guess_type('get', Default) -> guess_type_by_default(Default);
 guess_type('get_current', Default) -> guess_type_by_default(Default);
 guess_type('fetch', Default) -> guess_type_by_default(Default);
+guess_type('fetch_current', Default) -> guess_type_by_default(Default);
 guess_type('get_binary', _) -> <<"string">>;
 guess_type('get_ne_binary', _) -> <<"string">>;
 guess_type('get_ne_binaries', _) -> [<<"string">>];

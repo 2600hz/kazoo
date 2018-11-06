@@ -64,7 +64,7 @@ system() ->
 
 -spec system(kz_term:ne_binary()) -> acls() | {'error', any()}.
 system(Node) ->
-    system_config_acls(Node).
+    kapps_config:fetch_current(?APP_NAME, <<"acls">>, kz_json:new(), Node).
 
 -spec collect(kz_json:object(), kz_term:pid_refs()) ->
                      kz_json:object().
@@ -101,11 +101,13 @@ collect(ACLs, PidRefs, Timeout) ->
             ACLs
     end.
 
--spec system_config_acls(kz_term:ne_binary()) -> acls() | {'error', any()}.
+-spec system_config_acls(kz_term:ne_binary()) -> acls().
 system_config_acls(Node) ->
-    case kapps_config:fetch_category(?APP_NAME, 'false') of
-        {'ok', JObj} -> kz_json:get_json_value([Node, <<"acls">>], JObj, kz_json:new());
-        Error -> Error
+    case kapps_config:fetch_current(?APP_NAME, <<"acls">>, kz_json:new(), Node) of
+        {'error', Error} ->
+            lager:warning("error getting system acls : ~p", [Error]),
+            kz_json:new();
+        JObj -> JObj
     end.
 
 -spec sip_auth_ips(pid()) -> 'ok'.

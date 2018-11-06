@@ -655,13 +655,7 @@ get_acls() -> get_acls(node()).
 
 -spec get_acls(atom() | kz_term:ne_binary()) -> kz_json:object().
 get_acls(Node) ->
-    ACLs = kapps_config:get_json(?APP_NAME, <<"acls">>, 'undefined', Node),
-    case kz_json:is_json_object(ACLs) of
-        'true' -> ACLs;
-        'false' ->
-            io:format("failed to load json object for ACLs from ~s, got ~p, using empty json object instead~n", [Node, ACLs]),
-            kz_json:new()
-    end.
+    ecallmgr_fs_acls:get(Node).
 
 -spec filter_acls(kz_json:object()) -> kz_json:object().
 filter_acls(ACLs) ->
