@@ -307,7 +307,7 @@ remove_acl(Name, 'false') ->
               ,fun kapps_config:set_node/4
               ).
 
--spec maybe_reload_acls(kz_term:text(), kz_term:text(), non_neg_integer()) -> 'no_return'.
+-spec maybe_reload_acls(kz_term:ne_binary(), 'modify' | 'remove', non_neg_integer()) -> 'no_return'.
 maybe_reload_acls(_Name, _Action, 0) ->
     io:format("Timeout during updating ACLs, try reload ACLs and flush config later:~n"),
     io:format("Use these commands:~n"),
@@ -326,15 +326,15 @@ maybe_reload_acls(Name, Action, Tries) ->
             maybe_reload_acls(Name, Action, Tries - 1)
     end.
 
--spec has_acl(kz_term:text(), kz_term:text(), kz_json:object()) -> 'true' | 'false'.
+-spec has_acl(kz_term:ne_binary(), 'modify' | 'remove', kz_json:object()) -> boolean().
 has_acl(Name, Action, ACLs) ->
     FilteredACLs = filter_acls(ACLs),
-    _ = case kz_json:get_value(Name, FilteredACLs) of
-            'undefined' when Action =:= 'modify' -> 'false';
-            'undefined' when Action =:= 'remove' -> 'true';
-            _ACL when Action =:= 'modify' -> 'true';
-            _ACL when Action =:= 'remove' -> 'false'
-        end.
+    case kz_json:get_value(Name, FilteredACLs) of
+        'undefined' when Action =:= 'modify' -> 'false';
+        'undefined' when Action =:= 'remove' -> 'true';
+        _ACL when Action =:= 'modify' -> 'true';
+        _ACL when Action =:= 'remove' -> 'false'
+    end.
 
 -spec reload_acls() -> 'no_return'.
 reload_acls() ->
@@ -661,9 +661,9 @@ get_acls(Node) ->
 filter_acls(ACLs) ->
     kz_json:filter(fun filter_acls_fun/1, ACLs).
 
--spec filter_acls_fun({kz_json:path(), kz_json:json_term()}) -> boolean().
+-spec filter_acls_fun({kz_json:key(), kz_json:json_term()}) -> boolean().
 filter_acls_fun({_Name, ACL}) ->
-    kz_json:get_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
+    kz_json:get_ne_binary_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
 
 -spec carrier_acl(kz_term:ne_binary()) -> kz_json:object().
 carrier_acl(IP) -> carrier_acl(IP, <<"allow">>).

@@ -44,7 +44,7 @@ get() ->
     Node = kz_term:to_binary(node()),
     get(Node).
 
--spec get(kz_term:ne_binary()) -> acls().
+-spec get(atom() | kz_term:ne_binary()) -> acls().
 get(Node) ->
     Routines = [fun offnet_resources/1
                ,fun local_resources/1
@@ -62,7 +62,7 @@ get(Node) ->
 system() ->
     system(kz_term:to_binary(node())).
 
--spec system(kz_term:ne_binary()) -> acls() | {'error', any()}.
+-spec system(atom() | kz_term:ne_binary()) -> acls() | {'error', any()}.
 system(Node) ->
     kapps_config:fetch_current(?APP_NAME, <<"acls">>, kz_json:new(), Node).
 
@@ -101,7 +101,7 @@ collect(ACLs, PidRefs, Timeout) ->
             ACLs
     end.
 
--spec system_config_acls(kz_term:ne_binary()) -> acls().
+-spec system_config_acls(atom() | kz_term:ne_binary()) -> acls().
 system_config_acls(Node) ->
     case kapps_config:fetch_current(?APP_NAME, <<"acls">>, kz_json:new(), Node) of
         {'error', Error} ->
