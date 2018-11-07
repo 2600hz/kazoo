@@ -272,7 +272,7 @@ get_values([], _, []) -> [];
 get_values([], _, Acc) -> Acc;
 get_values([{_, Values} | T], Key, Acc) ->
     V = props:get_all_values(Key, Values),
-    get_values(T, Key, lists:append(V, Acc)).
+    get_values(T, Key, V ++ Acc).
 
 %%------------------------------------------------------------------------------
 %% @doc
