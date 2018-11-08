@@ -20,12 +20,12 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec maybe_create_port_in(cb_context:context()) -> 'ok' | {'error', kz_term:ne_binary()}.
+-spec maybe_create_port_in(cb_context:context()) -> 'disabled' | 'ok' | {'error', kz_term:ne_binary()}.
 maybe_create_port_in(Context) ->
     case should_send_to_phonebook(Context) of
         'true' ->
             create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
-        'false' -> 'ok'
+        'false' -> 'disabled'
     end.
 
 -spec maybe_add_comment(cb_context:context(), kz_json:object()) -> cb_context:context().
