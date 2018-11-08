@@ -249,7 +249,10 @@ maybe_add_module_to_autoload(Module) when is_binary(Module) ->
     case lists:member(Module, Autoload) of
         'true' -> 'ok';
         'false' ->
-            kapps_config:set_default(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, [Module | Autoload]),
+            kapps_config:set_default(?NOTIFY_CONFIG_CAT
+                                    ,?AUTOLOAD_MODULES_KEY
+                                    ,lists:usort([Module | Autoload])
+                                    ),
             io:format("added module ~s to autoloaded teletype modules~n", [Module])
     end;
 maybe_add_module_to_autoload(Module) ->
@@ -261,7 +264,10 @@ maybe_remove_module_from_autoload(Module) when is_binary(Module) ->
     case lists:member(Module, Autoload) of
         'false' -> 'ok';
         'true' ->
-            kapps_config:set_default(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, lists:delete(Module, Autoload)),
+            kapps_config:set_default(?NOTIFY_CONFIG_CAT
+                                    ,?AUTOLOAD_MODULES_KEY
+                                    ,lists:delete(Module, Autoload)
+                                    ),
             io:format("removed module ~s to autoloaded teletype modules~n", [Module])
     end;
 maybe_remove_module_from_autoload(Module) ->
