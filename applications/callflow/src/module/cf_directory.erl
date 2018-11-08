@@ -106,8 +106,10 @@
 -type directory_user() :: #directory_user{}.
 -type directory_users() :: [directory_user()].
 
+-type search_field() :: 'first' | 'last' | 'both'.
+
 -record(directory, {sort_by = 'last' :: 'first' | 'last'
-                   ,search_fields = 'both' :: 'first' | 'last' | 'both'
+                   ,search_fields = 'both' :: search_field()
                    ,min_dtmf :: pos_integer()
                    ,max_dtmf :: non_neg_integer()
                    ,confirm_match = 'false' :: boolean()
@@ -338,7 +340,7 @@ maybe_play_media(Call, User, MediaId) ->
         {'error', _} -> {'tts', <<39, (full_name(User))/binary, 39>>}
     end.
 
--spec play_directory_instructions(kapps_call:call(), 'first' | 'last' | 'both' | kz_term:ne_binary()) ->
+-spec play_directory_instructions(kapps_call:call(), search_field()) ->
                                          {'ok', binary()} |
                                          {'error', atom()}.
 play_directory_instructions(Call, 'first') ->
@@ -410,7 +412,7 @@ media_name(#directory_user{name_audio_id = ID}) -> ID.
 get_sort_by(<<"first", _/binary>>) -> 'first';
 get_sort_by(_) -> 'last'.
 
--spec get_search_fields(kz_term:ne_binary()) -> 'first' | 'last' | 'both'.
+-spec get_search_fields(kz_term:ne_binary()) -> search_field().
 get_search_fields(<<"both">>) -> 'both';
 get_search_fields(<<"first", _/binary>>) -> 'first';
 get_search_fields(_) -> 'last'.
@@ -452,29 +454,41 @@ sort_users(Users, 'last') ->
     lists:sort(fun sort_by_last/2, Users).
 
 -spec sort_by_first(directory_user(), directory_user()) -> boolean().
-sort_by_first(#directory_user{first_name=AFirst, last_name=ALast}, #directory_user{first_name=AFirst, last_name=BLast}) ->
+sort_by_first(#directory_user{first_name=AFirst, last_name=ALast}
+             ,#directory_user{first_name=AFirst, last_name=BLast}
+             ) ->
     ALast < BLast;
-sort_by_first(#directory_user{first_name=AFirst}, #directory_user{first_name=BFirst}) ->
+sort_by_first(#directory_user{first_name=AFirst}
+             ,#directory_user{first_name=BFirst}
+             ) ->
     AFirst < BFirst.
 
 -spec sort_by_last(directory_user(), directory_user()) -> boolean().
-sort_by_last(#directory_user{first_name=AFirst, last_name=ALast}, #directory_user{first_name=BFirst, last_name=ALast}) ->
+sort_by_last(#directory_user{first_name=AFirst, last_name=ALast}
+            ,#directory_user{first_name=BFirst, last_name=ALast}
+            ) ->
     AFirst < BFirst;
-sort_by_last(#directory_user{last_name=ALast}, #directory_user{last_name=BLast}) ->
+sort_by_last(#directory_user{last_name=ALast}
+            ,#directory_user{last_name=BLast}
+            ) ->
     ALast < BLast.
 
--spec filter_users(directory_users(), kz_term:ne_binary(), 'last' | 'first' | 'both') -> directory_users().
+-spec filter_users(directory_users(), kz_term:ne_binary(), search_field()) -> directory_users().
 filter_users(Users, DTMFs, FirstCheck) ->
     lager:info("filtering users by ~s", [DTMFs]),
-    Size = byte_size(DTMFs),
-    queue:to_list(
-      lists:foldl(fun(U, Q) -> maybe_queue_user(U, Q, DTMFs, Size, FirstCheck) end
-                 ,queue:new()
-                 ,Users
-                 )
-     ).
+    queue:to_list(queue_users(Users, DTMFs, FirstCheck)).
 
--spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer(), 'last' | 'first' | 'both') ->
+-spec queue_users(directory_users(), kz_term:ne_binary(), search_field()) -> queue:queue().
+queue_users(Users, DTMFs, FirstCheck) ->
+    Size = byte_size(DTMFs),
+    lists:foldl(fun(User, Queue) ->
+                        maybe_queue_user(User, Queue, DTMFs, Size, FirstCheck)
+                end
+               ,queue:new()
+               ,Users
+               ).
+
+-spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer(), search_field()) ->
                               queue:queue().
 maybe_queue_user(User, Queue, DTMFs, Size, 'both') ->
     case maybe_dtmf_matches(DTMFs, Size, first_check('first', User)) of
