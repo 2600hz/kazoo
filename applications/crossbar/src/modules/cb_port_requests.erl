@@ -311,6 +311,10 @@ validate_patch(PortId, Context) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
     crossbar_doc:patch_and_validate(PortId, Context1, ValidateFun).
 
+-spec superduper(cb_context:context()) -> cb_context:context().
+superduper(Context) ->
+    cb_context:store(Context, 'is_superduper_admin', cb_context:is_superduper_admin(Context)).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -359,12 +363,18 @@ patch(Context, Id) ->
 
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
-    Context1 = load_port_request(Context, Id),
-    case phonebook:maybe_create_port_in(Context1) of
+    case phonebook:maybe_create_port_in(Context) of
         'ok' ->
-            save_then_maybe_notify(Context, Id, NewState);
+            Context1 = crossbar_doc:load(Id, Context),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    Context2 = maybe_move_state(Context1, NewState),
+                    save_then_maybe_notify(Context2, Id, NewState);
+                Error ->
+                    cb_context:add_system_error('datastore_fault', Error, Context1)
+            end;
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', Reason, Context1)
+            cb_context:add_system_error('datastore_fault', Reason, Context)
     end;
 patch(Context, Id, NewState=?PORT_PENDING) ->
     save_then_maybe_notify(Context, Id, NewState);
@@ -380,7 +390,7 @@ patch(Context, Id, NewState=?PORT_CANCELED) ->
 
 -spec save_then_maybe_notify(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 save_then_maybe_notify(Context, PortId, NewState) ->
-    Context1 = save(Context),
+    Context1 = save(superduper(Context)),
     case 'success' =:= cb_context:resp_status(Context1) of
         'false' -> Context1;
         'true' ->
@@ -587,7 +597,7 @@ create(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Id) ->
-    Context1 = load_port_request(Context, Id),
+    Context1 = load_port_request(superduper(Context), Id),
     case cb_context:resp_status(Context1) of
         'success' ->
             PubDoc = knm_port_request:public_fields(cb_context:doc(Context1)),
@@ -669,7 +679,7 @@ load_summary_by_type(Context, Type) ->
     lager:debug("loading summary for ~s", [Type]),
     IsRanged = should_range_summary(Type),
     maybe_normalize_summary_results(
-      load_summary(Context, view_key_options(Context, Type, IsRanged))
+      load_summary(superduper(Context), view_key_options(Context, Type, IsRanged))
      ).
 
 -spec load_summary_by_types(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
@@ -833,14 +843,13 @@ load_summary(Context, Key, View) ->
 -spec last_submitted(cb_context:context()) -> cb_context:context().
 last_submitted(Context) ->
     AccountId = cb_context:account_id(Context),
-    C1 = cb_context:store(Context, 'is_superduper_admin', cb_context:is_superduper_admin(Context)),
     Options = [{'startkey', [AccountId]}
               ,{'endkey', [AccountId, kz_json:new()]}
               ,{'mapper', fun  normalize_last_submitted/3}
               ,{'databases', [?KZ_PORT_REQUESTS_DB]}
               ,'include_docs'
               ],
-    crossbar_view:load(C1, <<"port_requests/listing_submitted">>, Options).
+    crossbar_view:load(superduper(Context), <<"port_requests/listing_submitted">>, Options).
 
 -spec normalize_last_submitted(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_last_submitted(Context, ResultJObj, Acc) ->
