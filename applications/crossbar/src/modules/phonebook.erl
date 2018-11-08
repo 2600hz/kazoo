@@ -20,32 +20,37 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec maybe_create_port_in(cb_context:context()) -> 'ok' | {'error', kz_term:ne_binary()}.
+-spec maybe_create_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
 maybe_create_port_in(Context) ->
-    case should_send_to_phonebook(Context) of
+    case should_send_to_phonebook(Context)
+        andalso not req_from_phonebook(Context)
+    of
         'true' ->
             create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
-        'false' -> 'ok'
+        'false' -> {'ok', 'disabled'}
     end.
 
--spec maybe_add_comment(cb_context:context(), kz_json:object()) -> cb_context:context().
+-spec maybe_add_comment(cb_context:context(), kz_json:objects()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
 maybe_add_comment(Context, Comment) ->
     case should_send_to_phonebook(Context)
         andalso not req_from_phonebook(Context)
     of
         'true' ->
-            add_comment(cb_context:doc(Context), cb_context:auth_token(Context), Comment),
-            Context;
-        'false' -> Context
+            add_comment(cb_context:doc(Context), cb_context:auth_token(Context), Comment);
+        'false' -> {'ok', 'disabled'}
     end.
 
--spec maybe_cancel_port_in(cb_context:context()) -> cb_context:context().
+-spec maybe_cancel_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
 maybe_cancel_port_in(Context) ->
-    case should_send_to_phonebook(Context) of
+    case should_send_to_phonebook(Context)
+        andalso not req_from_phonebook(Context)
+    of
         'true' ->
-            cancel_port_in(cb_context:doc(Context), cb_context:auth_token(Context)),
-            Context;
-        'false' -> Context
+            %%TODO: implement support for this in phonebook
+            %% cancel_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
+            %%UNTIL THEN: just return disabled
+            {'ok', 'disabled'};
+        'false' -> {'ok', 'disabled'}
     end.
 
 %%------------------------------------------------------------------------------
@@ -69,7 +74,7 @@ should_send_to_phonebook(Context) ->
     cb_context:resp_status(Context) =:= 'success'
         andalso phonebook_enabled().
 
--spec create_port_in(kz_json:object(), kz_term:ne_binary()) -> 'ok' | {'error', kz_term:ne_binary()}.
+-spec create_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
 create_port_in(JObj, AuthToken) ->
     Url = phonebook_uri([<<"accounts">>
                         ,kz_doc:account_id(JObj)
@@ -81,7 +86,7 @@ create_port_in(JObj, AuthToken) ->
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"create">>, Url).
 
--spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+-spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:objects()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
 add_comment(JObj, AuthToken, Comment) ->
     Url = phonebook_uri([<<"accounts">>
                         ,kz_doc:account_id(JObj)
@@ -93,22 +98,26 @@ add_comment(JObj, AuthToken, Comment) ->
     Data = kz_json:set_value(<<"data">>, Comment, kz_json:new()),
     lager:debug("adding comment to phonebook via ~s: ~p", [Url, Data]),
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
-    _ = handle_resp(Response, JObj, <<"comment">>, Url),
-    'ok'.
+    handle_resp(Response, JObj, <<"comment">>, Url).
 
--spec cancel_port_in(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-cancel_port_in(JObj, AuthToken) ->
-    AccountId = kz_doc:account_id(JObj),
-    PortId = kz_doc:id(JObj),
-    Url = phonebook_uri([<<"accounts">>, AccountId, <<"ports">>, <<"in">>, PortId]),
-    lager:debug("accounts delete via ~s", [Url]),
-    Response = kz_http:delete(Url, req_headers(AuthToken)),
-    _ = handle_resp(Response, JObj, <<"cancel">>, Url),
-    'ok'.
+%%TODO: implement support for this in phonebook
+%% -spec cancel_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
+%% cancel_port_in(JObj, AuthToken) ->
+%%     AccountId = kz_doc:account_id(JObj),
+%%     PortId = kz_doc:id(JObj),
+%%     Url = phonebook_uri([<<"accounts">>, AccountId, <<"ports">>, <<"in">>, PortId]),
+%%     lager:debug("accounts delete via ~s", [Url]),
+%%     Response = kz_http:delete(Url, req_headers(AuthToken)),
+%%     handle_resp(Response, JObj, <<"cancel">>, Url).
 
--spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), string()) -> 'ok' | {'error', kz_term:ne_binary()}.
+-spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), string()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
 handle_resp({'ok', 200, _, Resp}, _, _, _) ->
-    lager:debug("phonebook success ~s", [Resp]);
+    RespJObj = kz_json:decode(Resp),
+    case kz_json:get_ne_binary_value(<<"status">>, RespJObj) of
+        'undefined' -> {'error', <<"max dun goofed">>};
+        <<"error">> -> {'error', RespJObj};
+        <<"success">> -> {'ok', RespJObj}
+    end;
 handle_resp({'ok', Code, _, Resp}, JObj, Type, Url) ->
     lager:warning("phonebook error ~b response: ~p", [Code, Resp]),
     Response = kz_json:decode(Resp),
