@@ -31,7 +31,7 @@ get_attachments(DataJObj, 'false') ->
                ,kz_doc:attachment_names(Doc)
                ).
 
--spec get_attachment_fold(kz_json:path(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
+-spec get_attachment_fold(kz_json:key(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
                                  attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     {'ok', Attachment} = kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
@@ -125,7 +125,7 @@ fix_billing(JObj, _DataJObj) ->
                  ,kz_json:get_json_value(<<"bill">>, JObj, kz_json:new())
                  ).
 
--spec fix_billing_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec fix_billing_fold(kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
                               kz_json:object().
 fix_billing_fold(Key, Value, Acc) ->
     kz_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
