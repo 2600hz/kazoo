@@ -23,9 +23,7 @@
 -define(DEFAULT_ANON_CID_NAMES, [<<"anonymous">>
                                 ,<<"restricted">>
                                 ]).
--define(DEFAULT_ANON_CID_NUMBERS, [<<"0000000000">>
-                                       | ?DEFAULT_ANON_CID_NAMES
-                                  ]).
+-define(DEFAULT_ANON_CID_NUMBERS, ?DEFAULT_ANON_CID_NAMES).
 -define(KEY_ANON_NAME, <<"privacy_name">>).
 -define(KEY_ANON_NUMBER, <<"privacy_number">>).
 -define(KEY_ANON_NAMES, <<"anonymous_cid_names">>).

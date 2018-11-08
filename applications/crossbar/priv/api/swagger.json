@@ -31840,8 +31840,6 @@
                 "anonymous_cid_names": {
                     "default": [
                         "anonymous",
-                        "Anonymous",
-                        "Restricted",
                         "restricted"
                     ],
                     "description": "Additional CID name patterns to match for anonymous call rejection",
@@ -31852,10 +31850,7 @@
                 },
                 "anonymous_cid_numbers": {
                     "default": [
-                        "0000000000",
                         "anonymous",
-                        "Anonymous",
-                        "Restricted",
                         "restricted"
                     ],
                     "description": "Additional CID number/userpart patterns to match for anonymous call rejection",
