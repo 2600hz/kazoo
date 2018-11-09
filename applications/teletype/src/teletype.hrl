@@ -237,7 +237,7 @@
 
 -define(AUTOLOAD_MODULES_KEY, <<"autoload_modules">>).
 -define(AUTOLOAD_MODULES
-       ,lists:usort(kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES))
+       ,kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)
        ).
 
 -define(TELETYPE_HRL, 'true').
