@@ -383,7 +383,7 @@ authz_req(Props) ->
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
       ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
       ,{<<"Caller-ID-Name">>
-       ,kzd_freeswitch:caller_id_name(Props, kz_privacy:anonymous_caller_id_name(AccountId))
+       ,kzd_freeswitch:caller_id_name(Props, kapps_call:unknown_caller_id_name(AccountId))
        }
       ,{<<"Caller-ID-Number">>
        ,kzd_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))

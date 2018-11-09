@@ -704,7 +704,7 @@ default_cid_name('undefined', Call) ->
     AccountId = kapps_call:account_id(Call),
     kapps_config:get_ne_binary(?CONFIG_CAT
                               ,<<"default_caller_id_name">>
-                              ,kz_privacy:anonymous_caller_id_name(AccountId)
+                              ,kapps_call:unknown_caller_id_name(AccountId)
                               );
 default_cid_name(<<_/binary>> = Name, _Call) -> Name;
 default_cid_name(Endpoint, Call) ->
