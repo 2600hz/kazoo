@@ -292,23 +292,23 @@ generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion) ->
                       );
 generate_oas_paths_json(_, <<"oas3">>) ->
     kz_json:new().
-% generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
-%     BaseOas = read_swagger_json(?OAS_3_JSON_FILE),
-%     OasPaths = kz_json:get_value(<<"paths">>, BaseOas),
-
-%     kz_json:set_values([{<<"paths">>, to_oas_paths(Paths, OasPaths)}
-%                        ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
-%                        ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
-%                        ,{<<"host">>, <<"localhost:8000">>}
-%                        ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
-%                        ,{<<"swagger">>, <<"2.0">>}
-%                        ,{<<"info">>, ?SWAGGER_INFO}
-%                        ,{<<"consumes">>, [<<"application/json">>]}
-%                        ,{<<"produces">>, [<<"application/json">>]}
-%                        ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
-%                        ]
-%                       ,BaseOas
-%                       ).
+%% generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
+%%     BaseOas = read_swagger_json(?OAS_3_JSON_FILE),
+%%     OasPaths = kz_json:get_value(<<"paths">>, BaseOas),
+%%
+%%     kz_json:set_values([{<<"paths">>, to_oas_paths(Paths, OasPaths)}
+%%                        ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
+%%                        ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
+%%                        ,{<<"host">>, <<"localhost:8000">>}
+%%                        ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
+%%                        ,{<<"swagger">>, <<"2.0">>}
+%%                        ,{<<"info">>, ?SWAGGER_INFO}
+%%                        ,{<<"consumes">>, [<<"application/json">>]}
+%%                        ,{<<"produces">>, [<<"application/json">>]}
+%%                        ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
+%%                        ]
+%%                       ,BaseOas
+%%                       ).
 
 -spec write_swagger_json(kz_json:object() | kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
 write_swagger_json(Swaggers, <<"oas_two_and_three">>) ->
@@ -361,13 +361,13 @@ print_messages(<<"Warnings">> = Title, File, Msgs) ->
     print_messages(Head, lists:filter(FilterFun, Msgs));
 print_messages(Title, File, Msgs) ->
     Head = iolist_to_binary(io_lib:format("~s in file: ~s~n", [Title, File])),
-    print_messages(Head, Msgs),
-    io:format(user, "~n", []).
+    print_messages(Head, Msgs).
 
 -spec print_messages(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 print_messages(_, []) -> 'ok';
 print_messages(Head, Msgs) ->
-    print_messages([Head | Msgs]).
+    print_messages([Head | Msgs]),
+    io:format(user, "~n", []).
 
 -spec print_messages(kz_term:ne_binaries()) -> 'ok'.
 print_messages([]) -> 'ok';
@@ -410,12 +410,12 @@ convert_to_oas_schema(File, OasVersion) ->
 to_oas_schema(KVs, <<"swagger2">>) ->
     {'ok'
     ,[case lists:last(Path) =:= <<"$ref">> of
-        'false' -> KV;
-        'true' -> {Path, maybe_fix_ref(V, <<"swagger2">>)}
-    end
-    || {Path, V}=KV <- KVs,
-       is_supported_by_swagger2(Path)
-    ]
+          'false' -> KV;
+          'true' -> {Path, maybe_fix_ref(V, <<"swagger2">>)}
+      end
+      || {Path, V}=KV <- KVs,
+         is_supported_by_swagger2(Path)
+     ]
     ,[]
     };
 to_oas_schema(KVs, <<"oas3">>) ->
@@ -437,8 +437,8 @@ is_kazoo_prefixed([<<"support_level">>|_]) -> 'true';
 is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
 
 -define(IS_OAS_PROPERTIES(P), (P =:= <<"properties">>
-            orelse P =:= <<"additionalProperties">>
-            orelse P =:= <<"x-patternProperties">>
+                                   orelse P =:= <<"additionalProperties">>
+                                   orelse P =:= <<"x-patternProperties">>
                               )
        ).
 
@@ -505,6 +505,17 @@ to_oas3_schema(OrigP, [<<"patternProperties">> = P | Ps], [_, Properties|_]=Reve
   when ?IS_OAS_PROPERTIES(Properties) ->
     to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
 
+%% add prefix to kazoo specific fields
+to_oas3_schema(OrigP, [<<"kazoo-", _/binary>> = P | Ps], [], Val, KVs, OrigKVs, Warn, Err) ->
+    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>>], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"kazoo-", _/binary>> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [], Val, KVs, OrigKVs, Warn, Err) ->
+    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>>], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
 %% other checks
 to_oas3_schema(OrigP, [<<"$ref">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
     to_oas3_schema(OrigP, [], [P | ReverseP], maybe_fix_ref(Val, <<"oas3">>), KVs, OrigKVs, Warn, Err);
@@ -530,8 +541,8 @@ to_oas3_schema(OrigP, [<<"type">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) 
     case oas3_type_type(ReverseP, Val, OrigKVs) of
         'array' ->
             Msg = io_lib:format("path '~s', 'type' must be a single type and not an array of types"
-                           ,[join_oas3_path_reverse(ReverseP)]
-                           ),
+                               ,[join_oas3_path_reverse(ReverseP)]
+                               ),
             {'error', Warn, [iolist_to_binary(Msg) | Err]};
         'binary' ->
             to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
@@ -609,7 +620,7 @@ oas3_type_type(Path, <<"array">>, KVs) ->
 oas3_type_type(Path, Value, KVs) when is_list(Value) ->
     HasArray = lists:member(<<"array">>, Value),
     case lists:any(fun(Null) -> lists:member(Null, Value) end, ['null', <<"null">>])
-         andalso length(Value) =:= 2
+        andalso length(Value) =:= 2
     of
         'true' when HasArray ->
             case oas3_type_type(Path, <<"array">>, KVs) of
