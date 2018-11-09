@@ -8,8 +8,8 @@
 
 -include("crossbar_types.hrl").
 
--define(APP, crossbar).
--define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP, 'crossbar').
+-define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 -define(AUTH_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).

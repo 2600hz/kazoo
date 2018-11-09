@@ -408,17 +408,8 @@ create_account(AccountName, Realm, Username, Password)
     try create_account_and_user(Account, User) of
         {'ok', _Context} -> 'ok'
     catch
-        'throw':Errors ->
-            io:format("failed to create '~s': ~s~n", [AccountName, kz_json:encode(Errors)]),
-            lager:error("errors thrown when creating account: ~s", [kz_json:encode(Errors)]),
-            'failed';
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:error("crashed creating account: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-
-            io:format("failed to create '~s': ~p~n", [AccountName, _R]),
-            'failed'
+        Type:Reason ->
+            log_error(Type, Reason, erlang:get_stacktrace(), AccountName)
     end;
 create_account(AccountName, Realm, Username, Password) ->
     create_account(kz_term:to_binary(AccountName)
@@ -426,6 +417,14 @@ create_account(AccountName, Realm, Username, Password) ->
                   ,kz_term:to_binary(Username)
                   ,kz_term:to_binary(Password)
                   ).
+
+log_error(Type, Reason, ST, AccountName) ->
+    lager:error("crashed creating account: ~s: ~p", [Type, Reason]),
+    kz_util:log_stacktrace(ST),
+
+    io:format("failed to create '~s': ~p~n", [AccountName, Reason]),
+    'failed'.
+
 
 -spec maybe_promote_account(cb_context:context()) -> {'ok', cb_context:context()}.
 maybe_promote_account(Context) ->
@@ -582,22 +581,57 @@ maybe_load_ref({_Property, Schema}) ->
 %%------------------------------------------------------------------------------
 -spec validate_account(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_account(JObj, Context) ->
+    {Nouns, User} = account_nouns_and_user(),
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
-                                  ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, []}]}
+                                  ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, Nouns}]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
                                   ,{fun cb_context:set_api_version/2, ?VERSION_2}
+                                  ,{fun cb_context:set_auth_doc/2, User}
+                                   | case Nouns of
+                                         [] -> [];
+                                         [Id] -> [{fun cb_context:set_auth_account_id/2, Id}]
+                                     end
                                   ])
+               | Nouns
               ],
-    Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
+    Context1 = apply('cb_accounts', 'validate', Payload),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', Context1};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
-            io:format("failed to validate account: ~p ~s~n", [_Code, _Msg]),
+            AccountId = cb_context:account_id(Context1),
+            io:format("failed to validate account ~s: ~p ~s~n", [AccountId, _Code, _Msg]),
+            _ = cb_accounts:delete_account(AccountId),
             throw(Errors)
+    end.
+
+account_nouns_and_user() ->
+    case account_nouns() of
+        [] -> {[], 'undefined'};
+        [AccountId] -> {[AccountId], master_admin(AccountId)}
+    end.
+
+account_nouns() ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} -> [MasterAccountId];
+        {'error', _} -> []
+    end.
+
+master_admin(MasterAccountId) ->
+    AccountDb = kz_util:format_account_db(MasterAccountId),
+    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, []) of
+        {'ok', Users} -> find_first_admin(Users);
+        {'error', _} -> 'undefined'
+    end.
+
+find_first_admin([]) -> 'undefined';
+find_first_admin([User|Users]) ->
+    case kz_json:get_ne_binary_value([<<"value">>, <<"priv_level">>], User) of
+        <<"admin">> -> kz_json:get_json_value(<<"value">>, User);
+        _ -> find_first_admin(Users)
     end.
 
 %%------------------------------------------------------------------------------
@@ -633,7 +667,7 @@ validate_user(JObj, Context) ->
 %%------------------------------------------------------------------------------
 -spec create_account(cb_context:context()) -> {'ok', cb_context:context()}.
 create_account(Context) ->
-    Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.accounts">>, [Context]),
+    Context1 = apply('cb_accounts', 'put', [Context | account_nouns()]),
     AccountId = cb_context:account_id(Context1),
     AccountDb = cb_context:account_db(Context1),
     case cb_context:resp_status(Context1) of

@@ -350,11 +350,22 @@ update_provisioner_template(DocId, Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    C = cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
-                                                       ,{<<"pvt_provider">>, <<"provisioner.net">>}
-                                                       ,{<<"pvt_provisioner_type">>, <<"global">>}
-                                                       ], cb_context:doc(Context))),
-    provisioner_util:get_provision_defaults(C);
+    Doc = kz_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
+                             ,{<<"pvt_provider">>, <<"provisioner.net">>}
+                             ,{<<"pvt_provisioner_type">>, <<"global">>}
+                             ]
+                            ,cb_context:doc(Context)
+                            ),
+
+    case provisioner_util:get_provision_defaults(Doc) of
+        {'ok', Defaults} ->
+            cb_context:setters(Context
+                              ,[{fun cb_context:set_doc/2, Defaults}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ]);
+        {'error', Msg} ->
+            crossbar_util:response('error', Msg, 500, Context)
+    end;
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"provisioner_template">>)).
 

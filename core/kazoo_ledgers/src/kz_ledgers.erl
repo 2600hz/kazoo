@@ -251,7 +251,7 @@ get_ranged(View, Options) ->
 
 -spec get_ranged(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries(), kz_json:objects()) ->
                         {'ok', kz_json:objects() | ledgers()} |
-                        {'error', any()}.
+                        kz_datamgr:data_error().
 get_ranged(_View, _Options, [], Results) -> {'ok', Results};
 get_ranged(View, Options, [MODb|MODbs], Results) ->
     HasDoc = props:get_value('result_key', Options) =:= <<"doc">>,
@@ -393,6 +393,14 @@ rollover(Account, Year, Month, Total) ->
     case kazoo_modb:save_doc(Account, LedgerJObj, Year, Month) of
         {'ok', _SavedJObj} ->
             lager:info("created ledger rollover for ~s ~p-~p"
+                      ,[Account, Year, Month]
+                      ),
+            ViewOptions = [{'year', Year}
+                          ,{'month', Month}
+                          ],
+            get_sources_total(Account, ViewOptions);
+        {'error', 'conflict'} ->
+            lager:info("ledger rollover for ~s ~p-~p exists already"
                       ,[Account, Year, Month]
                       ),
             ViewOptions = [{'year', Year}

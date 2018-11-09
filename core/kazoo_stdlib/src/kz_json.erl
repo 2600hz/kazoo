@@ -1049,7 +1049,7 @@ insert_value(Key, Value, JObj) ->
         _V -> JObj
     end.
 
--spec insert_values(json_proplist(), object()) -> object().
+-spec insert_values([{get_key(), json_term()}], object()) -> object().
 insert_values(KVs, JObj) ->
     lists:foldl(fun insert_value_fold/2, JObj, KVs).
 
@@ -1087,7 +1087,11 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
                                               {set_value1(T, Value, E), {Pos + 1, Pos}};
                                          (E, {Pos, Idx}) ->
                                               {E, {Pos + 1, Idx}}
-                                      end, {1, Key1}, JObjs))
+                                      end
+                                     ,{1, Key1}
+                                     ,JObjs
+                                     )
+                   )
     end;
 
 %% Figure out how to set the current key in an existing object

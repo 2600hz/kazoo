@@ -22,16 +22,13 @@
         ]).
 
 -export([notify_new_account/1]).
--export([is_unique_realm/2
-        ,is_unique_account_name/2
-        ]).
 
 -export([delete_account/1]).
 
 %% needed for API docs in cb_api_endpoints
 -export([allowed_methods_on_account/2]).
 
--compile({no_auto_import,[put/2]}).
+-compile({'no_auto_import', [put/2]}).
 
 -include("crossbar.hrl").
 
@@ -45,9 +42,6 @@
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 
--define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
--define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
-
 -define(PVT_TYPE, kzd_accounts:type()).
 -define(CHILDREN, <<"children">>).
 -define(DESCENDANTS, <<"descendants">>).
@@ -57,15 +51,11 @@
 -define(PARENTS, <<"parents">>).
 -define(RESELLER, <<"reseller">>).
 
--define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
 
--define(ACCOUNT_REALM_SUFFIX
-       ,kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>)).
--define(RANDOM_REALM_STRENGTH
-       ,kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3)).
 -define(ALLOW_DIRECT_CLIENTS
-       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true')).
+       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true')
+       ).
 
 -spec init() -> 'ok'.
 init() ->
@@ -273,6 +263,11 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
         _Else -> Context1
     end.
 
+-spec add_pvt_api_key(cb_context:context()) -> cb_context:context().
+add_pvt_api_key(Context) ->
+    JObj = cb_context:doc(Context),
+    cb_context:set_doc(Context, kzd_accounts:add_pvt_api_key(JObj)).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -286,13 +281,22 @@ post(Context, AccountId) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
-            _ = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
+            update_provisioner_account(Context1),
 
             {'ok', SavedAccount} = kzd_accounts:save(cb_context:doc(Context1)),
 
             leak_pvt_fields(AccountId, cb_context:set_doc(Context1, SavedAccount));
         _Status -> Context1
     end.
+
+-spec update_provisioner_account(cb_context:context()) -> 'ok'.
+update_provisioner_account(Context) ->
+    _ = kz_util:spawn(fun provisioner_util:maybe_update_account/3
+                     ,[cb_context:account_id(Context)
+                      ,cb_context:auth_token(Context)
+                      ,cb_context:doc(Context)
+                      ]),
+    'ok'.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AccountId, ?MOVE) ->
@@ -316,30 +320,44 @@ put(Context) ->
 
 -spec put(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 put(Context, PathAccountId) ->
-    JObj = cb_context:doc(Context),
-    NewAccountId = kz_doc:id(JObj, kz_datamgr:get_uuid()),
+    ReqJObj = cb_context:doc(Context),
+    NewAccountId = kz_doc:id(ReqJObj, kz_datamgr:get_uuid()),
 
-    lager:info("creating new account with id ~s", [NewAccountId]),
-    try create_new_account_db(prepare_context(NewAccountId, Context)) of
-        C ->
-            Tree = kzd_accounts:tree(JObj),
+    WithPVTs = crossbar_doc:update_pvt_parameters(ReqJObj, Context),
+
+    lager:info("creating new account with id ~s (parent ~s)", [NewAccountId, PathAccountId]),
+    WithParent = kz_json:set_value(<<"pvt_parent_id">>, PathAccountId, WithPVTs),
+    try kzdb_account:create(NewAccountId, WithParent) of
+        'undefined' ->
+            ContextErr = cb_context:add_system_error('datastore_fault', Context),
+            unroll(ContextErr, NewAccountId);
+        AccountJObj ->
+            Context1 = prepare_context(NewAccountId, Context),
+            Context2 = after_create(Context1, AccountJObj),
+            Tree = kzd_accounts:tree(ReqJObj),
             _ = maybe_update_descendants_count(Tree),
             _ = create_apps_store_doc(NewAccountId),
-            leak_pvt_fields(PathAccountId, C)
+            leak_pvt_fields(PathAccountId, Context2)
     catch
-        'throw':C ->
-            lager:debug("failed to create account, unrolling changes"),
-
-            case cb_context:is_context(C) of
-                'true' -> delete(C, NewAccountId);
-                'false' ->
-                    _ = delete(Context, NewAccountId),
-                    cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
-            end;
+        'throw':'datastore_fault' ->
+            ContextErr = cb_context:add_system_error('datastore_fault', Context),
+            unroll(ContextErr, NewAccountId);
+        'throw':ContextErr ->
+            unroll(ContextErr, NewAccountId);
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
+            unroll(Context, NewAccountId)
+    end.
+
+-spec unroll(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+unroll(Context, NewAccountId) ->
+    lager:error("failed to create account, unrolling changes"),
+
+    case cb_context:is_context(Context) of
+        'true' -> delete(Context, NewAccountId);
+        'false' ->
             _ = delete(Context, NewAccountId),
             cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
     end.
@@ -366,31 +384,35 @@ put(Context, AccountId, ?RESELLER) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_account(kz_term:ne_binary()) -> 'ok' | 'error'.
-delete_account(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    Context = prepare_context(AccountId, cb_context:new()),
-    lager:info("attempting to delete ~s(~s)", [cb_context:account_id(Context)
-                                              ,cb_context:account_db(Context)
-                                              ]),
-    Context1 = delete(Context, AccountId),
-    case cb_context:resp_status(Context1) of
-        'success' -> lager:info("deleted account ~s", [AccountId]);
-        _Resp ->
-            lager:info("failed to delete account ~s", [AccountId]),
-            'error'
-    end.
+-spec delete_account(kz_term:api_ne_binary()) ->
+                            {'ok', kzd_accounts:doc() | 'undefined'} |
+                            {'error', kz_json_schema:validation_errors()} |
+                            kz_datamgr:data_error().
+delete_account(AccountId) ->
+    kzdb_account:delete(AccountId).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kapps_util:is_account_db(AccountDb) of
-        'false' ->
-            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, AccountId}]),  Context);
-        'true' ->
-            Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
-            _ = maybe_update_descendants_count(kzd_accounts:tree(cb_context:doc(Context1))),
-            Context1
+
+    case kzdb_account:delete(AccountId) of
+        {'ok', AccountJObj} ->
+            Context1 = cb_context:set_doc(Context, AccountJObj),
+            _ = maybe_update_descendants_count(kzd_accounts:tree(AccountJObj)),
+            _ = provisioner_util:maybe_delete_account(cb_context:account_id(Context)
+                                                     ,cb_context:auth_token(Context)
+                                                     ),
+            _ = cb_mobile_manager:delete_account(Context1),
+            Context1;
+        {'error', Errors} when is_list(Errors) ->
+            lists:foldl(fun({'error', Msg, Code}, C) ->
+                                crossbar_util:response('error', Msg, Code, C)
+                        end
+                       ,Context
+                       ,Errors
+                       );
+        {'error', Error} ->
+            crossbar_doc:handle_datamgr_errors(Error, Account, Context)
     end.
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -486,126 +508,88 @@ prepare_context(Context, AccountId, AccountDb) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 validate_request(AccountId, Context) ->
-    ValidateFuns = [fun ensure_account_has_realm/2
-                   ,fun ensure_account_has_timezone/2
-                   ,fun remove_spaces/2
-                   ,fun cleanup_leaky_keys/2
-                   ,fun validate_realm_is_unique/2
-                   ,fun validate_account_name_is_unique/2
-                   ,fun validate_account_schema/2
-                   ,fun disallow_direct_clients/2
-                   ,fun(_, C) -> cb_modules_util:normalize_alphanum_name(C) end
-                   ],
-    lists:foldl(fun(F, C) -> F(AccountId, C) end
+    ReqJObj = cb_context:req_data(Context),
+
+    ParentId = get_parent_id_from_req(Context),
+    case kzd_accounts:validate(ParentId, AccountId, ReqJObj) of
+        {'true', AccountJObj} ->
+            lager:debug("validated account object"),
+            update_validated_request(AccountId, Context, AccountJObj);
+        {'validation_errors', ValidationErrors} ->
+            lager:info("validation errors on account"),
+            add_validation_errors(Context, ValidationErrors);
+        {'system_error', Error} ->
+            lager:info("system error validating account: ~p", [Error]),
+            cb_context:add_system_error(Error, Context)
+    end.
+
+update_validated_request(AccountId, Context, AccountJObj) ->
+    Updates = [{fun cb_context:set_req_data/2, AccountJObj}
+              ,{fun cb_context:set_doc/2, AccountJObj}
+              ,{fun cb_context:set_resp_status/2, 'success'}
+              ],
+    Context1 = cb_context:setters(Context, Updates),
+    extra_validation(AccountId, Context1).
+
+-spec get_parent_id_from_req(cb_context:context()) -> kz_term:api_ne_binary().
+get_parent_id_from_req(Context) ->
+    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
+        [ParentId] -> ParentId;
+        _Nouns ->
+            case cb_context:auth_doc(Context) of
+                'undefined' -> 'undefined';
+                AuthDoc -> kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc)
+            end
+    end.
+
+add_validation_errors(Context, ValidationErrors) ->
+    lists:foldl(fun add_validation_error/2
                ,Context
-               ,ValidateFuns
+               ,ValidationErrors
                ).
 
--spec ensure_account_has_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-ensure_account_has_realm(_AccountId, Context) ->
-    JObj = cb_context:req_data(Context),
-    case kzd_accounts:realm(JObj) of
-        'undefined' ->
-            Realm = random_realm(),
-            lager:debug("req has no realm, creating random realm '~s'", [Realm]),
-            cb_context:set_req_data(Context, kzd_accounts:set_realm(JObj, Realm));
-        _Realm ->
-            lager:debug("req has realm '~s'", [_Realm]),
-            Context
-    end.
+add_validation_error({Path, Reason, Msg}, Context) ->
+    cb_context:add_validation_error(Path, Reason, Msg, Context).
 
--spec ensure_account_has_timezone(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-ensure_account_has_timezone(_AccountId, Context) ->
-    JObj = cb_context:req_data(Context),
-    Timezone = kz_json:get_value(<<"timezone">>, JObj, get_timezone_from_parent(Context)),
-    lager:debug("selected timezone: ~s", [Timezone]),
-    cb_context:set_req_data(Context, kzd_accounts:set_timezone(JObj, Timezone)).
+extra_validation(AccountId, Context) ->
+    Extra = [fun(_, C) -> maybe_import_enabled(C) end
+            ,fun disallow_direct_clients/2
+            ],
+    lists:foldl(fun(F, C) -> F(AccountId, C) end
+               ,Context
+               ,Extra
+               ).
 
--spec get_timezone_from_parent(cb_context:context()) -> kz_term:ne_binary().
-get_timezone_from_parent(Context) ->
-    case create_new_tree(Context) of
-        'error' -> kzd_accounts:default_timezone();
-        [] -> kzd_accounts:default_timezone();
-        Tree -> kzd_accounts:timezone(lists:last(Tree))
-    end.
+-spec disallow_direct_clients(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+disallow_direct_clients(AccountId, Context) ->
+    ShouldAllow = ?ALLOW_DIRECT_CLIENTS,
+    lager:debug("will allow direct clients: ~s", [ShouldAllow]),
+    maybe_disallow_direct_clients(AccountId, Context, ShouldAllow).
 
--spec random_realm() -> kz_term:ne_binary().
-random_realm() ->
-    <<(kz_binary:rand_hex(?RANDOM_REALM_STRENGTH))/binary, ".", (?ACCOUNT_REALM_SUFFIX)/binary>>.
-
--spec remove_spaces(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-remove_spaces(_AccountId, Context) ->
-    ReqData = lists:foldl(fun remove_spaces_fold/2, cb_context:req_data(Context), ?REMOVE_SPACES),
-    cb_context:set_req_data(Context, ReqData).
-
--spec remove_spaces_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
-remove_spaces_fold(Key, Acc) ->
-    case kz_json:get_value(Key, Acc) of
-        'undefined' -> Acc;
-        Value ->
-            NoSpaces = binary:replace(Value, <<" ">>, <<>>, ['global']),
-            kz_json:set_value(Key, NoSpaces, Acc)
-    end.
-
--spec cleanup_leaky_keys(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-cleanup_leaky_keys(_AccountId, Context) ->
-    RemoveKeys = [<<"wnm_allow_additions">>
-                 ,<<"superduper_admin">>
-                 ,<<"billing_mode">>
-                 ],
-    ReqData = kz_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
-    cb_context:set_req_data(Context, ReqData).
-
--spec validate_realm_is_unique(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_realm_is_unique(AccountId, Context) ->
-    Realm = kzd_accounts:realm(cb_context:req_data(Context)),
-    case is_unique_realm(AccountId, Realm) of
-        'true' ->
-            lager:debug("realm ~s is indeed unique", [Realm]),
-            Context;
+-spec maybe_disallow_direct_clients(kz_term:api_binary(), cb_context:context(), boolean()) ->
+                                           cb_context:context().
+maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
+    Context;
+maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    AuthUserReseller = kz_services_reseller:get_id(AuthAccountId),
+    case AuthUserReseller =/= MasterAccountId
+        orelse kz_services_reseller:is_reseller(AuthAccountId)
+    of
+        'true' -> Context;
         'false' ->
+            lager:debug("direct account ~p is disallowed from creating sub-accounts", [AuthAccountId]),
             Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Account realm already in use">>}
-                    ,{<<"cause">>, Realm}
+                    [{<<"message">>, <<"Direct account is not allowed to create sub-accounts">>}
+                    ,{<<"cause">>, AuthAccountId}
                     ]),
-            cb_context:add_validation_error([<<"realm">>], <<"unique">>, Msg, Context)
+            cb_context:add_validation_error([<<"account">>], <<"forbidden">>, Msg, Context)
     end.
 
--spec validate_account_name_is_unique(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_account_name_is_unique(AccountId, Context) ->
-    Name = kzd_accounts:name(cb_context:req_data(Context)),
-    case maybe_is_unique_account_name(AccountId, Name) of
-        'true' ->
-            lager:debug("name ~s is indeed unique", [Name]),
-            Context;
-        'false' ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Account name already in use">>}
-                    ,{<<"cause">>, Name}
-                    ]),
-            cb_context:add_validation_error([<<"name">>], <<"unique">>, Msg, Context)
-    end.
-
--spec validate_account_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_account_schema(AccountId, Context) ->
-    lager:debug("validating payload"),
-    OnSuccess = fun(C) ->
-                        lager:debug("account payload is valid"),
-                        on_successful_validation(AccountId, C)
-                end,
-    cb_context:validate_request_data(<<"accounts">>, Context, OnSuccess).
-
--spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
-    set_private_properties(Context);
-on_successful_validation(AccountId, Context) ->
-    Context1 = crossbar_doc:load_merge(AccountId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
-    maybe_import_enabled(Context1).
-
--spec maybe_import_enabled(cb_context:context()) ->
-                                  cb_context:context().
+-spec maybe_import_enabled(cb_context:context()) -> cb_context:context().
 maybe_import_enabled(Context) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
         'true' ->
@@ -638,33 +622,6 @@ maybe_import_enabled(Context, Doc, IsEnabled) ->
                  'false' -> kzd_accounts:disable(Doc)
              end,
     cb_context:set_doc(Context, NewDoc).
-
--spec disallow_direct_clients(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-disallow_direct_clients(AccountId, Context) ->
-    ShouldAllow = ?ALLOW_DIRECT_CLIENTS,
-    lager:debug("will allow direct clients: ~s", [ShouldAllow]),
-    maybe_disallow_direct_clients(AccountId, Context, ShouldAllow).
-
--spec maybe_disallow_direct_clients(kz_term:api_binary(), cb_context:context(), boolean()) ->
-                                           cb_context:context().
-maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
-    Context;
-maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    AuthAccountId = cb_context:auth_account_id(Context),
-    AuthUserReseller = kz_services_reseller:get_id(AuthAccountId),
-    case AuthUserReseller =/= MasterAccountId
-        orelse kz_services_reseller:is_reseller(AuthAccountId)
-    of
-        'true' -> Context;
-        'false' ->
-            lager:debug("direct account ~p is disallowed from creating sub-accounts", [AuthAccountId]),
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Direct account is not allowed to create sub-accounts">>}
-                    ,{<<"cause">>, AuthAccountId}
-                    ]),
-            cb_context:add_validation_error([<<"account">>], <<"forbidden">>, Msg, Context)
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Load an account document from the database
@@ -1130,107 +1087,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @doc This function returns the private fields to be added to a new account
-%% document
-%% @end
-%%------------------------------------------------------------------------------
--spec set_private_properties(cb_context:context()) -> cb_context:context().
-set_private_properties(Context) ->
-    PvtFuns = [fun add_pvt_type/1
-              ,fun add_pvt_vsn/1
-              ,fun maybe_add_pvt_api_key/1
-              ,fun maybe_add_pvt_tree/1
-              ,fun add_pvt_enabled/1
-              ],
-    lists:foldl(fun(F, C) -> F(C) end, Context, PvtFuns).
-
--spec add_pvt_type(cb_context:context()) -> cb_context:context().
-add_pvt_type(Context) ->
-    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
-
--spec add_pvt_vsn(cb_context:context()) -> cb_context:context().
-add_pvt_vsn(Context) ->
-    cb_context:set_doc(Context, kz_doc:set_vsn(cb_context:doc(Context), <<"1">>)).
-
--spec add_pvt_enabled(cb_context:context()) -> cb_context:context().
-add_pvt_enabled(Context) ->
-    JObj = cb_context:doc(Context),
-    case lists:reverse(kzd_accounts:tree(JObj)) of
-        [ParentId | _] ->
-            ParentDb = kz_util:format_account_id(ParentId, 'encoded'),
-            case (not kz_term:is_empty(ParentId))
-                andalso kz_datamgr:open_doc(ParentDb, ParentId)
-            of
-                {'ok', Parent} ->
-                    case kzd_accounts:is_enabled(Parent) of
-                        'true'  -> cb_context:set_doc(Context, kzd_accounts:enable(JObj));
-                        'false' -> cb_context:set_doc(Context, kzd_accounts:disable(JObj))
-                    end;
-                _Else -> Context
-            end;
-        [] ->
-            Context
-    end.
-
--spec maybe_add_pvt_api_key(cb_context:context()) -> cb_context:context().
-maybe_add_pvt_api_key(Context) ->
-    JObj = cb_context:doc(Context),
-    case kzd_accounts:api_key(JObj) of
-        'undefined' -> add_pvt_api_key(Context);
-        _Else -> Context
-    end.
-
--spec add_pvt_api_key(cb_context:context()) -> cb_context:context().
-add_pvt_api_key(Context) ->
-    JObj = cb_context:doc(Context),
-    APIKey = kz_term:to_hex_binary(crypto:strong_rand_bytes(32)),
-    cb_context:set_doc(Context, kzd_accounts:set_api_key(JObj, APIKey)).
-
--spec maybe_add_pvt_tree(cb_context:context()) -> cb_context:context().
-maybe_add_pvt_tree(Context) ->
-    case kzd_accounts:tree(cb_context:doc(Context)) of
-        [_|_] -> Context;
-        _Else -> add_pvt_tree(Context)
-    end.
-
--spec add_pvt_tree(cb_context:context()) -> cb_context:context().
-add_pvt_tree(Context) ->
-    case create_new_tree(Context) of
-        'error' -> cb_context:add_system_error('empty_tree_accounts_exist', Context);
-        Tree -> cb_context:set_doc(Context, kzd_accounts:set_tree(cb_context:doc(Context), Tree))
-    end.
-
--spec create_new_tree(cb_context:context() | kz_term:api_binary()) -> kz_term:ne_binaries() | 'error'.
-create_new_tree('undefined') ->
-    case kapps_util:get_master_account_id() of
-        {'ok', MasterAccountId} -> [MasterAccountId];
-        {'error', _} ->
-            case kapps_util:get_all_accounts() of
-                [] -> [];
-                _Else -> 'error'
-            end
-    end;
-create_new_tree(Parent) when is_binary(Parent) ->
-    ParentId = kz_util:format_account_id(Parent, 'raw'),
-    ParentDb = kz_util:format_account_id(Parent, 'encoded'),
-    case kz_datamgr:open_doc(ParentDb, ParentId) of
-        {'error', _} -> create_new_tree('undefined');
-        {'ok', JObj} ->
-            kzd_accounts:tree(JObj) ++ [ParentId]
-    end;
-create_new_tree(Context) ->
-    create_new_tree(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
-
-create_new_tree(_Context, ?HTTP_PUT, [{?KZ_ACCOUNTS_DB, [Parent]}]) ->
-    create_new_tree(Parent);
-create_new_tree(Context, _Verb, _Nouns) ->
-    JObj = cb_context:auth_doc(Context),
-    case kz_json:is_json_object(JObj) of
-        'false' -> create_new_tree('undefined');
-        'true' -> create_new_tree(kz_json:get_value(<<"account_id">>, JObj))
-    end.
-
-%%------------------------------------------------------------------------------
 %% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
@@ -1265,155 +1121,22 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
 %% then spawn a short initial function
 %% @end
 %%------------------------------------------------------------------------------
--spec create_new_account_db(cb_context:context()) -> cb_context:context().
-create_new_account_db(Context) ->
-    AccountDb = cb_context:account_db(Context),
-    case kapps_util:is_account_db(AccountDb)
-        andalso kz_datamgr:db_create(AccountDb)
-    of
-        'false' ->
-            lager:debug("failed to create database: ~s", [AccountDb]),
-            throw(cb_context:add_system_error('datastore_fault', Context));
-        'true' ->
-            lager:debug("created account database: ~s", [AccountDb]),
-            C = create_account_definition(prepare_context(AccountDb, Context)),
-            lager:debug("created account definition"),
+-spec after_create(cb_context:context(), kzd_accounts:doc()) -> cb_context:context().
+after_create(Context, AccountDoc) ->
+    Context1 = cb_context:setters(Context
+                                 ,[{fun cb_context:set_doc/2, AccountDoc}
+                                  ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(AccountDoc)}
+                                  ,{fun cb_context:set_resp_status/2, 'success'}
+                                  ]),
 
-            _ = load_initial_views(C),
-            lager:debug("loaded initial views"),
+    _ = crossbar_bindings:map(<<"account.created">>, Context1),
+    lager:debug("alerted listeners of new account"),
 
-            _ = crossbar_bindings:map(<<"account.created">>, C),
-            lager:debug("alerted listeners of new account"),
-
-            _ = create_account_mod(cb_context:account_id(C)),
-            lager:debug("created this month's MODb for account"),
-
-            _ = crossbar_services:reconcile(AccountDb),
-            lager:debug("performed initial services reconcile"),
-
-            _ = create_first_transaction(cb_context:account_id(C)),
-            lager:debug("created first transaction for account"),
-
-            _ = maybe_set_notification_preference(C),
-            lager:debug("set notification preference"),
-
-            %% Give onboarding tools time to add initial users...
-            Delay = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"new_account_notify_delay_s">>, 30),
-            _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [C]),
-            lager:debug("started ~ps timer for new account notification", [Delay]),
-            C
-    end.
-
--spec maybe_set_notification_preference(cb_context:context()) -> 'ok'.
-maybe_set_notification_preference(Context) ->
-    AccountId = cb_context:account_id(Context),
-    ResellerId = kz_services_reseller:find_id(AccountId),
-    case kzd_accounts:fetch(ResellerId) of
-        {'error', _E} ->
-            lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
-        {'ok', AccountJObj} ->
-            case kzd_accounts:notification_preference(AccountJObj) of
-                'undefined' ->
-                    lager:debug("notification preference not set on reseller '~s'", [ResellerId]);
-                Preference ->
-                    set_notification_preference(Context, Preference)
-            end
-    end.
-
--spec set_notification_preference(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
-set_notification_preference(Context, Preference) ->
-    AccountDefinition = kzd_accounts:set_notification_preference(cb_context:doc(Context), Preference),
-    case kzd_accounts:save(AccountDefinition) of
-        {'error', _R} ->
-            lager:error("failed to update account definition: ~p", [_R]);
-        {'ok', _AccountDef} ->
-            lager:info("notification_preference set to '~s'", [Preference])
-    end.
-
--spec create_account_mod(kz_term:ne_binary()) -> any().
-create_account_mod(AccountId) ->
-    Db = kz_util:format_account_mod_id(AccountId),
-    kazoo_modb:create(Db).
-
--spec create_first_transaction(kz_term:ne_binary()) -> any().
-create_first_transaction(AccountId) ->
-    {Year, Month, _} = erlang:date(),
-    kz_currency:rollover(AccountId, Year, Month, 0).
-
--spec create_account_definition(cb_context:context()) -> cb_context:context().
-create_account_definition(Context) ->
-    Doc = crossbar_doc:update_pvt_parameters(cb_context:doc(Context), Context),
-    JObj = maybe_set_trial_expires(kz_doc:set_id(Doc, cb_context:account_id(Context))),
-
-    case kzd_accounts:save(JObj) of
-        {'ok', AccountDef} ->
-            lager:debug("account definition created: ~s", [kz_doc:revision(AccountDef)]),
-            cb_context:setters(Context
-                              ,[{fun cb_context:set_doc/2, AccountDef}
-                               ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(AccountDef)}
-                               ,{fun cb_context:set_resp_status/2, 'success'}
-                               ]);
-        {'error', _R} ->
-            lager:debug("unable to create account definition: ~p", [_R]),
-            throw(cb_context:add_system_error('datastore_fault', Context))
-    end.
-
--spec maybe_set_trial_expires(kz_json:object()) -> kz_json:object().
-maybe_set_trial_expires(JObj) ->
-    case kzd_accounts:is_trial_account(JObj) of
-        'false' -> JObj;
-        'true' -> set_trial_expires(JObj)
-    end.
-
--spec set_trial_expires(kz_json:object()) -> kz_json:object().
-set_trial_expires(JObj) ->
-    TrialTime = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
-    Expires = kz_time:now_s() + TrialTime,
-    kzd_accounts:set_trial_expiration(JObj, Expires).
-
--spec load_initial_views(cb_context:context()) -> 'ok'.
-load_initial_views(Context)->
-    _ = kz_datamgr:refresh_views(cb_context:account_db(Context)),
-    'ok'.
-
-%%------------------------------------------------------------------------------
-%% @doc This function will determine if the realm in the request is
-%% unique or belongs to the request being made
-%% @end
-%%------------------------------------------------------------------------------
--spec is_unique_realm(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
-is_unique_realm(AccountId, Realm) ->
-    ViewOptions = [{'key', kz_term:to_lower_binary(Realm)}],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> kz_doc:id(JObj) =:= AccountId;
-        {'error', 'not_found'} -> 'true';
-        _Else -> 'false'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc This function will determine if the account name is unique
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_is_unique_account_name(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
-maybe_is_unique_account_name(AccountId, Name) ->
-    case kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"ensure_unique_name">>, 'true') of
-        'true' -> is_unique_account_name(AccountId, Name);
-        'false' -> 'true'
-    end.
-
--spec is_unique_account_name(kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
-is_unique_account_name(AccountId, Name) ->
-    AccountName = kzd_accounts:normalize_name(Name),
-    ViewOptions = [{'key', AccountName}],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'error', 'not_found'} -> 'true';
-        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= AccountId;
-        _Else ->
-            lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?KZ_ACCOUNTS_DB]),
-            'false'
-    end.
+    %% Give onboarding tools time to add initial users...
+    Delay = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"new_account_notify_delay_s">>, 30),
+    _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [Context1]),
+    lager:debug("started ~ps timer for new account notification", [Delay]),
+    Context1.
 
 %%------------------------------------------------------------------------------
 %% @doc Send a notification that the account has been created
@@ -1439,94 +1162,3 @@ notify_new_account(Context, _AuthDoc) ->
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec delete_remove_services(cb_context:context()) -> cb_context:context() | boolean().
-delete_remove_services(Context) ->
-    try kz_services:delete(cb_context:account_id(Context)) of
-        _S -> delete_free_numbers(Context)
-    catch
-        _E:_R ->
-            lager:error("failed to delete services: ~s: ~p", [_E, _R]),
-            crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
-    end.
-
--spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().
-delete_free_numbers(Context) ->
-    _ = knm_numbers:free(cb_context:account_id(Context)),
-    delete_remove_sip_aggregates(Context).
-
--spec delete_remove_sip_aggregates(cb_context:context()) -> cb_context:context() | boolean().
-delete_remove_sip_aggregates(Context) ->
-    ViewOptions = ['include_docs'
-                  ,{'key', cb_context:account_id(Context)}
-                  ],
-    _ = case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup_by_account">>, ViewOptions) of
-            {'error', _R} ->
-                lager:debug("unable to clean sip_auth: ~p", [_R]);
-            {'ok', JObjs} ->
-                Docs = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-                kz_datamgr:del_docs(?KZ_SIP_DB, Docs)
-        end,
-    delete_remove_db(Context).
-
--spec delete_remove_db(cb_context:context()) -> cb_context:context() | boolean().
-delete_remove_db(Context) ->
-    Removed = case kz_datamgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
-                  {'ok', _} ->
-                      _ = provisioner_util:maybe_delete_account(Context),
-                      _ = cb_mobile_manager:delete_account(Context),
-                      _Deleted = kz_datamgr:db_delete(cb_context:account_db(Context)),
-                      lager:info("deleting ~s: ~p", [cb_context:account_db(Context), _Deleted]),
-                      delete_mod_dbs(Context);
-                  {'error', 'not_found'} -> 'true';
-                  {'error', _R} ->
-                      lager:debug("failed to open account definition ~s: ~p", [cb_context:account_id(Context), _R]),
-                      'false'
-              end,
-    case Removed of
-        'true' ->
-            lager:debug("deleted db ~s", [cb_context:account_db(Context)]),
-            delete_remove_from_accounts(Context);
-        'false' ->
-            lager:debug("failed to remove database ~s", [cb_context:account_db(Context)]),
-            crossbar_util:response('error', <<"unable to remove database">>, 500, Context)
-    end.
-
--spec delete_mod_dbs(cb_context:context()) -> 'true'.
-delete_mod_dbs(Context) ->
-    AccountId = cb_context:account_id(Context),
-    {Year, Month, _} = erlang:date(),
-    delete_mod_dbs(AccountId, Year, Month).
-
--spec delete_mod_dbs(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'true'.
-delete_mod_dbs(AccountId, Year, Month) ->
-    Db = kz_util:format_account_mod_id(AccountId, Year, Month),
-    case kz_datamgr:db_delete(Db) of
-        'true' ->
-            lager:debug("removed account mod: ~s", [Db]),
-            {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(Year, Month),
-            delete_mod_dbs(AccountId, PrevYear, PrevMonth);
-        'false' ->
-            lager:debug("failed to delete account mod: ~s", [Db]),
-            'true'
-    end.
-
--spec delete_remove_from_accounts(cb_context:context()) -> cb_context:context().
-delete_remove_from_accounts(Context) ->
-    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, cb_context:account_id(Context)) of
-        {'ok', JObj} ->
-            UpdatedContext = cb_context:setters(Context
-                                               ,[{fun cb_context:set_account_db/2, ?KZ_ACCOUNTS_DB}
-                                                ,{fun cb_context:set_doc/2, JObj}
-                                                ]),
-            crossbar_doc:delete(UpdatedContext);
-
-        {'error', 'not_found'} ->
-            crossbar_util:response(kz_json:new(), Context);
-        {'error', _R} ->
-            crossbar_util:response('error', <<"unable to remove account definition">>, 500, Context)
-    end.

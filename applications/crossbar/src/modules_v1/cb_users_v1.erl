@@ -241,8 +241,19 @@ validate_user(Context, UserId, ?HTTP_PATCH) ->
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
     Context1 = cb_modules_util:take_sync_field(Context),
-    _ = provisioner_util:maybe_sync_sip_data(Context1, 'user'),
+    sync_sip_data(Context1),
     crossbar_doc:save(cb_modules_util:remove_plaintext_password(Context1)).
+
+-spec sync_sip_data(cb_context:context()) -> 'ok'.
+sync_sip_data(Context) ->
+    NewDoc = cb_context:doc(Context),
+    AccountId = cb_context:account_id(Context),
+
+    case cb_context:fetch(Context, 'sync') of
+        'false' -> 'ok';
+        'true' -> provisioner_util:sync_user(AccountId);
+        'force' -> provisioner_util:force_sync_user(AccountId, NewDoc)
+    end.
 
 -spec post(cb_context:context(), kz_term:ne_binary(), path_token()) -> cb_context:context().
 post(Context, UserId, ?PHOTO) ->

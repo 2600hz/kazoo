@@ -8,8 +8,6 @@
 
 -export([build/1]).
 
--include("crossbar.hrl").
-
 -record(contact, {id :: kz_term:api_ne_binary()
                  ,callflow :: kz_term:api_ne_binary()
                  ,name :: kz_term:api_ne_binary()
@@ -26,15 +24,15 @@ build(AccountDb) ->
 
 contact_to_json(#contact{name=Name
                         ,external_numbers=ExternalNumbers
-                        ,internal_numbers=InternalNumbers}) ->
-    kz_json:from_list(
-      [{<<"name">>, Name}
-      ,{<<"external_number">>, first_number(ExternalNumbers)}
-      ,{<<"internal_number">>, first_number(InternalNumbers)}
-      ]).
+                        ,internal_numbers=InternalNumbers
+                        }) ->
+    kz_json:from_list([{<<"name">>, Name}
+                      ,{<<"external_number">>, first_number(ExternalNumbers)}
+                      ,{<<"internal_number">>, first_number(InternalNumbers)}
+                      ]).
 
 first_number([Number|_]) -> Number;
-first_number(_) -> undefined.
+first_number(_) -> 'undefined'.
 
 build_contacts(AccountDb) ->
     Routines = [fun filter_excluded/2

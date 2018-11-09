@@ -74,6 +74,7 @@
         ,get_result_ids/1, get_result_ids/2, get_result_ids/3
         ,get_single_result/3
         ,get_result_doc/3, get_result_docs/3
+        ,paginate_results/3
         ,design_info/2
         ,design_compact/2
         ,maybe_adapt_multilines/1
@@ -679,7 +680,7 @@ open_docs(DbName, DocIds, Options) ->
     read_chunked(fun do_open_docs/3, DbName, DocIds, Options).
 
 do_open_docs(DbName, DocIds, Options) ->
-    NewOptions = [{keys, DocIds}, include_docs | Options],
+    NewOptions = [{'keys', DocIds}, 'include_docs' | Options],
     all_docs(DbName, NewOptions).
 
 read_chunked(Opener, DbName, DocIds, Options) ->
@@ -689,22 +690,22 @@ read_chunked(Opener, DbName, DocIds, Options, Acc) ->
         {NewDocIds, DocIdsLeft} ->
             NewAcc = read_chunked_results(Opener, DbName, NewDocIds, Options, Acc),
             read_chunked(Opener, DbName, DocIdsLeft, Options, NewAcc)
-    catch error:badarg ->
+    catch 'error':'badarg' ->
             case read_chunked_results(Opener, DbName, DocIds, Options, Acc) of
-                {error, _R}=E -> E;
-                JObjs -> {ok, lists:flatten(lists:reverse(JObjs))}
+                {'error', _R}=E -> E;
+                JObjs -> {'ok', lists:flatten(lists:reverse(JObjs))}
             end
     end.
 
-read_chunked_results(_, _, _, _, {error,_}=Acc) -> Acc;
+read_chunked_results(_, _, _, _, {'error',_}=Acc) -> Acc;
 read_chunked_results(Opener, DbName, DocIds, Options, Acc) ->
     read_chunked_results(DocIds, Opener(DbName, DocIds, Options), Acc).
 
-read_chunked_results(_DocIds, {ok, JObjs}, Acc) ->
+read_chunked_results(_DocIds, {'ok', JObjs}, Acc) ->
     [JObjs | Acc];
-read_chunked_results(_DocIds, {error,_}=Reason, []) ->
+read_chunked_results(_DocIds, {'error', _}=Reason, []) ->
     Reason;
-read_chunked_results(DocIds, {error, Reason}, Acc) ->
+read_chunked_results(DocIds, {'error', Reason}, Acc) ->
     [kz_json:from_list(
        [{<<"id">>, DocId}
        ,{<<"error">>, Reason}
@@ -1371,6 +1372,34 @@ get_result_docs(DbName, DesignDoc, Keys) ->
         {'ok', []} -> {'error', 'no_results'};
         {'ok', Results} -> {'ok', [kz_json:get_json_value(<<"doc">>, Result) || Result <- Results]};
         {'error', _}=E -> E
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Returns a page of results and the next 'startkey'
+%% @end
+%%------------------------------------------------------------------------------
+-type paginate_options() :: [{'page_size', pos_integer()}] | view_options().
+-spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
+                              {'ok', kz_json:objects(), kz_json:api_json_term()} |
+                              data_error().
+paginate_results(DbName, DesignDoc, Options) ->
+    {PageSize, ViewOptions} = props:take_value('page_size', Options, 50),
+    GetResultsOptions = props:set_value('limit', PageSize+1, ViewOptions),
+    case get_results(DbName, DesignDoc, GetResultsOptions) of
+        {'ok', Results} -> paginate_results(PageSize, Results);
+        {'error', _E}=Error -> Error
+    end.
+
+-spec paginate_results(pos_integer(), kz_json:objects()) ->
+                              {'ok', kz_json:objects(), kz_json:api_json_term()} |
+                              data_error().
+paginate_results(_PageSize, []) -> {'ok', [], 'undefined'};
+paginate_results(PageSize, Results) ->
+    try lists:split(PageSize, Results) of
+        {Page, []} -> {'ok', Page, 'undefined'};
+        {Page, [Next]} -> {'ok', Page, kz_json:get_value(<<"key">>, Next)}
+    catch
+        'error':'badarg' -> {'ok', Results, 'undefined'}
     end.
 
 -spec get_uuid() -> kz_term:ne_binary().

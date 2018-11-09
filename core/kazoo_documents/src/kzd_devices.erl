@@ -48,6 +48,7 @@
 -export([provision_endpoint_model/1, provision_endpoint_model/2, set_provision_endpoint_model/2]).
 -export([provision_feature_keys/1, provision_feature_keys/2, set_provision_feature_keys/2]).
 -export([provision_feature_key/2, provision_feature_key/3, set_provision_feature_key/3]).
+-export([provision_id/1, provision_id/2, set_provision_id/2]).
 -export([register_overwrite_notify/1, register_overwrite_notify/2, set_register_overwrite_notify/2]).
 -export([ringtones/1, ringtones/2, set_ringtones/2]).
 -export([ringtones_external/1, ringtones_external/2, set_ringtones_external/2]).
@@ -632,6 +633,18 @@ provision_feature_key(Doc, FeatureKey, Default) ->
 -spec set_provision_feature_key(doc(), kz_json:key(), any()) -> doc().
 set_provision_feature_key(Doc, FeatureKey, Value) ->
     kz_json:set_value([<<"provision">>, <<"feature_keys">>, FeatureKey], Value, Doc).
+
+-spec provision_id(doc()) -> kz_term:api_binary().
+provision_id(Doc) ->
+    provision_id(Doc, 'undefined').
+
+-spec provision_id(doc(), Default) -> binary() | Default.
+provision_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"provision">>, <<"id">>], Doc, Default).
+
+-spec set_provision_id(doc(), binary()) -> doc().
+set_provision_id(Doc, ProvisionId) ->
+    kz_json:set_value([<<"provision">>, <<"id">>], ProvisionId, Doc).
 
 -spec register_overwrite_notify(doc()) -> boolean().
 register_overwrite_notify(Doc) ->

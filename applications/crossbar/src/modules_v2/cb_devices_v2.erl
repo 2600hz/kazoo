@@ -207,12 +207,36 @@ post(Context, DeviceId) ->
             Context2 = prune_null_provisioner_fields(Context1),
             Context3 = crossbar_doc:save(Context2),
             _ = maybe_aggregate_device(DeviceId, Context3),
-            _ = kz_util:spawn(
-                  fun() ->
-                          _ = provisioner_util:maybe_provision(Context1),
-                          _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
-                  end),
+            _ = kz_util:spawn(fun update_device_provisioning/1, [Context3]),
             maybe_add_mobile_mdn(Context3)
+    end.
+
+-spec update_device_provisioning(cb_context:context()) -> 'ok'.
+update_device_provisioning(Context) ->
+    update_device_provisioning(Context, cb_context:resp_status(Context)).
+
+-spec update_device_provisioning(cb_context:context(), crossbar_status()) -> 'ok'.
+update_device_provisioning(Context, 'success') ->
+    _ = provisioner_util:provision_device(cb_context:doc(Context)
+                                         ,cb_context:fetch(Context, 'db_doc')
+                                         ,#{'req_verb' => cb_context:req_verb(Context)
+                                           ,'auth_token' => cb_context:auth_token(Context)
+                                           ,'new_mac_address' => cb_context:req_value(Context, <<"mac_address">>)
+                                           }
+                                         ),
+    sync_sip_data(Context);
+update_device_provisioning(_Context, _Status) -> 'ok'.
+
+-spec sync_sip_data(cb_context:context()) -> 'ok'.
+sync_sip_data(Context) ->
+    NewDoc = cb_context:doc(Context),
+    OldDoc = cb_context:fetch(Context, 'db_doc'),
+    AccountId = cb_context:account_id(Context),
+
+    case cb_context:fetch(Context, 'sync') of
+        'false' -> 'ok';
+        'true' -> provisioner_util:sync_device(AccountId, OldDoc, NewDoc);
+        'force' -> provisioner_util:force_sync_device(AccountId, NewDoc)
     end.
 
 -spec prune_null_provisioner_fields(cb_context:context()) -> cb_context:context().
@@ -244,7 +268,7 @@ filter_null_fields(_) -> 'true'.
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
     Context1 = cb_context:store(Context, 'sync', 'force'),
-    _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
+    sync_sip_data(Context1),
     crossbar_util:response_202(<<"sync request sent">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
@@ -255,7 +279,7 @@ patch(Context, Id) ->
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device('undefined', Context1),
-    _ = kz_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
+    _ = kz_util:spawn(fun update_device_provisioning/1, [Context1]),
     maybe_add_mobile_mdn(Context1).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -270,10 +294,22 @@ delete(Context, DeviceId) ->
         <<"mobile">> -> remove_mobile_mdn(Context);
         _Else ->
             _ = crossbar_util:flush_registration(Context),
-            _ = kz_util:spawn(fun provisioner_util:maybe_delete_provision/1, [Context]),
+            _ = kz_util:spawn(fun maybe_delete_provision/1, [Context]),
             _ = maybe_remove_aggregate(DeviceId, Context),
             Context1
     end.
+
+-spec maybe_delete_provision(cb_context:context()) -> 'ok'.
+maybe_delete_provision(Context) ->
+    maybe_delete_provision(Context, cb_context:resp_status(Context)).
+
+-spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> 'ok'.
+maybe_delete_provision(Context, 'success') ->
+    DeviceDoc = cb_context:doc(Context),
+    AuthToken = cb_context:auth_token(Context),
+    _ = provisioner_util:delete_provision(DeviceDoc, AuthToken),
+    'ok';
+maybe_delete_provision(_Context, _Status) -> 'ok'.
 
 %%%=============================================================================
 %%% Internal functions
@@ -423,7 +459,8 @@ check_mdn_registered(DeviceId, Context) ->
 -spec get_mac_address(cb_context:context()) -> kz_term:api_binary().
 get_mac_address(Context) ->
     provisioner_util:cleanse_mac_address(
-      cb_context:req_value(Context, ?KEY_MAC_ADDRESS)).
+      cb_context:req_value(Context, ?KEY_MAC_ADDRESS)
+     ).
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
@@ -446,7 +483,7 @@ unique_mac_address('undefined', _Context) -> 'true';
 unique_mac_address(MacAddress, Context) ->
     DbName = cb_context:account_db(Context),
     not lists:member(MacAddress, get_mac_addresses(DbName))
-        andalso not provisioner_util:is_mac_address_in_use(Context, MacAddress).
+        andalso not provisioner_util:is_mac_address_in_use(MacAddress, cb_context:auth_token(Context)).
 
 -spec error_used_mac_address(cb_context:context()) -> cb_context:context().
 error_used_mac_address(Context) ->

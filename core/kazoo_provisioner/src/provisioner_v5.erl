@@ -13,26 +13,25 @@
 -export([update_user/3]).
 -export([check_MAC/2]).
 
--include("crossbar.hrl").
 -include("provisioner_v5.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_device(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-update_device(JObj, AuthToken) ->
-    AccountId = kz_doc:account_id(JObj),
-    Request = device_settings(set_owner(JObj)),
+-spec update_device(kzd_devices:doc(), kz_term:ne_binary()) -> 'ok'.
+update_device(Device, AuthToken) ->
+    AccountId = kz_doc:account_id(Device),
+    Request = device_settings(set_owner(Device)),
     _ = update_account(AccountId, AuthToken),
     send_req('devices_post'
             ,maybe_add_device_defaults(Request)
             ,AuthToken
             ,AccountId
-            ,kzd_devices:mac_address(JObj)
+            ,kzd_devices:mac_address(Device)
             ).
 
--spec delete_device(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec delete_device(kzd_devices:doc(), kz_term:ne_binary()) -> 'ok'.
 delete_device(JObj, AuthToken) ->
     send_req('devices_delete'
             ,'undefined'
@@ -50,42 +49,37 @@ maybe_add_device_defaults(JObj) ->
 
 -spec maybe_set_line_defaults(kz_json:object()) -> kz_json:object().
 maybe_set_line_defaults(LineJObj) ->
-    kz_json:expand(
-      kz_json:from_list(
-        [case KV of
-             {[<<"advanced">>, <<"expire">>], undefined} -> {Path, 360};
-             {[<<"advanced">>, <<"srtp">>], undefined} -> {Path, false};
-             {[<<"basic">>, <<"enabled">>], undefined} -> {Path, true};
-             _ -> KV
-         end
-         || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(LineJObj))
-        ])).
+    Defaults = [{[<<"advanced">>, <<"expire">>], 360}
+               ,{[<<"advanced">>, <<"srtp">>], 'false'}
+               ,{[<<"basic">>, <<"enabled">>], 'true'}
+               ],
+    kz_json:insert_values(Defaults, LineJObj).
 
--spec device_settings(kz_json:object()) -> kz_json:object().
-device_settings(JObj) ->
+-spec device_settings(kzd_devices:doc()) -> kz_json:object().
+device_settings(Device) ->
     kz_json:from_list(
-      [{<<"brand">>, get_brand(JObj)}
-      ,{<<"family">>, get_family(JObj)}
-      ,{<<"model">>, get_model(JObj)}
-      ,{<<"name">>, kzd_devices:name(JObj)}
-      ,{<<"settings">>, settings(JObj)}
+      [{<<"brand">>, get_brand(Device)}
+      ,{<<"family">>, get_family(Device)}
+      ,{<<"model">>, get_model(Device)}
+      ,{<<"name">>, kzd_devices:name(Device)}
+      ,{<<"settings">>, settings(Device)}
       ]).
 
--spec get_brand(kz_json:object()) -> binary().
-get_brand(JObj) ->
-    kz_json:get_binary_value([<<"provision">>, <<"endpoint_brand">>], JObj, <<>>).
+-spec get_brand(kzd_devices:doc()) -> binary().
+get_brand(Device) ->
+    kzd_devices:provision_endpoint_brand(Device, <<>>).
 
--spec get_family(kz_json:object()) -> binary().
-get_family(JObj) ->
-    case kz_json:get_binary_value([<<"provision">>, <<"endpoint_family">>], JObj, <<>>) of
+-spec get_family(kzd_devices:doc()) -> binary().
+get_family(Device) ->
+    case kzd_devices:provision_endpoint_family(Device, <<>>) of
         %% Temporary hack to fix family names till a script can clean the database
         <<"f", Family/binary>> -> Family;
         Family -> Family
     end.
 
--spec get_model(kz_json:object()) -> kz_term:ne_binary().
-get_model(JObj) ->
-    Family = kz_json:get_binary_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>),
+-spec get_model(kzd_devices:doc()) -> kz_term:ne_binary().
+get_model(Device) ->
+    Family = kzd_devices:provision_endpoint_model(Device, <<>>),
     case kz_term:to_lower_binary(Family) of
         <<"t19">> -> <<"t19p">>;
         <<"t21">> -> <<"t21p">>;
@@ -206,15 +200,15 @@ check_MAC(MacAddress, AuthToken) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_owner(kz_json:object()) -> kz_json:object().
-set_owner(JObj) ->
-    OwnerId = kz_json:get_ne_value(<<"owner_id">>, JObj),
-    case get_owner(OwnerId, kz_doc:account_id(JObj)) of
-        {'ok', Doc} -> kz_json:merge(Doc, JObj);
-        {'error', _R} -> JObj
+-spec set_owner(kzd_devices:doc()) -> kzd_devices:doc().
+set_owner(Device) ->
+    OwnerId = kzd_devices:owner_id(Device),
+    case get_owner(OwnerId, kz_doc:account_id(Device)) of
+        {'ok', Doc} -> kz_json:merge(Doc, Device);
+        {'error', _R} -> Device
     end.
 
--spec get_owner(kz_term:api_binary(), kz_term:ne_binary()) ->
+-spec get_owner(kz_term:api_ne_binary(), kz_term:ne_binary()) ->
                        {'ok', kz_json:object()} |
                        {'error', any()}.
 get_owner('undefined', _) -> {'error', 'undefined'};
@@ -226,23 +220,23 @@ get_owner(OwnerId, AccountId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec settings(kz_json:object()) -> kz_json:object().
-settings(JObj) ->
+-spec settings(kzd_devices:doc()) -> kz_json:object().
+settings(Device) ->
     Props = props:filter_empty(
-              [{<<"lines">>, settings_lines(JObj)}
-              ,{<<"codecs">>, settings_codecs(JObj)}
-              ,{<<"datetime">>, settings_datetime(JObj)}
-              ,{<<"feature_keys">>, settings_feature_keys(JObj)}
-              ,{<<"line_keys">>, settings_line_keys(JObj)}
-              ,{<<"combo_keys">>, settings_combo_keys(JObj)}
+              [{<<"lines">>, settings_lines(Device)}
+              ,{<<"codecs">>, settings_codecs(Device)}
+              ,{<<"datetime">>, settings_datetime(Device)}
+              ,{<<"feature_keys">>, settings_feature_keys(Device)}
+              ,{<<"line_keys">>, settings_line_keys(Device)}
+              ,{<<"combo_keys">>, settings_combo_keys(Device)}
               ]),
     kz_json:from_list(Props).
 
--spec settings_line_keys(kz_json:object()) -> kz_json:object().
-settings_line_keys(JObj) ->
-    settings_line_keys(get_brand(JObj), get_family(JObj)).
+-spec settings_line_keys(kzd_devices:doc()) -> kz_json:api_object().
+settings_line_keys(Device) ->
+    settings_line_keys(get_brand(Device), get_family(Device)).
 
--spec settings_line_keys(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+-spec settings_line_keys(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
 settings_line_keys(<<"yealink">>, _) ->
     Props = props:filter_empty(
               [{<<"account">>, <<"1">>}
@@ -252,75 +246,79 @@ settings_line_keys(<<"yealink">>, _) ->
     kz_json:from_list([{<<"0">>, Key}]);
 settings_line_keys(_, _) -> 'undefined'.
 
--spec settings_lines(kz_json:object()) -> kz_json:object().
-settings_lines(JObj) ->
+-spec settings_lines(kzd_devices:doc()) -> kz_json:object().
+settings_lines(Device) ->
     case props:filter_empty(
-           [{<<"basic">>, settings_basic(JObj)}
-           ,{<<"sip">>, settings_sip(JObj)}
-           ,{<<"advanced">>, settings_advanced(JObj)}
+           [{<<"basic">>, settings_basic(Device)}
+           ,{<<"sip">>, settings_sip(Device)}
+           ,{<<"advanced">>, settings_advanced(Device)}
            ])
     of
         [] -> kz_json:new();
         Props -> kz_json:from_list([{<<"0">>, kz_json:from_list(Props)}])
     end.
 
--spec settings_basic(kz_json:object()) -> kz_json:object().
-settings_basic(JObj) ->
-    Enabled = case kz_json:get_ne_value(<<"enabled">>, JObj) of
+-spec settings_basic(kzd_devices:doc()) -> kz_json:object().
+settings_basic(Device) ->
+    Enabled = case kzd_devices:enabled(Device, 'undefined') of
                   'undefined' -> 'undefined';
                   Else -> kz_term:is_true(Else)
               end,
-    Props = props:filter_undefined(
-              [{<<"display_name">>, kz_json:get_ne_value(<<"name">>, JObj)}
-              ,{<<"enable">>, Enabled}
-              ]),
+    Props = [{<<"display_name">>, kzd_devices:name(Device)}
+            ,{<<"enable">>, Enabled}
+            ],
     kz_json:from_list(Props).
 
--spec settings_sip(kz_json:object()) -> kz_json:object().
-settings_sip(JObj) ->
-    RealmPaths = [[<<"sip">>, <<"realm">>]
-                 ,<<"realm">>
-                 ],
-    Realm = kz_json:get_first_defined(RealmPaths, JObj),
-    Props = props:filter_undefined(
-              [{<<"username">>, kzd_devices:sip_username(JObj)}
-              ,{<<"password">>, kzd_devices:sip_password(JObj)}
-              ,{<<"realm">>, Realm}
-              ]),
+-spec settings_sip(kzd_devices:doc()) -> kz_json:object().
+settings_sip(Device) ->
+    Realm = find_realm(Device),
+    Props = [{<<"username">>, kzd_devices:sip_username(Device)}
+            ,{<<"password">>, kzd_devices:sip_password(Device)}
+            ,{<<"realm">>, Realm}
+            ],
     kz_json:from_list(Props).
 
--spec settings_advanced(kz_json:object()) -> kz_json:object().
-settings_advanced(JObj) ->
-    EncryptionMethods = kz_json:get_value([<<"media">>, <<"encryption">>, <<"methods">>], JObj, []),
+-spec find_realm(kzd_devices:doc()) -> kz_term:api_ne_binary().
+find_realm(Device) ->
+    find_realm(Device, kzd_devices:sip_realm(Device)).
+
+-spec find_realm(kzd_devices:doc(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+find_realm(Device, 'undefined') ->
+    kz_json:get_ne_binary_value(<<"realm">>, Device);
+find_realm(_Device, Realm) -> Realm.
+
+-spec settings_advanced(kzd_devices:doc()) -> kz_json:object().
+settings_advanced(Device) ->
+    Media = kzd_devices:media(Device, kz_json:new()),
+    EncryptionMethods = kz_json:get_list_value([<<"encryption">>, <<"methods">>], Media, []),
+
     kz_json:from_list(
-      [{<<"expire">>, kz_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)}
+      [{<<"expire">>, kzd_devices:sip_expire_seconds(Device)}
        | [{M, 'true'} || M <- EncryptionMethods]
       ]).
 
--spec settings_datetime(kz_json:object()) -> kz_json:object().
-settings_datetime(JObj) ->
-    kz_json:from_list(
-      [{<<"time">>, settings_time(JObj)}
-      ]).
+-spec settings_datetime(kzd_devices:doc()) -> kz_json:object().
+settings_datetime(Device) ->
+    kz_json:from_list([{<<"time">>, settings_time(Device)}]).
 
--spec settings_feature_keys(kz_json:object()) -> kz_json:object().
-settings_feature_keys(JObj) ->
-    settings_keys(?FEATURE_KEYS, <<"feature_keys">>, JObj).
+-spec settings_feature_keys(kzd_devices:doc()) -> kz_json:object().
+settings_feature_keys(Device) ->
+    settings_keys(?FEATURE_KEYS, <<"feature_keys">>, Device).
 
--spec settings_combo_keys(kz_json:object()) -> kz_json:object().
-settings_combo_keys(JObj) ->
-    settings_keys(?COMBO_KEYS, <<"combo_keys">>, JObj).
+-spec settings_combo_keys(kzd_devices:doc()) -> kz_json:object().
+settings_combo_keys(Device) ->
+    settings_keys(?COMBO_KEYS, <<"combo_keys">>, Device).
 
--spec settings_keys(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
-settings_keys(Assoc, KeyKind, JObj) ->
-    FeatureKeys = kz_json:get_value([<<"provision">>, KeyKind], JObj, kz_json:new()),
-    Brand = get_brand(JObj),
-    Family = get_family(JObj),
-    AccountId = kz_doc:account_id(JObj),
+-spec settings_keys(kz_json:object(), kz_term:ne_binary(), kzd_devices:doc()) -> kz_json:object().
+settings_keys(Assoc, KeyKind, Device) ->
+    FeatureKeys = kz_json:get_value([<<"provision">>, KeyKind], Device, kz_json:new()),
+    Brand = get_brand(Device),
+    Family = get_family(Device),
+    AccountId = kz_doc:account_id(Device),
 
-    Fun = fun(Key, null, Acc) ->
+    Fun = fun(Key, 'null', Acc) ->
                   %% workaround since `kz_json:set_value/3' is removing key if the value is `null'.
-                  kz_json:from_list([{Key, null} | kz_json:to_proplist(Acc)]);
+                  kz_json:from_list([{Key, 'null'} | kz_json:to_proplist(Acc)]);
              (Key, Value, Acc) ->
                   Type = kz_json:get_binary_value(<<"type">>, Value),
                   V = kz_json:get_binary_value(<<"value">>, Value),
@@ -335,14 +333,14 @@ settings_keys(Assoc, KeyKind, JObj) ->
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
 
--spec get_label(kz_json:object()) -> binary().
-get_label(Doc) ->
-    case {kz_json:get_ne_binary_value(<<"first_name">>, Doc)
-         ,kz_json:get_ne_binary_value(<<"last_name">>, Doc)
+-spec get_label(kzd_users:doc()) -> binary().
+get_label(User) ->
+    case {kzd_users:first_name(User)
+         ,kzd_users:last_name(User)
          }
     of
         {'undefined', 'undefined'} ->
-            kz_json:get_value(<<"name">>, Doc);
+            kz_json:get_value(<<"name">>, User);
         {First, 'undefined'} ->
             First;
         {'undefined', Last} ->
@@ -354,7 +352,7 @@ get_label(Doc) ->
 -spec get_feature_key(kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
 get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
-    case kzd_devices:presence_id(UserJObj) of
+    case kzd_users:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             kz_json:from_list(
@@ -428,26 +426,22 @@ maybe_add_feature_key(Key, FeatureKey, JObj) ->
                      ,JObj
                      ).
 
--spec settings_time(kz_json:object()) -> kz_json:object().
-settings_time(JObj) ->
-    kz_json:from_list(
-      [{<<"timezone">>, kz_json:get_value(<<"timezone">>, JObj)}
-      ]).
+-spec settings_time(kzd_devices:doc()) -> kz_json:object().
+settings_time(Device) ->
+    kz_json:from_list([{<<"timezone">>, kzd_devices:timezone(Device)}]).
 
--spec settings_codecs(kz_json:object()) -> kz_json:object().
-settings_codecs(JObj) ->
-    case props:filter_empty(
-           [{<<"audio">>, settings_audio(JObj)}
-           ])
-    of
+-spec settings_codecs(kzd_devices:doc()) -> kz_json:object().
+settings_codecs(Device) ->
+    case props:filter_empty([{<<"audio">>, settings_audio(Device)}]) of
         [] -> kz_json:new();
         Props ->
             kz_json:from_list([{<<"0">>, kz_json:from_list(Props)}])
     end.
 
--spec settings_audio(kz_json:object()) -> kz_json:object().
-settings_audio(JObj) ->
-    Codecs = kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, []),
+-spec settings_audio(kzd_devices:doc()) -> kz_json:object().
+settings_audio(Device) ->
+    Media = kzd_devices:media(Device, kz_json:new()),
+    Codecs = kz_json:get_list_value([<<"audio">>, <<"codecs">>], Media, []),
     Keys = [<<"primary_codec">>
            ,<<"secondary_codec">>
            ,<<"tertiary_codec">>
