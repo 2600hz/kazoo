@@ -360,7 +360,7 @@ get_request_vars(Call) ->
       ,{<<"CallStatus">>, get_call_status(Call)}
       ]).
 
--spec iteration(kapps_call:call()) -> kapps_call:call().
+-spec iteration(kapps_call:call()) -> pos_integer().
 iteration(Call) ->
     kapps_call:kvs_fetch('pivot_counter', 1, Call).
 

@@ -453,7 +453,9 @@ handle_loopback_destroyed(JObj, State) ->
             lager:debug("our loopback has ended but we may not have recv the bowout"),
             State;
         {_Cause, _Bowout} ->
-            lager:debug("our loopback has ended with ~s(bowout ~s); treating as done"),
+            lager:debug("our loopback has ended with ~s(bowout ~s); treating as done"
+                       ,[_Cause, _Bowout]
+                       ),
             handle_channel_destroyed(State)
     end.
 
