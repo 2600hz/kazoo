@@ -101,14 +101,18 @@
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of email recipient(s)",
-                                    "format": "email",
-                                    "items": {
-                                        "format": "email",
-                                        "type": "string"
-                                    },
-                                    "type": [
-                                        "string",
-                                        "array"
+                                    "oneOf": [
+                                        {
+                                            "items": {
+                                                "format": "email",
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "format": "email",
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },
@@ -120,12 +124,16 @@
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of sms recipient(s)",
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": [
-                                        "string",
-                                        "array"
+                                    "oneOf": [
+                                        {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },
@@ -172,14 +180,18 @@
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of email recipient(s)",
-                                    "format": "email",
-                                    "items": {
-                                        "format": "email",
-                                        "type": "string"
-                                    },
-                                    "type": [
-                                        "string",
-                                        "array"
+                                    "oneOf": [
+                                        {
+                                            "items": {
+                                                "format": "email",
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "format": "email",
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },
@@ -191,12 +203,16 @@
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of sms recipient(s)",
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": [
-                                        "string",
-                                        "array"
+                                    "oneOf": [
+                                        {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },

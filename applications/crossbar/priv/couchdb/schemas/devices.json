@@ -262,11 +262,27 @@
                                 },
                                 "value": {
                                     "description": "Feature key value",
-                                    "maximum": 10,
-                                    "minimum": 1,
-                                    "type": [
-                                        "string",
-                                        "integer"
+                                    "oneOf": [
+                                        {
+                                            "maximum": 10,
+                                            "minimum": 1,
+                                            "type": "integer"
+                                        },
+                                        {
+                                            "enum": [
+                                                "1",
+                                                "2",
+                                                "3",
+                                                "4",
+                                                "5",
+                                                "6",
+                                                "7",
+                                                "8",
+                                                "9",
+                                                "10"
+                                            ],
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },
@@ -291,9 +307,16 @@
                 },
                 "endpoint_model": {
                     "description": "Model name of the phone",
-                    "type": [
-                        "string",
-                        "integer"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
                     ]
                 },
                 "feature_keys": {
@@ -313,11 +336,27 @@
                                 },
                                 "value": {
                                     "description": "Feature key value",
-                                    "maximum": 10,
-                                    "minimum": 1,
-                                    "type": [
-                                        "string",
-                                        "integer"
+                                    "oneOf": [
+                                        {
+                                            "maximum": 10,
+                                            "minimum": 1,
+                                            "type": "integer"
+                                        },
+                                        {
+                                            "enum": [
+                                                "1",
+                                                "2",
+                                                "3",
+                                                "4",
+                                                "5",
+                                                "6",
+                                                "7",
+                                                "8",
+                                                "9",
+                                                "10"
+                                            ],
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },

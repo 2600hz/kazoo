@@ -5,12 +5,18 @@
     "properties": {
         "default_to": {
             "description": "notify.port_request_admin default to",
-            "items": {
-                "type": "string"
-            },
-            "type": [
-                "string",
-                "array"
+            "oneOf": [
+                {
+                    "items": {
+                        "format": "email",
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                {
+                    "format": "email",
+                    "type": "string"
+                }
             ]
         }
     },

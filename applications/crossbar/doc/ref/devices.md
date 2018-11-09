@@ -47,14 +47,14 @@ Key | Description | Type | Default | Required | Support Level
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false` |  
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false` | `supported`
 `provision.combo_keys./^[0-9]+$/.type` | Feature key type | `string('line' | 'presence' | 'parking' | 'personal_parking' | 'speed_dial')` |   | `true` |  
-`provision.combo_keys./^[0-9]+$/.value` | Feature key value | `string() | integer()` |   | `false` |  
+`provision.combo_keys./^[0-9]+$/.value` | Feature key value | `integer() | string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10')` |   | `false` |  
 `provision.combo_keys./^[0-9]+$/` |   | `object() | null()` |   | `false` |  
 `provision.combo_keys` | Feature Keys | `object()` |   | `false` |  
 `provision.endpoint_brand` | Brand of the phone | `string()` |   | `false` |  
 `provision.endpoint_family` | Family name of the phone | `string()` |   | `false` |  
-`provision.endpoint_model` | Model name of the phone | `string() | integer()` |   | `false` |  
+`provision.endpoint_model` | Model name of the phone | `string() | array(string())` |   | `false` |  
 `provision.feature_keys./^[0-9]+$/.type` | Feature key type | `string('presence' | 'parking' | 'personal_parking' | 'speed_dial')` |   | `true` |  
-`provision.feature_keys./^[0-9]+$/.value` | Feature key value | `string() | integer()` |   | `true` |  
+`provision.feature_keys./^[0-9]+$/.value` | Feature key value | `integer() | string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10')` |   | `true` |  
 `provision.feature_keys./^[0-9]+$/` |   | `object() | null()` |   | `false` |  
 `provision.feature_keys` | Feature Keys | `object()` |   | `false` |  
 `provision.id` | Provisioner Template ID | `string()` |   | `false` |  
@@ -171,7 +171,7 @@ Key | Description | Type | Default | Required | Support Level
 `audio.codecs.[]` |   | `string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex')` |   | `false` |  
 `audio.codecs` | A list of audio codecs the endpoint supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false` |  
 `audio` | The audio media parameters | `object()` | `{}` | `false` |  
-`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false` |  
+`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('auto' | 'false' | 'true')` |   | `false` |  
 `encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false` |  
 `encryption.methods.[]` |   | `string('zrtp' | 'srtp')` |   | `false` |  
 `encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false` |  

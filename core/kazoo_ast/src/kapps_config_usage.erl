@@ -397,8 +397,13 @@ guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES|_]=Keys, Type, Defau
 type(['undefined']) ->
     [{?FIELD_TYPE, <<"array">>}];
 type({Type, [OrArrayType]}) ->
-    [{?FIELD_TYPE, [Type, <<"array">>]}
-    ,{<<"items">>, kz_json:from_list([{?FIELD_TYPE, OrArrayType}])}
+    [{<<"oneOf">>
+     ,[kz_json:from_list([{?FIELD_TYPE, Type}])
+      ,kz_json:from_list([{?FIELD_TYPE, <<"array">>}
+                         ,{<<"items">>, kz_json:from_list([{?FIELD_TYPE, OrArrayType}])}
+                         ])
+      ]
+     }
     ];
 type([Type]) ->
     [{?FIELD_TYPE, <<"array">>}

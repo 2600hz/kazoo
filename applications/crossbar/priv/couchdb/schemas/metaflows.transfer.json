@@ -8,6 +8,9 @@
                 "no_match"
             ],
             "description": "Capture groups?",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "leg": {

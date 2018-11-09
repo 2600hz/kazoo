@@ -1461,9 +1461,13 @@
                 },
                 "data": {
                     "description": "The number to transfer to, or a boolean, depending on the 'action'",
-                    "type": [
-                        "string",
-                        "boolean"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 }
             },
@@ -1955,16 +1959,24 @@
                 },
                 "play_entry_tone": {
                     "description": "Should the Entry Tone be played",
-                    "type": [
-                        "boolean",
-                        "string"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 },
                 "play_exit_tone": {
                     "description": "Should the Exit Tone be played",
-                    "type": [
-                        "boolean",
-                        "string"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 },
                 "welcome_prompt": {
@@ -2209,14 +2221,18 @@
                     "properties": {
                         "fax_option": {
                             "description": "Caller flag for T38 settings",
-                            "enum": [
-                                "auto",
-                                true,
-                                false
-                            ],
-                            "type": [
-                                "string",
-                                "boolean"
+                            "oneOf": [
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "enum": [
+                                        "auto",
+                                        "true",
+                                        "false"
+                                    ],
+                                    "type": "string"
+                                }
                             ]
                         }
                     },
@@ -2519,9 +2535,18 @@
                         "properties": {
                             "id": {
                                 "description": "The email address/user ID or the list of email addresses/user IDs based on specified type",
-                                "type": [
-                                    "string",
-                                    "array"
+                                "oneOf": [
+                                    {
+                                        "format": "email",
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "format": "email",
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
                                 ]
                             },
                             "type": {
@@ -2957,14 +2982,18 @@
                     "properties": {
                         "fax_option": {
                             "description": "Caller flag for T38 settings",
-                            "enum": [
-                                "auto",
-                                true,
-                                false
-                            ],
-                            "type": [
-                                "string",
-                                "boolean"
+                            "oneOf": [
+                                {
+                                    "enum": [
+                                        "auto",
+                                        "false",
+                                        "true"
+                                    ],
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "boolean"
+                                }
                             ]
                         }
                     },
@@ -3358,6 +3387,9 @@
                 "endpoint_types": {
                     "default": [],
                     "description": "Endpoint types to perform search: user, device",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "static_invite": {
@@ -3386,9 +3418,13 @@
                 "duration_ms": {
                     "default": "2000",
                     "description": "How long, in milliseconds, to send each DTMF",
-                    "type": [
-                        "string",
-                        "integer"
+                    "oneOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 }
             },
@@ -3546,6 +3582,9 @@
                         "no_match"
                     ],
                     "description": "What to default to using if no capture group is present",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "leg": {
@@ -3986,14 +4025,18 @@
                 },
                 "bypass_media": {
                     "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
-                    "enum": [
-                        true,
-                        false,
-                        "auto"
-                    ],
-                    "type": [
-                        "boolean",
-                        "string"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "enum": [
+                                "auto",
+                                "false",
+                                "true"
+                            ],
+                            "type": "string"
+                        }
                     ]
                 },
                 "caller_id_number": {
@@ -4247,16 +4290,24 @@
                 },
                 "play_entry_tone": {
                     "description": "Whether to play an entry tone, or the entry tone to play",
-                    "type": [
-                        "boolean",
-                        "string"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 },
                 "play_exit_tone": {
                     "description": "Whether to play an exit tone, or the exit tone to play",
-                    "type": [
-                        "boolean",
-                        "string"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 },
                 "play_name": {
@@ -4976,9 +5027,16 @@
                         },
                         "endpoint_model": {
                             "description": "Model name of the phone",
-                            "type": [
-                                "string",
-                                "integer"
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                }
                             ]
                         },
                         "feature_keys": {
@@ -5299,14 +5357,18 @@
                 },
                 "bypass_media": {
                     "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
-                    "enum": [
-                        true,
-                        false,
-                        "auto"
-                    ],
-                    "type": [
-                        "boolean",
-                        "string"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "enum": [
+                                "auto",
+                                "false",
+                                "true"
+                            ],
+                            "type": "string"
+                        }
                     ]
                 },
                 "encryption": {
@@ -5461,14 +5523,18 @@
                                     "properties": {
                                         "send_to": {
                                             "description": "A list or string of email recipient(s)",
-                                            "format": "email",
-                                            "items": {
-                                                "format": "email",
-                                                "type": "string"
-                                            },
-                                            "type": [
-                                                "string",
-                                                "array"
+                                            "oneOf": [
+                                                {
+                                                    "items": {
+                                                        "format": "email",
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                {
+                                                    "format": "email",
+                                                    "type": "string"
+                                                }
                                             ]
                                         }
                                     },
@@ -5479,12 +5545,16 @@
                                     "properties": {
                                         "send_to": {
                                             "description": "A list or string of sms recipient(s)",
-                                            "items": {
-                                                "type": "string"
-                                            },
-                                            "type": [
-                                                "string",
-                                                "array"
+                                            "oneOf": [
+                                                {
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                {
+                                                    "type": "string"
+                                                }
                                             ]
                                         }
                                     },
@@ -5528,14 +5598,18 @@
                                     "properties": {
                                         "send_to": {
                                             "description": "A list or string of email recipient(s)",
-                                            "format": "email",
-                                            "items": {
-                                                "format": "email",
-                                                "type": "string"
-                                            },
-                                            "type": [
-                                                "string",
-                                                "array"
+                                            "oneOf": [
+                                                {
+                                                    "items": {
+                                                        "format": "email",
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                {
+                                                    "format": "email",
+                                                    "type": "string"
+                                                }
                                             ]
                                         }
                                     },
@@ -5546,12 +5620,16 @@
                                     "properties": {
                                         "send_to": {
                                             "description": "A list or string of sms recipient(s)",
-                                            "items": {
-                                                "type": "string"
-                                            },
-                                            "type": [
-                                                "string",
-                                                "array"
+                                            "oneOf": [
+                                                {
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                {
+                                                    "type": "string"
+                                                }
                                             ]
                                         }
                                     },
@@ -5650,14 +5728,18 @@
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of email recipient(s)",
-                                    "format": "email",
-                                    "items": {
-                                        "format": "email",
-                                        "type": "string"
-                                    },
-                                    "type": [
-                                        "string",
-                                        "array"
+                                    "oneOf": [
+                                        {
+                                            "items": {
+                                                "format": "email",
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "format": "email",
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },
@@ -5668,12 +5750,16 @@
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of sms recipient(s)",
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": [
-                                        "string",
-                                        "array"
+                                    "oneOf": [
+                                        {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
                                     ]
                                 }
                             },
@@ -24083,11 +24169,15 @@
                     "properties": {
                         "exit_media": {
                             "description": "When a call is transferred from the menu after all retries exhausted this media can be played (prior to transfer if enabled)",
-                            "maxLength": 2048,
-                            "minLength": 3,
-                            "type": [
-                                "boolean",
-                                "string"
+                            "oneOf": [
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "maxLength": 2048,
+                                    "minLength": 3,
+                                    "type": "string"
+                                }
                             ]
                         },
                         "greeting": {
@@ -24098,20 +24188,28 @@
                         },
                         "invalid_media": {
                             "description": "When the collected digits don't result in a match or hunt this media can be played",
-                            "maxLength": 2048,
-                            "minLength": 3,
-                            "type": [
-                                "boolean",
-                                "string"
+                            "oneOf": [
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "maxLength": 2048,
+                                    "minLength": 3,
+                                    "type": "string"
+                                }
                             ]
                         },
                         "transfer_media": {
                             "description": "When a call is transferred from the menu, either after all retries exhausted or a successful hunt, this media can be played",
-                            "maxLength": 2048,
-                            "minLength": 3,
-                            "type": [
-                                "boolean",
-                                "string"
+                            "oneOf": [
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "maxLength": 2048,
+                                    "minLength": 3,
+                                    "type": "string"
+                                }
                             ]
                         }
                     },
@@ -24532,16 +24630,24 @@
                 },
                 "other_participant": {
                     "description": "The other participant ID to relate",
-                    "type": [
-                        "string",
-                        "integer"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "integer"
+                        }
                     ]
                 },
                 "participant_id": {
                     "description": "The participant ID to relate",
-                    "type": [
-                        "string",
-                        "integer"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "integer"
+                        }
                     ]
                 },
                 "relationship": {
@@ -24688,6 +24794,9 @@
                         "no_match"
                     ],
                     "description": "Capture groups?",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "leg": {
@@ -24743,6 +24852,23 @@
                         "#"
                     ],
                     "description": "What DTMF can terminate the TTS playback",
+                    "items": {
+                        "enum": [
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
+                            "6",
+                            "7",
+                            "8",
+                            "9",
+                            "*",
+                            "0",
+                            "#"
+                        ],
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "text": {
@@ -25196,14 +25322,18 @@
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of email recipient(s)",
-                                    "format": "email",
-                                    "items": {
-                                        "format": "email",
-                                        "type": "string"
-                                    },
-                                    "type": [
-                                        "string",
-                                        "array"
+                                    "oneOf": [
+                                        {
+                                            "format": "email",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "items": {
+                                                "format": "email",
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        }
                                     ]
                                 }
                             },
@@ -31082,10 +31212,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.cnam_request default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 }
             },
             "type": "object"
@@ -31096,10 +31233,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.deregister default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
@@ -31169,10 +31313,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.first_occurrence default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
@@ -31209,10 +31360,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.new_account default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
@@ -31231,12 +31389,18 @@
             "description": "Schema for notify.password_recovery system_config",
             "properties": {
                 "default_to": {
-                    "default": "",
                     "description": "notify.password_recovery default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
@@ -31261,10 +31425,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.port_cancel default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 }
             },
             "type": "object"
@@ -31279,10 +31450,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.port_request default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 }
             },
             "type": "object"
@@ -31292,12 +31470,18 @@
             "properties": {
                 "default_to": {
                     "description": "notify.port_request_admin default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": [
-                        "string",
-                        "array"
+                    "oneOf": [
+                        {
+                            "items": {
+                                "format": "email",
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "format": "email",
+                            "type": "string"
+                        }
                     ]
                 }
             },
@@ -31309,10 +31493,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.ported default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "send_from_admin_email": {
                     "default": true,
@@ -31328,10 +31519,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.system_alert default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "enable_email_alerts": {
                     "default": true,
@@ -31361,10 +31559,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.topup default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
@@ -31385,10 +31590,17 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.transaction default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
@@ -31413,12 +31625,18 @@
                 },
                 "default_to": {
                     "description": "notify.voicemail_full default to",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": [
-                        "string",
-                        "array"
+                    "oneOf": [
+                        {
+                            "items": {
+                                "format": "email",
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "format": "email",
+                            "type": "string"
+                        }
                     ]
                 }
             },
@@ -31658,9 +31876,16 @@
                 },
                 "endpoints": {
                     "description": "number_manager.bandwidth endpoints",
-                    "type": [
-                        "string",
-                        "array"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
                     ]
                 },
                 "numbers_api_url": {
@@ -31784,9 +32009,16 @@
                 },
                 "endpoints": {
                     "description": "number_manager.other endpoints",
-                    "type": [
-                        "string",
-                        "array"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
                     ]
                 },
                 "phonebook_url": {
@@ -31881,9 +32113,16 @@
                 },
                 "routesip": {
                     "description": "number_manager.vitelity routesip",
-                    "type": [
-                        "string",
-                        "array"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
                     ]
                 },
                 "use_stepswitch_cnam": {

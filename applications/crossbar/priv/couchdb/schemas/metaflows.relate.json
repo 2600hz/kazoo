@@ -9,16 +9,24 @@
         },
         "other_participant": {
             "description": "The other participant ID to relate",
-            "type": [
-                "string",
-                "integer"
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "integer"
+                }
             ]
         },
         "participant_id": {
             "description": "The participant ID to relate",
-            "type": [
-                "string",
-                "integer"
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "integer"
+                }
             ]
         },
         "relationship": {

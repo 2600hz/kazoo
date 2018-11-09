@@ -14,9 +14,13 @@
         },
         "data": {
             "description": "The number to transfer to, or a boolean, depending on the 'action'",
-            "type": [
-                "string",
-                "boolean"
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                }
             ]
         }
     },

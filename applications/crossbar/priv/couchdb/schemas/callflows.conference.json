@@ -20,16 +20,24 @@
         },
         "play_entry_tone": {
             "description": "Should the Entry Tone be played",
-            "type": [
-                "boolean",
-                "string"
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                }
             ]
         },
         "play_exit_tone": {
             "description": "Should the Exit Tone be played",
-            "type": [
-                "boolean",
-                "string"
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                }
             ]
         },
         "welcome_prompt": {

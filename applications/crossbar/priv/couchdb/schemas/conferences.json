@@ -148,19 +148,27 @@
         },
         "play_entry_tone": {
             "description": "Whether to play an entry tone, or the entry tone to play",
-            "support_level": "supported",
-            "type": [
-                "boolean",
-                "string"
-            ]
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "support_level": "supported"
         },
         "play_exit_tone": {
             "description": "Whether to play an exit tone, or the exit tone to play",
-            "support_level": "supported",
-            "type": [
-                "boolean",
-                "string"
-            ]
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "support_level": "supported"
         },
         "play_name": {
             "default": false,

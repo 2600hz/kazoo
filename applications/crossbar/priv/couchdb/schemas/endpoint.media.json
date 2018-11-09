@@ -41,14 +41,18 @@
         },
         "bypass_media": {
             "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
-            "enum": [
-                true,
-                false,
-                "auto"
-            ],
-            "type": [
-                "boolean",
-                "string"
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "enum": [
+                        "auto",
+                        "false",
+                        "true"
+                    ],
+                    "type": "string"
+                }
             ]
         },
         "encryption": {

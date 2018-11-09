@@ -66,14 +66,18 @@
                     "properties": {
                         "send_to": {
                             "description": "A list or string of email recipient(s)",
-                            "format": "email",
-                            "items": {
-                                "format": "email",
-                                "type": "string"
-                            },
-                            "type": [
-                                "string",
-                                "array"
+                            "oneOf": [
+                                {
+                                    "format": "email",
+                                    "type": "string"
+                                },
+                                {
+                                    "items": {
+                                        "format": "email",
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                }
                             ]
                         }
                     },

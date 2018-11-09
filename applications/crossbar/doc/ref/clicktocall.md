@@ -11,7 +11,7 @@ Click-to-call allows you to create URLs that can be POSTed to with a phone numbe
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `auth_required` | Determines if this click to call requires valid auth-tokens when invoked | `boolean()` | `true` | `false` |  
-`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false` |  
+`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('auto' | 'false' | 'true')` |   | `false` |  
 `caller_id_number` | Explicitly set caller id number | `string()` |   | `false` |  
 `custom_application_vars./[a-zA-Z0-9\-_]+/` |   | `string()` |   | `false` |  
 `custom_application_vars` | Key-value pairs to set as custom_application_vars on the channel | `object()` | `{}` | `false` |  

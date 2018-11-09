@@ -4,19 +4,33 @@
     "patternProperties": {
         "^_": {
             "description": "Ignores CouchDB fields prefixed by underscores",
-            "type": [
-                "string",
-                "integer",
-                "boolean",
-                "object"
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "object"
+                },
+                {
+                    "type": "string"
+                }
             ]
         },
         "^pvt_": {
             "description": "Ignores Kazoo private fields prefixed by pvt_",
-            "type": [
-                "string",
-                "integer",
-                "boolean"
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "string"
+                }
             ]
         }
     },

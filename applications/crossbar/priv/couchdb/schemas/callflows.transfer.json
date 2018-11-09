@@ -8,6 +8,9 @@
                 "no_match"
             ],
             "description": "What to default to using if no capture group is present",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "leg": {

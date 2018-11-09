@@ -6,10 +6,17 @@
         "default_to": {
             "default": "",
             "description": "notify.system_alert default to",
-            "items": {
-                "type": "string"
-            },
-            "type": "string"
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            ]
         },
         "enable_email_alerts": {
             "default": true,

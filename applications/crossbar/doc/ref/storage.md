@@ -8,8 +8,8 @@
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^_` | Ignores CouchDB fields prefixed by underscores | `string() | integer() | boolean() | object()` |   | `false` |  
-`^pvt_` | Ignores Kazoo private fields prefixed by pvt_ | `string() | integer() | boolean()` |   | `false` |  
+`^_` | Ignores CouchDB fields prefixed by underscores | `boolean() | integer() | object() | string()` |   | `false` |  
+`^pvt_` | Ignores Kazoo private fields prefixed by pvt_ | `boolean() | integer() | string()` |   | `false` |  
 `attachments` | Defines where and how to store attachments | [#/definitions/storage.attachments](#storageattachments) |   | `false` |  
 `connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false` |  
 `id` | ID of the storage document | `string()` |   | `false` |  

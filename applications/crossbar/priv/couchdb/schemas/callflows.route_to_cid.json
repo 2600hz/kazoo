@@ -30,6 +30,9 @@
         "endpoint_types": {
             "default": [],
             "description": "Endpoint types to perform search: user, device",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "static_invite": {

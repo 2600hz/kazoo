@@ -15,14 +15,18 @@
             "properties": {
                 "fax_option": {
                     "description": "Caller flag for T38 settings",
-                    "enum": [
-                        "auto",
-                        true,
-                        false
-                    ],
-                    "type": [
-                        "string",
-                        "boolean"
+                    "oneOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "enum": [
+                                "auto",
+                                "true",
+                                "false"
+                            ],
+                            "type": "string"
+                        }
                     ]
                 }
             },

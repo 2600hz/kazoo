@@ -94,11 +94,32 @@ maybe_insert_schema(F, [K|Ks], Default, Schema) ->
                         );
 maybe_insert_schema(F, [], Default, Schema) ->
     Updates = props:filter_undefined(
-                [{<<"type">>, guess_type(F, Default)}
-                ,{<<"default">>, check_default(Default)}
+                [{<<"default">>, check_default(Default)}
                 ,{<<"description">>, <<>>}
                 ]),
-    kz_json:insert_values(Updates, Schema).
+    kz_json:insert_values(Updates, insert_type(guess_type(F, Default), Schema)).
+
+insert_type(Types, Schema) ->
+    OneOf = kz_json:get_first_defined([<<"oneOf">>, <<"anyOf">>, <<"allOf">>], Schema),
+    insert_type(Types, Schema, OneOf).
+
+insert_type({Type, ItemsType}, Schema, 'undefined') ->
+    kz_json:insert_values([{<<"items">>, kz_json:from_list([{<<"type">>, ItemsType}])}
+                          ,{<<"type">>, Type}
+                          ], Schema);
+insert_type(Type, Schema, 'undefined' = _OneOf) ->
+    kz_json:insert_values([{<<"type">>, Type}], Schema);
+insert_type(Type, Schema, [_|_]=Of) ->
+    case lists:any(fun(Elem) -> kz_json:get_value(<<"type">>, Elem) =/= 'undefined' end, Of) of
+        'true' ->
+            case kz_json:get_value(<<"type">>, Schema) of
+                'undefined' -> 'ok';
+                _ -> io:format("schema can not define type both in (anyOf | allOf | oneOf) and root:~n~p~n", [Schema])
+            end,
+            kz_json:delete_key(<<"type">>, Schema);
+        'false' ->
+            insert_type(Type, Schema, 'undefined')
+    end.
 
 check_default({_M, _F, _A}) -> 'undefined';
 check_default([<<_/binary>>|_]=L) ->
@@ -123,9 +144,9 @@ check_default(Default) ->
 guess_type('get_value', <<_/binary>>) ->
     <<"string">>;
 guess_type('get_value', []) ->
-    <<"array">>;
+    {<<"array">>, 'undefined'};
 guess_type('get_ne_value', []) ->
-    <<"array">>;
+    {<<"array">>, 'undefined'};
 guess_type('get_value', ?EMPTY_JSON_OBJECT) ->
     <<"object">>;
 guess_type('get_value', I) when is_integer(I) ->
@@ -161,9 +182,9 @@ guess_type('get_float_value', _) ->
 guess_type('get_json_value', _) ->
     <<"object">>;
 guess_type('get_list_value', [<<_/binary>>|_]) ->
-    <<"array">>;
+    {<<"array">>, <<"string">>};
 guess_type('get_list_value', _L) ->
-    <<"array">>;
+    {<<"array">>, 'undefined'};
 guess_type('find', _) ->
     'undefined';
 guess_type('get_ne_value', <<_/binary>>) ->

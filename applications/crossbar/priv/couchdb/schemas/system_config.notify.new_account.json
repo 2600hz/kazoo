@@ -6,10 +6,17 @@
         "default_to": {
             "default": "",
             "description": "notify.new_account default to",
-            "items": {
-                "type": "string"
-            },
-            "type": "string"
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            ]
         },
         "html_content_transfer_encoding": {
             "default": "7BIT",
