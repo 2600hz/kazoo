@@ -23,6 +23,7 @@
         ,member_connect_req/4
         ,member_connect_re_req/1
         ,member_connect_win/3
+        ,member_connect_satisfied/3
         ,timeout_member_call/1, timeout_member_call/2
         ,timeout_agent/2
         ,exit_member_call/1
@@ -130,6 +131,10 @@ member_connect_re_req(Srv) ->
 -spec member_connect_win(pid(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 member_connect_win(Srv, RespJObj, QueueOpts) ->
     gen_listener:cast(Srv, {'member_connect_win', RespJObj, QueueOpts}).
+
+-spec member_connect_satisfied(pid(), kz_json:object(), kz_term:proplist()) -> 'ok'.
+member_connect_satisfied(Srv, RespJObj, QueueOpts) ->
+    gen_listener:cast(Srv, {'member_connect_satisfied', RespJObj, QueueOpts}).
 
 -spec timeout_agent(pid(), kz_json:object()) -> 'ok'.
 timeout_agent(Srv, RespJObj) ->
@@ -315,6 +320,14 @@ handle_cast({'member_connect_win', RespJObj, QueueOpts}, #state{my_q=MyQ
 
     send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts),
     {'noreply', State#state{agent_id=kz_json:get_value(<<"Agent-ID">>, RespJObj)}, 'hibernate'};
+handle_cast({'member_connect_satisfied', RespJObj, QueueOpts}, #state{my_q=MyQ
+                                                                    ,my_id=MyId
+                                                                    ,call=Call
+                                                                    ,queue_id=QueueId
+                                                                    }=State) ->
+    lager:debug("agent process satisfied the connect, sending the satisfied"),
+    send_member_connect_satisfied(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts),
+    {'noreply', State, 'hibernate'};
 handle_cast({'timeout_agent', RespJObj}, #state{queue_id=QueueId
                                                ,call=Call
                                                }=State) ->
@@ -535,17 +548,30 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
     Win = props:filter_undefined(
             [{<<"Call">>, CallJSON}
             ,{<<"Process-ID">>, MyId}
-            ,{<<"Agent-Process-ID">>, kz_json:get_value(<<"Agent-Process-ID">>, RespJObj)}
+            ,{<<"Agent-Process-IDs">>, kz_json:get_value(<<"Agent-Process-IDs">>, RespJObj)}
             ,{<<"Queue-ID">>, QueueId}
              | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
             ]),
     publish(Q, Win, fun kapi_acdc_queue:publish_member_connect_win/2).
 
+-spec send_member_connect_satisfied(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+send_member_connect_satisfied(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
+    CallJSON = kapps_call:to_json(Call),
+    Q = kz_json:get_value(<<"Server-ID">>, RespJObj),
+    Satisfied = props:filter_undefined(
+           [{<<"Call">>, CallJSON}
+           ,{<<"Process-ID">>, MyId}
+           ,{<<"Agent-Process-IDs">>, kz_json:get_list_value(<<"Agent-Process-IDs">>, RespJObj)}
+           ,{<<"Queue-ID">>, QueueId}
+            | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+           ]),
+    publish(Q, Satisfied, fun kapi_acdc_queue:publish_member_connect_satisfied/2).
+
 -spec send_agent_timeout(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 send_agent_timeout(RespJObj, Call, QueueId) ->
     Prop = [{<<"Queue-ID">>, QueueId}
            ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-           ,{<<"Agent-Process-ID">>, kz_json:get_value(<<"Agent-Process-ID">>, RespJObj)}
+           ,{<<"Agent-Process-IDs">>, kz_json:get_value(<<"Agent-Process-IDs">>, RespJObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     publish(kz_json:get_value(<<"Server-ID">>, RespJObj), Prop
