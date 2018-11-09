@@ -23,8 +23,7 @@
         ,to_datetime/1
         ,to_lower_binary/1, to_upper_binary/1
         ,to_lower_string/1, to_upper_string/1
-        ,to_upper_char/1
-        ,to_lower_char/1
+        ,to_lower_char/1, to_upper_char/1
         ,to_pid/1
 
         ,words_to_bytes/1
@@ -41,6 +40,7 @@
         ,is_proplist/1, is_ne_list/1
         ,is_pos_integer/1
         ,is_ascii_code/1
+        ,is_lower_char/1, is_upper_char/1
         ,identity/1
         ,always_true/1, always_false/1
         ]).
@@ -242,7 +242,6 @@ to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(to_hex_char(B div 16)), (to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
 
-
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 to_integer(X) -> to_integer(X, 'notstrict').
 
@@ -250,10 +249,10 @@ to_integer(X) -> to_integer(X, 'notstrict').
 to_integer(X, _) when is_integer(X) -> X;
 to_integer(X, 'strict') when is_float(X) -> erlang:error('badarg');
 to_integer(X, 'notstrict') when is_float(X) -> round(X);
-to_integer(X, strict) when is_binary(X) -> binary_to_integer(X);
-to_integer(X, notstrict) when is_binary(X) ->
+to_integer(X, 'strict') when is_binary(X) -> binary_to_integer(X);
+to_integer(X, 'notstrict') when is_binary(X) ->
     try binary_to_integer(X)
-    catch error:badarg -> round(binary_to_float(X))
+    catch 'error':'badarg' -> round(binary_to_float(X))
     end;
 to_integer(X, S) when is_list(X) ->
     try list_to_integer(X)
@@ -267,15 +266,14 @@ to_float(X) -> to_float(X, 'notstrict').
 
 -spec to_float(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
 to_float(X, _) when is_float(X) -> X;
-to_float(X, strict) when is_binary(X) -> binary_to_float(X);
-to_float(X, notstrict) when is_binary(X) ->
+to_float(X, 'strict') when is_binary(X) -> binary_to_float(X);
+to_float(X, 'notstrict') when is_binary(X) ->
     try binary_to_float(X)
-    catch error:badarg -> binary_to_integer(X) * 1.0
+    catch 'error':'badarg' -> binary_to_integer(X) * 1.0
     end;
 to_float(X, S) when is_list(X) ->
     try list_to_float(X)
-    catch
-        'error':'badarg' when S =:= 'notstrict' -> 1.0 * list_to_integer(X)
+    catch 'error':'badarg' when S =:= 'notstrict' -> 1.0 * list_to_integer(X)
     end;
 to_float(X, 'strict') when is_integer(X) -> erlang:error('badarg');
 to_float(X, 'notstrict') when is_integer(X) -> X * 1.0.
@@ -284,12 +282,11 @@ to_float(X, 'notstrict') when is_integer(X) -> X * 1.0.
 to_number(X) when is_number(X) -> X;
 to_number(X) when is_binary(X) ->
     try binary_to_integer(X)
-    catch error:badarg -> binary_to_float(X)
+    catch 'error':'badarg' -> binary_to_float(X)
     end;
 to_number(X) when is_list(X) ->
     try list_to_integer(X)
-    catch
-        'error':'badarg' -> list_to_float(X)
+    catch 'error':'badarg' -> list_to_float(X)
     end.
 
 -spec to_pid(pid() | list() | binary() | atom()) -> api_pid().
@@ -306,7 +303,6 @@ to_list(X) when is_integer(X) -> integer_to_list(X);
 to_list(X) when is_binary(X) -> binary_to_list(X);
 to_list(X) when is_atom(X) -> atom_to_list(X);
 to_list(X) when is_pid(X) -> pid_to_list(X).
-
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
@@ -338,7 +334,7 @@ to_api_term(Arg) ->
 -spec to_atom(text() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
 to_atom(X) when is_list(X) -> list_to_existing_atom(X);
-to_atom(X) when is_binary(X) -> binary_to_existing_atom(X, utf8);
+to_atom(X) when is_binary(X) -> binary_to_existing_atom(X, 'utf8');
 to_atom(X) -> to_atom(to_list(X)).
 
 %% only if you're really sure you want this
@@ -351,7 +347,7 @@ to_atom(X) -> to_atom(to_list(X)).
 -spec to_atom(text() | integer() | float(), boolean() | list()) -> atom().
 to_atom(X, _) when is_atom(X) -> X;
 to_atom(X, 'true') when is_list(X) -> list_to_atom(X);
-to_atom(X, 'true') when is_binary(X) -> binary_to_atom(X, utf8);
+to_atom(X, 'true') when is_binary(X) -> binary_to_atom(X, 'utf8');
 to_atom(X, 'true') -> to_atom(to_list(X), 'true');
 to_atom(X, 'false') -> to_atom(X);
 to_atom(X, SafeList) when is_list(SafeList) ->
@@ -407,15 +403,14 @@ is_ne_binary(V) ->
         andalso not is_empty(V).
 
 -spec is_api_ne_binary(any()) -> boolean().
-is_api_ne_binary(undefined) -> true;
+is_api_ne_binary('undefined') -> 'true';
 is_api_ne_binary(V) -> is_ne_binary(V).
 
 -spec is_ne_binaries(any()) -> boolean().
-is_ne_binaries([]) -> true;
-is_ne_binaries(V)
-  when is_list(V) ->
+is_ne_binaries([]) -> 'true';
+is_ne_binaries(V) when is_list(V) ->
     lists:all(fun is_ne_binary/1, V);
-is_ne_binaries(_) -> false.
+is_ne_binaries(_) -> 'false'.
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';
@@ -505,12 +500,24 @@ to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
 to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
+-spec is_upper_char(integer()) -> boolean().
+is_upper_char(C) when is_integer(C), $A =< C, C =< $Z -> 'true';
+is_upper_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> 'true';
+is_upper_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> 'true';
+is_upper_char(_) -> 'false'.
+
 -spec to_lower_char(char()) -> char().
 to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 %% Converts Latin capital letters to lowercase, skipping 16#D7 (extended ASCII 215) "multiplication sign: x"
 to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
+
+-spec is_lower_char(integer()) -> boolean().
+is_lower_char(C) when is_integer(C), $a =< C, C =< $z -> 'true';
+is_lower_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> 'true';
+is_lower_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> 'true';
+is_lower_char(_)  -> 'false'.
 
 -spec a1hash(ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
