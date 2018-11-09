@@ -429,7 +429,7 @@ is_enabled(AccountId, {<<"owner">>, OwnerId}) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of
         {'ok', UserJObj} ->
             Default = kapps_config:get_is_true(<<"registrar">>, <<"owner_enabled_default">>, 'true'),
-            kzd_user:is_enabled(UserJObj, Default)
+            kzd_users:enabled(UserJObj, Default)
                 orelse throw({'error', {'owner_disabled', OwnerId}});
         {'error', _R} ->
             lager:debug("unable to fetch owner doc ~s: ~p", [OwnerId, _R]),

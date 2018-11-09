@@ -303,10 +303,10 @@ maybe_update_fax_settings(#state{call=Call
                                 }=State) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
-        {'ok', JObj} ->
+        {'ok', UserJObj} ->
             lager:debug("updating fax settings from user ~s", [OwnerId]),
-            update_fax_settings(Call, kzd_user:fax_settings(JObj)),
-            Notify = case kz_json:get_value(<<"email">>, JObj) of
+            update_fax_settings(Call, kzd_users:fax_settings(UserJObj)),
+            Notify = case kzd_users:email(UserJObj) of
                          'undefined' -> kz_json:new();
                          UserEmail -> kz_json:set_value([<<"email">>, <<"send_to">>], [UserEmail], kz_json:new())
                      end,
@@ -370,27 +370,26 @@ update_fax_settings(Call, JObj) ->
 
 -spec build_fax_settings(kapps_call:call(), kz_json:object()) -> kz_term:proplist().
 build_fax_settings(Call, JObj) ->
-    props:filter_undefined(
-      [case kz_json:is_true(<<"override_fax_identity">>, JObj, 'true') of
-           'false' ->
-               {<<"Fax-Identity-Number">>, kapps_call:to_user(Call)};
-           'true' ->
-               {<<"Fax-Identity-Number">>, overridden_fax_identity(Call, JObj)}
-       end,
-       case kz_json:is_true(<<"override_callee_number">>, JObj, 'false') of
-           'false' ->
-               {<<"Callee-ID-Number">>, kapps_call:to_user(Call)};
-           'true' ->
-               {<<"Callee-ID-Number">>, overridden_callee_id(Call, JObj)}
-       end
-      ,{<<"Fax-Identity-Name">>, kz_json:get_value(<<"fax_header">>, JObj)}
-      ,{<<"Fax-Timezone">>, kzd_fax_box:timezone(JObj)}
-      ,{<<"Callee-ID-Name">>, callee_name(JObj)}
-      ,{<<"Fax-Doc-ID">>, kapps_call:kvs_fetch(<<"Fax-Doc-ID">>, Call) }
-      ,{<<"Fax-Doc-DB">>, kapps_call:kvs_fetch(<<"Fax-Doc-DB">>, Call) }
-      ,{<<"RTCP-MUX">>, false}
-      ,{<<"Origination-Call-ID">>, kapps_call:call_id(Call)}
-      ]).
+    [case kz_json:is_true(<<"override_fax_identity">>, JObj, 'true') of
+         'false' ->
+             {<<"Fax-Identity-Number">>, kapps_call:to_user(Call)};
+         'true' ->
+             {<<"Fax-Identity-Number">>, overridden_fax_identity(Call, JObj)}
+     end,
+     case kz_json:is_true(<<"override_callee_number">>, JObj, 'false') of
+         'false' ->
+             {<<"Callee-ID-Number">>, kapps_call:to_user(Call)};
+         'true' ->
+             {<<"Callee-ID-Number">>, overridden_callee_id(Call, JObj)}
+     end
+    ,{<<"Fax-Identity-Name">>, kz_json:get_value(<<"fax_header">>, JObj)}
+    ,{<<"Fax-Timezone">>, kzd_fax_box:timezone(JObj)}
+    ,{<<"Callee-ID-Name">>, callee_name(JObj)}
+    ,{<<"Fax-Doc-ID">>, kapps_call:kvs_fetch(<<"Fax-Doc-ID">>, Call) }
+    ,{<<"Fax-Doc-DB">>, kapps_call:kvs_fetch(<<"Fax-Doc-DB">>, Call) }
+    ,{<<"RTCP-MUX">>, 'false'}
+    ,{<<"Origination-Call-ID">>, kapps_call:call_id(Call)}
+    ].
 
 -spec callee_name(kz_json:object()) -> kz_term:ne_binary().
 callee_name(JObj) ->

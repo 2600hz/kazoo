@@ -125,7 +125,7 @@ fix_billing(JObj, _DataJObj) ->
                  ,kz_json:get_json_value(<<"bill">>, JObj, kz_json:new())
                  ).
 
--spec fix_billing_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+-spec fix_billing_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
                               kz_json:object().
 fix_billing_fold(Key, Value, Acc) ->
     kz_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
@@ -208,7 +208,7 @@ maybe_add_reason(JObj, DataJObj) ->
 
 -spec get_commenter_info(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:proplist().
 get_commenter_info(?NE_BINARY=AccountId, ?NE_BINARY=UserId) ->
-    case kzd_user:fetch(AccountId, UserId) of
+    case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
         {'error', _Reason} ->
             lager:debug("failed to get commenter info: account_id ~s user_id ~s", [AccountId, UserId]),

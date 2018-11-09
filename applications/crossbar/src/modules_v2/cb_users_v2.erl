@@ -273,7 +273,7 @@ post(Context, UserId, ?PHOTO) ->
     Headers = kz_json:get_value(<<"headers">>, FileObj),
     CT = kz_json:get_value(<<"content_type">>, Headers),
     Content = kz_json:get_value(<<"contents">>, FileObj),
-    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_user:type())],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_users:type())],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -312,7 +312,7 @@ load_attachment(AttachmentId, Context) ->
          },
     LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context)
                                                 ,AttachmentId
-                                                ,?TYPE_CHECK_OPTION(kzd_user:type())
+                                                ,?TYPE_CHECK_OPTION(kzd_users:type())
                                                 ,Context
                                                 ),
     cb_context:add_resp_headers(LoadedContext, Headers).
@@ -436,7 +436,7 @@ fix_envelope(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_user(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
+load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -541,14 +541,14 @@ non_unique_hotdesk_id_error(Context, HotdeskId) ->
 
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, kzd_user:type()}],
+    Props = [{<<"pvt_type">>, kzd_users:type()}],
     maybe_import_credintials('undefined'
                             ,cb_context:set_doc(Context
                                                ,kz_json:set_values(Props, cb_context:doc(Context))
                                                )
                             );
 on_successful_validation(UserId, Context) ->
-    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type()))).
+    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type()))).
 
 -spec maybe_import_credintials(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_import_credintials(UserId, Context) ->
@@ -675,13 +675,13 @@ convert_to_vcard(Context) ->
     JObj1 = kz_json:merge_jobjs(JObj, JProfile),
     JObj2 = set_photo(JObj1, Context),
     JObj3 = set_org(JObj2, Context),
-    RespData = kzd_user:to_vcard(JObj3),
+    RespData = kzd_users:to_vcard(JObj3),
     cb_context:set_resp_data(Context, [RespData, <<"\n">>]).
 
 -spec set_photo(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_photo(JObj, Context) ->
     UserId = kz_doc:id(cb_context:doc(Context)),
-    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, ?TYPE_CHECK_OPTION(kzd_user:type()), Context),
+    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, ?TYPE_CHECK_OPTION(kzd_users:type()), Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;
         'success' ->
@@ -695,7 +695,7 @@ set_org(JObj, Context) ->
     case kz_json:get_value(<<"org">>
                           ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
                                                            ,Context
-                                                           ,?TYPE_CHECK_OPTION(kzd_user:type())
+                                                           ,?TYPE_CHECK_OPTION(kzd_users:type())
                                                            )
                                          )
                           )

@@ -5,7 +5,7 @@
                    ,kzd_devices:type()
                    ,kzd_fax_box:type()
                    ,kzd_media:type()
-                   ,kzd_user:type()
+                   ,kzd_users:type()
                    ,kzd_voicemail_box:type()
                    ,kzd_fax:type()
                    ,kzd_box_message:type()

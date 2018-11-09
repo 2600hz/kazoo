@@ -507,7 +507,7 @@ create_metadata(Doc) ->
                 ]
                ).
 
--spec metadata_builder(kz_json:path(), kz_json:object(), kz_json:object()) ->
+-spec metadata_builder(kz_json:key(), kz_json:object(), kz_json:object()) ->
                               kz_json:object().
 metadata_builder(<<"name">> = Key, Doc, Metadata) ->
     case kz_doc:type(Doc) of
@@ -519,7 +519,7 @@ metadata_builder(<<"name">> = Key, Doc, Metadata) ->
 metadata_builder(Key, Doc, Metadata) ->
     maybe_copy_value(Key, Doc, Metadata).
 
--spec maybe_copy_value(kz_json:path(), kz_json:object(), kz_json:object()) ->
+-spec maybe_copy_value(kz_json:key(), kz_json:object(), kz_json:object()) ->
                               kz_json:object().
 maybe_copy_value(Key, Doc, Metadata) ->
     case kz_json:get_value(Key, Doc) of
@@ -529,7 +529,7 @@ maybe_copy_value(Key, Doc, Metadata) ->
 
 -spec metadata_user_name(kz_json:object(), kz_json:object()) -> kz_json:object().
 metadata_user_name(Doc, Metadata) ->
-    case kzd_user:name(Doc) of
+    case kzd_users:name(Doc) of
         <<>> -> Metadata;
         <<" ">> -> Metadata;
         Name -> kz_json:set_value(<<"name">>, Name, Metadata)

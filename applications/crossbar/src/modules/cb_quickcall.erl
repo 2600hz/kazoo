@@ -44,7 +44,7 @@ validate(Context, _Number) ->
 validate_quickcall(Context, ?DEVICES_QCALL_NOUNS(DeviceId, _Number)) ->
     validate_quickcall(load_endpoint(Context, DeviceId, kzd_devices:type()));
 validate_quickcall(Context, ?USERS_QCALL_NOUNS(UserId, _Number)) ->
-    validate_quickcall(load_endpoint(Context, UserId, kzd_user:type())).
+    validate_quickcall(load_endpoint(Context, UserId, kzd_users:type())).
 
 -spec validate_quickcall(cb_context:context()) -> cb_context:context().
 validate_quickcall(Context) ->

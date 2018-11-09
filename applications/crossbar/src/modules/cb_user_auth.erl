@@ -482,15 +482,15 @@ save_reset_id_then_send_email(Context) ->
     %% Not much chance for doc to already exist
     case kazoo_modb:save_doc(MoDb, create_resetid_doc(ResetId, UserId)) of
         {'ok', _} ->
-            Email = kzd_user:email(UserDoc),
+            Email = kzd_users:email(UserDoc),
             lager:debug("created recovery id, sending email to '~s'", [Email]),
             UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, cb_context:req_data(Context)),
             Link = reset_link(UIURL, ResetId),
             lager:debug("created password reset link: ~s", [Link]),
             Notify = [{<<"Email">>, Email}
-                     ,{<<"First-Name">>, kzd_user:first_name(UserDoc)}
-                     ,{<<"Last-Name">>,  kzd_user:last_name(UserDoc)}
-                     ,{<<"Timezone">>, kzd_user:timezone(UserDoc)}
+                     ,{<<"First-Name">>, kzd_users:first_name(UserDoc)}
+                     ,{<<"Last-Name">>,  kzd_users:last_name(UserDoc)}
+                     ,{<<"Timezone">>, kzd_users:timezone(UserDoc)}
                      ,{<<"User-ID">>, UserId}
                      ,{<<"Password-Reset-Link">>, Link}
                      ,{<<"Account-ID">>, kz_doc:account_id(UserDoc)}
@@ -517,7 +517,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
             AccountDb = ?MATCH_ACCOUNT_ENCODED(A, B, Rest),
             Context1 = crossbar_doc:load(kz_json:get_value(<<"pvt_userid">>, ResetIdDoc)
                                         ,cb_context:set_account_db(Context, AccountDb)
-                                        ,?TYPE_CHECK_OPTION(kzd_user:type())
+                                        ,?TYPE_CHECK_OPTION(kzd_users:type())
                                         ),
             NewUserDoc =
                 kz_json:set_value(<<"require_password_update">>, 'true', cb_context:doc(Context1)),

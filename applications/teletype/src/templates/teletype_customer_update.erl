@@ -102,7 +102,7 @@ process_accounts(DataJObj) ->
 process_account(AccountId, DataJObj) ->
     case kz_json:get_value(<<"user_type">>, DataJObj) of
         ?MATCH_ACCOUNT_RAW(UserId) ->
-            {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
+            {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
             [send_update_to_user(UserJObj, DataJObj)];
         _ ->
             AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -116,7 +116,7 @@ select_users_to_update(Users, DataJObj) ->
         <<"all_users">> ->
             [send_update_to_user(User, DataJObj) || User <- Users];
         _ ->
-            [send_update_to_user(User, DataJObj) || User <- Users, kzd_user:is_account_admin(User)]
+            [send_update_to_user(User, DataJObj) || User <- Users, kzd_users:is_account_admin(User)]
     end.
 
 -spec send_update_to_user(kz_json:object(), kz_json:object()) -> template_response().
@@ -164,7 +164,7 @@ maybe_add_macro_key(_Key, Acc, _UserJObj) ->
     lager:debug("unprocessed macro key ~s: ~p", [_Key, _UserJObj]),
     Acc.
 
--spec maybe_add_user_data(kz_json:path(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+-spec maybe_add_user_data(kz_json:key(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
 maybe_add_user_data(Key, Acc, UserJObj) ->
     UserMacros = props:get_value(<<"user">>, Acc, []),
     case kz_json:get_value(Key, UserJObj) of

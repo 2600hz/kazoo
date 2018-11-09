@@ -132,7 +132,7 @@ find_admin([]) ->
     [];
 find_admin([User|Users]) ->
     UserDoc = kz_json:get_value(<<"doc">>, User),
-    case kzd_user:is_account_admin(UserDoc) of
+    case kzd_users:is_account_admin(UserDoc) of
         'true' -> teletype_util:user_params(UserDoc);
         'false' -> find_admin(Users)
     end.

@@ -122,5 +122,5 @@ user_data(DataJObj, 'true') ->
 user_data(DataJObj, 'false') ->
     AccountId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"account_id">>], DataJObj),
     UserId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"user_id">>], DataJObj),
-    {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
+    {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
     teletype_util:user_params(UserJObj).

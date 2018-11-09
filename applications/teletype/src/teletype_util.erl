@@ -374,12 +374,12 @@ system_params() ->
     ,{<<"encoded_node">>, kz_nodes:node_encoded()}
     ].
 
--spec user_params(kzd_user:doc()) -> kz_term:proplist().
+-spec user_params(kzd_users:doc()) -> kz_term:proplist().
 user_params(UserJObj) ->
-    Ks = [{<<"first_name">>, fun kzd_user:first_name/1}
-         ,{<<"last_name">>, fun kzd_user:last_name/1}
-         ,{<<"email">>, fun kzd_user:email/1}
-         ,{<<"timezone">>, fun kzd_user:timezone/1}
+    Ks = [{<<"first_name">>, fun kzd_users:first_name/1}
+         ,{<<"last_name">>, fun kzd_users:last_name/1}
+         ,{<<"email">>, fun kzd_users:email/1}
+         ,{<<"timezone">>, fun kzd_users:timezone/1}
          ],
     props:filter_undefined(
       [{Key, Fun(UserJObj)} || {Key, Fun} <- Ks]
@@ -544,11 +544,11 @@ query_account_for_admin_emails(<<_/binary>> = AccountId) ->
             []
     end.
 
--spec extract_admin_emails(kzd_user:docs()) -> kz_term:ne_binaries().
+-spec extract_admin_emails(kzd_users:docs()) -> kz_term:ne_binaries().
 extract_admin_emails(Users) ->
     [Email
      || Admin <- filter_for_admins(Users),
-        (Email = kzd_user:email(Admin)) =/= 'undefined'
+        (Email = kzd_users:email(Admin)) =/= 'undefined'
     ].
 
 -spec find_reseller_id(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -559,7 +559,7 @@ find_account_admin('undefined') -> 'undefined';
 find_account_admin(?MATCH_ACCOUNT_RAW(AccountId)) ->
     find_account_admin(AccountId, find_reseller_id(AccountId)).
 
--spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_user:doc().
+-spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_users:doc().
 find_account_admin(AccountId, AccountId) ->
     query_for_account_admin(AccountId);
 find_account_admin(AccountId, ResellerId) ->
@@ -568,7 +568,7 @@ find_account_admin(AccountId, ResellerId) ->
         Admin -> Admin
     end.
 
--spec query_for_account_admin(kz_term:ne_binary()) -> 'undefined' | kzd_user:doc().
+-spec query_for_account_admin(kz_term:ne_binary()) -> 'undefined' | kzd_users:doc().
 query_for_account_admin(AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = [{'key', <<"user">>}
@@ -586,12 +586,12 @@ query_for_account_admin(AccountId) ->
             'undefined'
     end.
 
--spec filter_for_admins(kz_json:objects()) -> kzd_user:docs().
+-spec filter_for_admins(kz_json:objects()) -> kzd_users:docs().
 filter_for_admins(Users) ->
     [Doc
      || User <- Users,
         Doc <- [kz_json:get_value(<<"doc">>, User)],
-        kzd_user:is_account_admin(Doc)
+        kzd_users:is_account_admin(Doc)
     ].
 
 -spec should_handle_notification(kz_json:object()) -> boolean().
@@ -689,7 +689,7 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
                   ).
 
--spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_json:key()) ->
                           {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(DataJObj
@@ -701,7 +701,7 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
                              )
                 ).
 
--spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
+-spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_json:key(), kz_term:api_binary()) ->
                           {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     %% ?LOG_DEBUG("email type for '~s' not defined in template, checking just the key", [Key]),
@@ -720,7 +720,8 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec find_first_defined_address(kz_term:ne_binary(), kz_json:paths(), kz_json:objects()) -> kz_term:api_ne_binaries().
+-spec find_first_defined_address(kz_json:key(), kz_json:get_key(), kz_json:objects()) ->
+                                        kz_term:api_ne_binaries().
 find_first_defined_address(_Key, [], _JObjs) -> 'undefined';
 find_first_defined_address(Key, [Path|Paths], JObjs) ->
     case get_address_value(Key, Path, JObjs) of
@@ -728,7 +729,8 @@ find_first_defined_address(Key, [Path|Paths], JObjs) ->
         Emails -> Emails
     end.
 
--spec get_address_value(kz_term:ne_binary(), kz_json:path(), kz_json:objects()) -> kz_term:api_ne_binaries().
+-spec get_address_value(kz_term:ne_binary(), kz_json:get_key(), kz_json:objects()) ->
+                               kz_term:api_ne_binaries().
 get_address_value(_Key, _Path, []) -> 'undefined';
 get_address_value(Key, Path, [JObj|JObjs]) ->
     Email0 = kz_json:get_value(Key, JObj),
@@ -737,7 +739,8 @@ get_address_value(Key, Path, [JObj|JObjs]) ->
         Emails -> Emails
     end.
 
--spec check_address_value(binary() | kz_term:binaries() | kz_json:object() | 'undefined') -> kz_term:api_ne_binaries().
+-spec check_address_value(binary() | kz_term:binaries() | kz_json:api_object()) ->
+                                 kz_term:api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';
 check_address_value(<<_/binary>> = Email) -> check_address_value([Email]);
@@ -756,7 +759,7 @@ check_address_value(Emails) ->
         'false' -> 'undefined'
     end.
 
--spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_json:path()) ->
+-spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_json:key()) ->
                                kz_term:api_ne_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
@@ -766,14 +769,15 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec admin_emails_from_system_template(kz_term:ne_binary(), kz_json:path()) -> kz_term:api_ne_binaries().
+-spec admin_emails_from_system_template(kz_term:ne_binary(), kz_json:key()) ->
+                                               kz_term:api_ne_binaries().
 admin_emails_from_system_template(ConfigCat, Key) ->
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, ConfigCat) of
         {'ok', JObj} -> admin_emails_from_system_template(ConfigCat, Key, JObj);
         {'error', _} -> 'undefined'
     end.
 
--spec admin_emails_from_system_template(kz_term:ne_binary(), kz_json:path(), kz_json:object()) -> kz_term:api_ne_binaries().
+-spec admin_emails_from_system_template(kz_term:ne_binary(), kz_json:key(), kz_json:object()) -> kz_term:api_ne_binaries().
 admin_emails_from_system_template(ConfigCat, Key, JObj) ->
     case check_address_value(kz_json:get_ne_value([<<"default">>, <<"default_", Key/binary>>], JObj)) of
         'undefined' ->
@@ -962,7 +966,7 @@ build_to_data(DataJObj) ->
       ,{<<"realm">>, kz_json:get_ne_binary_value(<<"to_realm">>, DataJObj)}
       ]).
 
--spec public_proplist(kz_json:path(), kz_json:object()) -> kz_term:proplist().
+-spec public_proplist(kz_json:get_key(), kz_json:object()) -> kz_term:proplist().
 public_proplist(Key, JObj) ->
     kz_json:recursive_to_proplist(
       kz_doc:public_fields(kz_json:get_value(Key, JObj, kz_json:new()))

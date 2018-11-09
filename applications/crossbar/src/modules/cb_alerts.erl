@@ -244,7 +244,7 @@ view_keys(Context) ->
     AccountId = cb_context:account_id(Context),
     OwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
 
-    IsAdmin = kzd_user:is_account_admin(AccountId, OwnerId),
+    IsAdmin = kzd_users:is_account_admin(AccountId, OwnerId),
 
     Routines = [fun(K) ->
                         [[<<"all">>, <<"all">>]

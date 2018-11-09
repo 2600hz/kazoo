@@ -53,7 +53,7 @@ handle_req(JObj, _Props) ->
     {'ok', UserJObj} = get_owner(AccountDb, VMBox),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
+    Emails = maybe_add_user_email(BoxEmails, kzd_users:email(UserJObj), kzd_users:vm_to_email_enabled(UserJObj)),
 
     %% If the box has emails, continue processing
     %% otherwise stop processing
@@ -92,12 +92,12 @@ maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
 maybe_add_user_email(BoxEmails, _UserEmail, 'false') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
--spec get_owner(kz_term:ne_binary(), kzd_voicemail_box:doc()) -> {'ok', kzd_user:doc()}.
+-spec get_owner(kz_term:ne_binary(), kzd_voicemail_box:doc()) -> {'ok', kzd_users:doc()}.
 get_owner(AccountDb, VMBox) ->
     get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
 
 -spec get_owner(kz_term:ne_binary(), kzd_voicemail_box:doc(), kz_term:api_binary()) ->
-                       {'ok', kzd_user:doc()}.
+                       {'ok', kzd_users:doc()}.
 get_owner(_AccountDb, _VMBox, 'undefined') ->
     lager:debug("no owner of voicemail box ~s, using empty owner", [kz_doc:id(_VMBox)]),
     {'ok', kz_json:new()};

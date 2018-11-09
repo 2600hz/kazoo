@@ -675,7 +675,7 @@ get_language(AccountId, UserId) ->
 
 -spec get_user_lang(kz_term:ne_binary(), kz_term:ne_binary()) -> 'error' | {'ok', kz_term:ne_binary()}.
 get_user_lang(AccountId, UserId) ->
-    case kzd_user:fetch(AccountId, UserId) of
+    case kzd_users:fetch(AccountId, UserId) of
         {'ok', UserJObj} ->
             case kz_json:get_value(<<"language">>, UserJObj) of
                 'undefined' -> 'error';
@@ -701,8 +701,8 @@ get_account_lang(AccountId) ->
 
 -spec get_user_timezone(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_user_timezone(AccountId, UserId) ->
-    case kzd_user:fetch(AccountId, UserId) of
-        {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
+    case kzd_users:fetch(AccountId, UserId) of
+        {'ok', UserJObj} -> kzd_users:timezone(UserJObj);
         {'error', _E} -> kzd_accounts:timezone(AccountId)
     end.
 
@@ -814,7 +814,7 @@ get_priv_level(_AccountId, 'undefined') ->
 get_priv_level(AccountId, OwnerId) ->
     AccountDB = kz_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, OwnerId) of
-        {'ok', Doc} -> kzd_user:priv_level(Doc);
+        {'ok', Doc} -> kzd_users:priv_level(Doc);
         {'error', _} -> cb_token_restrictions:default_priv_level()
     end.
 

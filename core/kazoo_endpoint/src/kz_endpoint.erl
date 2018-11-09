@@ -162,7 +162,7 @@ check_endpoint_enabled(JObj, EndpointId, AccountDb, EndpointType) ->
 is_endpoint_enabled(JObj, <<"account">>) ->
     kzd_accounts:is_enabled(JObj);
 is_endpoint_enabled(JObj, <<"user">>) ->
-    kzd_user:is_enabled(JObj);
+    kzd_users:enabled(JObj);
 is_endpoint_enabled(JObj, <<"device">>) ->
     kzd_devices:enabled(JObj);
 is_endpoint_enabled(JObj, _) ->
@@ -500,7 +500,7 @@ merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
 -spec get_user(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_json:object().
 get_user(_AccountDb, 'undefined') -> kz_json:new();
 get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
-    case kzd_user:fetch(AccountDb, OwnerId) of
+    case kzd_users:fetch(AccountDb, OwnerId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->
             lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
@@ -517,12 +517,12 @@ get_user(AccountDb, Endpoint) ->
             fix_user_restrictions(UserJObj)
     end.
 
--spec get_users(kz_term:ne_binary(), kz_term:ne_binaries()) -> kzd_user:docs().
+-spec get_users(kz_term:ne_binary(), kz_term:ne_binaries()) -> kzd_users:docs().
 get_users(AccountDb, OwnerIds) ->
     %% Bulk fetch to fill the cache
     _ = kz_datamgr:open_cache_docs(AccountDb, OwnerIds),
     F = fun (UserId, UsersAcc) ->
-                case kzd_user:fetch(AccountDb, UserId) of
+                case kzd_users:fetch(AccountDb, UserId) of
                     {ok, UserJObj} -> [UserJObj|UsersAcc];
                     {error, _R} ->
                         lager:warning("failed to load endpoint owner ~s: ~p", [UserId, _R]),
@@ -531,29 +531,29 @@ get_users(AccountDb, OwnerIds) ->
         end,
     lists:foldl(F, [], OwnerIds).
 
--spec fix_user_restrictions(kzd_user:doc()) -> kzd_user:doc().
+-spec fix_user_restrictions(kzd_users:doc()) -> kzd_users:doc().
 fix_user_restrictions(UserJObj) ->
     lists:foldl(fun(Classifier, User) ->
-                        case kzd_user:classifier_restriction(User, Classifier) of
+                        case kzd_users:classifier_restriction(User, Classifier) of
                             <<"deny">> -> User;
                             _Else ->
                                 %% this ensures we override the device
                                 %% but only when there is a user associated
-                                kzd_user:set_classifier_restriction(User, Classifier, <<"allow">>)
+                                kzd_users:set_classifier_restriction(User, Classifier, <<"allow">>)
                         end
                 end
                ,UserJObj
                ,kz_json:get_keys(knm_converters:available_classifiers())
                ).
 
--spec convert_to_single_user(kzd_user:docs()) -> kzd_user:doc().
+-spec convert_to_single_user(kzd_users:docs()) -> kzd_users:doc().
 convert_to_single_user(UserJObjs) ->
     Routines = [fun singlfy_user_attr_keys/2
                ,fun singlfy_user_restrictions/2
                ],
     lists:foldl(fun(F, AccJObj) -> F(UserJObjs, AccJObj) end, kz_json:new(), Routines).
 
--spec singlfy_user_attr_keys(kzd_user:docs(), kzd_user:doc()) -> kzd_user:doc().
+-spec singlfy_user_attr_keys(kzd_users:docs(), kzd_users:doc()) -> kzd_users:doc().
 singlfy_user_attr_keys(UserJObjs, AccJObj) ->
     PrecedenceKey = [?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY],
     Value = lists:foldl(fun(UserJObj, V1) ->
@@ -564,23 +564,23 @@ singlfy_user_attr_keys(UserJObjs, AccJObj) ->
                        ),
     kz_json:set_value(PrecedenceKey, Value, AccJObj).
 
--spec singlfy_user_restrictions(kzd_user:docs(), kzd_user:doc()) -> kzd_user:doc().
+-spec singlfy_user_restrictions(kzd_users:docs(), kzd_users:doc()) -> kzd_users:doc().
 singlfy_user_restrictions(UserJObjs, AccJObj) ->
     lists:foldl(fun(Classifier, Acc) ->
                         Fun = fun(Elem) -> do_all_restrict(Classifier, Elem) end,
                         case lists:all(Fun, UserJObjs) of
                             'false' -> Acc;
                             'true' ->
-                                kzd_user:set_classifier_restriction(Acc, Classifier, <<"deny">>)
+                                kzd_users:set_classifier_restriction(Acc, Classifier, <<"deny">>)
                         end
                 end
                ,AccJObj
                ,kz_json:get_keys(knm_converters:available_classifiers())
                ).
 
--spec do_all_restrict(kz_term:ne_binary(), kzd_user:doc()) -> boolean().
+-spec do_all_restrict(kz_term:ne_binary(), kzd_users:doc()) -> boolean().
 do_all_restrict(Classifier, UserJObj) ->
-    <<"deny">> =:= kzd_user:classifier_restriction(UserJObj, Classifier).
+    <<"deny">> =:= kzd_users:classifier_restriction(UserJObj, Classifier).
 
 -spec create_endpoint_name(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binary().
 create_endpoint_name('undefined', 'undefined', 'undefined', Account) -> Account;
