@@ -183,7 +183,7 @@ db_view_update(#{}=Map, DbName, Views, Remove) ->
 do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', JObjs} ->
-            CurrentViews = [{kz_doc:id(JObj), kz_json:get_value(<<"doc">>, JObj)}
+            CurrentViews = [{kz_doc:id(JObj), kz_json:get_json_value(<<"doc">>, JObj)}
                             || JObj <- JObjs
                            ],
             add_update_remove_views(Server, Db, CurrentViews, NewViews, Remove);
