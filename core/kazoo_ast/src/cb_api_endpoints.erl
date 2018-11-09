@@ -9,9 +9,20 @@
 -compile({'no_auto_import', [get/0]}).
 
 -export([get/0
+        ,get_app/2
+        ,process_module/2
         ,to_swagger_json/0
+        ,to_oas3_json/0
         ,to_ref_doc/0, to_ref_doc/1
         ,schema_to_doc/2, ref_tables_to_doc/1
+
+        ,read_swagger_json/1
+        ,format_as_path_centric/1
+        ,to_swagger_paths/2
+        ,to_swagger_definitions/1
+        ,to_swagger_parameters/1
+
+        ,convert_to_oas_schema/2
         ]).
 
 -ifdef(TEST).
@@ -25,6 +36,12 @@
 
 -include_lib("kazoo_ast/src/kz_ast.hrl").
 
+-define(DEBUG(F, A), ?DEV_LOG(F, A)).
+-define(DEBUG(F), ?DEV_LOG(F)).
+
+%% -define(DEBUG(F, A), ok).
+%% -define(DEBUG(F), ok).
+
 -define(REF_PATH
        ,code:lib_dir('crossbar'), "doc", "ref"
        ).
@@ -32,8 +49,12 @@
        ,filename:join([?REF_PATH, <<Module/binary,".md">>])
        ).
 
--define(SWAGGER_JSON
+-define(SWAGGER_2_JSON_FILE
        ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
+       ).
+
+-define(OAS_3_JSON_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", "openapi.json"])
        ).
 
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
@@ -233,56 +254,181 @@ ref_table_to_doc(RefTable) ->
 
 -spec to_swagger_json() -> 'ok'.
 to_swagger_json() ->
-    BaseSwagger = read_swagger_json(),
+    OASs = generate_oas_json(get(), <<"oas_two_and_three">>),
+    write_swagger_json(OASs, <<"oas_two_and_three">>).
+
+-spec to_oas3_json() -> 'ok'.
+to_oas3_json() ->
+    OAS3 = generate_oas_json(get(), <<"oas3">>),
+    write_swagger_json(OAS3, <<"oas3">>).
+
+
+-spec generate_oas_json(callback_configs(), kz_term:ne_binary()) -> kz_json:object() | kz_json:objects().
+generate_oas_json(Callbacks, OasVersion) ->
+    Paths = format_as_path_centric(Callbacks),
+    generate_oas_paths_json(Paths, OasVersion).
+
+-spec generate_oas_paths_json(kz_json:object(), kz_term:ne_binary()) -> kz_json:object() | kz_json:objects().
+generate_oas_paths_json(Paths, <<"oas_two_and_three">>) ->
+    kz_json:from_list([{<<"oas3">>, generate_oas_paths_json(Paths, <<"oas3">>)}
+                      ,{<<"swagger2">>, generate_oas_paths_json(Paths, <<"swagger2">>)}
+                      ]);
+generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion) ->
+    BaseSwagger = read_swagger_json(?SWAGGER_2_JSON_FILE),
     BasePaths = kz_json:get_value(<<"paths">>, BaseSwagger),
 
-    Paths = format_as_path_centric(get()),
+    kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
+                       ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
+                       ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
+                       ,{<<"host">>, <<"localhost:8000">>}
+                       ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
+                       ,{<<"swagger">>, <<"2.0">>}
+                       ,{<<"info">>, ?SWAGGER_INFO}
+                       ,{<<"consumes">>, [<<"application/json">>]}
+                       ,{<<"produces">>, [<<"application/json">>]}
+                       ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
+                       ]
+                      ,BaseSwagger
+                      );
+generate_oas_paths_json(_, <<"oas3">>) ->
+    kz_json:new().
+% generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
+%     BaseOas = read_swagger_json(?OAS_3_JSON_FILE),
+%     OasPaths = kz_json:get_value(<<"paths">>, BaseOas),
 
-    Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
-                                 ,{<<"definitions">>, to_swagger_definitions()}
-                                 ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
-                                 ,{<<"host">>, <<"localhost:8000">>}
-                                 ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
-                                 ,{<<"swagger">>, <<"2.0">>}
-                                 ,{<<"info">>, ?SWAGGER_INFO}
-                                 ,{<<"consumes">>, [<<"application/json">>]}
-                                 ,{<<"produces">>, [<<"application/json">>]}
-                                 ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
-                                 ]
-                                ,BaseSwagger
-                                ),
-    write_swagger_json(Swagger).
+%     kz_json:set_values([{<<"paths">>, to_oas_paths(Paths, OasPaths)}
+%                        ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
+%                        ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
+%                        ,{<<"host">>, <<"localhost:8000">>}
+%                        ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
+%                        ,{<<"swagger">>, <<"2.0">>}
+%                        ,{<<"info">>, ?SWAGGER_INFO}
+%                        ,{<<"consumes">>, [<<"application/json">>]}
+%                        ,{<<"produces">>, [<<"application/json">>]}
+%                        ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
+%                        ]
+%                       ,BaseOas
+%                       ).
 
--spec to_swagger_definitions() -> kz_json:object().
-to_swagger_definitions() ->
+-spec write_swagger_json(kz_json:object() | kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
+write_swagger_json(Swaggers, <<"oas_two_and_three">>) ->
+    Swagger2 = kz_json:get_json_value(<<"swagger2">>, Swaggers),
+    Oas3 = kz_json:get_json_value(<<"oas3">>, Swaggers),
+    'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2)),
+    'ok' = file:write_file(?OAS_3_JSON_FILE, kz_json:encode(Oas3));
+write_swagger_json(Swagger2, <<"swagger2">>) ->
+    'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2));
+write_swagger_json(Oas3, <<"oas3">>) ->
+    'ok' = file:write_file(?OAS_3_JSON_FILE, kz_json:encode(Oas3)).
+
+
+-spec to_swagger_definitions(kz_term:ne_binary()) -> kz_json:object().
+to_swagger_definitions(OasVersion) ->
     SchemasPath = kz_ast_util:schema_path(<<>>),
-    filelib:fold_files(kz_term:to_list(SchemasPath)
-                      ,"\\.json\$"
-                      ,'false'
-                      ,fun process_schema/2
-                      ,kz_json:new()
-                      ).
+    {OasSchemas, Report, HasError} =
+        filelib:fold_files(kz_term:to_list(SchemasPath)
+                          ,"\\.json\$"
+                          ,'false'
+                          ,fun(FileName, {Definitions, Report, HasError}) -> process_schema(FileName, Definitions, OasVersion, Report, HasError) end
+                          ,{kz_json:new(), #{}, 'false'}
+                          ),
+    print_report(Report),
+    case HasError of
+        'false' -> OasSchemas;
+        'true' -> throw({'error', 'failed_to_convert_oas'})
+    end.
 
--spec process_schema(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
-process_schema(Filename, Definitions) ->
-    {'ok', Bin} = file:read_file(Filename),
-    KeysToDelete = [<<"_id">>
-                   ,<<"$schema">>
-                   ,<<"additionalProperties">>
-                   ],
-    JObj0 = kz_json:delete_keys(KeysToDelete, kz_json:decode(Bin)),
-    JObj = kz_json:expand(
-             kz_json:from_list(
-               [case lists:last(Path) =:= <<"$ref">> of
-                    'false' -> KV;
-                    'true' -> {Path, maybe_fix_ref(V)}
-                end
-                || {Path, V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
-                   not lists:member(<<"patternProperties">>, Path)
-                       andalso not is_kazoo_prefixed(Path)
-               ])),
-    Name = kz_term:to_binary(filename:basename(Filename, ".json")),
-    kz_json:set_value(Name, JObj, Definitions).
+-spec print_report(map()) -> 'ok'.
+print_report(Report) ->
+    _ = maps:map(fun(F, R) ->
+                         print_report(F, maps:get(warn, R, []), maps:get(err, R, [])) end
+                , Report
+                ),
+    'ok'.
+
+-spec print_report(string(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> 'ok'.
+print_report(File, Warn, Err) ->
+    print_messages(<<"Warnings">>, File, Warn),
+    print_messages(<<"Errors">>, File, Err).
+
+-spec print_messages(kz_term:ne_binary(), string(), kz_term:ne_binaries()) -> 'ok'.
+print_messages(<<"Warnings">> = Title, File, Msgs) ->
+    Ignore = [<<"path '.' has unsupported keyword '_id'.">>
+             ,<<"path '.' has unsupported keyword '$schema'.">>
+             ],
+    FilterFun = fun(Msg) -> not lists:any(fun(Elem) -> Elem =:= Msg end, Ignore) end,
+    Head = iolist_to_binary(io_lib:format("~s in file: ~s~n", [Title, File])),
+    print_messages(Head, lists:filter(FilterFun, Msgs));
+print_messages(Title, File, Msgs) ->
+    Head = iolist_to_binary(io_lib:format("~s in file: ~s~n", [Title, File])),
+    print_messages(Head, Msgs),
+    io:format(user, "~n", []).
+
+-spec print_messages(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
+print_messages(_, []) -> 'ok';
+print_messages(Head, Msgs) ->
+    print_messages([Head | Msgs]).
+
+-spec print_messages(kz_term:ne_binaries()) -> 'ok'.
+print_messages([]) -> 'ok';
+print_messages([Msg | Msgs]) ->
+    io:format(user, "~s~n", [Msg]),
+    print_messages(Msgs).
+
+-spec process_schema(string(), kz_json:object(), kz_term:ne_binary(), map(), boolean()) ->
+                            {kz_json:object(), map(), boolean()}.
+process_schema(Filename, Definitions, OasVersion, Warn, Err) ->
+    process_schema(Filename, Definitions, OasVersion, filename:basename(Filename, ".json"), Warn, Err).
+
+-spec process_schema(string(), kz_json:object(), kz_term:ne_binary(), string(), map(), boolean()) ->
+                            {kz_json:object(), map(), boolean()}.
+process_schema(_Filename, Definitions, <<"oas3">>, "kapi."++_ = Name, Report, HasError) ->
+    {kz_json:delete_key(kz_term:to_binary(Name), Definitions), Report, HasError};
+process_schema(Filename, Definitions, OasVersion, Name, Report, HasError) ->
+    case convert_to_oas_schema(Filename, OasVersion) of
+        {'ok', OasSchema, Warn} ->
+            {kz_json:set_value(kz_term:to_binary(Name), OasSchema, Definitions), maps:put(Filename, #{warn => Warn}, Report), HasError};
+        {'error', Warn, Err} ->
+            {Definitions, maps:put(Filename, #{warn => Warn, err => Err}, Report), 'true'}
+    end.
+
+-type oas_schema_ret() :: {'ok', kz_json:object(), kz_term:ne_binaries()} |
+                          {'error', kz_term:ne_binaries(), kz_term:ne_binaries()}.
+
+-spec convert_to_oas_schema(kz_term:text(), kz_term:ne_binary()) -> oas_schema_ret().
+convert_to_oas_schema(File, OasVersion) ->
+    {'ok', Bin} = file:read_file(File),
+    KVs = kz_json:to_proplist(kz_json:flatten(kz_json:decode(Bin))),
+    case to_oas_schema(KVs, OasVersion) of
+        {'ok', OasSchema, Warn} ->
+            {'ok', kz_json:expand(kz_json:from_list(OasSchema)), lists:reverse(Warn)};
+        {'error', Warn, Err} ->
+            {'error', lists:reverse(Warn), lists:reverse(Err)}
+    end.
+
+-spec to_oas_schema(kz_term:proplist(), kz_term:ne_binary()) -> oas_schema_ret().
+to_oas_schema(KVs, <<"swagger2">>) ->
+    {'ok'
+    ,[case lists:last(Path) =:= <<"$ref">> of
+        'false' -> KV;
+        'true' -> {Path, maybe_fix_ref(V, <<"swagger2">>)}
+    end
+    || {Path, V}=KV <- KVs,
+       is_supported_by_swagger2(Path)
+    ]
+    ,[]
+    };
+to_oas_schema(KVs, <<"oas3">>) ->
+    to_oas3_schema(KVs, [], KVs, [], []).
+
+-spec is_supported_by_swagger2(kz_term:ne_binaries()) -> boolean().
+is_supported_by_swagger2(Path) ->
+    %% keep swagger2 behaviour as before
+    [<<"_id">>] =/= Path
+        andalso [<<"$schema">>] =/= Path
+        andalso [<<"additionalProperties">>] =/= Path
+        andalso not lists:member(<<"patternProperties">>, Path)
+        andalso not is_kazoo_prefixed(Path).
 
 -spec is_kazoo_prefixed(kz_term:ne_binaries()) -> boolean().
 is_kazoo_prefixed([]) -> 'false';
@@ -290,21 +436,211 @@ is_kazoo_prefixed([<<"kazoo-", _/binary>>|_]) -> 'true';
 is_kazoo_prefixed([<<"support_level">>|_]) -> 'true';
 is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
 
--spec maybe_fix_ref(kz_term:ne_binary()) -> kz_term:ne_binary().
-maybe_fix_ref(<<"#",_/binary>>=Ref) -> Ref;
-maybe_fix_ref(RelativePath=?NE_BINARY) ->
-    <<"#/definitions/", RelativePath/binary>>.
+-define(IS_OAS_PROPERTIES(P), (P =:= <<"properties">>
+            orelse P =:= <<"additionalProperties">>
+            orelse P =:= <<"x-patternProperties">>
+                              )
+       ).
 
--spec read_swagger_json() -> kz_json:object().
-read_swagger_json() ->
-    case file:read_file(?SWAGGER_JSON) of
+-type oas3_schema_ret() :: {'ok', kz_term:proplist(), kz_term:ne_binaries()} |
+                           {'error', kz_term:ne_binaries(), kz_term:ne_binaries()}.
+
+-spec to_oas3_schema(kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binaries()) -> oas3_schema_ret().
+to_oas3_schema([{Path, Val} | PVs], KVs, OrigKVs, Warn, Err) ->
+    case to_oas3_schema(Path, Path, [], Val, KVs, OrigKVs, Warn, Err) of
+        {'ok', NewKVs, NewWarn} -> to_oas3_schema(PVs, NewKVs, OrigKVs, NewWarn, Err);
+        {'error', NewWarn, NewErr} -> to_oas3_schema(PVs, [{Path, Val} | KVs], OrigKVs, NewWarn, NewErr)
+    end;
+to_oas3_schema([], KVs, _, Warn, Err) ->
+    return_error_on_error(lists:reverse(KVs), Warn, Err).
+
+-spec to_oas3_schema(OriginalPath::kz_term:ne_binaries(), Path::kz_term:ne_binaries(), VisitedPath::kz_term:ne_binaries()
+                    ,Value::kz_term:proplist_value(), KVAcc::kz_term:proplist(), OrigKVs::kz_term:proplist()
+                    ,Warnings::kz_term:ne_binaries(), Errors::kz_term:ne_binaries()) -> oas3_schema_ret().
+%% remove unsupported keywords
+to_oas3_schema(_, [<<"_id">> = P], ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"$id">>  = P| _], [] = ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"$id">>  = P| _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"$schema">> = P], ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"additionalItems">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"additionalItems">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"const">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"const">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"contains">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"contains">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"dependencies">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"dependencies">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"id">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"id">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"propertyNames">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(_, [<<"propertyNames">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+
+%% let's rename this instead of removing
+to_oas3_schema(OrigP, [<<"patternProperties">> = P | Ps], [], Val, KVs, OrigKVs, Warn, Err) ->
+    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>>], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"patternProperties">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+
+%% other checks
+to_oas3_schema(OrigP, [<<"$ref">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    to_oas3_schema(OrigP, [], [P | ReverseP], maybe_fix_ref(Val, <<"oas3">>), KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"additionalProperties">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) when is_boolean(Val) ->
+    to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"additionalProperties">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    %% case kz_json:is_json_object(Val) of
+    %%     'true' -> to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+    %%     'false' ->
+    %%         Msg = io_lib:format("path '~s', '~s' value can be a boolean (true or false) or an OpenAPI schema"
+    %%                            ,[join_oas3_path_reverse(ReverseP), P]
+    %%                            ),
+    %%         {'error', Warn, [iolist_to_binary(Msg) | Err]}
+    %% end;
+    to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(_, [<<"name">>], ReverseP, _, _, _, Warn, Err) ->
+    Msg = io_lib:format("path ~s has keyword 'name'. Do something about it"
+                       ,[join_oas3_path_reverse(ReverseP)]
+                       ),
+    {'error', Warn, [iolist_to_binary(Msg) | Err]};
+to_oas3_schema(OrigP, [<<"type">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    case oas3_type_type(ReverseP, Val, OrigKVs) of
+        'array' ->
+            Msg = io_lib:format("path '~s', 'type' must be a single type and not an array of types"
+                           ,[join_oas3_path_reverse(ReverseP)]
+                           ),
+            {'error', Warn, [iolist_to_binary(Msg) | Err]};
+        'binary' ->
+            to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+        'missing_items' ->
+            Msg = io_lib:format("path '~s', 'items' keyword must be present if type is array."
+                               ,[join_oas3_path_reverse(ReverseP)]
+                               ),
+            {'error', Warn, [iolist_to_binary(Msg) | Err]};
+        'null' ->
+            Msg = io_lib:format("path '~s', converting type 'null' to '\"nullable\": true'."
+                               ,[join_oas3_path_reverse(ReverseP)]
+                               ),
+            to_oas3_schema(OrigP, [], [<<"nullable">> | ReverseP], 'true', KVs, OrigKVs, [iolist_to_binary(Msg) | Warn], Err);
+        'null_in_array' ->
+            Msg = io_lib:format("path '~s', type has 'null', adding'\"nullable\": true' instead."
+                               ,[join_oas3_path_reverse(ReverseP)]
+                               ),
+            Nullable = {lists:reverse([<<"nullable">> | ReverseP]), 'true'},
+            [Type] = [T || T <- Val,
+                           T =/= 'null',
+                           T =/= <<"null">>
+                     ],
+            to_oas3_schema(OrigP, [], [P | ReverseP], Type, [Nullable | KVs ], OrigKVs, [iolist_to_binary(Msg) | Warn], Err);
+        'undefined' ->
+            Msg = io_lib:format("path '~p' has invalid 'type': '~p'."
+                               ,[join_oas3_path_reverse(ReverseP), Val]
+                               ),
+            {'error', Warn, [iolist_to_binary(Msg) | Err]}
+    end;
+
+%% accept everything else as-is, we don't care about them
+to_oas3_schema(OrigP, [P|Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+
+%% return the result
+to_oas3_schema(OrigP, [], [], Val, KVs, _, Warn, Err) ->
+    return_error_on_error([{OrigP, Val} | KVs], Warn, Err);
+to_oas3_schema(_, [], ReverseP, Val, KVs, _, Warn, Err) ->
+    return_error_on_error([{lists:reverse(ReverseP), Val} | KVs], Warn, Err).
+
+-spec join_oas3_path_reverse(kz_term:ne_binaries()) -> kz_term:ne_binary().
+join_oas3_path_reverse([]) ->
+    <<$.>>;
+join_oas3_path_reverse(Path) ->
+    kz_binary:join([<<>> | lists:reverse(Path)], <<$.>>).
+
+-spec return_error_on_error(kz_term:proplist(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
+return_error_on_error(KVs, Warn, []) ->
+    {'ok', KVs, Warn};
+return_error_on_error(_, Warn, Err) ->
+    {'error', Warn, Err}.
+
+-spec ret_unsupported_key(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
+ret_unsupported_key(KVs, Key, ReverseP, Warn, Err) ->
+    Msg = io_lib:format("path '~s' has unsupported keyword '~s'.", [join_oas3_path_reverse(ReverseP), Key]),
+    return_error_on_error(KVs, [iolist_to_binary(Msg) | Warn], Err).
+
+-spec oas3_type_type(kz_term:ne_binaries(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) ->
+                            'array' |
+                            'binary' |
+                            'missing_items' |
+                            'null' |
+                            'null_in_array' |
+                            'undefined'.
+oas3_type_type(Path, <<"array">>, KVs) ->
+    RenameFun = fun(<<"x-patternProperties">>, Acc) -> [<<"patternProperties">> | Acc];
+                   (Other, Acc) -> [Other | Acc]
+                end,
+    PartialItemsPath = lists:foldl(RenameFun, [], [<<"items">> | Path]),
+    Fun = fun(Elem) -> lists:prefix(PartialItemsPath, Elem) end,
+    case lists:any(Fun, [P || {P, _} <- KVs]) of
+        'true' -> 'binary';
+        'false' -> 'missing_items'
+    end;
+oas3_type_type(Path, Value, KVs) when is_list(Value) ->
+    HasArray = lists:member(<<"array">>, Value),
+    case lists:any(fun(Null) -> lists:member(Null, Value) end, ['null', <<"null">>])
+         andalso length(Value) =:= 2
+    of
+        'true' when HasArray ->
+            case oas3_type_type(Path, <<"array">>, KVs) of
+                'binary' -> null_in_array;
+                'missing_items' -> 'missing_items'
+            end;
+        'true' -> 'null_in_array';
+        'false' -> 'array'
+    end;
+oas3_type_type(_Path, <<"null">>, _KVs) ->
+    'null';
+oas3_type_type(_Path, 'null', _KVs) ->
+    'null';
+oas3_type_type(_Path, ?NE_BINARY = _Value, _KVs) ->
+    'binary';
+oas3_type_type(_Path, _Value, _KVs) ->
+    'undefined'.
+
+-spec maybe_fix_ref(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+maybe_fix_ref(<<"#",_/binary>>=Ref, _) -> Ref;
+maybe_fix_ref(RelativePath=?NE_BINARY, <<"swagger2">>) ->
+    <<"#/definitions/", RelativePath/binary>>;
+maybe_fix_ref(RelativePath=?NE_BINARY, <<"oas3">>) ->
+    <<"#/components/schemas/", RelativePath/binary>>.
+
+-spec read_swagger_json(kz_term:ne_binary()) -> kz_json:object().
+read_swagger_json(SwaggerFile) ->
+    case file:read_file(SwaggerFile) of
         {'ok', Bin} -> kz_json:decode(Bin);
         {'error', 'enoent'} -> kz_json:new()
     end.
-
--spec write_swagger_json(kz_json:object()) -> 'ok'.
-write_swagger_json(Swagger) ->
-    'ok' = file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
 
 -spec to_swagger_paths(kz_json:object(), kz_json:object()) -> kz_json:object().
 to_swagger_paths(Paths, BasePaths) ->
