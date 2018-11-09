@@ -401,9 +401,9 @@ convert_to_oas_schema(File, OasVersion) ->
     KVs = kz_json:to_proplist(kz_json:flatten(kz_json:decode(Bin))),
     case to_oas_schema(KVs, OasVersion) of
         {'ok', OasSchema, Warn} ->
-            {'ok', kz_json:expand(kz_json:from_list(OasSchema)), lists:reverse(Warn)};
+            {'ok', kz_json:expand(kz_json:from_list(OasSchema)), Warn};
         {'error', Warn, Err} ->
-            {'error', lists:reverse(Warn), lists:reverse(Err)}
+            {'error', Warn, Err}
     end.
 
 -spec to_oas_schema(kz_term:proplist(), kz_term:ne_binary()) -> oas_schema_ret().
@@ -419,7 +419,16 @@ to_oas_schema(KVs, <<"swagger2">>) ->
     ,[]
     };
 to_oas_schema(KVs, <<"oas3">>) ->
-    to_oas3_schema(KVs, [], KVs, [], []).
+    case to_oas3_schema(KVs, [], KVs, [], []) of
+        {'ok', NewKVs, Warn} ->
+            {'ok', NewKVs, format_path_msg(Warn)};
+        {'error', Warn, Err} ->
+            {'ok', format_path_msg(Warn), format_path_msg(Err)}
+    end.
+
+-spec format_path_msg(kz_term:proplist()) -> kz_term:ne_binaries().
+format_path_msg(PathMsgs) ->
+    lists:reverse(iolist_to_binary([io_lib:format("path '~s': ~s", [Path, Msg]) || {Path, Msg} <- PathMsgs])).
 
 -spec is_supported_by_swagger2(kz_term:ne_binaries()) -> boolean().
 is_supported_by_swagger2(Path) ->
@@ -442,8 +451,8 @@ is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
                               )
        ).
 
--type oas3_schema_ret() :: {'ok', kz_term:proplist(), kz_term:ne_binaries()} |
-                           {'error', kz_term:ne_binaries(), kz_term:ne_binaries()}.
+-type oas3_schema_ret() :: {'ok', kz_term:proplist(), kz_term:proplist()} |
+                           {'error', kz_term:proplist(), kz_term:proplist()}.
 
 -spec to_oas3_schema(kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binaries()) -> oas3_schema_ret().
 to_oas3_schema([{Path, Val} | PVs], KVs, OrigKVs, Warn, Err) ->
@@ -516,6 +525,7 @@ to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [], Val, KVs, OrigKVs, War
 to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
   when ?IS_OAS_PROPERTIES(Properties) ->
     to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+
 %% other checks
 to_oas3_schema(OrigP, [<<"$ref">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
     to_oas3_schema(OrigP, [], [P | ReverseP], maybe_fix_ref(Val, <<"oas3">>), KVs, OrigKVs, Warn, Err);
@@ -523,54 +533,34 @@ to_oas3_schema(OrigP, [<<"additionalProperties">> = P], ReverseP, Val, KVs, Orig
     to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
 to_oas3_schema(OrigP, [<<"additionalProperties">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
   when ?IS_OAS_PROPERTIES(Properties) ->
-    %% case kz_json:is_json_object(Val) of
-    %%     'true' -> to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
-    %%     'false' ->
-    %%         Msg = io_lib:format("path '~s', '~s' value can be a boolean (true or false) or an OpenAPI schema"
-    %%                            ,[join_oas3_path_reverse(ReverseP), P]
-    %%                            ),
-    %%         {'error', Warn, [iolist_to_binary(Msg) | Err]}
-    %% end;
     to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
 to_oas3_schema(_, [<<"name">>], ReverseP, _, _, _, Warn, Err) ->
-    Msg = io_lib:format("path ~s has keyword 'name'. Do something about it"
-                       ,[join_oas3_path_reverse(ReverseP)]
-                       ),
-    {'error', Warn, [iolist_to_binary(Msg) | Err]};
+    Msg = <<"extra keyword 'name'.">>,
+    {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]};
 to_oas3_schema(OrigP, [<<"type">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
     case oas3_type_type(ReverseP, Val, OrigKVs) of
         'array' ->
-            Msg = io_lib:format("path '~s', 'type' must be a single type and not an array of types"
-                               ,[join_oas3_path_reverse(ReverseP)]
-                               ),
-            {'error', Warn, [iolist_to_binary(Msg) | Err]};
+            Msg = <<"'type' must be a single type and not an array of types.">>,
+            {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]};
         'binary' ->
             to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
         'missing_items' ->
-            Msg = io_lib:format("path '~s', 'items' keyword must be present if type is array."
-                               ,[join_oas3_path_reverse(ReverseP)]
-                               ),
-            {'error', Warn, [iolist_to_binary(Msg) | Err]};
+            Msg = <<"'items' keyword must be present if type is array.">>,
+            {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]};
         'null' ->
-            Msg = io_lib:format("path '~s', converting type 'null' to '\"nullable\": true'."
-                               ,[join_oas3_path_reverse(ReverseP)]
-                               ),
-            to_oas3_schema(OrigP, [], [<<"nullable">> | ReverseP], 'true', KVs, OrigKVs, [iolist_to_binary(Msg) | Warn], Err);
+            Msg = <<"converting type 'null' to '\"nullable\": true'.">>,
+            to_oas3_schema(OrigP, [], [<<"nullable">> | ReverseP], 'true', KVs, OrigKVs, [{join_oas3_path_reverse(ReverseP), Msg} | Warn], Err);
         'null_in_array' ->
-            Msg = io_lib:format("path '~s', type has 'null', adding'\"nullable\": true' instead."
-                               ,[join_oas3_path_reverse(ReverseP)]
-                               ),
+            Msg = <<"type has 'null', adding '\"nullable\": true' instead.">>,
             Nullable = {lists:reverse([<<"nullable">> | ReverseP]), 'true'},
             [Type] = [T || T <- Val,
                            T =/= 'null',
                            T =/= <<"null">>
                      ],
-            to_oas3_schema(OrigP, [], [P | ReverseP], Type, [Nullable | KVs ], OrigKVs, [iolist_to_binary(Msg) | Warn], Err);
+            to_oas3_schema(OrigP, [], [P | ReverseP], Type, [Nullable | KVs ], OrigKVs, [{join_oas3_path_reverse(ReverseP), Msg} | Warn], Err);
         'undefined' ->
-            Msg = io_lib:format("path '~p' has invalid 'type': '~p'."
-                               ,[join_oas3_path_reverse(ReverseP), Val]
-                               ),
-            {'error', Warn, [iolist_to_binary(Msg) | Err]}
+            Msg = <<"invalid type '~p'.">>,
+            {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]}
     end;
 
 %% accept everything else as-is, we don't care about them
@@ -597,8 +587,8 @@ return_error_on_error(_, Warn, Err) ->
 
 -spec ret_unsupported_key(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
 ret_unsupported_key(KVs, Key, ReverseP, Warn, Err) ->
-    Msg = io_lib:format("path '~s' has unsupported keyword '~s'.", [join_oas3_path_reverse(ReverseP), Key]),
-    return_error_on_error(KVs, [iolist_to_binary(Msg) | Warn], Err).
+    Msg = io_lib:format("unsupported keyword '~s'.", [Key]),
+    return_error_on_error(KVs, Warn, [{join_oas3_path_reverse(ReverseP), iolist_to_binary(Msg)} | Err]).
 
 -spec oas3_type_type(kz_term:ne_binaries(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) ->
                             'array' |
