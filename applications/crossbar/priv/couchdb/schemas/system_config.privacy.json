@@ -3,9 +3,41 @@
     "_id": "system_config.privacy",
     "description": "Schema for privacy system_config",
     "properties": {
+        "anonymous_cid_names": {
+            "default": [
+                "anonymous",
+                "restricted"
+            ],
+            "description": "Additional CID name patterns to match for anonymous call rejection",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "anonymous_cid_numbers": {
+            "default": [
+                "anonymous",
+                "restricted"
+            ],
+            "description": "Additional CID number/userpart patterns to match for anonymous call rejection",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "block_anonymous_caller_id": {
             "default": false,
             "description": "Controls blocking of anonymous calls",
+            "type": "boolean"
+        },
+        "check_additional_anonymous_cid_names": {
+            "default": false,
+            "description": "use the anonymous_cid_names values to check if a number is anonymous",
+            "type": "boolean"
+        },
+        "check_additional_anonymous_cid_numbers": {
+            "default": false,
+            "description": "use the anonymous_cid_numbers values to check if a name is anonymous",
             "type": "boolean"
         },
         "privacy_mode": {

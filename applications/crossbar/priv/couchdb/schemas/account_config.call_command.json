@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.call_command",
+    "description": "Schema for call_command account_config",
+    "properties": {
+        "unknown_cid_name": {
+            "default": "unknown",
+            "description": "the value to use when a caller ID name is required but unknown",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

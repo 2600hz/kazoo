@@ -35,6 +35,7 @@
 -define(DEFAULT_MOBILE_REALM, <<"mobile.k.zswitch.net">>).
 -define(DEFAULT_MOBILE_PATH, <<>>).
 -define(DEFAULT_MOBILE_CODECS, [<<"PCMU">>]).
+-define(DEFAULT_CALLER_ID_NAME, <<"unknown">>).
 
 -define(RESOURCE_TYPE_SMS, <<"sms">>).
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).

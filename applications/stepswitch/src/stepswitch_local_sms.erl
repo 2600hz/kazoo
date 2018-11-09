@@ -100,7 +100,7 @@ request_caller_id(OffnetReq) ->
                                                    ,kz_privacy:anonymous_caller_id_number(AccountId)
                                                    )
     ,kapi_offnet_resource:outbound_caller_id_name(OffnetReq
-                                                 ,kz_privacy:anonymous_caller_id_name(AccountId)
+                                                 ,kapps_call:unknown_caller_id_name(AccountId)
                                                  )
     }.
 
