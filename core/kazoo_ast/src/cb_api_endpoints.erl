@@ -353,8 +353,8 @@ print_report(File, Warn, Err) ->
 
 -spec print_messages(kz_term:ne_binary(), string(), kz_term:ne_binaries()) -> 'ok'.
 print_messages(<<"Warnings">> = Title, File, Msgs) ->
-    Ignore = [<<"path '.' has unsupported keyword '_id'.">>
-             ,<<"path '.' has unsupported keyword '$schema'.">>
+    Ignore = [<<"path '.': unsupported keyword '_id'.">>
+             ,<<"path '.': unsupported keyword '$schema'.">>
              ],
     FilterFun = fun(Msg) -> not lists:any(fun(Elem) -> Elem =:= Msg end, Ignore) end,
     Head = iolist_to_binary(io_lib:format("~s in file: ~s~n", [Title, File])),
@@ -423,12 +423,12 @@ to_oas_schema(KVs, <<"oas3">>) ->
         {'ok', NewKVs, Warn} ->
             {'ok', NewKVs, format_path_msg(Warn)};
         {'error', Warn, Err} ->
-            {'ok', format_path_msg(Warn), format_path_msg(Err)}
+            {'error', format_path_msg(Warn), format_path_msg(Err)}
     end.
 
 -spec format_path_msg(kz_term:proplist()) -> kz_term:ne_binaries().
 format_path_msg(PathMsgs) ->
-    lists:reverse(iolist_to_binary([io_lib:format("path '~s': ~s", [Path, Msg]) || {Path, Msg} <- PathMsgs])).
+    lists:reverse([iolist_to_binary(io_lib:format("path '~s': ~s", [Path, Msg])) || {Path, Msg} <- PathMsgs]).
 
 -spec is_supported_by_swagger2(kz_term:ne_binaries()) -> boolean().
 is_supported_by_swagger2(Path) ->
@@ -454,7 +454,7 @@ is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
 -type oas3_schema_ret() :: {'ok', kz_term:proplist(), kz_term:proplist()} |
                            {'error', kz_term:proplist(), kz_term:proplist()}.
 
--spec to_oas3_schema(kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binaries()) -> oas3_schema_ret().
+-spec to_oas3_schema(kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:proplist()) -> oas3_schema_ret().
 to_oas3_schema([{Path, Val} | PVs], KVs, OrigKVs, Warn, Err) ->
     case to_oas3_schema(Path, Path, [], Val, KVs, OrigKVs, Warn, Err) of
         {'ok', NewKVs, NewWarn} -> to_oas3_schema(PVs, NewKVs, OrigKVs, NewWarn, Err);
@@ -465,7 +465,7 @@ to_oas3_schema([], KVs, _, Warn, Err) ->
 
 -spec to_oas3_schema(OriginalPath::kz_term:ne_binaries(), Path::kz_term:ne_binaries(), VisitedPath::kz_term:ne_binaries()
                     ,Value::kz_term:proplist_value(), KVAcc::kz_term:proplist(), OrigKVs::kz_term:proplist()
-                    ,Warnings::kz_term:ne_binaries(), Errors::kz_term:ne_binaries()) -> oas3_schema_ret().
+                    ,Warnings::kz_term:proplist(), Errors::kz_term:proplist()) -> oas3_schema_ret().
 %% remove unsupported keywords
 to_oas3_schema(_, [<<"_id">> = P], ReverseP, _, KVs, _, Warn, Err) ->
     ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
@@ -579,7 +579,7 @@ join_oas3_path_reverse([]) ->
 join_oas3_path_reverse(Path) ->
     kz_binary:join([<<>> | lists:reverse(Path)], <<$.>>).
 
--spec return_error_on_error(kz_term:proplist(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
+-spec return_error_on_error(kz_term:proplist(), kz_term:proplist(), kz_term:proplist()) -> oas3_schema_ret().
 return_error_on_error(KVs, Warn, []) ->
     {'ok', KVs, Warn};
 return_error_on_error(_, Warn, Err) ->
@@ -588,7 +588,7 @@ return_error_on_error(_, Warn, Err) ->
 -spec ret_unsupported_key(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
 ret_unsupported_key(KVs, Key, ReverseP, Warn, Err) ->
     Msg = io_lib:format("unsupported keyword '~s'.", [Key]),
-    return_error_on_error(KVs, Warn, [{join_oas3_path_reverse(ReverseP), iolist_to_binary(Msg)} | Err]).
+    return_error_on_error(KVs, [{join_oas3_path_reverse(ReverseP), iolist_to_binary(Msg)} | Warn], Err).
 
 -spec oas3_type_type(kz_term:ne_binaries(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) ->
                             'array' |
