@@ -96,7 +96,7 @@ verify_rollovers(Account) ->
 %%------------------------------------------------------------------------------
 -spec verify_rollovers(kz_term:ne_binary(), rollover_options()) -> 'ok'.
 verify_rollovers(?NE_BINARY=Account, Options) ->
-    case props:get_value('all_rollovers', Options) of
+    case props:get_is_true('all_rollovers', Options, 'false') of
         'false' ->
             {Year, Month, _} = erlang:date(),
             verify_rollovers(Account, Year, Month);
