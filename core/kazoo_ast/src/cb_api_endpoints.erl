@@ -353,14 +353,14 @@ print_report(File, Warn, Err) ->
 
 -spec print_messages(kz_term:ne_binary(), string(), kz_term:ne_binaries()) -> 'ok'.
 print_messages(<<"Warnings">> = Title, File, Msgs) ->
-    Ignore = [<<"path '.': unsupported keyword '_id'.">>
-             ,<<"path '.': unsupported keyword '$schema'.">>
+    Ignore = [<<"path '._id': unsupported keyword.">>
+             ,<<"path '.$schema': unsupported keyword.">>
              ],
     FilterFun = fun(Msg) -> not lists:any(fun(Elem) -> Elem =:= Msg end, Ignore) end,
-    Head = iolist_to_binary(io_lib:format("~s in file: ~s~n", [Title, File])),
+    Head = iolist_to_binary(io_lib:format("~s in file: ~s", [Title, File])),
     print_messages(Head, lists:filter(FilterFun, Msgs));
 print_messages(Title, File, Msgs) ->
-    Head = iolist_to_binary(io_lib:format("~s in file: ~s~n", [Title, File])),
+    Head = iolist_to_binary(io_lib:format("~s in file: ~s", [Title, File])),
     print_messages(Head, Msgs).
 
 -spec print_messages(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
@@ -526,6 +526,63 @@ to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [_, Properties|_]=ReverseP
   when ?IS_OAS_PROPERTIES(Properties) ->
     to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
 
+%% since `kz_json:flatten/1' is not flattening a list if JObjs, we have to flatten them here.
+to_oas3_schema(OrigP, [<<"allOf">> = P], [], Val, KVs, OrigKVs, Warn, Err) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+to_oas3_schema(_OrigP, [<<"allOf">> = P | _], []=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err) ->
+    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+to_oas3_schema(OrigP, [<<"allOf">> = P], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P | ReverseP], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P | ReverseP], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+to_oas3_schema(_OrigP, [<<"allOf">> = P | _], [_, Properties|_]=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+
+%% since `kz_json:flatten/1' is not flattening a list if JObjs, we have to flatten them here.
+to_oas3_schema(OrigP, [<<"anyOf">> = P], [], Val, KVs, OrigKVs, Warn, Err) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+to_oas3_schema(_OrigP, [<<"anyOf">> = P | _], []=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err) ->
+    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+to_oas3_schema(OrigP, [<<"anyOf">> = P], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P | ReverseP], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P | ReverseP], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+to_oas3_schema(_OrigP, [<<"anyOf">> = P | _], [_, Properties|_]=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+
+%% since `kz_json:flatten/1' is not flattening a list if JObjs, we have to flatten them here.
+to_oas3_schema(OrigP, [<<"items">> = P], [], Val, KVs, OrigKVs, Warn, Err) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+to_oas3_schema(OrigP, [<<"items">> = P], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P | ReverseP], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P | ReverseP], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+
+%% since `kz_json:flatten/1' is not flattening a list if JObjs, we have to flatten them here.
+to_oas3_schema(OrigP, [<<"oneOf">> = P], [], Val, KVs, OrigKVs, Warn, Err) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+to_oas3_schema(_OrigP, [<<"oneOf">> = P | _], []=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err) ->
+    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+to_oas3_schema(OrigP, [<<"oneOf">> = P], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P | ReverseP], Val, Warn, Err),
+    to_oas3_schema(OrigP, [], [P | ReverseP], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+to_oas3_schema(_OrigP, [<<"oneOf">> = P | _], [_, Properties|_]=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+
 %% other checks
 to_oas3_schema(OrigP, [<<"$ref">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
     to_oas3_schema(OrigP, [], [P | ReverseP], maybe_fix_ref(Val, <<"oas3">>), KVs, OrigKVs, Warn, Err);
@@ -534,34 +591,14 @@ to_oas3_schema(OrigP, [<<"additionalProperties">> = P], ReverseP, Val, KVs, Orig
 to_oas3_schema(OrigP, [<<"additionalProperties">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
   when ?IS_OAS_PROPERTIES(Properties) ->
     to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(_, [<<"name">>], ReverseP, _, _, _, Warn, Err) ->
+to_oas3_schema(_, [<<"name">> = P], ReverseP, _, _, _, Warn, Err) ->
     Msg = <<"extra keyword 'name'.">>,
-    {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]};
-to_oas3_schema(OrigP, [<<"type">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
-    case oas3_type_type(ReverseP, Val, OrigKVs) of
-        'array' ->
-            Msg = <<"'type' must be a single type and not an array of types.">>,
-            {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]};
-        'binary' ->
-            to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
-        'missing_items' ->
-            Msg = <<"'items' keyword must be present if type is array.">>,
-            {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]};
-        'null' ->
-            Msg = <<"converting type 'null' to '\"nullable\": true'.">>,
-            to_oas3_schema(OrigP, [], [<<"nullable">> | ReverseP], 'true', KVs, OrigKVs, [{join_oas3_path_reverse(ReverseP), Msg} | Warn], Err);
-        'null_in_array' ->
-            Msg = <<"type has 'null', adding '\"nullable\": true' instead.">>,
-            Nullable = {lists:reverse([<<"nullable">> | ReverseP]), 'true'},
-            [Type] = [T || T <- Val,
-                           T =/= 'null',
-                           T =/= <<"null">>
-                     ],
-            to_oas3_schema(OrigP, [], [P | ReverseP], Type, [Nullable | KVs ], OrigKVs, [{join_oas3_path_reverse(ReverseP), Msg} | Warn], Err);
-        'undefined' ->
-            Msg = <<"invalid type '~p'.">>,
-            {'error', Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]}
-    end;
+    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+to_oas3_schema(OrigP, [<<"type">> | _] = Ps, [] = ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    to_oas3_type(OrigP, Ps, ReverseP, Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"type">> | _] = Ps, [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    to_oas3_type(OrigP, Ps, ReverseP, Val, KVs, OrigKVs, Warn, Err);
 
 %% accept everything else as-is, we don't care about them
 to_oas3_schema(OrigP, [P|Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
@@ -572,6 +609,37 @@ to_oas3_schema(OrigP, [], [], Val, KVs, _, Warn, Err) ->
     return_error_on_error([{OrigP, Val} | KVs], Warn, Err);
 to_oas3_schema(_, [], ReverseP, Val, KVs, _, Warn, Err) ->
     return_error_on_error([{lists:reverse(ReverseP), Val} | KVs], Warn, Err).
+
+
+oas3_deep_flatten(ReverseP, [H|_]=Val, Warn, Err) ->
+    case kz_json:is_json_object(H) of
+        'true' ->
+            {_, DeepValFlat, DeepWarn, DeepErr} =
+                lists:foldl(fun(J, Acc) -> oas3_deep_flatten(J, ReverseP, Acc) end
+                           ,{0, [], Warn, Err}
+                           ,Val
+                           ),
+            {lists:reverse(DeepValFlat), DeepWarn, DeepErr};
+        'false' ->
+            Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+            {Val, Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]}
+    end;
+oas3_deep_flatten(ReverseP, Val, Warn, Err) ->
+    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+    {Val, Warn, [{join_oas3_path_reverse(ReverseP), Msg} | Err]}.
+
+oas3_deep_flatten(JObj, ReverseP,  {Index, Acc, Warn, Err}) ->
+    KVs = kz_json:to_proplist(kz_json:flatten(JObj)),
+    ArrayPath = join_oas3_path_reverse([<<"[", (kz_term:to_binary(Index))/binary, "]">> | ReverseP]),
+    case to_oas3_schema(KVs, [], KVs, [], []) of
+        {'ok', DeepKVs, DeepWarn} ->
+            JObj1 = kz_json:expand(kz_json:from_list(DeepKVs)),
+            {Index+1, [JObj1 | Acc], [{<<ArrayPath/binary, Path/binary>>, Msg} || {Path, Msg} <- DeepWarn] ++ Warn, Err};
+        {'error', DeepWarn, DeepErr} ->
+            NewWarn = [{<<ArrayPath/binary, Path/binary>>, Msg} || {Path, Msg} <- DeepWarn] ++ Warn,
+            NewErr = [{<<ArrayPath/binary, Path/binary>>, Msg} || {Path, Msg} <- DeepErr] ++ Err,
+            {Index+1, [JObj | Acc], NewWarn, NewErr}
+    end.
 
 -spec join_oas3_path_reverse(kz_term:ne_binaries()) -> kz_term:ne_binary().
 join_oas3_path_reverse([]) ->
@@ -587,8 +655,34 @@ return_error_on_error(_, Warn, Err) ->
 
 -spec ret_unsupported_key(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
 ret_unsupported_key(KVs, Key, ReverseP, Warn, Err) ->
-    Msg = io_lib:format("unsupported keyword '~s'.", [Key]),
-    return_error_on_error(KVs, [{join_oas3_path_reverse(ReverseP), iolist_to_binary(Msg)} | Warn], Err).
+    Msg = <<"unsupported keyword.">>,
+    return_error_on_error(KVs, [{join_oas3_path_reverse([Key | ReverseP]), Msg} | Warn], Err).
+
+to_oas3_type(OrigP, [P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    case oas3_type_type(ReverseP, Val, OrigKVs) of
+        'array' ->
+            Msg = <<"the value must be a single type and not an array of types.">>,
+            {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+        'binary' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+        'missing_items' ->
+            Msg = <<"'items' must be present if type is array.">>,
+            {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+        'null' ->
+            Msg = <<"converting type 'null' to '\"nullable\": true'.">>,
+            to_oas3_schema(OrigP, Ps, [<<"nullable">> | ReverseP], 'true', KVs, OrigKVs, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Warn], Err);
+        'null_in_array' ->
+            Msg = <<"type has 'null', adding '\"nullable\": true' instead.">>,
+            Nullable = {lists:reverse([<<"nullable">> | ReverseP]), 'true'},
+            [Type] = [T || T <- Val,
+                           T =/= 'null',
+                           T =/= <<"null">>
+                     ],
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Type, [Nullable | KVs ], OrigKVs, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Warn], Err);
+        'undefined' ->
+            Msg = iolist_to_binary(io_lib:format("invalid type '~p'.", [Val])),
+            {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]}
+    end.
 
 -spec oas3_type_type(kz_term:ne_binaries(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) ->
                             'array' |
@@ -597,16 +691,6 @@ ret_unsupported_key(KVs, Key, ReverseP, Warn, Err) ->
                             'null' |
                             'null_in_array' |
                             'undefined'.
-oas3_type_type(Path, <<"array">>, KVs) ->
-    RenameFun = fun(<<"x-patternProperties">>, Acc) -> [<<"patternProperties">> | Acc];
-                   (Other, Acc) -> [Other | Acc]
-                end,
-    PartialItemsPath = lists:foldl(RenameFun, [], [<<"items">> | Path]),
-    Fun = fun(Elem) -> lists:prefix(PartialItemsPath, Elem) end,
-    case lists:any(Fun, [P || {P, _} <- KVs]) of
-        'true' -> 'binary';
-        'false' -> 'missing_items'
-    end;
 oas3_type_type(Path, Value, KVs) when is_list(Value) ->
     HasArray = lists:member(<<"array">>, Value),
     case lists:any(fun(Null) -> lists:member(Null, Value) end, ['null', <<"null">>])
@@ -620,11 +704,29 @@ oas3_type_type(Path, Value, KVs) when is_list(Value) ->
         'true' -> 'null_in_array';
         'false' -> 'array'
     end;
-oas3_type_type(_Path, <<"null">>, _KVs) ->
-    'null';
+oas3_type_type(Path, <<"array">>, KVs) ->
+    RenameFun = fun(<<"x-patternProperties">>, Acc) -> [<<"patternProperties">> | Acc];
+                   (Other, Acc) -> [Other | Acc]
+                end,
+    PartialItemsPath = lists:foldl(RenameFun, [], [<<"items">> | Path]),
+    Fun = fun(Elem) -> lists:prefix(PartialItemsPath, Elem) end,
+    case lists:any(Fun, [P || {P, _} <- KVs]) of
+        'true' -> 'binary';
+        'false' -> 'missing_items'
+    end;
 oas3_type_type(_Path, 'null', _KVs) ->
     'null';
-oas3_type_type(_Path, ?NE_BINARY = _Value, _KVs) ->
+oas3_type_type(_Path, <<"boolean">>, _KVs) ->
+    'binary';
+oas3_type_type(_Path, <<"integer">>, _KVs) ->
+    'binary';
+oas3_type_type(_Path, <<"null">>, _KVs) ->
+    'null';
+oas3_type_type(_Path, <<"number">>, _KVs) ->
+    'binary';
+oas3_type_type(_Path, <<"object">>, _KVs) ->
+    'binary';
+oas3_type_type(_Path, <<"string">>, _KVs) ->
     'binary';
 oas3_type_type(_Path, _Value, _KVs) ->
     'undefined'.
