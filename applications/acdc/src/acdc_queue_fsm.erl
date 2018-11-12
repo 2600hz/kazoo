@@ -898,7 +898,7 @@ maybe_pick_winner(#state{connect_resps=CRs
                                                                                    ]),
                                               acdc_queue_listener:member_connect_win(Srv, NewAgent, QueueOpts),
                                               [NewAgent|Wins] end,
-                                              [], Winners),
+                                      [], Winners),
 
             {'connecting', State#state{connect_resps=Rest
                                       ,connect_wins=ConnectWins
