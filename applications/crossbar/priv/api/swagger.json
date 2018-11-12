@@ -6729,7 +6729,7 @@
             "description": "AMQP API for acdc_queue.member_connect_satisfied",
             "properties": {
                 "Agent-Process-IDs": {
-                    "type": "string"
+                    "type": "array"
                 },
                 "Call": {
                     "type": "object"
