@@ -43,7 +43,10 @@ most_recent_status(AccountId, AgentId) ->
     case most_recent_ets_status(AccountId, AgentId) of
         {'ok', _}=OK -> OK;
         {'error', _ErrJObj} ->
-            lager:debug("failed to get ETS stats: ~p", [kz_json:get_value(<<"Error-Reason">>, _ErrJObj)]),
+            case kz_json:is_valid_json_object(_ErrJObj) of
+                true  -> lager:debug("failed to get ETS stats: ~p", [kz_json:get_value(<<"Error-Reason">>, _ErrJObj)]);
+                false -> lager:debug("failed to get ETS stats: ~p", [_ErrJObj])
+            end,
             most_recent_db_status(AccountId, AgentId)
     end.
 

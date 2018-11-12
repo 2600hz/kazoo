@@ -58,6 +58,7 @@
 -record(state, {queue_proc :: pid()
                ,manager_proc :: pid()
                ,connect_resps = [] :: kz_json:objects()
+               ,connect_wins = [] :: kz_json:objects()
                ,collect_ref :: kz_term:api_reference()
                ,account_id :: kz_term:ne_binary()
                ,account_db :: kz_term:ne_binary()
@@ -69,9 +70,9 @@
 
                ,member_call :: kapps_call:call() | 'undefined'
                ,member_call_start :: kz_term:api_non_neg_integer()
-               ,member_call_winner :: kz_term:api_object() %% who won the call
+               ,member_call_winners :: [kz_term:api_object()] %% who won the call
 
-                                      %% Config options
+                                       %% Config options
                ,name :: kz_term:ne_binary()
                ,connection_timeout :: pos_integer()
                ,agent_ring_timeout = 10 :: pos_integer() % how long to ring an agent before giving up
@@ -217,6 +218,7 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
            ,recording_url = kz_json:get_ne_value(<<"call_recording_url">>, QueueJObj)
            ,cdr_url = kz_json:get_ne_value(<<"cdr_url">>, QueueJObj)
            ,member_call = 'undefined'
+           ,member_call_winners = []
 
            ,notifications = kz_json:get_value(<<"notifications">>, QueueJObj)
            }
@@ -281,9 +283,7 @@ ready({'call', From}, 'status', #state{cdr_url=Url
 ready({'call', From}, 'current_call', State) ->
     {'next_state', 'ready', State, {'reply', From, 'undefined'}};
 ready({'call', From}, Event, State) ->
-    handle_sync_event(Event, From, ready, State);
-ready('info', {'timeout', _, ?COLLECT_RESP_MESSAGE}, State) ->
-    {'next_state', 'ready', State}.
+    handle_sync_event(Event, From, ready, State).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -451,6 +451,7 @@ connecting('cast', {'accepted', AcceptJObj}, #state{queue_proc=Srv
                                                    ,member_call=Call
                                                    ,account_id=AccountId
                                                    ,queue_id=QueueId
+                                                   ,connect_wins=Wins
                                                    }=State) ->
     case accept_is_for_call(AcceptJObj, Call) of
         'true' ->
@@ -458,6 +459,7 @@ connecting('cast', {'accepted', AcceptJObj}, #state{queue_proc=Srv
             CallId = kapps_call:call_id(Call),
             webseq:evt(?WSD_ID, self(), CallId, <<"member call - agent acceptance">>),
 
+            lists:foreach(fun(Win) -> acdc_queue_listener:member_connect_satisfied(Srv, Win, []) end, Wins),
             acdc_queue_listener:finish_member_call(Srv, AcceptJObj),
             acdc_stats:call_handled(AccountId, QueueId, CallId
                                    ,kz_json:get_value(<<"Agent-ID">>, AcceptJObj)
@@ -470,7 +472,7 @@ connecting('cast', {'accepted', AcceptJObj}, #state{queue_proc=Srv
 
 connecting('cast', {'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
                                                ,collect_ref=CollectRef
-                                               ,member_call_winner=Winner
+                                               ,member_call_winners=[Winner|[]]
                                                }=State) ->
     RetryProcId = kz_json:get_value(<<"Process-ID">>, RetryJObj),
     RetryAgentId = kz_json:get_value(<<"Agent-ID">>, RetryJObj),
@@ -488,7 +490,7 @@ connecting('cast', {'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
             webseq:evt(?WSD_ID, webseq:process_pid(RetryJObj), self(), <<"member call - retry">>),
 
             {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'
-                                                     ,member_call_winner='undefined'
+                                                     ,member_call_winners=[]
                                                      ,collect_ref='undefined'
                                                      }};
         {RetryAgentId, _OtherProcId} ->
@@ -498,6 +500,12 @@ connecting('cast', {'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
             lager:debug("recv retry from unknown agent ~s(~s)", [RetryAgentId, RetryProcId]),
             {'next_state', 'connecting', State}
     end;
+connecting('cast', {'retry', RetryJObj}, #state{member_call_winners=Winners}=State) ->
+    RetryAgentId = kz_json:get_value(<<"Agent-ID">>, RetryJObj),
+    RetryProcId = kz_json:get_value(<<"Process-ID">>, RetryJObj),
+    lager:info("~p told to retry but we have other winners", [RetryAgentId]),
+    {_Loser, Rest} = lists:partition(fun(Winner) -> {kz_json:get_value(<<"Agent-ID">>, Winner), kz_json:get_value(<<"Process-ID">>, Winner)} == {RetryAgentId, RetryProcId} end, Winners),
+    {'next_state', 'connecting', State#state{member_call_winners=Rest}};
 
 connecting('cast', {'member_hungup', CallEvt}, #state{queue_proc=Srv
                                                      ,account_id=AccountId
@@ -573,7 +581,7 @@ connecting({'call', From}, Event, State) ->
     handle_sync_event(Event, From, connecting, State);
 
 connecting('info', {'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef
-                                                                             ,member_call_winner=Winner
+                                                                             ,member_call_winners=[Winner|[]]
                                                                              ,queue_proc=Srv
                                                                              }=State) ->
     lager:debug("timed out waiting for agent to pick up"),
@@ -583,8 +591,12 @@ connecting('info', {'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{ag
     acdc_queue_listener:timeout_agent(Srv, Winner),
 
     {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'
-                                             ,member_call_winner='undefined'
+                                             ,member_call_winners=[]
                                              }};
+connecting('info', {'timeout', _AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{member_call_winners=[_Winner|Winners]}=State)->
+                                                % TODO: we should detect who told timeout and remove him
+                                                % I remove the first (but this is not the right way)
+    {'next_state', 'connect_req', State#state{member_call_winners=Winners}};
 connecting('info', {'timeout', _OtherAgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=_AgentRef}=State) ->
     lager:debug("unknown agent ref: ~p known: ~p", [_OtherAgentRef, _AgentRef]),
     {'next_state', 'connect_req', State};
@@ -593,11 +605,11 @@ connecting('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{que
                                                                             ,account_id=AccountId
                                                                             ,queue_id=QueueId
                                                                             ,member_call=Call
-                                                                            ,member_call_winner=Winner
+                                                                            ,member_call_winners=Winners
                                                                             }=State) ->
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
 
-    maybe_timeout_winner(Srv, Winner),
+    lists:foreach(fun(Winner) -> maybe_timeout_winner(Srv, Winner) end, Winners),
     CallId = kapps_call:call_id(Call),
     acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
 
@@ -710,7 +722,7 @@ clear_member_call(#state{connection_timer_ref=ConnRef
                ,connection_timer_ref='undefined'
                ,agent_ring_timer_ref='undefined'
                ,member_call_start='undefined'
-               ,member_call_winner='undefined'
+               ,member_call_winners=[]
                }.
 
 update_properties(QueueJObj, State) ->
@@ -832,9 +844,10 @@ maybe_delay_connect_re_req(MgrSrv, ListenerSrv, #state{member_call=Call}=State) 
 accept_is_for_call(AcceptJObj, Call) ->
     kz_json:get_value(<<"Call-ID">>, AcceptJObj) =:= kapps_call:call_id(Call).
 
--spec update_agent(kz_json:object(), kz_json:object()) -> kz_json:object().
-update_agent(Agent, Winner) ->
-    kz_json:set_value(<<"Agent-Process-ID">>, kz_json:get_value(<<"Process-ID">>, Winner), Agent).
+-spec update_agent(kz_json:object(), kz_json:objects()) -> kz_json:object().
+update_agent(Agent, Winners) ->
+    AgentProcessIDs = [ProcessId || Winner <- Winners, ProcessId <- [kz_json:get_ne_binary_value(<<"Process-ID">>, Winner)], ProcessId =/= 'undefined'],
+    kz_json:set_value(<<"Agent-Process-IDs">>, AgentProcessIDs, Agent).
 
 -spec handle_agent_responses(state()) -> {atom(), state()}.
 handle_agent_responses(#state{collect_ref=Ref
@@ -868,7 +881,7 @@ maybe_pick_winner(#state{connect_resps=CRs
                         ,notifications=Notifications
                         }=State) ->
     case acdc_queue_manager:pick_winner(Mgr, CRs) of
-        {[Winner|_]=Agents, Rest} ->
+        {Winners, Rest} ->
             QueueOpts = [{<<"Ring-Timeout">>, RingTimeout}
                         ,{<<"Wrapup-Timeout">>, AgentWrapup}
                         ,{<<"Caller-Exit-Key">>, CallerExitKey}
@@ -878,17 +891,20 @@ maybe_pick_winner(#state{connect_resps=CRs
                         ,{<<"Notifications">>, Notifications}
                         ],
 
-            _ = [acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), QueueOpts)
-                 || Agent <- Agents
-                ],
+            ConnectWins = lists:foldl(fun(Winner, Wins) ->
+                                              NewAgent = update_agent(Winner, Winners),
+                                              lager:debug("sending win to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner)
+                                                                                   ,kz_json:get_value(<<"Process-ID">>, Winner)
+                                                                                   ]),
+                                              acdc_queue_listener:member_connect_win(Srv, NewAgent, QueueOpts),
+                                              [NewAgent|Wins] end,
+                                      [], Winners),
 
-            lager:debug("sending win to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner)
-                                                 ,kz_json:get_value(<<"Process-ID">>, Winner)
-                                                 ]),
             {'connecting', State#state{connect_resps=Rest
+                                      ,connect_wins=ConnectWins
                                       ,collect_ref='undefined'
                                       ,agent_ring_timer_ref=start_agent_ring_timer(RingTimeout)
-                                      ,member_call_winner=Winner
+                                      ,member_call_winners=Winners
                                       }};
         'undefined' ->
             lager:debug("no more responses to choose from"),

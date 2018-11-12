@@ -6507,8 +6507,8 @@
         "kapi.acdc_queue.agent_timeout": {
             "description": "AMQP API for acdc_queue.agent_timeout",
             "properties": {
-                "Agent-Process-ID": {
-                    "type": "string"
+                "Agent-Process-IDs": {
+                    "type": "array"
                 },
                 "Call-ID": {
                     "type": "string"
@@ -6811,11 +6811,45 @@
             ],
             "type": "object"
         },
+        "kapi.acdc_queue.member_connect_satisfied": {
+            "description": "AMQP API for acdc_queue.member_connect_satisfied",
+            "properties": {
+                "Agent-Process-IDs": {
+                    "type": "array"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "member"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "connect_satisfied"
+                    ],
+                    "type": "string"
+                },
+                "Process-ID": {
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call",
+                "Queue-ID"
+            ],
+            "type": "object"
+        },
         "kapi.acdc_queue.member_connect_win": {
             "description": "AMQP API for acdc_queue.member_connect_win",
             "properties": {
-                "Agent-Process-ID": {
-                    "type": "string"
+                "Agent-Process-IDs": {
+                    "type": "array"
                 },
                 "CDR-Url": {
                     "type": "string"

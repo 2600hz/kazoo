@@ -1,24 +1,27 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.acdc_queue.agent_timeout",
-    "description": "AMQP API for acdc_queue.agent_timeout",
+    "_id": "kapi.acdc_queue.member_connect_satisfied",
+    "description": "AMQP API for acdc_queue.member_connect_satisfied",
     "properties": {
         "Agent-Process-IDs": {
             "type": "array"
         },
-        "Call-ID": {
-            "type": "string"
+        "Call": {
+            "type": "object"
         },
         "Event-Category": {
             "enum": [
-                "agent"
+                "member"
             ],
             "type": "string"
         },
         "Event-Name": {
             "enum": [
-                "connect_timeout"
+                "connect_satisfied"
             ],
+            "type": "string"
+        },
+        "Process-ID": {
             "type": "string"
         },
         "Queue-ID": {
@@ -26,7 +29,7 @@
         }
     },
     "required": [
-        "Call-ID",
+        "Call",
         "Queue-ID"
     ],
     "type": "object"
