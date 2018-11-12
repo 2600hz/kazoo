@@ -634,7 +634,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
     end;
 ready('cast', {'member_connect_satisfied', _}, State) ->
     lager:info("unexpected connect_satisfied"),
-   {'next_state', 'ready', State};
+    {'next_state', 'ready', State};
 ready('cast', {'member_connect_req', _}, #state{max_connect_failures=Max
                                                ,connect_failures=Fails
                                                ,account_id=AccountId
@@ -714,29 +714,29 @@ ringing('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListene
 
     {'next_state', 'ringing', State};
 ringing('cast', {'member_connect_satisfied', JObj}, #state{agent_listener=AgentListener
-                                                         ,member_call_id=MemberCallId
-                                                         ,account_id=AccountId
-                                                         ,member_call_queue_id=QueueId
-                                                         ,agent_id=AgentId
-                                                         ,connect_failures=Fails
-                                                         ,max_connect_failures=MaxFails
-                                                         }=State) ->
+                                                          ,member_call_id=MemberCallId
+                                                          ,account_id=AccountId
+                                                          ,member_call_queue_id=QueueId
+                                                          ,agent_id=AgentId
+                                                          ,connect_failures=Fails
+                                                          ,max_connect_failures=MaxFails
+                                                          }=State) ->
     lager:info("Received connect_satisfied: check if I should hangup: ~p", [JObj]),
     CallId = kz_json:get_ne_binary_value([<<"Call">>, <<"Call-ID">>], JObj, []),
     case CallId =:= MemberCallId of
-       true ->
-           lager:info("Hanging up: someother agent replies"),
-           acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
-           acdc_stats:call_missed(AccountId, QueueId, AgentId, MemberCallId, <<"LOSE_RACE">>),
-           acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
+        true ->
+            lager:info("Hanging up: someother agent replies"),
+            acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
+            acdc_stats:call_missed(AccountId, QueueId, AgentId, MemberCallId, <<"LOSE_RACE">>),
+            acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
-           State1 = clear_call(State, 'failed'),
-           StateName1 = return_to_state(Fails+1, MaxFails),
-           case StateName1 of
-               'paused' -> {'next_state', 'paused', State1};
-               'ready' -> apply_state_updates(State1)
-           end;
-       _ -> {'next_state', 'ringing', State}
+            State1 = clear_call(State, 'failed'),
+            StateName1 = return_to_state(Fails+1, MaxFails),
+            case StateName1 of
+                'paused' -> {'next_state', 'paused', State1};
+                'ready' -> apply_state_updates(State1)
+            end;
+        _ -> {'next_state', 'ringing', State}
     end;
 ringing('cast', {'originate_ready', JObj}, #state{agent_listener=AgentListener}=State) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),

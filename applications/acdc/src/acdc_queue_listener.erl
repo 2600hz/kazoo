@@ -321,10 +321,10 @@ handle_cast({'member_connect_win', RespJObj, QueueOpts}, #state{my_q=MyQ
     send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts),
     {'noreply', State#state{agent_id=kz_json:get_value(<<"Agent-ID">>, RespJObj)}, 'hibernate'};
 handle_cast({'member_connect_satisfied', RespJObj, QueueOpts}, #state{my_q=MyQ
-                                                                    ,my_id=MyId
-                                                                    ,call=Call
-                                                                    ,queue_id=QueueId
-                                                                    }=State) ->
+                                                                     ,my_id=MyId
+                                                                     ,call=Call
+                                                                     ,queue_id=QueueId
+                                                                     }=State) ->
     lager:debug("agent process satisfied the connect, sending the satisfied"),
     send_member_connect_satisfied(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts),
     {'noreply', State, 'hibernate'};
@@ -559,12 +559,12 @@ send_member_connect_satisfied(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
     CallJSON = kapps_call:to_json(Call),
     Q = kz_json:get_value(<<"Server-ID">>, RespJObj),
     Satisfied = props:filter_undefined(
-           [{<<"Call">>, CallJSON}
-           ,{<<"Process-ID">>, MyId}
-           ,{<<"Agent-Process-IDs">>, kz_json:get_list_value(<<"Agent-Process-IDs">>, RespJObj)}
-           ,{<<"Queue-ID">>, QueueId}
-            | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
-           ]),
+                  [{<<"Call">>, CallJSON}
+                  ,{<<"Process-ID">>, MyId}
+                  ,{<<"Agent-Process-IDs">>, kz_json:get_list_value(<<"Agent-Process-IDs">>, RespJObj)}
+                  ,{<<"Queue-ID">>, QueueId}
+                   | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+                  ]),
     publish(Q, Satisfied, fun kapi_acdc_queue:publish_member_connect_satisfied/2).
 
 -spec send_agent_timeout(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.

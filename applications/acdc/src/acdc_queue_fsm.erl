@@ -72,7 +72,7 @@
                ,member_call_start :: kz_term:api_non_neg_integer()
                ,member_call_winners :: [kz_term:api_object()] %% who won the call
 
-                                      %% Config options
+                                       %% Config options
                ,name :: kz_term:ne_binary()
                ,connection_timeout :: pos_integer()
                ,agent_ring_timeout = 10 :: pos_integer() % how long to ring an agent before giving up
@@ -594,8 +594,8 @@ connecting('info', {'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{ag
                                              ,member_call_winners=[]
                                              }};
 connecting('info', {'timeout', _AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{member_call_winners=[_Winner|Winners]}=State)->
-    % TODO: we should detect who told timeout and remove him
-    % I remove the first (but this is not the right way)
+                                                % TODO: we should detect who told timeout and remove him
+                                                % I remove the first (but this is not the right way)
     {'next_state', 'connect_req', State#state{member_call_winners=Winners}};
 connecting('info', {'timeout', _OtherAgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=_AgentRef}=State) ->
     lager:debug("unknown agent ref: ~p known: ~p", [_OtherAgentRef, _AgentRef]),
@@ -892,13 +892,13 @@ maybe_pick_winner(#state{connect_resps=CRs
                         ],
 
             ConnectWins = lists:foldl(fun(Winner, Wins) ->
-                                          NewAgent = update_agent(Winner, Winners),
-                                          lager:debug("sending win to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner)
-                                                                               ,kz_json:get_value(<<"Process-ID">>, Winner)
-                                                                               ]),
-                                          acdc_queue_listener:member_connect_win(Srv, NewAgent, QueueOpts),
-                                          [NewAgent|Wins] end,
-                                          [], Winners),
+                                              NewAgent = update_agent(Winner, Winners),
+                                              lager:debug("sending win to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner)
+                                                                                   ,kz_json:get_value(<<"Process-ID">>, Winner)
+                                                                                   ]),
+                                              acdc_queue_listener:member_connect_win(Srv, NewAgent, QueueOpts),
+                                              [NewAgent|Wins] end,
+                                              [], Winners),
 
             {'connecting', State#state{connect_resps=Rest
                                       ,connect_wins=ConnectWins

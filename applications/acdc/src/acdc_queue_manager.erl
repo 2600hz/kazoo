@@ -776,8 +776,8 @@ add_agent('mi', AgentId, #strategy_state{agents=AgentL
                      ,details=incr_agent(AgentId, Details)
                      };
 add_agent('all', AgentId, #strategy_state{agents=AgentQueue
-                                        ,details=Details
-                                        }=SS) ->
+                                         ,details=Details
+                                         }=SS) ->
     SS#strategy_state{agents=queue:in(AgentId, AgentQueue)
                      ,details=incr_agent(AgentId, Details)
                      }.
@@ -809,8 +809,8 @@ remove_agent('mi', AgentId, #strategy_state{agents=AgentL
                              }
     end;
 remove_agent('all', AgentId, #strategy_state{agents=AgentQueue
-                                           ,details=Details
-                                           }=SS) ->
+                                            ,details=Details
+                                            }=SS) ->
     case dict:find(AgentId, Details) of
         {'ok', {Count, _}} when Count > 1 ->
             SS#strategy_state{details=decr_agent(AgentId, Details)};
