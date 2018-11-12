@@ -1050,7 +1050,9 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Prev} -> {'ok', 'prev'};
         {'ok', Next} -> {'ok', 'next'};
         {'error', _}=E -> E;
-        _ -> message_menu(Box, Call)
+        _ ->
+            kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+            message_menu(Box, Call)
     end.
 
 %%------------------------------------------------------------------------------
