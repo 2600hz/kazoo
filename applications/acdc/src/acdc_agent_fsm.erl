@@ -16,6 +16,7 @@
         ,call_event/4
         ,member_connect_req/2
         ,member_connect_win/2
+        ,member_connect_satisfied/2
         ,agent_timeout/2
         ,originate_ready/2
         ,originate_resp/2, originate_started/2, originate_uuid/2
@@ -142,6 +143,10 @@ member_connect_req(ServerRef, JObj) ->
 -spec member_connect_win(pid(), kz_json:object()) -> 'ok'.
 member_connect_win(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'member_connect_win', JObj}).
+
+-spec member_connect_satisfied(pid(), kz_json:object()) -> 'ok'.
+member_connect_satisfied(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'member_connect_satisfied', JObj}).
 
 -spec agent_timeout(pid(), kz_json:object()) -> 'ok'.
 agent_timeout(ServerRef, JObj) ->
@@ -580,8 +585,8 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
     CDRUrl = cdr_url(JObj),
     RecordingUrl = recording_url(JObj),
 
-    case kz_json:get_value(<<"Agent-Process-ID">>, JObj) of
-        MyId ->
+    case lists:member(MyId, kz_json:get_list_value(<<"Agent-Process-IDs">>, JObj, [])) of
+        true ->
             lager:debug("trying to ring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
             case get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) of
@@ -614,7 +619,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
                                                          ,queue_notifications=kz_json:get_value(<<"Notifications">>, JObj)
                                                          }}
             end;
-        _OtherId ->
+        _ ->
             lager:debug("monitoring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
             acdc_agent_listener:monitor_call(AgentListener, Call, CDRUrl, RecordingUrl),
@@ -627,6 +632,9 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
                                                  ,agent_call_id='undefined'
                                                  }}
     end;
+ready('cast', {'member_connect_satisfied', _}, State) ->
+    lager:info("unexpected connect_satisfied"),
+   {'next_state', 'ready', State};
 ready('cast', {'member_connect_req', _}, #state{max_connect_failures=Max
                                                ,connect_failures=Fails
                                                ,account_id=AccountId
@@ -705,6 +713,31 @@ ringing('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListene
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'ringing', State};
+ringing('cast', {'member_connect_satisfied', JObj}, #state{agent_listener=AgentListener
+                                                         ,member_call_id=MemberCallId
+                                                         ,account_id=AccountId
+                                                         ,member_call_queue_id=QueueId
+                                                         ,agent_id=AgentId
+                                                         ,connect_failures=Fails
+                                                         ,max_connect_failures=MaxFails
+                                                         }=State) ->
+    lager:info("Received connect_satisfied: check if I should hangup: ~p", [JObj]),
+    CallId = kz_json:get_ne_binary_value([<<"Call">>, <<"Call-ID">>], JObj, []),
+    case CallId =:= MemberCallId of
+       true ->
+           lager:info("Hanging up: someother agent replies"),
+           acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
+           acdc_stats:call_missed(AccountId, QueueId, AgentId, MemberCallId, <<"LOSE_RACE">>),
+           acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
+
+           State1 = clear_call(State, 'failed'),
+           StateName1 = return_to_state(Fails+1, MaxFails),
+           case StateName1 of
+               'paused' -> {'next_state', 'paused', State1};
+               'ready' -> apply_state_updates(State1)
+           end;
+       _ -> {'next_state', 'ringing', State}
+    end;
 ringing('cast', {'originate_ready', JObj}, #state{agent_listener=AgentListener}=State) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
 
@@ -968,6 +1001,9 @@ answered('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListen
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'answered', State};
+answered('cast', {'member_connect_satisfied', _}, State) ->
+    lager:info("unexpected connect_satisfied"),
+    {'next_state', 'answered', State};
 answered('cast', {'dialplan_error', _App}, #state{agent_listener=AgentListener
                                                  ,account_id=AccountId
                                                  ,agent_id=AgentId
@@ -1147,6 +1183,9 @@ wrapup('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'wrapup', State#state{wrapup_timeout=0}};
+wrapup('cast', {'member_connect_satisfied', _}, State) ->
+    lager:info("unexpected connect_satisfied"),
+    {'next_state', 'wrapup', State};
 wrapup('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
                                          ,wrapup_ref=Ref
                                          }=State) ->
@@ -1213,6 +1252,9 @@ paused('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'paused', State};
+paused('cast', {'member_connect_satisfied', _}, State) ->
+    lager:info("unexpected connect_satisfied"),
+    {'next_state', 'paused', State};
 paused('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("ignoring an outbound call that is the result of a failed originate"),
     acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
@@ -1259,6 +1301,9 @@ outbound('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListen
     lager:debug("agent won, but can't process this right now (on outbound call)"),
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
     {'next_state', 'outbound', State};
+outbound('cast', {'member_connect_satisfied', _}, State) ->
+    lager:info("unexpected connect_satisfied"),
+    {'next_state', 'wrapup', State};
 outbound('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("ignoring an outbound call that is the result of a failed originate"),
     acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),

@@ -3,8 +3,8 @@
     "_id": "kapi.acdc_queue.agent_timeout",
     "description": "AMQP API for acdc_queue.agent_timeout",
     "properties": {
-        "Agent-Process-ID": {
-            "type": "string"
+        "Agent-Process-IDs": {
+            "type": "array"
         },
         "Call-ID": {
             "type": "string"

@@ -285,6 +285,9 @@ handle_member_message(JObj, Props, <<"connect_req">>) ->
 handle_member_message(JObj, Props, <<"connect_win">>) ->
     'true' = kapi_acdc_queue:member_connect_win_v(JObj),
     acdc_agent_fsm:member_connect_win(props:get_value('fsm_pid', Props), JObj);
+handle_member_message(JObj, Props, <<"connect_satisfied">>) ->
+    'true' = kapi_acdc_queue:member_connect_satisfied_v(JObj),
+    acdc_agent_fsm:member_connect_satisfied(props:get_value('fsm_pid', Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
 

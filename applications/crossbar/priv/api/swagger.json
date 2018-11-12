@@ -6421,8 +6421,8 @@
         "kapi.acdc_queue.agent_timeout": {
             "description": "AMQP API for acdc_queue.agent_timeout",
             "properties": {
-                "Agent-Process-ID": {
-                    "type": "string"
+                "Agent-Process-IDs": {
+                    "type": "array"
                 },
                 "Call-ID": {
                     "type": "string"
@@ -6728,8 +6728,8 @@
         "kapi.acdc_queue.member_connect_win": {
             "description": "AMQP API for acdc_queue.member_connect_win",
             "properties": {
-                "Agent-Process-ID": {
-                    "type": "string"
+                "Agent-Process-IDs": {
+                    "type": "array"
                 },
                 "CDR-Url": {
                     "type": "string"
