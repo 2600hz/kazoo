@@ -53,8 +53,16 @@
        ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
        ).
 
--define(OAS_3_JSON_FILE
+-define(OAS3_JSON_FILE
        ,filename:join([code:priv_dir('crossbar'), "oas3", "openapi.json"])
+       ).
+
+-define(OAS3_SCHEMAS_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-schemas.json"])
+       ).
+
+-define(OAS3_PARAMETERS_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-parameters.json"])
        ).
 
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
@@ -290,36 +298,40 @@ generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion) ->
                        ]
                       ,BaseSwagger
                       );
-generate_oas_paths_json(_, <<"oas3">>) ->
-    kz_json:new().
-%% generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
-%%     BaseOas = read_swagger_json(?OAS_3_JSON_FILE),
-%%     OasPaths = kz_json:get_value(<<"paths">>, BaseOas),
-%%
-%%     kz_json:set_values([{<<"paths">>, to_oas_paths(Paths, OasPaths)}
-%%                        ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
-%%                        ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
-%%                        ,{<<"host">>, <<"localhost:8000">>}
-%%                        ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
-%%                        ,{<<"swagger">>, <<"2.0">>}
-%%                        ,{<<"info">>, ?SWAGGER_INFO}
-%%                        ,{<<"consumes">>, [<<"application/json">>]}
-%%                        ,{<<"produces">>, [<<"application/json">>]}
-%%                        ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
-%%                        ]
-%%                       ,BaseOas
-%%                       ).
+generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
+     BaseOas = read_swagger_json(?OAS3_JSON_FILE),
+     OasPaths = to_oas3_paths(Paths),
+     'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(kz_json:recursive_to_proplist(to_swagger_parameters(kz_json:get_keys(OasPaths))))),
+     'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(kz_json:recursive_to_proplist(to_swagger_definitions(OasVersion)))),
+
+     PathNames = lists:usort(
+                   kz_json:foldl(fun(Path, PathMeta, Acc) ->
+                                         [{Path, kz_json:get_value(<<"pathname">>, PathMeta)}|Acc]
+                                 end
+                                ,[]
+                                ,Paths
+                                )
+                  ),
+
+     kz_json:set_values([{[<<"components">>, <<"parameters">>, <<"$ref">>], <<(?OAS3_PARAMETERS_FILE)/binary>>}
+                        ,{[<<"components">>, <<"schemas">>, <<"$ref">>], <<(?OAS3_SCHEMAS_FILE)/binary>>}
+                         | [{[<<"paths">>, Path, <<"$ref">>], <<"paths/", Name/binary, ".yml">>}
+                            || {Path, Name} <- PathNames
+                           ]
+                        ]
+                       ,BaseOas
+                       ).
 
 -spec write_swagger_json(kz_json:object() | kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
 write_swagger_json(Swaggers, <<"oas_two_and_three">>) ->
     Swagger2 = kz_json:get_json_value(<<"swagger2">>, Swaggers),
     Oas3 = kz_json:get_json_value(<<"oas3">>, Swaggers),
     'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2)),
-    'ok' = file:write_file(?OAS_3_JSON_FILE, kz_json:encode(Oas3));
+    'ok' = file:write_file(?OAS3_JSON_FILE, kz_json:encode(Oas3));
 write_swagger_json(Swagger2, <<"swagger2">>) ->
     'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2));
 write_swagger_json(Oas3, <<"oas3">>) ->
-    'ok' = file:write_file(?OAS_3_JSON_FILE, kz_json:encode(Oas3)).
+    'ok' = file:write_file(?OAS3_JSON_FILE, kz_json:encode(Oas3)).
 
 
 -spec to_swagger_definitions(kz_term:ne_binary()) -> kz_json:object().
@@ -745,6 +757,9 @@ read_swagger_json(SwaggerFile) ->
         {'error', 'enoent'} -> kz_json:new()
     end.
 
+to_oas3_paths(_Paths) ->
+    kz_json:new().
+
 -spec to_swagger_paths(kz_json:object(), kz_json:object()) -> kz_json:object().
 to_swagger_paths(Paths, BasePaths) ->
     Endpoints =
@@ -883,6 +898,7 @@ format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
     Values = props:filter_undefined(
                [{[PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
+               ,{[PathName, <<"pathname">>], PathName}
                ,maybe_include_schema(PathName, Module)
                ]),
     kz_json:set_values(Values, Acc).

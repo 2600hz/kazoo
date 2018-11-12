@@ -34,6 +34,7 @@ DEPS = amqp_client \
 	reloader \
 	syslog \
 	trie \
+	yamerl \
 	zucchini
 
 # BUILD_DEPS = parse_trans
@@ -168,6 +169,9 @@ dep_trie = hex 1.7.5
 
 # dep_wsock = git https://github.com/madtrick/wsock 1.1.7
 # appears unused
+
+dep_yamerl = git https://github.com/yakaz/yamerl 4e5a54a5a4a0cd9dc8ee30c8356642e9a2c3a443
+# used by kazoo_ast to create OpenAPI 3
 
 dep_zucchini = hex 0.1.0
 # INI file parser
