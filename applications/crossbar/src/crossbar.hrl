@@ -183,6 +183,8 @@
                     ,magic_pathed = 'false' :: boolean()
                     ,should_paginate :: kz_term:api_boolean()
                     ,host_url = <<>> :: binary()
+                    ,is_superduper_admin = 'undefined' :: kz_term:api_boolean()
+                    ,is_account_admin = 'undefined' :: kz_term:api_boolean()
                     }).
 
 -define(MAX_RANGE, kapps_config:get_pos_integer(?CONFIG_CAT

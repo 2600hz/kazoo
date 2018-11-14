@@ -161,7 +161,8 @@ early_authenticate_token(_Context, 'undefined') -> 'true'.
 
 -spec check_auth_token(cb_context:context(), kz_term:api_binary(), boolean()) ->
                               boolean() |
-                              {'true', cb_context:context()}.
+                              {'true', cb_context:context()} |
+                              {'stop', cb_context:context()}.
 check_auth_token(_Context, <<>>, MagicPathed) ->
     lager:info("empty auth token - magic path'd: ~p", [MagicPathed]),
     MagicPathed;
@@ -173,16 +174,17 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
 
 -spec validate_auth_token(cb_context:context(), kz_term:ne_binary()) ->
                                  boolean() |
-                                 {'true', cb_context:context()}.
+                                 {'true', cb_context:context()} |
+                                 {'stop', cb_context:context()}.
 validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
     Options = [{<<"account_id">>, cb_context:req_header(Context, <<"x-auth-account-id">>)}],
     lager:debug("checking auth token"),
     case crossbar_auth:validate_auth_token(AuthToken, props:filter_undefined(Options)) of
         {'ok', JObj} ->
             is_account_expired(Context, JObj);
-        {'error', <<"token expired">>} ->
+        {'error', Error} when Error =:= 'token_expired'
+                              orelse Error =:= <<"token expired">> ->
             lager:info("provided auth token has expired"),
-
             {'stop', crossbar_util:response_401(Context)};
         {'error', 'not_found'} ->
             lager:info("provided auth token was not found"),
@@ -194,6 +196,7 @@ validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
 
 -spec is_account_expired(cb_context:context(), kz_json:object()) ->
                                 boolean() |
+                                {'true', cb_context:context()} |
                                 {'stop', cb_context:context()}.
 is_account_expired(Context, JObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, JObj),
@@ -254,9 +257,20 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
 
 -spec set_auth_doc(cb_context:context(), kz_json:object()) -> cb_context:context().
 set_auth_doc(Context, JObj) ->
+    AuthAccountId = kz_json:get_ne_binary_value(<<"account_id">>, JObj),
+    OwnerId = kz_json:get_ne_binary_value(<<"ownerid">>, JObj),
     cb_context:setters(Context
                       ,[{fun cb_context:set_auth_doc/2, JObj}
-                       ,{fun cb_context:set_auth_account_id/2
-                        ,kz_json:get_ne_binary_value(<<"account_id">>, JObj)
-                        }
+                       ,{fun cb_context:set_auth_account_id/2, AuthAccountId}
+                        | maybe_add_is_admins(AuthAccountId, OwnerId)
                        ]).
+
+-spec maybe_add_is_admins(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> cb_context:setters().
+maybe_add_is_admins(?NE_BINARY = AuthAccountId, ?NE_BINARY = OwnerId) ->
+    [{fun cb_context:set_is_superduper_admin/2, cb_context:is_superduper_admin(AuthAccountId)}
+    ,{fun cb_context:set_is_account_admin/2, cb_context:is_account_admin(AuthAccountId, OwnerId)}
+    ];
+maybe_add_is_admins(?NE_BINARY = AuthAccountId, 'undefined') ->
+    [{fun cb_context:set_is_superduper_admin/2, cb_context:is_superduper_admin(AuthAccountId)}];
+maybe_add_is_admins(_, _) ->
+    [].

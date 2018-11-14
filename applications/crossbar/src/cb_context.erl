@@ -23,8 +23,9 @@
 
         ,is_authenticated/1
 
-        ,is_superduper_admin/1
-        ,is_account_admin/1
+        ,is_superduper_admin/1, set_is_superduper_admin/2
+        ,is_account_admin/1, is_account_admin/2
+        ,set_is_account_admin/2
 
         ,system_error/2
 
@@ -234,7 +235,7 @@ is_authenticated(#cb_context{}) -> 'true'.
 -spec is_superduper_admin(kz_term:api_ne_binary() | context()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
-    lager:debug("checking for superduper admin: ~s", [AccountId]),
+    lager:debug("checking if the requester is superduper admin: ~s", [AccountId]),
     case kzd_accounts:is_superduper_admin(AccountId) of
         'true' ->
             lager:debug("the requestor is a superduper admin"),
@@ -243,20 +244,41 @@ is_superduper_admin(AccountId=?NE_BINARY) ->
             lager:debug("the requestor is not a superduper admin"),
             'false'
     end;
+is_superduper_admin(#cb_context{is_superduper_admin=Bol}) when is_boolean(Bol) ->
+    Bol;
 is_superduper_admin(Context) ->
-    is_superduper_admin(auth_account_id(Context)).
+    case fetch(Context, 'is_superduper_admin') of
+        Bol when is_boolean(Bol) -> Bol;
+        _ -> is_superduper_admin(auth_account_id(Context))
+    end.
 
 -spec is_account_admin(context()) -> boolean().
+is_account_admin(#cb_context{is_account_admin=Bol}) when is_boolean(Bol) ->
+    Bol;
 is_account_admin(Context) ->
-    AuthAccountId = auth_account_id(Context),
-    AuthUserId = auth_user_id(Context),
+    case fetch(Context, 'is_account_admin') of
+        Bol when is_boolean(Bol) -> Bol;
+        _ ->
+            AuthAccountId = auth_account_id(Context),
+            AuthUserId = auth_user_id(Context),
+            is_account_admin(AuthAccountId, AuthUserId)
+    end.
+
+-spec is_account_admin(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> boolean().
+is_account_admin('undefined', _) ->
+    lager:debug("auth account is undefined, ignoring checking account admin..."),
+    'false';
+is_account_admin(_, 'undefined') ->
+    lager:debug("auth user id is undefined, ignoring checking account admin..."),
+    'false';
+is_account_admin(AuthAccountId, AuthUserId) ->
     lager:debug("checking if user ~s is account admin of ~s", [AuthAccountId, AuthUserId]),
     case kzd_users:is_account_admin(AuthAccountId, AuthUserId) of
         'true' ->
             lager:debug("the requestor is an account admin"),
             'true';
         'false' ->
-            lager:debug("the requestor is an superduper admin"),
+            lager:debug("the requestor is not an account admin"),
             'false'
     end.
 
@@ -510,6 +532,14 @@ set_auth_doc(#cb_context{}=Context, AuthDoc) ->
 -spec set_auth_account_id(context(), kz_term:ne_binary()) -> context().
 set_auth_account_id(#cb_context{}=Context, AuthBy) ->
     Context#cb_context{auth_account_id=AuthBy}.
+
+-spec set_is_superduper_admin(context(), boolean()) -> context().
+set_is_superduper_admin(#cb_context{}=Context, Boolean) when is_boolean(Boolean) ->
+    Context#cb_context{is_superduper_admin=Boolean}.
+
+-spec set_is_account_admin(context(), boolean()) -> context().
+set_is_account_admin(#cb_context{}=Context, Boolean) when is_boolean(Boolean) ->
+    Context#cb_context{is_account_admin=Boolean}.
 
 -spec set_req_verb(context(), http_method()) -> context().
 set_req_verb(#cb_context{}=Context, ReqVerb) ->
