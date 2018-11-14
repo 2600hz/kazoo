@@ -393,7 +393,7 @@ handle_phonebook_response(Context, Response) ->
     Data = kz_json:get_value(<<"data">>, Response),
     Comments = kz_json:get_list_value(<<"comments">>, Data, []),
     {NewContext, NewData} = maybe_phonebook_comments(Context, Data, Comments),
-    NewDoc = kz_json:merge(cb_context:doc(Context), NewData),
+    NewDoc = kz_json:merge([cb_context:doc(Context), NewData]),
     cb_context:set_doc(NewContext, NewDoc).
 
 -spec maybe_phonebook_comments(cb_context:context(), kz_json:object(), kz_json:objects()) -> {cb_context:context(), kz_json:object()}.
