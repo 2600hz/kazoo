@@ -246,6 +246,7 @@ create(Context) ->
     Doc1 = kz_json:set_value(?COMMENTS, Comments ++ NewComments, Doc),
     maybe_save(Context, Doc1, NewComments, cb_context:fetch(Context, 'resource')).
 
+-spec maybe_save(cb_context:context(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 maybe_save(Context, Doc, Comments, {<<"port_requests">>, _}) ->
     case phonebook:maybe_add_comment(Context, Comments) of
         {'ok', _} ->
