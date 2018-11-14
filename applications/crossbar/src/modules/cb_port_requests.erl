@@ -254,7 +254,7 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 -spec validate(cb_context:context()) ->
                       cb_context:context().
 validate(Context) ->
-    validate_port_requests(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    validate_port_requests(superduper(Context), cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) ->
                       cb_context:context().
@@ -364,17 +364,10 @@ patch(Context, Id) ->
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
     case phonebook:maybe_create_port_in(Context) of
-        'disabled' ->
+        {'ok', 'disabled'} ->
             save_then_maybe_notify(Context, Id, NewState);
-        'ok' ->
-            Context1 = crossbar_doc:load(Id, Context),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    Context2 = maybe_move_state(Context1, NewState),
-                    save_then_maybe_notify(Context2, Id, NewState);
-                Error ->
-                    cb_context:add_system_error('datastore_fault', Error, Context1)
-            end;
+        {'ok', Response} ->
+            handle_phonebook_response(Context, Response);
         {'error', Reason} ->
             cb_context:add_system_error('datastore_fault', Reason, Context)
     end;
@@ -388,7 +381,29 @@ patch(Context, Id, NewState=?PORT_COMPLETED) ->
 patch(Context, Id, NewState=?PORT_REJECTED) ->
     save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_CANCELED) ->
-    save_then_maybe_notify(Context, Id, NewState).
+    case phonebook:maybe_cancel_port_in(Context) of
+        {'ok', _} ->
+            save_then_maybe_notify(Context, Id, NewState);
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to cancel port request from carrier">>, Context)
+    end.
+
+-spec handle_phonebook_response(cb_context:context(), kz_json:object()) -> cb_context:context().
+handle_phonebook_response(Context, Response) ->
+    Data = kz_json:get_value(<<"data">>, Response),
+    Comments = kz_json:get_list_value(<<"comments">>, Data, []),
+    {NewContext, NewData} = maybe_phonebook_comments(Context, Data, Comments),
+    NewDoc = kz_json:merge(cb_context:doc(Context), NewData),
+    cb_context:set_doc(NewContext, NewDoc).
+
+-spec maybe_phonebook_comments(cb_context:context(), kz_json:object(), kz_json:objects()) -> {cb_context:context(), kz_json:object()}.
+maybe_phonebook_comments(Context, Data, []) ->
+    {Context, Data};
+maybe_phonebook_comments(Context, Data, Comments) ->
+    Doc = cb_context:doc(Context),
+    CurrentComments = kz_json:get_value(<<"comments">>, Doc, []),
+    Doc1 = kz_json:set_value(<<"comments">>, CurrentComments ++ Comments, Doc),
+    {cb_context:set_doc(Context, Doc1), kz_json:delete_key(<<"comments">>, Data)}.
 
 -spec save_then_maybe_notify(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 save_then_maybe_notify(Context, PortId, NewState) ->
@@ -437,14 +452,50 @@ date_as_configured_timezone(Date, Time, FromTimezone) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, Id) ->
+    maybe_post_save(Context, Id, maybe_new_comments(Context)).
+
+-spec maybe_post_save(cb_context:context(), kz_term:ne_binary(), kz_json:objects()) -> cb_context:context().
+maybe_post_save(Context, _, []) ->
     Context1 = save(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            _ = maybe_send_port_comment_notification(Context1, Id),
-            Doc = cb_context:doc(Context1),
-            cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
-        _Status ->
-            Context1
+    Doc = cb_context:doc(Context1),
+    cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
+maybe_post_save(Context, Id, Comments) ->
+    case phonebook:maybe_add_comment(Context, Comments) of
+        {'ok', _} ->
+            Context1 = save(Context),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    Doc = cb_context:doc(Context1),
+                    _ = try_sending_comment_notifications(Context, Id, Comments),
+                    cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
+                _ ->
+                    Context1
+            end;
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
+    end.
+
+-spec maybe_new_comments(cb_context:context()) -> kz_json:objects().
+maybe_new_comments(Context) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    ReqData = cb_context:req_data(Context),
+    DbDocComments = kz_json:get_list_value(<<"comments">>, DbDoc, []),
+    ReqDataComments = kz_json:get_list_value(<<"comments">>, ReqData, []),
+    ReqDataComments -- DbDocComments.
+
+-spec try_sending_comment_notifications(cb_context:context(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+try_sending_comment_notifications(_, _, []) -> 'ok';
+try_sending_comment_notifications(Context, Id, [Comment|Comments]) ->
+    try_sending_comment_notification(Context, Id, Comment),
+    try_sending_comment_notifications(Context, Id, Comments).
+
+-spec try_sending_comment_notification(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+try_sending_comment_notification(Context, Id, Comment) ->
+    try send_port_comment_notification(Context, Id, Comment) of
+        _ -> lager:debug("port comment notification sent")
+    catch
+        _E:_R ->
+            lager:error("failed to send the port comment notification: ~s:~p", [_E, _R])
     end.
 
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
@@ -469,8 +520,7 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 -spec delete(cb_context:context(), path_token()) ->
                     cb_context:context().
 delete(Context, _Id) ->
-    Context2 = crossbar_doc:delete(Context),
-    phonebook:maybe_cancel_port_in(Context2).
+    crossbar_doc:delete(Context).
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
                     cb_context:context().
@@ -1194,40 +1244,6 @@ find_template(ResellerId, CarrierName) ->
         {'error', _} -> find_template(ResellerId, 'undefined');
         {'ok', Template} -> Template
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_send_port_comment_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
-maybe_send_port_comment_notification(Context, Id) ->
-    DbDoc = cb_context:fetch(Context, 'db_doc'),
-    ReqData = cb_context:req_data(Context),
-    DbDocComments = kz_json:get_list_value(<<"comments">>, DbDoc, []),
-    ReqDataComments = kz_json:get_list_value(<<"comments">>, ReqData, []),
-    case has_new_comment(DbDocComments, ReqDataComments) of
-        'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
-        'true' ->
-            _ = phonebook:maybe_add_comment(Context, lists:last(ReqDataComments)),
-            try send_port_comment_notification(Context, Id, lists:last(ReqDataComments)) of
-                _ -> lager:debug("port comment notification sent")
-            catch
-                _E:_R ->
-                    lager:error("failed to send the port comment notification: ~s:~p", [_E, _R])
-            end
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec has_new_comment(kz_term:api_objects(), kz_term:api_objects()) -> boolean().
-has_new_comment([], [_|_]) -> 'true';
-has_new_comment(_, []) -> 'false';
-has_new_comment(OldComments, NewComments) ->
-    OldTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(OldComments)),
-    NewTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(NewComments)),
-    OldTime < NewTime.
 
 %%------------------------------------------------------------------------------
 %% @doc

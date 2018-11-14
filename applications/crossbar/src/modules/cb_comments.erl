@@ -244,7 +244,17 @@ create(Context) ->
     NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
 
     Doc1 = kz_json:set_value(?COMMENTS, Comments ++ NewComments, Doc),
-    crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
+    maybe_save(Context, Doc1, NewComments, cb_context:fetch(Context, 'resource')).
+
+maybe_save(Context, Doc, Comments, {<<"port_requests">>, _}) ->
+    case phonebook:maybe_add_comment(Context, Comments) of
+        {'ok', _} ->
+            crossbar_doc:save(cb_context:set_doc(Context, Doc));
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
+    end;
+maybe_save(Context, Doc, _, _) ->
+    crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -265,7 +275,7 @@ update(Context, Id) ->
                          ,lists:append([Head1, [Comment], Tail])
                          ,Doc
                          ),
-    crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
+    maybe_save(Context, Doc1, lists:flatten([Comment]), cb_context:fetch(Context, 'resource')).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -400,5 +410,4 @@ send_port_comment_notification(Context, PortReqId) ->
     lager:debug("sending port request notification for new comment by user ~s in account ~s"
                ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)]
                ),
-    _ = phonebook:maybe_add_comment(Context, Comment),
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).
