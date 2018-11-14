@@ -99,14 +99,14 @@ add_comment(JObj, AuthToken, Comment) ->
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"comment">>, Url).
 
--spec cancel_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
-cancel_port_in(JObj, AuthToken) ->
-    AccountId = kz_doc:account_id(JObj),
-    PortId = kz_doc:id(JObj),
-    Url = phonebook_uri([<<"accounts">>, AccountId, <<"ports">>, <<"in">>, PortId]),
-    lager:debug("accounts delete via ~s", [Url]),
-    Response = kz_http:delete(Url, req_headers(AuthToken)),
-    handle_resp(Response, JObj, <<"cancel">>, Url).
+%% -spec cancel_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
+%% -ancel_port_in(JObj, AuthToken) ->
+%% -   AccountId = kz_doc:account_id(JObj),
+%% -   PortId = kz_doc:id(JObj),
+%% -   Url = phonebook_uri([<<"accounts">>, AccountId, <<"ports">>, <<"in">>, PortId]),
+%% -   lager:debug("accounts delete via ~s", [Url]),
+%% -   Response = kz_http:delete(Url, req_headers(AuthToken)),
+%% -   handle_resp(Response, JObj, <<"cancel">>, Url).
 
 -spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), string()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
 handle_resp({'ok', 200, _, Resp}, _, _, _) ->
