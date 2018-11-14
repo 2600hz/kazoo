@@ -1189,7 +1189,7 @@ webhook_disabled_definition() ->
 cf_notification_definition() ->
     #kapi_definition{name = <<"cf_notification">>
                     ,friendly_name = <<"Customer defined notification">>
-                    ,description = <<"This event is triggered when an cutomer want send own notification, as example from callflow">>
+                    ,description = <<"This event is triggered when an customer want send own notification, as example from callflow">>
                     ,build_fun = fun cf_notification/1
                     ,validate_fun = fun cf_notification_v/1
                     ,publish_fun = fun publish_cf_notification/1

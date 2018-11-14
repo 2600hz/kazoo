@@ -172,7 +172,7 @@ render(TemplateId, Macros, DataJObj, 'false') ->
 render(TemplateId, Macros, DataJObj, 'true') ->
     preview(TemplateId, Macros, DataJObj).
 
--spec templates_source(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_term:api_binary().
+-spec templates_source(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_term:api_binary() | 'not_found'.
 templates_source(_TemplateId, 'undefined') ->
     lager:warning("no account id for template ~s, no template to process", [_TemplateId]),
     'undefined';
@@ -611,7 +611,7 @@ update_attachment(Contents, {IsUpdated, TemplateJObj}=Acc, ContentType, Id, ANam
 update_macros(Macros, Acc) ->
     kz_json:foldl(fun update_macro/3, Acc, Macros).
 
--spec update_macro(kz_json:path(), kz_json:json_term(), update_acc()) ->
+-spec update_macro(kz_json:key(), kz_json:json_term(), update_acc()) ->
                           update_acc().
 update_macro(MacroKey, MacroValue, {_IsUpdated, TemplateJObj}=Acc) ->
     case kz_notification:macro(TemplateJObj, MacroKey) of

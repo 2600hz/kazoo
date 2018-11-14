@@ -2622,7 +2622,7 @@
                     "items": {
                         "properties": {
                             "id": {
-                                "description": "The email address/user ID or the list of email addresses/user IDs based on sepecified type",
+                                "description": "The email address/user ID or the list of email addresses/user IDs based on specified type",
                                 "type": [
                                     "string",
                                     "array"
@@ -2647,7 +2647,7 @@
                 },
                 "send_at": {
                     "default": "channel_destroy",
-                    "description": "Defines when send customer defined notification. For `callflow_exec` value notifications is send during calllfow execution. For `channel_destroy` value notification is send after channel(bridge) is destroed",
+                    "description": "Defines when send customer defined notification. For `callflow_exec` value notifications is send during callflow execution. For `channel_destroy` value notification is send after channel(bridge) is destroyed",
                     "enum": [
                         "callflow_exec",
                         "channel_destroy"

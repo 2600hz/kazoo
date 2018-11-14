@@ -48,7 +48,7 @@ handle_req(JObj, 'true') ->
                 'true' -> process_req(DataJObj, TemplateId)
             end;
         _Resseler ->
-            lager:warning("template notification '~s' is defined in resseler account and cannot be used", [TemplateId]),
+            lager:warning("template notification '~s' is defined in reseller account and cannot be used", [TemplateId]),
             teletype_util:notification_failed(<<"cf_notification">>, <<"validation_failed">>)
     end.
 

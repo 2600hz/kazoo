@@ -6,7 +6,7 @@
 %%% <dl>
 %%%   <dt>`send_at'</dt>
 %%%   <dd>Defines when send customer defined notification. Possible values `callflow_exec' and `channel_destroy'.
-%%%   For `callflow_exec' value notifications is send during calllfow execution.
+%%%   For `callflow_exec' value notifications is send during callflow execution.
 %%%   For `channel_destroy' value notification is send after channel(bridge) is destroed.</dd>
 %%%
 %%%   <dt>`template_id'</dt>
@@ -59,56 +59,66 @@ handle(Data, Call) ->
 -spec add_handler(kz_json:object(), kapps_call:call()) -> 'ok'.
 add_handler(Data, Call) -> cf_exe:add_termination_handler(Call, {?MODULE, 'send_notification', [Data]}).
 
--spec send_notification(kapps_call:call(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec send_notification(kapps_call:call(), kz_json:json_term(), kz_json:object()) -> 'ok'.
 send_notification(Call, Notify, Data) ->
-    case kz_json:get_value(<<"template_id">>, Data) of
-        'undefined' -> lager:debug("Template_ID is not defined, ignoring");
-        TemplateID ->
-            lager:debug("trying to send customer defined notification \"~s\" for call-id ~s", [TemplateID, kapps_call:call_id_direct(Call)]),
-            Emails = find_email_addresses(Call, kz_json:get_value(<<"recipients">>, Data, [])),
-            Comments = kz_json:get_value(<<"comments">>, Data),
-            NotificationMedia = kz_json:get_value(<<"notification_media">>, Data),
-            Props = props:filter_undefined(
-                      [{<<"From-User">>, kapps_call:from_user(Call)}
-                      ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
-                      ,{<<"To-User">>, kapps_call:to_user(Call)}
-                      ,{<<"To-Realm">>, kapps_call:to_realm(Call)}
-                      ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-                      ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-                      ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-                      ,{<<"Timestamp">>, kz_time:now_s()}
-                      ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
-                      ,{<<"Notify">>, Notify}
-                      ,{<<"Call-Bridged">>, kapps_call:call_bridged(Call)}
-                      ,{<<"Message-Left">>, kapps_call:message_left(Call)}
-                      ,{<<"Template-ID">>, TemplateID}
-                      ,{<<"To">>, Emails}
-                      ,{<<"Comments">>, Comments}
-                      ,{<<"Notification-Media">>, NotificationMedia}
-                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                      ]
-                     ),
-            kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_cf_notification/1)
-    end.
+    send_notification(Call, Notify, Data
+                     ,kz_json:get_ne_binary_value(<<"template_id">>, Data)
+                     ).
+
+send_notification(_Call, _Notify, _Data, 'undefined') ->
+    lager:info("template id not defined, not sending notification");
+send_notification(Call, Notify, Data, TemplateId) ->
+    lager:debug("sending notification '~s'", [TemplateId]),
+    Emails = find_email_addresses(Call, kz_json:get_list_value(<<"recipients">>, Data, [])),
+    Comments = kz_json:get_value(<<"comments">>, Data),
+    NotificationMedia = kz_json:get_value(<<"notification_media">>, Data),
+
+    Props = props:filter_undefined(
+              [{<<"Account-ID">>, kapps_call:account_id(Call)}
+              ,{<<"Call-Bridged">>, kapps_call:call_bridged(Call)}
+              ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
+              ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+              ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+              ,{<<"Comments">>, Comments}
+              ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
+              ,{<<"From-User">>, kapps_call:from_user(Call)}
+              ,{<<"Message-Left">>, kapps_call:message_left(Call)}
+              ,{<<"Notification-Media">>, NotificationMedia}
+              ,{<<"Notify">>, Notify}
+              ,{<<"Template-ID">>, TemplateId}
+              ,{<<"Timestamp">>, kz_time:now_s()}
+              ,{<<"To">>, Emails}
+              ,{<<"To-Realm">>, kapps_call:to_realm(Call)}
+              ,{<<"To-User">>, kapps_call:to_user(Call)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ]
+             ),
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_cf_notification/1).
 
 %%------------------------------------------------------------------------------
 %% @doc Try to find email addressed using module's data object
 %% @end
 %%------------------------------------------------------------------------------
--spec find_email_addresses(kapps_call:call(), kz_json:objects()) -> kz_term:ne_binaries().
+-spec find_email_addresses(kapps_call:call(), kz_json:objects()) -> kz_term:api_ne_binaries().
 find_email_addresses(Call, Recipients) ->
-    AccountDb = kz_util:format_account_db(kapps_call:account_id(Call)),
-    Emails = lists:flatten(
-               [Emails
-                || JObj <- Recipients,
-                   Emails <- find_email_addresses_by_type(AccountDb, JObj, kz_json:get_ne_binary_value(<<"type">>, JObj)),
-                   kz_term:is_not_empty(Emails)
-               ]
-              ),
-    case Emails of
+    AccountDb = kapps_call:account_db(Call),
+    case find_recipient_addresses(AccountDb, Recipients) of
         [] -> 'undefined';
-        _ -> Emails
+        Emails -> Emails
     end.
+
+-spec find_recipient_addresses(kz_term:ne_binary(), kz_json:objects()) -> kz_term:ne_binaries().
+find_recipient_addresses(AccountDb, Recipients) ->
+    lists:foldl(fun(Recipient, Acc) ->
+                        find_email_addresses_by_type(AccountDb, Recipient) ++ Acc
+                end
+               ,[]
+               ,Recipients
+               ).
+
+-spec recipient_type(kz_json:object()) -> kz_term:api_ne_binary().
+recipient_type(JObj) ->
+    kz_json:get_ne_binary_value(<<"type">>, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc Possible values for recipient type can be:
@@ -117,12 +127,16 @@ find_email_addresses(Call, Recipients) ->
 %%              addresses from
 %% @end
 %%------------------------------------------------------------------------------
--spec find_email_addresses_by_type(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) -> kz_term:ne_binaries().
-find_email_addresses_by_type(AccountDb, JObj, <<"email">>) ->
-    get_email_addresses(AccountDb, kz_json:get_value(<<"id">>, JObj));
-find_email_addresses_by_type(AccountDb, JObj, <<"user">>) ->
-    find_users_addresses(AccountDb, kz_json:get_value(<<"id">>, JObj));
-find_email_addresses_by_type(_AccountDb, _JObj, _) ->
+-spec find_email_addresses_by_type(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binaries().
+find_email_addresses_by_type(AccountDb, Recipient) ->
+    find_email_addresses_by_type(AccountDb, Recipient, recipient_type(Recipient)).
+
+-spec find_email_addresses_by_type(kz_term:ne_binary(), kz_json:object(), kz_term:api_ne_binary()) -> kz_term:ne_binaries().
+find_email_addresses_by_type(AccountDb, Recipient, <<"email">>) ->
+    get_email_addresses(AccountDb, kz_json:get_value(<<"id">>, Recipient));
+find_email_addresses_by_type(AccountDb, Recipient, <<"user">>) ->
+    find_users_addresses(AccountDb, kz_json:get_value(<<"id">>, Recipient));
+find_email_addresses_by_type(_AccountDb, _Recipient, _) ->
     [].
 
 %%------------------------------------------------------------------------------
@@ -152,19 +166,23 @@ bulk_read_emails(AccountDb, Ids) ->
     case kz_datamgr:open_docs(AccountDb, Ids) of
         {'ok', JObjs} ->
             [Email
-             || J <- JObjs,
-                _LogMe <- [kz_term:is_not_empty(kz_json:get_value(<<"error">>, J))
-                           andalso lager:debug("failed to open ~p in db ~s: ~p"
-                                              ,[kz_json:get_value(<<"key">>, J)
-                                               ,AccountDb
-                                               ,kz_json:get_value(<<"error">>, J)
-                                               ]
-                                              )
-                          ],
-                Email <- [kzd_user:email(kz_json:get_value(<<"doc">>, J))],
+             || JObj <- JObjs,
+                is_successful_read(JObj),
+                Email <- [kzd_users:email(kz_json:get_json_value(<<"doc">>, JObj))],
                 kz_term:is_not_empty(Email)
             ];
         {'error', _R} ->
             lager:debug("failed to read users email address: ~p", [_R]),
             []
+    end.
+
+-spec is_successful_read(kz_json:object()) -> boolean().
+is_successful_read(JObj) ->
+    case kz_json:get_value(<<"error">>, JObj) of
+        'undefined' -> 'true';
+        _Error ->
+            lager:debug("failed to open ~p: ~p"
+                       ,[kz_json:get_value(<<"key">>, JObj), _Error]
+                       ),
+            'false'
     end.

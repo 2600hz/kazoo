@@ -73,6 +73,7 @@ durations duration
 ommitable Omittable
 quanties quantities
 ov of
+parrent parent
 attemping attempting
 unassign unassigned
 ftom from
@@ -126,8 +127,8 @@ carier carrier
 bigcouch's BigCouch
 informat information
 excute execute
-month-es months
 monthes months
+month-es months
 prolist proplist
 multipe multiple
 mailboxs mailboxes

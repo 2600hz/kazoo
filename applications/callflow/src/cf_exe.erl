@@ -67,6 +67,9 @@
 -type callfow_status() :: 'init' | 'running' | 'not_running'.
 -export_type([callfow_status/0]).
 
+-type termination_handler() :: {module(), atom(), list()}.
+-type termination_handlers() :: [termination_handler()].
+
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                ,flow = kz_json:new() :: kz_json:object()
                ,flows = [] :: kz_json:objects()
@@ -78,7 +81,7 @@
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
                ,branch_count = ?MAX_BRANCH_COUNT :: non_neg_integer()
-               ,termination_handlers = [] :: list()
+               ,termination_handlers = [] :: termination_handlers()
                }).
 -type state() :: #state{}.
 
@@ -168,13 +171,13 @@ add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
 add_event_listener(Call, {_,_}=SpawnInfo) ->
     add_event_listener(kapps_call:kvs_fetch('consumer_pid', Call), SpawnInfo).
 
--spec add_termination_handler(kapps_call:call() | pid(), {atom(), atom(), list()}) -> 'ok'.
+-spec add_termination_handler(kapps_call:call() | pid(), termination_handler()) -> 'ok'.
 add_termination_handler(Srv, {_,_,_}=Handler) when is_pid(Srv) ->
     gen_listener:call(Srv, {'add_termination_handler', Handler});
 add_termination_handler(Call, {_,_,_}=Handler) ->
     add_termination_handler(kapps_call:kvs_fetch('consumer_pid', Call), Handler).
 
--spec remove_termination_handler(kapps_call:call() | pid(), {atom(), atom(), list()}) -> 'ok'.
+-spec remove_termination_handler(kapps_call:call() | pid(), termination_handler()) -> 'ok'.
 remove_termination_handler(Srv, {_,_,_}=Handler) when is_pid(Srv) ->
     gen_listener:call(Srv, {'remove_termination_handler', Handler});
 remove_termination_handler(Call, {_,_,_}=Handler) ->
@@ -396,9 +399,15 @@ handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
 handle_call({'amqp_call', API, PubFun, VerifyFun}, _From, #state{queue=Q}=State) ->
     Reply = amqp_call_message(API, PubFun, VerifyFun, Q),
     {'reply', Reply, State};
-handle_call({'add_termination_handler', {_M, _F, _Args}=H},  _From, #state{termination_handlers=Handlers}=State) ->
+handle_call({'add_termination_handler', {_M, _F, _Args}=H}
+           ,_From
+           ,#state{termination_handlers=Handlers}=State
+           ) ->
     {'reply', 'ok', State#state{termination_handlers=lists:usort([H | Handlers])}};
-handle_call({'remove_termination_handler', {_M, _F, _Args}=H},  _From, #state{termination_handlers=Handlers}=State) ->
+handle_call({'remove_termination_handler', {_M, _F, _Args}=H}
+           ,_From
+           ,#state{termination_handlers=Handlers}=State
+           ) ->
     {'reply', 'ok', State#state{termination_handlers=lists:delete(H, Handlers)}};
 handle_call('status', _From, #state{status=Status}=State) ->
     {'reply', Status, State};
@@ -847,7 +856,7 @@ log_call_information(Call) ->
     end,
     lager:info("authorizing id ~s", [kapps_call:authorizing_id(Call)]).
 
--spec handle_channel_destroyed(pid(), kz_term:pids(), kz_json:object(), kapps_call:call(), list()) -> 'ok'.
+-spec handle_channel_destroyed(pid(), kz_term:pids(), kz_json:object(), kapps_call:call(), termination_handlers()) -> 'ok'.
 handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers) ->
     channel_destroyed(Self),
     relay_message(Notify, JObj),
@@ -904,7 +913,7 @@ relay_message(Notify, Message) ->
         ],
     'ok'.
 
--spec maybe_run_destory_handlers(kapps_call:call(), kz_json:object(), list()) -> 'ok'.
+-spec maybe_run_destory_handlers(kapps_call:call(), kz_json:object(), termination_handlers()) -> 'ok'.
 maybe_run_destory_handlers(Call, JObj, Handlers) ->
     _ = [erlang:apply(M, F, [Call, JObj | Args]) || {M, F, Args} <- Handlers],
     'ok'.
