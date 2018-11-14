@@ -55,7 +55,10 @@ run_compactor(Compactor) ->
             lager:info("compacting db '~s' on node '~s'"
                       ,[compactor_database(Compactor), compactor_node(Compactor)]
                       ),
-            run_compactor_job(Compactor, compactor_shards(Compactor))
+            run_compactor_job(Compactor, compactor_shards(Compactor)),
+            lager:info("finished compacting db '~s' on node '~s'"
+                      ,[compactor_database(Compactor), compactor_node(Compactor)]
+                      )
     end.
 
 -spec run_compactor_job(compactor(), kz_term:ne_binaries()) -> 'ok'.
@@ -78,8 +81,10 @@ run_compactor_job(Compactor, Shards) ->
 wait_for_shards([]) -> 'ok';
 wait_for_shards(PidRefs) ->
     MaxWait = ?MAX_WAIT_FOR_COMPACTION_PIDS,
+    lager:debug("Waiting max ~p ms before giving up waiting on shards", [MaxWait]),
     receive
         {'DOWN', Ref, 'process', Pid, _Reason} ->
+            lager:debug("Shard with Pid ~p and Ref ~p went down", [Pid, Ref]),
             wait_for_shards(PidRefs, {Pid, Ref})
     after MaxWait ->
             lager:error("timed out waiting for shards, moving on"),
@@ -103,13 +108,16 @@ compact_shards(Compactor) ->
 compact_shard(#compactor{shards=[Shard]}=Compactor) ->
     kz_util:put_callid(<<"compact_shard_", Shard/binary>>),
 
+    %% Make sure this shard is not already being compacted before start compacting it.
     wait_for_compaction(compactor_admin(Compactor), Shard),
 
     case get_db_disk_and_data(compactor_admin(Compactor), Shard) of
         'undefined' ->
             lager:info("beginning shard compaction"),
             start_compacting_shard(Compactor);
-        'not_found' -> 'ok';
+        'not_found' ->
+            lager:info("disk and data size not found, skip and return ok"),
+            'ok';
         {BeforeDisk, BeforeData} ->
             lager:info("beginning shard compaction: ~p disk/~p data", [BeforeDisk, BeforeData]),
             start_compacting_shard(Compactor)

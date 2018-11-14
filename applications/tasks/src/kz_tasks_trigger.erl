@@ -185,6 +185,8 @@ day_timer() ->
 browse_dbs_timer() ->
     Expiry = ?CLEANUP_TIMER,
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
+    %% We are using milliseconds here, that's why we multiply the given `Expiry'
+    %% seconds with the value of `?MILLISECONDS_IN_SECOND'.
     erlang:start_timer(Expiry * ?MILLISECONDS_IN_SECOND, self(), ok).
 
 
@@ -218,7 +220,16 @@ browse_dbs_for_triggers(Ref) ->
     {'ok', Dbs} = kz_datamgr:db_info(),
     Shuffled = kz_term:shuffle_list(Dbs),
     lager:debug("starting cleanup pass of databases"),
-    lists:foreach(fun cleanup_pass/1, Shuffled),
+    %%lists:foreach(fun cleanup_pass/1, Shuffled),
+    TotalDbs = length(Shuffled),
+    lager:debug("Shuffled list of dbs to be compacted (~p): ~p", [TotalDbs, Shuffled]),
+    F = fun(Db, Acc) ->
+            NewAcc = Acc+1,
+            lager:debug("Compacting ~p out of ~p dbs (~p remaining)", [NewAcc, TotalDbs, (TotalDbs - NewAcc)]),
+            cleanup_pass(Db),
+            NewAcc
+        end,
+    lists:foldl(F, 0, Shuffled),
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 

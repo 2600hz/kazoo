@@ -162,9 +162,17 @@ compact_db(Database) ->
 
 -spec print_csv(iolist()) -> 'ok'.
 print_csv(Rows) ->
-    io:format("~s~n", [kz_binary:join(?OUTPUT_HEADER)]),
-    [io:format("~s~n", [kz_binary:join(Row)]) || Row <- Rows],
+    log_and_print("~s~n", [kz_binary:join(?OUTPUT_HEADER)]),
+    [log_and_print("~s~n", [kz_binary:join(Row)]) || Row <- Rows],
     'ok'.
+
+-spec log_and_print(string(), [binary()]) -> 'ok'.
+log_and_print(FormatStr, Values) ->
+    %% For logs to keep a record of this output (helpful because it also saves the process
+    %% callid this log line belongs to).
+    lager:debug(FormatStr, Values),
+    %% For SUP commands to show output.
+    io:format(FormatStr, Values).
 
 -spec heuristic_from_flag(kz_term:api_ne_binary()) -> heuristic().
 heuristic_from_flag(Force) ->
