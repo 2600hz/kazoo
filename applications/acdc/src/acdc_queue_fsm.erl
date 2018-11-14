@@ -844,9 +844,9 @@ maybe_delay_connect_re_req(MgrSrv, ListenerSrv, #state{member_call=Call}=State) 
 accept_is_for_call(AcceptJObj, Call) ->
     kz_json:get_value(<<"Call-ID">>, AcceptJObj) =:= kapps_call:call_id(Call).
 
--spec update_agent(kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec update_agent(kz_json:object(), kz_json:objects()) -> kz_json:object().
 update_agent(Agent, Winners) ->
-    AgentProcessIDs = [kz_json:get_value(<<"Process-ID">>, Winner) || Winner <- Winners, kz_json:get_value(<<"Process-ID">>, Winner) /= 'undefined'],
+    AgentProcessIDs = [ProcessId || Winner <- Winners, ProcessId <- [kz_json:get_ne_binary_value(<<"Process-ID">>, Winner)], ProcessId =/= 'undefined'],
     kz_json:set_value(<<"Agent-Process-IDs">>, AgentProcessIDs, Agent).
 
 -spec handle_agent_responses(state()) -> {atom(), state()}.
