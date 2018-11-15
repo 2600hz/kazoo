@@ -100,6 +100,7 @@ account_properties(AutoGenSchema) ->
                    || {[P1, P2 | _]=Path, V} <- Flat,
                       ?SOURCE =:= lists:last(Path),
                       V =:= 'kapps_account_config'
+                          orelse V =:= <<"kapps_account_config">>
                   ]),
     kz_json:expand(
       kz_json:from_list(
