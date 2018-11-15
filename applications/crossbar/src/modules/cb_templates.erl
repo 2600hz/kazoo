@@ -233,7 +233,7 @@ import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
     end.
 
--spec import_template_doc(kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+-spec import_template_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 import_template_doc(Id, TemplateDb, AccountId, AccountDb, JObj) ->
     AttachmentNames = kz_doc:attachment_names(JObj),
     Updates = [{kz_doc:path_account_id(), AccountId}
