@@ -139,10 +139,10 @@ acquire_number(Number) ->
                                knm_number:knm_number().
 disconnect_number(Number) ->
     lager:debug("disconnecting number ~s"
-               ,[knm_phone_number:number(knm_number:phone_number(Number))]),
+               ,[knm_phone_number:number(knm_number:phone_number(Number))]
+               ),
     update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
-                       ,{?PVT_ASSIGNED_TO, null}
-                        %%                       ,{?PVT_ASSIGNED_TO, <<>>}
+                       ,{?PVT_ASSIGNED_TO, 'null'}
                        ]).
 
 -spec generate_numbers(kz_term:ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
@@ -180,6 +180,7 @@ save_doc(AccountId, Number) ->
                              ,{<<"pvt_account_id">>, AccountId}
                              ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
                              ,{?PVT_TYPE, <<"number">>}
+                             ,{<<"pvt_module_name">>, <<?MODULE_STRING>>}
                              ]),
     save_doc(JObj).
 

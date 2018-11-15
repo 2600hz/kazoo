@@ -126,8 +126,11 @@ convert_carrier_module(Source, Target, Prefix) ->
 convert_carrier_module_database(_, _, []) -> 'ok';
 convert_carrier_module_database(Source, Target, [Database|Databases]) ->
     io:format("attempt to convert numbers with carrier module ~s to ~s in database ~s~n"
-             ,[Source, Target, Database]),
-    ViewOptions = [{'reduce', 'false'}, {'key', Source}],
+             ,[Source, Target, Database]
+             ),
+    ViewOptions = [{'reduce', 'false'}
+                  ,{'key', Source}
+                  ],
     {'ok', JObjs} = kz_datamgr:get_results(Database, <<"numbers/module_name">>, ViewOptions),
     convert_carrier_module_numbers([kz_doc:id(JObj) || JObj <- JObjs], Target),
     convert_carrier_module_database(Source, Target, Databases).
