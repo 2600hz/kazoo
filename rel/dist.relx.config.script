@@ -1,5 +1,6 @@
 VSN = case os:getenv("KZ_VERSION") of
-          'false' -> os:cmd("echo -n $(scripts/next_version 2>/dev/null)");
+          'false' ->
+              [C || C <- os:cmd("scripts/next_version 2>/dev/null"), C =/= $\n];
           Version -> Version
       end,
 
