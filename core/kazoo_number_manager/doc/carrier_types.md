@@ -35,6 +35,14 @@ These numbers are expected to be added via `SUP` as available numbers that can o
 
 Primarily, this is used for testing or development.
 
+#### Example
+
+Generate 5 numbers, starting at 2223334000, for `{ACCOUNT_ID}`:
+
+```bash
+sup kazoo_number_manager_maintenance generate_numbers managed {ACCOUNT_ID} 2223334000 5
+```
+
 ### `knm_mdn`
 
 This module is responsible for numbers added for mobile services.
