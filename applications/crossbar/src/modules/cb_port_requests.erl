@@ -1249,7 +1249,7 @@ port_state_change_notify(Context, Id, ?PORT_CANCELED=State) ->
     port_state_change_notify(Context, Id, State, fun send_port_cancel_notification/2).
 
 -spec port_state_change_notify(cb_context:context(), path_token(), path_token(), function()) ->
-                                    cb_context:context().
+                                      cb_context:context().
 port_state_change_notify(Context, Id, State, Fun) ->
     try
         Fun(Context, Id),
@@ -1292,7 +1292,7 @@ has_new_comments(Context) ->
         [] -> [];
         Comments ->
             OldTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(Comments)),
-        [ Comment || Comment <-  ReqDataComments, kz_json:get_integer_value(<<"timestamp">>, Comment) > OldTime]
+            [ Comment || Comment <-  ReqDataComments, kz_json:get_integer_value(<<"timestamp">>, Comment) > OldTime]
     end.
 
 send_port_comment_notifications(Context, Id, Comments) ->
