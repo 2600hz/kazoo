@@ -239,10 +239,8 @@ read(Context, Id) ->
 create(Context) ->
     Doc = cb_context:doc(Context),
     Comments = kz_json:get_value(?COMMENTS, Doc, []),
-
     ReqData = cb_context:req_data(Context),
     NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
-
     Doc1 = kz_json:set_value(?COMMENTS, Comments ++ NewComments, Doc),
     maybe_save(Context, Doc1, NewComments, cb_context:fetch(Context, 'resource')).
 

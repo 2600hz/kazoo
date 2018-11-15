@@ -30,7 +30,7 @@ maybe_create_port_in(Context) ->
         'false' -> {'ok', 'disabled'}
     end.
 
--spec maybe_add_comment(cb_context:context(), kz_json:object()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
+-spec maybe_add_comment(cb_context:context(), kz_json:objects()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
 maybe_add_comment(Context, Comment) ->
     case should_send_to_phonebook(Context)
         andalso not req_from_phonebook(Context)
@@ -85,7 +85,8 @@ create_port_in(JObj, AuthToken) ->
     lager:debug("creating port in request to phonebook via ~s: ~p", [Url, Data]),
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"create">>, Url).
--spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
+
+-spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:objects()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
 add_comment(JObj, AuthToken, Comment) ->
     Url = phonebook_uri([<<"accounts">>
                         ,kz_doc:account_id(JObj)

@@ -359,7 +359,9 @@ patch(Context, Id) ->
 
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
-    case phonebook:maybe_create_port_in(Context) of
+    ReqResp =  phonebook:maybe_create_port_in(Context),
+    lager:debug("request response is ~p", ReqResp),
+    case ReqResp of
         {'ok', 'disabled'} ->
             save_then_maybe_notify(Context, Id, NewState);
         {'ok', Response} ->
@@ -1288,11 +1290,12 @@ has_new_comments(Context) ->
     ReqData = cb_context:req_data(Context),
     DbDocComments = kz_json:get_list_value(<<"comments">>, DbDoc, []),
     ReqDataComments = kz_json:get_list_value(<<"comments">>, ReqData, []),
-
-    DbComments = gb_sets:from_list(lists:usort([lists:usort(P) || P <- kz_json:recursive_to_proplist(DbDocComments)])),
-    ReqComments = gb_sets:from_list(lists:usort([lists:usort(P) || P <- kz_json:recursive_to_proplist(ReqDataComments)])),
-
-    [kz_json:from_list(P) || P <- gb_sets:to_list(gb_sets:difference(ReqComments, DbComments))].
+    case DbDocComments of
+        [] -> [];
+        Comments ->
+            OldTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(Comments)),
+        [ Comment || Comment <-  ReqDataComments, kz_json:get_integer_value(<<"timestamp">>, Comment) > OldTime]
+    end.
 
 send_port_comment_notifications(Context, Id, Comments) ->
     _ = lists:foldl(fun send_port_comment_notification/2, {Context, Id, length(Comments), 0}, Comments),
