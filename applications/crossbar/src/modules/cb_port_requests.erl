@@ -359,9 +359,7 @@ patch(Context, Id) ->
 
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
-    ReqResp =  phonebook:maybe_create_port_in(Context),
-    lager:debug("request response is ~p", ReqResp),
-    case ReqResp of
+    case phonebook:maybe_create_port_in(Context) of
         {'ok', 'disabled'} ->
             save_then_maybe_notify(Context, Id, NewState);
         {'ok', Response} ->
