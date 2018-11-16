@@ -42,7 +42,7 @@
                ,request_params :: kz_term:api_object()
                ,response_code :: kz_term:api_ne_binary()
                ,response_headers :: kz_term:binaries() | kz_term:api_ne_binary()
-               ,response_body = <<>> :: binary()
+               ,response_body = [] :: iodata()
                ,response_content_type :: kz_term:api_binary()
                ,response_pid :: kz_term:api_pid() %% pid of the processing of the response
                ,response_event_handlers = [] :: kz_term:pids()
@@ -192,7 +192,7 @@ handle_cast({'request', Uri, Method, Params}
             ,State#state{request_id=ReqId
                         ,request_params=Params
                         ,response_content_type = <<>>
-                        ,response_body = <<>>
+                        ,response_body = []
                         ,method=Method
                         ,voice_uri=Uri
                         ,call=Call2
@@ -282,25 +282,26 @@ handle_info({'http', {ReqId, {'error', Error}}}
            ,#state{request_id=ReqId
                   ,response_body=_RespBody
                   }=State) ->
-    lager:info("recv error ~p : collected: ~s", [Error, _RespBody]),
+    lager:info("recv error ~p : collected: ~s", [Error, lists:reverse(_RespBody)]),
     {'noreply', State};
 
 handle_info({'http', {ReqId, 'stream', Chunk}}
            ,#state{request_id=ReqId
                   ,response_body=RespBody
                   }=State) ->
-    lager:info("adding response chunk: '~s'", [Chunk]),
-    {'noreply', State#state{response_body = <<RespBody/binary, Chunk/binary>>}};
+    lager:info("adding response chunk: '~ts'", [Chunk]),
+
+    {'noreply', State#state{response_body = [Chunk | RespBody]}};
 
 handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
            ,#state{request_id=ReqId
-                  ,response_body=RespBody
+                  ,response_body=RevBody
                   ,call=Call
                   ,debug=Debug
                   ,requester_queue=RequesterQ
                   }=State) ->
     RespHeaders = normalize_resp_headers(FinalHeaders),
-    Body = unicode:characters_to_binary(RespBody, 'unicode', 'unicode'),
+    Body = unicode:characters_to_binary(lists:reverse(RevBody)),
     maybe_debug_resp(Debug, Call, <<"200">>, RespHeaders, Body),
 
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
@@ -315,7 +316,7 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
     {'noreply'
     ,State#state{request_id = 'undefined'
                 ,request_params = kz_json:new()
-                ,response_body = <<>>
+                ,response_body = []
                 ,response_content_type = <<>>
                 ,response_pid = Pid
                 ,response_ref = Ref
