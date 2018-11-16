@@ -645,11 +645,10 @@ set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec update_category(config_category(), config_key(), any(), kz_term:ne_binary() | atom(), update_options()) ->
-                             'ok' |
                              {'ok', kz_json:object()} |
                              {'error', kz_datamgr:data_error()}.
 -ifdef(TEST).
-update_category(_, _, _, _, _) -> 'ok'.
+update_category(Category, _, _, _, _) -> {'ok', Category}.
 -else.
 update_category('undefined', _, _, _, _) -> 'ok';
 update_category(_, 'undefined', _, _, _) -> 'ok';

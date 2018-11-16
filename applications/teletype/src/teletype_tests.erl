@@ -123,7 +123,8 @@ voicemail_full(AccountId) ->
         [Box|_] -> voicemail_full(AccountId, kz_json:get_value(<<"doc">>, Box))
     end.
 
--spec voicemail_full(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_amqp_worker:request_return().
+-spec voicemail_full(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
+                            kz_amqp_worker:request_return().
 voicemail_full(AccountId, ?NE_BINARY=BoxId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Box} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
@@ -158,7 +159,8 @@ find_fax_with_attachment(AccountId, [Fax|Faxes]) ->
         _As -> fax_inbound_to_email(AccountId, kz_json:get_value(<<"doc">>, Fax))
     end.
 
--spec fax_inbound_to_email(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_amqp_worker:request_return().
+-spec fax_inbound_to_email(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
+                                  kz_amqp_worker:request_return().
 fax_inbound_to_email(AccountId, ?NE_BINARY=FaxId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Fax} = kz_datamgr:open_cache_doc(AccountDb, FaxId),

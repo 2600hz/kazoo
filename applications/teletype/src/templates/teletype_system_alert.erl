@@ -187,11 +187,11 @@ details_groups([{<<"cf_", _/binary>>,_}=KV | KS], {Group, Acc}) ->
 details_groups([KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(Group, KV, Acc)}).
 
--spec add_to_group(kz_term:ne_binary(), {kz_json:path(), kz_json:json_term()}, kz_term:proplist()) ->
+-spec add_to_group(kz_term:ne_binary(), {kz_term:ne_binary(), kz_json:json_term()}, kz_term:proplist()) ->
                           kz_term:proplist().
 add_to_group(Group, KV, Acc) ->
     case props:get_value(Group, Acc) of
-        'undefined' -> props:set_value(Group,[KV], Acc);
+        'undefined' -> props:set_value(Group, [KV], Acc);
         Props -> props:set_value(Group, props:insert_value(KV, Props), Acc)
     end.
 

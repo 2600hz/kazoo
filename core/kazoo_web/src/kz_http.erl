@@ -115,7 +115,7 @@ trace(Url) ->
 trace(Url, Headers) ->
     req('trace', Url, Headers, [], []).
 
--spec trace(string(), header(), kz_term:proplist()) -> ret().
+-spec trace(string(), headers(), kz_term:proplist()) -> ret().
 trace(Url, Headers, Options) ->
     req('trace', Url, Headers, [], Options).
 

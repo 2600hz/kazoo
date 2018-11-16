@@ -43,10 +43,8 @@ start_modules() ->
     start_modules(?AUTOLOAD_MODULES).
 
 -spec start_modules([module()]) -> 'ok'.
-start_modules([Module | Remaining]) ->
-    _ = teletype_maintenance:start_module(Module),
-    start_modules(Remaining);
-start_modules([]) ->
+start_modules(Modules) ->
+    lists:foreach(fun teletype_maintenance:start_module/1, Modules),
     lager:info("started all teletype modules").
 
 -spec notification(kz_json:object()) -> 'ok'.

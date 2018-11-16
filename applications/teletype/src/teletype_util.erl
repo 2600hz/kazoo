@@ -689,8 +689,8 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
                   ).
 
--spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_json:key()) ->
-                          {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                          email_pair().
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(DataJObj
                 ,TemplateMetaJObj
@@ -701,8 +701,8 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
                              )
                 ).
 
--spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_json:key(), kz_term:api_binary()) ->
-                          {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
+                          email_pair().
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     %% ?LOG_DEBUG("email type for '~s' not defined in template, checking just the key", [Key]),
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
@@ -720,8 +720,7 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec find_first_defined_address(kz_json:key(), kz_json:get_key(), kz_json:objects()) ->
-                                        kz_term:api_ne_binaries().
+-spec find_first_defined_address(kz_term:ne_binary(), [kz_json:get_key()], kz_json:objects()) -> kz_term:api_ne_binaries().
 find_first_defined_address(_Key, [], _JObjs) -> 'undefined';
 find_first_defined_address(Key, [Path|Paths], JObjs) ->
     case get_address_value(Key, Path, JObjs) of
@@ -759,7 +758,7 @@ check_address_value(Emails) ->
         'false' -> 'undefined'
     end.
 
--spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_json:key()) ->
+-spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                kz_term:api_ne_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
@@ -769,7 +768,7 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec admin_emails_from_system_template(kz_term:ne_binary(), kz_json:key()) ->
+-spec admin_emails_from_system_template(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                                kz_term:api_ne_binaries().
 admin_emails_from_system_template(ConfigCat, Key) ->
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, ConfigCat) of
@@ -777,7 +776,8 @@ admin_emails_from_system_template(ConfigCat, Key) ->
         {'error', _} -> 'undefined'
     end.
 
--spec admin_emails_from_system_template(kz_term:ne_binary(), kz_json:key(), kz_json:object()) -> kz_term:api_ne_binaries().
+-spec admin_emails_from_system_template(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                               kz_term:api_ne_binaries().
 admin_emails_from_system_template(ConfigCat, Key, JObj) ->
     case check_address_value(kz_json:get_ne_value([<<"default">>, <<"default_", Key/binary>>], JObj)) of
         'undefined' ->
@@ -798,13 +798,16 @@ template_system_value(TemplateId) ->
         {'error', _} -> kz_json:new()
     end.
 
--spec template_system_value(kz_term:ne_binary(), kz_json:path()) -> any().
+-spec template_system_value(kz_term:ne_binary(), kz_json:get_key()) -> any().
 template_system_value(TemplateId, Key) ->
     template_system_value(TemplateId, Key, 'undefined').
 
--spec template_system_value(kz_term:ne_binary(), kz_json:path(), any()) -> any().
+-spec template_system_value(kz_term:ne_binary(), kz_json:get_key(), any()) -> any().
 template_system_value(TemplateId, Key, Default) ->
-    kz_json:get_first_defined([Key, lists:flatten([<<"default">>, Key])], template_system_value(TemplateId), Default).
+    kz_json:get_first_defined([Key, lists:flatten([<<"default">>, Key])]
+                             ,template_system_value(TemplateId)
+                             ,Default
+                             ).
 
 -spec open_doc(kz_term:ne_binary(), kz_term:api_binary(), kz_json:object()) ->
                       {'ok', kz_json:object()} |

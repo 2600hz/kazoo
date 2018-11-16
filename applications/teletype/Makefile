@@ -15,6 +15,10 @@ clean: clean-default_modules
 clean-default_modules:
 	rm -f src/teletype_default_modules.hrl
 
-compile-test: default_modules
+compile-test: default_modules compile-extra
+
+compile-extra:
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_data
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_bindings
 
 include $(ROOT)/make/kz.mk

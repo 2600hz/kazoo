@@ -27,8 +27,9 @@
 %% `{ContentType, Content}'
 -type rendered_templates() :: [rendered_template()].
 
--type email_map() :: [{kz_term:ne_binary(), kz_term:api_ne_binaries()}].
 %% `{"to"/"cc"/etc, [Address,...]}'
+-type email_pair() :: {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
+-type email_map() :: [email_pair()].
 
 -type init_param() :: {'macros', kz_json:object()} |
                       {'subject', kz_term:ne_binary()} |
@@ -235,7 +236,9 @@
 -type email_receipt() :: #email_receipt{}.
 
 -define(AUTOLOAD_MODULES_KEY, <<"autoload_modules">>).
--define(AUTOLOAD_MODULES, kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)).
+-define(AUTOLOAD_MODULES
+       ,kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)
+       ).
 
 -define(TELETYPE_HRL, 'true').
 -endif.

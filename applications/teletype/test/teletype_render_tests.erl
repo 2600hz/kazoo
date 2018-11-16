@@ -87,9 +87,12 @@ test_rendering(Module) ->
     ].
 
 render(TemplateId, CT, Macros) ->
-    {ok, Rendered} = render_t0(TemplateId, CT, Macros),
-    [?_assertEqual(T0, Line)
-     || {T0, Line} <- lists:zip(t0(TemplateId, CT), lines(iolist_to_binary(Rendered)))
+    {'ok', Rendered} = render_t0(TemplateId, CT, Macros),
+    [?_assert(
+        lists:all(fun({T0, Line}) -> T0 =:= Line end
+                 ,lists:zip(t0(TemplateId, CT), lines(iolist_to_binary(Rendered)))
+                 )
+       )
     ].
 
 render_t0(TemplateId, CT, Macros) ->

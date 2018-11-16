@@ -157,14 +157,16 @@ build_macro_data(UserJObj, DataJObj) ->
                          )
     end.
 
--spec maybe_add_macro_key(kz_json:path(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+-spec maybe_add_macro_key(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
+                                 kz_term:proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, UserJObj) ->
     maybe_add_user_data(UserKey, Acc, UserJObj);
 maybe_add_macro_key(_Key, Acc, _UserJObj) ->
     lager:debug("unprocessed macro key ~s: ~p", [_Key, _UserJObj]),
     Acc.
 
--spec maybe_add_user_data(kz_json:key(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+-spec maybe_add_user_data(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
+                                 kz_term:proplist().
 maybe_add_user_data(Key, Acc, UserJObj) ->
     UserMacros = props:get_value(<<"user">>, Acc, []),
     case kz_json:get_value(Key, UserJObj) of
@@ -193,6 +195,6 @@ maybe_expanded_config_id(DataJObj) ->
 -spec maybe_tpls_provided(kz_json:object()) -> boolean().
 maybe_tpls_provided(DataJObj) ->
     case kz_json:get_first_defined([<<"html">>, <<"text">>], DataJObj) of
-        'undefined' -> false;
+        'undefined' -> 'false';
         _ -> 'true'
     end.
