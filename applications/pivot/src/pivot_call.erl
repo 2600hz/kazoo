@@ -290,7 +290,7 @@ handle_info({'http', {ReqId, 'stream', Chunk}}
                   ,response_body=RespBody
                   }=State) ->
     lager:info("adding response chunk: '~s'", [Chunk]),
-    {'noreply', State#state{response_body = <<RespBody/binary, Chunk/binary>>}};
+    {'noreply', State#state{response_body = <<RespBody/utf8, Chunk/utf8>>}};
 
 handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
            ,#state{request_id=ReqId
