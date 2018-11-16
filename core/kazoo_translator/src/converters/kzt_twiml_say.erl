@@ -25,7 +25,7 @@ exec(Call, XmlText, Attrs) ->
 
     Terminators = kzt_twiml_util:get_terminators(Props),
 
-    lager:info("SAY: '~s' using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
+    lager:info("SAY: '~ts' using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
 
     case kzt_twiml_util:loop_count(Props) of
         0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, 'infinity');

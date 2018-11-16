@@ -29,7 +29,7 @@ texts_to_binary([_|_]=Vs) ->
     lists:foldl(fun(C, B) ->
                         kz_binary:strip(B, C)
                 end
-               ,iolist_to_binary([kz_term:to_binary(V) || #xmlText{value=V, type='text'} <- Vs])
+               ,unicode:characters_to_binary([V || #xmlText{value=V, type='text'} <- Vs])
                ,[$\n, $\s, $\n, $\s]
                ).
 
