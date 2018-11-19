@@ -107,6 +107,7 @@
         ,add_pvt_api_key/1
 
         ,cpaas_token/1
+        ,path_cpaas_token/0
         ,set_cpaas_token/1, set_cpaas_token/2, maybe_set_cpaas_token/1
 
         ,is_unique_realm/2
@@ -1602,7 +1603,11 @@ maybe_set_cpaas_token(AccountDoc) ->
 
 -spec cpaas_token(doc()) -> kz_term:api_ne_binary().
 cpaas_token(AccountDoc) ->
-    kz_json:get_ne_binary_value(<<"pvt_cpaas_token">>, AccountDoc).
+    kz_json:get_ne_binary_value(path_cpaas_token(), AccountDoc).
+
+-spec path_cpaas_token() -> kz_json:path().
+path_cpaas_token() ->
+    [<<"pvt_cpaas_token">>].
 
 -spec set_cpaas_token(doc()) -> doc().
 set_cpaas_token(AccountDoc) ->
@@ -1611,7 +1616,7 @@ set_cpaas_token(AccountDoc) ->
 
 -spec set_cpaas_token(doc(), kz_term:ne_binary()) -> doc().
 set_cpaas_token(AccountDoc, Token) ->
-    kz_json:set_value(<<"pvt_cpaas_token">>, Token, AccountDoc).
+    kz_json:set_value(path_cpaas_token(), Token, AccountDoc).
 
 -spec maybe_add_pvt_tree(kz_term:api_ne_binary(), doc()) -> doc().
 maybe_add_pvt_tree(ParentId, Doc) ->
