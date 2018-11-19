@@ -114,7 +114,7 @@ add_comment(JObj, AuthToken, Comment) ->
 handle_resp({'ok', 200, _, Resp}, _, _, _) ->
     RespJObj = kz_json:decode(Resp),
     case kz_json:get_ne_binary_value(<<"status">>, RespJObj) of
-        'undefined' -> {'error', <<"max dun goofed">>};
+        'undefined' -> {'error', <<"invalid response from phonebook">>};
         <<"error">> -> {'error', RespJObj};
         <<"success">> -> {'ok', RespJObj}
     end;

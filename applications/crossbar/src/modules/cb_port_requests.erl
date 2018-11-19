@@ -469,7 +469,8 @@ maybe_post_save(Context, Id, Comments) ->
                 'success' ->
                     Doc = cb_context:doc(Context1),
                     send_port_comment_notifications(Context, Id, Comments),
-                    cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
+                    RespData = filter_private_comments(Context1, knm_port_request:public_fields(Doc)),
+                    cb_context:set_resp_data(Context1, RespData);
                 _ ->
                     Context1
             end;
