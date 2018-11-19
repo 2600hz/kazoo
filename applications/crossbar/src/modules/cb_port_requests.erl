@@ -342,9 +342,10 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 save(Context) ->
     NewDoc1 = maybe_set_scheduled_date_from_schedule_on(cb_context:doc(Context)),
     NewDoc = kzd_accounts:set_tree(NewDoc1, kzd_accounts:tree(cb_context:account_doc(Context))),
+    NewerDoc = kz_json:delete_key(<<"reason">>, NewDoc),
     Context1 = cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
-                                  ,{fun cb_context:set_doc/2, NewDoc}
+                                  ,{fun cb_context:set_doc/2, NewerDoc}
                                   ]
                                  ),
     crossbar_doc:save(Context1).
