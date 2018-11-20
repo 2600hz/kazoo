@@ -813,11 +813,14 @@ disable(JObj) ->
 path_enabled() ->
     [<<"pvt_enabled">>].
 
--spec tree(doc()) -> kz_term:ne_binaries().
+-spec tree(kz_term:ne_binary() | doc()) -> kz_term:ne_binaries().
 tree(JObj) ->
     tree(JObj, []).
 
--spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
+-spec tree(kz_term:ne_binary() | doc(), Default) -> kz_term:ne_binaries() | Default.
+tree(?NE_BINARY=AccountId, Default) ->
+    {'ok', Doc} = fetch(AccountId),
+    tree(Doc, Default);
 tree(JObj, Default) ->
     kz_json:get_list_value([<<"pvt_tree">>], JObj, Default).
 
