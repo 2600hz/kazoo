@@ -271,22 +271,19 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
                                                                ,<<"Confirm-File">>
                                                                ,<<"Confirm-Key">>
                                                                ,<<"Confirm-Read-Timeout">>
+                                                               ,[<<"Custom-Channel-Vars">>, <<"Confirm-Cancel-Timeout">>]
+                                                               ,[<<"Custom-Channel-Vars">>, <<"Confirm-File">>]
+                                                               ,[<<"Custom-Channel-Vars">>, <<"Confirm-Key">>]
+                                                               ,[<<"Custom-Channel-Vars">>, <<"Confirm-Read-Timeout">>]
                                                                ]),
+
+    lager:debug("lifting from leg to channel: ~s", [kz_json:encode(Common)]),
     UpdatedJObj = kz_json:set_value(<<"Endpoints">>, UniqueEndpoints, kz_json:merge(JObj, Common)),
 
     LiftedCmd = list_to_binary(["bridge "
                                ,build_channels_vars(UniqueEndpoints, UpdatedJObj)
                                ,try_create_bridge_string(UniqueEndpoints, UpdatedJObj)
                                ]),
-
-    _BridgeCmd = list_to_binary(["bridge "
-                                ,build_channels_vars(Endpoints, JObj)
-                                ,try_create_bridge_string(Endpoints, JObj)
-                                ]),
-
-    lager:debug("bridge: ~s", [_BridgeCmd]),
-    lager:debug("lifted: ~s", [LiftedCmd]),
-    lager:debug("b: ~p l: ~p", [byte_size(_BridgeCmd), byte_size(LiftedCmd)]),
 
     [{"application", LiftedCmd}|DP].
 
