@@ -354,6 +354,28 @@ lift_common_properties_blacklist_test_() ->
                   )
     ].
 
+lift_common_properties_nested_blacklist_test_() ->
+    CommonProperties = kz_json:set_values([{[<<"foo">>, <<"fang">>], <<"bar">>}
+                                          ,{[<<"foo">>, <<"fong">>], <<"bor">>}
+                                          ]
+                                         ,kz_json:new()
+                                         ),
+
+    Blacklist = [ [<<"foo">>, <<"fang">>] ],
+
+    {Common, Endpoints} = kz_json:lift_common_properties([CommonProperties, CommonProperties]
+                                                        ,Blacklist
+                                                        ),
+
+    [?_assert(kz_json:are_equal(Common, kz_json:set_values([{[<<"foo">>, <<"fong">>], <<"bor">>}], kz_json:new())))
+    ,?_assertEqual(Endpoints
+                  ,[kz_json:set_values([{[<<"foo">>, <<"fang">>], <<"bar">>}], kz_json:new())
+                   ,kz_json:set_values([{[<<"foo">>, <<"fang">>], <<"bar">>}], kz_json:new())
+                   ]
+                  )
+    ].
+
+
 proper_findings_lift_1_test_() ->
     JObj = kz_json:from_list([{<<0>>,'false'}]),
     {C, Es} = kz_json:lift_common_properties([JObj, JObj], [<<0>>]),
