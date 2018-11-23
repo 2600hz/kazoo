@@ -336,10 +336,8 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
 -spec get_prompt(menu(), kapps_call:call()) -> kz_term:ne_binary().
 get_prompt(#cf_menu_data{greeting_id='undefined'}, Call) ->
     kapps_call:get_prompt(Call, <<"menu-no_prompt">>);
-get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
-    ID;
 get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
-    <<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>.
+    kz_media_util:media_path(Id, kapps_call:account_id(Call)).
 
 %%------------------------------------------------------------------------------
 %% @doc
