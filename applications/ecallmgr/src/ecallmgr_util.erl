@@ -30,7 +30,7 @@
 
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
--export([build_bridge_string/1, build_bridge_string/2]).
+-export([build_bridge_string/1, build_bridge_string/2, build_bridge_string/3]).
 -export([build_channel/1]).
 -export([build_bridge_channels/1, build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
@@ -61,6 +61,10 @@
 
 -define(FS_MULTI_VAR_SEP, ecallmgr_config:get_ne_binary(<<"multivar_separator">>, <<"~">>)).
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
+
+%% HELP-34627 Preserve default failover behavior.
+-define(FAIL_IF_ALL_UNREG, 'true').
+
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
@@ -695,13 +699,68 @@ build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
-build_bridge_string(Endpoints, Seperator) ->
-    %% De-dup the bridge strings by matching those with the same
+build_bridge_string(Endpoints, Separator) ->
+    %% HELP-34627: Branch here to handle only failover when all endpoints are unregistered.
+    build_bridge_string(Endpoints, Separator, kapps_config:get_boolean(?APP_NAME, <<"failover_when_all_unreg">>, 'false')).
+
+-spec build_bridge_string(kz_json:objects(), kz_term:ne_binary(), kz_term:api_boolean()) -> kz_term:ne_binary().
+build_bridge_string(Endpoints, Separator, ?FAIL_IF_ALL_UNREG) ->
+    lager:info("system_config.ecallmgr.failover_when_all_unreg is enabled."),
+    %% De-dupe the bridge strings by matching those with the same
+    %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route.
+    %% Additionally split bridge strings out and only return failover endpoints if no devices registered.
+    BridgeStrings = filter_bridge_strings(build_bridge_channels(Endpoints)),
+    %% NOTE: don't use binary_join here as it will crash on an empty list...
+    kz_binary:join(lists:reverse(BridgeStrings), Separator);
+build_bridge_string(Endpoints, Separator, _DefaultFailover) ->
+    %% De-dupe the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
     BridgeStrings = build_bridge_channels(Endpoints),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Seperator).
+    kz_binary:join(lists:reverse(BridgeStrings), Separator).
 
+
+-spec filter_bridge_strings(bridge_channels()) -> bridge_channels().
+filter_bridge_strings(Endpoints) ->
+    case classify_endpoints(Endpoints) of
+        {[], Failover} ->
+            lager:info("No device endpoints available, using failover routes."),
+            Failover;
+        {Devices, _} ->
+            lager:info("Device endpoints registered, ignoring failover routes."),
+            Devices
+    end.
+
+-spec classify_endpoints(bridge_channels()) -> {bridge_channels(), bridge_channels()}.
+classify_endpoints(Endpoints) ->
+    classify_endpoints(Endpoints, [], []).
+
+-spec classify_endpoints(bridge_channels(), bridge_channels(), bridge_channels()) -> {bridge_channels(), bridge_channels()}.
+classify_endpoints([], Devices, Failover) ->
+    {Devices, Failover};
+classify_endpoints([Endpoint | Endpoints], Devices, Failover) ->
+    case string:str(unicode:characters_to_list(Endpoint), "ecallmgr_Call-Forward='true'") of
+        %% Not a forwarding endpoint move along.
+        0 -> classify_endpoints(Endpoints, [Endpoint | Devices], Failover);
+        %% Determine if we should add the call forwarding route.
+        _ ->
+            F2 = maybe_use_fwd_endpoint(Failover, Endpoint) ++ Failover,
+            classify_endpoints(Endpoints, Devices, F2)
+    end.
+
+-spec maybe_use_fwd_endpoint(bridge_channels(), bridge_channel()) -> bridge_channel().
+maybe_use_fwd_endpoint([], Destination) ->
+    [Destination];
+maybe_use_fwd_endpoint([Endpoint | Endpoints], Destination) ->
+    SD = unicode:characters_to_list(Destination),
+    FwdDest = string:sub_string(SD
+                               ,string:str(unicode:characters_to_list(SD), "loopback/")
+                               ,string:len(unicode:characters_to_list(SD))
+                               ),
+    case string:str(unicode:characters_to_list(Endpoint), FwdDest) of
+        0 -> maybe_use_fwd_endpoint(Endpoints, Destination);
+        _ -> []
+    end.
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
 endpoint_jobjs_to_records(Endpoints) ->
