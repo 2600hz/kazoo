@@ -173,6 +173,11 @@
             "description": "ecallmgr expires deviation time",
             "type": "integer"
         },
+        "failover_when_all_unreg": {
+            "default": false,
+            "description": "failover only when all devices are offline",
+            "type": "boolean"
+        },
         "fax_file_path": {
             "default": "/tmp/",
             "description": "ecallmgr fax file path",
