@@ -174,6 +174,7 @@ maybe_start_plaintext(Dispatch, IP) ->
         'true' ->
             Port = kapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
             ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
+            IdleTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"idle_timeout_ms">>, 120 * ?MILLISECONDS_IN_SECOND),
             Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
@@ -188,7 +189,7 @@ maybe_start_plaintext(Dispatch, IP) ->
                                                }
                                     ,'stream_handlers' => maybe_add_compression_handler()
                                     ,'shutdown_timeout' => ReqTimeout
-                                    ,'idle_timeout' => 120 * ?MILLISECONDS_IN_SECOND
+                                    ,'idle_timeout' => IdleTimeout
                                     }
                                   )
             of
