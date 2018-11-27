@@ -648,10 +648,15 @@ fetch_all_queue_stats(Context) ->
 -spec fetch_all_current_queue_stats(cb_context:context()) -> cb_context:context().
 fetch_all_current_queue_stats(Context) ->
     lager:debug("querying for all recent stats"),
+    Now = kz_time:now_s(),
+    From = Now - min(?SECONDS_IN_DAY, ?ACDC_CLEANUP_WINDOW),
+
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}
             ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
+            ,{<<"Start-Range">>, From}
+            ,{<<"End-Range">>, Now}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     fetch_from_amqp(Context, Req).

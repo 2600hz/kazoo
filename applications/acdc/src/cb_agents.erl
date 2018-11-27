@@ -299,12 +299,12 @@ fetch_all_current_agent_stats(Context) ->
 -spec fetch_all_current_stats(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 fetch_all_current_stats(Context, AgentId) ->
     Now = kz_time:now_s(),
-    Yday = Now - ?SECONDS_IN_DAY,
+    From = Now - min(?SECONDS_IN_DAY, ?ACDC_CLEANUP_WINDOW),
 
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Agent-ID">>, AgentId}
-            ,{<<"Start-Range">>, Yday}
+            ,{<<"Start-Range">>, From}
             ,{<<"End-Range">>, Now}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
@@ -342,12 +342,12 @@ fetch_current_status(Context, AgentId, 'true') ->
                                         cb_context:context().
 fetch_all_current_statuses(Context, AgentId, Status) ->
     Now = kz_time:now_s(),
-    Yday = Now - ?SECONDS_IN_DAY,
+    From = Now - min(?SECONDS_IN_DAY, ?ACDC_CLEANUP_WINDOW),
 
     Opts = props:filter_undefined(
              [{<<"Status">>, Status}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Start-Range">>, Yday}
+             ,{<<"Start-Range">>, From}
              ,{<<"End-Range">>, Now}
              ,{<<"Limit">>, cb_context:req_value(Context, <<"limit">>)}
              ]),
