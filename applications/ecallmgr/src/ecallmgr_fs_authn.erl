@@ -98,7 +98,21 @@ handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undef
            ,#state{node=Node}=State) ->
     _ = kz_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
     {'noreply', State};
+handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, [?NE_BINARY | Props]}
+           ,#state{node=Node}=State) ->
+    _ = kz_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
+    {'noreply', State};
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}, #state{node=Node}=State) ->
+    kz_util:spawn(
+      fun() ->
+              lager:debug("sending empty reply for request (~s) for ~s ~s from ~s"
+                         ,[Id, _Section, _Something, Node]
+                         ),
+              {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
+              freeswitch:fetch_reply(Node, Id, 'directory', Resp)
+      end),
+    {'noreply', State};
+handle_info({'fetch', _Section, _Something, _Key, _Value, Id, [?NE_BINARY | _Props]}, #state{node=Node}=State) ->
     kz_util:spawn(
       fun() ->
               lager:debug("sending empty reply for request (~s) for ~s ~s from ~s"
