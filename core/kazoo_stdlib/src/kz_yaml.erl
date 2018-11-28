@@ -403,10 +403,10 @@ drop_ending_new_line(Lines) ->
     LastLine = lists:last(Lines),
     Rest = lists:droplast(Lines),
     case LastLine =/= <<>>
-        andalso binary:last(LastLine)
+        andalso lists:last(LastLine)
     of
         'false' -> kz_term:to_binary(Lines);
-        <<$\n>> -> kz_term:to_binary(Rest ++ binary:part(LastLine, 0, byte_size(LastLine) - 1));
+        <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(Lines));
         _ -> kz_term:to_binary(Lines)
     end.
 
@@ -422,7 +422,7 @@ fold_string(String, Width) ->
 fold_string_fold([], _, _, Acc) -> Acc;
 fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) ->
     MoreIndented = Line =/= <<>>
-        andalso binary:fist(Line) =/= <<" ">>,
+        andalso binary:first(Line) =/= <<" ">>,
     YamlLF = case not PrevMoreIndented
                  andalso not MoreIndented
                  andalso Line =/= <<>>
@@ -430,7 +430,9 @@ fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) 
                  'true' -> <<$\n>>;
                  'false' -> <<>>
              end,
-    Result = <<Acc/binary, StringLFs, YamlLF, (fold_line(Line, Width))/binary>>,
+    Fold = fold_line(Line, Width),
+    % ?DEV_LOG("~nAcc ~p~n~nFold ~p~n~n", [Acc, Fold]),
+    Result = <<Acc/binary, StringLFs/binary, YamlLF/binary, Fold/binary>>,
     fold_string_fold(Lines, Width, PrevMoreIndented, Result).
 
 fold_line(<<>>, _) -> <<>>;
@@ -444,24 +446,39 @@ fold_line(Line, Width) ->
     of
         'true' ->
             %% Insert a break if the remainder is too long and there is a break available. Also drop extra \n joiner.
-            <<_:8/binary, Rest/binary>> = <<Result0/binary, (binary:part(Line, Start, Curr))/binary, $\n, (binary:part(Line, Curr + 1, byte_size(Line)))/binary>>,
+            % ?DEV_LOG("~nR0 ~p~n Start~p Curr ~p LSize ~p", [Result0, Start, Curr, byte_size(Line)]),
+            LineA = binary:part(Line, Start, Curr),
+            LineB = binary:part(Line, Curr + 1, byte_size(Line) - (Curr + 1)),
+            <<_/utf8, Rest/binary>> = <<Result0/binary, LineA/binary, $\n, LineB/binary>>,
+            % ?DEV_LOG("~nRest ~p~n", [Rest]),
             Rest;
         'false' ->
-            <<_:8/binary, _:Start/binary, Result1/binary>> = Result0,
+            <<_/utf8, _:Start/binary, Result1/binary>> = Result0,
             %% drop extra \n joiner
+            ?DEV_LOG("~nResult1 ~p~n", [Result1]),
             Result1
     end.
 
+fold_line_fold(_, _, 'nomatch', _, _, Acc) ->
+    Acc;
+fold_line_fold(Line, Width, {'match', Matches}, Start, Curr, Acc) ->
+    % io:format("~n~p~n~n", [Matches]),
+    fold_line_fold(Line, Width, Matches, Start, Curr, Acc);
 fold_line_fold(_, _, [], Start, Curr, Acc) ->
+    % io:format("sorry~n"),
     {Start, Curr, Acc};
 fold_line_fold(Line, Width, [[{Next, _}] | Matches], Start, Curr, Acc)
   when Next - Start > Width ->
+    % io:format("yup~n"),
     End = case Curr > Start of
               'true' -> Curr;
               'false' -> Next
           end,
     Result = <<Acc/binary, $\n, (binary:part(Line, Start, End))/binary>>,
-    fold_line_fold(Line, Width, Matches, End + 1, Curr, Result).
+    fold_line_fold(Line, Width, Matches, End + 1, Curr, Result);
+fold_line_fold(Line, Width, [[{Next, _}] | Matches], Start, _, Acc) ->
+    % io:format("dool Next ~p W ~p M ~p~n", [Next, Width, Next - Start]),
+    fold_line_fold(Line, Width, Matches, Start, Next, Acc).
 
 %% @doc Encode the characters to its Unicode code point and escape it.
 -spec encode_hex(integer()) -> kz_term:ne_binary().
