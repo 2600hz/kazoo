@@ -29,6 +29,7 @@ DEPS = amqp_client \
 	lager \
 	lager_syslog \
 	meck \
+	meta \
 	nklib \
 	plists \
 	poolboy \
@@ -104,3 +105,5 @@ dep_horse = git https://github.com/ninenines/horse
 dep_proper = git https://github.com/manopapad/proper v1.2
 
 dep_syslog = git https://github.com/2600hz/erlang-syslog bbad537a1cb5e4f37e672d2e2665659e850662d0
+
+dep_meta = git https://github.com/efcasado/meta 0.1.3

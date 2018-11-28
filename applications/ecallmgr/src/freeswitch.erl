@@ -5,8 +5,11 @@
 %%%-----------------------------------------------------------------------------
 -module(freeswitch).
 
+-export([mod/1]).
+
 -export([version/1
         ,version/2
+        ,release/1
         ]).
 -export([noevents/1]).
 -export([close/1]).
@@ -18,6 +21,7 @@
         ]).
 -export([fetch_reply/4
         ,fetch_reply/5
+        ,fetch_reply/6
         ]).
 -export([api/2
         ,api/3
@@ -36,15 +40,24 @@
         ,sendevent_custom/3
         ]).
 -export([sendmsg/3]).
+-export([cmd/3, cmds/3]).
+-export([cast_cmd/3, cast_cmds/3]).
 
--export([config/1
+-export([config/1, config/2
         ,bgapi4/5
         ]).
+-export([sync_channel/2]).
+-export([no_legacy/1
+        ,event_stream_framing/1, event_stream_framing/2
+        ]).
+-export([get_option/2, set_option/3]).
 
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
--define(FS_MODULE, mod_kazoo).
+
+-define(FS_MODULE, (mod(Node))).
+
 
 -type fs_api_ok() :: mod_kazoo:fs_api_ok().
 -type fs_api_error():: mod_kazoo:fs_api_error().
@@ -54,10 +67,19 @@
              ,fs_api_return/0
              ]).
 
+-spec mod(atom()) -> atom().
+mod(_) -> 'mod_kazoo'.
+
 -spec version(atom()) -> fs_api_return().
-version(Node) -> ?FS_MODULE:version(Node).
+version(Node)
+  when not is_atom(Node) ->
+    version(kz_term:to_atom(Node, 'true'));
+version(Node)-> ?FS_MODULE:version(Node).
 
 -spec version(atom(), pos_integer()) -> fs_api_return().
+version(Node, Timeout)
+  when not is_atom(Node) ->
+    version(kz_term:to_atom(Node, 'true'), Timeout);
 version(Node, Timeout) -> ?FS_MODULE:version(Node, Timeout).
 
 -spec noevents(atom()) -> fs_api_return().
@@ -79,11 +101,21 @@ bind(Node, Type) -> ?FS_MODULE:bind(Node, Type).
 bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string()) -> 'ok'.
-fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
+fetch_reply(Node, FetchID, Section, Reply) ->
+    fetch_reply(Node, FetchID, Section, Reply, #{}).
 
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
+-spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map() | pos_integer() | 'infinity') ->
                          'ok' | {'error', 'baduuid'}.
-fetch_reply(Node, FetchID, Section, Reply, Timeout) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Timeout).
+fetch_reply(Node, FetchID, Section, Reply, Map)
+  when is_map(Map) ->
+    ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Map);
+fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
+    ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, #{}, Timeout).
+
+-spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map(), pos_integer() | 'infinity') ->
+                         'ok' | {'error', 'baduuid'}.
+fetch_reply(Node, FetchID, Section, Reply, Map, Timeout) ->
+    ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Map, Timeout).
 
 -spec api(atom(), kz_term:text()) -> fs_api_return().
 api(Node, Cmd) -> ?FS_MODULE:api(Node, Cmd).
@@ -133,10 +165,75 @@ sendevent_custom(Node, SubClassName, Headers) -> ?FS_MODULE:sendevent_custom(Nod
 -spec sendmsg(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
 sendmsg(Node, UUID, Headers) -> ?FS_MODULE:sendmsg(Node, UUID, Headers).
 
+-spec cmd(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+cmd(Node, UUID, Headers) -> ?FS_MODULE:cmd(Node, UUID, Headers).
+
+-spec cmds(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+cmds(Node, UUID, Headers) -> ?FS_MODULE:cmds(Node, UUID, Headers).
+
+-spec cast_cmd(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+cast_cmd(Node, UUID, Headers) -> ?FS_MODULE:cast_cmd(Node, UUID, Headers).
+
+-spec cast_cmds(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+cast_cmds(Node, UUID, Headers) -> ?FS_MODULE:cast_cmds(Node, UUID, Headers).
+
 -spec config(atom()) -> 'ok'.
 config(Node) -> ?FS_MODULE:config(Node).
+
+-spec config(atom(), atom()) -> 'ok'.
+config(Node, Section) ->
+    ?FS_MODULE:config(Node, Section).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
                     {'ok', binary()} |
                     {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi4(Node, Cmd, Args, Fun, CallBackParams).
+
+-spec release(atom() | kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} | fs_api_return().
+release(Node)
+  when is_atom(Node) ->
+    case version(Node) of
+        {ok, Version} -> release(Version);
+        Else -> Else
+    end;
+release(Version)
+  when is_binary(Version) ->
+    case binary:split(Version, <<" ">>, ['global']) of
+        [Module, Release, Bundle] -> {Module, Release, Bundle};
+        [Module, Release] -> {Module, Release, <<"community">>};
+        [Version] -> release(kz_term:to_atom(Version, 'true'))
+    end.
+
+-spec sync_channel(atom(), kz_term:ne_binary()) -> 'ok'.
+sync_channel(Node, UUID) -> ?FS_MODULE:sync_channel(Node, UUID).
+
+-spec no_legacy(atom()) -> 'ok' | {'error', 'timeout' | 'exception'}.
+no_legacy(Node) ->
+    set_option(Node, <<"enable-legacy">>, 'false').
+
+-spec event_stream_framing(atom(), 1 | 2 | 4) -> fs_api_return().
+event_stream_framing(Node, PacketFraming) ->
+    set_option(Node, <<"event-stream-framing">>, PacketFraming).
+
+-spec event_stream_framing(atom()) -> fs_api_return().
+event_stream_framing(Node) ->
+    get_option(Node, <<"event-stream-framing">>).
+
+-spec set_option(atom(), binary(), term()) -> fs_api_return().
+set_option(Node, Option, Value) ->
+    Args = [<<"node">>
+           ,kz_term:to_binary(node())
+           ,<<"option">>
+           ,kz_term:to_binary(Option)
+           ,kz_term:to_binary(Value)
+           ],
+    api(Node, 'erlang', kz_binary:join(Args, <<" ">>)).
+
+-spec get_option(atom(), binary()) -> fs_api_return().
+get_option(Node, Option) ->
+    Args = [<<"node">>
+           ,kz_term:to_binary(node())
+           ,"option"
+           ,Option
+           ],
+    api(Node, 'erlang', kz_binary:join(Args, <<" ">>)).
