@@ -101,6 +101,6 @@ dep_parse_trans = git https://github.com/lazedo/parse_trans
 
 dep_horse = git https://github.com/ninenines/horse
 
-dep_proper = git https://github.com/manopapad/proper v1.2
+dep_proper = git https://github.com/proper-testing/proper/ v1.3
 
 dep_syslog = git https://github.com/2600hz/erlang-syslog bbad537a1cb5e4f37e672d2e2665659e850662d0
