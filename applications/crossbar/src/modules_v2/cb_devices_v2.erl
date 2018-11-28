@@ -254,9 +254,17 @@ patch(Context, Id) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_device('undefined', Context1),
-    _ = kz_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
-    maybe_add_mobile_mdn(Context1).
+
+    case cb_context:resp_status(Context1) of
+        'success' -> handle_new_device(Context1);
+        _Status -> Context1
+    end.
+
+-spec handle_new_device(cb_context:context()) -> cb_context:context().
+handle_new_device(Context) ->
+    _ = maybe_aggregate_device('undefined', Context),
+    _ = kz_util:spawn(fun provisioner_util:maybe_provision/1, [Context]),
+    maybe_add_mobile_mdn(Context).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, DeviceId) ->
@@ -826,16 +834,16 @@ add_mobile_mdn(Context) ->
           ,{<<"device-id">>, kz_doc:id(cb_context:doc(Context))}
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
-    Options = [{assign_to, cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', PublicFields}
               ,{'module_name', ?CARRIER_MDN}
                |knm_number_options:mdn_options()
               ],
     case knm_number:create(Normalized, Options) of
-        {error, _}=Error ->
+        {'error', _}=Error ->
             _ = crossbar_doc:delete(Context),
             cb_phone_numbers_v2:set_response(Error, Context);
-        {ok, _} ->
+        {'ok', _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
                        ,[Normalized, kz_json:encode(PublicFields)]
                        ),
