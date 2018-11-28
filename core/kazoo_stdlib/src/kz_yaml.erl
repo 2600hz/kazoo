@@ -22,6 +22,10 @@
         ,escape_string/2
         ,encode_hex/1
 
+        ,fold_string/2, fold_string_fold/4
+        ,fold_line/2, fold_line_fold/6
+        ,indent_string/2, drop_ending_new_line/1
+
         ,is_plain_safe_first/1
         ,is_plain_safe/1
         ,is_printable/1
@@ -320,6 +324,7 @@ encode_string(#{indent := UserIndent
 
     %% Decrease width as indentation gets deeper and deeper, but maintain a lower bound 40.
     LineWidth = erlang:max(erlang:min(UserLineWidth, 40), UserLineWidth - Indent),
+    ?DEV_LOG("line_width ~p indent ~p", [LineWidth, Indent]),
 
     encode_string(State, String, Indent, LineWidth, choose_string_style(State, String, LineWidth)).
 
@@ -406,7 +411,7 @@ drop_ending_new_line(Lines) ->
         andalso lists:last(LastLine)
     of
         'false' -> kz_term:to_binary(Lines);
-        <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(Lines));
+        <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(LastLine));
         _ -> kz_term:to_binary(Lines)
     end.
 
@@ -417,8 +422,11 @@ fold_string(String, Width) ->
         andalso (binary:first(FirstLine) =/= <<$\n>>
                      orelse binary:first(FirstLine) =/= <<" ">>
                 ),
-    fold_string_fold(Matches, Width, PrevMoreIndented, fold_line(FirstLine, Width)).
+    FirstFold = fold_line(FirstLine, Width),
+    % ?DEV_LOG("~nFirst ~p~nFirst Fold ~p~n Matches ~p~n", [FirstLine, FirstFold, Matches]),
+    fold_string_fold(Matches, Width, PrevMoreIndented, FirstFold).
 
+-spec fold_string_fold(iolist(), non_neg_integer(), boolean(), binary()) -> binary().
 fold_string_fold([], _, _, Acc) -> Acc;
 fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) ->
     MoreIndented = Line =/= <<>>
@@ -435,6 +443,7 @@ fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) 
     Result = <<Acc/binary, StringLFs/binary, YamlLF/binary, Fold/binary>>,
     fold_string_fold(Lines, Width, PrevMoreIndented, Result).
 
+-spec fold_line(binary(), non_neg_integer()) -> binary().
 fold_line(<<>>, _) -> <<>>;
 fold_line(<<" ", _/binary>> = Line, _) -> Line;
 fold_line(Line, Width) ->
@@ -453,29 +462,32 @@ fold_line(Line, Width) ->
             % ?DEV_LOG("~nRest ~p~n", [Rest]),
             Rest;
         'false' ->
-            <<_/utf8, _:Start/binary, Result1/binary>> = Result0,
+            Last = binary:part(Line, Start, byte_size(Line) - Start),
+            <<_/utf8, Result1/binary>> = <<Result0/binary, Last/binary>>,
             %% drop extra \n joiner
-            ?DEV_LOG("~nResult1 ~p~n", [Result1]),
+            % ?DEV_LOG("~nResult0 ~p~n", [Result0]),
             Result1
     end.
 
-fold_line_fold(_, _, 'nomatch', _, _, Acc) ->
-    Acc;
+-spec fold_line_fold(binary(), non_neg_integer(), 'nomatch' | {'match', list()}, non_neg_integer(), non_neg_integer(), binary()) -> binary().
+fold_line_fold(_, _, 'nomatch', Start, Curr, Acc) ->
+    {Start, Curr, Acc};
 fold_line_fold(Line, Width, {'match', Matches}, Start, Curr, Acc) ->
     % io:format("~n~p~n~n", [Matches]),
     fold_line_fold(Line, Width, Matches, Start, Curr, Acc);
 fold_line_fold(_, _, [], Start, Curr, Acc) ->
-    % io:format("sorry~n"),
+    % io:format("sorry S ~p C ~p~n~p~n~n", [Start, Curr, Acc]),
     {Start, Curr, Acc};
 fold_line_fold(Line, Width, [[{Next, _}] | Matches], Start, Curr, Acc)
   when Next - Start > Width ->
-    % io:format("yup~n"),
     End = case Curr > Start of
               'true' -> Curr;
               'false' -> Next
           end,
-    Result = <<Acc/binary, $\n, (binary:part(Line, Start, End))/binary>>,
-    fold_line_fold(Line, Width, Matches, End + 1, Curr, Result);
+    % ?DEV_LOG("~nyup N ~p S ~p C ~p E ~p E-S~p", [Next, Start, Curr, End, End - Start]),
+    Result = <<Acc/binary, $\n, (binary:part(Line, Start, End - Start))/binary>>,
+    % ?DEV_LOG("~nAcc ~p~n", [Result]),
+    fold_line_fold(Line, Width, Matches, End + 1, Next, Result);
 fold_line_fold(Line, Width, [[{Next, _}] | Matches], Start, _, Acc) ->
     % io:format("dool Next ~p W ~p M ~p~n", [Next, Width, Next - Start]),
     fold_line_fold(Line, Width, Matches, Start, Next, Acc).
@@ -568,13 +580,12 @@ analyze_string(<<Char, Rest/binary>>, Index, #{is_key := 'true', plain_safe := P
     end;
 analyze_string(<<>>, Index, #{has_break := HasBreak, plain_safe := Plain}=Analyze) ->
     HasFoldable = has_foldable_line(Index, Analyze),
-    case HasBreak
-        andalso HasFoldable
-    of
-        'false' when Plain      ->  Analyze#{chosen_one => 'plain'};
-        'false'                 ->  Analyze#{chosen_one => 'single_quote'};
-        'true' when HasFoldable ->  Analyze#{chosen_one => 'fold'};
-        'true'                  ->  Analyze#{chosen_one => 'literal'}
+    case HasBreak of
+        'true'  when HasFoldable ->  Analyze#{chosen_one => 'fold'};
+        'true'                   ->  Analyze#{chosen_one => 'literal'};
+        'false' when HasFoldable ->  Analyze#{chosen_one => 'fold'};
+        'false' when Plain       ->  Analyze#{chosen_one => 'plain'};
+        'false'                  ->  Analyze#{chosen_one => 'single_quote'}
     end;
 analyze_string(<<$\n, Rest/binary>>, Index, Analyze) ->
     analyze_string(Rest, Index + 1
