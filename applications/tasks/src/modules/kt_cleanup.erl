@@ -7,20 +7,17 @@
 -module(kt_cleanup).
 
 %% behaviour: tasks_provider
-
--export([init/0
-        ]).
+-export([init/0]).
 
 %% Triggerables
--export([cleanup_soft_deletes/1
-        ]).
+-export([cleanup_soft_deletes/1]).
 
 -include("tasks.hrl").
 
 %% How long to pause before attempting to delete the next chunk of soft-deleted docs
--define(SOFT_DELETE_PAUSE,
-        kapps_config:get_integer(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)).
-
+-define(SOFT_DELETE_PAUSE
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
+       ).
 
 %%%=============================================================================
 %%% API

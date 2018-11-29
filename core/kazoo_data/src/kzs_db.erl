@@ -183,7 +183,7 @@ db_view_update(#{}=Map, DbName, Views, Remove) ->
 do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', JObjs} ->
-            CurrentViews = [{kz_doc:id(JObj), kz_json:get_value(<<"doc">>, JObj)}
+            CurrentViews = [{kz_doc:id(JObj), kz_json:get_json_value(<<"doc">>, JObj)}
                             || JObj <- JObjs
                            ],
             add_update_remove_views(Server, Db, CurrentViews, NewViews, Remove);
@@ -257,18 +257,18 @@ log_save_view_error(Id, Error) ->
     {Id, Error}.
 
 -spec should_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> boolean().
-should_update(_Id, _Db, _, 'undefined') ->
-    lager:debug("adding view ~s to db ~s", [_Id, _Db]),
-    false;
+should_update(_Id, _Db, _NewView, 'undefined') ->
+    lager:debug("view ~s to db ~s", [_Id, _Db]),
+    'false';
 should_update(_Id, _Db, NewView, OldView) ->
     case kz_json:are_equal(kz_doc:delete_revision(NewView), kz_doc:delete_revision(OldView)) of
-        true ->
+        'true' ->
             _ = kz_datamgr:change_notice()
                 andalso lager:debug("view ~s does not require update", [_Id]),
-            false;
-        false ->
+            'false';
+        'false' ->
             lager:debug("staging update of view ~s with rev ~s", [_Id, kz_doc:revision(OldView)]),
-            true
+            'true'
     end.
 
 -spec correct_view_errors(map(), kz_term:ne_binary(), kz_term:ne_binaries(), views_listing()) -> integer().
