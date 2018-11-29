@@ -22,6 +22,7 @@
 -export([hostname/1]).
 -export([interface/1, interface/2]).
 -export([interfaces/1]).
+-export([instance_uuid/1]).
 -export([fetch_timeout/0, fetch_timeout/1]).
 -export([init/1
         ,handle_call/3
@@ -97,6 +98,7 @@
                               ]).
 
 -record(state, {node               :: atom()
+               ,instance_uuid      :: kz_term:api_ne_binary()
                ,options = []       :: kz_term:proplist()
                ,interfaces = []    :: interfaces()
                ,start_cmds_pid_ref :: kz_term:api_pid_ref()
@@ -314,6 +316,11 @@ handle_call('interfaces', _, #state{interfaces=[]}=State) ->
 handle_call('interfaces', _, #state{interfaces=Interfaces}=State) ->
     Resp = kz_json:from_list_recursive(Interfaces),
     {'reply', Resp, State};
+handle_call('instance_uuid', _, #state{instance_uuid='undefined', node=Node}=State) ->
+    {'ok', UUID} = freeswitch:api(Node, 'eval', "${Core-UUID}"),
+    {'reply', UUID, State#state{instance_uuid=UUID}};
+handle_call('instance_uuid', _, #state{instance_uuid=UUID}=State) ->
+    {'reply', UUID, State};
 handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
@@ -325,7 +332,8 @@ handle_call('node', _, #state{node=Node}=State) ->
 handle_cast('sync_interfaces', #state{node=Node
                                      ,interfaces=Interfaces
                                      }=State) ->
-    {'noreply', State#state{interfaces=node_interfaces(Node, Interfaces)}};
+    {'ok', UUID} = freeswitch:api(Node, 'eval', "${Core-UUID}"),
+    {'noreply', State#state{instance_uuid=UUID, interfaces=node_interfaces(Node, Interfaces)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
     _Pid = kz_util:spawn(fun probe_capabilities/1, [Node]),
     lager:debug("syncing capabilities in ~p", [_Pid]),
@@ -633,3 +641,7 @@ interface(Node) ->
 -spec interface(atom() | binary(), kz_term:ne_binary()) -> kz_term:api_object().
 interface(Node, Profile) ->
     gen_server:call(find_srv(Node), {'interface', Profile}).
+
+-spec instance_uuid(atom() | binary()) -> kz_term:api_ne_binary().
+instance_uuid(Node) ->
+    gen_server:call(find_srv(Node), 'instance_uuid').
