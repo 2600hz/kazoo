@@ -31,6 +31,7 @@ request(Acc) ->
     Servers = [{kz_term:to_binary(Server)
                ,kz_json:from_list(
                   [{<<"Startup">>, Started}
+                  ,{<<"Instance-UUID">>, ecallmgr_fs_node:instance_uuid(Server)}
                   ,{<<"Interfaces">>, ecallmgr_fs_node:interfaces(Server)}
                   ])
                }
