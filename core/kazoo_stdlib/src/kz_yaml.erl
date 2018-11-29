@@ -430,17 +430,19 @@ drop_ending_new_line(Lines) ->
 fold_string(String, Width) ->
     [FirstLine | Matches] = re:split(String, <<"(\n+)([^\n]*)">>, []),
     PrevMoreIndented = FirstLine =/= <<>>
-        andalso (binary:first(FirstLine) =/= <<$\n>>
-                     orelse binary:first(FirstLine) =/= <<" ">>
+        andalso (binary:first(FirstLine) =:= <<$\n>>
+                     orelse binary:first(FirstLine) =:= <<" ">>
                 ),
     FirstFold = fold_line(FirstLine, Width),
+    ?DEV_LOG("~nFirstMoreIndent ~p~nFirstFold ~p~n", [PrevMoreIndented, FirstFold]),
     fold_string_fold(Matches, Width, PrevMoreIndented, FirstFold).
 
 -spec fold_string_fold(iolist(), non_neg_integer(), boolean(), binary()) -> binary().
 fold_string_fold([], _, _, Acc) -> Acc;
 fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) ->
     MoreIndented = Line =/= <<>>
-        andalso binary:first(Line) =/= <<" ">>,
+        andalso binary:first(Line) =:= <<" ">>,
+    ?DEV_LOG("PrevMoreIndented ~p MoreIndented ~p LineEmpty ~p", [PrevMoreIndented, MoreIndented, Line =/= <<>>]),
     YamlLF = case not PrevMoreIndented
                  andalso not MoreIndented
                  andalso Line =/= <<>>
@@ -450,6 +452,7 @@ fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) 
              end,
     Fold = fold_line(Line, Width),
     Result = <<Acc/binary, StringLFs/binary, YamlLF/binary, Fold/binary>>,
+    ?DEV_LOG("StringLFs ~p~nYamlLF ~p~nFold ~p~n", [StringLFs, YamlLF, Fold]),
     fold_string_fold(Lines, Width, PrevMoreIndented, Result).
 
 -spec fold_line(binary(), non_neg_integer()) -> binary().
