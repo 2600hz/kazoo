@@ -36,9 +36,12 @@ db_create(Server, DbName) ->
 -spec db_create(map(), kz_term:ne_binary(), db_create_options()) -> boolean().
 db_create(#{}=Map, DbName, Options) ->
     %%TODO storage policy
-    do_db_create(Map, DbName, Options)
-        andalso db_create_others(Map, DbName, Options)
-        andalso kzs_publish:publish_db(DbName, 'created').
+    case do_db_create(Map, DbName, Options) of
+        'exists' -> db_create_others(Map, DbName, Options);
+        'true' -> kzs_publish:publish_db(DbName, 'created'),
+                  db_create_others(Map, DbName, Options);
+        'false' -> 'false'
+    end.
 
 -spec db_create_others(map(), kz_term:ne_binary(), db_create_options()) -> boolean().
 db_create_others(#{}=Map, DbName, Options) ->
@@ -52,14 +55,14 @@ db_create_others(#{}=Map, DbName, Options) ->
 do_db_create_others(Map, DbName, Options) ->
     Others = maps:get('others', Map, []),
     lists:all(fun({_Tag, M1}) ->
-                      do_db_create(#{server => M1}, DbName, Options)
+                      do_db_create(#{server => M1}, DbName, Options) =/= 'false'
               end, Others).
 
--spec do_db_create(map(), kz_term:ne_binary(), db_create_options()) -> boolean().
+-spec do_db_create(map(), kz_term:ne_binary(), db_create_options()) -> boolean() | 'exists'.
 do_db_create(#{server := {App, Conn}}, DbName, Options) ->
     case App:db_exists(Conn, DbName) of
         'false' -> App:db_create(Conn, DbName, Options);
-        'true' -> 'true'
+        'true' -> 'exists'
     end.
 
 -spec db_delete(map(), kz_term:ne_binary(), db_delete_options()) -> boolean().
