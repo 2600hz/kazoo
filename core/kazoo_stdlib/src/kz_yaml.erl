@@ -191,17 +191,6 @@ encode_block_mapping_fold(State, Key, Value, {Index, Acc}, Level) ->
 
     ValueState = encode_node(NewState#{compact => not Explicit}, Value, Level + 1),
 
-    % Key =:= <<"multilineTrailingSpace">>
-    %     andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
-    Key =:= <<"unprintable">>
-        andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
-    % Key =:= <<"longMultiTrailingCR">>
-    %     andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
-    % Key =:= <<"essayManyTrailing">>
-    %     andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
-    Key =:= <<"multilineTrailingSpace">>
-        andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
-
     {Index + 1
     ,[ [mapping_key(KeyState, Index, Level), mapping_value(ValueState, Level)] | Acc]
     }.
@@ -418,74 +407,37 @@ block_header(String, Indent) ->
 -spec indent_string(binary(), non_neg_integer()) -> iolist().
 indent_string(String, Indent) ->
     Indented = indent(#{indent => Indent}, 1),
-    indent_string_fold(String, Indented, re:run(String, <<$\n>>, [global]), <<>>, 0).
+    [begin
+         case Line =/= <<>>
+             andalso Line =/= <<$\n>>
+         of
+             'true' -> [Indented, Line, <<$\n>>];
+             'false' -> [Line, <<$\n>>]
+         end
+     end
+     || Line <- trim_last_trailing_empty(binary:split(String, <<$\n>>, [global]))
+    ].
 
-indent_string_fold(String, Indent, 'nomatch', _, 0) when byte_size(String) > 0
-                                                         andalso String =/= <<$\n>> ->
-    <<String/binary, Indent/binary>>;
-indent_string_fold(String, _, 'nomatch', _, _) -> String;
-indent_string_fold(String, Indent, {'match', Matches}, Acc, Start) ->
-    indent_string_fold(String, Indent, Matches, Acc, Start);
-indent_string_fold(String, Indent, [], Acc, Start) ->
-    Line = <<(binary:part(String, Start, byte_size(String) - Start))/binary>>,
-    % ?DEV_LOG("Start ~p Pos ~p Size ~p~nLine~n~p~n~n", [Start, byte_size(String), byte_size(String) - Start,Line]),
-    case Line =/= <<>>
-         andalso Line =/= <<$\n>>
-    of
-        'true' -> <<Acc/binary, Indent/binary, Line/binary>>;
-        'false' -> <<Acc/binary, Line/binary>>
-    end;
-indent_string_fold(String, Indent, [ [{Pos, _}] | Matches], Acc, Start) ->
-    Line = <<(binary:part(String, Start, (Pos + 1) - Start))/binary>>,
-    % ?DEV_LOG("Start ~p Pos ~p Length ~p~nLine~n~p~n~n", [Start, Pos, (Pos + 1) - Start,Line]),
-    Result = case Line =/= <<>>
-                  andalso Line =/= <<$\n>>
-             of
-                 'true' -> <<Acc/binary, Indent/binary, Line/binary>>;
-                 'false' -> <<Acc/binary, Line/binary>>
-             end,
-    indent_string_fold(String, Indent, Matches, Result, Pos + 1).
-
-    % L = [begin
-    %      case Line =/= <<>>
-    %          andalso Line =/= <<$\n>>
-    %      of
-    %          'true' -> [Indented, Line, <<$\n>>];
-    %          'false' -> [Line, <<$\n>>]
-    %      end
-    %  end
-    %  || Line <- trim_last_trailing_empty(binary:split(String, <<$\n>>, [global]))
-    % ],
-    % % ?DEV_LOG("indent_string~nString ~p~nL ~p~n~n", [String, L]),
-    % L.
-
-% -spec trim_last_trailing_empty(iolist()) -> iolist().
-% trim_last_trailing_empty([]) -> [];
-% trim_last_trailing_empty(Lines) ->
-%     case lists:last(Lines) of
-%         <<>> -> lists:droplast(Lines);
-%         _ -> Lines
-%     end.
+-spec trim_last_trailing_empty(iolist()) -> iolist().
+trim_last_trailing_empty([]) -> [];
+trim_last_trailing_empty(Lines) ->
+    case lists:last(Lines) of
+        <<>> -> lists:droplast(Lines);
+        _ -> Lines
+    end.
 
 -spec drop_ending_new_line(iolist()) -> binary().
-drop_ending_new_line(String) ->
-    case kz_binary:reverse(String) of
-        <<$\n, Rest/binary>> -> kz_binary:reverse(Rest);
-        _ -> String
+drop_ending_new_line([]) -> <<>>;
+drop_ending_new_line(Lines) ->
+    LastLine = lists:last(Lines),
+    Rest = lists:droplast(Lines),
+    case LastLine =/= <<>>
+        andalso lists:last(LastLine)
+    of
+        'false' -> kz_term:to_binary(Lines);
+        <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(LastLine));
+        _ -> kz_term:to_binary(Lines)
     end.
-% drop_ending_new_line([]) -> <<>>;
-% drop_ending_new_line(Lines) ->
-%     LastLine = lists:last(Lines),
-%     Rest = lists:droplast(Lines),
-%     L = case LastLine =/= <<>>
-%         andalso lists:last(LastLine)
-%     of
-%         'false' -> kz_term:to_binary(Lines);
-%         <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(LastLine));
-%         _ -> kz_term:to_binary(Lines)
-%     end,
-%     % ?DEV_LOG("drop~nLines ~p~nL ~p~n~n", [Lines, L]),
-%     L.
 
 -spec fold_string(binary(), non_neg_integer()) -> binary().
 fold_string(String, Width) ->
@@ -525,7 +477,7 @@ fold_line(Line, Width) ->
     of
         'true' ->
             %% Insert a break if the remainder is too long and there is a break available. Also drop extra \n joiner.
-            LineA = binary:part(Line, Start, Curr),
+            LineA = binary:part(Line, Start, Curr - Start),
             LineB = binary:part(Line, Curr + 1, byte_size(Line) - (Curr + 1)),
             <<_/utf8, Rest/binary>> = <<Result0/binary, LineA/binary, $\n, LineB/binary>>,
             Rest;
