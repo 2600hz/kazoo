@@ -191,6 +191,17 @@ encode_block_mapping_fold(State, Key, Value, {Index, Acc}, Level) ->
 
     ValueState = encode_node(NewState#{compact => not Explicit}, Value, Level + 1),
 
+    % Key =:= <<"multilineTrailingSpace">>
+    %     andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
+    Key =:= <<"unprintable">>
+        andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
+    % Key =:= <<"longMultiTrailingCR">>
+    %     andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
+    % Key =:= <<"essayManyTrailing">>
+    %     andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
+    Key =:= <<"multilineTrailingSpace">>
+        andalso ?DEV_LOG("key ~p~nValue~n~p~nValueStateVal~n~p~nMapping~n~p~n", [Key, Value, maps:get(result, ValueState), mapping_value(ValueState, Level)]),
+
     {Index + 1
     ,[ [mapping_key(KeyState, Index, Level), mapping_value(ValueState, Level)] | Acc]
     }.
@@ -198,13 +209,13 @@ encode_block_mapping_fold(State, Key, Value, {Index, Acc}, Level) ->
 -spec mapping_key(state(), non_neg_integer(), non_neg_integer()) -> iolist().
 mapping_key(#{explicit := 'true', result := Result}=State, Index, Level) ->
     Indent = indent(State, Index, Level),
-    [Indent, <<"? ">>, Result, <<$\n>>];
+    [new_line(State, Index), Indent, <<"? ">>, Result, <<$\n>>, Indent];
 mapping_key(#{result := Result}=State, Index, Level) ->
-    [indent(State, Index, Level), Result].
+    [new_line(State, Index), indent(State, Index, Level), Result].
 
 -spec mapping_value(state(), non_neg_integer()) -> iolist().
 mapping_value(#{tag := Tag, empty_collection := 'true'}, _Level) ->
-    [<<": ">>, empty_collection(Tag), <<$\n>>];
+    [<<": ">>, empty_collection(Tag)];
 mapping_value(#{result := Result, tag := Tag, indent := 1}, _Level)
   when Tag =:= <<"tag:yaml.org,2002:map">>
        orelse Tag =:= <<"tag:yaml.org,2002:seq">> ->
@@ -214,7 +225,7 @@ mapping_value(#{result := Result, tag := Tag}=State, Level)
        orelse Tag =:= <<"tag:yaml.org,2002:seq">> ->
     [<<":">>, <<$\n>>, indent(State, Level + 1), Result];
 mapping_value(#{result := Result}, _Level) ->
-    [<<": ">>, Result, <<$\n>>].
+    [<<": ">>, Result].
 
 -spec encode_block_sequence(state(), node_seq(), non_neg_integer()) -> state().
 encode_block_sequence(State, [], Level) ->
@@ -240,23 +251,28 @@ encode_block_seq_fold(State, Seq, {Index, Acc}, Level) ->
 
 -spec seq_value(state(), non_neg_integer(), non_neg_integer()) -> iolist().
 seq_value(#{tag := Tag, empty_collection := 'true'}=State, Index, Level) ->
-    [indent(State, Index, Level), <<"- ">>, empty_collection(Tag), <<$\n>>];
+    [new_line(State, Index), indent(State, Index, Level), <<"- ">>, empty_collection(Tag)];
 seq_value(#{result := Result, compact := 'true', tag := Tag}=State, Index, Level)
   when Tag =:= <<"tag:yaml.org,2002:map">>
        orelse Tag =:= <<"tag:yaml.org,2002:seq">> ->
-    [indent(State, Index, Level), align_indent(State), Result];
+    [new_line(State, Index), indent(State, Index, Level), align_indent(State), Result];
 seq_value(#{result := Result, compact := 'false', tag := Tag}=State, Index, Level)
   when Tag =:= <<"tag:yaml.org,2002:map">>
        orelse Tag =:= <<"tag:yaml.org,2002:seq">> ->
-    [indent(State, Index, Level), <<"-">>, <<$\n>>, Result];
+    [new_line(State, Index), indent(State, Index, Level), <<"-">>, <<$\n>>, Result];
 seq_value(#{result := Result, indent := 1}=State, Index, Level) ->
-    [indent(State, Index, Level), <<"- ">>, Result, <<$\n>>];
+    [new_line(State, Index), indent(State, Index, Level), <<"- ">>, Result];
 seq_value(#{result := Result}=State, Index, Level) ->
-    [indent(State, Index, Level), <<"- ">>, Result, <<$\n>>].
+    [new_line(State, Index), indent(State, Index, Level), <<"- ">>, Result].
 
 -spec empty_collection(kz_term:ne_binary()) -> kz_term:ne_binary().
 empty_collection(<<"tag:yaml.org,2002:map">>) -> <<"{}">>;
 empty_collection(<<"tag:yaml.org,2002:seq">>) -> <<"[]">>.
+
+-spec new_line(state(), non_neg_integer()) -> binary().
+new_line(#{compact := 'false'}, _) -> <<$\n>>;
+new_line(_, 0) -> <<>>;
+new_line(_, _) -> <<$\n>>.
 
 -spec align_indent(state()) -> iolist().
 align_indent(#{indent := 1}) ->
@@ -402,29 +418,74 @@ block_header(String, Indent) ->
 -spec indent_string(binary(), non_neg_integer()) -> iolist().
 indent_string(String, Indent) ->
     Indented = indent(#{indent => Indent}, 1),
-    [begin
-         case Line =/= <<>>
-             andalso Line =/= <<$\n>>
-         of
-             'true' -> [Indented, Line, <<$\n>>];
-             'false' -> [Line, <<$\n>>]
-         end
-     end
-     || Line <- binary:split(String, <<$\n>>, [global])
-    ].
+    indent_string_fold(String, Indented, re:run(String, <<$\n>>, [global]), <<>>, 0).
+
+indent_string_fold(String, Indent, 'nomatch', _, 0) when byte_size(String) > 0
+                                                         andalso String =/= <<$\n>> ->
+    <<String/binary, Indent/binary>>;
+indent_string_fold(String, _, 'nomatch', _, _) -> String;
+indent_string_fold(String, Indent, {'match', Matches}, Acc, Start) ->
+    indent_string_fold(String, Indent, Matches, Acc, Start);
+indent_string_fold(String, Indent, [], Acc, Start) ->
+    Line = <<(binary:part(String, Start, byte_size(String) - Start))/binary>>,
+    % ?DEV_LOG("Start ~p Pos ~p Size ~p~nLine~n~p~n~n", [Start, byte_size(String), byte_size(String) - Start,Line]),
+    case Line =/= <<>>
+         andalso Line =/= <<$\n>>
+    of
+        'true' -> <<Acc/binary, Indent/binary, Line/binary>>;
+        'false' -> <<Acc/binary, Line/binary>>
+    end;
+indent_string_fold(String, Indent, [ [{Pos, _}] | Matches], Acc, Start) ->
+    Line = <<(binary:part(String, Start, (Pos + 1) - Start))/binary>>,
+    % ?DEV_LOG("Start ~p Pos ~p Length ~p~nLine~n~p~n~n", [Start, Pos, (Pos + 1) - Start,Line]),
+    Result = case Line =/= <<>>
+                  andalso Line =/= <<$\n>>
+             of
+                 'true' -> <<Acc/binary, Indent/binary, Line/binary>>;
+                 'false' -> <<Acc/binary, Line/binary>>
+             end,
+    indent_string_fold(String, Indent, Matches, Result, Pos + 1).
+
+    % L = [begin
+    %      case Line =/= <<>>
+    %          andalso Line =/= <<$\n>>
+    %      of
+    %          'true' -> [Indented, Line, <<$\n>>];
+    %          'false' -> [Line, <<$\n>>]
+    %      end
+    %  end
+    %  || Line <- trim_last_trailing_empty(binary:split(String, <<$\n>>, [global]))
+    % ],
+    % % ?DEV_LOG("indent_string~nString ~p~nL ~p~n~n", [String, L]),
+    % L.
+
+% -spec trim_last_trailing_empty(iolist()) -> iolist().
+% trim_last_trailing_empty([]) -> [];
+% trim_last_trailing_empty(Lines) ->
+%     case lists:last(Lines) of
+%         <<>> -> lists:droplast(Lines);
+%         _ -> Lines
+%     end.
 
 -spec drop_ending_new_line(iolist()) -> binary().
-drop_ending_new_line([]) -> <<>>;
-drop_ending_new_line(Lines) ->
-    LastLine = lists:last(Lines),
-    Rest = lists:droplast(Lines),
-    case LastLine =/= <<>>
-        andalso lists:last(LastLine)
-    of
-        'false' -> kz_term:to_binary(Lines);
-        <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(LastLine));
-        _ -> kz_term:to_binary(Lines)
+drop_ending_new_line(String) ->
+    case kz_binary:reverse(String) of
+        <<$\n, Rest/binary>> -> kz_binary:reverse(Rest);
+        _ -> String
     end.
+% drop_ending_new_line([]) -> <<>>;
+% drop_ending_new_line(Lines) ->
+%     LastLine = lists:last(Lines),
+%     Rest = lists:droplast(Lines),
+%     L = case LastLine =/= <<>>
+%         andalso lists:last(LastLine)
+%     of
+%         'false' -> kz_term:to_binary(Lines);
+%         <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(LastLine));
+%         _ -> kz_term:to_binary(Lines)
+%     end,
+%     % ?DEV_LOG("drop~nLines ~p~nL ~p~n~n", [Lines, L]),
+%     L.
 
 -spec fold_string(binary(), non_neg_integer()) -> binary().
 fold_string(String, Width) ->
@@ -434,7 +495,6 @@ fold_string(String, Width) ->
                      orelse binary:first(FirstLine) =:= <<" ">>
                 ),
     FirstFold = fold_line(FirstLine, Width),
-    ?DEV_LOG("~nFirstMoreIndent ~p~nFirstFold ~p~n", [PrevMoreIndented, FirstFold]),
     fold_string_fold(Matches, Width, PrevMoreIndented, FirstFold).
 
 -spec fold_string_fold(iolist(), non_neg_integer(), boolean(), binary()) -> binary().
@@ -442,7 +502,6 @@ fold_string_fold([], _, _, Acc) -> Acc;
 fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) ->
     MoreIndented = Line =/= <<>>
         andalso binary:first(Line) =:= <<" ">>,
-    ?DEV_LOG("PrevMoreIndented ~p MoreIndented ~p LineEmpty ~p", [PrevMoreIndented, MoreIndented, Line =/= <<>>]),
     YamlLF = case not PrevMoreIndented
                  andalso not MoreIndented
                  andalso Line =/= <<>>
@@ -452,7 +511,6 @@ fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) 
              end,
     Fold = fold_line(Line, Width),
     Result = <<Acc/binary, StringLFs/binary, YamlLF/binary, Fold/binary>>,
-    ?DEV_LOG("StringLFs ~p~nYamlLF ~p~nFold ~p~n", [StringLFs, YamlLF, Fold]),
     fold_string_fold(Lines, Width, PrevMoreIndented, Result).
 
 -spec fold_line(binary(), non_neg_integer()) -> binary().
@@ -765,4 +823,4 @@ new_state(#{}=Map) ->
         }.
 
 -spec ret_result(state()) -> binary().
-ret_result(#{result := Result}) -> erlang:iolist_to_binary(Result).
+ret_result(#{result := Result}) -> erlang:iolist_to_binary([Result, <<$\n>>]).
