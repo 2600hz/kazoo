@@ -12,6 +12,7 @@
         ,decode_file/1, decode_file/2
 
 
+         %% dev time exportes
         ,analyze_state/4
         ,analyze_string/3
 
@@ -30,7 +31,19 @@
         ,is_plain_safe/1
         ,is_printable/1
         ,is_whitespace/1
+        ,hex_to_dec/2
         ]).
+
+-spec hex_to_dec(any(), any()) -> any().
+hex_to_dec([C | Rest], Number) ->
+    C_Dec = if
+        C >= $0, C =< $9 -> C - $0;
+        C >= $a, C =< $f -> C - $a + 10;
+        C >= $A, C =< $F -> C - $A + 10
+    end,
+    hex_to_dec(Rest, Number * 16 + C_Dec);
+hex_to_dec([], Number) ->
+    Number.
 
 -define(JSON_WRAPPER(Proplist), {Proplist}).
 
@@ -239,7 +252,7 @@ seq_value(#{result := Result, compact := 'false', tag := Tag}=State, Index, Leve
 seq_value(#{result := Result, indent := 1}=State, Index, Level) ->
     [indent(State, Index, Level), <<"- ">>, Result, <<$\n>>];
 seq_value(#{result := Result}=State, Index, Level) ->
-    [indent(State, Index, Level), Result, <<$\n>>].
+    [indent(State, Index, Level), <<"- ">>, Result, <<$\n>>].
 
 -spec empty_collection(kz_term:ne_binary()) -> kz_term:ne_binary().
 empty_collection(<<"tag:yaml.org,2002:map">>) -> <<"{}">>;
@@ -324,7 +337,6 @@ encode_string(#{indent := UserIndent
 
     %% Decrease width as indentation gets deeper and deeper, but maintain a lower bound 40.
     LineWidth = erlang:max(erlang:min(UserLineWidth, 40), UserLineWidth - Indent),
-    ?DEV_LOG("line_width ~p indent ~p", [LineWidth, Indent]),
 
     encode_string(State, String, Indent, LineWidth, choose_string_style(State, String, LineWidth)).
 
@@ -347,9 +359,8 @@ escape_string(<<>>, Result) ->
 %% UTF-16 surrogate
 escape_string(<<Char/utf8, Rest/binary>>, Result)
   when Char >= 16#010000, Char =< 16#10FFFF ->
-    ?DEV_LOG("we got ourself a surrogate ~p (~p)", [Char, unicode:characters_to_binary(<<Char/utf8>>)]),
     escape_string(Rest, <<Result/binary, (encode_hex(Char))/binary>>);
-escape_string(<<Char, Rest/binary>>, Result) ->
+escape_string(<<Char/utf8, Rest/binary>>, Result) ->
     Escaped = escape_sequences(Char),
     case escape_sequences(Char) of
         <<_/binary>> ->
@@ -366,7 +377,7 @@ escape_string(<<Char, Rest/binary>>, Result) ->
 %% @doc Add block indicator and chomp if necessary.
 -spec block_header(binary(), non_neg_integer()) -> iodata().
 block_header(String, Indent) ->
-    IndentIndicator = case re:run(String, <<"^">>) =:= 'nomatch' of
+    IndentIndicator = case re:run(String, <<"^\n* ">>) =/= 'nomatch' of
                           'true' -> kz_term:to_binary(Indent);
                           'false' -> <<>>
                       end,
@@ -423,7 +434,6 @@ fold_string(String, Width) ->
                      orelse binary:first(FirstLine) =/= <<" ">>
                 ),
     FirstFold = fold_line(FirstLine, Width),
-    % ?DEV_LOG("~nFirst ~p~nFirst Fold ~p~n Matches ~p~n", [FirstLine, FirstFold, Matches]),
     fold_string_fold(Matches, Width, PrevMoreIndented, FirstFold).
 
 -spec fold_string_fold(iolist(), non_neg_integer(), boolean(), binary()) -> binary().
@@ -439,7 +449,6 @@ fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) 
                  'false' -> <<>>
              end,
     Fold = fold_line(Line, Width),
-    % ?DEV_LOG("~nAcc ~p~n~nFold ~p~n~n", [Acc, Fold]),
     Result = <<Acc/binary, StringLFs/binary, YamlLF/binary, Fold/binary>>,
     fold_string_fold(Lines, Width, PrevMoreIndented, Result).
 
@@ -455,17 +464,14 @@ fold_line(Line, Width) ->
     of
         'true' ->
             %% Insert a break if the remainder is too long and there is a break available. Also drop extra \n joiner.
-            % ?DEV_LOG("~nR0 ~p~n Start~p Curr ~p LSize ~p", [Result0, Start, Curr, byte_size(Line)]),
             LineA = binary:part(Line, Start, Curr),
             LineB = binary:part(Line, Curr + 1, byte_size(Line) - (Curr + 1)),
             <<_/utf8, Rest/binary>> = <<Result0/binary, LineA/binary, $\n, LineB/binary>>,
-            % ?DEV_LOG("~nRest ~p~n", [Rest]),
             Rest;
         'false' ->
             Last = binary:part(Line, Start, byte_size(Line) - Start),
             <<_/utf8, Result1/binary>> = <<Result0/binary, Last/binary>>,
             %% drop extra \n joiner
-            % ?DEV_LOG("~nResult0 ~p~n", [Result0]),
             Result1
     end.
 
@@ -473,10 +479,8 @@ fold_line(Line, Width) ->
 fold_line_fold(_, _, 'nomatch', Start, Curr, Acc) ->
     {Start, Curr, Acc};
 fold_line_fold(Line, Width, {'match', Matches}, Start, Curr, Acc) ->
-    % io:format("~n~p~n~n", [Matches]),
     fold_line_fold(Line, Width, Matches, Start, Curr, Acc);
 fold_line_fold(_, _, [], Start, Curr, Acc) ->
-    % io:format("sorry S ~p C ~p~n~p~n~n", [Start, Curr, Acc]),
     {Start, Curr, Acc};
 fold_line_fold(Line, Width, [[{Next, _}] | Matches], Start, Curr, Acc)
   when Next - Start > Width ->
@@ -484,12 +488,9 @@ fold_line_fold(Line, Width, [[{Next, _}] | Matches], Start, Curr, Acc)
               'true' -> Curr;
               'false' -> Next
           end,
-    % ?DEV_LOG("~nyup N ~p S ~p C ~p E ~p E-S~p", [Next, Start, Curr, End, End - Start]),
     Result = <<Acc/binary, $\n, (binary:part(Line, Start, End - Start))/binary>>,
-    % ?DEV_LOG("~nAcc ~p~n", [Result]),
     fold_line_fold(Line, Width, Matches, End + 1, Next, Result);
 fold_line_fold(Line, Width, [[{Next, _}] | Matches], Start, _, Acc) ->
-    % io:format("dool Next ~p W ~p M ~p~n", [Next, Width, Next - Start]),
     fold_line_fold(Line, Width, Matches, Start, Next, Acc).
 
 %% @doc Encode the characters to its Unicode code point and escape it.
@@ -571,7 +572,7 @@ analyze_string(<<>>, _, #{is_key := 'true', plain_safe := 'true'}=Analyze) ->
     Analyze#{chosen_one => 'plain'};
 analyze_string(<<>>, _, #{is_key := 'true', plain_safe := 'false'}=Analyze) ->
     Analyze#{chosen_one => 'single_quote'};
-analyze_string(<<Char, Rest/binary>>, Index, #{is_key := 'true', plain_safe := Plain}=Analyze) ->
+analyze_string(<<Char/utf8, Rest/binary>>, Index, #{is_key := 'true', plain_safe := Plain}=Analyze) ->
     case is_printable(Char) of
         'false' -> Analyze#{chosen_one => 'double_qoute'};
         'true' ->
@@ -595,7 +596,7 @@ analyze_string(<<$\n, Rest/binary>>, Index, Analyze) ->
                            ,previous_break_space => is_break_space(Rest)
                            }
                   );
-analyze_string(<<Char, Rest/binary>>, Index, #{plain_safe := Plain}=Analyze) ->
+analyze_string(<<Char/utf8, Rest/binary>>, Index, #{plain_safe := Plain}=Analyze) ->
     case is_printable(Char) of
         'false' -> Analyze#{chosen_one => 'double_qoute'};
         'true' ->
@@ -715,7 +716,7 @@ is_printable(Char) ->
                 )
                 andalso Char =/= 16#FEFF %% BOM
                )
-        orelse (16#10000 =< Char
+        orelse (16#10000 =< Char %% UTF-16 Surrogate
                 andalso Char =< 16#10FFFF
                ).
 
