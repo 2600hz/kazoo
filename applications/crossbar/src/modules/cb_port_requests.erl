@@ -342,9 +342,10 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 save(Context) ->
     NewDoc1 = maybe_set_scheduled_date_from_schedule_on(cb_context:doc(Context)),
     NewDoc = kzd_accounts:set_tree(NewDoc1, kzd_accounts:tree(cb_context:account_doc(Context))),
+    NewerDoc = kz_json:delete_key(<<"reason">>, NewDoc),
     Context1 = cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
-                                  ,{fun cb_context:set_doc/2, NewDoc}
+                                  ,{fun cb_context:set_doc/2, NewerDoc}
                                   ]
                                  ),
     crossbar_doc:save(Context1).
@@ -359,12 +360,14 @@ patch(Context, Id) ->
 
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
-    Context1 = load_port_request(Context, Id),
-    case phonebook:maybe_create_port_in(Context1) of
-        'ok' ->
+    case phonebook:maybe_create_port_in(Context) of
+        {'ok', 'disabled'} ->
             save_then_maybe_notify(Context, Id, NewState);
-        {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault', Reason, Context1)
+        {'ok', Response} ->
+            C1 = handle_phonebook_response(Context, Response),
+            save_then_maybe_notify(C1, Id, NewState);
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to submit port request to carrier">>, Context)
     end;
 patch(Context, Id, NewState=?PORT_PENDING) ->
     save_then_maybe_notify(Context, Id, NewState);
@@ -376,7 +379,29 @@ patch(Context, Id, NewState=?PORT_COMPLETED) ->
 patch(Context, Id, NewState=?PORT_REJECTED) ->
     save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_CANCELED) ->
-    save_then_maybe_notify(Context, Id, NewState).
+    case phonebook:maybe_cancel_port_in(Context) of
+        {'ok', _} ->
+            save_then_maybe_notify(Context, Id, NewState);
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to cancel port request from carrier">>, Context)
+    end.
+
+-spec handle_phonebook_response(cb_context:context(), kz_json:object()) -> cb_context:context().
+handle_phonebook_response(Context, Response) ->
+    Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
+    Comments = kz_json:get_list_value(<<"comments">>, Data, []),
+    {NewContext, NewData} = maybe_phonebook_comments(Context, Data, Comments),
+    NewDoc = kz_json:merge([cb_context:doc(Context), NewData]),
+    cb_context:set_doc(NewContext, NewDoc).
+
+-spec maybe_phonebook_comments(cb_context:context(), kz_json:object(), kz_json:objects()) -> {cb_context:context(), kz_json:object()}.
+maybe_phonebook_comments(Context, Data, []) ->
+    {Context, Data};
+maybe_phonebook_comments(Context, Data, Comments) ->
+    Doc = cb_context:doc(Context),
+    CurrentComments = kz_json:get_value(<<"comments">>, Doc, []),
+    Doc1 = kz_json:set_value(<<"comments">>, CurrentComments ++ Comments, Doc),
+    {cb_context:set_doc(Context, Doc1), kz_json:delete_key(<<"comments">>, Data)}.
 
 -spec save_then_maybe_notify(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 save_then_maybe_notify(Context, PortId, NewState) ->
@@ -387,7 +412,7 @@ save_then_maybe_notify(Context, PortId, NewState) ->
             RespData1 = knm_port_request:public_fields(cb_context:doc(Context1)),
             RespData = filter_private_comments(Context1, RespData1),
             Context2 = cb_context:set_resp_data(Context1, RespData),
-            send_port_notification(Context2, PortId, NewState)
+            port_state_change_notify(Context2, PortId, NewState)
     end.
 
 -spec maybe_set_scheduled_date_from_schedule_on(kz_json:object()) -> kz_json:object().
@@ -425,14 +450,33 @@ date_as_configured_timezone(Date, Time, FromTimezone) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, Id) ->
+    maybe_post_save(Context, Id, has_new_comments(Context)).
+
+-spec maybe_post_save(cb_context:context(), kz_term:ne_binary(), kz_json:objects()) -> cb_context:context().
+maybe_post_save(Context, _, []) ->
     Context1 = save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            _ = maybe_send_port_comment_notification(Context1, Id),
             Doc = cb_context:doc(Context1),
             cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
-        _Status ->
+        _ ->
             Context1
+    end;
+maybe_post_save(Context, Id, Comments) ->
+    case phonebook:maybe_add_comment(Context, Comments) of
+        {'ok', _} ->
+            Context1 = save(Context),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    Doc = cb_context:doc(Context1),
+                    send_port_comment_notifications(Context, Id, Comments),
+                    RespData = filter_private_comments(Context1, knm_port_request:public_fields(Doc)),
+                    cb_context:set_resp_data(Context1, RespData);
+                _ ->
+                    Context1
+            end;
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
     end.
 
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
@@ -454,11 +498,14 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec delete(cb_context:context(), path_token()) ->
-                    cb_context:context().
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _Id) ->
-    Context2 = crossbar_doc:delete(Context),
-    phonebook:maybe_cancel_port_in(Context2).
+    case phonebook:maybe_cancel_port_in(Context) of
+        {'ok', _} ->
+            crossbar_doc:delete(Context);
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to cancel port request from carrier">>, Context)
+    end.
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
                     cb_context:context().
@@ -833,14 +880,13 @@ load_summary(Context, Key, View) ->
 -spec last_submitted(cb_context:context()) -> cb_context:context().
 last_submitted(Context) ->
     AccountId = cb_context:account_id(Context),
-    C1 = cb_context:store(Context, 'is_superduper_admin', cb_context:is_superduper_admin(Context)),
     Options = [{'startkey', [AccountId]}
               ,{'endkey', [AccountId, kz_json:new()]}
               ,{'mapper', fun  normalize_last_submitted/3}
               ,{'databases', [?KZ_PORT_REQUESTS_DB]}
               ,'include_docs'
               ],
-    crossbar_view:load(C1, <<"port_requests/listing_submitted">>, Options).
+    crossbar_view:load(Context, <<"port_requests/listing_submitted">>, Options).
 
 -spec normalize_last_submitted(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_last_submitted(Context, ResultJObj, Acc) ->
@@ -884,7 +930,7 @@ maybe_prepare_timeline(Context) ->
 
 -spec filter_private_comments(cb_context:context(), kz_json:object()) -> kz_json:object().
 filter_private_comments(Context, JObj) ->
-    case cb_context:fetch(Context, 'is_superduper_admin', 'false') of
+    case cb_context:is_superduper_admin(Context) of
         'false' -> run_comment_filter(JObj);
         'true'  -> JObj
     end.
@@ -1188,59 +1234,25 @@ find_template(ResellerId, CarrierName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_send_port_comment_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
-maybe_send_port_comment_notification(Context, Id) ->
-    DbDoc = cb_context:fetch(Context, 'db_doc'),
-    ReqData = cb_context:req_data(Context),
-    DbDocComments = kz_json:get_list_value(<<"comments">>, DbDoc, []),
-    ReqDataComments = kz_json:get_list_value(<<"comments">>, ReqData, []),
-    case has_new_comment(DbDocComments, ReqDataComments) of
-        'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
-        'true' ->
-            _ = phonebook:maybe_add_comment(Context, lists:last(ReqDataComments)),
-            try send_port_comment_notification(Context, Id, lists:last(ReqDataComments)) of
-                _ -> lager:debug("port comment notification sent")
-            catch
-                _E:_R ->
-                    lager:error("failed to send the port comment notification: ~s:~p", [_E, _R])
-            end
-    end.
+-spec port_state_change_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+port_state_change_notify(Context, Id, ?PORT_UNCONFIRMED=State) ->
+    port_state_change_notify(Context, Id, State, fun send_port_unconfirmed_notification/2);
+port_state_change_notify(Context, Id, ?PORT_SUBMITTED=State) ->
+    port_state_change_notify(Context, Id, State, fun send_port_request_notification/2);
+port_state_change_notify(Context, Id, ?PORT_PENDING=State) ->
+    port_state_change_notify(Context, Id, State, fun send_port_pending_notification/2);
+port_state_change_notify(Context, Id, ?PORT_SCHEDULED=State) ->
+    port_state_change_notify(Context, Id, State, fun send_port_scheduled_notification/2);
+port_state_change_notify(Context, Id, ?PORT_COMPLETED=State) ->
+    port_state_change_notify(Context, Id, State, fun send_ported_notification/2);
+port_state_change_notify(Context, Id, ?PORT_REJECTED=State) ->
+    port_state_change_notify(Context, Id, State, fun send_port_rejected_notification/2);
+port_state_change_notify(Context, Id, ?PORT_CANCELED=State) ->
+    port_state_change_notify(Context, Id, State, fun send_port_cancel_notification/2).
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec has_new_comment(kz_term:api_objects(), kz_term:api_objects()) -> boolean().
-has_new_comment([], [_|_]) -> 'true';
-has_new_comment(_, []) -> 'false';
-has_new_comment(OldComments, NewComments) ->
-    OldTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(OldComments)),
-    NewTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(NewComments)),
-    OldTime < NewTime.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec send_port_notification(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-send_port_notification(Context, Id, ?PORT_UNCONFIRMED=State) ->
-    send_port_notification(Context, Id, State, fun send_port_unconfirmed_notification/2);
-send_port_notification(Context, Id, ?PORT_SUBMITTED=State) ->
-    send_port_notification(Context, Id, State, fun send_port_request_notification/2);
-send_port_notification(Context, Id, ?PORT_PENDING=State) ->
-    send_port_notification(Context, Id, State, fun send_port_pending_notification/2);
-send_port_notification(Context, Id, ?PORT_SCHEDULED=State) ->
-    send_port_notification(Context, Id, State, fun send_port_scheduled_notification/2);
-send_port_notification(Context, Id, ?PORT_COMPLETED=State) ->
-    send_port_notification(Context, Id, State, fun send_ported_notification/2);
-send_port_notification(Context, Id, ?PORT_REJECTED=State) ->
-    send_port_notification(Context, Id, State, fun send_port_rejected_notification/2);
-send_port_notification(Context, Id, ?PORT_CANCELED=State) ->
-    send_port_notification(Context, Id, State, fun send_port_cancel_notification/2).
-
--spec send_port_notification(cb_context:context(), path_token(), path_token(), function()) ->
-                                    cb_context:context().
-send_port_notification(Context, Id, State, Fun) ->
+-spec port_state_change_notify(cb_context:context(), path_token(), path_token(), function()) ->
+                                      cb_context:context().
+port_state_change_notify(Context, Id, State, Fun) ->
     try
         Fun(Context, Id),
         lager:debug("port ~s notification sent for ~s", [State, Id]),
@@ -1272,8 +1284,25 @@ revert_patch(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec send_port_comment_notification(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-send_port_comment_notification(Context, Id, NewComment) ->
+-spec has_new_comments(cb_context:context()) -> kz_json:objects().
+has_new_comments(Context) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    ReqData = cb_context:req_data(Context),
+    DbDocComments = kz_json:get_list_value(<<"comments">>, DbDoc, []),
+    ReqDataComments = kz_json:get_list_value(<<"comments">>, ReqData, []),
+    case DbDocComments of
+        [] -> [];
+        Comments ->
+            OldTime = kz_json:get_integer_value(<<"timestamp">>, lists:last(Comments)),
+            [ Comment || Comment <-  ReqDataComments, kz_json:get_integer_value(<<"timestamp">>, Comment) > OldTime]
+    end.
+
+send_port_comment_notifications(Context, Id, Comments) ->
+    _ = lists:foldl(fun send_port_comment_notification/2, {Context, Id, length(Comments), 0}, Comments),
+    'ok'.
+
+-spec send_port_comment_notification(kz_json:object(), {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}) -> 'ok'.
+send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
     Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
             ,{<<"account_id">>, cb_context:auth_account_id(Context)}
             ],
@@ -1284,10 +1313,13 @@ send_port_comment_notification(Context, Id, NewComment) ->
           ,{<<"Comment">>, Comment}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    lager:debug("sending port request notification for new comment by user ~s in account ~s"
-               ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)]
-               ),
-    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).
+    lager:debug("sending port comment notification ~b/~b", [Index, TotalNew]),
+    try kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1) of
+        _ -> lager:debug("port comment notification sent ~b/~b", [Index, TotalNew])
+    catch
+        _E:_R ->
+            lager:error("failed to send the port comment notification ~b/~b: ~s:~p", [Index, TotalNew, _E, _R])
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
