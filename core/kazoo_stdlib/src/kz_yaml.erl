@@ -10,40 +10,7 @@
 -export([encode/1, encode/2
         ,decode/1, decode/2
         ,decode_file/1, decode_file/2
-
-
-         %% dev time exportes
-        ,analyze_state/4
-        ,analyze_string/3
-
-        ,has_foldable_line/2
-        ,block_header/2
-        ,is_break_space/1
-
-        ,escape_string/2
-        ,encode_hex/1
-
-        ,fold_string/2, fold_string_fold/4
-        ,fold_line/2, fold_line_fold/6
-        ,indent_string/2, drop_ending_new_line/1
-
-        ,is_plain_safe_first/1
-        ,is_plain_safe/1
-        ,is_printable/1
-        ,is_whitespace/1
-        ,hex_to_dec/2
         ]).
-
--spec hex_to_dec(any(), any()) -> any().
-hex_to_dec([C | Rest], Number) ->
-    C_Dec = if
-        C >= $0, C =< $9 -> C - $0;
-        C >= $a, C =< $f -> C - $a + 10;
-        C >= $A, C =< $F -> C - $A + 10
-    end,
-    hex_to_dec(Rest, Number * 16 + C_Dec);
-hex_to_dec([], Number) ->
-    Number.
 
 -define(JSON_WRAPPER(Proplist), {Proplist}).
 

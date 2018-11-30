@@ -170,8 +170,9 @@ dep_trie = hex 1.7.5
 # dep_wsock = git https://github.com/madtrick/wsock 1.1.7
 # appears unused
 
-dep_yamerl = git https://github.com/yakaz/yamerl 4e5a54a5a4a0cd9dc8ee30c8356642e9a2c3a443
+dep_yamerl = git https://github.com/icehess/yamerl 6f52ab8a93d677773102ab8dee050e97f3e8cdd9
 # used by kazoo_ast to create OpenAPI 3
+### using my repo until issue with folded line chomping is fixed by upstream
 
 dep_zucchini = hex 0.1.0
 # INI file parser
