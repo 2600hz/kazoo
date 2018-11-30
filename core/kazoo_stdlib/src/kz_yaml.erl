@@ -117,8 +117,10 @@ decode(Yaml) ->
 %%------------------------------------------------------------------------------
 -spec decode(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_node().
 decode(Yaml, Options) ->
-    [Doc | _] = decode_all(Yaml, Options),
-    Doc.
+    case decode_all(Yaml, Options) of
+        [] -> [];
+        [Doc | _] -> Doc
+    end.
 
 %% @equiv decode_file(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
 -spec decode_file(kz_term:ne_binary() | string()) -> yaml_node().
@@ -131,8 +133,10 @@ decode_file(Yaml) ->
 %%------------------------------------------------------------------------------
 -spec decode_file(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_node().
 decode_file(Yaml, Options) ->
-    [Doc | _] = decode_file_all(Yaml, Options),
-    Doc.
+    case decode_file_all(Yaml, Options) of
+        [] -> [];
+        [Doc | _] -> Doc
+    end.
 
 %% @equiv decode_all(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
 -spec decode_all(kz_term:ne_binary() | string()) -> yaml_nodes().
@@ -145,7 +149,7 @@ decode_all(Yaml) ->
 %%------------------------------------------------------------------------------
 -spec decode_all(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_nodes().
 decode_all(Yaml, Options) ->
-    yamerl:decode(Yaml, Options).
+    try_decode(fun yamerl:decode/2, Yaml, Options).
 
 %% @equiv decode_file_all(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
 -spec decode_file_all(kz_term:ne_binary() | string()) -> yaml_nodes().
@@ -158,7 +162,21 @@ decode_file_all(Yaml) ->
 %%------------------------------------------------------------------------------
 -spec decode_file_all(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_nodes().
 decode_file_all(Yaml, Options) ->
-    yamerl:decode_file(Yaml, Options).
+    try_decode(fun yamerl:decode_file/2, Yaml, Options).
+
+-spec try_decode(function(), kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_nodes().
+try_decode(DecodeFun, Yaml, Options) ->
+    try DecodeFun(Yaml, Options)
+    catch
+        'throw':{'yamerl_exception'
+                ,[{_, 'error', Msg, _, _, 'file_open_failure', _, _}|_]
+                } ->
+            lager:debug(Msg),
+            throw({'error', 'enoent'});
+        'throw':Exception ->
+            throw(Exception)
+    end.
+
 
 %%%=============================================================================
 %%% Internal functions

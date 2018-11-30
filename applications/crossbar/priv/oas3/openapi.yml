@@ -1,0 +1,748 @@
+components:
+  parameters:
+    $ref: >-
+      /Users/hesaam/work/2600hz/kazoo/master/applications/crossbar/priv/oas3/oas3-parameters.json
+  schemas:
+    $ref: >-
+      /Users/hesaam/work/2600hz/kazoo/master/applications/crossbar/priv/oas3/oas3-schemas.json
+paths:
+  '/accounts/{ACCOUNT_ID}/sms/{SMS_ID}':
+    $ref: 'paths/sms.yml#/paths/~1accounts~1{ACCOUNT_ID}~1sms~1{SMS_ID}'
+  '/accounts/{ACCOUNT_ID}/callflows':
+    $ref: 'paths/callflows.yml#/paths/~1accounts~1{ACCOUNT_ID}~1callflows'
+  '/accounts/{ACCOUNT_ID}/resource_selectors/rules':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1rules
+  '/system_configs/{SYSTEM_CONFIG_ID}/{NODE}':
+    $ref: >-
+      paths/system_configs.yml#/paths/~1system_configs~1{SYSTEM_CONFIG_ID}~1{NODE}
+  '/accounts/{ACCOUNT_ID}/acdc_call_stats':
+    $ref: 'paths/acdc_call_stats.yml#/paths/~1accounts~1{ACCOUNT_ID}~1acdc_call_stats'
+  '/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}':
+    $ref: 'paths/webhooks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1webhooks~1{WEBHOOK_ID}'
+  '/accounts/{ACCOUNT_ID}/migrations':
+    $ref: 'paths/migrations.yml#/paths/~1accounts~1{ACCOUNT_ID}~1migrations'
+  '/accounts/{ACCOUNT_ID}/security/attempts':
+    $ref: 'paths/security.yml#/paths/~1accounts~1{ACCOUNT_ID}~1security~1attempts'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1submitted
+  /token_auth:
+    $ref: 'paths/token_auth.yml#/paths/~1token_auth'
+  '/accounts/{ACCOUNT_ID}/faxes/incoming':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1incoming'
+  '/accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}':
+    $ref: 'paths/alerts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1alerts~1{ALERT_ID}'
+  '/accounts/{ACCOUNT_ID}/multi_factor':
+    $ref: 'paths/multi_factor.yml#/paths/~1accounts~1{ACCOUNT_ID}~1multi_factor'
+  '/accounts/{ACCOUNT_ID}/security/attempts/{ATTEMPT_ID}':
+    $ref: >-
+      paths/security.yml#/paths/~1accounts~1{ACCOUNT_ID}~1security~1attempts~1{ATTEMPT_ID}
+  '/accounts/{ACCOUNT_ID}/transactions/{TRANSACTION_ID}':
+    $ref: >-
+      paths/transactions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1transactions~1{TRANSACTION_ID}
+  '/accounts/{ACCOUNT_ID}/services/{PLAN_ID}':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1{PLAN_ID}'
+  '/accounts/{ACCOUNT_ID}/queues':
+    $ref: 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues'
+  /auth/authorize:
+    $ref: 'paths/auth.yml#/paths/~1auth~1authorize'
+  '/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}':
+    $ref: >-
+      paths/resource_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_templates~1{RESOURCE_TEMPLATE_ID}
+  '/accounts/{ACCOUNT_ID}/users/{USER_ID}':
+    $ref: 'paths/users.yml#/paths/~1accounts~1{ACCOUNT_ID}~1users~1{USER_ID}'
+  '/accounts/{ACCOUNT_ID}/limits':
+    $ref: 'paths/limits.yml#/paths/~1accounts~1{ACCOUNT_ID}~1limits'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1carriers_info
+  '/auth/apps/{APP_ID}':
+    $ref: 'paths/auth.yml#/paths/~1auth~1apps~1{APP_ID}'
+  '/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1outbox~1{FAX_ID}'
+  '/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard':
+    $ref: 'paths/users.yml#/paths/~1accounts~1{ACCOUNT_ID}~1users~1{USER_ID}~1vcard'
+  '/accounts/{ACCOUNT_ID}/resources/collection':
+    $ref: 'paths/resources.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resources~1collection'
+  /auth:
+    $ref: 'paths/auth.yml#/paths/~1auth'
+  '/accounts/{ACCOUNT_ID}/{ENDPOINT_TYPE}/{ENDPOINT_ID}/quickcall/{NUMBER}':
+    $ref: >-
+      paths/quickcall.yml#/paths/~1accounts~1{ACCOUNT_ID}~1{ENDPOINT_TYPE}~1{ENDPOINT_ID}~1quickcall~1{NUMBER}
+  '/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1name~1{SELECTOR_NAME}
+  '/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}':
+    $ref: 'paths/groups.yml#/paths/~1accounts~1{ACCOUNT_ID}~1groups~1{GROUP_ID}'
+  '/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}':
+    $ref: >-
+      paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media~1languages~1{LANGUAGE}
+  '/accounts/{ACCOUNT_ID}/agents/status':
+    $ref: 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1status'
+  '/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect':
+    $ref: >-
+      paths/clicktocall.yml#/paths/~1accounts~1{ACCOUNT_ID}~1clicktocall~1{C2C_ID}~1connect
+  '/accounts/{ACCOUNT_ID}/parked_calls':
+    $ref: 'paths/parked_calls.yml#/paths/~1accounts~1{ACCOUNT_ID}~1parked_calls'
+  '/accounts/{ACCOUNT_ID}/att_handlers_errors/{ERROR_ID}':
+    $ref: >-
+      paths/att_handlers_errors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1att_handlers_errors~1{ERROR_ID}
+  '/accounts/{ACCOUNT_ID}/websockets':
+    $ref: 'paths/websockets.yml#/paths/~1accounts~1{ACCOUNT_ID}~1websockets'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1collection~1activate
+  '/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output':
+    $ref: 'paths/tasks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tasks~1{TASK_ID}~1output'
+  '/accounts/{ACCOUNT_ID}/phone_numbers':
+    $ref: 'paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers'
+  /system_configs:
+    $ref: 'paths/system_configs.yml#/paths/~1system_configs'
+  '/accounts/{ACCOUNT_ID}/notifications/smtplog':
+    $ref: >-
+      paths/notifications.yml#/paths/~1accounts~1{ACCOUNT_ID}~1notifications~1smtplog
+  '/accounts/{ACCOUNT_ID}/services/audit/{AUDIT_ID}':
+    $ref: >-
+      paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1audit~1{AUDIT_ID}
+  '/accounts/{ACCOUNT_ID}/services/topup':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1topup'
+  '/accounts/{ACCOUNT_ID}/search':
+    $ref: 'paths/search.yml#/paths/~1accounts~1{ACCOUNT_ID}~1search'
+  '/system_configs/{SYSTEM_CONFIG_ID}':
+    $ref: 'paths/system_configs.yml#/paths/~1system_configs~1{SYSTEM_CONFIG_ID}'
+  '/user_auth/{AUTH_TOKEN}':
+    $ref: 'paths/user_auth.yml#/paths/~1user_auth~1{AUTH_TOKEN}'
+  /schemas:
+    $ref: 'paths/schemas.yml#/paths/~1schemas'
+  '/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants':
+    $ref: >-
+      paths/conferences.yml#/paths/~1accounts~1{ACCOUNT_ID}~1conferences~1{CONFERENCE_ID}~1participants
+  '/accounts/{ACCOUNT_ID}/transactions/refund':
+    $ref: >-
+      paths/transactions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1transactions~1refund
+  '/auth/providers/{PROVIDER_ID}':
+    $ref: 'paths/auth.yml#/paths/~1auth~1providers~1{PROVIDER_ID}'
+  '/accounts/{ACCOUNT_ID}/registrations/count':
+    $ref: >-
+      paths/registrations.yml#/paths/~1accounts~1{ACCOUNT_ID}~1registrations~1count
+  '/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}':
+    $ref: >-
+      paths/conferences.yml#/paths/~1accounts~1{ACCOUNT_ID}~1conferences~1{CONFERENCE_ID}
+  '/accounts/{ACCOUNT_ID}/security':
+    $ref: 'paths/security.yml#/paths/~1accounts~1{ACCOUNT_ID}~1security'
+  '/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}':
+    $ref: >-
+      paths/connectivity.yml#/paths/~1accounts~1{ACCOUNT_ID}~1connectivity~1{CONNECTIVITY_ID}
+  '/accounts/{ACCOUNT_ID}/channels':
+    $ref: 'paths/channels.yml#/paths/~1accounts~1{ACCOUNT_ID}~1channels'
+  '/accounts/{ACCOUNT_ID}/apps_store':
+    $ref: 'paths/apps_store.yml#/paths/~1accounts~1{ACCOUNT_ID}~1apps_store'
+  '/accounts/{ACCOUNT_ID}/ledgers':
+    $ref: 'paths/ledgers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ledgers'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/canceled':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1canceled
+  '/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync':
+    $ref: >-
+      paths/devices.yml#/paths/~1accounts~1{ACCOUNT_ID}~1devices~1{DEVICE_ID}~1sync
+  '/accounts/{ACCOUNT_ID}/acls':
+    $ref: 'paths/acls.yml#/paths/~1accounts~1{ACCOUNT_ID}~1acls'
+  '/accounts/{ACCOUNT_ID}/whitelabel/welcome':
+    $ref: 'paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1welcome'
+  '/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}':
+    $ref: >-
+      paths/callflows.yml#/paths/~1accounts~1{ACCOUNT_ID}~1callflows~1{CALLFLOW_ID}
+  '/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAX_JOB_ID}':
+    $ref: >-
+      paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1outgoing~1{FAX_JOB_ID}
+  '/accounts/{ACCOUNT_ID}/resource_selectors/name':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1name
+  /user_auth/recovery:
+    $ref: 'paths/user_auth.yml#/paths/~1user_auth~1recovery'
+  '/accounts/{ACCOUNT_ID}/contact_list':
+    $ref: 'paths/contact_list.yml#/paths/~1accounts~1{ACCOUNT_ID}~1contact_list'
+  '/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw':
+    $ref: >-
+      paths/vmboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1vmboxes~1{VM_BOX_ID}~1messages~1{VM_MSG_ID}~1raw
+  '/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}':
+    $ref: 'paths/pivot.yml#/paths/~1accounts~1{ACCOUNT_ID}~1pivot~1debug~1{UUID}'
+  '/accounts/{ACCOUNT_ID}/queues/eavesdrop':
+    $ref: 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1eavesdrop'
+  '/accounts/{ACCOUNT_ID}/metaflows':
+    $ref: 'paths/metaflows.yml#/paths/~1accounts~1{ACCOUNT_ID}~1metaflows'
+  '/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster':
+    $ref: >-
+      paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1{QUEUE_ID}~1roster
+  '/accounts/{ACCOUNT_ID}/tree':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tree'
+  '/accounts/{ACCOUNT_ID}/children':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1children'
+  '/accounts/{ACCOUNT_ID}':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}'
+  '/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}':
+    $ref: >-
+      paths/cdrs.yml#/paths/~1accounts~1{ACCOUNT_ID}~1cdrs~1legs~1{INTERACTION_ID}
+  '/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history':
+    $ref: >-
+      paths/clicktocall.yml#/paths/~1accounts~1{ACCOUNT_ID}~1clicktocall~1{C2C_ID}~1history
+  '/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}':
+    $ref: >-
+      paths/presence.yml#/paths/~1accounts~1{ACCOUNT_ID}~1presence~1report-{REPORT_ID}
+  '/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1incoming~1{FAX_ID}'
+  /accounts:
+    $ref: 'paths/accounts.yml#/paths/~1accounts'
+  '/accounts/{ACCOUNT_ID}/menus':
+    $ref: 'paths/menus.yml#/paths/~1accounts~1{ACCOUNT_ID}~1menus'
+  '/accounts/{ACCOUNT_ID}/transactions/sale':
+    $ref: 'paths/transactions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1transactions~1sale'
+  /templates:
+    $ref: 'paths/templates.yml#/paths/~1templates'
+  '/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}':
+    $ref: 'paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media~1{MEDIA_ID}'
+  '/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}':
+    $ref: >-
+      paths/apps_store.yml#/paths/~1accounts~1{ACCOUNT_ID}~1apps_store~1{APP_ID}~1screenshot~1{APP_SCREENSHOT_INDEX}
+  '/accounts/{ACCOUNT_ID}/parents':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1parents'
+  '/accounts/{ACCOUNT_ID}/whitelabel/icon':
+    $ref: 'paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1icon'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1timeline
+  '/accounts/{ACCOUNT_ID}/ips':
+    $ref: 'paths/ips.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ips'
+  '/accounts/{ACCOUNT_ID}/queues/stats':
+    $ref: 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1stats'
+  '/accounts/{ACCOUNT_ID}/ledgers/debit':
+    $ref: 'paths/ledgers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ledgers~1debit'
+  '/rates/number/{PHONE_NUMBER}':
+    $ref: 'paths/rates.yml#/paths/~1rates~1number~1{PHONE_NUMBER}'
+  '/accounts/{ACCOUNT_ID}/call_inspector':
+    $ref: 'paths/call_inspector.yml#/paths/~1accounts~1{ACCOUNT_ID}~1call_inspector'
+  '/accounts/{ACCOUNT_ID}/services/editable':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1editable'
+  '/accounts/{ACCOUNT_ID}/whitelabel/domains':
+    $ref: 'paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1domains'
+  '/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}':
+    $ref: 'paths/faxboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxboxes~1{FAXBOX_ID}'
+  '/sup/{MODULE}/{FUNCTION}':
+    $ref: 'paths/sup.yml#/paths/~1sup~1{MODULE}~1{FUNCTION}'
+  '/accounts/{ACCOUNT_ID}/search/multi':
+    $ref: 'paths/search.yml#/paths/~1accounts~1{ACCOUNT_ID}~1search~1multi'
+  '/accounts/{ACCOUNT_ID}/whitelabel':
+    $ref: 'paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel'
+  '/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts':
+    $ref: >-
+      paths/webhooks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1webhooks~1{WEBHOOK_ID}~1attempts
+  '/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}':
+    $ref: 'paths/comments.yml#/paths/~1accounts~1{ACCOUNT_ID}~1comments~1{COMMENT_ID}'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/pending':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1pending
+  '/schemas/{SCHEMA_NAME}/validation':
+    $ref: 'paths/schemas.yml#/paths/~1schemas~1{SCHEMA_NAME}~1validation'
+  '/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo':
+    $ref: >-
+      paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1{WHITELABEL_DOMAIN}~1logo
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1scheduled
+  '/accounts/{ACCOUNT_ID}/api_key':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1api_key'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/rejected':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1rejected
+  '/accounts/{ACCOUNT_ID}/agents/{USER_ID}':
+    $ref: 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1{USER_ID}'
+  '/accounts/{ACCOUNT_ID}/skels':
+    $ref: 'paths/skels.yml#/paths/~1accounts~1{ACCOUNT_ID}~1skels'
+  '/accounts/{ACCOUNT_ID}/port_requests/last_submitted':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1last_submitted
+  '/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}':
+    $ref: >-
+      paths/ledgers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ledgers~1{SOURCE_SERVICE}
+  '/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw':
+    $ref: 'paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media~1{MEDIA_ID}~1raw'
+  '/accounts/{ACCOUNT_ID}/services/summary':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1summary'
+  '/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}':
+    $ref: >-
+      paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists~1{BLACKLIST_ID}
+  '/accounts/{ACCOUNT_ID}/services/audit':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1audit'
+  '/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment':
+    $ref: >-
+      paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1inbox~1{FAX_ID}~1attachment
+  /api_auth:
+    $ref: 'paths/api_auth.yml#/paths/~1api_auth'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/collection':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1collection
+  '/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}':
+    $ref: >-
+      paths/resources.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resources~1jobs~1{JOB_ID}
+  '/accounts/{ACCOUNT_ID}/services':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/port':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1{PHONE_NUMBER}~1port
+  '/accounts/{ACCOUNT_ID}/temporal_rules':
+    $ref: 'paths/temporal_rules.yml#/paths/~1accounts~1{ACCOUNT_ID}~1temporal_rules'
+  '/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}':
+    $ref: >-
+      paths/recordings.yml#/paths/~1accounts~1{ACCOUNT_ID}~1recordings~1{RECORDING_ID}
+  '/accounts/{ACCOUNT_ID}/multi_factor/attempts':
+    $ref: >-
+      paths/multi_factor.yml#/paths/~1accounts~1{ACCOUNT_ID}~1multi_factor~1attempts
+  '/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/eavesdrop':
+    $ref: >-
+      paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1{QUEUE_ID}~1eavesdrop
+  '/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/stop':
+    $ref: 'paths/tasks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tasks~1{TASK_ID}~1stop'
+  '/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages':
+    $ref: >-
+      paths/vmboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1vmboxes~1{VM_BOX_ID}~1messages
+  '/accounts/{ACCOUNT_ID}/resource_selectors/resource':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1resource
+  '/accounts/{ACCOUNT_ID}/phone_numbers/prefix':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1prefix
+  '/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}':
+    $ref: >-
+      paths/clicktocall.yml#/paths/~1accounts~1{ACCOUNT_ID}~1clicktocall~1{C2C_ID}
+  '/auth/keys/{KEY_ID}':
+    $ref: 'paths/auth.yml#/paths/~1auth~1keys~1{KEY_ID}'
+  '/accounts/{ACCOUNT_ID}/cdrs':
+    $ref: 'paths/cdrs.yml#/paths/~1accounts~1{ACCOUNT_ID}~1cdrs'
+  '/accounts/{ACCOUNT_ID}/apps_store/blacklist':
+    $ref: >-
+      paths/apps_store.yml#/paths/~1accounts~1{ACCOUNT_ID}~1apps_store~1blacklist
+  '/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}':
+    $ref: >-
+      paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media~1prompts~1{PROMPT_ID}
+  '/accounts/{ACCOUNT_ID}/vmboxes/messages':
+    $ref: 'paths/vmboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1vmboxes~1messages'
+  '/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment':
+    $ref: >-
+      paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1outbox~1{FAX_ID}~1attachment
+  '/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}':
+    $ref: >-
+      paths/global_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1global_provisioner_templates~1{TEMPLATE_ID}
+  '/accounts/{ACCOUNT_ID}/resource_templates':
+    $ref: >-
+      paths/resource_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_templates
+  '/accounts/{ACCOUNT_ID}/media':
+    $ref: 'paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media'
+  '/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}':
+    $ref: 'paths/apps_store.yml#/paths/~1accounts~1{ACCOUNT_ID}~1apps_store~1{APP_ID}'
+  '/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}':
+    $ref: 'paths/cdrs.yml#/paths/~1accounts~1{ACCOUNT_ID}~1cdrs~1{CDR_ID}'
+  '/accounts/{ACCOUNT_ID}/storage':
+    $ref: 'paths/storage.yml#/paths/~1accounts~1{ACCOUNT_ID}~1storage'
+  '/accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}':
+    $ref: >-
+      paths/websockets.yml#/paths/~1accounts~1{ACCOUNT_ID}~1websockets~1{SOCKET_ID}
+  '/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw':
+    $ref: >-
+      paths/vmboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1vmboxes~1{VM_BOX_ID}~1messages~1raw
+  '/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}':
+    $ref: >-
+      paths/temporal_rules.yml#/paths/~1accounts~1{ACCOUNT_ID}~1temporal_rules~1{TEMPORAL_RULE_ID}
+  '/accounts/{ACCOUNT_ID}/phone_numbers/locality':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1locality
+  '/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status':
+    $ref: >-
+      paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1{USER_ID}~1status
+  /shared_auth:
+    $ref: 'paths/shared_auth.yml#/paths/~1shared_auth'
+  '/accounts/{ACCOUNT_ID}/bulk':
+    $ref: 'paths/bulk.yml#/paths/~1accounts~1{ACCOUNT_ID}~1bulk'
+  '/accounts/{ACCOUNT_ID}/migrations/{MIGRATION_ID}':
+    $ref: >-
+      paths/migrations.yml#/paths/~1accounts~1{ACCOUNT_ID}~1migrations~1{MIGRATION_ID}
+  '/accounts/{ACCOUNT_ID}/ledgers/available':
+    $ref: 'paths/ledgers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ledgers~1available'
+  '/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries':
+    $ref: 'paths/lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1lists~1{LIST_ID}~1entries'
+  '/accounts/{ACCOUNT_ID}/global_provisioner_templates':
+    $ref: >-
+      paths/global_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1global_provisioner_templates
+  '/accounts/{ACCOUNT_ID}/siblings':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1siblings'
+  '/accounts/{ACCOUNT_ID}/resources':
+    $ref: 'paths/resources.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resources'
+  '/rates/{RATE_ID}':
+    $ref: 'paths/rates.yml#/paths/~1rates~1{RATE_ID}'
+  '/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}':
+    $ref: >-
+      paths/lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1lists~1{LIST_ID}~1entries~1{LIST_ENTRY_ID}
+  '/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}':
+    $ref: 'paths/configs.yml#/paths/~1accounts~1{ACCOUNT_ID}~1configs~1{CONFIG_ID}'
+  '/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1inbox~1{FAX_ID}'
+  '/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}':
+    $ref: >-
+      paths/directories.yml#/paths/~1accounts~1{ACCOUNT_ID}~1directories~1{DIRECTORY_ID}
+  '/accounts/{ACCOUNT_ID}/cccps':
+    $ref: 'paths/cccps.yml#/paths/~1accounts~1{ACCOUNT_ID}~1cccps'
+  '/accounts/{ACCOUNT_ID}/presence':
+    $ref: 'paths/presence.yml#/paths/~1accounts~1{ACCOUNT_ID}~1presence'
+  /rates:
+    $ref: 'paths/rates.yml#/paths/~1rates'
+  '/accounts/{ACCOUNT_ID}/agents':
+    $ref: 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1attachments
+  '/accounts/{ACCOUNT_ID}/cdrs/summary':
+    $ref: 'paths/cdrs.yml#/paths/~1accounts~1{ACCOUNT_ID}~1cdrs~1summary'
+  '/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1name~1{SELECTOR_NAME}~1resource~1{RESOURCE_ID}
+  '/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1{PHONE_NUMBER}~1reserve
+  '/accounts/{ACCOUNT_ID}/faxes/outgoing':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1outgoing'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/check':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1check
+  '/accounts/{ACCOUNT_ID}/resources/jobs':
+    $ref: 'paths/resources.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resources~1jobs'
+  '/accounts/{ACCOUNT_ID}/storage/plans':
+    $ref: 'paths/storage.yml#/paths/~1accounts~1{ACCOUNT_ID}~1storage~1plans'
+  '/accounts/{ACCOUNT_ID}/ips/hosts':
+    $ref: 'paths/ips.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ips~1hosts'
+  '/accounts/{ACCOUNT_ID}/move':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1move'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1attachments~1{ATTACHMENT_ID}
+  '/accounts/{ACCOUNT_ID}/resource_selectors':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors
+  /auth/tokeninfo:
+    $ref: 'paths/auth.yml#/paths/~1auth~1tokeninfo'
+  '/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}':
+    $ref: >-
+      paths/local_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1local_provisioner_templates~1{TEMPLATE_ID}
+  '/accounts/{ACCOUNT_ID}/sms':
+    $ref: 'paths/sms.yml#/paths/~1accounts~1{ACCOUNT_ID}~1sms'
+  '/accounts/{ACCOUNT_ID}/att_handlers_errors':
+    $ref: >-
+      paths/att_handlers_errors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1att_handlers_errors
+  '/accounts/{ACCOUNT_ID}/faxes':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes'
+  '/accounts/{ACCOUNT_ID}/ledgers/credit':
+    $ref: 'paths/ledgers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ledgers~1credit'
+  '/accounts/{ACCOUNT_ID}/descendants':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1descendants'
+  '/accounts/{ACCOUNT_ID}/vmboxes':
+    $ref: 'paths/vmboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1vmboxes'
+  '/accounts/{ACCOUNT_ID}/lists':
+    $ref: 'paths/lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1lists'
+  '/sup/{MODULE}':
+    $ref: 'paths/sup.yml#/paths/~1sup~1{MODULE}'
+  '/accounts/{ACCOUNT_ID}/att_handlers_errors/handler/{HANDLER_ID}':
+    $ref: >-
+      paths/att_handlers_errors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1att_handlers_errors~1handler~1{HANDLER_ID}
+  '/accounts/{ACCOUNT_ID}/phone_numbers/classifiers':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1classifiers
+  '/auth/links/{LINK_ID}':
+    $ref: 'paths/auth.yml#/paths/~1auth~1links~1{LINK_ID}'
+  '/accounts/{ACCOUNT_ID}/ips/zones':
+    $ref: 'paths/ips.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ips~1zones'
+  '/accounts/{ACCOUNT_ID}/alerts':
+    $ref: 'paths/alerts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1alerts'
+  /auth/callback:
+    $ref: 'paths/auth.yml#/paths/~1auth~1callback'
+  '/accounts/{ACCOUNT_ID}/pivot/debug':
+    $ref: 'paths/pivot.yml#/paths/~1accounts~1{ACCOUNT_ID}~1pivot~1debug'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1{PHONE_NUMBER}~1identify
+  '/accounts/{ACCOUNT_ID}/port_requests/scheduled':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1scheduled
+  '/accounts/{ACCOUNT_ID}/multi_factor/attempts/{ATTEMPT_ID}':
+    $ref: >-
+      paths/multi_factor.yml#/paths/~1accounts~1{ACCOUNT_ID}~1multi_factor~1attempts~1{ATTEMPT_ID}
+  '/accounts/{ACCOUNT_ID}/rate_limits':
+    $ref: 'paths/rate_limits.yml#/paths/~1accounts~1{ACCOUNT_ID}~1rate_limits'
+  '/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}':
+    $ref: 'paths/devices.yml#/paths/~1accounts~1{ACCOUNT_ID}~1devices~1{DEVICE_ID}'
+  '/accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}':
+    $ref: >-
+      paths/notifications.yml#/paths/~1accounts~1{ACCOUNT_ID}~1notifications~1smtplog~1{SMTP_LOG_ID}
+  '/accounts/{ACCOUNT_ID}/faxes/inbox':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1inbox'
+  '/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input':
+    $ref: 'paths/tasks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tasks~1{TASK_ID}~1input'
+  '/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}':
+    $ref: >-
+      paths/vmboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1vmboxes~1{VM_BOX_ID}~1messages~1{VM_MSG_ID}
+  '/accounts/{ACCOUNT_ID}/connectivity':
+    $ref: 'paths/connectivity.yml#/paths/~1accounts~1{ACCOUNT_ID}~1connectivity'
+  '/accounts/{ACCOUNT_ID}/faxboxes':
+    $ref: 'paths/faxboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxboxes'
+  '/accounts/{ACCOUNT_ID}/onboard':
+    $ref: 'paths/onboard.yml#/paths/~1accounts~1{ACCOUNT_ID}~1onboard'
+  '/accounts/{ACCOUNT_ID}/services/reconciliation':
+    $ref: >-
+      paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1reconciliation
+  '/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1{PHONE_NUMBER}
+  '/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1resource~1{RESOURCE_ID}
+  /auth/links:
+    $ref: 'paths/auth.yml#/paths/~1auth~1links'
+  '/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image':
+    $ref: >-
+      paths/local_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1local_provisioner_templates~1{TEMPLATE_ID}~1image
+  '/accounts/{ACCOUNT_ID}/devices':
+    $ref: 'paths/devices.yml#/paths/~1accounts~1{ACCOUNT_ID}~1devices'
+  '/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}':
+    $ref: >-
+      paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1{WHITELABEL_DOMAIN}
+  /auth/keys:
+    $ref: 'paths/auth.yml#/paths/~1auth~1keys'
+  '/accounts/{ACCOUNT_ID}/port_requests/canceled':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1canceled
+  '/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}':
+    $ref: >-
+      paths/resources.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resources~1{RESOURCE_ID}
+  '/accounts/{ACCOUNT_ID}/registrations':
+    $ref: 'paths/registrations.yml#/paths/~1accounts~1{ACCOUNT_ID}~1registrations'
+  '/accounts/{ACCOUNT_ID}/call_inspector/{CALL_ID}':
+    $ref: >-
+      paths/call_inspector.yml#/paths/~1accounts~1{ACCOUNT_ID}~1call_inspector~1{CALL_ID}
+  '/accounts/{ACCOUNT_ID}/port_requests/rejected':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1rejected
+  '/accounts/{ACCOUNT_ID}/port_requests/submitted':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1submitted
+  '/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1{UUID}
+  '/accounts/{ACCOUNT_ID}/faxes/smtplog':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1smtplog'
+  '/accounts/{ACCOUNT_ID}/tasks':
+    $ref: 'paths/tasks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tasks'
+  /auth/apps:
+    $ref: 'paths/auth.yml#/paths/~1auth~1apps'
+  '/accounts/{ACCOUNT_ID}/ips/assigned':
+    $ref: 'paths/ips.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ips~1assigned'
+  '/accounts/{ACCOUNT_ID}/directories':
+    $ref: 'paths/directories.yml#/paths/~1accounts~1{ACCOUNT_ID}~1directories'
+  '/accounts/{ACCOUNT_ID}/port_requests/unconfirmed':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1unconfirmed
+  '/accounts/{ACCOUNT_ID}/token_restrictions':
+    $ref: >-
+      paths/token_restrictions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1token_restrictions
+  '/accounts/{ACCOUNT_ID}/apps_link/authorize':
+    $ref: 'paths/apps_link.yml#/paths/~1accounts~1{ACCOUNT_ID}~1apps_link~1authorize'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/fix/{PHONE_NUMBER}':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1fix~1{PHONE_NUMBER}
+  '/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1classifiers~1{PHONE_NUMBER}
+  '/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}':
+    $ref: 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1{QUEUE_ID}'
+  '/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome':
+    $ref: >-
+      paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1{WHITELABEL_DOMAIN}~1welcome
+  '/accounts/{ACCOUNT_ID}/dialplans':
+    $ref: 'paths/dialplans.yml#/paths/~1accounts~1{ACCOUNT_ID}~1dialplans'
+  '/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}':
+    $ref: >-
+      paths/storage.yml#/paths/~1accounts~1{ACCOUNT_ID}~1storage~1plans~1{STORAGE_PLAN_ID}
+  '/accounts/{ACCOUNT_ID}/blacklists':
+    $ref: 'paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists'
+  '/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon':
+    $ref: >-
+      paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1{WHITELABEL_DOMAIN}~1icon
+  '/accounts/{ACCOUNT_ID}/registrations/{USERNAME}':
+    $ref: >-
+      paths/registrations.yml#/paths/~1accounts~1{ACCOUNT_ID}~1registrations~1{USERNAME}
+  '/accounts/{ACCOUNT_ID}/devices/status':
+    $ref: 'paths/devices.yml#/paths/~1accounts~1{ACCOUNT_ID}~1devices~1status'
+  '/accounts/{ACCOUNT_ID}/port_requests/pending':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1pending
+  '/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}':
+    $ref: 'paths/vmboxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1vmboxes~1{VM_BOX_ID}'
+  /user_auth:
+    $ref: 'paths/user_auth.yml#/paths/~1user_auth'
+  '/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}':
+    $ref: 'paths/tasks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tasks~1{TASK_ID}'
+  '/accounts/{ACCOUNT_ID}/comments':
+    $ref: 'paths/comments.yml#/paths/~1accounts~1{ACCOUNT_ID}~1comments'
+  '/accounts/{ACCOUNT_ID}/ledgers/total':
+    $ref: 'paths/ledgers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ledgers~1total'
+  '/accounts/{ACCOUNT_ID}/notifications':
+    $ref: 'paths/notifications.yml#/paths/~1accounts~1{ACCOUNT_ID}~1notifications'
+  '/accounts/{ACCOUNT_ID}/hotdesks':
+    $ref: 'paths/hotdesks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1hotdesks'
+  '/accounts/{ACCOUNT_ID}/services/available':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1available'
+  '/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon':
+    $ref: >-
+      paths/apps_store.yml#/paths/~1accounts~1{ACCOUNT_ID}~1apps_store~1{APP_ID}~1icon
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/loa':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1loa
+  '/accounts/{ACCOUNT_ID}/whitelabel/logo':
+    $ref: 'paths/whitelabel.yml#/paths/~1accounts~1{ACCOUNT_ID}~1whitelabel~1logo'
+  '/accounts/{ACCOUNT_ID}/allotments/consumed':
+    $ref: 'paths/allotments.yml#/paths/~1accounts~1{ACCOUNT_ID}~1allotments~1consumed'
+  /ubiquiti_auth:
+    $ref: 'paths/ubiquiti_auth.yml#/paths/~1ubiquiti_auth'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/completed':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}~1completed
+  '/accounts/{ACCOUNT_ID}/media/prompts':
+    $ref: 'paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media~1prompts'
+  '/accounts/{ACCOUNT_ID}/recordings':
+    $ref: 'paths/recordings.yml#/paths/~1accounts~1{ACCOUNT_ID}~1recordings'
+  '/sup/{MODULE}/{FUNCTION}/{ARGS}':
+    $ref: 'paths/sup.yml#/paths/~1sup~1{MODULE}~1{FUNCTION}~1{ARGS}'
+  '/templates/{TEMPLATE_NAME}':
+    $ref: 'paths/templates.yml#/paths/~1templates~1{TEMPLATE_NAME}'
+  '/accounts/{ACCOUNT_ID}/transactions':
+    $ref: 'paths/transactions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1transactions'
+  '/accounts/{ACCOUNT_ID}/users':
+    $ref: 'paths/users.yml#/paths/~1accounts~1{ACCOUNT_ID}~1users'
+  '/accounts/{ACCOUNT_ID}/groups':
+    $ref: 'paths/groups.yml#/paths/~1accounts~1{ACCOUNT_ID}~1groups'
+  '/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}/photo':
+    $ref: >-
+      paths/lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1lists~1{LIST_ID}~1entries~1{LIST_ENTRY_ID}~1photo
+  '/accounts/{ACCOUNT_ID}/skels/{THING}':
+    $ref: 'paths/skels.yml#/paths/~1accounts~1{ACCOUNT_ID}~1skels~1{THING}'
+  '/accounts/{ACCOUNT_ID}/faxes/outbox':
+    $ref: 'paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1outbox'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/fix':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1fix
+  '/accounts/{ACCOUNT_ID}/cdrs/interaction':
+    $ref: 'paths/cdrs.yml#/paths/~1accounts~1{ACCOUNT_ID}~1cdrs~1interaction'
+  '/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/activate':
+    $ref: >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1{PHONE_NUMBER}~1activate
+  '/accounts/{ACCOUNT_ID}/port_requests/completed':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1completed
+  /about:
+    $ref: 'paths/about.yml#/paths/~1about'
+  '/accounts/{ACCOUNT_ID}/webhooks/attempts':
+    $ref: 'paths/webhooks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1webhooks~1attempts'
+  /auth/providers:
+    $ref: 'paths/auth.yml#/paths/~1auth~1providers'
+  '/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}':
+    $ref: >-
+      paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1status~1{USER_ID}
+  '/accounts/{ACCOUNT_ID}/notifications/customer_update/message':
+    $ref: >-
+      paths/notifications.yml#/paths/~1accounts~1{ACCOUNT_ID}~1notifications~1customer_update~1message
+  '/accounts/{ACCOUNT_ID}/channels/{UUID}':
+    $ref: 'paths/channels.yml#/paths/~1accounts~1{ACCOUNT_ID}~1channels~1{UUID}'
+  '/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}':
+    $ref: >-
+      paths/temporal_rules_sets.yml#/paths/~1accounts~1{ACCOUNT_ID}~1temporal_rules_sets~1{TEMPORAL_RULE_SET}
+  '/accounts/{ACCOUNT_ID}/webhooks':
+    $ref: 'paths/webhooks.yml#/paths/~1accounts~1{ACCOUNT_ID}~1webhooks'
+  '/accounts/{ACCOUNT_ID}/agents/stats':
+    $ref: 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1stats'
+  '/accounts/{ACCOUNT_ID}/temporal_rules_sets':
+    $ref: >-
+      paths/temporal_rules_sets.yml#/paths/~1accounts~1{ACCOUNT_ID}~1temporal_rules_sets
+  '/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}':
+    $ref: >-
+      paths/multi_factor.yml#/paths/~1accounts~1{ACCOUNT_ID}~1multi_factor~1{CONFIG_ID}
+  '/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}':
+    $ref: >-
+      paths/ledgers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ledgers~1{SOURCE_SERVICE}~1{LEDGER_ID}
+  '/accounts/{ACCOUNT_ID}/conferences':
+    $ref: 'paths/conferences.yml#/paths/~1accounts~1{ACCOUNT_ID}~1conferences'
+  '/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}':
+    $ref: >-
+      paths/resource_selectors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1resource_selectors~1resource~1{RESOURCE_ID}~1name~1{SELECTOR_NAME}
+  '/schemas/{SCHEMA_NAME}':
+    $ref: 'paths/schemas.yml#/paths/~1schemas~1{SCHEMA_NAME}'
+  '/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo':
+    $ref: 'paths/users.yml#/paths/~1accounts~1{ACCOUNT_ID}~1users~1{USER_ID}~1photo'
+  '/accounts/{ACCOUNT_ID}/allotments':
+    $ref: 'paths/allotments.yml#/paths/~1accounts~1{ACCOUNT_ID}~1allotments'
+  '/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}':
+    $ref: 'paths/cccps.yml#/paths/~1accounts~1{ACCOUNT_ID}~1cccps~1{CCCP_ID}'
+  '/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image':
+    $ref: >-
+      paths/global_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1global_provisioner_templates~1{TEMPLATE_ID}~1image
+  '/accounts/{ACCOUNT_ID}/port_requests':
+    $ref: 'paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests'
+  '/accounts/{ACCOUNT_ID}/presence/{EXTENSION}':
+    $ref: 'paths/presence.yml#/paths/~1accounts~1{ACCOUNT_ID}~1presence~1{EXTENSION}'
+  /ip_auth:
+    $ref: 'paths/ip_auth.yml#/paths/~1ip_auth'
+  '/accounts/{ACCOUNT_ID}/services/manual':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1manual'
+  '/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}':
+    $ref: >-
+      paths/conferences.yml#/paths/~1accounts~1{ACCOUNT_ID}~1conferences~1{CONFERENCE_ID}~1participants~1{PARTICIPANT_ID}
+  '/accounts/{ACCOUNT_ID}/local_provisioner_templates':
+    $ref: >-
+      paths/local_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1local_provisioner_templates
+  '/accounts/{ACCOUNT_ID}/freeswitch':
+    $ref: 'paths/freeswitch.yml#/paths/~1accounts~1{ACCOUNT_ID}~1freeswitch'
+  '/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}':
+    $ref: >-
+      paths/port_requests.yml#/paths/~1accounts~1{ACCOUNT_ID}~1port_requests~1{PORT_REQUEST_ID}
+  '/accounts/{ACCOUNT_ID}/services/synchronization':
+    $ref: >-
+      paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1synchronization
+  '/accounts/{ACCOUNT_ID}/media/languages':
+    $ref: 'paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media~1languages'
+  '/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}':
+    $ref: >-
+      paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1smtplog~1{ATTEMPT_ID}
+  '/accounts/{ACCOUNT_ID}/services/quote':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1quote'
+  '/accounts/{ACCOUNT_ID}/services/overrides':
+    $ref: 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1overrides'
+  '/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}':
+    $ref: 'paths/ips.yml#/paths/~1accounts~1{ACCOUNT_ID}~1ips~1{IP_ADDRESS}'
+  '/accounts/{ACCOUNT_ID}/access_lists':
+    $ref: 'paths/access_lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1access_lists'
+  '/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status':
+    $ref: >-
+      paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1{USER_ID}~1queue_status
+  '/accounts/{ACCOUNT_ID}/menus/{MENU_ID}':
+    $ref: 'paths/menus.yml#/paths/~1accounts~1{ACCOUNT_ID}~1menus~1{MENU_ID}'
+  '/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}':
+    $ref: >-
+      paths/notifications.yml#/paths/~1accounts~1{ACCOUNT_ID}~1notifications~1{NOTIFICATION_ID}
+  '/accounts/{ACCOUNT_ID}/lists/{LIST_ID}':
+    $ref: 'paths/lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1lists~1{LIST_ID}'
+  '/accounts/{ACCOUNT_ID}/reseller':
+    $ref: 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1reseller'
+  '/accounts/{ACCOUNT_ID}/clicktocall':
+    $ref: 'paths/clicktocall.yml#/paths/~1accounts~1{ACCOUNT_ID}~1clicktocall'
+  '/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview':
+    $ref: >-
+      paths/notifications.yml#/paths/~1accounts~1{ACCOUNT_ID}~1notifications~1{NOTIFICATION_ID}~1preview
+  '/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}/vcard':
+    $ref: >-
+      paths/lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1lists~1{LIST_ID}~1entries~1{LIST_ENTRY_ID}~1vcard

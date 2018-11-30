@@ -53,8 +53,8 @@
        ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
        ).
 
--define(OAS3_JSON_FILE
-       ,filename:join([code:priv_dir('crossbar'), "oas3", "openapi.json"])
+-define(OAS3_YML_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", "openapi.yml"])
        ).
 
 -define(OAS3_SCHEMAS_FILE
@@ -299,39 +299,39 @@ generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion) ->
                       ,BaseSwagger
                       );
 generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
-     BaseOas = read_swagger_json(?OAS3_JSON_FILE),
+     BaseOas = kz_json:from_map(read_oas3_yaml(?OAS3_YML_FILE)),
      OasPaths = to_oas3_paths(Paths),
-     'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(kz_json:recursive_to_proplist(to_swagger_parameters(kz_json:get_keys(OasPaths))))),
-     'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(kz_json:recursive_to_proplist(to_swagger_definitions(OasVersion)))),
+     'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(to_swagger_parameters(kz_json:get_keys(OasPaths)))),
+     'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(to_swagger_definitions(OasVersion))),
 
-     PathNames = lists:usort(
-                   kz_json:foldl(fun(Path, PathMeta, Acc) ->
-                                         [{Path, kz_json:get_value(<<"pathname">>, PathMeta)}|Acc]
-                                 end
-                                ,[]
-                                ,Paths
-                                )
-                  ),
-
-     kz_json:set_values([{[<<"components">>, <<"parameters">>, <<"$ref">>], <<(?OAS3_PARAMETERS_FILE)/binary>>}
-                        ,{[<<"components">>, <<"schemas">>, <<"$ref">>], <<(?OAS3_SCHEMAS_FILE)/binary>>}
-                         | [{[<<"paths">>, Path, <<"$ref">>], <<"paths/", Name/binary, ".yml">>}
-                            || {Path, Name} <- PathNames
+     PathNames = kz_json:foldl(fun(Path, PathMeta, Acc) ->
+                                       [{kz_json:get_value(<<"module_name">>, PathMeta), Path}|Acc]
+                               end
+                              ,[]
+                              ,Paths
+                              ),
+?DEV_LOG("~nhd ~p~nksort ~p~nusort ~p~n", [hd(PathNames), hd(lists:keysort(1, PathNames)), hd(lists:usort(PathNames))]),
+     kz_json:set_values([{[<<"components">>, <<"parameters">>, <<"$ref">>], kz_term:to_binary(?OAS3_PARAMETERS_FILE)}
+                        ,{[<<"components">>, <<"schemas">>, <<"$ref">>], kz_term:to_binary(?OAS3_SCHEMAS_FILE)}
+                         | [{[<<"paths">>, Path, <<"$ref">>], <<"paths/", Name/binary, ".yml#/paths/", (escape_json_pointer(Path))/binary>>}
+                            || {Name, Path} <- PathNames
                            ]
                         ]
                        ,BaseOas
                        ).
+escape_json_pointer(Pointer) ->
+    binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
 
 -spec write_swagger_json(kz_json:object() | kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
 write_swagger_json(Swaggers, <<"oas_two_and_three">>) ->
     Swagger2 = kz_json:get_json_value(<<"swagger2">>, Swaggers),
     Oas3 = kz_json:get_json_value(<<"oas3">>, Swaggers),
     'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2)),
-    'ok' = file:write_file(?OAS3_JSON_FILE, kz_json:encode(Oas3));
+    'ok' = file:write_file(?OAS3_YML_FILE, kz_yaml:encode(Oas3));
 write_swagger_json(Swagger2, <<"swagger2">>) ->
     'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2));
 write_swagger_json(Oas3, <<"oas3">>) ->
-    'ok' = file:write_file(?OAS3_JSON_FILE, kz_json:encode(Oas3)).
+    'ok' = file:write_file(?OAS3_YML_FILE, kz_yaml:encode(Oas3)).
 
 
 -spec to_swagger_definitions(kz_term:ne_binary()) -> kz_json:object().
@@ -603,9 +603,6 @@ to_oas3_schema(OrigP, [<<"additionalProperties">> = P], ReverseP, Val, KVs, Orig
 to_oas3_schema(OrigP, [<<"additionalProperties">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
   when ?IS_OAS_PROPERTIES(Properties) ->
     to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(_, [<<"name">> = P], ReverseP, _, _, _, Warn, Err) ->
-    Msg = <<"extra keyword 'name'.">>,
-    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
 to_oas3_schema(OrigP, [<<"type">> | _] = Ps, [] = ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
     to_oas3_type(OrigP, Ps, ReverseP, Val, KVs, OrigKVs, Warn, Err);
 to_oas3_schema(OrigP, [<<"type">> | _] = Ps, [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
@@ -757,6 +754,14 @@ read_swagger_json(SwaggerFile) ->
         {'error', 'enoent'} -> kz_json:new()
     end.
 
+-spec read_oas3_yaml(kz_term:ne_binary()) -> kz_yaml:yaml_node().
+read_oas3_yaml(SwaggerFile) ->
+    try kz_yaml:decode_file(SwaggerFile)
+    catch
+        'throw':{'error', 'enoent'} -> #{};
+        'thorw':Throw -> throw(Throw)
+    end.
+
 to_oas3_paths(_Paths) ->
     kz_json:new().
 
@@ -896,18 +901,18 @@ format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
     Acc;
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
+    BaseModule = base_module_name(Module),
     Values = props:filter_undefined(
                [{[PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
-               ,{[PathName, <<"pathname">>], PathName}
-               ,maybe_include_schema(PathName, Module)
+               ,{[PathName, <<"module_name">>], BaseModule}
+               ,maybe_include_schema(PathName, BaseModule)
                ]),
     kz_json:set_values(Values, Acc).
 
-maybe_include_schema(PathName, Module) ->
-    M = base_module_name(Module),
-    case filelib:is_file(kz_ast_util:schema_path(<<M/binary, ".json">>)) of
+maybe_include_schema(PathName, BaseModule) ->
+    case filelib:is_file(kz_ast_util:schema_path(<<BaseModule/binary, ".json">>)) of
         'false' -> {'undefined', 'undefined'};
-        'true' -> {[PathName, <<"schema">>], base_module_name(Module)}
+        'true' -> {[PathName, <<"schema">>], BaseModule}
     end.
 
 format_path_tokens(<<"/">>) -> [];
