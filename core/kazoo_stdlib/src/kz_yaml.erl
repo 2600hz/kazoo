@@ -10,13 +10,13 @@
 -export([encode/1, encode/2
         ,decode/1, decode/2
         ,decode_file/1, decode_file/2
+
+        ,encode_all/1, encode_all/2
+        ,decode_all/1, decode_all/2
+        ,decode_file_all/1, decode_file_all/2
         ]).
 
 -define(JSON_WRAPPER(Proplist), {Proplist}).
-
--type decode_object() :: yamerl_constr:yamerl_doc() | [yamerl_constr:yamerl_doc()] |
-                         yamerl_constr:yamerl_simple_doc() | [yamerl_constr:yamerl_simple_doc()] |
-                         term().
 
 -type node_scalar() :: atom() |
                        binary() |
@@ -30,6 +30,7 @@
 -type yaml_node() :: node_scalar() |
                      node_map() |
                      node_seq().
+-type yaml_nodes() :: [yaml_node()].
 
 -type case_styles() :: 'camelcase' | 'lowercase' | 'uppercase'.
 -type string_style() :: 'double_qoute' | 'fold' | 'literal' | 'plain' | 'single_quote'.
@@ -40,8 +41,7 @@
                      %% Indentation to use (in spaces). Default is 2.
                     ,line_width => integer()
                      %% Maximum line width when writing string scalar not counting the indentation. A long line without suitable
-                     %% break point (non-consecutive white spaces) will exceed the width limit. If you don't want to
-                     %% break long lines automatically set this to `-1'.
+                     %% break point will exceed the width limit. If you don't want to break long lines automatically set this to `-1'.
                      %% Default is 80 characters.
                     ,bool_style => case_styles()
                      %% Writing style for boolean scalar type. Default is lowercase.
@@ -68,6 +68,15 @@
                   ,undefined_type => 'null' | 'undefined'
                   }.
 
+-export_type([node_scalar/0
+             ,node_map/0
+             ,node_seq/0
+             ,yaml_node/0
+             ,yaml_nodes/0
+
+             ,options/0
+             ]).
+
 %% @equiv encode(Yaml, #{})
 -spec encode(yaml_node() | kz_json:object()) -> binary().
 encode(Yaml) ->
@@ -83,8 +92,22 @@ encode(?JSON_WRAPPER(_) = JObj, Options) ->
 encode(Yaml, Options) ->
     ret_result(encode_node(start_state(Options), Yaml, 0)).
 
+%% @equiv encode_all(Yaml, #{})
+-spec encode_all(yaml_nodes() | kz_json:objects()) -> binary().
+encode_all(Yamls) when is_list(Yamls) ->
+    encode_all(Yamls, #{}).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec encode_all(yaml_nodes() | kz_json:objects(), options()) -> binary().
+encode_all([], _) -> <<>>;
+encode_all(Yamls, Options) when is_list(Yamls) ->
+    kz_term:to_binary([ [<<"---">>, <<$\n>>, encode(Yaml, Options)] || Yaml <- Yamls]).
+
 %% @equiv decode(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
--spec decode(kz_term:ne_binary() | string()) -> decode_object().
+-spec decode(kz_term:ne_binary() | string()) -> yaml_node().
 decode(Yaml) ->
     decode(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}]).
 
@@ -92,12 +115,13 @@ decode(Yaml) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec decode(kz_term:ne_binary() | string(), kz_term:proplist()) -> decode_object().
+-spec decode(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_node().
 decode(Yaml, Options) ->
-    yamerl:decode(Yaml, Options).
+    [Doc | _] = decode_all(Yaml, Options),
+    Doc.
 
 %% @equiv decode_file(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
--spec decode_file(kz_term:ne_binary() | string()) -> decode_object().
+-spec decode_file(kz_term:ne_binary() | string()) -> yaml_node().
 decode_file(Yaml) ->
     decode_file(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}]).
 
@@ -105,8 +129,35 @@ decode_file(Yaml) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec decode_file(kz_term:ne_binary() | string(), kz_term:proplist()) -> decode_object().
+-spec decode_file(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_node().
 decode_file(Yaml, Options) ->
+    [Doc | _] = decode_file_all(Yaml, Options),
+    Doc.
+
+%% @equiv decode_all(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
+-spec decode_all(kz_term:ne_binary() | string()) -> yaml_nodes().
+decode_all(Yaml) ->
+    decode_all(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}]).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec decode_all(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_nodes().
+decode_all(Yaml, Options) ->
+    yamerl:decode(Yaml, Options).
+
+%% @equiv decode_file_all(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
+-spec decode_file_all(kz_term:ne_binary() | string()) -> yaml_nodes().
+decode_file_all(Yaml) ->
+    decode_file(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}]).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec decode_file_all(kz_term:ne_binary() | string(), kz_term:proplist()) -> yaml_nodes().
+decode_file_all(Yaml, Options) ->
     yamerl:decode_file(Yaml, Options).
 
 %%%=============================================================================
