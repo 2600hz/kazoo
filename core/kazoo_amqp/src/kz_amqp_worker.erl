@@ -1126,7 +1126,7 @@ handle_payload(MsgId, JObj
                     lager:debug("response failed validator, waiting for more responses"),
                     {'noreply', State#state{neg_resp_count = NegCount + 1
                                            ,neg_resp=JObj
-                                           }, 0}
+                                           }}
             end
     end;
 handle_payload(MsgId, JObj
