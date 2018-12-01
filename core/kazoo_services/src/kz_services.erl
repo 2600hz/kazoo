@@ -91,6 +91,10 @@
 -export([reconcile/1
         ,reconcile/2
         ]).
+-export([update_payment_token/3
+        ,update_payment_tokens/3
+        ,delete_payment_token/3
+        ]).
 
 -export([is_services/1]).
 -export([apps/1]).
@@ -591,6 +595,7 @@ empty_services_jobj(ResellerId) ->
               ,{fun kzd_services:set_reseller_id/2, ResellerId}
               ,{fun kzd_services:set_account_quantities/2, kz_json:new()}
               ,{fun kzd_services:set_cascade_quantities/2, kz_json:new()}
+              ,{fun kzd_services:set_payment_tokens/2, kz_json:new()}
               ],
     kz_doc:setters(Setters).
 
@@ -928,7 +933,7 @@ maybe_hydrate_account_quantities(#kz_services{account_quantities='undefined'}=Se
 maybe_hydrate_account_quantities(Services) ->
     Services.
 
--spec maybe_save_services_jobj(services()) -> services().
+-spec maybe_save_services_jobj(services()) -> {'ok' | 'error', services()}.
 maybe_save_services_jobj(Services) ->
     CurrentServicesJObj = current_services_jobj(Services),
     ProposedServices = commit_quantities(Services),
@@ -989,11 +994,11 @@ commit_manual_quantities(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec save_services_jobj(services()) -> services().
+-spec save_services_jobj(services()) -> {'ok' | 'error', services()}.
 save_services_jobj(Services) ->
     save_services_jobj(Services, services_jobj(Services)).
 
--spec save_services_jobj(services(), kzd_services:doc()) -> services().
+-spec save_services_jobj(services(), kzd_services:doc()) -> {'ok' | 'error', services()}.
 save_services_jobj(Services, ProposedJObj) ->
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, ProposedJObj) of
         {'ok', UpdatedJObj} ->
@@ -1095,3 +1100,71 @@ sum_quantities_updates(Quantities, Updates) ->
                ,Quantities
                ,Props
                ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_payment_token(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                  {'ok' | 'error', services()} | {'error', 'undefined_account'}.
+update_payment_token('undefined', _, _) ->
+    {'error', 'undefined_account'};
+update_payment_token(AccountId, Bookkeeper, Token) ->
+    Services = fetch(AccountId),
+    ServicesJObj = services_jobj(Services),
+    TokenId = kz_json:get_ne_binary_value(<<"id">>, Token),
+    UpdatedJObj = kzd_services:set_payment_token(ServicesJObj
+                                                ,TokenId
+                                                ,kz_json:set_value(<<"bookkeeper">>, Bookkeeper, Token)
+                                                ),
+    Setters = [{fun set_services_jobj/2, UpdatedJObj}
+              ,{fun set_current_services_jobj/2, UpdatedJObj}
+              ],
+    save_services_jobj(setters(Services, Setters)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_payment_tokens(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                   {'ok' | 'error', services()} | {'error', 'undefined_account'}.
+update_payment_tokens('undefined', _, _) ->
+    {'error', 'undefined_account'};
+update_payment_tokens(?NE_BINARY = AccountId, ?NE_BINARY = Bookkeeper, ProposedTokens) ->
+    Services = fetch(AccountId),
+    ServicesJObj = services_jobj(Services),
+    Filtered = kz_json:filter(fun({_, Value}) ->
+                                      Bookkeeper =/= kz_json:get_ne_binary_value(<<"bookkeeper">>, Value)
+                              end
+                             ,kzd_services:payment_tokens(ServicesJObj, kz_json:new())
+                             ),
+    UpdatedJObj = [kzd_services:set_payment_token(kzd_services:set_payment_tokens(ServicesJObj, Filtered)
+                                                 ,kz_json:get_ne_binary_value(<<"id">>, Token)
+                                                 ,kz_json:set_value(<<"bookkeeper">>, Bookkeeper, Token)
+                                                 )
+                    || Token <- ProposedTokens,
+                       Bookkeeper =:= kz_json:get_ne_binary_value(<<"bookkeeper">>, Token),
+                       'undefined' =/= kz_json:get_ne_binary_value(<<"id">>, Token)
+                  ],
+    Setters = [{fun set_services_jobj/2, UpdatedJObj}
+              ,{fun set_current_services_jobj/2, UpdatedJObj}
+              ],
+    save_services_jobj(setters(Services, Setters)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec delete_payment_token(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                  {'ok' | 'error', services()} | {'error', 'undefined_account'}.
+delete_payment_token('undefined', _, _) ->
+    {'error', 'undefined_account'};
+delete_payment_token(AccountId, _Bookkeeper, Token) ->
+    Services = fetch(AccountId),
+    ServicesJObj = services_jobj(Services),
+    TokenId = kz_json:get_ne_binary_value(<<"id">>, Token),
+    UpdatedJObj = kzd_services:set_payment_token(ServicesJObj, TokenId, 'undefined'),
+    Setters = [{fun set_services_jobj/2, UpdatedJObj}
+              ,{fun set_current_services_jobj/2, UpdatedJObj}
+              ],
+    save_services_jobj(setters(Services, Setters)).

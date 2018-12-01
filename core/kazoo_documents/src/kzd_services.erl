@@ -86,6 +86,14 @@
         ,status/2
         ,set_status/2
         ]).
+-export([payment_tokens/1
+        ,payment_tokens/2
+        ,set_payment_tokens/2
+
+        ,payment_token/2
+        ,payment_token/3
+        ,set_payment_token/3
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -542,3 +550,43 @@ status(JObj, Default) ->
 -spec set_status(doc(), kz_term:api_binary()) -> doc().
 set_status(JObj, Status) ->
     kz_json:set_value(?STATUS, Status, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec payment_tokens(doc()) -> kz_term:api_object().
+payment_tokens(JObj) ->
+    payment_tokens(JObj, 'undefined').
+
+-spec payment_tokens(doc(), Default) -> kz_term:api_object() | Default.
+payment_tokens(JObj, Default) ->
+    kz_json:get_ne_json_value(<<"payment_tokens">>, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_payment_tokens(doc(), kz_term:api_object()) -> doc().
+set_payment_tokens(JObj, PaymentTokens) ->
+    kz_json:set_value(<<"payment_tokens">>, PaymentTokens, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec payment_token(kz_term:ne_binary(), doc()) -> kz_term:api_object().
+payment_token(TokenId, JObj) ->
+    payment_token(TokenId, JObj, 'undefined').
+
+-spec payment_token(kz_term:ne_binary(), doc(), Default) -> kz_term:api_object() | Default.
+payment_token(TokenId, JObj, Default) ->
+    kz_json:get_ne_json_value([<<"payment_tokens">>, TokenId], JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_payment_token(doc(), kz_term:ne_binary(), kz_term:api_object()) -> doc().
+set_payment_token(JObj, ?NE_BINARY=TokenId, PaymentTokens) ->
+    kz_json:set_value([<<"payment_tokens">>, TokenId], PaymentTokens, JObj).
