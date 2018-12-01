@@ -20,23 +20,14 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_device(kzd_devices:doc(), kz_term:ne_binary()) -> 'ok'.
-update_device(Device, AuthToken) ->
-    AccountId = kz_doc:account_id(Device),
-    Request = device_settings(set_owner(Device)),
+update_device(JObj, AuthToken) ->
+    AccountId = kz_doc:account_id(JObj),
+    Request = device_settings(set_owner(JObj)),
     _ = update_account(AccountId, AuthToken),
     send_req('devices_post'
             ,maybe_add_device_defaults(Request)
             ,AuthToken
             ,AccountId
-            ,kzd_devices:mac_address(Device)
-            ).
-
--spec delete_device(kzd_devices:doc(), kz_term:ne_binary()) -> 'ok'.
-delete_device(JObj, AuthToken) ->
-    send_req('devices_delete'
-            ,'undefined'
-            ,AuthToken
-            ,kz_doc:account_id(JObj)
             ,kzd_devices:mac_address(JObj)
             ).
 
@@ -102,15 +93,19 @@ get_model(Device) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-update_account(AccountId, JObj, AuthToken) ->
-    send_req('accounts_update'
-            ,account_settings(JObj)
-            ,AuthToken
-            ,AccountId
+-spec delete_device(kzd_devices:doc(), kz_term:ne_binary()) -> 'ok'.
+delete_device(JObj, AuthToken) ->
+    send_req('devices_delete'
             ,'undefined'
+            ,AuthToken
+            ,kz_doc:account_id(JObj)
+            ,kzd_devices:mac_address(JObj)
             ).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec delete_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 delete_account(AccountId, AuthToken) ->
     send_req('accounts_delete'
@@ -119,6 +114,20 @@ delete_account(AccountId, AuthToken) ->
             ,AccountId
             ,'undefined'
             ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_account(kz_term:ne_binary(), kzd_accounts:doc(), kz_term:ne_binary()) -> 'ok'.
+update_account(AccountId, JObj, AuthToken) ->
+    send_req('accounts_update'
+            ,account_settings(JObj)
+            ,AuthToken
+            ,AccountId
+            ,'undefined'
+            ).
+
 -spec update_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -138,14 +147,14 @@ account_settings(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_user(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec update_user(kz_term:ne_binary(), kzd_users:doc(), kz_term:ne_binary()) -> 'ok'.
 update_user(AccountId, JObj, AuthToken) ->
     case kz_doc:type(JObj) of
         <<"user">> -> save_user(AccountId, JObj, AuthToken);
         _ -> 'ok' %% Gets rid of VMbox
     end.
 
--spec save_user(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec save_user(kz_term:ne_binary(), kzd_users:doc(), kz_term:ne_binary()) -> 'ok'.
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -156,7 +165,7 @@ save_user(AccountId, JObj, AuthToken) ->
               maybe_save_device(Device, Settings, AccountId, AuthToken)
       end, Devices).
 
--spec maybe_save_device(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec maybe_save_device(kzd_devices:doc(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                'ok' | {'EXIT', _}.
 maybe_save_device(Device, Settings, AccountId, AuthToken) ->
     Request = kz_json:from_list(
@@ -168,7 +177,7 @@ maybe_save_device(Device, Settings, AccountId, AuthToken) ->
                 ]),
     catch save_device(AccountId, Device, Request, AuthToken).
 
--spec save_device(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec save_device(kz_term:ne_binary(), kzd_devices:doc(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 save_device(AccountId, Device, Request, AuthToken) ->
     case kzd_devices:mac_address(Device) of
         'undefined' -> 'ok';

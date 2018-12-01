@@ -73,10 +73,36 @@ strip_non_hex(MACAddress) ->
 
 -spec provision_device(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> boolean().
 provision_device(DeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
+    CleansedDeviceDoc = ensure_mac_cleansed(DeviceDoc),
+    CleansedOldDeviceDoc = ensure_mac_cleansed(OldDeviceDoc),
+    case maps:find('new_mac_address', ProvisionerOptions) of
+        {'ok', MacAddress} ->
+            CleansedMacAddress = cleanse_mac_address(MacAddress),
+            do_provision(CleansedDeviceDoc
+                        ,CleansedOldDeviceDoc
+                        ,ProvisionerOptions#{'new_mac_address' := CleansedMacAddress}
+                        );
+        'error' ->
+            do_provision(CleansedDeviceDoc
+                        ,CleansedOldDeviceDoc
+                        ,ProvisionerOptions
+                        )
+    end.
+
+-spec ensure_mac_cleansed(kzd_devices:doc()) -> kzd_devices:doc().
+ensure_mac_cleansed(JObj) ->
+    case get_mac_address(JObj) of
+        'undefined' -> JObj;
+        MacAddress ->
+            kzd_devices:set_mac_address(JObj, MacAddress)
+    end.
+
+-spec do_provision(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> boolean().
+do_provision(DeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
     MACAddress = get_mac_address(DeviceDoc),
     case get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
-            maybe_full_provision(DeviceDoc, OldDeviceDoc, MACAddress);
+            do_full_provision(DeviceDoc, OldDeviceDoc, MACAddress);
         <<"awesome_provisioner">> when MACAddress =/= 'undefined' ->
             _ = do_awesome_provision(DeviceDoc),
             'true';
@@ -84,33 +110,42 @@ provision_device(DeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
             _ = do_simple_provision(MACAddress, DeviceDoc),
             'true';
         <<"provisioner_v5">> when MACAddress =/= 'undefined' ->
-            _ = maybe_provision_v5(DeviceDoc, OldDeviceDoc, ProvisionerOptions),
+            _ = do_provision_v5(DeviceDoc, OldDeviceDoc, ProvisionerOptions),
             'true';
         _ -> 'false'
     end.
 
--spec maybe_full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:api_ne_binary()) -> boolean().
-maybe_full_provision(DeviceDoc, OldDeviceDoc, 'undefined') ->
+-spec do_full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:api_ne_binary()) -> boolean().
+do_full_provision(DeviceDoc, OldDeviceDoc, 'undefined') ->
     case get_mac_address(OldDeviceDoc) of
         'undefined' -> 'ok';
         OldMACAddress -> delete_full_provision(OldMACAddress, DeviceDoc)
     end,
     'false';
-maybe_full_provision(DeviceDoc, OldDeviceDoc, MACAddress) ->
+do_full_provision(DeviceDoc, OldDeviceDoc, MACAddress) ->
     _ = do_full_provisioner_provider(kz_doc:account_id(DeviceDoc)),
-    _ = do_full_provision(DeviceDoc, OldDeviceDoc, MACAddress),
+    _ = full_provision(DeviceDoc, OldDeviceDoc, MACAddress),
     'true'.
 
--spec maybe_provision_v5(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> 'ok'.
-maybe_provision_v5(DeviceDoc, _OldDeviceDoc, #{'req_verb' := ?HTTP_PUT
-                                              ,'auth_token' := AuthToken
-                                              }) ->
+-spec do_awesome_provision(kzd_devices:doc()) -> boolean().
+do_awesome_provision(DeviceDoc) ->
+    case get_template(DeviceDoc) of
+        {'error', _} -> 'false';
+        {'ok', Template} ->
+            send_provisioning_template(DeviceDoc, Template),
+            'true'
+    end.
+
+-spec do_provision_v5(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> 'ok'.
+do_provision_v5(DeviceDoc, _OldDeviceDoc, #{'req_verb' := ?HTTP_PUT
+                                           ,'auth_token' := AuthToken
+                                           }) ->
     _ = provisioner_v5:update_device(DeviceDoc, AuthToken),
     'ok';
-maybe_provision_v5(NewDevice, OldDevice, #{'req_verb' := ?HTTP_POST
-                                          ,'auth_token' := AuthToken
-                                          ,'new_mac_address' := NewAddress
-                                          }) ->
+do_provision_v5(NewDevice, OldDevice, #{'req_verb' := ?HTTP_POST
+                                       ,'auth_token' := AuthToken
+                                       ,'new_mac_address' := NewAddress
+                                       }) ->
     OldAddress = kzd_devices:mac_address(OldDevice),
     case NewAddress =:= OldAddress of
         'true' ->
@@ -318,8 +353,8 @@ delete_full_provision(MACAddress, DeviceDoc) ->
     PartialURL = <<AccountId/binary, "/", MACAddress/binary>>,
     maybe_send_to_full_provisioner(PartialURL).
 
--spec do_full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:ne_binary()) -> boolean().
-do_full_provision(DeviceDoc, OldDevice, MACAddress) ->
+-spec full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:ne_binary()) -> boolean().
+full_provision(DeviceDoc, OldDevice, MACAddress) ->
     {'ok', Data} = get_merged_device(MACAddress, DeviceDoc),
 
     case get_mac_address(OldDevice) of
@@ -381,15 +416,6 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
     Res = kz_http:post(FullUrl, ?JSON_HEADERS, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
-
--spec do_awesome_provision(kzd_devices:doc()) -> boolean().
-do_awesome_provision(DeviceDoc) ->
-    case get_template(DeviceDoc) of
-        {'error', _} -> 'false';
-        {'ok', Template} ->
-            send_provisioning_template(DeviceDoc, Template),
-            'true'
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
