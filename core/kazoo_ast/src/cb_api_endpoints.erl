@@ -112,13 +112,13 @@ api_to_ref_doc({Module, Paths}) ->
     api_to_ref_doc(Module, Paths, module_version(Module)).
 
 api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
-    BaseName = base_module_name(Module),
+    EndpointName = base_module_name(Module),
 
     PathToSection = fun(Path, Acc) -> api_path_to_section(Module, Path, Acc) end,
-    Sections = lists:foldl(PathToSection, ref_doc_header(BaseName), Paths),
+    Sections = lists:foldl(PathToSection, ref_doc_header(EndpointName), Paths),
 
     Doc = lists:reverse(Sections),
-    DocPath = ?REF_PATH(BaseName),
+    DocPath = ?REF_PATH(EndpointName),
     'ok' = file:write_file(DocPath, Doc);
 api_to_ref_doc(_Module, _Paths, _Version) ->
     'ok'.
@@ -190,16 +190,16 @@ method_as_action(?HTTP_DELETE) -> <<"Remove">>;
 method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 
 -spec ref_doc_header(kz_term:ne_binary()) -> iolist().
-ref_doc_header(BaseName) ->
-    CleanedUpName = kz_ast_util:smash_snake(BaseName),
-    [[maybe_add_schema(BaseName)]
+ref_doc_header(EndpointName) ->
+    CleanedUpName = kz_ast_util:smash_snake(EndpointName),
+    [[maybe_add_schema(EndpointName)]
     ,["## About ", CleanedUpName, "\n\n"]
     ,["# ", CleanedUpName, "\n\n"]
     ].
 
 -spec maybe_add_schema(kz_term:ne_binary()) -> iolist().
-maybe_add_schema(BaseName) ->
-    case kz_ast_util:load_ref_schema(BaseName) of
+maybe_add_schema(EndpointName) ->
+    case kz_ast_util:load_ref_schema(EndpointName) of
         'undefined' -> [?SCHEMA_SECTION, "\n\n"];
         SchemaJObj -> kz_ast_util:schema_to_table(SchemaJObj)
     end.
@@ -272,20 +272,25 @@ to_oas3_file() ->
 -spec generate_oas_json(callback_configs(), kz_term:ne_binary()) -> kz_json:object() | kz_json:objects().
 generate_oas_json(Callbacks, OasVersion) ->
     Paths = format_as_path_centric(Callbacks),
-    generate_oas_paths_json(Paths, OasVersion).
+    Parameters = to_swagger_parameters(
+                   lists:flatten([kz_json:get_keys(kz_json:get_json_value(<<"paths">>, EndpointMeta))
+                                  || {_EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths)
+                                 ])),
+    generate_oas_paths_json(Paths, OasVersion, Parameters).
 
--spec generate_oas_paths_json(kz_json:object(), kz_term:ne_binary()) -> kz_json:object() | kz_json:objects().
-generate_oas_paths_json(Paths, <<"oas_two_and_three">>) ->
-    kz_json:from_list([{<<"oas3">>, generate_oas_paths_json(Paths, <<"oas3">>)}
-                      ,{<<"swagger2">>, generate_oas_paths_json(Paths, <<"swagger2">>)}
+-spec generate_oas_paths_json(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
+                                     kz_json:object() | kz_json:objects().
+generate_oas_paths_json(Paths, <<"oas_two_and_three">>, Parameters) ->
+    kz_json:from_list([{<<"oas3">>, generate_oas_paths_json(Paths, <<"oas3">>, Parameters)}
+                      ,{<<"swagger2">>, generate_oas_paths_json(Paths, <<"swagger2">>, Parameters)}
                       ]);
-generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion) ->
+generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion, Parameters) ->
     BaseSwagger = read_swagger_json(?SWAGGER_2_JSON_FILE),
     BasePaths = kz_json:get_value(<<"paths">>, BaseSwagger),
 
     kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                        ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
-                       ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
+                       ,{<<"parameters">>, Parameters}
                        ,{<<"host">>, <<"localhost:8000">>}
                        ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                        ,{<<"swagger">>, <<"2.0">>}
@@ -296,28 +301,25 @@ generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion) ->
                        ]
                       ,BaseSwagger
                       );
-generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
+generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
      BaseOas = kz_json:from_map(read_oas3_yaml(?OAS3_YML_FILE)),
      _OasPaths = to_oas3_paths(Paths),
 
-     'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(to_swagger_parameters(kz_json:get_keys(Paths)))),
-     'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(to_swagger_definitions(OasVersion))),
-
-     PathNames = kz_json:foldl(fun(Path, PathMeta, Acc) ->
-                                       [{kz_json:get_value(<<"module_name">>, PathMeta), Path}|Acc]
-                               end
-                              ,[]
-                              ,Paths
-                              ),
+     'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(Parameters, #{sort_keys => 'true'})),
+     'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(to_swagger_definitions(OasVersion), #{sort_keys => 'true'})),
 
      kz_json:set_values([{[<<"components">>, <<"parameters">>, <<"$ref">>], kz_term:to_binary(?OAS3_PARAMETERS_FILE)}
                         ,{[<<"components">>, <<"schemas">>, <<"$ref">>], kz_term:to_binary(?OAS3_SCHEMAS_FILE)}
-                         | [{[<<"paths">>, Path, <<"$ref">>], <<"paths/", Name/binary, ".yml#/paths/", (escape_json_pointer(Path))/binary>>}
-                            || {Name, Path} <- lists:reverse(PathNames)
+                         | [{[<<"paths">>, Path, <<"$ref">>]
+                            ,<<"paths/", EndpointName/binary, ".yml#/paths/", (escape_json_pointer(Path))/binary>>
+                            }
+                            || {EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths),
+                               {Path, _PathMeta} <- kz_json:to_proplist(kz_json:get_json_value(<<"paths">>, EndpointMeta))
                            ]
                         ]
                        ,BaseOas
                        ).
+
 escape_json_pointer(Pointer) ->
     binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
 
@@ -359,17 +361,24 @@ to_oas3_paths(_Paths) ->
 to_swagger_paths(Paths, BasePaths) ->
     Endpoints =
         [{[Path, Method], kz_json:get_value([Path, Method], BasePaths, kz_json:new())}
-         || {Path, AllowedMethods} <- kz_json:to_proplist(Paths),
-            Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
+         || {_EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths),
+            {Path, PathMeta} <- kz_json:to_proplist(kz_json:get_json_value(<<"paths">>, EndpointMeta)),
+            Method <- kz_json:get_list_value(<<"allowed_methods">>, PathMeta, [])
         ],
     kz_json:merge(kz_json:set_values(Endpoints, kz_json:new())
                  ,kz_json:foldl(fun to_swagger_path/3, kz_json:new(), Paths)
                  ).
 
 -spec to_swagger_path(kz_json:key(), kz_json:object(), kz_json:object()) -> kz_json:object().
-to_swagger_path(Path, PathMeta, Acc) ->
+to_swagger_path(_EndpointName, EndpointMeta, Acc) ->
+    Paths = kz_json:get_json_value(<<"paths">>, EndpointMeta),
+    SchemaParameter = swagger_body_param(EndpointMeta),
+    F = fun(Path, PathMeta, Acc1) -> to_swagger_path(Path, PathMeta, Acc1, SchemaParameter) end,
+    kz_json:foldl(F, Acc, Paths).
+
+-spec to_swagger_path(kz_json:key(), kz_json:object(), kz_json:object(), kz_json:api_object()) -> kz_json:object().
+to_swagger_path(Path, PathMeta, Acc, SchemaParameter) ->
     Methods = kz_json:get_list_value(<<"allowed_methods">>, PathMeta, []),
-    SchemaParameter = swagger_params(PathMeta),
     F = fun(Method, Acc1) -> add_swagger_path(Method, Acc1, Path, SchemaParameter) end,
     lists:foldl(F, Acc, Methods).
 
@@ -412,8 +421,8 @@ maybe_add_schema(_Path, Method, Schema)
 maybe_add_schema(_Path, _Method, _Parameters) ->
     'undefined'.
 
--spec swagger_params(kz_json:object()) -> kz_term:api_object().
-swagger_params(PathMeta) ->
+-spec swagger_body_param(kz_json:object()) -> kz_term:api_object().
+swagger_body_param(PathMeta) ->
     case kz_json:get_ne_binary_value(<<"schema">>, PathMeta) of
         'undefined' -> 'undefined';
         %% These do not have schemas
@@ -471,38 +480,36 @@ format_as_path_centric(Configs) ->
 -spec format_pc_module(callback_config(), kz_json:object()) -> kz_json:object().
 format_pc_module({Module, CallbackConfig}, Acc) ->
     ModuleName = path_name(Module),
-    F = fun(ConfigData, Acc1) -> format_pc_config(ConfigData, Acc1, Module, ModuleName) end,
-    lists:foldl(F, Acc, CallbackConfig);
+    EndpointName = base_module_name(Module),
+    F = fun(ConfigData, Acc1) -> format_pc_config(ConfigData, Acc1, EndpointName, ModuleName) end,
+    maybe_include_schema(lists:foldl(F, Acc, CallbackConfig), EndpointName);
 format_pc_module(_MC, Acc) ->
     Acc.
 
--spec format_pc_config(path_with_methods(), kz_json:object(), module(), kz_term:api_ne_binary()) ->
+-spec format_pc_config(path_with_methods(), kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                               kz_json:object().
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') -> Acc;
-format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
-    F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, Module, ModuleName, Callback) end,
+format_pc_config({Callback, Paths}, Acc, EndpointName, ModuleName) ->
+    F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, EndpointName, ModuleName, Callback) end,
     lists:foldl(F, Acc, Paths).
 
-format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) -> Acc;
-format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
+format_pc_callback({[], []}, Acc, _EndpointName, _ModuleName, _Callback) -> Acc;
+format_pc_callback({_Path, []}, Acc, _EndpointName, _ModuleName, _Callback) ->
     io:format("module ~s supported path ~s~nm: ~p c: ~p~n"
-             ,[_ModuleName, _Path, _Module, _Callback]
+             ,[_ModuleName, _Path, _EndpointName, _Callback]
              ),
     Acc;
-format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
+format_pc_callback({Path, Vs}, Acc, EndpointName, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
-    BaseModule = base_module_name(Module),
     Values = props:filter_undefined(
-               [{[PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
-               ,{[PathName, <<"module_name">>], BaseModule}
-               ,maybe_include_schema(PathName, BaseModule)
+               [{[EndpointName, <<"paths">>, PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
                ]),
     kz_json:set_values(Values, Acc).
 
-maybe_include_schema(PathName, BaseModule) ->
-    case filelib:is_file(kz_ast_util:schema_path(<<BaseModule/binary, ".json">>)) of
-        'false' -> {'undefined', 'undefined'};
-        'true' -> {[PathName, <<"schema">>], BaseModule}
+maybe_include_schema(Acc, EndpointName) ->
+    case filelib:is_file(kz_ast_util:schema_path(<<EndpointName/binary, ".json">>)) of
+        'false' -> Acc;
+        'true' -> kz_json:set_value([EndpointName, <<"schema">>], EndpointName, Acc)
     end.
 
 format_path_tokens(<<"/">>) -> [];
