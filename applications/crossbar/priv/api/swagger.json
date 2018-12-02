@@ -2843,9 +2843,18 @@
                         "properties": {
                             "id": {
                                 "description": "The email address/user ID or the list of email addresses/user IDs based on specified type",
-                                "type": [
-                                    "string",
-                                    "array"
+                                "oneOf": [
+                                    {
+                                        "format": "email",
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "format": "email",
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
                                 ]
                             },
                             "type": {
@@ -5826,6 +5835,23 @@
             "type": "object"
         },
         "dialplans": {
+            "additionalProperties": {
+                "properties": {
+                    "description": {
+                        "description": "Friendly name for this regex dialplan",
+                        "type": "string"
+                    },
+                    "prefix": {
+                        "description": "Prefix the prepend to the capture group after applying the regex",
+                        "type": "string"
+                    },
+                    "suffix": {
+                        "description": "Suffix the append to the capture group after applying the regex",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "description": "Permit local dialing by converting the dialed number to a routable form",
             "properties": {
                 "system": {

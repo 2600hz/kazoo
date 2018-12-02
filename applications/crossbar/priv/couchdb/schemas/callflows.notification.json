@@ -19,6 +19,7 @@
             "type": "array"
         },
         "recipients": {
+            "default": [],
             "description": "One or more specific email addresses, Kazoo user ids or a combination of both",
             "items": {
                 "properties": {
