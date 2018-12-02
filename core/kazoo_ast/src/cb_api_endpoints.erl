@@ -11,8 +11,8 @@
 -export([get/0
         ,get_app/2
         ,process_module/2
-        ,to_swagger_json/0
-        ,to_oas3_json/0
+        ,to_swagger_file/0
+        ,to_oas3_file/0
         ,to_ref_doc/0, to_ref_doc/1
         ,schema_to_doc/2, ref_tables_to_doc/1
 
@@ -58,11 +58,11 @@
        ).
 
 -define(OAS3_SCHEMAS_FILE
-       ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-schemas.json"])
+       ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-schemas.yml"])
        ).
 
 -define(OAS3_PARAMETERS_FILE
-       ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-parameters.json"])
+       ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-parameters.yml"])
        ).
 
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
@@ -260,15 +260,15 @@ ref_table_to_doc(RefTable) ->
                           ])
        ).
 
--spec to_swagger_json() -> 'ok'.
-to_swagger_json() ->
+-spec to_swagger_file() -> 'ok'.
+to_swagger_file() ->
     OASs = generate_oas_json(get(), <<"oas_two_and_three">>),
-    write_swagger_json(OASs, <<"oas_two_and_three">>).
+    write_swagger_file(OASs, <<"oas_two_and_three">>).
 
--spec to_oas3_json() -> 'ok'.
-to_oas3_json() ->
+-spec to_oas3_file() -> 'ok'.
+to_oas3_file() ->
     OAS3 = generate_oas_json(get(), <<"oas3">>),
-    write_swagger_json(OAS3, <<"oas3">>).
+    write_swagger_file(OAS3, <<"oas3">>).
 
 
 -spec generate_oas_json(callback_configs(), kz_term:ne_binary()) -> kz_json:object() | kz_json:objects().
@@ -300,8 +300,9 @@ generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion) ->
                       );
 generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
      BaseOas = kz_json:from_map(read_oas3_yaml(?OAS3_YML_FILE)),
-     OasPaths = to_oas3_paths(Paths),
-     'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(to_swagger_parameters(kz_json:get_keys(OasPaths)))),
+     _OasPaths = to_oas3_paths(Paths),
+
+     'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(to_swagger_parameters(kz_json:get_keys(Paths)))),
      'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(to_swagger_definitions(OasVersion))),
 
      PathNames = kz_json:foldl(fun(Path, PathMeta, Acc) ->
@@ -310,11 +311,11 @@ generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
                               ,[]
                               ,Paths
                               ),
-?DEV_LOG("~nhd ~p~nksort ~p~nusort ~p~n", [hd(PathNames), hd(lists:keysort(1, PathNames)), hd(lists:usort(PathNames))]),
+
      kz_json:set_values([{[<<"components">>, <<"parameters">>, <<"$ref">>], kz_term:to_binary(?OAS3_PARAMETERS_FILE)}
                         ,{[<<"components">>, <<"schemas">>, <<"$ref">>], kz_term:to_binary(?OAS3_SCHEMAS_FILE)}
                          | [{[<<"paths">>, Path, <<"$ref">>], <<"paths/", Name/binary, ".yml#/paths/", (escape_json_pointer(Path))/binary>>}
-                            || {Name, Path} <- PathNames
+                            || {Name, Path} <- lists:reverse(PathNames)
                            ]
                         ]
                        ,BaseOas
@@ -322,17 +323,16 @@ generate_oas_paths_json(Paths, <<"oas3">> = OasVersion) ->
 escape_json_pointer(Pointer) ->
     binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
 
--spec write_swagger_json(kz_json:object() | kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
-write_swagger_json(Swaggers, <<"oas_two_and_three">>) ->
-    Swagger2 = kz_json:get_json_value(<<"swagger2">>, Swaggers),
-    Oas3 = kz_json:get_json_value(<<"oas3">>, Swaggers),
-    'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2)),
-    'ok' = file:write_file(?OAS3_YML_FILE, kz_yaml:encode(Oas3));
-write_swagger_json(Swagger2, <<"swagger2">>) ->
+-spec write_swagger_file(kz_json:object() | kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
+write_swagger_file(Swaggers, <<"oas_two_and_three">>) ->
+    write_swagger_file(kz_json:get_json_value(<<"swagger2">>, Swaggers), <<"swagger2">>),
+    write_swagger_file(kz_json:get_json_value(<<"oas3">>, Swaggers), <<"oas3">>);
+write_swagger_file(Swagger2, <<"swagger2">>) ->
     'ok' = file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(Swagger2));
-write_swagger_json(Oas3, <<"oas3">>) ->
-    'ok' = file:write_file(?OAS3_YML_FILE, kz_yaml:encode(Oas3)).
-
+write_swagger_file(Oas3, <<"oas3">>) ->
+    'ok' = file:write_file(?OAS3_YML_FILE, kz_yaml:encode(Oas3, #{sort_keys => 'true'
+                                                                 ,key_string_style => 'single_quote'
+                                                                 })).
 
 -spec to_swagger_definitions(kz_term:ne_binary()) -> kz_json:object().
 to_swagger_definitions(OasVersion) ->

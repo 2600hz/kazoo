@@ -10,7 +10,7 @@ This module primarily looks for what endpoint paths are exposed by each Crossbar
 
 Additionally, this module can take a JSON schema (using the module's name to determine the schema file name) and create a Markdown table.
 
-This functionality is utilized in the `to_ref_doc/0` and `to_swagger_json/0` to create [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc/ref][reference documentation files]] for each Crossbar endpoint and to populate/update a [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/swagger/swagger.json][swagger.json]] file. The ref docs are then used as guides in creating/updating the [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc][Crossbar documentation]].
+This functionality is utilized in the `to_ref_doc/0` and `to_swagger_file/0` to create [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc/ref][reference documentation files]] for each Crossbar endpoint and to populate/update a [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/swagger/swagger.json][swagger.json]] file. The ref docs are then used as guides in creating/updating the [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc][Crossbar documentation]].
 
 The next step is to create an escript that will, on each PR, run the `to_ref_doc/0`; if there are changes to the ref doc files, there will be unstaged changes that should trigger the committer to fold those into the docs. These unstaged changes can also be detected in CI and fail the build so that committers will be alerted.
 
