@@ -49,6 +49,8 @@
                      %% Writing style for `null' scalar type. Canonical is `~' character. Default is lowercase.
                     ,string_style => string_style()
                      %% Writing style for string scalar if it is possible to write the string in that style.
+                    ,sort_keys => boolean()
+                     %% Whether or not sort keys
                     ,undefined_type => 'null' | 'undefined'
                      %% Write `undefined' as is or as `null'.
                     }.
@@ -65,6 +67,7 @@
                   ,bool_style => case_styles()
                   ,null_style => 'canonical' | case_styles()
                   ,string_style => string_style()
+                  ,sort_keys => boolean()
                   ,undefined_type => 'null' | 'undefined'
                   }.
 
@@ -210,13 +213,23 @@ encode_block_mapping(State, Map, Level) when map_size(Map) =:= 0 ->
           ,empty_collection => 'true'
           };
 encode_block_mapping(State, Map, Level) ->
-    {_, Result} = maps:fold(fun(K, V, Acc) ->
-                                    encode_block_mapping_fold(State, K, V, Acc, Level)
-                            end, {0, []}, Map),
+    {_, Result} = lists:foldl(fun({K, V}, Acc) ->
+                                      encode_block_mapping_fold(State, K, V, Acc, Level)
+                              end, {0, []}, maybe_sort_keys(State, Map)),
     State#{result => lists:reverse(Result)
           ,tag    => <<"tag:yaml.org,2002:map">>
           ,explicit => 'false'
           }.
+
+%% TODO: Erlang can not sort big maps (anything bigger than 32 elements)!
+%% Or even worse this is a bug. Need more Erlang source code invistagtation.
+%% (The C code for map in `erl_map.c' is calling `erts_validate_and_sort_flatmap'
+%% function if the map is bigger than 32 elements but the result is not sorted anyway)
+-spec maybe_sort_keys(state(), node_map()) -> list().
+maybe_sort_keys(#{sort_keys := 'true'}, Map) ->
+    lists:sort(maps:to_list(Map));
+maybe_sort_keys(_, Map) ->
+    maps:to_list(Map).
 
 -spec encode_block_mapping_fold(state(), yaml_node(), yaml_node(), {non_neg_integer(), iolist()}, non_neg_integer()) ->
                                        {non_neg_integer(), iolist()}.
@@ -788,13 +801,15 @@ start_state(#{}=Options) ->
             {I, C} ->
                 {I, C}
         end,
-    #{compact        => Compact
-     ,indent         => Indent
-     ,string_style   => maps:get('string_style', Options, literal)
-     ,line_width     => maps:get('line_width', Options, 80)
-     ,bool_style     => maps:get('bool_style', Options, 'lowercase')
-     ,null_style     => maps:get('null_style', Options, 'lowercase')
-     ,undefined_type => maps:get('undefined_type', Options, 'undefined')
+    #{compact          => Compact
+     ,indent           => Indent
+     ,string_style     => maps:get('string_style', Options, literal)
+     ,key_string_style => maps:get('key_string_style', Options, plain)
+     ,sort_keys        => maps:get('sort_keys', Options, true)
+     ,line_width       => maps:get('line_width', Options, 80)
+     ,bool_style       => maps:get('bool_style', Options, 'lowercase')
+     ,null_style       => maps:get('null_style', Options, 'lowercase')
+     ,undefined_type   => maps:get('undefined_type', Options, 'undefined')
 
      ,result  => <<>>
      ,tag     => 'undefined'
