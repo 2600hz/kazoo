@@ -45,6 +45,8 @@
                      %% Default is 80 characters.
                     ,bool_style => case_styles()
                      %% Writing style for boolean scalar type. Default is lowercase.
+                    ,key_string_style => 'double_qoute' | 'plain' | 'single_quote'
+                     %% Writing style for key string scalar if it is possible to write the string in that style.
                     ,null_style => 'canonical' | case_styles()
                      %% Writing style for `null' scalar type. Canonical is `~' character. Default is lowercase.
                     ,string_style => string_style()
@@ -66,6 +68,7 @@
                   ,line_width => integer()
                   ,bool_style => case_styles()
                   ,null_style => 'canonical' | case_styles()
+                  ,key_string_style => 'double_qoute' | 'plain' | 'single_quote'
                   ,string_style => string_style()
                   ,sort_keys => boolean()
                   ,undefined_type => 'null' | 'undefined'
@@ -587,6 +590,7 @@ escape_sequences(Char) -> Char.
 choose_string_style(#{line_width := UserLineWidth
                      ,indent := _UserIndent
                      ,is_key := IsKey
+                     ,key_string_style := KeyStyle
                      ,string_style := StringStyle
                      }, String, LineWidth) ->
     ShouldTrackWidth = UserLineWidth =/= -1,
@@ -594,7 +598,16 @@ choose_string_style(#{line_width := UserLineWidth
         andalso not is_whitespace(binary:last(String)),
     AnalyzeState = analyze_state(ShouldTrackWidth, Plain, IsKey, LineWidth),
     #{chosen_one := ChosenOne} = analyze_string(String, 0, AnalyzeState),
-    choose_string_style(ChosenOne, StringStyle).
+
+    UserStyle = maybe_set_key_style(IsKey, KeyStyle, StringStyle),
+
+    choose_string_style(ChosenOne, UserStyle).
+
+-spec maybe_set_key_style(boolean(), 'double_qoute' | 'plain' | 'single_quote', string_style()) -> string_style().
+maybe_set_key_style('true', 'double_qoute', _) -> 'double_qoute';
+maybe_set_key_style('true', 'plain', _) -> 'plain';
+maybe_set_key_style('true', 'single_quote', _) -> 'single_quote';
+maybe_set_key_style('false', _, StringStyle) -> StringStyle.
 
 -spec analyze_state(boolean(), boolean(), boolean(), non_neg_integer()) -> map().
 analyze_state(ShouldTrackWidth, Plain, IsKey, LineWidth) ->
@@ -611,21 +624,21 @@ analyze_state(ShouldTrackWidth, Plain, IsKey, LineWidth) ->
 -spec choose_string_style(string_style(), string_style()) -> string_style().
 choose_string_style('double_qoute', _) -> 'double_qoute';
 choose_string_style('literal', Style) when Style =:= 'literal'
-                                           andalso Style =:= 'fold' ->
+                                           orelse Style =:= 'fold' ->
     Style;
 choose_string_style('literal', _) -> 'literal';
 choose_string_style('fold', Style) when Style =:= 'literal'
-                                        andalso Style =:= 'fold' ->
+                                        orelse Style =:= 'fold' ->
     Style;
 choose_string_style('fold', _) -> 'fold';
 choose_string_style('single_quote', Style) when Style =:= 'plain'
-                                                andalso Style =:= 'single_quote'
-                                                andalso Style =:= 'double_qoute' ->
+                                                orelse Style =:= 'single_quote'
+                                                orelse Style =:= 'double_qoute' ->
     Style;
 choose_string_style('single_quote', _) -> 'single_quote';
 choose_string_style('plain', Style) when Style =:= 'plain'
-                                         andalso Style =:= 'single_quote'
-                                         andalso Style =:= 'double_qoute' ->
+                                         orelse Style =:= 'single_quote'
+                                         orelse Style =:= 'double_qoute' ->
     Style;
 choose_string_style('plain', _) -> 'plain'.
 
