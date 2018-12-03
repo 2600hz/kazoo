@@ -1,5 +1,6 @@
 -ifndef(PROVISIONER_V5_HRL).
 
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -define(MOD_CONFIG_CAT, <<"provisioner">>).

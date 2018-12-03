@@ -44,12 +44,10 @@
 -export([presence_id/1, presence_id/2, set_presence_id/2]).
 -export([provision/1, provision/2, set_provision/2]).
 -export([provision_combo_keys/1, provision_combo_keys/2, set_provision_combo_keys/2]).
--export([provision_combo_key/2, provision_combo_key/3, set_provision_combo_key/3]).
 -export([provision_endpoint_brand/1, provision_endpoint_brand/2, set_provision_endpoint_brand/2]).
 -export([provision_endpoint_family/1, provision_endpoint_family/2, set_provision_endpoint_family/2]).
 -export([provision_endpoint_model/1, provision_endpoint_model/2, set_provision_endpoint_model/2]).
 -export([provision_feature_keys/1, provision_feature_keys/2, set_provision_feature_keys/2]).
--export([provision_feature_key/2, provision_feature_key/3, set_provision_feature_key/3]).
 -export([provision_id/1, provision_id/2, set_provision_id/2]).
 -export([register_overwrite_notify/1, register_overwrite_notify/2, set_register_overwrite_notify/2]).
 -export([ringtones/1, ringtones/2, set_ringtones/2]).
@@ -527,29 +525,17 @@ provision(Doc, Default) ->
 set_provision(Doc, Provision) ->
     kz_json:set_value([<<"provision">>], Provision, Doc).
 
--spec provision_combo_keys(doc()) -> kz_term:api_object().
+-spec provision_combo_keys(doc()) -> any().
 provision_combo_keys(Doc) ->
     provision_combo_keys(Doc, 'undefined').
 
--spec provision_combo_keys(doc(), Default) -> kz_json:object() | Default.
+-spec provision_combo_keys(doc(), Default) -> any() | Default.
 provision_combo_keys(Doc, Default) ->
-    kz_json:get_json_value([<<"provision">>, <<"combo_keys">>], Doc, Default).
+    kz_json:get_value([<<"provision">>, <<"combo_keys">>], Doc, Default).
 
--spec set_provision_combo_keys(doc(), kz_json:object()) -> doc().
+-spec set_provision_combo_keys(doc(), any()) -> doc().
 set_provision_combo_keys(Doc, ProvisionComboKeys) ->
     kz_json:set_value([<<"provision">>, <<"combo_keys">>], ProvisionComboKeys, Doc).
-
--spec provision_combo_key(doc(), kz_json:key()) -> any().
-provision_combo_key(Doc, ComboKey) ->
-    provision_combo_key(Doc, ComboKey, 'undefined').
-
--spec provision_combo_key(doc(), kz_json:key(), Default) -> any() | Default.
-provision_combo_key(Doc, ComboKey, Default) ->
-    kz_json:get_value([<<"provision">>, <<"combo_keys">>, ComboKey], Doc, Default).
-
--spec set_provision_combo_key(doc(), kz_json:key(), any()) -> doc().
-set_provision_combo_key(Doc, ComboKey, Value) ->
-    kz_json:set_value([<<"provision">>, <<"combo_keys">>, ComboKey], Value, Doc).
 
 -spec provision_endpoint_brand(doc()) -> kz_term:api_binary().
 provision_endpoint_brand(Doc) ->
@@ -587,29 +573,17 @@ provision_endpoint_model(Doc, Default) ->
 set_provision_endpoint_model(Doc, ProvisionEndpointModel) ->
     kz_json:set_value([<<"provision">>, <<"endpoint_model">>], ProvisionEndpointModel, Doc).
 
--spec provision_feature_keys(doc()) -> kz_term:api_object().
+-spec provision_feature_keys(doc()) -> any().
 provision_feature_keys(Doc) ->
     provision_feature_keys(Doc, 'undefined').
 
--spec provision_feature_keys(doc(), Default) -> kz_json:object() | Default.
+-spec provision_feature_keys(doc(), Default) -> any() | Default.
 provision_feature_keys(Doc, Default) ->
-    kz_json:get_json_value([<<"provision">>, <<"feature_keys">>], Doc, Default).
+    kz_json:get_value([<<"provision">>, <<"feature_keys">>], Doc, Default).
 
--spec set_provision_feature_keys(doc(), kz_json:object()) -> doc().
+-spec set_provision_feature_keys(doc(), any()) -> doc().
 set_provision_feature_keys(Doc, ProvisionFeatureKeys) ->
     kz_json:set_value([<<"provision">>, <<"feature_keys">>], ProvisionFeatureKeys, Doc).
-
--spec provision_feature_key(doc(), kz_json:key()) -> any().
-provision_feature_key(Doc, FeatureKey) ->
-    provision_feature_key(Doc, FeatureKey, 'undefined').
-
--spec provision_feature_key(doc(), kz_json:key(), Default) -> any() | Default.
-provision_feature_key(Doc, FeatureKey, Default) ->
-    kz_json:get_value([<<"provision">>, <<"feature_keys">>, FeatureKey], Doc, Default).
-
--spec set_provision_feature_key(doc(), kz_json:key(), any()) -> doc().
-set_provision_feature_key(Doc, FeatureKey, Value) ->
-    kz_json:set_value([<<"provision">>, <<"feature_keys">>, FeatureKey], Value, Doc).
 
 -spec provision_id(doc()) -> kz_term:api_binary().
 provision_id(Doc) ->
