@@ -14,6 +14,13 @@
         ,delete/2
         ]).
 
+-ifdef(TEST).
+-export([check_port_request_status/1
+        ,check_port_request_comments/1
+        ,check_low_balance/1
+        ]).
+-endif.
+
 -include("crossbar.hrl").
 
 -define(AVAILABLE_LIST, <<"alerts/available">>).
@@ -188,12 +195,176 @@ summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_summary(cb_context:context()) -> cb_context:context().
 load_summary(Context) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
-    crossbar_doc:load_view(?AVAILABLE_LIST
-                          ,[{'keys', view_keys(Context1)}]
-                          ,Context1
-                          ,fun normalize_view_results/2
-                          ).
+    AccountDb = cb_context:account_db(Context),
+    Context1 =
+        crossbar_doc:load_view(?AVAILABLE_LIST
+                              ,[{'keys', view_keys(Context)}]
+                              ,cb_context:set_account_db(Context, ?KZ_ALERTS_DB)
+                              ,fun normalize_view_results/2
+                              ),
+    Routines = [%fun check_credit_card/1
+              % ,
+               fun check_port_request_status/1
+               ,fun check_port_request_comments/1
+               ,fun check_low_balance/1
+               ],
+    Fun = fun(Routine, Cntxt) -> Routine(Cntxt) end,
+    lists:foldl(Fun, cb_context:set_account_db(Context1, AccountDb), Routines).
+
+%-spec check_credit_card(cb_context:context()) -> cb_context:context().
+%check_credit_card(Context) ->
+%    %% TODO: check implementation once kz_services:is_good_standing/1 gets created.
+%    Resp = kz_services:is_good_standing(kz_services:fetch(cb_context:account_id(Context))),
+%    check_credit_card(Context, Resp).
+%
+%-spec check_credit_card(cb_context:context(), atom() | {'error', atom()}) -> cb_context:context().
+%check_credit_card(Context, 'true') ->
+%    Context;
+%check_credit_card(Context, {'error', Error}) ->
+%    JObj = check_result_to_jobj(<<"credit_about_to_expire">>, Error),
+%    cb_context:set_resp_data(Context, [AlertJObj | context_resp_data(Context)]).
+
+-spec check_port_request_status(cb_context:context()) -> cb_context:context().
+check_port_request_status(Context) ->
+    ActivePortReqs = knm_port_request:account_active_ports(cb_context:account_id(Context)),
+    check_port_request_status(Context, ActivePortReqs).
+
+-spec check_port_request_status(cb_context:context(), {'ok', kz_json:objects()} | {'error', 'not_found'}) ->
+    cb_context:context().
+check_port_request_status(Context, {'error', 'not_found'}) ->
+    Context;
+check_port_request_status(Context, {'ok', Ports}) ->
+    case lists:filter(fun is_rejected_or_scheduled/1, Ports) of
+        [] -> Context;
+        Data ->
+            Alerts = check_port_request_status_results_to_alerts(Data),
+            cb_context:set_resp_data(Context, Alerts ++ context_resp_data(Context))
+    end.
+
+-spec is_rejected_or_scheduled(kz_json:object()) -> boolean().
+is_rejected_or_scheduled(Port) ->
+    knm_port_request:current_state(Port) =:= <<"rejected">>
+    orelse knm_port_request:current_state(Port) =:= <<"scheduled">>.
+
+-spec check_port_request_status_results_to_alerts(kz_json:objects()) -> kz_json:objects() | [].
+check_port_request_status_results_to_alerts(Ports) ->
+    Type = <<"rejected_or_scheduled_port_requests">>,
+    AlertsList = [[{<<"id">>, kz_doc:id(Port)}
+                  ,{<<"name">>, kz_json:get_value(<<"name">>, Port)}
+                  ,{<<"state">>, knm_port_request:current_state(Port)}
+                  ,{<<"type">>, Type}
+                  ] || Port <- Ports],
+    [kz_json:from_list(Alert) || Alert <- AlertsList].
+
+-spec check_port_request_comments(cb_context:context()) -> cb_context:context().
+check_port_request_comments(Context) ->
+    ActivePortReqs = knm_port_request:account_active_ports(cb_context:account_id(Context)),
+    check_port_request_comments(Context, ActivePortReqs).
+
+-spec check_port_request_comments(cb_context:context(), {'ok', kz_json:objects()} | {'error', 'not_found'}) ->
+    cb_context:context().
+check_port_request_comments(Context, {'error', 'not_found'}) ->
+    Context;
+check_port_request_comments(Context, {'ok', Ports}) ->
+    case lists:filter(fun is_last_comment_waiting_for_reply/1, Ports) of
+        [] -> Context;
+        Data ->
+            Alerts = check_port_request_comments_results_to_alerts(Data),
+            cb_context:set_resp_data(Context, Alerts ++ context_resp_data(Context))
+    end.
+
+-spec is_last_comment_waiting_for_reply(kz_json:object()) -> boolean().
+is_last_comment_waiting_for_reply(Port) ->
+    check_last_comment(port_request_last_comment(Port)).
+
+-spec port_request_last_comment(kz_json:object()) -> kz_json:object() | 'undefined'.
+port_request_last_comment(Port) ->
+    case kz_json:get_value(<<"comments">>, Port, []) of
+        [] -> 'undefined';
+        Comments -> hd(lists:reverse(Comments))
+    end.
+
+-spec check_last_comment(kz_json:object() | 'undefined') -> boolean().
+check_last_comment('undefined') ->
+    'false';
+check_last_comment(Comment) ->
+    kz_json:get_boolean_value(<<"waiting_for_reply">>, Comment, 'false').
+
+-spec check_port_request_comments_results_to_alerts(kz_json:objects()) -> kz_json:objects().
+check_port_request_comments_results_to_alerts(Ports) ->
+    Type = <<"port_request_with_waiting_for_reply_comment">>,
+    AlertsList = [[{<<"id">>, kz_doc:id(Port)}
+                  ,{<<"name">>, kz_json:get_value(<<"name">>, Port)}
+                  ,{<<"comment">>, kz_json:get_value(<<"content">>, port_request_last_comment(Port))}
+                  ,{<<"type">>, Type}
+                  ] || Port <- Ports],
+    [kz_json:from_list(Alert) || Alert <- AlertsList].
+
+-spec check_low_balance(cb_context:context()) -> cb_context:context().
+check_low_balance(Context) ->
+    check_low_balance(Context, 3).
+
+-spec check_low_balance(cb_context:context(), 0..3) -> cb_context:context().
+check_low_balance(Context, 0) ->
+    AccountId = cb_context:account_id(Context),
+    lager:debug("Max retries to get account ~s current balance", [AccountId]),
+    Context;
+check_low_balance(Context, Loop) when Loop > 0 ->
+    AccountId = cb_context:account_id(Context),
+    ThresholdUSD = kzd_accounts:low_balance_threshold(AccountId),
+    case kz_currency:available_dollars(AccountId) of
+        {'error', 'timeout'} ->
+            check_low_balance(Context, Loop - 1);
+        {'error', _R} = _Err ->
+            lager:debug("Skipping low_balance check for account ~p. " ++
+                        "Got error trying to get balance: ~p", [AccountId, _Err]),
+            Context;
+        {'ok', AvailableUnitsUSD} when AvailableUnitsUSD =< ThresholdUSD ->
+            maybe_topup_account(Context, kz_currency:dollars_to_units(AvailableUnitsUSD));
+        {'ok', _AvailableUnitsUSD} -> %% AvailableUnitsUSD > ThresholdUSD
+            Context
+    end.
+
+-spec maybe_topup_account(cb_context:context(), kz_currency:units()) -> cb_context:context().
+maybe_topup_account(Context, AvailableUnits) ->
+    AccountId = cb_context:account_id(Context),
+    lager:info("checking topup for account ~s with balance $~w"
+              ,[AccountId, kz_currency:units_to_dollars(AvailableUnits)]),
+    case kz_services_topup:maybe_topup(AccountId, AvailableUnits) of
+        {'ok', _Transaction, _Ledger} ->
+            lager:info("topup successful for ~s", [AccountId]),
+            Context;
+        {'error', _Error} ->
+            lager:debug("topup failed for ~s: ~p", [AccountId, _Error]),
+            maybe_alert_low_balance(Context, AvailableUnits)
+    end.
+
+-spec maybe_alert_low_balance(cb_context:context(), kz_currency:units()) -> cb_context:context().
+maybe_alert_low_balance(Context, AvailableUnits) ->
+    AccountId = cb_context:account_id(Context),
+    ThresholdUSD = kzd_accounts:low_balance_threshold(AccountId),
+    AvailableUnitsUSD = kz_currency:units_to_dollars(AvailableUnits),
+    lager:info("checking if account ~s balance $~w is below notification threshold $~w"
+              ,[AccountId, AvailableUnitsUSD, ThresholdUSD]),
+    case AvailableUnitsUSD =< ThresholdUSD of
+        'false' -> Context;
+        'true' -> check_low_balance_result_to_alert(Context, AvailableUnitsUSD, ThresholdUSD)
+    end.
+
+-spec check_low_balance_result_to_alert(cb_context:context(), kz_currency:dollars(), kz_currency:dollars()) -> cb_context:context().
+check_low_balance_result_to_alert(Context, AvailableUnitsUSD, ThresholdUSD) ->
+    Alert = [{<<"available_dollars">>, AvailableUnitsUSD}
+            ,{<<"threshold">>, ThresholdUSD}
+            ,{<<"type">>, <<"balance_is_below_zero">>}
+            ],
+    cb_context:set_resp_data(Context, [kz_json:from_list(Alert) | context_resp_data(Context)]).
+
+-spec context_resp_data(cb_context:context()) -> kz_json:objects().
+context_resp_data(Context) ->
+    case cb_context:resp_data(Context) of
+        'undefined' -> [];
+        RespData -> RespData
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
