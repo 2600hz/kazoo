@@ -275,7 +275,7 @@ post(Context, ?CUSTOMER_PATH_TOKEN) ->
     try braintree_customer:update(cb_context:fetch(Context, 'braintree')) of
         #bt_customer{credit_cards=Cards}=Customer ->
             Resp = braintree_customer:record_to_json(Customer),
-            braintree_util:update_services_cards(cb_context:account_id(Context), Cards),
+            _ = braintree_util:update_services_cards(cb_context:account_id(Context), Cards),
             _ = sync(Context),
             crossbar_util:response(Resp, Context)
     catch
@@ -292,7 +292,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
     try braintree_card:update(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
-            braintree_util:update_services_card(cb_context:account_id(Context), Card),
+            _ = braintree_util:update_services_card(cb_context:account_id(Context), Card),
             _ = sync(Context),
             crossbar_util:response(Resp, Context)
     catch
@@ -333,7 +333,7 @@ put(Context, ?CARDS_PATH_TOKEN) ->
     try braintree_card:create(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
-            braintree_util:update_services_card(cb_context:account_id(Context), Card),
+            _ = braintree_util:update_services_card(cb_context:account_id(Context), Card),
             _ = sync(Context),
             crossbar_util:response(Resp, Context)
     catch
@@ -348,7 +348,7 @@ delete(Context, ?CARDS_PATH_TOKEN, CardId) ->
     try braintree_card:delete(CardId) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
-            braintree_util:delete_services_card(cb_context:account_id(Context), Card),
+            _ = braintree_util:delete_services_card(cb_context:account_id(Context), Card),
             crossbar_util:response(Resp, Context)
     catch
         'throw':{'api_error', Reason} ->
@@ -385,7 +385,7 @@ create_braintree_customer(Context) ->
             end,
         #bt_customer{credit_cards=Cards} = Created = braintree_customer:create(C),
         Resp = braintree_customer:record_to_json(Created),
-        braintree_util:update_services_cards(cb_context:account_id(Context), Cards),
+        _ = braintree_util:update_services_cards(cb_context:account_id(Context), Cards),
         _ = sync(Context),
         crossbar_util:response(Resp, Context)
     catch
