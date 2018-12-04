@@ -949,7 +949,7 @@ maybe_save_services_jobj(Services) ->
                               );
         'true' ->
             lager:debug("services document is unchanged"),
-            Services
+            {'ok', Services}
     end.
 
 %%------------------------------------------------------------------------------
