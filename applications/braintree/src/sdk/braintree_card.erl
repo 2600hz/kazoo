@@ -330,23 +330,28 @@ record_to_json(#bt_card{}=Card) ->
 
 -spec record_to_payment_token(bt_card()) -> kz_json:object().
 record_to_payment_token(#bt_card{}=Card) ->
-    ExpYear = kz_term:to_integer(Card#bt_card.expiration_month),
-    ExpMonth = kz_term:to_integer(Card#bt_card.expiration_year),
+    ExpYear = kz_term:to_integer(Card#bt_card.expiration_year),
+    ExpMonth = kz_term:to_integer(Card#bt_card.expiration_month),
     ExpGregorian = calendar:datetime_to_gregorian_seconds({{ExpYear, ExpMonth, 1}, {0, 0, 0}}),
+
     kz_json:from_list(
       [{<<"id">>, Card#bt_card.token}
       ,{<<"bookkeeper">>, <<"braintree">>}
-      ,{<<"created_at">>, kz_time:from_iso8601(Card#bt_card.created_at)}
-      ,{<<"customer_id">>, Card#bt_card.customer_id}
+      ,{<<"created">>
+       ,calendar:datetime_to_gregorian_seconds(kz_time:from_iso8601(Card#bt_card.created_at))
+       }
       ,{<<"default">>, Card#bt_card.default}
-      ,{<<"expiration_timestamp">>, ExpGregorian}
+      ,{<<"expiration">>, ExpGregorian}
       ,{<<"metadata">>
        ,kz_json:from_list(
           [{<<"card_type">>, Card#bt_card.card_type}
+          ,{<<"customer_id">>, Card#bt_card.customer_id}
           ,{<<"last_four">>, Card#bt_card.last_four}
           ])
        }
-      ,{<<"modified_at">>, kz_time:from_iso8601(Card#bt_card.updated_at)}
+      ,{<<"modified">>
+       ,calendar:datetime_to_gregorian_seconds(kz_time:from_iso8601(Card#bt_card.updated_at))
+       }
       ]).
 
 -spec customer_id(bt_card()) -> kz_term:api_binary().
