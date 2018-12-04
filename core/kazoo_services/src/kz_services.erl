@@ -1008,12 +1008,12 @@ save_services_jobj(Services, ProposedJObj) ->
             Setters = [{fun set_services_jobj/2, UpdatedJObj}
                       ,{fun set_current_services_jobj/2, UpdatedJObj}
                       ],
-            setters(set_dirty(Services), Setters);
+            {'ok', setters(set_dirty(Services), Setters)};
         {'error', _Reason} ->
             lager:info("unable to update services document ~s: ~p"
                       ,[account_id(Services), _Reason]
                       ),
-            Services
+            {'error', Services}
     end.
 
 %%------------------------------------------------------------------------------
@@ -1113,8 +1113,7 @@ update_payment_token(AccountId, Bookkeeper, Token) ->
     Services = fetch(AccountId),
     ServicesJObj = services_jobj(Services),
 
-    EnsuredToken = ensure_payment_defaults(Bookkeeper, Token),
-    TokenId = kz_json:get_ne_binary_value(<<"id">>, EnsuredToken),
+    {TokenId, EnsuredToken} = ensure_payment_defaults(Bookkeeper, Token),
 
     lager:debug("trying to update payment token ~s for bookkeeper ~s", [TokenId, Bookkeeper]),
 
