@@ -68,6 +68,7 @@
         ,<<"Outbound-Callee-ID-Number">>
         ,<<"Outbound-Caller-ID-Name">>
         ,<<"Outbound-Caller-ID-Number">>
+        ,<<"Presence-ID">>
         ,<<"Ringback">>
         ,<<"SIP-Transport">>
         ,<<"SIP-Invite-Parameters">>
@@ -77,6 +78,7 @@
         ,<<"Loopback-Bowout">>
         ,<<"Export-Variables">>
         ,<<"Export-Bridge-Variables">>
+        ,<<"Monitor-Early-Media">>
         ,<<"Bridge-Actions">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -150,6 +152,8 @@
         ,<<"Simplify-Loopback">>
         ,<<"Loopback-Bowout">>
         ,<<"Endpoint-Actions">>
+        ,<<"Endpoint-ID">>
+        ,<<"Account-ID">>
         ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
@@ -913,6 +917,19 @@
                           ,{<<"Sending-Leg">>, fun is_boolean/1}
                           ]).
 
+%% Event-Actions
+-define(EVENT_ACTIONS_HEADERS, [<<"Application-Name">>
+                               ,<<"Call-ID">>
+                               ,<<"Event-Actions">>
+                               ]).
+-define(OPTIONAL_EVENT_ACTIONS_HEADERS, [<<"Insert-At">>]).
+-define(EVENT_ACTIONS_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"event_actions">>}
+                              ,{<<"Insert-At">>, <<"now">>}
+                              ]).
+-define(EVENT_ACTIONS_TYPES, [{<<"Event-Actions">>, fun kz_json:is_json_object/1}
+                             ]).
 
 -define(KAPI_DIALPLAN_HRL, 'true').
 -endif.

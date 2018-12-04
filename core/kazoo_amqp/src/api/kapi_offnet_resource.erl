@@ -386,7 +386,7 @@ control_queue(?REQ_TYPE(JObj)) ->
          }
     of
         {'undefined', _} -> 'undefined';
-        {_, 'undefined'} -> 'undefined';
+        {CtrlQ, 'undefined'} -> CtrlQ;
         {_, _} = CtrlQ -> CtrlQ
     end.
 

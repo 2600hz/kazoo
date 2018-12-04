@@ -65,6 +65,7 @@
         ,play_macro/1, play_macro_v/1
         ,sound_touch/1, sound_touch_v/1
         ,hold_control/1, hold_control_v/1
+        ,event_actions/1, event_actions_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -1302,6 +1303,21 @@ sound_touch(JObj) -> sound_touch(kz_json:to_proplist(JObj)).
 sound_touch_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SOUNDTOUCH_HEADERS, ?SOUNDTOUCH_VALUES, ?SOUNDTOUCH_TYPES);
 sound_touch_v(JObj) -> sound_touch_v(kz_json:to_proplist(JObj)).
+
+-spec event_actions(kz_term:api_terms()) -> api_formatter_return().
+event_actions(Prop) when is_list(Prop) ->
+    case event_actions_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?EVENT_ACTIONS_HEADERS, ?OPTIONAL_EVENT_ACTIONS_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hangup_req"}
+    end;
+event_actions(JObj) ->
+    event_actions(kz_json:to_proplist(JObj)).
+
+-spec event_actions_v(kz_term:api_terms()) -> boolean().
+event_actions_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?EVENT_ACTIONS_HEADERS, ?EVENT_ACTIONS_VALUES, ?EVENT_ACTIONS_TYPES);
+event_actions_v(JObj) ->
+    event_actions_v(kz_json:to_proplist(JObj)).
 
 -spec application_name(kz_term:api_terms()) -> kz_term:api_ne_binary().
 application_name(Prop) when is_list(Prop) ->
