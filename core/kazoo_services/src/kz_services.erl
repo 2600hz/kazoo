@@ -910,10 +910,11 @@ commit_account(Services) ->
                ,fun kz_services_bookkeeper:maybe_update/1
                ,fun maybe_save_services_jobj/1
                ],
-    lists:foldl(fun(F, S) -> F(S) end
-               ,reset_invoices(Services)
-               ,Routines
-               ).
+    {_OkError, SavedServices} = lists:foldl(fun(F, S) -> F(S) end
+                                           ,reset_invoices(Services)
+                                           ,Routines
+                                           ),
+    SavedServices.
 
 -spec maybe_hydrate_cascade_quantities(services()) -> services().
 maybe_hydrate_cascade_quantities(#kz_services{cascade_quantities='undefined'}=Services) ->
