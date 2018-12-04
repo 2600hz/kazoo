@@ -23,6 +23,7 @@
         ,fetch_winning_pid/1
         ,controller_queue/1, controller_pid/1
         ,node/1
+        ,server_id/1
 
         ,auth_nonce/1
         ,auth_response/1
@@ -163,3 +164,7 @@ auth_from(JObj) ->
 -spec auth_to(kz_json:object()) -> kz_term:api_binary().
 auth_to(JObj) ->
     kz_json:get_ne_binary_value(<<"Auth-To">>, JObj).
+
+-spec server_id(kz_json:object()) -> kz_term:api_binary().
+server_id(JObj) ->
+    kz_json:get_ne_binary_value(<<"Server-ID">>, JObj).
