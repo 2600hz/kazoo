@@ -1179,7 +1179,10 @@ delete_payment_token(AccountId, _Bookkeeper, Token) ->
     Services = fetch(AccountId),
     ServicesJObj = services_jobj(Services),
     TokenId = kz_json:get_ne_binary_value(<<"id">>, Token),
-    UpdatedJObj = kzd_services:set_payment_token(ServicesJObj, TokenId, 'undefined'),
+
+    NewTokens = kz_json:delete_key(TokenId, kzd_services:payment_tokens(ServicesJObj, kz_json:new())),
+    UpdatedJObj = kzd_services:set_payment_tokens(ServicesJObj, NewTokens),
+
     Setters = [{fun set_services_jobj/2, UpdatedJObj}
               ,{fun set_current_services_jobj/2, UpdatedJObj}
               ],
