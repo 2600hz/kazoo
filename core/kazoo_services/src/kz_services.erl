@@ -1112,11 +1112,13 @@ update_payment_token('undefined', _, _) ->
 update_payment_token(AccountId, Bookkeeper, Token) ->
     Services = fetch(AccountId),
     ServicesJObj = services_jobj(Services),
-    TokenId = kz_json:get_ne_binary_value(<<"id">>, Token),
-    UpdatedJObj = kzd_services:set_payment_token(ServicesJObj
-                                                ,TokenId
-                                                ,kz_json:set_value(<<"bookkeeper">>, Bookkeeper, Token)
-                                                ),
+
+    EnsuredToken = ensure_payment_defaults(Bookkeeper, Token),
+    TokenId = kz_json:get_ne_binary_value(<<"id">>, EnsuredToken),
+
+    lager:debug("trying to update payment token ~s for bookkeeper ~s", [TokenId, Bookkeeper]),
+
+    UpdatedJObj = kzd_services:set_payment_token(ServicesJObj, TokenId, EnsuredToken),
     Setters = [{fun set_services_jobj/2, UpdatedJObj}
               ,{fun set_current_services_jobj/2, UpdatedJObj}
               ],
@@ -1138,18 +1140,33 @@ update_payment_tokens(?NE_BINARY = AccountId, ?NE_BINARY = Bookkeeper, ProposedT
                               end
                              ,kzd_services:payment_tokens(ServicesJObj, kz_json:new())
                              ),
-    UpdatedJObj = [kzd_services:set_payment_token(kzd_services:set_payment_tokens(ServicesJObj, Filtered)
-                                                 ,kz_json:get_ne_binary_value(<<"id">>, Token)
-                                                 ,kz_json:set_value(<<"bookkeeper">>, Bookkeeper, Token)
-                                                 )
-                    || Token <- ProposedTokens,
-                       Bookkeeper =:= kz_json:get_ne_binary_value(<<"bookkeeper">>, Token),
-                       'undefined' =/= kz_json:get_ne_binary_value(<<"id">>, Token)
-                  ],
+    NewTokens = kz_json:from_list(
+                  [ensure_payment_defaults(Bookkeeper, Token)
+                   || Token <- ProposedTokens,
+                      Bookkeeper =:= kz_json:get_ne_binary_value(<<"bookkeeper">>, Token)
+                  ]),
+    UpdatedJObj = kzd_services:set_payment_tokens(ServicesJObj, kz_json:merge(NewTokens, Filtered)),
     Setters = [{fun set_services_jobj/2, UpdatedJObj}
               ,{fun set_current_services_jobj/2, UpdatedJObj}
               ],
     save_services_jobj(setters(Services, Setters)).
+
+-spec ensure_payment_defaults(kz_term:ne_binary(), kz_json:object()) ->
+                                     {kz_term:ne_binary(), kz_json:object()}.
+ensure_payment_defaults(Bookkeeper, Token) ->
+    Defaults = [{<<"bookkeeper">>, Bookkeeper}
+               ,{<<"created">>, kz_time:now_s()}
+               ,{<<"default">>, 'false'}
+               ,{<<"expiration">>, kz_time:now_s()}
+               ,{<<"id">>, kz_binary:rand_hex(5)}
+               ,{<<"modified">>, kz_time:now_s()}
+               ],
+    Updated = kz_json:insert_values(Defaults, Token),
+    TokenId = kz_doc:id(Updated),
+
+    lager:debug("trying to update payment token ~s for bookkeeper ~s", [TokenId, Bookkeeper]),
+
+    {TokenId, Updated}.
 
 %%------------------------------------------------------------------------------
 %% @doc
