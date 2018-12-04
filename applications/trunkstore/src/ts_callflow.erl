@@ -34,6 +34,7 @@
         ]).
 
 -include("ts.hrl").
+-include_lib("kazoo/include/kz_api_literals.hrl").
 
 -define(WAIT_FOR_WIN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
@@ -81,6 +82,7 @@ send_park(#ts_callflow_state{route_req_jobj=JObj
                             ,amqp_worker=Worker
                             }=State) ->
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+           ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
            ,{<<"Routes">>, []}
            ,{<<"Pre-Park">>, pre_park_action()}
            ,{<<"Method">>, <<"park">>}
