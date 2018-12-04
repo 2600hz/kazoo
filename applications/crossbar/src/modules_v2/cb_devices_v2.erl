@@ -815,7 +815,18 @@ on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
-    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
+    OwnerId = kzd_devices:owner_id(cb_context:doc(Context)),
+    Ctx = crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())),
+    case kzd_devices:owner_id(cb_context:doc(Ctx)) of
+        OwnerId -> Ctx;
+        NewOwnerId ->
+            lager:debug("owner id has changed for ~s", [DeviceId]),
+            {'ok', NewOwnerIdDoc} = kz_datamgr:open_doc(cb_context:account_db(Ctx), NewOwnerId),
+            kzs_publish:publish_doc(cb_context:account_db(Ctx), NewOwnerIdDoc, NewOwnerIdDoc),
+            {'ok', OwnerIdDoc} = kz_datamgr:open_doc(cb_context:account_db(Ctx), OwnerId),
+            kzs_publish:publish_doc(cb_context:account_db(Ctx), OwnerIdDoc, OwnerIdDoc),
+            Ctx
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
