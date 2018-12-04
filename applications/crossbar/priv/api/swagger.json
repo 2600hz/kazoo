@@ -5301,7 +5301,10 @@
                                 }
                             ]
                         }
-                    }
+                    },
+                    "required": [
+                        "type"
+                    ]
                 },
                 {
                     "properties": {
@@ -5340,11 +5343,11 @@
                                 }
                             ]
                         }
-                    }
+                    },
+                    "required": [
+                        "type"
+                    ]
                 }
-            ],
-            "required": [
-                "type"
             ],
             "type": [
                 "object",
