@@ -29,7 +29,7 @@ handle(Data, Call) ->
         {'ok', Flow, 'false'} ->
             JObj = suppress_ccv(Data),
             kapps_call_command:set('undefined', JObj, Call),
-            cf_exe:branch(kzd_callflow:flow(Flow, kz_json:new()), Call);
+            cf_exe:branch(kzd_callflows:flow(Flow, kz_json:new()), Call);
         _ ->
             cf_exe:continue(Call)
     end.

@@ -35,8 +35,8 @@ handle(Data, Call) ->
                    end,
     AccountDb = kapps_call:account_db(Call),
     {'ok', Callflow} = kz_datamgr:open_cache_doc(AccountDb, CallflowId),
-    UpdatedFlow = find_and_change_ring_group(kzd_callflow:flow(Callflow), Call, DisableUntil),
-    save_callflow(AccountDb, kzd_callflow:set_flow(Callflow, UpdatedFlow)),
+    UpdatedFlow = find_and_change_ring_group(kzd_callflows:flow(Callflow), Call, DisableUntil),
+    save_callflow(AccountDb, kzd_callflows:set_flow(Callflow, UpdatedFlow)),
     cf_exe:continue(Call).
 
 save_callflow(AccountDb, Callflow) ->

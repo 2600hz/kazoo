@@ -1,4 +1,4 @@
--module(kzd_callflow_tests).
+-module(kzd_callflows_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 

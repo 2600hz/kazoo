@@ -48,7 +48,7 @@ maybe_prepend_preflow(Call, CallFlow) ->
         {'ok', Doc} ->
             case kzd_accounts:preflow_id(Doc) of
                 'undefined' -> CallFlow;
-                PreflowId   -> kzd_callflow:prepend_preflow(CallFlow, PreflowId)
+                PreflowId   -> kzd_callflows:prepend_preflow(CallFlow, PreflowId)
             end
     end.
 

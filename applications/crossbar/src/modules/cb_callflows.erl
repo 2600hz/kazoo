@@ -159,7 +159,7 @@ load_callflow_summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_callflow(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_callflow(CallflowId, Context) ->
-    Context1 = crossbar_doc:load(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflow:type())),
+    Context1 = crossbar_doc:load(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflows:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             Meta = get_metadata(kz_json:get_value(<<"flow">>, cb_context:doc(Context1))
@@ -328,10 +328,10 @@ validate_callflow_schema(CallflowId, Context) ->
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                      ,kz_doc:set_type(cb_context:doc(Context), kzd_callflow:type())
+                      ,kz_doc:set_type(cb_context:doc(Context), kzd_callflows:type())
                       );
 on_successful_validation(CallflowId, Context) ->
-    crossbar_doc:load_merge(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflow:type())).
+    crossbar_doc:load_merge(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflows:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
@@ -377,7 +377,7 @@ track_assignment('post', Context) ->
                      not lists:member(Num, NewNums),
                      knm_converters:is_reconcilable(Num, AccountId)
                  ],
-    Assigned =  [{Num, kzd_callflow:type()}
+    Assigned =  [{Num, kzd_callflows:type()}
                  || Num <- NewNums,
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
@@ -387,7 +387,7 @@ track_assignment('post', Context) ->
 track_assignment('put', Context) ->
     NewNums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     AccountId = cb_context:account_id(Context),
-    Assigned =  [{Num, kzd_callflow:type()}
+    Assigned =  [{Num, kzd_callflows:type()}
                  || Num <- NewNums,
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
