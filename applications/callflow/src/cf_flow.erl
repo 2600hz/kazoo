@@ -26,7 +26,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--type lookup_ret() :: {'ok', kzd_callflow:doc(), boolean()} | {'error', any()}.
+-type lookup_ret() :: {'ok', kzd_callflows:doc(), boolean()} | {'error', any()}.
 
 -spec lookup(kapps_call:call()) -> lookup_ret().
 lookup(Call) ->
@@ -56,13 +56,13 @@ return_callflow_doc(FlowId, AccountId, Props) ->
         Error -> Error
     end.
 
--spec contains_no_match(kzd_callflow:doc()) -> boolean().
+-spec contains_no_match(kzd_callflows:doc()) -> boolean().
 contains_no_match(Doc) ->
     lists:any(fun(Number) when Number =:= ?NO_MATCH_CF ->
                       'true';
                  (_) ->
                       'false'
-              end, kzd_callflow:numbers(Doc)).
+              end, kzd_callflows:numbers(Doc)).
 
 -spec do_lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 do_lookup(Number, AccountId) ->
@@ -83,7 +83,7 @@ do_lookup(Number, AccountId) ->
             cache_callflow_number(Number, AccountId, Flow)
     end.
 
--spec cache_callflow_number(kz_term:ne_binary(), kz_term:ne_binary(), kzd_callflow:doc()) -> lookup_ret().
+-spec cache_callflow_number(kz_term:ne_binary(), kz_term:ne_binary(), kzd_callflows:doc()) -> lookup_ret().
 cache_callflow_number(Number, AccountId, Flow) ->
     AccountDb = kz_util:format_account_db(AccountId),
     CacheOptions = [{'origin', [{'db', AccountDb, <<"callflow">>}]}

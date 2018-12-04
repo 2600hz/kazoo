@@ -17,13 +17,13 @@
                   usurp_return() |
                   {'error', [jesse_error:error_return()]}.
 exec(Call, FlowJObj) ->
-    case kzd_callflow:validate_flow(
-           kzd_callflow:set_flow(kzd_callflow:new(), FlowJObj)
+    case kzd_callflows:validate_flow(
+           kzd_callflows:set_flow(kzd_callflows:new(), FlowJObj)
           )
     of
         {'error', Errors} -> {'error', Call, Errors};
         {'ok', ValidCallflow} ->
-            resume_callflow(Call, kzd_callflow:flow(ValidCallflow))
+            resume_callflow(Call, kzd_callflows:flow(ValidCallflow))
     end.
 
 -spec resume_callflow(kapps_call:call(), kz_json:object()) -> usurp_return().

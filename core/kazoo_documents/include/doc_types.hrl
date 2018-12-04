@@ -1,7 +1,7 @@
 -ifndef(KAZOO_DOC_TYPES_HRL).
 
 -define(DOC_TYPES, [kzd_accounts:type()
-                   ,kzd_callflow:type()
+                   ,kzd_callflows:type()
                    ,kzd_devices:type()
                    ,kzd_fax_box:type()
                    ,kzd_media:type()

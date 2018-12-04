@@ -216,7 +216,7 @@ maybe_route_to_callflow(Data, Call, Number, <<"lists">>) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_restrict_call(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kzd_callflow:doc()) -> 'ok'.
+-spec maybe_restrict_call(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kzd_callflows:doc()) -> 'ok'.
 maybe_restrict_call(Data, Call, Number, Flow) ->
     case should_restrict_call(Data, Call, Number) of
         'true' ->
@@ -226,7 +226,7 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             _ = kapps_call_command:queued_hangup(Call),
             'ok';
         'false' ->
-            cf_exe:branch(kzd_callflow:flow(Flow), Call)
+            cf_exe:branch(kzd_callflows:flow(Flow), Call)
     end.
 
 %%------------------------------------------------------------------------------

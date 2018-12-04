@@ -32,6 +32,6 @@ handle(Data, Call) ->
             cf_exe:continue(Call);
         {'ok', JObj} ->
             lager:info("branching to new callflow ~s", [Id]),
-            Flow = kzd_callflow:flow(JObj, kz_json:new()),
+            Flow = kzd_callflows:flow(JObj, kz_json:new()),
             cf_exe:branch(Flow, Call)
     end.

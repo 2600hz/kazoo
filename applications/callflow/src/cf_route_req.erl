@@ -52,7 +52,7 @@ handle_req(RouteReq, Props) ->
     end.
 
 -spec maybe_prepend_preflow(kapi_route:req(), kz_term:proplist()
-                           ,kapps_call:call(), kzd_callflow:doc()
+                           ,kapps_call:call(), kzd_callflows:doc()
                            ,boolean()
                            ) -> 'ok'.
 maybe_prepend_preflow(RouteReq, Props, Call, Callflow, NoMatch) ->
@@ -67,7 +67,7 @@ maybe_prepend_preflow(RouteReq, Props, Call, Callflow, NoMatch) ->
                     lager:debug("ignore preflow, not set"),
                     maybe_reply_to_req(RouteReq, Props, Call, Callflow, NoMatch);
                 PreflowId ->
-                    NewCallflow = kzd_callflow:prepend_preflow(Callflow, PreflowId),
+                    NewCallflow = kzd_callflows:prepend_preflow(Callflow, PreflowId),
                     maybe_reply_to_req(RouteReq, Props, Call, NewCallflow, NoMatch)
             end
     end.
