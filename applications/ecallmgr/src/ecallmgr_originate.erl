@@ -412,7 +412,7 @@ intercept_unbridged_only(ExistingCallId, JObj) ->
         'true' ->
             <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ", Context/binary>>;
         'false' ->
-            <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline", Context/binary>>
+            <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline ", Context/binary>>
     end.
 
 -spec get_bridge_action(kz_json:object()) -> kz_term:ne_binary().
