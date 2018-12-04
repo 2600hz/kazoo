@@ -51,5 +51,5 @@ do_publish_call_event(#{payload := JObj}) ->
             lager:debug("publishing ~s with restricted and undefined", [kz_api:event_name(JObj)]),
             kapi_call:publish_event(JObj);
         Node -> kapi_call:publish_event(JObj);
-        _Other -> 'ok'
+        _Other -> lager:debug("not publishing ~s", [kz_api:event_name(JObj)])
     end.
