@@ -43,19 +43,9 @@
                                 },
                                 "value": {
                                     "description": "Feature key value",
-                                    "enum": [
-                                        "1",
-                                        "2",
-                                        "3",
-                                        "4",
-                                        "5",
-                                        "6",
-                                        "7",
-                                        "8",
-                                        "9",
-                                        "10"
-                                    ],
-                                    "type": "string"
+                                    "maximum": 10,
+                                    "minimum": 1,
+                                    "type": "integer"
                                 }
                             },
                             "required": [
@@ -66,14 +56,7 @@
                         }
                     ]
                 }
-            },
-            "required": [
-                "type"
-            ],
-            "type": [
-                "object",
-                "null"
-            ]
+            }
         },
         {
             "properties": {
@@ -112,14 +95,14 @@
                         }
                     ]
                 }
-            },
-            "required": [
-                "type"
-            ],
-            "type": [
-                "object",
-                "null"
-            ]
+            }
         }
+    ],
+    "required": [
+        "type"
+    ],
+    "type": [
+        "object",
+        "null"
     ]
 }

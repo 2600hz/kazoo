@@ -249,7 +249,8 @@
                         "^[0-9]+$": {
                             "$ref": "devices.combo_key"
                         }
-                    }
+                    },
+                    "type": "object"
                 },
                 "endpoint_brand": {
                     "description": "Brand of the phone",
@@ -278,7 +279,8 @@
                         "^[0-9]+$": {
                             "$ref": "devices.combo_key"
                         }
-                    }
+                    },
+                    "type": "object"
                 },
                 "id": {
                     "description": "Provisioner Template ID",
