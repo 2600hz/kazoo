@@ -447,7 +447,7 @@ create_apps_store_doc(AccountId) ->
 -spec validate_move(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 validate_move(<<"superduper_admin">>, Context, _, _) ->
     lager:debug("using superduper_admin flag to allow move account"),
-    AuthId = kz_json:get_value(<<"account_id">>, cb_context:auth_doc(Context)),
+    AuthId = cb_context:auth_account_id(Context),
     kzd_accounts:is_superduper_admin(AuthId);
 validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
     lager:debug("using tree to allow move account"),
