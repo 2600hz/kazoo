@@ -692,6 +692,7 @@ fake_vmbox_jobj(Call, Props) ->
                              'ok' |
                              {'error', kapps_call:call()}.
 store_recording(AttachmentName, Url, Call, MessageId) ->
+    lager:debug("sending request to save media file to '~s'", [kapps_call:switch_nodename(Call)]),
     case kapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
         'ok' -> lager:debug("stored ~s to ~s", [AttachmentName, Url]);
         {'error', _R} ->
