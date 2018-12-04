@@ -31,25 +31,25 @@ init() ->
     'ok'.
 
 -spec sofia(map()) -> fs_sendmsg_ret().
-sofia(#{node := Node, fetch_id := Id}) ->
+sofia(#{node := Node, fetch_id := Id}=Ctx) ->
     kz_util:put_callid(Id),
     case kapps_config:is_true(?APP_NAME, <<"sofia_conf">>, 'false') of
         'false' ->
             lager:info("sofia conf disabled"),
             {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-            freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp));
+            freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Resp)});
         'true' ->
             Profiles = kapps_config:get_json(?APP_NAME, <<"fs_profiles">>, kz_json:new()),
             DefaultProfiles = default_sip_profiles(Node),
             try ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)) of
                 {'ok', ConfigXml} ->
                     lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
-                    freeswitch:fetch_reply(Node, Id, 'configuration', erlang:iolist_to_binary(ConfigXml))
+                    freeswitch:fetch_reply(Ctx#{reply => erlang:iolist_to_binary(ConfigXml)})
             catch
                 _E:_R ->
                     lager:info("sofia profile resp failed to convert to XML (~s): ~p", [_E, _R]),
                     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-                    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp))
+                    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Resp)})
             end
     end.
 

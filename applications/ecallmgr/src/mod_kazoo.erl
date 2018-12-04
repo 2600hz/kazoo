@@ -16,9 +16,7 @@
 -export([bind/2
         ,bind/3
         ]).
--export([fetch_reply/5
-        ,fetch_reply/6
-        ]).
+-export([fetch_reply/1]).
 -export([api/2
         ,api/3
         ,api/4
@@ -122,23 +120,21 @@ bind(Node, Type, Timeout) ->
             {'error', 'exception'}
     end.
 
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map()) -> 'ok'.
-fetch_reply(Node, FetchID, Section, Reply, _Map) ->
-    gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
-
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map(), pos_integer() | 'infinity') ->
-                         'ok' | {'error', 'baduuid'}.
-fetch_reply(Node, FetchID, Section, Reply, _Map, Timeout) ->
+-spec fetch_reply(map()) -> 'ok' | {'ok', any()} | {'error', any()}.
+fetch_reply(#{node := Node, section := Section, fetch_id := FetchID, reply := Reply, timeout := Timeout}) ->
     try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
         'timeout' -> {'error', 'timeout'};
         {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
-        {'ok', <<"+OK ", Result/binary>>} -> {ok, Result};
+        {'ok', <<"+OK ", Result/binary>>} when Result =/= <<>> -> {'ok', Result};
+        {'ok', <<"+OK", _/binary>>} -> 'ok';
         Result -> Result
     catch
         _E:_R ->
             lager:info("failed to send fetch reply to ~s: ~p ~p", [Node, _E, _R]),
             {'error', 'exception'}
-    end.
+    end;
+fetch_reply(#{node := Node, section := Section, fetch_id := FetchID, reply := Reply}) ->
+    gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
 api_result(Result, 'undefined') -> Result;
 api_result(Result, Bin) ->

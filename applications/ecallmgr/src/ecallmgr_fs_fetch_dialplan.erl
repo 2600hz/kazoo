@@ -69,7 +69,7 @@ timeout(#{payload := JObj}=Map) ->
     T4 = T3 - T0,
     T5 = T1 - T4,
     T6 = T5 div 1000,
-    Map#{timeout => T6 - 500}.
+    Map#{timeout => T6 - 750}.
 
 call_id(#{call_id := _CallId}=Map) -> Map;
 call_id(#{payload := JObj}=Map) ->
@@ -105,8 +105,8 @@ wait_for_route_resp(#{timeout := Timeout}=Map) ->
         {'route_resp', Resp, Props} ->
             case kz_api:defer_response(Resp) of
                 true ->
-                    lager:debug("received deferred reply - waiting for others"),
                     NewTimeout = Timeout - kz_time:elapsed_ms(Now),
+                    lager:debug("received deferred reply - waiting for others for ~B ms", [NewTimeout]),
                     wait_for_route_resp(Map#{timeout => NewTimeout, reply => #{payload => Resp, props => Props}});
                 false ->
                     lager:info("received route reply"),
@@ -151,22 +151,22 @@ wait_for_authz(#{authz_worker := {Pid, Ref}, authz_timeout := Timeout, reply := 
             lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
     end.
 
-send_reply(#{node := Node, fetch_id := FetchId, reply := #{payload := Reply}}=Map) ->
-    Props = maps:to_list(Map),
+send_reply(#{node := Node, fetch_id := FetchId, reply := #{payload := Reply}}=Ctx) ->
+    Props = maps:to_list(Ctx),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml('dialplan', Reply, Props),
-    lager:debug("sending xml dialplan reply for request ~s",[FetchId]),
-    freeswitch:fetch_reply(Node, FetchId, 'dialplan', iolist_to_binary(XML)),
+    lager:debug("sending xml dialplan reply for request ~s tp ~s",[FetchId, Node]),
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(XML)}),
     case kz_api:defer_response(Reply)
         orelse kz_json:get_ne_binary_value(<<"Method">>, Reply) /= <<"park">>
     of
         true -> ok;
-        false -> wait_for_route_winner(Map)
+        false -> wait_for_route_winner(Ctx)
     end.
 
-wait_for_route_winner(Map) ->
+wait_for_route_winner(Ctx) ->
     receive
         {'route_winner', JObj, Props} ->
-            activate_call_control(Map#{winner => #{payload => JObj, props => Props}})
+            activate_call_control(Ctx#{winner => #{payload => JObj, props => Props}})
     after ?ROUTE_WINNER_TIMEOUT ->
             lager:warning("timeout after ~B receiving route winner", [?ROUTE_WINNER_TIMEOUT])
     end.

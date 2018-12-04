@@ -31,41 +31,41 @@ init() ->
     'ok'.
 
 -spec kazoo(map()) -> fs_sendmsg_ret().
-kazoo(#{node := Node, fetch_id := Id, payload := JObj}) ->
+kazoo(#{node := Node, fetch_id := Id, payload := JObj} = Ctx) ->
     kz_util:put_callid(Id),
     lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
-    fetch_mod_kazoo_config(Node, Id, kz_api:event_name(JObj), JObj).
+    fetch_mod_kazoo_config(kz_api:event_name(JObj), Ctx).
 
 
--spec fetch_mod_kazoo_config(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> fs_sendmsg_ret().
-fetch_mod_kazoo_config(Node, Id, <<"COMMAND">>, _JObj) ->
+-spec fetch_mod_kazoo_config(kz_term:ne_binary(), map()) -> fs_sendmsg_ret().
+fetch_mod_kazoo_config(<<"COMMAND">>, #{payload := _JObj} = Ctx) ->
     lager:debug_unsafe("kazoo conf request : ~s", [kz_json:encode(_JObj, ['pretty'])]),
-    config_req_not_handled(Node, Id, <<"kazoo.conf">>);
-fetch_mod_kazoo_config(Node, Id, <<"REQUEST_PARAMS">>, JObj) ->
+    kazoo_req_not_handled(Ctx);
+fetch_mod_kazoo_config(<<"REQUEST_PARAMS">>, #{payload := JObj} = Ctx) ->
     lager:debug_unsafe("kazoo conf request params: ~s", [kz_json:encode(JObj, ['pretty'])]),
     Action = kz_json:get_ne_binary_value(<<"Action">>, JObj),
-    fetch_mod_kazoo_config_action(Node, Id, Action, JObj);
-fetch_mod_kazoo_config(Node, Id, Event, _JObj) ->
+    fetch_mod_kazoo_config_action(Action, Ctx);
+fetch_mod_kazoo_config(Event, #{node := Node} = Ctx) ->
     lager:debug("unhandled mod kazoo config event : ~p : ~p", [Node, Event]),
-    config_req_not_handled(Node, Id, <<"kazoo.conf">>).
+    kazoo_req_not_handled(Ctx).
 
--spec config_req_not_handled(atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> fs_sendmsg_ret().
-config_req_not_handled(Node, Id, Conf) ->
-    {'ok', NotHandled} = ecallmgr_fs_xml:not_found(),
-    lager:debug("ignoring conf ~s: ~s", [Conf, Id]),
-    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled)).
-
--spec fetch_mod_kazoo_config_action(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
-                                           fs_sendmsg_ret().
-fetch_mod_kazoo_config_action(Node, Id, <<"request-filter">>, _Data) ->
+-spec fetch_mod_kazoo_config_action(kz_term:api_ne_binary(), map()) -> fs_sendmsg_ret().
+fetch_mod_kazoo_config_action(<<"request-filter">>, Ctx) ->
     {'ok', Xml} = ecallmgr_fs_xml:event_filters_resp_xml(?FS_EVENT_FILTERS),
     lager:debug("replying with xml response for request-filter params request"),
-    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Xml));
-fetch_mod_kazoo_config_action(Node, Id, <<"request-handlers">>, _Data) ->
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)});
+fetch_mod_kazoo_config_action(<<"request-handlers">>, Ctx) ->
     %% TODO get handlers/definitions/events
-    config_req_not_handled(Node, Id, <<"kazoo.conf">>);
-fetch_mod_kazoo_config_action(Node, Id, 'undefined', _Data) ->
-    config_req_not_handled(Node, Id, <<"kazoo.conf">>);
-fetch_mod_kazoo_config_action(Node, Id, Action, _Data) ->
+    kazoo_req_not_handled(Ctx);
+fetch_mod_kazoo_config_action('undefined', Ctx) ->
+    kazoo_req_not_handled(Ctx);
+fetch_mod_kazoo_config_action(Action, #{node := Node} = Ctx) ->
     lager:debug("unhandled mod kazoo config action : ~p : ~p", [Node, Action]),
-    config_req_not_handled(Node, Id, <<"kazoo.conf">>).
+    kazoo_req_not_handled(Ctx).
+
+-spec kazoo_req_not_handled(map()) -> fs_sendmsg_ret().
+kazoo_req_not_handled(#{node := Node, fetch_id := Id} = Ctx) ->
+    {'ok', NotHandled} = ecallmgr_fs_xml:not_found(),
+    lager:debug("ignoring kazoo conf ~s: ~s", [Node, Id]),
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(NotHandled)}).
+

@@ -9,7 +9,7 @@
 -module(ecallmgr_fs_fetch_directory).
 
 -export([directory_lookup/1]).
--export([lookup_user/4]).
+%%-export([lookup_user/4]).
 -export([init/0]).
 
 -include("ecallmgr.hrl").
@@ -36,24 +36,27 @@ init() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec directory_lookup(map()) -> fs_handlecall_ret().
-directory_lookup(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
+directory_lookup(#{node := Node, fetch_id := FetchId, payload := JObj}=Ctx) ->
     kz_util:put_callid(FetchId),
     lager:debug("received fetch request (~s) user directory from ~s", [FetchId, Node]),
     case kzd_fetch:fetch_action(JObj, <<"sip_auth">>) of
-        <<"reverse-auth-lookup">> -> lookup_user(Node, FetchId, <<"reverse-lookup">>, JObj);
-        <<"sip_auth">> -> maybe_sip_auth_response(Node, FetchId, JObj);
-        <<"group_call">> -> maybe_group_response(Node, FetchId, JObj);
-        <<"user_call">> -> maybe_kamailio_association(Node, FetchId, JObj);
-        _Other -> directory_not_found(Node, FetchId)
+        <<"reverse-auth-lookup">> -> lookup_user(Node, FetchId, <<"reverse-lookup">>, JObj, Ctx);
+        <<"sip_auth">> -> maybe_sip_auth_response(Node, FetchId, JObj, Ctx);
+        <<"group_call">> -> maybe_group_response(Node, FetchId, JObj, Ctx);
+        <<"user_call">> -> maybe_kamailio_association(Node, FetchId, JObj, Ctx);
+        _Other -> lager:debug("unhandled action '~s' in fetch directory", [_Other]),
+                  directory_not_found(Ctx)
     end.
 
-maybe_group_response(Node, FetchId, JObj) ->
+maybe_group_response(Node, FetchId, JObj, Ctx) ->
     case  kzd_fetch:fetch_user(JObj) of
-        'undefined' -> group_response(Node, FetchId, JObj);
-        _ -> maybe_kamailio_association(Node, FetchId, JObj)
+        'undefined' -> group_response(Node, FetchId, JObj, Ctx);
+        _ -> maybe_kamailio_association(Node, FetchId, JObj, Ctx)
     end.
 
-group_response(Node, Id, JObj) ->
+%% TODO
+%% remove this hardcoded tests
+group_response(Node, _Id, JObj, Ctx) ->
     GroupID = kz_json:get_ne_binary_value(<<"group">>, JObj),
     AccountId = kz_json:get_ne_binary_value(<<"domain">>, JObj),
     Members = [<<"d6c63df15ddbec1b7bc6828570983215">>
@@ -71,59 +74,59 @@ group_response(Node, Id, JObj) ->
     Group = kz_json:from_list(Props),
     {'ok', Xml} = ecallmgr_fs_xml:directory_resp_group_xml(Group, J1),
     lager:debug_unsafe("sending directory XML to ~w: ~s", [Node, iolist_to_binary(Xml)]),
-    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)}).
 
--spec maybe_sip_auth_response(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_handlecall_ret().
-maybe_sip_auth_response(Node, Id, JObj) ->
+-spec maybe_sip_auth_response(atom(), kz_term:ne_binary(), kz_json:object(), map()) -> fs_handlecall_ret().
+maybe_sip_auth_response(Node, Id, JObj, Ctx) ->
     case kzd_fetch:auth_response(JObj) of
-        'undefined' -> maybe_kamailio_association(Node, Id, JObj);
+        'undefined' -> maybe_kamailio_association(Node, Id, JObj, Ctx);
         _ ->
             lager:debug("attempting to get device password to verify SIP auth response"),
-            lookup_user(Node, Id, <<"password">>, JObj)
+            lookup_user(Node, Id, <<"password">>, JObj, Ctx)
     end.
 
--spec maybe_kamailio_association(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_handlecall_ret().
-maybe_kamailio_association(Node, Id, JObj) ->
-    kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj), JObj).
+-spec maybe_kamailio_association(atom(), kz_term:ne_binary(), kz_json:object(), map()) -> fs_handlecall_ret().
+maybe_kamailio_association(Node, Id, JObj, Ctx) ->
+    kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj), JObj, Ctx).
 
--spec kamailio_association(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> fs_handlecall_ret().
-kamailio_association(Node, Id, 'undefined', _AccountId, _) -> directory_not_found(Node, Id);
-kamailio_association(Node, Id, _EndpointId, 'undefined', _) -> directory_not_found(Node, Id);
-kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
+-spec kamailio_association(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object(), map()) -> fs_handlecall_ret().
+kamailio_association(_Node, _Id, 'undefined', _AccountId, _, Ctx) -> directory_not_found(Ctx);
+kamailio_association(_Node, _Id, _EndpointId, 'undefined', _, Ctx) -> directory_not_found(Ctx);
+kamailio_association(Node, _Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(AccountId), JObj, Ctx) ->
     case kz_endpoint_profile:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
             {'ok', Xml} = ecallmgr_fs_xml:directory_resp_endpoint_xml(Endpoint, JObj),
             lager:debug_unsafe("sending directory XML to ~w: ~s", [Node, iolist_to_binary(Xml)]),
-            freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml));
+            freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)});
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
-            directory_not_found(Node, Id)
+            directory_not_found(Ctx)
     end;
-kamailio_association(Node, Id, UserId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
+kamailio_association(Node, Id, UserId, ?MATCH_ACCOUNT_RAW(AccountId), JObj, Ctx) ->
     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
-        'undefined' -> directory_not_found(Node, Id);
+        'undefined' -> directory_not_found(Ctx);
         EndpointId ->
             lager:debug("got the endpoint_id ~s for user ~s", [EndpointId, UserId]),
             JObjRetry = kz_json:set_value(<<"Requested-User-ID">>, UserId, JObj),
-            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry)
+            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry, Ctx)
     end;
-kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
-    maybe_x_auth_token(Node, Id, EndpointId, Realm, JObj).
+kamailio_association(Node, Id, EndpointId, Realm, JObj, Ctx) ->
+    maybe_x_auth_token(Node, Id, EndpointId, Realm, JObj, Ctx).
 
-maybe_x_auth_token(Node, Id, UserId, Realm, JObj) ->
+maybe_x_auth_token(Node, Id, UserId, Realm, JObj, Ctx) ->
     case kz_json:get_ne_binary_value(<<"X-AUTH-Token">>, JObj) of
-        'undefined' -> maybe_x_account_id(Node, Id, UserId, Realm, JObj);
+        'undefined' -> maybe_x_account_id(Node, Id, UserId, Realm, JObj, Ctx);
         AuthToken ->
             JObjRetry = kz_json:set_values([{<<"Requested-Domain-Name">>, Realm}
                                            ,{<<"Requested-User-ID">>, UserId}
                                            ], JObj),
             [EndpointId, AccountId] = binary:split(AuthToken, <<"@">>),
             lager:debug("got the endpoint_id/account_id ~s/~s from x-auth-token", [EndpointId, AccountId]),
-            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry)
+            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry, Ctx)
     end.
 
-maybe_x_account_id(Node, Id, EndpointId, Realm, JObj) ->
+maybe_x_account_id(Node, Id, EndpointId, Realm, JObj, Ctx) ->
     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Account-ID">>, JObj) of
         'undefined' ->
             case kapps_util:get_account_by_realm(Realm) of
@@ -131,23 +134,23 @@ maybe_x_account_id(Node, Id, EndpointId, Realm, JObj) ->
                     lager:debug("got the account_id ~s from realm ~s", [kz_util:format_account_id(Account), Realm]),
                     JObjRetry = kz_json:set_value(<<"Requested-Domain-Name">>, Realm, JObj),
                     AccountId = kz_util:format_account_id(Account),
-                    kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry);
-                _ -> directory_not_found(Node, Id)
+                    kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry, Ctx);
+                _ -> directory_not_found(Ctx)
             end;
         AccountId ->
             lager:debug("got the account_id ~s from x-header", [AccountId]),
             JObjRetry = kz_json:set_value(<<"Requested-Domain-Name">>, Realm, JObj),
-            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry)
+            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry, Ctx)
     end.
 
--spec directory_not_found(atom(), kz_term:ne_binary()) -> fs_handlecall_ret().
-directory_not_found(Node, FetchId) ->
+-spec directory_not_found(map()) -> fs_handlecall_ret().
+directory_not_found(#{node := Node} = Ctx) ->
     {'ok', Xml} = ecallmgr_fs_xml:not_found(),
     lager:debug("sending directory not found XML to ~w", [Node]),
-    freeswitch:fetch_reply(Node, FetchId, 'directory', iolist_to_binary(Xml)).
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)}).
 
--spec lookup_user(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> fs_handlecall_ret().
-lookup_user(Node, Id, Method,  JObj) ->
+-spec lookup_user(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> fs_handlecall_ret().
+lookup_user(Node, Id, Method,  JObj, Ctx) ->
     Domain = kz_json:get_value(<<"domain">>, JObj),
     {'ok', Xml} =
         case get_auth_realm(JObj) of
@@ -161,7 +164,7 @@ lookup_user(Node, Id, Method,  JObj) ->
                 ecallmgr_fs_xml:not_found()
         end,
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
-    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)}).
 
 -spec get_auth_realm(kz_json:object()) -> kz_term:ne_binary().
 get_auth_realm(JObj) ->

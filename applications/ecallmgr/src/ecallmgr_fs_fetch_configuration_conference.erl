@@ -29,9 +29,9 @@ init() ->
     'ok'.
 
 -spec conference(map()) -> fs_sendmsg_ret().
-conference(#{node := Node, fetch_id := Id, payload := JObj}) ->
+conference(#{node := Node, fetch_id := Id, payload := JObj}=Ctx) ->
     kz_util:put_callid(Id),
-    fetch_conference_config(Node, Id, kz_api:event_name(JObj), JObj).
+    fetch_conference_config(Node, Id, kz_api:event_name(JObj), JObj, Ctx).
 
 -spec fix_conference_profile(kz_json:object()) -> kz_json:object().
 fix_conference_profile(Resp) ->
@@ -79,19 +79,19 @@ maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
 maybe_convert_sound(_, _Key, _Value, Profile) ->
     Profile.
 
--spec fetch_conference_config(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> fs_sendmsg_ret().
-fetch_conference_config(Node, Id, <<"COMMAND">>, JObj) ->
+-spec fetch_conference_config(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> fs_sendmsg_ret().
+fetch_conference_config(Node, Id, <<"COMMAND">>, JObj, Ctx) ->
     Profile = kz_json:get_value(<<"profile_name">>, JObj),
     Conference = kz_json:get_value(<<"conference_name">>, JObj),
     AccountId = kzd_fetch:account_id(JObj),
-    maybe_fetch_conference_profile(Node, Id, Profile, Conference, AccountId);
-fetch_conference_config(Node, Id, <<"REQUEST_PARAMS">>, JObj) ->
+    maybe_fetch_conference_profile(Node, Id, Profile, Conference, AccountId, Ctx);
+fetch_conference_config(Node, Id, <<"REQUEST_PARAMS">>, JObj, Ctx) ->
     Action = kz_json:get_value(<<"Action">>, JObj),
     ConfName = kz_json:get_value(<<"Conf-Name">>, JObj),
     lager:debug("request conference:~p params:~p", [ConfName, Action]),
-    fetch_conference_params(Node, Id, Action, ConfName, JObj).
+    fetch_conference_params(Node, Id, Action, ConfName, JObj, Ctx).
 
-fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, JObj) ->
+fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, JObj, Ctx) ->
     Controls = kz_json:get_value(<<"Controls">>, JObj),
     Profile = kz_json:get_value(<<"Conf-Profile">>, JObj),
     lager:debug("request controls:~p for profile: ~p", [Controls, Profile]),
@@ -110,11 +110,11 @@ fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, JObj) ->
                               ,ecallmgr_fs_node:fetch_timeout(Node)
                               ),
     {'ok', Xml} = handle_conference_params_response(Resp),
-    send_conference_profile_xml(Node, Id, Xml);
-fetch_conference_params(Node, Id, Action, ConfName, _Data) ->
+    send_conference_profile_xml(Xml, Ctx);
+fetch_conference_params(_Node, _Id, Action, ConfName, _Data, Ctx) ->
     lager:debug("undefined request_params action:~p conference:~p", [Action, ConfName]),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
-    send_conference_profile_xml(Node, Id, XmlResp).
+    send_conference_profile_xml(XmlResp, Ctx).
 
 handle_conference_params_response({'ok', Resp}) ->
     lager:debug("replying with xml response for conference params request"),
@@ -126,22 +126,22 @@ handle_conference_params_response(_Error) ->
     lager:debug("failed to lookup conference params, error:~p", [_Error]),
     ecallmgr_fs_xml:not_found().
 
--spec maybe_fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> fs_sendmsg_ret().
-maybe_fetch_conference_profile(Node, Id, _, _, 'undefined') ->
+-spec maybe_fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), map()) -> fs_sendmsg_ret().
+maybe_fetch_conference_profile(_Node, _Id, _, _, 'undefined', Ctx) ->
     lager:debug("failed to lookup conference profile for undefined account-id"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
-    send_conference_profile_xml(Node, Id, XmlResp);
+    send_conference_profile_xml(XmlResp, Ctx);
 
-maybe_fetch_conference_profile(Node, Id, 'undefined', _Conference, _AccountId) ->
+maybe_fetch_conference_profile(_Node, _Id, 'undefined', _Conference, _AccountId, Ctx) ->
     lager:debug("failed to lookup undefined profile conference"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
-    send_conference_profile_xml(Node, Id, XmlResp);
+    send_conference_profile_xml(XmlResp, Ctx);
 
-maybe_fetch_conference_profile(Node, Id, Profile, Conference, AccountId) ->
-    fetch_conference_profile(Node, Id, Profile, Conference, AccountId).
+maybe_fetch_conference_profile(Node, Id, Profile, Conference, AccountId, Ctx) ->
+    fetch_conference_profile(Node, Id, Profile, Conference, AccountId, Ctx).
 
--spec fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> fs_sendmsg_ret().
-fetch_conference_profile(Node, Id, Profile, Conference, AccountId) ->
+-spec fetch_conference_profile(atom(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), map()) -> fs_sendmsg_ret().
+fetch_conference_profile(Node, Id, Profile, Conference, AccountId, Ctx) ->
     Cmd = [{<<"Request">>, <<"Conference">>}
           ,{<<"Profile">>, Profile}
           ,{<<"Conference-ID">>, Conference}
@@ -173,9 +173,9 @@ fetch_conference_profile(Node, Id, Profile, Conference, AccountId) ->
                       {'ok', Resp} = ecallmgr_fs_xml:not_found(),
                       Resp
               end,
-    send_conference_profile_xml(Node, Id, XmlResp).
+    send_conference_profile_xml(XmlResp, Ctx).
 
--spec send_conference_profile_xml(atom(), kz_term:ne_binary(), iolist()) -> fs_sendmsg_ret().
-send_conference_profile_xml(Node, Id, XmlResp) ->
+-spec send_conference_profile_xml(iolist(), map()) -> fs_sendmsg_ret().
+send_conference_profile_xml(XmlResp, #{node := Node} = Ctx) ->
     lager:debug("sending conference profile XML to ~s: ~s", [Node, XmlResp]),
-    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(XmlResp)).
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(XmlResp)}).

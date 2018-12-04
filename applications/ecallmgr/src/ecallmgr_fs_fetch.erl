@@ -129,7 +129,6 @@ code_change(_OldVsn, State, _Extra) ->
 -spec handle_fetch_req(atom(), kz_json:object()) -> fs_sendmsg_ret().
 handle_fetch_req(Node, JObj) ->
     kz_util:put_callid(JObj),
-    %% lager:debug_unsafe("FETCH : ~s", [kz_json:encode(JObj, ['pretty'])]),
     FetchId = kzd_fetch:fetch_uuid(JObj),
     CoreUUID = kzd_fetch:core_uuid(JObj),
     Key = kzd_fetch:fetch_key_value(JObj),
@@ -155,6 +154,7 @@ handle_fetch_req(Node, JObj) ->
         _ -> 'ok'
     end.
 
-not_found(#{node := Node, fetch_id := FetchId, section := Section}) ->
+-spec not_found(map()) -> fs_sendmsg_ret().
+not_found(Ctx) ->
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
-    freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XmlResp)).
+    freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(XmlResp)}).

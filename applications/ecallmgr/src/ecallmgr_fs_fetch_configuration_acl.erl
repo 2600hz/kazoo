@@ -31,12 +31,12 @@ init() ->
     'ok'.
 
 -spec acl(map()) -> fs_sendmsg_ret().
-acl(#{node := Node, fetch_id := Id}) ->
+acl(#{node := Node, fetch_id := Id}=Ctx) ->
     kz_util:put_callid(Id),
     ACLs = ecallmgr_fs_acls:get(),
     ConfigXML = generate_acl_xml(ACLs),
     lager:debug_unsafe("sending acl XML to ~s: ~s", [Node, ConfigXML]),
-    freeswitch:fetch_reply(Node, Id, 'configuration', ConfigXML).
+    freeswitch:fetch_reply(Ctx#{reply => ConfigXML}).
 
 -spec generate_acl_xml(kz_json:object()) -> kz_term:ne_binary().
 generate_acl_xml(SysconfResp) ->
