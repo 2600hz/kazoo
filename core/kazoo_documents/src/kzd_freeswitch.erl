@@ -378,14 +378,6 @@ presence_id(Props) ->
 presence_direction(Props) ->
     props:get_value(<<"Presence-Call-Direction">>, Props).
 
--spec ccv(data(), kz_term:ne_binary()) -> kz_term:api_binary() | kz_term:ne_binaries().
-ccv(Props, Key) ->
-    ccv(Props, Key, 'undefined').
-
--spec ccv(data(), kz_term:ne_binary(), Default) -> kz_term:ne_binary() | kz_term:ne_binaries() | Default.
-ccv(Props, Key, Default) ->
-    props:get_value(Key, ccvs(Props), Default).
-
 -spec channel_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
 channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};

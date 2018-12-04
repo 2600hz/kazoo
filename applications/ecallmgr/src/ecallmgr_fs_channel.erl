@@ -311,6 +311,17 @@ fetch_remote(UUID) ->
             Props ++ kz_json:to_proplist(kz_json:normalize(CCVs))
     end.
 
+-spec get_active_channel_status(kz_term:ne_binary()) -> kz_amqp_worker:request_return().
+get_active_channel_status(UUID) ->
+    Command = [{<<"Call-ID">>, UUID}
+              ,{<<"Active-Only">>, <<"true">>}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    kz_amqp_worker:call(Command
+                       ,fun kapi_call:publish_channel_status_req/1
+                       ,fun kapi_call:channel_status_resp_v/1
+                       ).
+
 -spec get_other_leg(kz_term:api_binary(), kz_term:proplist()) -> kz_term:api_binary().
 get_other_leg('undefined', _Props) -> 'undefined';
 get_other_leg(UUID, Props) ->

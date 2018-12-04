@@ -164,10 +164,10 @@ send_route_response(Flow, RouteReq, Call) ->
     AccountId = kapps_call:account_id(Call),
     CallId = kapps_call:call_id(Call),
     ControllerQ = kapps_call:controller_queue(Call),
-    FetchId =  kz_api:msg_id(JObj),
+    FetchId =  kz_api:msg_id(RouteReq),
     Resp = props:filter_undefined(
              [{?KEY_MSG_ID, FetchId}
-             ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
+             ,{?KEY_REPLY_TO_PID, kz_api:from_pid(RouteReq)}
              ,{?KEY_REQUEST_FROM_PID, kz_term:to_binary(self())}
              ,{?KEY_API_ACCOUNT_ID, AccountId}
              ,{?KEY_API_CALL_ID, CallId}
@@ -182,7 +182,7 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"Context">>, kapps_call:context(Call)}
               | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
              ]),
-    ServerId = kz_api:server_id(JObj),
+    ServerId = kz_api:server_id(RouteReq),
     kapi_route:publish_resp(ServerId, Resp),
     receive
         {'route_win', RouteWin} ->

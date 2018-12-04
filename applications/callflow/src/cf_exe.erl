@@ -869,7 +869,7 @@ log_call_information(Call) ->
     lager:info("authorizing id ~s", [kapps_call:authorizing_id(Call)]).
 
 -spec handle_channel_destroyed(pid(), kz_term:pids(), kz_json:object(), kapps_call:call(), termination_handlers()) -> 'ok'.
-handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers) ->
+handle_channel_destroyed(Self, Notify, JObj, Call, DestroyHandlers) ->
     channel_destroyed(Self),
     relay_message(Notify, JObj),
     maybe_run_destroy_handlers(Call, JObj, DestroyHandlers).

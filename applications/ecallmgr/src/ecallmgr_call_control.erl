@@ -462,24 +462,7 @@ publish_route_win(#state{call_id=CallId
            | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
-<<<<<<< Upstream, based on origin/master
     kapi_route:publish_win(ControllerQ, Win).
-=======
-    kapi_route:publish_win(ControllerQ, Win),
-    Usurp = [{<<"Call-ID">>, CallId}
-            ,{<<"Fetch-ID">>, FetchId}
-            ,{<<"Reason">>, <<"Route-Win">>}
-            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    lager:debug("sending control usurp for ~s", [FetchId]),
-    kapi_call:publish_usurp_control(CallId, Usurp),
-    ecallmgr_usurp_monitor:register(CallId, FetchId);
-call_control_ready('false', _) ->
-    lager:info("call is not in the channels cache, short lived call?"),
-    gen_listener:cast(self(), 'stop').
-
->>>>>>> e8e0f24 usurp monitor & call control log
 
 %%------------------------------------------------------------------------------
 %% @doc

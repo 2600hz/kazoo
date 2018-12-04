@@ -149,7 +149,7 @@
 -type setter_fun() :: {fun((doc(), Value) -> doc()), Value}.
 -type setter_funs() :: [setter_fun()].
 -type private_field() :: kz_term:ne_binary().
--type private_fields() :: [private_field()].
+
 -export_type([doc/0
              ,setter_fun/0
              ,setter_funs/0
