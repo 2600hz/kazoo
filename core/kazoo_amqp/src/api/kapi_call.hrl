@@ -57,6 +57,7 @@
         ,<<"Intercepted-By">>
         ,<<"Length">>
         ,<<"Local-SDP">>
+        ,<<"Media-Recordings">>
         ,<<"Media-Server">>
         ,<<"Origination-Call-ID">>
         ,<<"Other-Leg-Call-ID">> %% BRIDGE
@@ -68,6 +69,7 @@
         ,<<"Presence-ID">>
         ,<<"Raw-Application-Data">>
         ,<<"Raw-Application-Name">>
+        ,<<"Recording">>
         ,<<"Remote-SDP">>
         ,<<"Replaced-By">>
         ,<<"Request">>
