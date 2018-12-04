@@ -95,7 +95,10 @@ set_inception(_, JObj) ->
 -spec set_resource_type(knm_number_options:extra_options(), kz_json:object()) ->
                                kz_json:object().
 set_resource_type(_, JObj) ->
-    kz_json:set_value(?CCV(<<"Resource-Type">>), <<"offnet-origination">>, JObj).
+    Props = [{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+            ,{?CCV(<<"Resource-Type">>), <<"offnet-origination">>}
+            ],
+    kz_json:set_values(Props, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc

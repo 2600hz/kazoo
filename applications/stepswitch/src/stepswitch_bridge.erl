@@ -299,10 +299,9 @@ maybe_bridge(#state{endpoints=Endpoints
         'false' ->
             Name = bridge_outbound_cid_name(OffnetReq),
             Number = bridge_outbound_cid_number(OffnetReq),
-            kapi_dialplan:publish_command(ControlQ
-                                         ,build_bridge(State, Number, Name)
-                                         ),
-            lager:debug("sent bridge command to ~p", [ControlQ])
+            BridgeCmd = build_bridge(State, Number, Name),
+            kapi_dialplan:publish_command(ControlQ, BridgeCmd),
+            lager:debug_unsafe("sent bridge command ~p to ~p", [BridgeCmd, ControlQ])
     end.
 
 -spec maybe_bridge_emergency(state()) -> 'ok'.
@@ -421,6 +420,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
       ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
       ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+      ,{<<"Monitor-Early-Media">>, true}
       ,{<<"Media">>, kapi_offnet_resource:media(OffnetReq)}
       ,{<<"Hold-Media">>, kapi_offnet_resource:hold_media(OffnetReq)}
       ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}

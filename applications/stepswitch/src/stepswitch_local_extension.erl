@@ -292,19 +292,26 @@ build_local_extension(#state{number_props=Props
     FromRealm = get_account_realm(OriginalAccountId),
     FromURI = <<CIDNum/binary, "@", Realm/binary>>,
     CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetJObj, kz_json:new()),
+
+    IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, CCVsOrig, 'false')
+        orelse kapi_offnet_resource:ignore_early_media(OffnetJObj, 'false'),
+
+    FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, CCVsOrig),
+
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetJObj),
 
     CCVs = kz_json:set_values([{<<"Ignore-Display-Updates">>, <<"true">>}
                               ,{<<"Account-ID">>, OriginalAccountId}
                               ,{<<"Reseller-ID">>, ResellerId}
                               ,{<<"Outbound-Flags">>, outbound_flags(OffnetJObj)}
+                              ,{<<"Require-Ignore-Early-Media">>, null}
+                              ,{<<"Require-Fail-On-Single-Reject">>, null}
                               ]
                              ,CCVsOrig
                              ),
 
     CCVUpdates = kz_json:from_list(
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
@@ -312,6 +319,10 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, FromURI}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Loopback-From-URI">>, FromURI}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, Realm}
+
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Authorizing-Type">>, <<"resource">>}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Authorizing-ID">>, AccountId}
 
                    ,{<<"Resource-ID">>, AccountId}
                    ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
@@ -349,6 +360,8 @@ build_local_extension(#state{number_props=Props
       ,{<<"Endpoints">>, [Endpoint]}
       ,{<<"Loopback-Bowout">>, <<"false">>}
       ,{<<"Media">>, <<"process">>}
+      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
       ,{<<"Outbound-Callee-ID-Name">>, CEDName}
       ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}

@@ -232,7 +232,6 @@ create_loopback_endpoint(Props, OffnetReq) ->
     CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetReq),
     CCVs = kz_json:from_list(
              [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
-             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
@@ -257,13 +256,13 @@ create_loopback_endpoint(Props, OffnetReq) ->
       ,{<<"Enable-T38-Fax">>, 'false'}
       ,{<<"Enable-T38-Fax-Request">>, 'false'}
       ,{<<"Ignore-Early-Media">>, 'true'}
-      ,{<<"Ignore-Early-Media">>, 'true'}
       ,{<<"Invite-Format">>, <<"loopback">>}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
       ,{<<"Route">>, Number}
       ,{<<"To-DID">>, Number}
       ,{<<"To-Realm">>, FromRealm}
+      ,{<<"Outbound-Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
       ]).
 %%------------------------------------------------------------------------------
 %% @doc
