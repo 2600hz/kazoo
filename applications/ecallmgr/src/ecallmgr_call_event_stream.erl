@@ -12,7 +12,7 @@
 -include("ecallmgr.hrl").
 
 -define(DEFAULT_DEBUG_CHANNEL, 'false' ).
--define(DEBUG_CHANNEL, ecallmgr_config:get_boolean(<<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
+-define(DEBUG_CHANNEL, kapps_config:get_boolean(?APP_NAME, <<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
 
 -export([to_json/1]).
 

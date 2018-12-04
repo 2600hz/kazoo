@@ -54,4 +54,4 @@ publish_event(#{payload := JObj}) ->
     end.
 
 events() ->
-    ecallmgr_config:get_ne_binaries(<<"publish_conference_event">>, ?CONFERENCE_EVENTS).
+    kapps_config:get_ne_binaries(?APP_NAME, <<"publish_conference_event">>, ?CONFERENCE_EVENTS).

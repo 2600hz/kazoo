@@ -37,7 +37,7 @@
 -define(DEFAULT_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_sample_rate">>, 8000)).
 -define(DEFAULT_STEREO_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_stereo_sample_rate">>, 16000)).
 
--define(RESTRICTED_PUBLISHING, ecallmgr_config:get_boolean(<<"restrict_channel_event_publisher">>, 'true')).
+-define(RESTRICTED_PUBLISHING, kapps_config:is_true(?APP_NAME, <<"restrict_channel_event_publisher">>, 'true')).
 
 -type fs_app() :: {kz_term:ne_binary(), binary() | 'noop'} |
                   {kz_term:ne_binary(), kz_term:ne_binary(), atom()}.

@@ -33,13 +33,13 @@ init() ->
 -spec sofia(map()) -> fs_sendmsg_ret().
 sofia(#{node := Node, fetch_id := Id}) ->
     kz_util:put_callid(Id),
-    case ecallmgr_config:is_true(<<"sofia_conf">>) of
+    case kapps_config:is_true(?APP_NAME, <<"sofia_conf">>) of
         'false' ->
             lager:info("sofia conf disabled"),
             {'ok', Resp} = ecallmgr_fs_xml:not_found(),
             freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp));
         'true' ->
-            Profiles = ecallmgr_config:fetch(<<"fs_profiles">>, kz_json:new()),
+            Profiles = kapps_config:get_json(?APP_NAME, <<"fs_profiles">>, kz_json:new()),
             DefaultProfiles = default_sip_profiles(Node),
             try ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)) of
                 {'ok', ConfigXml} ->
@@ -56,10 +56,10 @@ sofia(#{node := Node, fetch_id := Id}) ->
 
 -spec default_sip_profiles(atom()) -> kz_json:object().
 default_sip_profiles(Node) ->
-    Gateways = case ecallmgr_config:is_true(<<"process_gateways">>) of
+    Gateways = case kapps_config:is_true(?APP_NAME, <<"process_gateways">>) of
                    'false' -> kz_json:new();
                    'true' ->
-                       SysconfResp = ecallmgr_config:fetch(<<"gateways">>, kz_json:new()),
+                       SysconfResp = kapps_config:get_json(?APP_NAME, <<"gateways">>, kz_json:new()),
                        _ = maybe_kill_node_gateways(SysconfResp, Node),
                        SysconfResp
                end,

@@ -13,7 +13,7 @@
 -export([init/1]).
 
 -define(EVENTS, ?FS_EVENTS).
--define(PACKET_SIZE, ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2)).
+-define(PACKET_SIZE, kapps_config:get_integer(?APP_NAME, <<"tcp_packet_type">>, 2)).
 
 -define(CHILDREN(PacketSize), [event_child(Node, Event, PacketSize) || Event <- ?EVENTS]).
 

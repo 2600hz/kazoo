@@ -85,7 +85,7 @@ add_time_marker(Name, Value, #{}= Map) ->
 
 maybe_authz(#{authz_worker := _Authz}=Map) -> Map;
 maybe_authz(#{}=Map) ->
-    case ecallmgr_config:is_true(<<"authz_enabled">>, 'false') of
+    case kapps_config:is_true(?APP_NAME, <<"authz_enabled">>, 'false') of
         true -> spawn_authorize_call_fun(Map);
         false -> Map
     end.

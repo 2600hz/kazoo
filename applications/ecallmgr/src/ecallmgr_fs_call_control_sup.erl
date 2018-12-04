@@ -27,7 +27,7 @@ start_link(Node, Options) ->
                                        ,?MODULE
                                        ,[Node, Options]
                                        ),
-    Workers = ecallmgr_config:get_integer(<<"fs_call_control_workers">>, 5),
+    Workers = kapps_config:get_integer(?APP_NAME, <<"fs_call_control_workers">>, 5),
     _ = kz_util:spawn(fun() -> [begin
                                     _ = supervisor:start_child(Pid, []),
                                     timer:sleep(250)
