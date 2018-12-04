@@ -1,6 +1,7 @@
 -ifndef(KAZOO_RECORDS_INCLUDED).
 
 -record(whapp_info, {startup :: kz_time:api_seconds()
+                    ,uptime :: kz_time:api_seconds()
                     ,roles = [] :: kz_term:ne_binaries()
                     }).
 
@@ -21,6 +22,8 @@
                  ,registrations = 0 :: non_neg_integer() | '_'
                  ,globals = [] :: kz_term:proplist() | '$1' | '_'
                  ,node_info :: kz_term:api_object() | '_'
+                 ,runtime :: kz_term:api_object() | '_'
+                 ,modules :: kz_term:api_object() | '_'
                  ,roles = [] :: kz_term:proplist() | '$1' | '_'
                  }).
 
