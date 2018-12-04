@@ -23,6 +23,7 @@
         ,conference_srv/1
         ,event_stream_sup/1
         ,msg_srv/1
+        ,node_server/2
         ]).
 
 -export([init/1]).
@@ -96,6 +97,10 @@ event_stream_sup(Supervisor) ->
 -spec msg_srv(pid()) -> kz_term:api_pid().
 msg_srv(Supervisor) ->
     srv(which_children(Supervisor), "gsm_").
+
+-spec node_server(pid(), kz_term:ne_binary()) -> kz_term:api_pid().
+node_server(Supervisor, Server) ->
+    srv(which_children(Supervisor), lists:reverse(kz_term:to_list(Server)) ++ "_").
 
 %%==============================================================================
 %% Supervisor callbacks
