@@ -353,8 +353,18 @@ find_call(CallId) ->
           }],
     case ets:select(call_table_id(), MS) of
         [] -> 'undefined';
-        [Stat] -> call_stat_to_json(Stat)
+        [Stat] -> call_stat_to_json(Stat);
+        Stats -> call_stat_to_json(get_recent_stat_for_call(Stats))
     end.
+
+-spec get_recent_stat_for_call(call_stats()) -> call_stat().
+get_recent_stat_for_call(Stats) ->
+    Sorted = lists:sort(fun sort_by_entered_timestamp/2, Stats),
+    lists:nth(1, Sorted).
+
+-spec sort_by_entered_timestamp(call_stat(), call_stat()) -> boolean().
+sort_by_entered_timestamp(#call_stat{entered_timestamp=ATimestamp}, #call_stat{entered_timestamp=BTimestamp}) ->
+    ATimestamp > BTimestamp.
 
 -record(state, {archive_ref :: reference()
                ,cleanup_ref :: reference()
