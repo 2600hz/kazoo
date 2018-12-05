@@ -753,7 +753,7 @@ reconcile(Account) ->
                    ],
     CurrentServices = kz_services:fetch(AccountId, FetchOptions),
     CurrentJObj = kz_services:current_services_jobj(CurrentServices),
-    {_OkError, Services} = kz_services:maybe_save_services_jobj(CurrentServices),
+    Services = kz_services:maybe_save_services_jobj(CurrentServices),
     case kz_services:is_dirty(Services) of
         'false' -> 'no_return';
         'true' ->

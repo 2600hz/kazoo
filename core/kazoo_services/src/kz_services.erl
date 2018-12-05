@@ -910,11 +910,10 @@ commit_account(Services) ->
                ,fun kz_services_bookkeeper:maybe_update/1
                ,fun maybe_save_services_jobj/1
                ],
-    {_OkError, SavedServices} = lists:foldl(fun(F, S) -> F(S) end
-                                           ,reset_invoices(Services)
-                                           ,Routines
-                                           ),
-    SavedServices.
+    lists:foldl(fun(F, S) -> F(S) end
+               ,reset_invoices(Services)
+               ,Routines
+               ).
 
 -spec maybe_hydrate_cascade_quantities(services()) -> services().
 maybe_hydrate_cascade_quantities(#kz_services{cascade_quantities='undefined'}=Services) ->
@@ -934,7 +933,7 @@ maybe_hydrate_account_quantities(#kz_services{account_quantities='undefined'}=Se
 maybe_hydrate_account_quantities(Services) ->
     Services.
 
--spec maybe_save_services_jobj(services()) -> {'ok' | 'error', services()}.
+-spec maybe_save_services_jobj(services()) -> services().
 maybe_save_services_jobj(Services) ->
     CurrentServicesJObj = current_services_jobj(Services),
     ProposedServices = commit_quantities(Services),
@@ -949,7 +948,7 @@ maybe_save_services_jobj(Services) ->
                               );
         'true' ->
             lager:debug("services document is unchanged"),
-            {'ok', Services}
+            Services
     end.
 
 %%------------------------------------------------------------------------------
@@ -995,11 +994,11 @@ commit_manual_quantities(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec save_services_jobj(services()) -> {'ok' | 'error', services()}.
+-spec save_services_jobj(services()) -> services().
 save_services_jobj(Services) ->
     save_services_jobj(Services, services_jobj(Services)).
 
--spec save_services_jobj(services(), kzd_services:doc()) -> {'ok' | 'error', services()}.
+-spec save_services_jobj(services(), kzd_services:doc()) -> services().
 save_services_jobj(Services, ProposedJObj) ->
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, ProposedJObj) of
         {'ok', UpdatedJObj} ->
@@ -1009,12 +1008,12 @@ save_services_jobj(Services, ProposedJObj) ->
             Setters = [{fun set_services_jobj/2, UpdatedJObj}
                       ,{fun set_current_services_jobj/2, UpdatedJObj}
                       ],
-            {'ok', setters(set_dirty(Services), Setters)};
+            setters(set_dirty(Services), Setters);
         {'error', _Reason} ->
             lager:info("unable to update services document ~s: ~p"
                       ,[account_id(Services), _Reason]
                       ),
-            {'error', Services}
+            Services
     end.
 
 %%------------------------------------------------------------------------------
@@ -1106,10 +1105,9 @@ sum_quantities_updates(Quantities, Updates) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_payment_token(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                  {'ok' | 'error', services()} | {'error', 'undefined_account'}.
+-spec update_payment_token(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) -> services().
 update_payment_token('undefined', _, _) ->
-    {'error', 'undefined_account'};
+    empty();
 update_payment_token(AccountId, Bookkeeper, Token) ->
     Services = fetch(AccountId),
     ServicesJObj = services_jobj(Services),
@@ -1128,10 +1126,9 @@ update_payment_token(AccountId, Bookkeeper, Token) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_payment_tokens(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                   {'ok' | 'error', services()} | {'error', 'undefined_account'}.
+-spec update_payment_tokens(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) -> services().
 update_payment_tokens('undefined', _, _) ->
-    {'error', 'undefined_account'};
+    empty();
 update_payment_tokens(?NE_BINARY = AccountId, ?NE_BINARY = Bookkeeper, ProposedTokens) ->
     Services = fetch(AccountId),
     ServicesJObj = services_jobj(Services),
@@ -1172,10 +1169,9 @@ ensure_payment_defaults(Bookkeeper, Token) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_payment_token(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                  {'ok' | 'error', services()} | {'error', 'undefined_account'}.
+-spec delete_payment_token(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) -> services().
 delete_payment_token('undefined', _, _) ->
-    {'error', 'undefined_account'};
+    empty();
 delete_payment_token(AccountId, _Bookkeeper, Token) ->
     Services = fetch(AccountId),
     ServicesJObj = services_jobj(Services),

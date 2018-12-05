@@ -89,28 +89,35 @@ props_to_xml([{K, V}|T], Xml) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_services_card(kz_term:ne_binary(), bt_card()) -> {'ok', any()} | {'error', any()}.
+-spec update_services_card(kz_term:ne_binary(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
 update_services_card(CustomerId, Card) ->
     Token = braintree_card:record_to_payment_token(Card),
-    kz_services:update_payment_token(CustomerId, <<"braintree">>, Token).
+    is_services_saved(kz_services:update_payment_token(CustomerId, <<"braintree">>, Token)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_services_cards(kz_term:ne_binary(), bt_cards()) -> {'ok', any()} | {'error', any()}.
+-spec update_services_cards(kz_term:ne_binary(), bt_cards()) -> {'ok' | 'error', kz_services:services()}.
 update_services_cards(CustomerId, Cards) ->
     Tokens = [braintree_card:record_to_payment_token(Card) || Card <- Cards],
-    kz_services:update_payment_tokens(CustomerId, <<"braintree">>, Tokens).
+    is_services_saved(kz_services:update_payment_tokens(CustomerId, <<"braintree">>, Tokens)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_services_card(kz_term:ne_binary(), bt_card()) -> {'ok', any()} | {'error', any()}.
+-spec delete_services_card(kz_term:ne_binary(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
 delete_services_card(CustomerId, #bt_card{}=Card) ->
     Token = braintree_card:record_to_payment_token(Card),
-    kz_services:delete_payment_token(CustomerId, <<"braintree">>, Token).
+    is_services_saved(kz_services:delete_payment_token(CustomerId, <<"braintree">>, Token)).
+
+-spec is_services_saved(kz_services:services()) -> {'ok' | 'error', kz_services:services()}.
+is_services_saved(Services) ->
+    case kz_services:is_dirty(Services) of
+        'false' -> {'error', Services};
+        'true' -> {'ok', Services}
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
