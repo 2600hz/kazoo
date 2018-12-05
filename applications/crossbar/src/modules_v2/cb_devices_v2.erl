@@ -443,7 +443,7 @@ get_mdn(JObj) ->
 prepare_mac_address(_DeviceId, Context) ->
     case get_mac_address(Context) of
         'undefined' -> Context;
-         MacAddress ->
+        MacAddress ->
             JObj = kzd_devices:set_mac_address(cb_context:req_data(Context)
                                               ,MacAddress
                                               ),
@@ -707,7 +707,7 @@ check_device_password(Realm, DeviceId, Context) ->
     end.
 
 -spec check_sip_creds_unique(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                 boolean().
+                                    boolean().
 %% no account id and no doc id (ie initial create with no account)
 check_sip_creds_unique('undefined', _, _, 'undefined') -> 'true';
 check_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
@@ -739,7 +739,7 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
     end.
 
 -spec check_device_ip(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                cb_context:context().
+                             cb_context:context().
 check_device_ip(IP, DeviceId, Context) ->
     case kz_network_utils:is_ipv4(IP) of
         'true' ->
@@ -757,7 +757,7 @@ check_device_ip(IP, DeviceId, Context) ->
     end.
 
 -spec check_device_ip_unique(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                       cb_context:context().
+                                    cb_context:context().
 check_device_ip_unique(IP, DeviceId, Context) ->
     case cb_devices_utils:is_ip_unique(IP, DeviceId) of
         'true' ->
