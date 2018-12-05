@@ -2,7 +2,7 @@
 
 #### About Queues
 
-When you have more callers than agents to handle those calls, you can create a call queue to put the callers on hold while agents process callers in the order they arrived in.
+When you have more callers than agents to handle those calls, you can create a call queue to put the callers on hold while agents process callers in the order they arrived in.  It is important to note that the information is for ACDC and NOT Qubicle.
 
 #### Schema
 
