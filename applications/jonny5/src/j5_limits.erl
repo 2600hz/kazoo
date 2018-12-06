@@ -67,14 +67,16 @@ get(Account) ->
 
 -spec fetch(kz_term:ne_binary()) -> limits().
 fetch(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    case get_limit_jobj(AccountDb) of
-        {'error', _} ->
+    AccountId = kz_util:format_account_id(Account),
+    AccountDb = kz_util:format_account_db(Account),
+    JObj = kz_services:trunk_limits(AccountId),
+    CacheOrigins = kz_json:get_ne_value(<<"pvt_cache_origins">>, JObj, []),
+    case kz_term:is_empty(JObj) of
+        'true' ->
             create_limits(AccountId, AccountDb, kz_json:new());
-        JObj ->
-            Limits = create_limits(AccountId, AccountDb, JObj),
-            CacheProps = [{'origin', {'db', AccountDb}}],
+        'false' when CacheOrigins =/= [] ->
+            Limits = create_limits(AccountId, AccountDb, kz_json:delete_key(<<"pvt_cache_origins">>,JObj)),
+            CacheProps = [{'origin', CacheOrigins}],
             kz_cache:store_local(?CACHE_NAME, ?LIMITS_KEY(AccountId), Limits, CacheProps),
             Limits
     end.
@@ -334,44 +336,6 @@ filter_bundled_limit(JObjs) ->
                                    ,JObj
                                    ,'true')
            ]).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec get_limit_jobj(kz_term:ne_binary()) -> kz_json:object() | {'error', any()}.
-get_limit_jobj(AccountDb) ->
-    case kz_datamgr:open_doc(AccountDb, <<"limits">>) of
-        {'ok', JObj} -> JObj;
-        {'error', 'not_found'} ->
-            lager:debug("limits doc in account db ~s not found", [AccountDb]),
-            create_default_limit_jobj(AccountDb);
-        {'error', _R} = Error ->
-            lager:debug("failed to open limits doc in account db '~s': ~p"
-                       ,[AccountDb, _R]),
-            Error
-    end.
-
--spec create_default_limit_jobj(kz_term:ne_binary()) -> kz_json:object().
-create_default_limit_jobj(AccountDb) ->
-    TStamp = kz_time:now_s(),
-    JObj = kz_json:from_list(
-             [{<<"_id">>, <<"limits">>}
-             ,{<<"pvt_account_db">>, AccountDb}
-             ,{<<"pvt_account_id">>, kz_util:format_account_id(AccountDb, 'raw')}
-             ,{<<"pvt_type">>, <<"limits">>}
-             ,{<<"pvt_created">>, TStamp}
-             ,{<<"pvt_modified">>, TStamp}
-             ,{<<"pvt_vsn">>, 1}
-             ]),
-    case kz_datamgr:save_doc(AccountDb, JObj) of
-        {'ok', J} ->
-            lager:debug("created initial limits document in db ~s", [AccountDb]),
-            J;
-        {'error', _R} = Error ->
-            lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
-            Error
-    end.
 
 -spec create_limits(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> limits().
 create_limits(AccountId, AccountDb, JObj) ->

@@ -67,6 +67,10 @@
         ,item/3
         ,item/4
         ]).
+-export([trunk_limits/1
+        ,trunk_limits/2
+        ,set_trunk_limits/2
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -274,6 +278,26 @@ applications(JObj, Default) ->
 -spec set_applications(doc(), kz_json:object()) -> doc().
 set_applications(JObj, Applications) ->
     kz_json:set_value(?APPLICATIONS, Applications, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec trunk_limits(doc()) -> kz_json:object().
+trunk_limits(JObj) ->
+    trunk_limits(JObj, kz_json:new()).
+
+-spec trunk_limits(doc(), Default) -> Default | kz_json:object().
+trunk_limits(JObj, Default) ->
+    kz_json:get_ne_json_value(<<"trunk_limits">>, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_trunk_limits(doc(), kz_json:object()) -> doc().
+set_trunk_limits(JObj, TrunkLimits) ->
+    kz_json:set_value(<<"trunk_limits">>, TrunkLimits, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
