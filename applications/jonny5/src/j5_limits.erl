@@ -78,7 +78,9 @@ fetch(Account) ->
             Limits = create_limits(AccountId, AccountDb, kz_json:delete_key(<<"pvt_cache_origins">>,JObj)),
             CacheProps = [{'origin', CacheOrigins}],
             kz_cache:store_local(?CACHE_NAME, ?LIMITS_KEY(AccountId), Limits, CacheProps),
-            Limits
+            Limits;
+        'false' ->
+            create_limits(AccountId, AccountDb, kz_json:delete_key(<<"pvt_cache_origins">>,JObj))
     end.
 
 -spec cached() -> [limits()].

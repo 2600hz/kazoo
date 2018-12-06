@@ -28,8 +28,20 @@ fetch(Services) ->
     PlansLimits = kz_json:from_map(LimitsMap),
     AccountLimits = get_account_limits(Services),
     Limits = kz_json:merge(PlansLimits, AccountLimits),
+
+    Origins = case {kz_doc:account_db(Limits), kz_doc:id(Limits)} of
+                  {'undefined', 'undefined'} ->
+                      CacheOrigins;
+                  {'undefined', Id} ->
+                      [{'type', <<"limits">>, Id} | CacheOrigins];
+                  {Db, 'undefined'} ->
+                      [{'db', Db, <<"limits">>} | CacheOrigins];
+                  {Db, Id} ->
+                      [{'db', Db, Id} | CacheOrigins]
+              end,
+
     kz_json:set_value(<<"pvt_cache_origins">>
-                     ,lists:usort(CacheOrigins)
+                     ,lists:usort(Origins)
                      ,Limits
                      ).
 
