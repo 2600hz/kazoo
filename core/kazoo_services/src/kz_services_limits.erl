@@ -8,6 +8,7 @@
 -export([fetch/1]).
 
 -include("services.hrl").
+-include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -26,20 +27,12 @@ fetch(Services) ->
                                 ,kz_services:plans(Services)
                                 ),
     PlansLimits = kz_json:from_map(LimitsMap),
-    AccountLimits = get_account_limits(Services),
+    {AccountOrigin, AccountLimits} = get_account_limits(Services),
     Limits = kz_json:merge(PlansLimits, AccountLimits),
 
-    Origins = case {kz_doc:account_db(Limits), kz_doc:id(Limits)} of
-                  {'undefined', 'undefined'} ->
-                      CacheOrigins;
-                  {'undefined', Id} ->
-                      [{'type', <<"limits">>, Id} | CacheOrigins];
-                  {Db, 'undefined'} ->
-                      [{'db', Db, <<"limits">>} | CacheOrigins];
-                  {Db, Id} ->
-                      [{'db', Db, Id} | CacheOrigins]
-              end,
-
+    Origins = [{'db', ?KZ_SERVICES_DB, kz_services:account_id(Services)}
+               | CacheOrigins ++ AccountOrigin
+              ],
     kz_json:set_value(<<"pvt_cache_origins">>
                      ,lists:usort(Origins)
                      ,Limits
@@ -68,21 +61,22 @@ trunk_limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_account_limits(kz_services:services()) -> kz_json:object().
+-spec get_account_limits(kz_services:services()) -> {origin_tuples(), kz_json:object()}.
 get_account_limits(Services) ->
     AccountDb = kz_util:format_account_db(kz_services:account_id(Services)),
     case kz_datamgr:open_doc(AccountDb, <<"limits">>) of
-        {'ok', JObj} -> JObj;
+        {'ok', JObj} ->
+            {[{'db', AccountDb, <<"limits">>}], JObj};
         {'error', 'not_found'} ->
             lager:debug("limits doc in account db ~s not found, creating it...", [AccountDb]),
             create_account_limits_jobj(AccountDb);
         {'error', _R} ->
             lager:debug("failed to open limits doc in account db '~s': ~p"
                        ,[AccountDb, _R]),
-            kz_json:new()
+            {[], kz_json:new()}
     end.
 
--spec create_account_limits_jobj(kz_term:ne_binary()) -> kz_json:object().
+-spec create_account_limits_jobj(kz_term:ne_binary()) -> {origin_tuples(), kz_json:object()}.
 create_account_limits_jobj(AccountDb) ->
     TStamp = kz_time:now_s(),
     JObj = kz_json:from_list(
@@ -97,8 +91,8 @@ create_account_limits_jobj(AccountDb) ->
     case kz_datamgr:save_doc(AccountDb, JObj) of
         {'ok', SavedJObj} ->
             lager:debug("created initial limits document in db ~s", [AccountDb]),
-            SavedJObj;
+            {[{'db', AccountDb, <<"limits">>}], SavedJObj};
         {'error', _R} ->
             lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
-            kz_json:new()
+            {[], kz_json:new()}
     end.
