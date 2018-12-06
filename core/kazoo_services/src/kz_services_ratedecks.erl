@@ -5,6 +5,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_services_ratedecks).
 
+-export([fetch/1]).
 -export([id/1]).
 -export([name/1]).
 
@@ -14,49 +15,36 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec id(kz_services:services() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
-id(?NE_BINARY = AccountId) ->
+-spec fetch(kz_services:services() | kz_term:ne_binary()) -> kz_json:object().
+fetch(?NE_BINARY = AccountId) ->
     FetchOptions = ['hydrate_plans'],
-    id(kz_services:fetch(AccountId, FetchOptions));
-id(Services) ->
+    fetch(kz_services:fetch(AccountId, FetchOptions));
+fetch(Services) ->
     %% TODO: these are here for backward compatibility
     %% but the ratedeck integration on services and
     %% service_plan documents could use a revisit...
     ServicesJObj = kz_services:services_jobj(Services),
-    case kzd_services:ratedeck_id(ServicesJObj) of
-        'undefined' -> plan_ratedeck_id(Services);
-        RatedeckId -> RatedeckId
-    end.
+    Plan = merge_all_plans(ServicesJObj),
+    kz_json:from_list(
+      [{<<"id">>, get_plan_ratedeck_id(ServicesJObj, Plan)}
+      ,{<<"name">>, get_plan_ratedeck_name(ServicesJObj, Plan)}
+      ]).
 
--spec plan_ratedeck_id(kz_services:services()) -> kz_term:api_ne_binary().
-plan_ratedeck_id(Services) ->
-    kz_services_plan:ratedeck_id(
-      merge_all_plans(Services)
-     ).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec id(kz_services:services() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
+id(Thing) ->
+    kz_doc:id(fetch(Thing)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec name(kz_services:services() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
-name(?NE_BINARY = AccountId) ->
-    FetchOptions = ['hydrate_plans'],
-    name(kz_services:fetch(AccountId, FetchOptions));
-name(Services) ->
-    %% TODO: these are here for backward compatibility
-    %% but the ratedeck integration on services and
-    %% service_plan documents could use a revisit...
-    ServicesJObj = kz_services:services_jobj(Services),
-    case kzd_services:ratedeck_name(ServicesJObj) of
-        'undefined' -> plan_ratedeck_name(Services);
-        RatedeckName -> RatedeckName
-    end.
-
--spec plan_ratedeck_name(kz_services:services()) -> kz_term:api_ne_binary().
-plan_ratedeck_name(Services) ->
-    kz_services_plan:ratedeck_name(
-      merge_all_plans(Services)
-     ).
+name(Thing) ->
+    kzd_ratedeck:name(fetch(Thing)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -75,3 +63,25 @@ merge_all_plans(Services) ->
                          ) -> kz_services_plans:plans_list().
 collect_plans_foldl(_BookkeeperHash, PlansList, Plans) ->
     PlansList ++ Plans.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_plan_ratedeck_id(kz_json:object(), kz_services_plan:plan()) -> kz_term:api_ne_binary().
+get_plan_ratedeck_id(ServicesJObj, Plan) ->
+    case kzd_services:ratedeck_id(ServicesJObj) of
+        'undefined' -> kz_services_plan:ratedeck_id(Plan);
+        RatedeckId -> RatedeckId
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_plan_ratedeck_name(kz_json:object(), kz_services_plan:plan()) -> kz_term:api_ne_binary().
+get_plan_ratedeck_name(ServicesJObj, Plan) ->
+    case kzd_services:ratedeck_name(ServicesJObj) of
+        'undefined' -> kz_services_plan:ratedeck_name(Plan);
+        RatedeckName -> RatedeckName
+    end.

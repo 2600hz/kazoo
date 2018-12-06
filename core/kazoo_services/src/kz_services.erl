@@ -608,11 +608,8 @@ summary(Services) ->
                  ,{<<"is_reseller">>, kz_services_reseller:is_reseller(Services)}
                  ]
                 ),
-    Ratedeck = kz_json:from_list(
-                 [{<<"id">>, kz_services_ratedecks:id(Services)}
-                 ,{<<"name">>, kz_services_ratedecks:name(Services)}
-                 ]
-                ),
+    Ratedeck = kz_services_ratedecks:fetch(Services),
+
     Props = [{<<"plans">>, kz_services_plans:assigned(Services)}
             ,{<<"invoices">>, kz_services_invoices:public_json(invoices(Services))}
             ,{<<"quantities">>, Quantities}
