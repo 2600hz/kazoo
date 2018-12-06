@@ -20,7 +20,7 @@
 -export([ratedeck_id/1]).
 -export([ratedeck_name/1]).
 -export([applications/1]).
--export([trunk_limits/1]).
+-export([limits/1]).
 -export([jobj/1
         ,set_jobj/2
         ]).
@@ -173,9 +173,9 @@ applications(Plan) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec trunk_limits(plan()) -> kz_json:object().
-trunk_limits(Plan) ->
-    kzd_service_plan:trunk_limits(jobj(Plan)).
+-spec limits(plan()) -> kz_json:object().
+limits(Plan) ->
+    kzd_service_plan:limits(jobj(Plan)).
 
 %%------------------------------------------------------------------------------
 %% @doc

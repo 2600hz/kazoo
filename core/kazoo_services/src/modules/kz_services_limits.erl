@@ -20,7 +20,7 @@ fetch(?NE_BINARY = AccountId) ->
 fetch(Services) ->
     #{cache_origins := CacheOrigins
      ,limits := LimitsMap
-     } = kz_services_plans:foldl(fun trunk_limits_foldl/3
+     } = kz_services_plans:foldl(fun limits_foldl/3
                                 ,#{cache_origins => []
                                   ,limits => #{}
                                   }
@@ -38,10 +38,10 @@ fetch(Services) ->
                      ,Limits
                      ).
 
--spec trunk_limits_foldl(kz_term:ne_binary(), kz_services_plans:plans_list(), map()) -> map().
-trunk_limits_foldl(_BookkeeperHash, [], Acc) ->
+-spec limits_foldl(kz_term:ne_binary(), kz_services_plans:plans_list(), map()) -> map().
+limits_foldl(_BookkeeperHash, [], Acc) ->
     Acc;
-trunk_limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=Acc) ->
+limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=Acc) ->
     Origins = [{'db'
                ,kz_util:format_account_db(kz_services_plan:vendor_id(Plan))
                ,kz_services_plan:id(Plan)
@@ -54,7 +54,7 @@ trunk_limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=
                           Acc1#{limits => Limits#{<<"pvt_", K/binary>> => V}}
                   end
                  ,Acc#{cache_origins => Origins ++ CacheOrigins}
-                 ,kz_services_plan:trunk_limits(Plan)
+                 ,kz_services_plan:limits(Plan)
                  ).
 
 %%------------------------------------------------------------------------------
