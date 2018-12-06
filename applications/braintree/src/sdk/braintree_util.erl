@@ -11,6 +11,11 @@
 -export([bt_verification_to_json/1]).
 -export([bt_api_error_to_json/1]).
 
+-export([update_services_card/2
+        ,update_services_cards/2
+        ,delete_services_card/2
+        ]).
+
 -export([error_to_props/1]).
 -export([error_no_payment_token/0]).
 -export([error_authentication/0]).
@@ -84,7 +89,43 @@ props_to_xml([{K, V}|T], Xml) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec update_services_card(kz_term:ne_binary(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
+update_services_card(CustomerId, Card) ->
+    Token = braintree_card:record_to_payment_token(Card),
+    save_services(kz_services_payment_tokens:update(CustomerId, <<"braintree">>, Token)).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_services_cards(kz_term:ne_binary(), bt_cards()) -> {'ok' | 'error', kz_services:services()}.
+update_services_cards(CustomerId, Cards) ->
+    Tokens = [braintree_card:record_to_payment_token(Card) || Card <- Cards],
+    save_services(kz_services_payment_tokens:updates(CustomerId, <<"braintree">>, Tokens)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec delete_services_card(kz_term:ne_binary(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
+delete_services_card(CustomerId, #bt_card{}=Card) ->
+    Token = braintree_card:record_to_payment_token(Card),
+    save_services(kz_services_payment_tokens:delete(CustomerId, <<"braintree">>, Token)).
+
+-spec save_services(kz_services:services()) -> {'ok' | 'error', kz_services:services()}.
+save_services(Services) ->
+    case kz_services:is_dirty(
+           kz_services:save_services_jobj(Services)
+          )
+    of
+        'false' -> {'error', Services};
+        'true' -> {'ok', Services}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec bt_error_to_json(bt_error()) -> kz_json:object().
 bt_error_to_json(BtError) ->
     kz_json:from_list(
