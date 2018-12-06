@@ -53,7 +53,7 @@ trunk_limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=
                ,kz_util:format_account_db(kz_services_plan:vendor_id(Plan))
                ,kz_services_plan:id(Plan)
                }
-                || Plan <- PlansList
+               || Plan <- PlansList
               ],
     Plan = kz_services_plans:merge(PlansList),
 

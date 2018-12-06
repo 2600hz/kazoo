@@ -66,7 +66,7 @@ fetch(Database, View, ViewOptions) ->
             Quantities = [{kz_json:get_value(<<"key">>, JObj)
                           ,kz_json:get_integer_value(<<"value">>, JObj, 0)
                           }
-                           || JObj <- JObjs
+                          || JObj <- JObjs
                          ],
             fetch_to_json(Quantities)
     end.
