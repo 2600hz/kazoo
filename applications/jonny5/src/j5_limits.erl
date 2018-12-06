@@ -69,7 +69,7 @@ get(Account) ->
 fetch(Account) ->
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(Account),
-    JObj = kz_services:trunk_limits(AccountId),
+    JObj = kz_services_limits:fetch(AccountId),
     CacheOrigins = kz_json:get_ne_value(<<"pvt_cache_origins">>, JObj, []),
     case kz_term:is_empty(JObj) of
         'true' ->
