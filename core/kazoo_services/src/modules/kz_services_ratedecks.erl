@@ -24,7 +24,7 @@ fetch(Services) ->
     %% but the ratedeck integration on services and
     %% service_plan documents could use a revisit...
     ServicesJObj = kz_services:services_jobj(Services),
-    Plan = merge_all_plans(ServicesJObj),
+    Plan = merge_all_plans(Services),
     kz_json:from_list(
       [{<<"id">>, get_plan_ratedeck_id(ServicesJObj, Plan)}
       ,{<<"name">>, get_plan_ratedeck_name(ServicesJObj, Plan)}
