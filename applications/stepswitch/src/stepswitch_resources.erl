@@ -667,6 +667,7 @@ gateway_to_endpoint(DestinationNumber
                             ,codecs=Codecs
                             ,username=Username
                             ,password=Password
+                            ,realm=AuthRealm
                             ,sip_headers=SipHeaders
                             ,sip_interface=SipInterface
                             ,endpoint_type=EndpointType
@@ -697,6 +698,7 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Codecs">>, Codecs}
         ,{<<"Auth-User">>, Username}
         ,{<<"Auth-Password">>, Password}
+        ,{<<"Auth-Realm">>, AuthRealm}
         ,{<<"Custom-SIP-Headers">>, SipHeaders}
         ,{<<"SIP-Interface">>, SipInterface}
         ,{<<"Endpoint-Type">>, EndpointType}
