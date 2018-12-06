@@ -321,7 +321,7 @@ settings_keys(Assoc, KeyKind, Device) ->
                   kz_json:from_list([{Key, 'null'} | kz_json:to_proplist(Acc)]);
              (Key, Value, Acc) ->
                   Type = kz_json:get_binary_value(<<"type">>, Value),
-                  V = kz_json:get_binary_value(<<"value">>, Value),
+                  V = kz_json:get_value(<<"value">>, Value),
                   FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId, Assoc),
                   maybe_add_feature_key(Key, FeatureKey, Acc)
           end,
@@ -349,32 +349,35 @@ get_label(User) ->
             <<First/binary, " ", Last/binary>>
     end.
 
--spec get_feature_key(kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
+-spec get_feature_key(kz_term:ne_binary(), kz_term:api_ne_binary() | 0..10 | kz_json:object(), binary(), binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
+get_feature_key(_Type, 'undefined', _Brand, _Family, _AccountId, _Assoc) ->
+    'undefined';
 get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
-    {'ok', UserJObj} = get_user(AccountId, Value),
-    case kzd_users:presence_id(UserJObj) of
+    case get_user(AccountId, Value, <<>>) of
         'undefined' -> 'undefined';
-        Presence ->
+        {Presence, Label} ->
             kz_json:from_list(
-              [{<<"label">>, get_label(UserJObj)}
+              [{<<"label">>, Label}
               ,{<<"value">>, Presence}
               ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
               ,{<<"account">>, get_line_key(Brand, Family)}
               ])
     end;
 get_feature_key(<<"speed_dial">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
-    kz_json:from_list(
-      [{<<"label">>, Value}
-      ,{<<"value">>, Value}
-      ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-      ,{<<"account">>, get_line_key(Brand, Family)}
-      ]);
-get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, Assoc) ->
-    {'ok', UserJObj} = get_user(AccountId, Value),
-    case kzd_devices:presence_id(UserJObj) of
+    case get_label_value(Value, <<>>) of
         'undefined' -> 'undefined';
-        Presence ->
-            Label = <<"Park ", (get_label(UserJObj))/binary>>,
+        {RealValue, Label} ->
+            kz_json:from_list(
+              [{<<"label">>, Label}
+              ,{<<"value">>, RealValue}
+              ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+              ,{<<"account">>, get_line_key(Brand, Family)}
+              ])
+    end;
+get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, Assoc) ->
+    case get_user(AccountId, Value, <<"Park ">>) of
+        'undefined' -> 'undefined';
+        {Presence, Label} ->
             kz_json:from_list(
               [{<<"label">>, Label}
               ,{<<"value">>, <<"*3", Presence/binary>>}
@@ -383,12 +386,16 @@ get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, As
               ])
     end;
 get_feature_key(<<"parking">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
-    kz_json:from_list(
-      [{<<"label">>, <<"Park ", Value/binary>>}
-      ,{<<"value">>, <<"*3", Value/binary>>}
-      ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-      ,{<<"account">>, get_line_key(Brand, Family)}
-      ]);
+    case get_label_value(Value, <<"Park ">>) of
+        'undefined' -> 'undefined';
+        {RealValue, Label} ->
+            kz_json:from_list(
+              [{<<"label">>, Label}
+              ,{<<"value">>, <<"*3", RealValue/binary>>}
+              ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+              ,{<<"account">>, get_line_key(Brand, Family)}
+              ])
+    end;
 get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
       [{<<"label">>, <<>>}
@@ -412,11 +419,70 @@ get_feature_key_type(Assoc, Type, Brand, Family) ->
                              ,Assoc
                              ).
 
--spec get_user(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                                            {'error', any()}.
-get_user(AccountId, UserId) ->
+-spec get_user(kz_term:ne_binary(), kz_term:ne_binary(), binary()) ->
+                      {kz_term:ne_binary(), kz_term:api_ne_binary()} |
+                      'undefined'.
+get_user(AccountId, ?NE_BINARY = UserId, PrefixLabel) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, UserId).
+    {'ok', UserJObj} = kz_datamgr:open_cache_doc(AccountDb, UserId),
+    case kzd_users:presence_id(UserJObj) of
+        'undefined' -> 'undefined';
+        Presence ->
+            Label = case get_label(UserJObj) of
+                        'undefined' -> 'undefined';
+                        L -> <<PrefixLabel/binary, L/binary>>
+                    end,
+            {Presence, Label}
+    end;
+get_user(AccountId, JObj, PrefixLabel) ->
+    case kz_json:is_json_object(JObj) of
+        'true' ->
+            get_user(AccountId
+                    ,kz_json:get_ne_binary_value(<<"label">>, JObj)
+                    ,kz_json:get_ne_binary_value(<<"value">>, JObj)
+                    ,PrefixLabel
+                    );
+        'false' ->
+            'undefined'
+    end.
+
+-spec get_user(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()) ->
+                      {kz_term:ne_binary(), kz_term:api_ne_binary()} |
+                      'undefined'.
+get_user(_AccountId, _CustomLabel, 'undefined', _PrefixLabel) ->
+    'undefined';
+get_user(AccountId, CustomLabel, UserId, PrefixLabel) ->
+    case get_user(AccountId, UserId, <<>>) of
+        'undefined' ->
+            'undefined';
+        {Presence, Label} when CustomLabel =:= 'undefined'
+                               andalso Label =/= 'undefined' ->
+            {Presence, <<PrefixLabel/binary, Label/binary>>};
+        {Presence, Label} when CustomLabel =:= 'undefined' ->
+            {Presence, Label};
+        {Presence, _} ->
+            {Presence, CustomLabel}
+    end.
+
+-spec get_label_value(kz_term:ne_binary() | kz_json:object(), binary()) ->
+                             {kz_term:ne_binary(), kz_term:ne_binary()} |
+                             'undefined'.
+get_label_value(?NE_BINARY = Value, PrefixLabel) ->
+    {Value, <<PrefixLabel/binary, Value/binary>>};
+get_label_value(JObj, PrefixLabel) ->
+    case kz_json:is_json_object(JObj) of
+        'true' ->
+            case {kz_json:get_ne_binary_value(<<"value">>, JObj)
+                 ,kz_json:get_ne_binary_value(<<"label">>, JObj)
+                 }
+            of
+                {'undefined', _} -> 'undefined';
+                {Value, 'undefined'} -> get_label_value(Value, PrefixLabel);
+                {Value, Label} -> {Value, Label}
+            end;
+        'false' ->
+            'undefined'
+    end.
 
 -spec maybe_add_feature_key(kz_term:ne_binary(), kz_term:api_object(), kz_json:object()) -> kz_json:object().
 maybe_add_feature_key(_Key, 'undefined', JObj) -> JObj;

@@ -245,54 +245,9 @@
             "description": "Provision data",
             "properties": {
                 "combo_keys": {
-                    "description": "Feature Keys",
                     "patternProperties": {
                         "^[0-9]+$": {
-                            "properties": {
-                                "type": {
-                                    "description": "Feature key type",
-                                    "enum": [
-                                        "line",
-                                        "presence",
-                                        "parking",
-                                        "personal_parking",
-                                        "speed_dial"
-                                    ],
-                                    "type": "string"
-                                },
-                                "value": {
-                                    "description": "Feature key value",
-                                    "oneOf": [
-                                        {
-                                            "maximum": 10,
-                                            "minimum": 1,
-                                            "type": "integer"
-                                        },
-                                        {
-                                            "enum": [
-                                                "1",
-                                                "2",
-                                                "3",
-                                                "4",
-                                                "5",
-                                                "6",
-                                                "7",
-                                                "8",
-                                                "9",
-                                                "10"
-                                            ],
-                                            "type": "string"
-                                        }
-                                    ]
-                                }
-                            },
-                            "required": [
-                                "type"
-                            ],
-                            "type": [
-                                "object",
-                                "null"
-                            ]
+                            "$ref": "devices.combo_key"
                         }
                     },
                     "type": "object"
@@ -320,54 +275,9 @@
                     ]
                 },
                 "feature_keys": {
-                    "description": "Feature Keys",
                     "patternProperties": {
                         "^[0-9]+$": {
-                            "properties": {
-                                "type": {
-                                    "description": "Feature key type",
-                                    "enum": [
-                                        "presence",
-                                        "parking",
-                                        "personal_parking",
-                                        "speed_dial"
-                                    ],
-                                    "type": "string"
-                                },
-                                "value": {
-                                    "description": "Feature key value",
-                                    "oneOf": [
-                                        {
-                                            "maximum": 10,
-                                            "minimum": 1,
-                                            "type": "integer"
-                                        },
-                                        {
-                                            "enum": [
-                                                "1",
-                                                "2",
-                                                "3",
-                                                "4",
-                                                "5",
-                                                "6",
-                                                "7",
-                                                "8",
-                                                "9",
-                                                "10"
-                                            ],
-                                            "type": "string"
-                                        }
-                                    ]
-                                }
-                            },
-                            "required": [
-                                "type",
-                                "value"
-                            ],
-                            "type": [
-                                "object",
-                                "null"
-                            ]
+                            "$ref": "devices.combo_key"
                         }
                     },
                     "type": "object"

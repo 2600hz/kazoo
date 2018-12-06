@@ -46,17 +46,13 @@ Key | Description | Type | Default | Required | Support Level
 `outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string()) | object()` |   | `false` |  
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false` |  
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false` | `supported`
-`provision.combo_keys./^[0-9]+$/.type` | Feature key type | `string('line' | 'presence' | 'parking' | 'personal_parking' | 'speed_dial')` |   | `true` |  
-`provision.combo_keys./^[0-9]+$/.value` | Feature key value | `integer() | string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10')` |   | `false` |  
-`provision.combo_keys./^[0-9]+$/` |   | `object() | null()` |   | `false` |  
-`provision.combo_keys` | Feature Keys | `object()` |   | `false` |  
+`provision.combo_keys./^[0-9]+$/` |   | [#/definitions/devices.combo_key](#devicescombo_key) |   | `false` |  
+`provision.combo_keys` |   | `object()` |   | `false` |  
 `provision.endpoint_brand` | Brand of the phone | `string()` |   | `false` |  
 `provision.endpoint_family` | Family name of the phone | `string()` |   | `false` |  
 `provision.endpoint_model` | Model name of the phone | `string() | array(string())` |   | `false` |  
-`provision.feature_keys./^[0-9]+$/.type` | Feature key type | `string('presence' | 'parking' | 'personal_parking' | 'speed_dial')` |   | `true` |  
-`provision.feature_keys./^[0-9]+$/.value` | Feature key value | `integer() | string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10')` |   | `true` |  
-`provision.feature_keys./^[0-9]+$/` |   | `object() | null()` |   | `false` |  
-`provision.feature_keys` | Feature Keys | `object()` |   | `false` |  
+`provision.feature_keys./^[0-9]+$/` |   | [#/definitions/devices.combo_key](#devicescombo_key) |   | `false` |  
+`provision.feature_keys` |   | `object()` |   | `false` |  
 `provision.id` | Provisioner Template ID | `string()` |   | `false` |  
 `provision` | Provision data | `object()` |   | `false` |  
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean()` | `false` | `false` |  
@@ -150,6 +146,14 @@ Custom SIP headers applied to an INVITE
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |  
+
+### devices.combo_key
+
+Device provisioner Combo/Feature Key
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
 
 ### dialplans
 
