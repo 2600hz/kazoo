@@ -100,18 +100,18 @@
 -define(DONT_CASCADE_MASTER, kapps_config:get_is_false(?CONFIG_CAT, <<"cascade_commits_to_master_account">>, 'true')).
 
 -record(kz_services, {account_id :: kz_term:api_ne_binary()
-                     ,services_jobj = kzd_services:new() :: kzd_services:doc()
-                     ,current_services_jobj = kzd_services:new() :: kzd_services:doc()
-                     ,plans = 'undefined' ::  'undefined' | kz_services_plans:plans()
                      ,account_quantities = 'undefined' :: kz_json:api_object()
-                     ,cascade_quantities = 'undefined' :: kz_json:api_object()
-                     ,manual_quantities = 'undefined' :: kz_json:api_object()
                      ,account_updates = kz_json:new() :: kz_json:object()
-                     ,cascade_updates = kz_json:new() :: kz_json:object()
-                     ,manual_updates = kz_json:new() :: kz_json:object()
-                     ,invoices = 'undefined' :: 'undefined' | kz_services_invoices:invoices()
                      ,audit_log = kz_json:new() :: kz_json:object()
+                     ,cascade_quantities = 'undefined' :: kz_json:api_object()
+                     ,cascade_updates = kz_json:new() :: kz_json:object()
+                     ,current_services_jobj = kzd_services:new() :: kzd_services:doc()
                      ,dirty = 'false' :: boolean()
+                     ,invoices = 'undefined' :: 'undefined' | kz_services_invoices:invoices()
+                     ,manual_quantities = 'undefined' :: kz_json:api_object()
+                     ,manual_updates = kz_json:new() :: kz_json:object()
+                     ,plans = 'undefined' ::  'undefined' | kz_services_plans:plans()
+                     ,services_jobj = kzd_services:new() :: kzd_services:doc()
                      }).
 
 -type services() :: #kz_services{}.
@@ -591,6 +591,7 @@ empty_services_jobj(ResellerId) ->
               ,{fun kzd_services:set_reseller_id/2, ResellerId}
               ,{fun kzd_services:set_account_quantities/2, kz_json:new()}
               ,{fun kzd_services:set_cascade_quantities/2, kz_json:new()}
+              ,{fun kzd_services:set_payment_tokens/2, kz_json:new()}
               ],
     kz_doc:setters(Setters).
 
