@@ -34,7 +34,7 @@
 
 -define(DOLLAR_TO_UNIT, 10000).
 
--type units() :: non_neg_integer().
+-type units() :: integer().
 -type dollars() :: number().
 -type available_units_return() :: {'ok', units()} | {'error', any()}.
 -type available_dollars_return() :: {'ok', dollars()} | {'error', any()}.

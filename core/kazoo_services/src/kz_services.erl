@@ -91,6 +91,8 @@
 
 -export([is_services/1]).
 
+-export([is_good_standing/1]).
+
 -include("services.hrl").
 
 -define(DONT_CASCADE_MASTER, kapps_config:get_is_false(?CONFIG_CAT, <<"cascade_commits_to_master_account">>, 'true')).
@@ -635,6 +637,122 @@ billing_cycle(_Services) ->
       ,{<<"unit">>, <<"month">>}
       ]
      ).
+
+%%------------------------------------------------------------------------------
+%% @doc Check if the account is in good standing.
+%%
+%% Good standing rules:
+%% * If an account has no service plans assigned, it is in good standing
+%% * If an account has service plans and a default payment token it is in good standing
+%% * If an account has service plans, post pay is disabled and the balance is greater
+%%   than 0 then it is in good standing
+%% * If an account has service plans, post pay is enabled, and the balance is greater
+%%   than the max post pay amount then the account is in good standing
+%% * All other cases the account is not in good standing
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_good_standing(kz_term:ne_binary() | services()) -> 'false'.
+is_good_standing(?NE_BINARY=Account) ->
+    FetchOptions = ['hydrate_plans'],
+    is_good_standing(fetch(Account, FetchOptions));
+is_good_standing(Services) ->
+    GoodFuns = [fun no_plan_is_good/1
+               ,fun has_no_expired_payment_tokens/1
+               ,fun has_good_balance/1
+               ],
+    lager:debug("checking if account ~s is in good standing", [account_id(Services)]),
+    is_good_standing_fold(Services, GoodFuns).
+
+is_good_standing_fold(Services, []) ->
+    lager:debug("account ~s ran out of good funs, the ugly"
+               ,[account_id(Services)]
+               ),
+    'false';
+is_good_standing_fold(Services, [Fun | Funs]) ->
+    case Fun(Services) of
+        {'true', Reason} = _TheGood ->
+            lager:debug("account ~s ~s, good standing"
+                       ,[account_id(Services), Reason]
+                       ),
+            'true';
+        {'false', Reason} = _TheBad ->
+            lager:debug("account ~s ~s, bad standing"
+                       ,[account_id(Services), Reason]
+                       ),
+            'false';
+        'not_applicable' -> is_good_standing_fold(Services, Funs)
+    end.
+
+-type good_funs_ret() :: {boolean(), kz_term:ne_binary()} |
+                         'not_applicable'.
+-spec no_plan_is_good(services()) -> good_funs_ret().
+no_plan_is_good(Services) ->
+    case dict:is_empty(plans(Services)) of
+        'true' ->
+            {'true', <<"has no plans assigned">>};
+        'false' -> 'not_applicable'
+    end.
+
+-spec has_no_expired_payment_tokens(services()) -> good_funs_ret().
+has_no_expired_payment_tokens(Services) ->
+    DefaultTokens = kz_services_payment_tokens:defaults(Services),
+    Now = kz_time:now_s(),
+    case DefaultTokens =/= []
+         andalso [T || T <- DefaultTokens,
+                       Expiration <- [kz_json:get_integer_value(<<"expiration">>, T)],
+                       Expiration =/= 'undefined',
+                       Expiration > Now
+                 ]
+    of
+        'false' -> 'not_applicable';
+        [] ->
+            {'false', <<"default payment tokens are expired">>};
+        _NotExpired ->
+            {'true', <<"has not expired default payment tokens">>}
+    end.
+
+-spec has_good_balance(services()) -> good_funs_ret().
+has_good_balance(Services) ->
+    Limits = kz_services_limits:fetch(Services),
+    IsPostPay = is_post_pay_allowed(Limits),
+    Balance = kz_currency:available_units(account_id(Services), 0),
+    has_good_balance(Balance, IsPostPay, Limits).
+
+-spec has_good_balance(kz_currency:units(), boolean(), kz_json:object()) -> good_funs_ret().
+has_good_balance(Balance, 'false', _) when Balance > 0 ->
+    {'true', <<"has positive balance">>};
+has_good_balance(Balance, 'false', _) when Balance =< 0 ->
+    {'false', <<"has negative balance">>};
+has_good_balance(Balance, 'true', Limits) ->
+    MaxPostPay = get_max_postpay(Limits) * -1,
+    case Balance > MaxPostPay of
+        'true' ->
+            {'true', <<"has enough postpay balance">>};
+        'false' ->
+            {'false', <<"has exceed the maximum postpay amount">>}
+    end.
+
+-spec is_post_pay_allowed(kz_json:object()) -> boolean().
+is_post_pay_allowed(JObj) ->
+    case kz_json:get_value(<<"pvt_allow_postpay">>, JObj) of
+        'undefined' ->
+            case kapps_config:get_is_true(<<"jonny5">>, <<"default_allow_postpay">>) of
+                'undefined' -> 'false';
+                Value -> kz_term:is_true(Value)
+            end;
+        Value -> kz_term:is_true(Value)
+    end.
+
+-spec get_max_postpay(kz_json:object()) -> kz_currency:units().
+get_max_postpay(JObj) ->
+    case kz_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj) of
+        'undefined' ->
+            case kapps_config:get_float(<<"jonny5">>, <<"default_max_postpay_amount">>) of
+                'undefined' -> 0;
+                Value -> kz_currency:dollars_to_units(abs(Value))
+            end;
+        Value -> kz_currency:dollars_to_units(abs(Value))
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Fetch the services doc for a give account from the services database
