@@ -431,7 +431,7 @@ undefine_empty(Thing) ->
         'false' -> Thing
     end.
 
--spec discounts(item()) -> kz_term:api_proplist().
+-spec discounts(item()) -> kz_term:proplist().
 discounts(Item) ->
     SingleDiscounts =
         props:filter_empty(

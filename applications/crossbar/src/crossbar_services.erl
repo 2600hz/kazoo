@@ -18,43 +18,76 @@
 
 -include("crossbar.hrl").
 
+-type billables() :: kz_services_quantities:billables() |
+                     kz_services_quantities:billable().
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_dry_run(cb_context:context(), kz_services_invoices:jobjs()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), billables()) -> cb_context:context().
 maybe_dry_run(Context, ProposedJObj) ->
     CurrentJObj = cb_context:fetch(Context, 'db_doc'),
     maybe_dry_run(Context, CurrentJObj, ProposedJObj).
 
--spec maybe_dry_run(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), billables(), billables()) -> cb_context:context().
 maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
-    case should_dry_run(Context) of
-        'true' -> dry_run(Context, CurrentJObj, ProposedJObj);
-        'false' -> Context
-    end.
-
--spec dry_run(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> cb_context:context().
-dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
-    Services = kz_services:set_updates(kz_services:fetch(AuthAccountId)
+    Services = kz_services:fetch(AuthAccountId),
+    Services = kz_services:set_updates(Services
                                       ,AccountId
                                       ,CurrentJObj
                                       ,ProposedJObj
                                       ),
     Quotes = kz_services_invoices:create(Services),
-    case kz_services_invoices:has_additions(Quotes) of
-        'true' ->
-            JObj = kz_services_invoices:public_json(Quotes),
-            crossbar_util:response_402(JObj, Context);
-        'false' -> Context
+    HasAdditions = kz_services_invoices:has_additions(Quotes),
+    case should_dry_run(Context) of
+        'true' -> dry_run(Context, Quotes, HasAdditions);
+        'false' -> check_creditably(Context, Services, Quotes, HasAdditions)
     end.
+
+-spec dry_run(cb_context:context(), kz_services_invoices:invoices(), boolean()) ->
+                     cb_context:context().
+dry_run(Context, _Quotes, 'false') ->
+    Context;
+dry_run(Context, Quotes, 'true') ->
+    JObj = kz_services_invoices:public_json(Quotes),
+    crossbar_util:response_402(JObj, Context).
 
 -spec should_dry_run(cb_context:context()) -> boolean().
 should_dry_run(Context) ->
     cb_context:accepting_charges(Context) =/= 'true'
         andalso cb_context:api_version(Context) =/= ?VERSION_1.
+
+-spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean()) ->
+                              cb_context:context().
+check_creditably(Context, _Services, _Quotes, 'false') ->
+    Context;
+check_creditably(Context, Services, Quotes, 'true') ->
+    Key = [<<"difference">>, <<"quantity">>],
+    Additions = [begin
+                     Changes = kz_services_item:changes(Item),
+                     Quantity = props:get_integer_value(Key, Changes, 0),
+                     Rate = kz_services_item:rate(Item),
+                     Discounts = props:get_integer_value(<<"total">>, kz_services_item:discounts(Item), 0),
+                     %% TODO: Should we if the item is billable here (if there is a minimum quantity in service plans)? If yes, how?
+                     (Quantity * Rate) - Discounts
+                 end
+                 || Invoice <- kz_services_invoices:changed(Quotes),
+                    Item <- kz_services_invoice:items(Invoice),
+                    kz_services_item:has_additions(Item)
+                ],
+    check_creditably(Context, Services, Quotes, lists:sum(Additions));
+check_creditably(Context, _Services, _Quotes, Amount) when Amount =< 0 ->
+    Context;
+check_creditably(Context, Services, _Quotes, Amount) ->
+    Options = #{amount => kz_currency:dollars_to_units(Amount)},
+    case kz_services:is_good_standing(Services, Options) of
+        'true' -> Context;
+        'false' ->
+            cb_context:add_system_error('no_credit', Context)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
