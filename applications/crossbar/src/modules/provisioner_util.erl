@@ -109,10 +109,10 @@ maybe_provision_v5(Context, ?HTTP_PUT) ->
 
 maybe_provision_v5(Context, ?HTTP_POST) ->
     AuthToken = cb_context:auth_token(Context),
-    NewDevice = cb_context:doc(Context),
-    NewAddress = cb_context:req_value(Context, <<"mac_address">>),
-    OldDevice = cb_context:fetch(Context, 'db_doc'),
-    OldAddress = kz_json:get_ne_value(<<"mac_address">>, OldDevice),
+    NewDevice = ensure_mac_cleansed(cb_context:doc(Context)),
+    NewAddress = cleanse_mac_address(cb_context:req_value(Context, <<"mac_address">>)),
+    OldDevice = ensure_mac_cleansed(cb_context:fetch(Context, 'db_doc')),
+    OldAddress = kzd_devices:mac_address(OldDevice),
     case NewAddress =:= OldAddress of
         'true' ->
             _ = provisioner_v5:update_device(NewDevice, AuthToken);
@@ -122,6 +122,14 @@ maybe_provision_v5(Context, ?HTTP_POST) ->
             _ = provisioner_v5:update_device(NewDevice, AuthToken)
     end,
     'ok'.
+
+-spec ensure_mac_cleansed(kzd_devices:doc()) -> kzd_devices:doc().
+ensure_mac_cleansed(JObj) ->
+    case kzd_devices:mac_address(JObj) of
+        'undefined' -> JObj;
+        MacAddress ->
+            kzd_devices:set_mac_address(JObj, cleanse_mac_address(MacAddress))
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
