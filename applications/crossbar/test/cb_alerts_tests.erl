@@ -1,6 +1,7 @@
 -module(cb_alerts_tests).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 %%%=======================================================================================
 %%% Tests generator
@@ -12,9 +13,8 @@
 %%--------------------------------------------------------------------
 -spec cb_alerts_test_() -> [{string(), boolean()}].
 cb_alerts_test_() ->
-    check_port_request_status()
-    ++ check_port_request_comments()
-    ++ check_low_balance().
+    check_port_requests()
+        ++ check_low_balance().
 
 %%%=======================================================================================
 %%% Tests
@@ -24,144 +24,120 @@ cb_alerts_test_() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_port_request_status() -> [{string(), boolean()}].
-check_port_request_status() ->
+-spec check_port_requests() -> [{string(), boolean()}].
+check_port_requests() ->
     Mod = 'knm_port_request',
-    meck:new(Mod, [passthrough]),
+    ToMeck = ['kz_services_reseller', Mod],
+    _ = lists:foreach(fun(M) -> meck:new(M, [passthrough]) end, ToMeck),
+    meck:expect('kz_services_reseller', 'is_reseller', fun(_) -> 'false' end),
 
-    Context = cb_context:new(),
+    Context = cb_context:set_resp_data(cb_context:new(), []),
+    {'ok', ActivePorts} = AccountActivePorts = account_active_ports(),
 
-    %% 1 submitted, 1 scheduled, and 1 rejected.
-    meck:expect(Mod, 'account_active_ports', fun(_) -> account_active_ports() end),
-    Context1 = cb_alerts:check_port_request_status(cb_context:new()),
+    %% 1 submitted, 1 unconfirmed, and 1 rejected.
+    meck:expect(Mod, 'account_active_ports', fun(_) -> AccountActivePorts end),
+    Context1 = cb_alerts:check_port_requests(Context),
+    [Alert1, Alert2] = cb_context:resp_data(Context1),
+
+    %% All ports (3) have last comment with `action_required=true' within the last comment
+    %% and also there is 1 rejected and 1 unconfirmed.
+    PortsWithComments = [add_comments(Port) || Port <- ActivePorts],
+    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', PortsWithComments} end),
+    Context2 = cb_alerts:check_port_requests(Context),
+
+    %% Only 1 port with `action_required=true' within the last comment
+    Port = add_comments(example_port_request()),
+    %% Same as Port but last comment doesn't have `action_required=true'
+    Port1 = swap_comments(Port),
+    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [Port, Port1]} end),
+    Context3 = cb_alerts:check_port_requests(Context),
+    [Alert3] = cb_context:resp_data(Context3),
 
     %% Not active ports found.
     meck:expect(Mod, 'account_active_ports', fun(_) -> {'error', 'not_found'} end),
-    Context2 = cb_alerts:check_port_request_status(Context),
+    Context4 = cb_alerts:check_port_requests(Context),
 
-    %% Ports without scheduled or rejected state.
+    %% Ports with state /= (unconfirmed|rejected) and no comments.
     meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [example_port_request()]} end),
-    Context3 = cb_alerts:check_port_request_status(Context),
+    Context5 = cb_alerts:check_port_requests(Context),
 
-    meck:unload(Mod),
+    _ = lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
 
-    [{"Only scheduled and rejected port requests are returned"
-     ,?_assertEqual(2, length(cb_context:resp_data(Context1)))
+    [{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
+     ,?_assertEqual({'true', <<"port_suspended">>},
+                    {is_port_suspended_state(state_from_port_alert(Alert1))
+                    ,category_from_alert(Alert1)
+                    })
+     }
+    ,{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
+     ,?_assertEqual({'true', <<"port_suspended">>},
+                    {is_port_suspended_state(state_from_port_alert(Alert2))
+                    ,category_from_alert(Alert2)
+                    })
+     }
+    ,{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
+     ,?_assertEqual(5, length(cb_context:resp_data(Context2)))
+     }
+    ,{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
+     ,?_assertEqual({'true', <<"port_action_required">>},
+                    {kz_json:get_value([<<"message">>, <<"action_required">>], Alert3)
+                    ,category_from_alert(Alert3)
+                    })
      }
     ,{"When not active ports are found the context should not change"
-     ,?_assertEqual(Context2, Context)
-     }
-    ,{"When not scheduled or rejected ports found the context should not change"
-     ,?_assertEqual(Context3, Context)
-     }
-    ].
-
--spec check_port_request_comments() -> [{string(), boolean()}].
-check_port_request_comments() ->
-    Mod = 'knm_port_request',
-    meck:new(Mod, [passthrough]),
-
-    Context = cb_context:new(),
-
-    %% All ports (3) have last comment with `waiting_for_reply=true' within the last comment
-    meck:expect(Mod, 'account_active_ports', fun(_) -> account_active_ports() end),
-    Context1 = cb_alerts:check_port_request_comments(Context),
-
-    %% Only 1 port with `waiting_for_reply=true' within the last comment
-    Port = swap_comments(example_port_request()), %% Last comment doesn't have `waiting_for_reply=true'
-    Port1 = swap_comments(scheduled_port_request()), %% Last comment doesn't have `waiting_for_reply=true'
-    F = fun(_) -> {'ok', [Port, Port1, rejected_port_request()]} end,
-    meck:expect(Mod, 'account_active_ports', F),
-    Context2 = cb_alerts:check_port_request_comments(Context),
-
-    %% Not comments with `waiting_for_reply=true' within the last comment
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [Port]} end),
-    Context3 = cb_alerts:check_port_request_comments(Context),
-
-    %% Not active ports found
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'error', 'not_found'} end),
-    Context4 = cb_alerts:check_port_request_comments(Context),
-
-    meck:unload(Mod),
-
-    [{"Only return ports with 'waiting for reply=true' within the last comment"
-     ,?_assertEqual(3, length(cb_context:resp_data(Context1)))
-     }
-    ,{"Only return ports with 'waiting for reply=true' within the last comment"
-     ,?_assertEqual(1, length(cb_context:resp_data(Context2)))
-     }
-    ,{"If not ports with 'waiting for reply=true' within the last comment the context should not change"
-     ,?_assertEqual(Context3, Context)
-     }
-    ,{"If not active ports found the context should not change"
      ,?_assertEqual(Context4, Context)
+     }
+    ,{"When not ports with action_required=true or state=(unconfirmed|rejected) found the context should not change"
+     ,?_assertEqual(Context5, Context)
      }
     ].
 
 -spec check_low_balance() -> [{string(), boolean()}].
 check_low_balance() ->
-    Context = cb_context:new(),
+    Context = cb_context:set_resp_data(cb_context:new(), []),
     ThresholdUSD = 5.0,
-    F = fun(Available, Threshold) ->
-            kz_json:from_list([{<<"available_dollars">>, Available}
-                              ,{<<"threshold">>, Threshold}
-                              ,{<<"type">>, <<"balance_is_below_zero">>}
-                              ])
-        end,
-    MaybeTopupResult = {'ok', kz_transaction:empty(), 'undefined'},
-
     Mod = 'kz_currency',
-    ToMeck = [Mod, 'kzd_accounts', 'kz_services_topup'],
-    lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
+    ToMeck = [Mod, 'kzd_accounts'],
 
+    lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
     meck:expect('kzd_accounts', 'low_balance_threshold', fun(_) -> ThresholdUSD end),
 
-    %% timeout trying to get account's available units
-    meck:expect(Mod, 'available_dollars', fun(_) -> {'error', 'timeout'} end),
+    %% error trying to get account's available dollars
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'error', 'reason'} end),
     Context1 = cb_alerts:check_low_balance(Context),
 
-    %% error /= 'timeout' trying to get account's available units
-    meck:expect(Mod, 'available_dollars', fun(_) -> {'error', 'anything'} end),
+    %% available dollars == Threshold dollars
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD} end),
     Context2 = cb_alerts:check_low_balance(Context),
 
     %% available dollars > Threshold dollars
     meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD + 1.0} end),
     Context3 = cb_alerts:check_low_balance(Context),
 
-    %% available dollars = Threshold dollars
-    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD} end),
-    Context4 = cb_alerts:check_low_balance(Context),
-    [RespObj] = cb_context:resp_data(Context4),
-
     %% available dollars < Threshold dollars
     AD = ThresholdUSD - 1.0,
     meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', AD} end),
-    Context5 = cb_alerts:check_low_balance(Context),
-    [RespObj1] = cb_context:resp_data(Context5),
-    %% topup succeeds
-    meck:expect('kz_services_topup', maybe_topup, fun(_, _) -> MaybeTopupResult end),
-    Context6 = cb_alerts:check_low_balance(Context),
+    Context4 = cb_alerts:check_low_balance(Context),
+    [Alert1] = cb_context:resp_data(Context4),
 
     %% Unload mecked modules
     lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
 
-    [{"If getting account's available units fails with 'timeout' 3 times in a row the context should not change"
+    [{"If getting account's available units fails the context should not change"
      ,?_assertEqual(Context1, Context)
      }
-    ,{"If getting account's available units fails the context should not change"
+    ,{"If available dollars == Threshold dollars the context should not change"
      ,?_assertEqual(Context2, Context)
      }
     ,{"If available dollars > Threshold dollars the context should not change"
      ,?_assertEqual(Context3, Context)
      }
-    ,{"When available dolars = Threshold dollars return alert"
-     ,?_assertEqual('true', kz_json:are_equal(F(ThresholdUSD, ThresholdUSD), RespObj))
-     }
     ,{"When available dolars < Threshold dollars return alert"
-     ,?_assertEqual('true', kz_json:are_equal(F(AD, ThresholdUSD), RespObj1))
-     }
-    ,{"When available dolars < Threshold dollars but topup succeeds the context should not change"
-     ,?_assertEqual(Context6, Context)
+     ,?_assertEqual({AD, ThresholdUSD, <<"low_balance">>},
+                    {kz_json:get_value([<<"metadata">>, <<"available">>], Alert1)
+                    ,kz_json:get_value([<<"metadata">>, <<"threshold">>], Alert1)
+                    ,category_from_alert(Alert1)
+                    })
      }
     ].
 
@@ -173,42 +149,58 @@ check_low_balance() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_active_ports() -> {'ok', kz_json:objects()}.
+-spec account_active_ports() -> {'ok', [kzd_port_requests:doc()]}.
 account_active_ports() ->
-    {'ok', [example_port_request(), scheduled_port_request(), rejected_port_request()]}.
+    {'ok', [example_port_request(), unconfirmed_port_request(), rejected_port_request()]}.
 
--spec scheduled_port_request() -> kz_json:object().
-scheduled_port_request() ->
-    kz_json:set_value(<<"pvt_port_state">>, <<"scheduled">>, example_port_request()).
+-spec unconfirmed_port_request() -> kzd_port_requests:doc().
+unconfirmed_port_request() ->
+    kzd_port_requests:set_port_state(example_port_request(), <<"unconfirmed">>).
 
--spec rejected_port_request() -> kz_json:object().
+-spec rejected_port_request() -> kzd_port_requests:doc().
 rejected_port_request() ->
-    kz_json:set_value(<<"pvt_port_state">>, <<"rejected">>, example_port_request()).
+    kzd_port_requests:set_port_state(example_port_request(), <<"rejected">>).
 
--spec swap_comments(kz_json:object()) -> kz_json:object().
+-spec swap_comments(kzd_port_requests:doc()) -> kzd_port_requests:doc().
 swap_comments(Port) ->
-    %% Comment2 is the one with `waiting_for_reply=true'
-    [Comment1, Comment2] = kz_json:get_value(<<"comments">>, Port),
-    kz_json:set_value(<<"comments">>, [Comment2, Comment1], Port).
+    %% Comment2 is the one with `action_required=true'
+    [Comment1, Comment2] = kzd_port_requests:comments(Port),
+    kzd_port_requests:set_comments(Port, [Comment2, Comment1]).
+
+-spec add_comments(kzd_port_requests:doc()) -> kzd_port_requests:doc().
+add_comments(Port) ->
+    kzd_port_requests:set_comments(Port, [first_comment(), second_comment()]).
 
 -spec first_comment() -> kz_json:object().
 first_comment() ->
     kz_json:from_list(
-        [{<<"author">>,<<"Someone">>}
-        ,{<<"content">>,<<"First comment">>}
-        ,{<<"timestamp">>,63709957526}
-        ]).
+      [{<<"author">>,<<"Someone">>}
+      ,{<<"content">>,<<"First comment">>}
+      ,{<<"timestamp">>,63709957526}
+      ]).
 
 -spec second_comment() -> kz_json:object().
 second_comment() ->
     kz_json:from_list(
-        [{<<"author">>,<<"Someone">>}
-        ,{<<"content">>,<<"Second comment">>}
-        ,{<<"timestamp">>,63709957539}
-        ,{<<"waiting_for_reply">>, 'true'}
-        ]).
+      [{<<"author">>,<<"Someone">>}
+      ,{<<"content">>,<<"Second comment">>}
+      ,{<<"timestamp">>,63709957539}
+      ,{<<"action_required">>, 'true'}
+      ]).
 
--spec example_port_request() -> kz_json:object().
+-spec category_from_alert(kz_json:object()) -> kz_term:ne_binary().
+category_from_alert(Alert) ->
+    kz_json:get_value(<<"category">>, Alert).
+
+-spec state_from_port_alert(kz_json:object()) -> kz_term:ne_binary().
+state_from_port_alert(Alert) ->
+    kz_json:get_value([<<"metadata">>, <<"state">>], Alert).
+
+-spec is_port_suspended_state(kz_term:ne_binary()) -> boolean().
+is_port_suspended_state(State) ->
+    lists:member(State, ?PORT_SUSPENDED_STATES).
+
+-spec example_port_request() -> kzd_port_requests:doc().
 example_port_request() ->
     {[{<<"_attachments">>,
        {[{<<"bill.pdf">>,
@@ -235,12 +227,11 @@ example_port_request() ->
          {<<"postal_code">>,<<"00000">>},
          {<<"region">>,<<"CA">>},
          {<<"street_address">>,<<"140 Geary Street">>}]}},
-      {<<"comments">>, [first_comment(), second_comment()]},
       {<<"name">>,<<"Test cb_alerts">>},
       {<<"notifications">>,
        {[{<<"email">>,{[{<<"send_to">>,<<"email@example.com">>}]}}]}},
       {<<"numbers">>,{[{<<"+12345678901">>,{[{<<"used_by">>,<<"callflow">>}]}}]}},
-      {<<"port_state">>,<<"unconfirmed">>},
+      {<<"port_state">>,<<"submitted">>},
       {<<"pvt_account_db">>,<<"port_requests">>},
       {<<"pvt_account_id">>,<<"8a089c2a7e6c77be2e2e68c5c366f460">>},
       {<<"pvt_alphanum_name">>,<<"testcbalerts">>},

@@ -15,8 +15,7 @@
         ]).
 
 -ifdef(TEST).
--export([check_port_request_status/1
-        ,check_port_request_comments/1
+-export([check_port_requests/1
         ,check_low_balance/1
         ]).
 -endif.
@@ -240,10 +239,7 @@ get_active_port_requests(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case kz_services_reseller:is_reseller(AuthAccountId) of
         'true' -> knm_port_request:descendant_active_ports(AuthAccountId);
-        'false' ->
-            knm_port_request:account_active_ports(
-              cb_context:account_id(Context)
-             )
+        'false' -> knm_port_request:account_active_ports(cb_context:account_id(Context))
     end.
 
 %%------------------------------------------------------------------------------
@@ -280,7 +276,7 @@ check_port_action_required(PortRequest, Context) ->
             append_alert(Context, PortAlert)
     end.
 
--spec port_request_last_comment(kzd_port_requests:doc()) -> kz_json:object() | 'undefined'.
+-spec port_request_last_comment(kzd_port_requests:doc()) -> kz_json:object().
 port_request_last_comment(PortRequest) ->
     case kzd_port_requests:comments(PortRequest) of
         'undefined' -> kz_json:new();
@@ -370,18 +366,18 @@ check_low_balance(Context) ->
 
 -spec check_payment_token(cb_context:context()) -> cb_context:context().
 check_payment_token(Context) ->
-%-spec check_credit_card(cb_context:context()) -> cb_context:context().
-%check_credit_card(Context) ->
-%    %% TODO: check implementation once kz_services:is_good_standing/1 gets created.
-%    Resp = kz_services:is_good_standing(kz_services:fetch(cb_context:account_id(Context))),
-%    check_credit_card(Context, Resp).
-%
-%-spec check_credit_card(cb_context:context(), atom() | {'error', atom()}) -> cb_context:context().
-%check_credit_card(Context, 'true') ->
-%    Context;
-%check_credit_card(Context, {'error', Error}) ->
-%    JObj = check_result_to_jobj(<<"credit_about_to_expire">>, Error),
-%    cb_context:set_resp_data(Context, [AlertJObj | context_resp_data(Context)]).
+%%-spec check_credit_card(cb_context:context()) -> cb_context:context().
+%%check_credit_card(Context) ->
+%%    %% TODO: check implementation once kz_services:is_good_standing/1 gets created.
+%%    Resp = kz_services:is_good_standing(kz_services:fetch(cb_context:account_id(Context))),
+%%    check_credit_card(Context, Resp).
+%%
+%%-spec check_credit_card(cb_context:context(), atom() | {'error', atom()}) -> cb_context:context().
+%%check_credit_card(Context, 'true') ->
+%%    Context;
+%%check_credit_card(Context, {'error', Error}) ->
+%%    JObj = check_result_to_jobj(<<"credit_about_to_expire">>, Error),
+%%    cb_context:set_resp_data(Context, [AlertJObj | context_resp_data(Context)]).
     Context.
 
 %%------------------------------------------------------------------------------
