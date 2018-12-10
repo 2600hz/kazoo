@@ -40,6 +40,7 @@
                    ,is_archived = 'false' :: boolean() | '$2' | '$3' | '_'
                    }).
 -type call_stat() :: #call_stat{}.
+-type call_stats() :: [call_stat()].
 
 
 -define(STATUS_STATUSES, [<<"logged_in">>, <<"logged_out">>, <<"ready">>
