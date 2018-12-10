@@ -37,7 +37,12 @@
 -define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
 
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
--define(KEY_MOBILE_MDN, [<<"mobile">>, <<"mdn">>]).
+-define(KEY_MDN, [<<"mobile">>, <<"mdn">>]).
+-define(KEY_SIP_REALM, [<<"sip">>, <<"realm">>]).
+-define(KEY_SIP_METHOD, [<<"sip">>, <<"method">>]).
+-define(KEY_SIP_IP, [<<"sip">>, <<"ip">>]).
+-define(KEY_SIP_USERNAME, [<<"sip">>, <<"username">>]).
+-define(KEY_OUTBOUND_FLAGS, <<"outbound_flags">>).
 
 %%%=============================================================================
 %%% API
@@ -198,77 +203,16 @@ validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
-    _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
-    case changed_mac_address(Context) of
-        'false' -> error_used_mac_address(Context);
-        'true' ->
-            _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
-            Context1 = cb_modules_util:take_sync_field(Context),
-            Context2 = prune_null_provisioner_fields(Context1),
-            Context3 = crossbar_doc:save(Context2),
-            _ = maybe_aggregate_device(DeviceId, Context3),
-            _ = kz_util:spawn(fun update_device_provisioning/1, [Context3]),
-            maybe_add_mobile_mdn(Context3)
-    end.
-
--spec update_device_provisioning(cb_context:context()) -> 'ok'.
-update_device_provisioning(Context) ->
-    update_device_provisioning(Context, cb_context:resp_status(Context)).
-
--spec update_device_provisioning(cb_context:context(), crossbar_status()) -> 'ok'.
-update_device_provisioning(Context, 'success') ->
-    _ = provisioner_util:provision_device(cb_context:doc(Context)
-                                         ,cb_context:fetch(Context, 'db_doc')
-                                         ,#{'req_verb' => cb_context:req_verb(Context)
-                                           ,'auth_token' => cb_context:auth_token(Context)
-                                           ,'new_mac_address' => cb_context:req_value(Context, <<"mac_address">>)
-                                           }
-                                         ),
-    sync_sip_data(Context);
-update_device_provisioning(_Context, _Status) -> 'ok'.
-
--spec sync_sip_data(cb_context:context()) -> 'ok'.
-sync_sip_data(Context) ->
-    NewDoc = cb_context:doc(Context),
-    OldDoc = cb_context:fetch(Context, 'db_doc'),
-    AccountId = cb_context:account_id(Context),
-
-    case cb_context:fetch(Context, 'sync') of
-        'false' -> 'ok';
-        'true' -> provisioner_util:sync_device(AccountId, OldDoc, NewDoc);
-        'force' -> provisioner_util:force_sync_device(AccountId, NewDoc)
-    end.
-
--spec prune_null_provisioner_fields(cb_context:context()) -> cb_context:context().
-prune_null_provisioner_fields(Context) ->
-    Data = cb_context:doc(Context),
-    Keys = [[<<"provision">>, <<"combo_keys">>]
-           ,[<<"provision">>, <<"feature_keys">>]
-           ],
-    NewData = prune_null_provisioner_fields(Keys, Data),
-    cb_context:set_doc(Context, NewData).
-
--spec prune_null_provisioner_fields(kz_json:paths(), kz_json:object()) -> kz_json:object().
-prune_null_provisioner_fields([], JObj) -> JObj;
-prune_null_provisioner_fields([Key|Keys], JObj) ->
-    case kz_json:get_value(Key, JObj) of
-        'undefined' -> prune_null_provisioner_fields(Keys, JObj);
-        Value ->
-            NewValue = kz_json:filter(fun filter_null_fields/1, Value),
-            NewJObj = kz_json:set_value(Key, NewValue, JObj),
-            prune_null_provisioner_fields(Keys, NewJObj)
-    end.
-
--spec filter_null_fields(kz_json:json_terms()) -> boolean().
-filter_null_fields({_, 'null'}) -> false;
-filter_null_fields(_) -> 'true'.
+    Context1 = crossbar_doc:save(
+                 cb_modules_util:take_sync_field(Context)
+                ),
+    handle_device_update(DeviceId, Context1).
 
 -spec post(cb_context:context(), path_token(), path_token()) ->
                   cb_context:context().
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
-    Context1 = cb_context:store(Context, 'sync', 'force'),
-    sync_sip_data(Context1),
+    _ = sync_sip_data(Context, 'true'),
     crossbar_util:response_202(<<"sync request sent">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
@@ -278,17 +222,7 @@ patch(Context, Id) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
-
-    case cb_context:resp_status(Context1) of
-        'success' -> handle_new_device(Context1);
-        _Status -> Context1
-    end.
-
--spec handle_new_device(cb_context:context()) -> cb_context:context().
-handle_new_device(Context) ->
-    _ = maybe_aggregate_device('undefined', Context),
-    _ = kz_util:spawn(fun update_device_provisioning/1, [Context]),
-    maybe_add_mobile_mdn(Context).
+    handle_device_update('undefined', Context1).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, DeviceId) ->
@@ -296,28 +230,10 @@ put(Context, DeviceId) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
+    _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
     _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
-    case get_device_type(Context) of
-        <<"mobile">> -> remove_mobile_mdn(Context);
-        _Else ->
-            _ = crossbar_util:flush_registration(Context),
-            _ = kz_util:spawn(fun maybe_delete_provision/1, [Context]),
-            _ = maybe_remove_aggregate(DeviceId, Context),
-            Context1
-    end.
-
--spec maybe_delete_provision(cb_context:context()) -> 'ok'.
-maybe_delete_provision(Context) ->
-    maybe_delete_provision(Context, cb_context:resp_status(Context)).
-
--spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> 'ok'.
-maybe_delete_provision(Context, 'success') ->
-    DeviceDoc = cb_context:doc(Context),
-    AuthToken = cb_context:auth_token(Context),
-    _ = provisioner_util:delete_provision(DeviceDoc, AuthToken),
-    'ok';
-maybe_delete_provision(_Context, _Status) -> 'ok'.
+    handle_device_removal(DeviceId, Context1).
 
 %%%=============================================================================
 %%% Internal functions
@@ -355,14 +271,22 @@ load_users_device_summary(Context, UserId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_request('undefined', Context) ->
-    maybe_check_mdn('undefined', Context);
 validate_request(DeviceId, Context) ->
-    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())),
-    case cb_context:resp_status(Context1) of
-        'success' -> maybe_check_mdn(DeviceId, Context1);
-        _Else -> Context1
-    end.
+    Routines = [fun prepare_mac_address/2
+               ,fun prepare_outbound_flags/2
+               ,fun prepare_device_realm/2
+               ,fun prepare_provisioner_fields/2
+               ,fun prepare_emergency_caller_id/2
+               ,fun validate_mdn/2
+               ,fun validate_mac_address/2
+               ,fun validate_device_creds/2
+               ,fun check_device_type_change/2
+               ,fun check_device_schema/2
+               ],
+    lists:foldl(fun(F, C) -> F(DeviceId, C) end
+               ,Context
+               ,Routines
+               ).
 
 %%------------------------------------------------------------------------------
 %% @doc Validate payloads for actions on a device.
@@ -380,278 +304,6 @@ validate_action(Context, _, 'undefined') ->
     crossbar_util:response_400(<<"action required">>, kz_json:new(), Context);
 validate_action(Context, _, _) ->
     crossbar_util:response_400(<<"invalid action">>, kz_json:new(), Context).
-
--spec maybe_check_mdn(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_check_mdn(DeviceId, Context) ->
-    case get_device_type(Context) of
-        <<"mobile">> -> check_mdn_undefined(DeviceId, Context);
-        _Else when DeviceId =:= 'undefined' ->
-            check_mac_address(DeviceId, Context);
-        _Else ->
-            prepare_outbound_flags(DeviceId, Context)
-    end.
-
--spec check_mdn_undefined(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_mdn_undefined(DeviceId, Context) ->
-    case get_mdn(Context) =:= 'undefined' of
-        'true' -> error_mdn_undefined(Context);
-        'false' -> check_mdn_changed(DeviceId, Context)
-    end.
-
--spec error_mdn_undefined(cb_context:context()) -> cb_context:context().
-error_mdn_undefined(Context) ->
-    Msg = kz_json:from_list(
-            [{<<"message">>, <<"Field is required but missing">>}]
-           ),
-    cb_context:add_validation_error(?KEY_MOBILE_MDN, <<"required">>, Msg, Context).
-
--spec check_mdn_changed(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_mdn_changed('undefined', Context) ->
-    check_mdn_taken('undefined', Context);
-check_mdn_changed(DeviceId, Context) ->
-    IsSuperAdmin = cb_context:is_superduper_admin(Context),
-    case has_mdn_changed(Context) of
-        'true' when IsSuperAdmin ->
-            Context1 = cb_context:store(Context, 'remove_mobile_mdn', 'true'),
-            check_mdn_taken(DeviceId, Context1);
-        'true' -> error_mdn_changed(Context);
-        'false' -> prepare_outbound_flags(DeviceId, Context)
-    end.
-
--spec error_mdn_changed(cb_context:context()) -> cb_context:context().
-error_mdn_changed(Context) ->
-    _OldMDN = kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')),
-    NewMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
-    lager:debug("mobile device number attempted to be changed from ~p to ~p"
-               ,[_OldMDN, NewMDN]),
-    Msg = kz_json:from_list(
-            [{<<"message">>, <<"Mobile Device Number cannot be changed">>}
-            ,{<<"cause">>, NewMDN}
-            ]),
-    cb_context:add_validation_error(?KEY_MOBILE_MDN, <<"invalid">>, Msg, Context).
-
--spec check_mdn_taken(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_mdn_taken(DeviceId, Context) ->
-    MDN = get_mdn(Context),
-    case knm_number:get(MDN, knm_number_options:mdn_options()) of
-        {error, not_found} ->
-            lager:debug("endpoint mdn ~s is not taken", [MDN]),
-            check_mdn_registered(DeviceId, Context);
-        {ok, _Number} ->
-            lager:debug("mdn ~s taken", [MDN]),
-            error_mdn_taken(MDN, Context);
-        {error, _R} ->
-            lager:debug("number ~s taken: ~p", [MDN, _R]),
-            error_mdn_taken(MDN, Context)
-    end.
-
--spec error_mdn_taken(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-error_mdn_taken(MDN, Context) ->
-    Msg = kz_json:from_list(
-            [{<<"message">>, <<"Mobile Device Number already exists in the system">>}
-            ,{<<"cause">>, MDN}
-            ]),
-    cb_context:add_validation_error(?KEY_MOBILE_MDN, <<"unique">>, Msg, Context).
-
--spec check_mdn_registered(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_mdn_registered(DeviceId, Context) ->
-    %%TODO: issue API request to TOP (if configured with URL) and validate
-    %%   that the number is present in that system, if not stop the request
-    %%   and don't set handle_mobile_mdn
-    Context1 = cb_context:store(Context, 'add_mobile_mdn', 'true'),
-    case DeviceId == 'undefined' of
-        'true' -> check_mac_address(DeviceId, Context1);
-        'false' -> prepare_outbound_flags(DeviceId, Context1)
-    end.
-
--spec get_mac_address(cb_context:context()) -> kz_term:api_binary().
-get_mac_address(Context) ->
-    provisioner_util:cleanse_mac_address(
-      cb_context:req_value(Context, ?KEY_MAC_ADDRESS)
-     ).
-
--spec changed_mac_address(cb_context:context()) -> boolean().
-changed_mac_address(Context) ->
-    NewAddress = get_mac_address(Context),
-    OldAddress = kz_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
-    NewAddress =:= provisioner_util:cleanse_mac_address(OldAddress)
-        orelse unique_mac_address(NewAddress, Context).
-
--spec check_mac_address(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_mac_address(DeviceId, Context) ->
-    MacAddress = get_mac_address(Context),
-    case unique_mac_address(MacAddress, Context) of
-        'false' -> error_used_mac_address(Context);
-        'true' ->
-            prepare_outbound_flags(DeviceId, Context)
-    end.
-
--spec unique_mac_address(kz_term:api_binary(), cb_context:context()) -> boolean().
-unique_mac_address('undefined', _Context) -> 'true';
-unique_mac_address(MacAddress, Context) ->
-    DbName = cb_context:account_db(Context),
-    not lists:member(MacAddress, get_mac_addresses(DbName))
-        andalso not provisioner_util:is_mac_address_in_use(MacAddress, cb_context:auth_token(Context)).
-
--spec error_used_mac_address(cb_context:context()) -> cb_context:context().
-error_used_mac_address(Context) ->
-    MacAddress = get_mac_address(Context),
-    Msg = kz_json:from_list(
-            [{<<"message">>, <<"Mac address already in use">>}
-            ,{<<"cause">>, MacAddress}
-            ]),
-    cb_context:add_validation_error(?KEY_MAC_ADDRESS, <<"unique">>, Msg, Context).
-
--spec get_mac_addresses(kz_term:ne_binary()) -> kz_term:ne_binaries().
-get_mac_addresses(DbName) ->
-    MACs = case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
-               {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
-               _ -> []
-           end,
-    [provisioner_util:cleanse_mac_address(MAC) || MAC <- MACs].
-
--spec prepare_outbound_flags(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-prepare_outbound_flags(DeviceId, Context) ->
-    JObj = case cb_context:req_value(Context, <<"outbound_flags">>) of
-               'undefined' -> cb_context:req_data(Context);
-               [] -> cb_context:req_data(Context);
-               Flags when is_list(Flags) ->
-                   OutboundFlags = [kz_binary:strip(Flag) || Flag <- Flags],
-                   kz_json:set_value(<<"outbound_flags">>, OutboundFlags, cb_context:req_data(Context));
-               _Else ->
-                   kz_json:set_value(<<"outbound_flags">>, [], cb_context:req_data(Context))
-           end,
-    prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
-
--spec prepare_device_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
-    Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
-    case AccountRealm =:= Realm of
-        'true' ->
-            JObj = kz_json:delete_key([<<"sip">>, <<"realm">>], cb_context:req_data(Context)),
-            validate_device_creds(Realm, DeviceId, cb_context:set_req_data(Context, JObj));
-        'false' ->
-            validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
-    end.
-
--spec validate_device_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_device_creds(Realm, DeviceId, Context) ->
-    case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
-        <<"password">> ->
-            validate_device_password(Realm, DeviceId, Context);
-        <<"ip">> ->
-            IP = cb_context:req_value(Context, [<<"sip">>, <<"ip">>]),
-            validate_device_ip(IP, DeviceId, Context);
-        Else ->
-            Msg =
-                kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
-                                  ,{<<"target">>, [<<"password">>, <<"ip">>]}
-                                  ,{<<"cause">>, Else}
-                                  ]),
-            C = cb_context:add_validation_error([<<"sip">>, <<"method">>]
-                                               ,<<"enum">>
-                                               ,Msg
-                                               ,Context
-                                               ),
-            check_emergency_caller_id(DeviceId, C)
-    end.
-
--spec validate_device_password(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_device_password(Realm, DeviceId, Context) ->
-    Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
-    case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
-        'true' -> check_emergency_caller_id(DeviceId, Context);
-        'false' ->
-            Msg =
-                kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
-                                  ,{<<"cause">>, Username}
-                                  ]),
-            C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
-                                               ,<<"unique">>
-                                               ,Msg
-                                               ,Context
-                                               ),
-            check_emergency_caller_id(DeviceId, C)
-    end.
-
--spec validate_device_ip(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                cb_context:context().
-validate_device_ip(IP, DeviceId, Context) ->
-    case kz_network_utils:is_ipv4(IP) of
-        'true' ->
-            validate_device_ip_unique(IP, DeviceId, Context);
-        'false' ->
-            Msg =
-                kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
-                                  ,{<<"cause">>, IP}
-                                  ]),
-            C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
-                                               ,<<"type">>
-                                               ,Msg
-                                               ,Context
-                                               ),
-            check_emergency_caller_id(DeviceId, C)
-    end.
-
--spec validate_device_ip_unique(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                       cb_context:context().
-validate_device_ip_unique(IP, DeviceId, Context) ->
-    case cb_devices_utils:is_ip_unique(IP, DeviceId) of
-        'true' ->
-            check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
-        'false' ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"SIP IP already in use">>}
-                    ,{<<"cause">>, IP}
-                    ]),
-            C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
-                                               ,<<"unique">>
-                                               ,Msg
-                                               ,Context
-                                               ),
-            check_emergency_caller_id(DeviceId, C)
-    end.
-
--spec check_emergency_caller_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_emergency_caller_id(DeviceId, Context) ->
-    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
-    check_device_type_change(DeviceId, Context1).
-
--spec check_device_type_change(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_device_type_change('undefined', Context) ->
-    check_device_schema('undefined', Context);
-check_device_type_change(DeviceId, Context) ->
-    NewDeviceType = kzd_devices:device_type(cb_context:req_data(Context)),
-    IsSuperAdmin = cb_context:is_superduper_admin(Context),
-    OldDeviceType = kzd_devices:device_type(cb_context:fetch(Context, 'db_doc')),
-    case {NewDeviceType, OldDeviceType} of
-        {Same, Same} -> check_device_schema(DeviceId, Context);
-        _Else when IsSuperAdmin -> check_device_schema(DeviceId, Context);
-        {'undefined', _} -> error_device_type_change(<<>>, Context);
-        _Else -> error_device_type_change(NewDeviceType, Context)
-    end.
-
--spec error_device_type_change(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-error_device_type_change(DeviceType, Context) ->
-    Msg =
-        kz_json:from_list(
-          [{<<"message">>, <<"Not authorized to change type of device">>}
-          ,{<<"cause">>, DeviceType}
-          ]),
-    cb_context:add_validation_error(<<"device_type">>, <<"invalid">>, Msg, Context).
-
--spec check_device_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_device_schema(DeviceId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
-    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
-
--spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, <<"device">>}],
-    cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
-on_successful_validation(DeviceId, Context) ->
-    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a device document from the database.
@@ -727,94 +379,6 @@ extract_device_registrations([JObj|JObjs], Set) ->
     extract_device_registrations(JObjs, S).
 
 %%------------------------------------------------------------------------------
-%% @doc Check if the device sip credentials are unique.
-%% @end
-%%------------------------------------------------------------------------------
--spec is_sip_creds_unique(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                 boolean().
-%% no account id and no doc id (ie initial create with no account)
-is_sip_creds_unique('undefined', _, _, 'undefined') -> 'true';
-is_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
-    is_creds_locally_unique(AccountDb, Username, DeviceId)
-        andalso is_creds_global_unique(Realm, Username, DeviceId).
-
-is_creds_locally_unique(AccountDb, Username, DeviceId) ->
-    ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
-    case kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
-        {'error', 'not_found'} -> 'true';
-        _ -> 'false'
-    end.
-
-is_creds_global_unique(Realm, Username, DeviceId) ->
-    ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
-                           ,kz_term:to_lower_binary(Username)
-                           ]
-                   }
-                  ],
-    case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
-        {'error', 'not_found'} -> 'true';
-        _ -> 'false'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
-
--spec maybe_aggregate_device(kz_term:api_ne_binary(), cb_context:context()) -> boolean().
-maybe_aggregate_device(DeviceId, Context) ->
-    maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
-
--spec maybe_aggregate_device(kz_term:api_ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
-maybe_aggregate_device(DeviceId, Context, 'success') ->
-    case kz_term:is_true(cb_context:fetch(Context, 'aggregate_device'))
-        andalso ?DEVICES_ALLOW_AGGREGATES
-    of
-        'false' -> maybe_remove_aggregate(DeviceId, Context);
-        'true' ->
-            aggregate_device(cb_context:doc(Context)),
-            _ = kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
-            'true'
-    end;
-maybe_aggregate_device(_, _, _) -> 'false'.
-
--spec aggregate_device(kz_json:object()) -> 'ok'.
-aggregate_device(Device) ->
-    lager:debug("adding device to the sip auth aggregate"),
-    Doc = kz_doc:delete_revision(Device),
-    Update = kz_json:to_proplist(kz_json:flatten(Doc)),
-    UpdateOptions = [{'update', Update}
-                    ,{'create', []}
-                    ,{'ensure_saved', 'true'}
-                    ],
-    {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Device), UpdateOptions),
-    'ok'.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
-
--spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context()) -> boolean().
-maybe_remove_aggregate(DeviceId, Context) ->
-    maybe_remove_aggregate(DeviceId, Context, cb_context:resp_status(Context)).
-
--spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> boolean().
-maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
-maybe_remove_aggregate(DeviceId, _Context, 'success') ->
-    case kz_datamgr:del_doc(?KZ_SIP_DB, DeviceId) of
-        {'error', 'not_found'} -> 'false';
-        {'ok', _JObj} ->
-            _ = kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
-            'true'
-    end;
-maybe_remove_aggregate(_, _, _) -> 'false'.
-
-%%------------------------------------------------------------------------------
 %% @doc Perform actions on a device.
 %% @end
 %%------------------------------------------------------------------------------
@@ -853,16 +417,501 @@ get_device_type(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_add_mobile_mdn(cb_context:context()) -> cb_context:context().
-maybe_add_mobile_mdn(Context) ->
-    case kz_term:is_true(cb_context:fetch(Context, 'add_mobile_mdn')) of
-        'true' -> add_mobile_mdn(Context);
+-spec get_mac_address(cb_context:context()) -> kz_term:api_binary().
+get_mac_address(Context) ->
+    provisioner_util:cleanse_mac_address(
+      cb_context:req_value(Context, ?KEY_MAC_ADDRESS)
+     ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_mdn(kzd_devices:doc()) -> kz_term:api_binary().
+get_mdn(JObj) ->
+    case kz_json:get_ne_value(?KEY_MDN, JObj) of
+        'undefined' -> 'undefined';
+        MDN -> knm_converters:normalize(MDN)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec prepare_mac_address(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+prepare_mac_address(_DeviceId, Context) ->
+    case get_mac_address(Context) of
+        'undefined' -> Context;
+        MacAddress ->
+            JObj = kzd_devices:set_mac_address(cb_context:req_data(Context)
+                                              ,MacAddress
+                                              ),
+            cb_context:set_req_data(Context, JObj)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec prepare_outbound_flags(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+prepare_outbound_flags(_DeviceId, Context) ->
+    JObj = case cb_context:req_value(Context, ?KEY_OUTBOUND_FLAGS) of
+               'undefined' -> cb_context:req_data(Context);
+               [] -> cb_context:req_data(Context);
+               Flags when is_list(Flags) ->
+                   OutboundFlags = [kz_binary:strip(Flag) || Flag <- Flags],
+                   kz_json:set_value(?KEY_OUTBOUND_FLAGS, OutboundFlags, cb_context:req_data(Context));
+               _Else ->
+                   kz_json:set_value(?KEY_OUTBOUND_FLAGS, [], cb_context:req_data(Context))
+           end,
+    cb_context:set_req_data(Context, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec prepare_device_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+prepare_device_realm(_DeviceId, Context) ->
+    AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
+    Realm = cb_context:req_value(Context, ?KEY_SIP_REALM, AccountRealm),
+    case AccountRealm =:= Realm of
+        'true' ->
+            JObj = kz_json:delete_key(?KEY_SIP_REALM, cb_context:req_data(Context)),
+            cb_context:set_req_data(Context, JObj);
+        'false' ->
+            cb_context:store(Context, 'aggregate_device', 'true')
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec prepare_provisioner_fields(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+prepare_provisioner_fields(_DeviceId, Context) ->
+    Keys = [<<"combo_keys">>
+           ,<<"feature_keys">>
+           ],
+    JObj = case cb_context:req_value(Context, <<"provision">>) of
+               'undefined' -> cb_context:req_data(Context);
+               Provision ->
+                   NewData = prune_null_provisioner_fields(Keys, Provision),
+                   kz_json:set_value(<<"provision">>, NewData, cb_context:req_data(Context))
+           end,
+    cb_context:set_req_data(Context, JObj).
+
+-spec prune_null_provisioner_fields(kz_json:paths(), kz_json:object()) -> kz_json:object().
+prune_null_provisioner_fields([], JObj) -> JObj;
+prune_null_provisioner_fields([Key|Keys], JObj) ->
+    case kz_json:get_value(Key, JObj) of
+        'undefined' -> prune_null_provisioner_fields(Keys, JObj);
+        Value ->
+            NewValue = kz_json:filter(fun filter_null_fields/1, Value),
+            NewJObj = kz_json:set_value(Key, NewValue, JObj),
+            prune_null_provisioner_fields(Keys, NewJObj)
+    end.
+
+-spec filter_null_fields(kz_json:json_terms()) -> boolean().
+filter_null_fields({_, 'null'}) -> 'false';
+filter_null_fields(_) -> 'true'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec prepare_emergency_caller_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+prepare_emergency_caller_id(_DeviceId, Context) ->
+    crossbar_util:format_emergency_caller_id_number(Context).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_mdn(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+validate_mdn(DeviceId, Context) ->
+    case get_device_type(Context) of
+        <<"mobile">> -> check_mdn_undefined(DeviceId, Context);
+        _Else -> Context
+    end.
+
+-spec check_mdn_undefined(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_undefined(DeviceId, Context) ->
+    MDN = cb_context:req_value(Context, ?KEY_MDN),
+    case kz_term:is_empty(MDN) of
+        'true' -> error_mdn_undefined(Context);
+        'false' ->
+            NormalizedMDN = knm_converters:normalize(MDN),
+            check_mdn_changed(NormalizedMDN, DeviceId, Context)
+    end.
+
+-spec error_mdn_undefined(cb_context:context()) -> cb_context:context().
+error_mdn_undefined(Context) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Field is required but missing">>}]
+           ),
+    cb_context:add_validation_error(?KEY_MDN, <<"required">>, Msg, Context).
+
+-spec check_mdn_changed(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_changed(MDN, 'undefined', Context) ->
+    check_mdn_taken(MDN, 'undefined', Context);
+check_mdn_changed(MDN, DeviceId, Context) ->
+    IsSuperAdmin = cb_context:is_superduper_admin(Context),
+    case get_mdn(cb_context:fetch(Context, 'db_doc')) =/= MDN of
+        'true' when IsSuperAdmin ->
+            check_mdn_taken(MDN, DeviceId, Context);
+        'true' -> error_mdn_changed(Context);
         'false' -> Context
     end.
 
--spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
-add_mobile_mdn(Context) ->
-    Normalized = get_mdn(Context),
+-spec error_mdn_changed(cb_context:context()) -> cb_context:context().
+error_mdn_changed(Context) ->
+    _OldMDN = kz_json:get_ne_value(?KEY_MDN, cb_context:fetch(Context, 'db_doc')),
+    NewMDN = cb_context:req_value(Context, ?KEY_MDN),
+    lager:debug("mobile device number attempted to be changed from ~p to ~p"
+               ,[_OldMDN, NewMDN]),
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Mobile Device Number cannot be changed">>}
+            ,{<<"cause">>, NewMDN}
+            ]),
+    cb_context:add_validation_error(?KEY_MDN, <<"invalid">>, Msg, Context).
+
+-spec check_mdn_taken(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_taken(MDN, DeviceId, Context) ->
+    case knm_number:get(MDN, knm_number_options:mdn_options()) of
+        {'error', 'not_found'} ->
+            lager:debug("endpoint mdn ~s is not taken", [MDN]),
+            check_mdn_registered(DeviceId, Context);
+        {'ok', _Number} ->
+            lager:debug("mdn ~s taken", [MDN]),
+            error_mdn_taken(MDN, Context);
+        {'error', _R} ->
+            lager:debug("number ~s taken: ~p", [MDN, _R]),
+            error_mdn_taken(MDN, Context)
+    end.
+
+-spec error_mdn_taken(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+error_mdn_taken(MDN, Context) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Mobile Device Number already exists in the system">>}
+            ,{<<"cause">>, MDN}
+            ]),
+    cb_context:add_validation_error(?KEY_MDN, <<"unique">>, Msg, Context).
+
+-spec check_mdn_registered(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_registered(_DeviceId, Context) ->
+    %%TODO: issue API request to TOP (if configured with URL) and validate
+    %%   that the number is present in that system, if not stop the request
+    Context.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_mac_address(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+validate_mac_address('undefined', Context) ->
+    check_mac_address('undefined', Context);
+validate_mac_address(DeviceId, Context) ->
+    MacAddress = get_mac_address(Context),
+    CurrentAddress = get_current_mac_address(DeviceId, Context),
+    case MacAddress =:= CurrentAddress of
+        'false' -> check_mac_address(DeviceId, Context);
+        'true' -> Context
+    end.
+
+-spec check_mac_address(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_mac_address(_DeviceId, Context) ->
+    MacAddress = get_mac_address(Context),
+    case unique_mac_address(MacAddress, Context) of
+        'false' -> error_used_mac_address(Context);
+        'true' -> Context
+    end.
+
+-spec error_used_mac_address(cb_context:context()) -> cb_context:context().
+error_used_mac_address(Context) ->
+    MacAddress = get_mac_address(Context),
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"MAC address already in use">>}
+            ,{<<"cause">>, MacAddress}
+            ]),
+    cb_context:add_validation_error(?KEY_MAC_ADDRESS, <<"unique">>, Msg, Context).
+
+-spec unique_mac_address(kz_term:api_binary(), cb_context:context()) -> boolean().
+unique_mac_address('undefined', _Context) -> 'true';
+unique_mac_address(MacAddress, Context) ->
+    DbName = cb_context:account_db(Context),
+    not lists:member(MacAddress, get_mac_addresses(DbName))
+        andalso not provisioner_util:is_mac_address_in_use(MacAddress, cb_context:auth_token(Context)).
+
+-spec get_mac_addresses(kz_term:ne_binary()) -> kz_term:ne_binaries().
+get_mac_addresses(DbName) ->
+    MACs = case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
+               {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
+               _ -> []
+           end,
+    [provisioner_util:cleanse_mac_address(MAC) || MAC <- MACs].
+
+-spec get_current_mac_address(kz_term:api_binary(), cb_context:context()) -> kz_term:api_binary().
+get_current_mac_address(DeviceId, Context) ->
+    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
+            provisioner_util:cleanse_mac_address(
+              kzd_devices:mac_address(JObj)
+             );
+        _Else -> 'undefined'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_device_creds(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+validate_device_creds(DeviceId, Context) ->
+    AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
+    Realm = cb_context:req_value(Context, ?KEY_SIP_REALM, AccountRealm),
+    case cb_context:req_value(Context, ?KEY_SIP_METHOD, <<"password">>) of
+        <<"password">> ->
+            check_device_password(Realm, DeviceId, Context);
+        <<"ip">> ->
+            IP = cb_context:req_value(Context, ?KEY_SIP_IP),
+            check_device_ip(IP, DeviceId, Context);
+        Else ->
+            Msg =
+                kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
+                                  ,{<<"target">>, [<<"password">>, <<"ip">>]}
+                                  ,{<<"cause">>, Else}
+                                  ]),
+            cb_context:add_validation_error(?KEY_SIP_METHOD
+                                           ,<<"enum">>
+                                           ,Msg
+                                           ,Context
+                                           )
+    end.
+
+-spec check_device_password(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_device_password(Realm, DeviceId, Context) ->
+    Username = cb_context:req_value(Context, ?KEY_SIP_USERNAME),
+    case check_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
+        'true' -> Context;
+        'false' ->
+            Msg =
+                kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
+                                  ,{<<"cause">>, Username}
+                                  ]),
+            cb_context:add_validation_error(?KEY_SIP_USERNAME
+                                           ,<<"unique">>
+                                           ,Msg
+                                           ,Context
+                                           )
+    end.
+
+-spec check_sip_creds_unique(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
+                                    boolean().
+%% no account id and no doc id (ie initial create with no account)
+check_sip_creds_unique('undefined', _, _, 'undefined') -> 'true';
+check_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
+    is_creds_locally_unique(AccountDb, Username, DeviceId)
+        andalso is_creds_global_unique(Realm, Username, DeviceId).
+
+-spec is_creds_locally_unique(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+is_creds_locally_unique(AccountDb, Username, DeviceId) ->
+    ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
+    case kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
+        {'error', 'not_found'} -> 'true';
+        _ -> 'false'
+    end.
+
+-spec is_creds_global_unique(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+is_creds_global_unique(Realm, Username, DeviceId) ->
+    ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
+                           ,kz_term:to_lower_binary(Username)
+                           ]
+                   }
+                  ],
+    case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
+        {'error', 'not_found'} -> 'true';
+        _ -> 'false'
+    end.
+
+-spec check_device_ip(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
+                             cb_context:context().
+check_device_ip(IP, DeviceId, Context) ->
+    case kz_network_utils:is_ipv4(IP) of
+        'true' ->
+            check_device_ip_unique(IP, DeviceId, Context);
+        'false' ->
+            Msg =
+                kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
+                                  ,{<<"cause">>, IP}
+                                  ]),
+            cb_context:add_validation_error(?KEY_SIP_IP
+                                           ,<<"type">>
+                                           ,Msg
+                                           ,Context
+                                           )
+    end.
+
+-spec check_device_ip_unique(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
+                                    cb_context:context().
+check_device_ip_unique(IP, DeviceId, Context) ->
+    case cb_devices_utils:is_ip_unique(IP, DeviceId) of
+        'true' ->
+            cb_context:store(Context, 'aggregate_device', 'true');
+        'false' ->
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"SIP IP already in use">>}
+                    ,{<<"cause">>, IP}
+                    ]),
+            cb_context:add_validation_error(?KEY_SIP_IP
+                                           ,<<"unique">>
+                                           ,Msg
+                                           ,Context
+                                           )
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_device_type_change(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_device_type_change('undefined', Context) ->
+    check_device_schema('undefined', Context);
+check_device_type_change(_DeviceId, Context) ->
+    NewDeviceType = kzd_devices:device_type(cb_context:req_data(Context)),
+    OldDeviceType = kzd_devices:device_type(cb_context:fetch(Context, 'db_doc')),
+    IsSuperAdmin = cb_context:is_superduper_admin(Context),
+    case NewDeviceType =:= OldDeviceType of
+        'true' -> Context;
+        'false' when IsSuperAdmin -> Context;
+        'false' -> error_device_type_change(NewDeviceType, Context)
+    end.
+
+-spec error_device_type_change(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+error_device_type_change('undefined', Context) ->
+    error_device_type_change(<<>>, Context);
+error_device_type_change(DeviceType, Context) ->
+    Msg =
+        kz_json:from_list(
+          [{<<"message">>, <<"Not authorized to change type of device">>}
+          ,{<<"cause">>, DeviceType}
+          ]),
+    cb_context:add_validation_error(<<"device_type">>, <<"invalid">>, Msg, Context).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_device_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_device_schema(DeviceId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
+    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
+
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    Props = [{<<"pvt_type">>, <<"device">>}],
+    cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
+on_successful_validation(DeviceId, Context) ->
+    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_device_update(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+handle_device_update(DeviceId, Context) ->
+    case cb_context:resp_status(Context) =:= 'success' of
+        'false' -> Context;
+        'true' ->
+            _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
+            _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
+            Routines = [fun maybe_add_mdn/2
+                       ,fun maybe_remove_previous_mdn/2
+                       ,fun maybe_aggregate_device/2
+                       ,fun maybe_update_provision/2
+                       ],
+            lists:foldl(fun(F, C) ->
+                                case cb_context:resp_status(C) =:= 'success' of
+                                    'true' -> F(DeviceId, C);
+                                    'false' -> C
+                                end
+                        end
+                       ,Context
+                       ,Routines
+                       )
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_aggregate_device(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
+maybe_aggregate_device(DeviceId, Context) ->
+    case kz_term:is_true(cb_context:fetch(Context, 'aggregate_device'))
+        andalso ?DEVICES_ALLOW_AGGREGATES
+    of
+        'false' -> maybe_remove_aggregate(DeviceId, Context);
+        'true' -> aggregate_device(Context)
+    end.
+
+-spec aggregate_device(kz_json:object()) -> cb_context:context().
+aggregate_device(Context) ->
+    Device = cb_context:doc(Context),
+    lager:debug("adding device to the sip auth aggregate"),
+    Doc = kz_doc:delete_revision(Device),
+    Update = kz_json:to_proplist(kz_json:flatten(Doc)),
+    UpdateOptions = [{'update', Update}
+                    ,{'create', []}
+                    ,{'ensure_saved', 'true'}
+                    ],
+    case kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Device), UpdateOptions) of
+        {'ok', _} ->
+            _ = kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            Context;
+        {'error', _R} ->
+            lager:debug("failed to aggregate device: ~p", [_R]),
+            crossbar_util:response_db_fatal(Context)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_update_provision(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_update_provision(_DeviceId, Context) ->
+    _ = kz_util:spawn(fun update_provision/1, [Context]),
+    Context.
+
+-spec update_provision(cb_context:context()) -> 'ok'.
+update_provision(Context) ->
+    _ = provisioner_util:provision_device(cb_context:doc(Context)
+                                         ,cb_context:fetch(Context, 'db_doc')
+                                         ,#{'req_verb' => cb_context:req_verb(Context)
+                                           ,'auth_token' => cb_context:auth_token(Context)
+                                           ,'new_mac_address' => cb_context:req_value(Context, <<"mac_address">>)
+                                           }
+                                         ),
+    sync_sip_data(Context, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_add_mdn(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_add_mdn(_DeviceId, Context) ->
+    MDN = get_mdn(cb_context:doc(Context)),
+    case get_device_type(Context) =:= <<"mobile">>
+        andalso kz_term:is_not_empty(MDN)
+    of
+        'true' -> add_mdn(MDN, Context);
+        'false' -> Context
+    end.
+
+-spec add_mdn(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+add_mdn(MDN, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     MobileField =
         kz_json:from_list(
@@ -876,50 +925,14 @@ add_mobile_mdn(Context) ->
               ,{'module_name', ?CARRIER_MDN}
                |knm_number_options:mdn_options()
               ],
-    case knm_number:create(Normalized, Options) of
+    case knm_number:create(MDN, Options) of
         {'error', _}=Error ->
             _ = crossbar_doc:delete(Context),
             cb_phone_numbers_v2:set_response(Error, Context);
         {'ok', _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
-                       ,[Normalized, kz_json:encode(PublicFields)]
+                       ,[MDN, kz_json:encode(PublicFields)]
                        ),
-            maybe_remove_mobile_mdn(Context)
-    end.
-
--spec maybe_remove_mobile_mdn(cb_context:context()) -> cb_context:context().
-maybe_remove_mobile_mdn(Context) ->
-    case kz_term:is_true(cb_context:fetch(Context, 'remove_mobile_mdn')) of
-        'true' -> remove_mobile_mdn(Context);
-        'false' -> Context
-    end.
-
--spec remove_mobile_mdn(cb_context:context()) -> cb_context:context().
-remove_mobile_mdn(Context) ->
-    case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
-        'undefined' -> Context;
-        MDN -> remove_if_mobile(MDN, Context)
-    end.
-
--spec remove_if_mobile(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-remove_if_mobile(MDN, Context) ->
-    Normalized = knm_converters:normalize(MDN),
-    case knm_number:get(Normalized, knm_number_options:mdn_options()) of
-        {'ok', Number} ->
-            PN = knm_number:phone_number(Number),
-            IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
-            case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
-                'undefined' when not IsMdnCarrier ->
-                    lager:error("not removing number ~s: somehow not an mdn", [Normalized]),
-                    Context;
-                Mobile ->
-                    lager:debug("hard removing old mdn ~s with mobile properties ~s"
-                               ,[Normalized, kz_json:encode(Mobile)]),
-                    _ = knm_number:delete(Normalized, knm_number_options:mdn_options()),
-                    Context
-            end;
-        {'error', _R} ->
-            lager:debug("unable to fetch mdn ~s for removal: ~p", [Normalized, _R]),
             Context
     end.
 
@@ -927,23 +940,128 @@ remove_if_mobile(MDN, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_mdn(cb_context:context()) -> kz_term:api_binary().
-get_mdn(Context) ->
-    ReqMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
-    case kz_term:is_empty(ReqMDN)
-        andalso kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc'))
+-spec maybe_remove_previous_mdn(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_remove_previous_mdn(_DeviceId, Context) ->
+    CurrentMDN = get_mdn(cb_context:doc(Context)),
+    PreviousMDN = get_mdn(cb_context:fetch(Context, 'db_doc')),
+    case get_device_type(Context) =:= <<"mobile">>
+        andalso PreviousMDN =/= CurrentMDN
+        andalso kz_term:is_not_empty(PreviousMDN)
     of
-        false -> knm_converters:normalize(ReqMDN);
-        undefined -> undefined;
-        MDN -> knm_converters:normalize(MDN)
+        'true' -> remove_mdn(PreviousMDN, Context);
+        'false' -> Context
     end.
 
--spec has_mdn_changed(cb_context:context()) -> boolean().
-has_mdn_changed(Context) ->
-    %% This shouldn't be empty or undefined because caller already checked that with get_mdn/1
-    NewMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
-    case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
-        'undefined' -> 'true';
-        OldMDN -> knm_converters:normalize(NewMDN) =/=
-                      knm_converters:normalize(OldMDN)
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_device_removal(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+handle_device_removal(DeviceId, Context) ->
+    case cb_context:resp_status(Context) =:= 'success' of
+        'false' -> Context;
+        'true' ->
+            Routines = [fun maybe_remove_aggregate/2
+                       ,fun maybe_delete_provision/2
+                       ,fun maybe_remove_mdn/2
+                       ],
+            lists:foldl(fun(F, C) ->
+                                case cb_context:resp_status(C) =:= 'success' of
+                                    'true' -> F(DeviceId, C);
+                                    'false' -> C
+                                end
+                        end
+                       ,Context
+                       ,Routines
+                       )
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_remove_aggregate('undefined', Context) -> Context;
+maybe_remove_aggregate(DeviceId, Context) ->
+    remove_aggregate(DeviceId, Context).
+
+-spec remove_aggregate(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+remove_aggregate(DeviceId, Context) ->
+    case kz_datamgr:del_doc(?KZ_SIP_DB, DeviceId) of
+        {'error', 'not_found'} -> Context;
+        {'ok', _JObj} ->
+            _ = kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end),
+            Context
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_delete_provision(kz_term:api_binary(), cb_context:context()) -> 'ok'.
+maybe_delete_provision(_DeviceId, Context) ->
+    MacAddress = provisioner_util:cleanse_mac_address(
+                   kzd_devices:mac_address(cb_context:doc(Context))
+                  ),
+    case kz_term:is_not_empty(MacAddress) of
+        'false' -> Context;
+        'true' ->
+            _ = kz_util:spawn(fun delete_provision/1, [Context]),
+            Context
+    end.
+
+-spec delete_provision(cb_context:context()) -> 'ok'.
+delete_provision(Context) ->
+    DeviceDoc = cb_context:doc(Context),
+    AuthToken = cb_context:auth_token(Context),
+    _ = provisioner_util:delete_provision(DeviceDoc, AuthToken),
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_remove_mdn(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_remove_mdn(_DeviceId, Context) ->
+    MDN = get_mdn(cb_context:doc(Context)),
+    case get_device_type(Context) =:= <<"mobile">>
+        andalso kz_term:is_not_empty(MDN)
+    of
+        'true' -> remove_mdn(MDN, Context);
+        'false' -> Context
+    end.
+
+-spec remove_mdn(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+remove_mdn(MDN, Context) ->
+    case knm_number:get(MDN, knm_number_options:mdn_options()) of
+        {'ok', Number} ->
+            PN = knm_number:phone_number(Number),
+            IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
+            case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
+                'undefined' when not IsMdnCarrier ->
+                    lager:error("not removing number ~s: somehow not an mdn", [MDN]),
+                    Context;
+                Mobile ->
+                    lager:debug("hard removing old mdn ~s with mobile properties ~s"
+                               ,[MDN, kz_json:encode(Mobile)]),
+                    _ = knm_number:delete(MDN, knm_number_options:mdn_options()),
+                    Context
+            end;
+        {'error', _R} ->
+            lager:debug("unable to fetch mdn ~s for removal: ~p", [MDN, _R]),
+            Context
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec sync_sip_data(cb_context:context(), boolean()) -> 'ok'.
+sync_sip_data(Context, UseTheForce) ->
+    NewDoc = cb_context:doc(Context),
+    OldDoc = cb_context:fetch(Context, 'db_doc'),
+    AccountId = cb_context:account_id(Context),
+    case UseTheForce of
+        'true' -> provisioner_util:sync_device(AccountId, OldDoc, NewDoc);
+        'false' -> provisioner_util:force_sync_device(AccountId, NewDoc)
     end.
