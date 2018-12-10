@@ -67,6 +67,10 @@
         ,item/3
         ,item/4
         ]).
+-export([limits/1
+        ,limits/2
+        ,set_limits/2
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -274,6 +278,26 @@ applications(JObj, Default) ->
 -spec set_applications(doc(), kz_json:object()) -> doc().
 set_applications(JObj, Applications) ->
     kz_json:set_value(?APPLICATIONS, Applications, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec limits(doc()) -> kz_json:object().
+limits(JObj) ->
+    limits(JObj, kz_json:new()).
+
+-spec limits(doc(), Default) -> Default | kz_json:object().
+limits(JObj, Default) ->
+    kz_json:get_ne_json_value(<<"limits">>, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_limits(doc(), kz_json:object()) -> doc().
+set_limits(JObj, Limits) ->
+    kz_json:set_value(<<"limits">>, Limits, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
