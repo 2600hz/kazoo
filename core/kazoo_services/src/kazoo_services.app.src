@@ -14,17 +14,4 @@
                  , lager
                  ]}
  ,{mod, {kazoo_services_app, []}}
- ,{env, [{service_modules, ['kz_service_devices'
-                           ,'kz_service_ips'
-                           ,'kz_service_ledgers'
-                           ,'kz_service_limits'
-                           ,'kz_service_phone_numbers'
-                           ,'kz_service_ui_apps'
-                           ,'kz_service_users'
-                           ,'kz_service_whitelabel'
-                           ,'kz_service_billing'
-                           ,'kz_service_ratedeck'
-                           ]}
-
-        ]}
  ]}.

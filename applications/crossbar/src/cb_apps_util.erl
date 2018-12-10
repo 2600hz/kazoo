@@ -148,9 +148,7 @@ maybe_app_docs_from_services(AccountId, ResellerId) ->
 
 -spec app_docs_from_services(kz_term:ne_binary()) -> kz_term:api_objects().
 app_docs_from_services(AccountId) ->
-    ServicesApps = kz_services:apps(
-                     kz_services:fetch(AccountId)
-                    ),
+    ServicesApps = kz_services_applications:fetch(AccountId),
     case kz_term:is_empty(ServicesApps) of
         'true' -> 'undefined';
         'false' ->

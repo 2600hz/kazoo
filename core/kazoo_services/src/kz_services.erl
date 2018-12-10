@@ -61,9 +61,6 @@
         ]).
 -export([is_dirty/1]).
 -export([is_deleted/1]).
--export([ratedeck_id/1
-        ,ratedeck_name/1
-        ]).
 -export([audit_log/1
         ,set_audit_log/2
         ]).
@@ -93,7 +90,6 @@
         ]).
 
 -export([is_services/1]).
--export([apps/1]).
 
 -include("services.hrl").
 
@@ -465,48 +461,6 @@ is_deleted(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec ratedeck_id(services()) -> kz_term:api_ne_binary().
-ratedeck_id(Services) ->
-    %% TODO: these are here for backward compatibility
-    %% but the ratedeck integration on services and
-    %% service_plan documents could use a revisit...
-    ServicesJObj = services_jobj(Services),
-    case kzd_services:ratedeck_id(ServicesJObj) of
-        'undefined' -> plan_ratedeck_id(Services);
-        RatedeckId -> RatedeckId
-    end.
-
--spec plan_ratedeck_id(services()) -> kz_term:api_ne_binary().
-plan_ratedeck_id(Services) ->
-    kz_services_plan:ratedeck_id(
-      merge_all_plans(Services)
-     ).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec ratedeck_name(services()) -> kz_term:api_ne_binary().
-ratedeck_name(Services) ->
-    %% TODO: these are here for backward compatibility
-    %% but the ratedeck integration on services and
-    %% service_plan documents could use a revisit...
-    ServicesJObj = services_jobj(Services),
-    case kzd_services:ratedeck_name(ServicesJObj) of
-        'undefined' -> plan_ratedeck_name(Services);
-        RatedeckName -> RatedeckName
-    end.
-
--spec plan_ratedeck_name(services()) -> kz_term:api_ne_binary().
-plan_ratedeck_name(Services) ->
-    kz_services_plan:ratedeck_name(
-      merge_all_plans(Services)
-     ).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec audit_log(services()) -> kz_json:object().
 audit_log(#kz_services{audit_log=AuditLog}=Services) ->
     Routines = [fun add_audit_log_account/2
@@ -620,24 +574,6 @@ setters(Services, Routines) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec merge_all_plans(services()) -> kz_services_plan:plan().
-merge_all_plans(Services) ->
-    case kz_services_plans:foldl(fun collect_plans_foldl/3, [], plans(Services)) of
-        [] -> kz_services_plan:empty();
-        Plans -> kz_services_plans:merge(Plans)
-    end.
-
--spec collect_plans_foldl(kz_term:ne_binary()
-                         ,kz_services_plans:plans_list()
-                         ,kz_services_plans:plans_list()
-                         ) -> kz_services_plans:plans_list().
-collect_plans_foldl(_BookkeeperHash, PlansList, Plans) ->
-    PlansList ++ Plans.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec public_json(services()) -> kz_json:api_json_term().
 public_json(Services) ->
     public_json(Services, 'undefined').
@@ -673,11 +609,8 @@ summary(Services) ->
                  ,{<<"is_reseller">>, kz_services_reseller:is_reseller(Services)}
                  ]
                 ),
-    Ratedeck = kz_json:from_list(
-                 [{<<"id">>, ratedeck_id(Services)}
-                 ,{<<"name">>, ratedeck_name(Services)}
-                 ]
-                ),
+    Ratedeck = kz_services_ratedecks:fetch(Services),
+
     Props = [{<<"plans">>, kz_services_plans:assigned(Services)}
             ,{<<"invoices">>, kz_services_invoices:public_json(invoices(Services))}
             ,{<<"quantities">>, Quantities}
@@ -1052,30 +985,6 @@ reconcile(Account, AuditLog) ->
 -spec is_services(services() | any()) -> boolean().
 is_services(#kz_services{}) -> 'true';
 is_services(_) -> 'false'.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec apps(services()) -> kz_json:object().
-apps(Services) ->
-    AppsDict = kz_services_plans:foldl(fun apps_foldl/3
-                                      ,dict:new()
-                                      ,plans(Services)
-                                      ),
-    kz_json:from_list(dict:to_list(AppsDict)).
-
--spec apps_foldl(kz_term:ne_binary(), kz_services_plans:plans_list(), dict:dict()) -> dict:dict().
-apps_foldl(_BookkeeperHash, [], Apps) ->
-    Apps;
-apps_foldl(_BookkeeperHash, PlansList, Apps) ->
-    Plan = kz_services_plans:merge(PlansList),
-    kz_json:foldl(fun(K, V, A) ->
-                          dict:store(K, V, A)
-                  end
-                 ,Apps
-                 ,kz_services_plan:applications(Plan)
-                 ).
 
 %%------------------------------------------------------------------------------
 %% @doc
