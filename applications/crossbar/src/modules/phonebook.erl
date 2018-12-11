@@ -20,7 +20,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec maybe_create_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
+-spec maybe_create_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 maybe_create_port_in(Context) ->
     case should_send_to_phonebook(Context)
         andalso not req_from_phonebook(Context)
@@ -30,7 +30,7 @@ maybe_create_port_in(Context) ->
         'false' -> {'ok', 'disabled'}
     end.
 
--spec maybe_add_comment(cb_context:context(), kz_json:objects()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
+-spec maybe_add_comment(cb_context:context(), kz_json:objects()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 maybe_add_comment(Context, Comment) ->
     case should_send_to_phonebook(Context)
         andalso not req_from_phonebook(Context)
@@ -40,7 +40,7 @@ maybe_add_comment(Context, Comment) ->
         'false' -> {'ok', 'disabled'}
     end.
 
--spec maybe_cancel_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | kz_json:object()}.
+-spec maybe_cancel_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 maybe_cancel_port_in(Context) ->
     case should_send_to_phonebook(Context)
         andalso not req_from_phonebook(Context)
@@ -74,7 +74,7 @@ should_send_to_phonebook(Context) ->
     cb_context:resp_status(Context) =:= 'success'
         andalso phonebook_enabled().
 
--spec create_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
+-spec create_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 create_port_in(JObj, AuthToken) ->
     Url = phonebook_uri([<<"accounts">>
                         ,kz_doc:account_id(JObj)
@@ -86,7 +86,7 @@ create_port_in(JObj, AuthToken) ->
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"create">>, Url).
 
--spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:objects()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
+-spec add_comment(kz_json:object(), kz_term:ne_binary(), kz_json:objects()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 add_comment(JObj, AuthToken, Comment) ->
     Url = phonebook_uri([<<"accounts">>
                         ,kz_doc:account_id(JObj)
@@ -100,7 +100,7 @@ add_comment(JObj, AuthToken, Comment) ->
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"comment">>, Url).
 
-%% implement support for this in phonebook
+%%TODO: implement support for this in phonebook
 %% -spec cancel_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
 %% cancel_port_in(JObj, AuthToken) ->
 %%     AccountId = kz_doc:account_id(JObj),
@@ -110,7 +110,7 @@ add_comment(JObj, AuthToken, Comment) ->
 %%     Response = kz_http:delete(Url, req_headers(AuthToken)),
 %%     handle_resp(Response, JObj, <<"cancel">>, Url).
 
--spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), string()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
+-spec handle_resp(kz_http:ret(), kz_json:object(), kz_term:ne_binary(), string()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 handle_resp({'ok', 200, _, Resp}, _, _, _) ->
     RespJObj = kz_json:decode(Resp),
     case kz_json:get_ne_binary_value(<<"status">>, RespJObj) of
@@ -132,7 +132,7 @@ handle_resp({'ok', Code, _, Resp}, JObj, Type, Url) ->
               | kz_json:recursive_to_proplist(Data)
              ]),
     create_alert(Prop, JObj, Type),
-    {'error', Message};
+    {'error', {Code, Response}};
 handle_resp({'error', {'connect_failed', _}}, JObj, Type, Url) ->
     lager:error("connection failed to phonebook url ~s", [Url]),
     Prop = [{<<"error_message">>, <<"connection failed to phonebook">>}
