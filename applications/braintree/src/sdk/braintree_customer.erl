@@ -283,7 +283,6 @@ delete(CustomerId) ->
     #bt_customer{}.
 
 %% @equiv xml_to_record(Xml, "/customer")
-
 -spec xml_to_record(bt_xml()) -> customer().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").
@@ -319,8 +318,8 @@ xml_to_record(Xml, Base) ->
                                   || Subscription <- xmerl_xpath:string(SubscriptionPath, Xml)
                                  ]
                 }.
-%% @equiv record_to_xml(Customer, 'false')
 
+%% @equiv record_to_xml(Customer, 'false')
 -spec record_to_xml(customer()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Customer) ->
     record_to_xml(Customer, 'false').
