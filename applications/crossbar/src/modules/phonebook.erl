@@ -100,7 +100,7 @@ add_comment(JObj, AuthToken, Comment) ->
     Response = kz_http:put(Url, req_headers(AuthToken), kz_json:encode(Data)),
     handle_resp(Response, JObj, <<"comment">>, Url).
 
-%%TODO: implement support for this in phonebook
+%% implement support for this in phonebook
 %% -spec cancel_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | kz_json:object()}.
 %% cancel_port_in(JObj, AuthToken) ->
 %%     AccountId = kz_doc:account_id(JObj),
