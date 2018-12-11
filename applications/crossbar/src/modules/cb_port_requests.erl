@@ -399,7 +399,7 @@ handle_phonebook_error(Context, Code, Response) ->
                                       ]),
     Env = cb_context:resp_envelope(Ctx),
     Env1 = kz_json:set_values([{<<"passthrough">>, true}
-                              ,{<<"source">>, <<"phonebook">>}
+                              ,{<<"error_format">>, <<"phonebook">>}
                               ], Env),
     cb_context:set_resp_envelope(Ctx, Env1).
 
