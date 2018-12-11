@@ -724,7 +724,7 @@ has_no_expired_payment_tokens(Services, _Options) ->
         [] ->
             {'false', <<"default payment tokens are expired">>};
         _NotExpired ->
-            {'true', <<"has not expired default payment tokens">>}
+            'not_applicable'
     end.
 
 -spec has_good_balance(services(), good_standing_options()) -> good_funs_ret().
@@ -736,16 +736,23 @@ has_good_balance(Services, #{amount := Amount}=Options) ->
     has_good_balance(Balance, Amount, IsPostPay, MaxPostPay).
 
 -spec has_good_balance(kz_currency:units(), kz_currency:units(), boolean(), kz_currency:units()) -> good_funs_ret().
-has_good_balance(Balance, Amount, 'false', _) when (Balance + Amount) > 0 ->
+has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) > 0 ->
     {'true', <<"has positive balance">>};
-has_good_balance(Balance, Amount, 'false', _) when (Balance + Amount) =< 0 ->
-    {'false', <<"has negative balance">>};
+has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) =< 0 ->
+    Msg = io_lib:format("has negative balance, curr_balance: ~b amount: ~b proposed_balance: ~b"
+                       ,[Balance, Amount, Balance - Amount]
+                       ),
+    {'false', kz_term:to_binary(Msg)};
 has_good_balance(Balance, Amount, 'true', MaxPostPay) ->
-    case (Balance + Amount) > MaxPostPay of
+    case (Balance - Amount) > MaxPostPay of
         'true' ->
             {'true', <<"has enough postpay balance">>};
         'false' ->
-            {'false', <<"has exceed the maximum postpay amount">>}
+            Msg = io_lib:format("has exceed the maximum postpay amount,"
+                                " curr_balance: ~b amount: ~b max_postpay: ~b proposed_balance: ~b"
+                               ,[Balance, Amount, MaxPostPay, Balance - Amount]
+                               ),
+            {'false', kz_term:to_binary(Msg)}
     end.
 
 -spec maybe_fetch_limits_options(services(), good_standing_options()) -> good_standing_options().
