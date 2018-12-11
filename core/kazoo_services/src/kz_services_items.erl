@@ -213,21 +213,24 @@ annotate(CurrentItems, [ProposedItem|ProposedItems], Reason, Items) ->
     end.
 
 -spec maybe_annotate(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary(), kz_services_item:item()) -> kz_services_item:item().
-maybe_annotate(_Type, [], _Reason, Item) -> Item;
 maybe_annotate(Type, Difference, Reason, Item) ->
-    lager:debug("update ~s the item ~s/~s"
-               ,[Type
-                ,kz_services_item:category_name(Item)
-                ,kz_services_item:item_name(Item)
-                ]
-               ),
-    Changes = props:filter_empty(
-                [{<<"type">>, Type}
-                ,{<<"reason">>, Reason}
-                ,{<<"difference">>, Difference}
-                ]
-               ),
-    kz_services_item:set_changes(Item, kz_json:from_list(Changes)).
+    case kz_json:is_empty(Difference) of
+        'true' -> Item;
+        'false' ->
+            lager:debug("update ~s the item ~s/~s"
+                       ,[Type
+                        ,kz_services_item:category_name(Item)
+                        ,kz_services_item:item_name(Item)
+                        ]
+                       ),
+            Changes = props:filter_empty(
+                        [{<<"type">>, Type}
+                        ,{<<"reason">>, Reason}
+                        ,{<<"difference">>, Difference}
+                        ]
+                       ),
+            kz_services_item:set_changes(Item, kz_json:from_list(Changes))
+        end.
 
 -type api_item() :: kz_serivces_item:item() | 'undefined'.
 -spec split_items(items(), kz_services_item:item()) -> {api_item(), items()}.
