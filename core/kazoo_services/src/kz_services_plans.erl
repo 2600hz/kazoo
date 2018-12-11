@@ -148,8 +148,8 @@ get_object_plans(Services, FetchContext) ->
 -spec build_object_plan(kz_services:services(), fetch_context(), kz_json:objects()) -> fetch_context().
 build_object_plan(Services, FetchContext, ObjectPlans) ->
     Props = [{PlanId, kz_json:get_value([<<"value">>, PlanId], ObjectPlan)}
-             || ObjectPlan <- ObjectPlans
-                    ,PlanId <- kz_json:get_keys(<<"value">>, ObjectPlan)
+             || ObjectPlan <- ObjectPlans,
+                PlanId <- kz_json:get_keys(<<"value">>, ObjectPlan)
             ],
     lists:foldl(get_object_plans_fold(Services)
                ,FetchContext
