@@ -247,9 +247,14 @@ migrate_service_plans() ->
 migrate_service_plans(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     ViewOptions = ['include_docs'],
-    {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/plans">>, ViewOptions),
-    io:format("verifying ~p service plans have been migrated~n", [length(JObjs)]),
-    migrate_service_plans(AccountDb, [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]).
+    case kz_datamgr:get_results(AccountDb, <<"services/plans">>, ViewOptions) of
+        {'ok', JObjs} ->
+            io:format("verifying ~p service plans have been migrated~n", [length(JObjs)]),
+            migrate_service_plans(AccountDb, [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]);
+        _Else ->
+            lager:error("encountered issue when querying the services/plans view: ~p", [_Else]),
+            'no_return'
+    end.
 
 -spec migrate_service_plans(kz_term:ne_binary(), kz_json:objects()) -> 'no_return'.
 migrate_service_plans(_AccountDb, []) -> 'no_return';
