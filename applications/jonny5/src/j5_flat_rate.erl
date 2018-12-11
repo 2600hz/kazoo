@@ -22,7 +22,10 @@
 %%------------------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
-    authorize(Request, Limits, kz_services:is_good_standing_fold(j5_limits:account_id(Limits))).
+    Options = #{allow_postpay => j5_limits:allow_postpay(Limits)
+               ,max_postpay_amount => j5_limits:max_postpay(Limits)
+               },
+    authorize(Request, Limits, kz_services:is_good_standing(j5_limits:account_id(Limits), Options)).
 
 -spec authorize(j5_request:request(), j5_limits:limits(), boolean()) -> j5_request:request().
 authorize(Request, Limits, 'false') ->
