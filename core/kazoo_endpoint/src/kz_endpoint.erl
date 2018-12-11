@@ -1171,7 +1171,7 @@ maybe_get_t38(Endpoint, Call) ->
         'false' -> [];
         'true' ->
             kapps_call_command:get_inbound_t38_settings(Opt
-                                                       ,kz_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
+                                                       ,kz_json:is_true([<<"media">>, <<"fax_option">>], Endpoint)
                                                        )
     end.
 
