@@ -659,7 +659,7 @@ run_services(T=#{todo := Numbers}) ->
     catch
         'throw':{'error', 'not_enough_credit', AccountId, Units} ->
             Reason = knm_errors:to_json('not_enough_credit', AccountId, Units),
-            ko(Nums, Reason, T)
+            ko(Numbers, Reason, T)
     end.
 
 -spec run_services(kz_term:ne_binaries(), kz_json:object(), kz_services:services()) -> 'ok'.
