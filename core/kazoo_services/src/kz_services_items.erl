@@ -10,8 +10,14 @@
 -export([foldl/3]).
 
 -export([public_json/1]).
+
+-export([changes/1]).
 -export([has_changes/1]).
 -export([has_additions/1]).
+-export([additions/1]).
+-export([has_billable_additions/1]).
+-export([billable_additions/1]).
+
 -export([reset/1]).
 
 -export([annotate/2
@@ -111,7 +117,18 @@ public_json(Items) ->
 %%------------------------------------------------------------------------------
 -spec has_changes(items()) -> boolean().
 has_changes(Items) ->
-    lists:any(fun kz_services_item:has_changes/1, Items).
+    changes(Items) =/= [].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec changes(items()) -> items().
+changes(Items) ->
+    [Item
+     || Item <- Items,
+        kz_services_item:has_changes(Item)
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -119,7 +136,37 @@ has_changes(Items) ->
 %%------------------------------------------------------------------------------
 -spec has_additions(items()) -> boolean().
 has_additions(Items) ->
-    lists:any(fun kz_services_item:has_additions/1, Items).
+    additions(Items) =/= [].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec additions(items()) -> items().
+additions(Items) ->
+    [Item
+     || Item <- Items,
+        kz_services_item:has_additions(Item)
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_billable_additions(items()) -> boolean().
+has_billable_additions(Items) ->
+    billable_additions(Items) =/= [].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec billable_additions(items()) -> items().
+billable_additions(Items) ->
+    [Item
+     || Item <- Items,
+        kz_services_item:has_billable_additions(Item)
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -165,7 +212,7 @@ annotate(CurrentItems, [ProposedItem|ProposedItems], Reason, Items) ->
             annotate(RemainingCurrentItems, ProposedItems, Reason, [Item|Items])
     end.
 
--spec maybe_annotate(kz_term:ne_binary(), kz_term:api_proplist(), kz_term:api_binary(), kz_services_item:item()) -> kz_services_item:item().
+-spec maybe_annotate(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary(), kz_services_item:item()) -> kz_services_item:item().
 maybe_annotate(_Type, [], _Reason, Item) -> Item;
 maybe_annotate(Type, Difference, Reason, Item) ->
     lager:debug("update ~s the item ~s/~s"
@@ -180,7 +227,7 @@ maybe_annotate(Type, Difference, Reason, Item) ->
                 ,{<<"difference">>, Difference}
                 ]
                ),
-    kz_services_item:set_changes(Item, Changes).
+    kz_services_item:set_changes(Item, kz_json:from_list(Changes)).
 
 -type api_item() :: kz_serivces_item:item() | 'undefined'.
 -spec split_items(items(), kz_services_item:item()) -> {api_item(), items()}.
@@ -206,19 +253,20 @@ split_items(Items, ProposedItem) ->
 %% @doc Compares two service items, returning the difference
 %% @end
 %%------------------------------------------------------------------------------
--spec difference(kz_services_item:item(), kz_services_item:item()) -> kz_term:proplist().
+-spec difference(kz_services_item:item(), kz_services_item:item()) -> kz_json:object().
 difference(Item1, Item2) ->
-    Routines = [{<<"category">>, fun difference_simple/2}
+    Routines = [{<<"activation_charge">>, fun difference_number/2}
+               ,{<<"billable">>, fun difference_number/2}
+               ,{<<"category">>, fun difference_simple/2}
+               ,{[<<"discounts">>, <<"cumulative">>, <<"quantity">>], fun difference_number/2}
+               ,{[<<"discounts">>, <<"cumulative">>, <<"rate">>], fun difference_number/2}
+               ,{[<<"discounts">>, <<"single">>, <<"rate">>], fun difference_number/2}
+               ,{<<"exceptions">>, fun difference_list/2}
                ,{<<"item">>, fun difference_simple/2}
+               ,{<<"minimum">>, fun difference_number/2}
                ,{<<"name">>, fun difference_simple/2}
                ,{<<"quantity">>, fun difference_number/2}
                ,{<<"rate">>, fun difference_number/2}
-               ,{<<"single_discount_rate">>, fun difference_number/2}
-               ,{<<"cumulative_discount">>, fun difference_number/2}
-               ,{<<"cumulative_discount_rate">>, fun difference_number/2}
-               ,{<<"activation_charge">>, fun difference_number/2}
-               ,{<<"minimum">>, fun difference_number/2}
-               ,{<<"exceptions">>, fun difference_list/2}
                ],
     difference(Item1, Item2, Routines).
 
@@ -226,18 +274,18 @@ difference(Item1, Item2) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec difference(kz_services_item:item(), kz_services_item:item(), difference_routines()) -> kz_term:proplist().
+-spec difference(kz_services_item:item(), kz_services_item:item(), difference_routines()) -> kz_json:object().
 difference(Item1, Item2, Routines) ->
     JObj1 = kz_services_item:public_json(Item1),
     JObj2 = kz_services_item:public_json(Item2),
-    lists:foldl(fun({Key, Fun}, Props) ->
+    lists:foldl(fun({Key, Fun}, JObj) ->
                         Value1 = kz_json:get_value(Key, JObj1),
                         Value2 = kz_json:get_value(Key, JObj2),
                         case Fun(Value1, Value2) of
-                            'undefined' -> Props;
-                            Difference -> [{Key, Difference} | Props]
+                            'undefined' -> JObj;
+                            Difference -> kz_json:set_value(Key, Difference, JObj)
                         end
-                end, [], Routines).
+                end, kz_json:new(), Routines).
 
 -spec difference_simple(any(), Value) -> 'undefined' | Value.
 difference_simple(Value, Value) -> 'undefined';

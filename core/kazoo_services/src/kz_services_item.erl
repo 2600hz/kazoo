@@ -64,6 +64,7 @@
 -export([reset/1]).
 -export([has_changes/1]).
 -export([has_additions/1]).
+-export([has_billable_additions/1]).
 
 -include("services.hrl").
 
@@ -80,7 +81,7 @@
                          ,minimum = 0 :: non_neg_integer()
                          ,exceptions = [] :: kz_term:ne_binaries()
                          ,taxes = kz_json:new() :: kz_json:object()
-                         ,changes = 'undefined' :: kz_term:api_ne_binaries()
+                         ,changes = 'undefined' :: kz_term:api_object()
                          ,item_plan = kz_json:new() :: kz_json:object()
                          ,masqueraded = 'false' :: boolean()
                          }).
@@ -315,14 +316,14 @@ set_exceptions(Item, Exceptions) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec changes(item()) -> kz_term:api_ne_binaries().
+-spec changes(item()) -> kz_term:api_object().
 changes(#kz_service_item{changes=Changes}) -> Changes.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_changes(item(), kz_term:ne_binaries()) -> item().
+-spec set_changes(item(), kz_term:api_object()) -> item().
 set_changes(Item, Changes) ->
     Item#kz_service_item{changes=Changes}.
 
@@ -494,11 +495,12 @@ log_item(Item) ->
     case billable_quantity(Item) > 0 of
         'false' -> Item;
         'true' ->
-            lager:debug("~p billable ~s/~s at ~p each with ~p discounts"
+            lager:debug("~p billable ~s/~s at ~p in ~.2f total amount with ~.2f total discounts"
                        ,[billable_quantity(Item)
                         ,category_name(Item)
                         ,item_name(Item)
                         ,rate(Item)
+                        ,calculate_total(Item)
                         ,calculate_discount_total(Item)
                         ]),
             Item
@@ -690,5 +692,18 @@ has_additions(Item) ->
         'undefined' -> 'false';
         Changes ->
             Key = [<<"difference">>, <<"quantity">>],
-            props:get_integer_value(Key, Changes, 0) > 0
+            kz_json:get_integer_value(Key, Changes, 0) > 0
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_billable_additions(item()) -> boolean().
+has_billable_additions(Item) ->
+    case changes(Item) of
+        'undefined' -> 'false';
+        Changes ->
+            Key = [<<"difference">>, <<"billable">>],
+            kz_json:get_integer_value(Key, Changes, 0) > 0
     end.

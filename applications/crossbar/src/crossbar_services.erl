@@ -35,13 +35,13 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
     Services = kz_services:fetch(AuthAccountId),
-    Services = kz_services:set_updates(Services
-                                      ,AccountId
-                                      ,CurrentJObj
-                                      ,ProposedJObj
-                                      ),
-    Quotes = kz_services_invoices:create(Services),
-    HasAdditions = kz_services_invoices:has_additions(Quotes),
+    Updated = kz_services:set_updates(Services
+                                     ,AccountId
+                                     ,CurrentJObj
+                                     ,ProposedJObj
+                                     ),
+    Quotes = kz_services_invoices:create(Updated),
+    HasAdditions = kz_services_invoices:has_billable_additions(Quotes),
     case should_dry_run(Context) of
         'true' -> dry_run(Context, Quotes, HasAdditions);
         'false' -> check_creditably(Context, Services, Quotes, HasAdditions)
@@ -65,18 +65,16 @@ should_dry_run(Context) ->
 check_creditably(Context, _Services, _Quotes, 'false') ->
     Context;
 check_creditably(Context, Services, Quotes, 'true') ->
-    Key = [<<"difference">>, <<"quantity">>],
+    Key = [<<"difference">>, <<"billable">>],
     Additions = [begin
                      Changes = kz_services_item:changes(Item),
-                     Quantity = props:get_integer_value(Key, Changes, 0),
+                     BillableQuantity = props:get_integer_value(Key, Changes, 0),
                      Rate = kz_services_item:rate(Item),
-                     Discounts = props:get_integer_value(<<"total">>, kz_services_item:discounts(Item), 0),
-                     %% TODO: Should we if the item is billable here (if there is a minimum quantity in service plans)? If yes, how?
-                     (Quantity * Rate) - Discounts
+                     BillableQuantity * Rate
                  end
-                 || Invoice <- kz_services_invoices:changed(Quotes),
+                 || Invoice <- kz_services_invoices:billable_additions(Quotes),
                     Item <- kz_services_invoice:items(Invoice),
-                    kz_services_item:has_additions(Item)
+                    kz_services_item:has_billable_additions(Item)
                 ],
     check_creditably(Context, Services, Quotes, lists:sum(Additions));
 check_creditably(Context, _Services, _Quotes, Amount) when Amount =< 0 ->
