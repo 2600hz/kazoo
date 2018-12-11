@@ -653,12 +653,20 @@ update_services(T=#{todo := Numbers, options := Options}) ->
 run_services(T=#{todo := Numbers}) ->
     Updates = services_group_numbers(Numbers),
     AccountIds = kz_json:get_keys(Updates),
-    _ = run_services(AccountIds, Updates),
-    ok(Numbers, T).
+    try run_services(AccountIds, Updates, []) of
+        'ok' ->
+            ok(Numbers, T)
+    catch
+        'throw':{'error', 'not_enough_credit', AccountId, Units} ->
+            Reason = knm_errors:to_json('not_enough_credit', AccountId, Units),
+            ko(Nums, Reason, T)
+    end.
 
--spec run_services(kz_term:ne_binaries(), kz_json:object()) -> 'ok'.
-run_services([], _Updates) -> 'ok';
-run_services([AccountId|AccountIds], Updates) ->
+-spec run_services(kz_term:ne_binaries(), kz_json:object(), kz_services:services()) -> 'ok'.
+run_services([], _Updates, UpdatedServicesAcc) ->
+    _ = [kz_services:commit(UpdatedServices) || UpdatedServices <- lists:reverse(UpdatedServicesAcc)],
+    'ok';
+run_services([AccountId|AccountIds], Updates, UpdatedServicesAcc) ->
     CurrentJObjs = kz_json:get_value([AccountId, <<"current">>], Updates),
     ProposedJObjs = kz_json:get_value([AccountId, <<"proposed">>], Updates),
     Services = kz_services:fetch(AccountId),
@@ -667,8 +675,38 @@ run_services([AccountId|AccountIds], Updates) ->
                                              ,CurrentJObjs
                                              ,ProposedJObjs
                                              ),
-    _ = kz_services:commit(UpdatedServices),
-    run_services(AccountIds, Updates).
+    Quotes = kz_services_invoices:create(UpdatedServices),
+    HasAdditions = kz_services_invoices:has_billable_additions(Quotes),
+    check_creditably(Services, Quotes, HasAdditions),
+    run_services(AccountIds, Updates, [UpdatedServices | UpdatedServicesAcc]).
+
+-spec check_creditably(kz_services:services(), kz_services_invoices:invoices(), boolean()) -> 'ok'.
+check_creditably(_Services, _Quotes, 'false') ->
+    'ok';
+check_creditably(Services, Quotes, 'true') ->
+    Key = [<<"difference">>, <<"billable">>],
+    Additions = [begin
+                     Changes = kz_services_item:changes(Item),
+                     BillableQuantity = props:get_integer_value(Key, Changes, 0),
+                     Rate = kz_services_item:rate(Item),
+                     BillableQuantity * Rate
+                 end
+                 || Invoice <- kz_services_invoices:billable_additions(Quotes),
+                    Item <- kz_services_invoice:items(Invoice),
+                    kz_services_item:has_billable_additions(Item)
+                ],
+    check_creditably(Services, Quotes, lists:sum(Additions));
+check_creditably(_Services, _Quotes, Amount) when Amount =< 0 ->
+    'ok';
+check_creditably(Services, _Quotes, Amount) ->
+    Options = #{amount => kz_currency:dollars_to_units(Amount)},
+    case kz_services:is_good_standing(Services, Options) of
+        'true' -> 'ok';
+        'false' ->
+            knm_errors:not_enough_credit(kz_services:account_id(Services)
+                                        ,kz_currency:dollars_to_units(Amount)
+                                        )
+    end.
 
 -spec maybe_dry_run_services(collection()) -> collection().
 maybe_dry_run_services(T=#{todo := Numbers, options := Options}) ->
