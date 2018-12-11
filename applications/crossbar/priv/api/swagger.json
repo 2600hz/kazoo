@@ -4963,7 +4963,6 @@
                     "description": "Provision data",
                     "properties": {
                         "combo_keys": {
-                            "description": "Feature Keys",
                             "type": "object"
                         },
                         "endpoint_brand": {
@@ -4982,7 +4981,6 @@
                             ]
                         },
                         "feature_keys": {
-                            "description": "Feature Keys",
                             "type": "object"
                         }
                     },
@@ -5118,6 +5116,115 @@
                 "name"
             ],
             "type": "object"
+        },
+        "devices.combo_key": {
+            "description": "Device provisioner Combo/Feature Key",
+            "oneOf": [
+                {
+                    "properties": {
+                        "type": {
+                            "description": "Feature key type",
+                            "enum": [
+                                "parking"
+                            ],
+                            "type": "string"
+                        },
+                        "value": {
+                            "description": "Feature key value",
+                            "oneOf": [
+                                {
+                                    "maximum": 10,
+                                    "minimum": 1,
+                                    "type": "integer"
+                                },
+                                {
+                                    "enum": [
+                                        "1",
+                                        "2",
+                                        "3",
+                                        "4",
+                                        "5",
+                                        "6",
+                                        "7",
+                                        "8",
+                                        "9",
+                                        "10"
+                                    ],
+                                    "type": "string"
+                                },
+                                {
+                                    "properties": {
+                                        "label": {
+                                            "description": "Label to display for Feature key",
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "Feature key value",
+                                            "maximum": 10,
+                                            "minimum": 1,
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "label",
+                                        "value"
+                                    ],
+                                    "type": "object"
+                                }
+                            ]
+                        }
+                    },
+                    "required": [
+                        "type"
+                    ]
+                },
+                {
+                    "properties": {
+                        "type": {
+                            "description": "Feature key type",
+                            "enum": [
+                                "line",
+                                "presence",
+                                "personal_parking",
+                                "speed_dial"
+                            ],
+                            "type": "string"
+                        },
+                        "value": {
+                            "description": "Feature key value",
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "properties": {
+                                        "label": {
+                                            "description": "Label to display for Feature key",
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "Feature key value",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "label",
+                                        "value"
+                                    ],
+                                    "type": "object"
+                                }
+                            ]
+                        }
+                    },
+                    "required": [
+                        "type"
+                    ]
+                }
+            ],
+            "type": [
+                "object",
+                "null"
+            ]
         },
         "devices_notify": {
             "description": "Schema for Crossbar devices notify API",
