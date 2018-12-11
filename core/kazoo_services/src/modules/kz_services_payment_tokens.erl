@@ -22,12 +22,12 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_services:services() | kz_term:ne_binary()) ->  kz_json:objects().
+-spec fetch(kz_services:services() | kz_term:ne_binary()) ->  kz_json:object().
 fetch(?NE_BINARY = AccountId) ->
     fetch(kz_services:fetch(AccountId));
 fetch(Services) ->
     ServicesJObj = kz_services:services_jobj(Services),
-    kzd_services:payment_token(ServicesJObj, []).
+    kzd_services:payment_tokens(ServicesJObj, kz_json:new()).
 
 -spec fetch(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) ->  kz_json:objects().
 fetch(Thing, ?NE_BINARY = Bookkeeper) ->
