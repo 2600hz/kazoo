@@ -252,7 +252,7 @@ changes_props(_, <<"created">>, Quantity) ->
     ];
 changes_props(ItemJObj, <<"modified">>, _) ->
     Changes = kz_json:get_json_value(<<"changes">>, ItemJObj),
-    DiffQuantity = kz_json:get_integer_value([<<"difference">>, <<"quantity">>], Changes),
+    DiffQuantity = kz_json:get_integer_value([<<"difference">>, <<"quantity">>], Changes, 0),
     Quantity = erlang:abs(DiffQuantity),
     case DiffQuantity > 0 of
         'true' ->
