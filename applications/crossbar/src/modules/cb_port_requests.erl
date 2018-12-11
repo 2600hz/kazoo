@@ -392,11 +392,16 @@ patch(Context, Id, NewState=?PORT_CANCELED) ->
 
 -spec handle_phonebook_error(cb_context:context(), integer(), kz_json:object()) -> cb_context:context().
 handle_phonebook_error(Context, Code, Response) ->
-    cb_context:setters(Context, [{fun cb_context:set_resp_error_code/2, Code}
-                                ,{fun cb_context:set_resp_status/2, 'error'}
-                                ,{fun cb_context:set_resp_error_msg/2, kz_json:get_ne_binary_value(<<"message">>, Response)}
-                                ,{fun cb_context:set_validation_errors/2, kz_json:get_value(<<"data">>, Response)}
-                                ]).
+    Ctx = cb_context:setters(Context, [{fun cb_context:set_resp_error_code/2, Code}
+                                      ,{fun cb_context:set_resp_status/2, 'error'}
+                                      ,{fun cb_context:set_resp_error_msg/2, kz_json:get_ne_binary_value(<<"message">>, Response)}
+                                      ,{fun cb_context:set_validation_errors/2, kz_json:get_value(<<"data">>, Response)}
+                                      ]),
+    Env = cb_context:resp_envelope(Ctx),
+    Env1 = kz_json:set_values([{<<"passthrough">>, true}
+                              ,{<<"source">>, <<"phonebook">>}
+                              ], Env),
+    cb_context:set_resp_envelope(Ctx, Env1).
 
 -spec handle_phonebook_response(cb_context:context(), kz_json:object()) -> cb_context:context().
 handle_phonebook_response(Context, Response) ->
