@@ -28,6 +28,7 @@
 -export([create/3]).
 -export([has_changes/1]).
 -export([has_additions/1]).
+-export([has_billable_additions/1]).
 
 -include("services.hrl").
 
@@ -229,3 +230,11 @@ has_changes(#invoice{items=Items}) ->
 -spec has_additions(invoice()) -> boolean().
 has_additions(#invoice{items=Items}) ->
     kz_services_items:has_additions(Items).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_billable_additions(invoice()) -> boolean().
+has_billable_additions(#invoice{items=Items}) ->
+    kz_services_items:has_billable_additions(Items).
