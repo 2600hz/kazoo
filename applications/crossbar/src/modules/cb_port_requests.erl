@@ -390,7 +390,7 @@ patch(Context, Id, NewState=?PORT_CANCELED) ->
             cb_context:add_system_error('datastore_fault', Message, Context)
     end.
 
--spec handle_detailed_error(cb_context:context(), integer(), kz_json:object()) -> cb_context:context().
+-spec handle_phonebook_error(cb_context:context(), integer(), kz_json:object()) -> cb_context:context().
 handle_phonebook_error(Context, Code, Response) ->
     cb_context:setters(Context, [{fun cb_context:set_resp_error_code/2, Code}
                                 ,{fun cb_context:set_resp_status/2, 'error'}
@@ -487,8 +487,10 @@ maybe_post_save(Context, Id, Comments) ->
                 _ ->
                     Context1
             end;
-        {'error', _} ->
-            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
+        {'error', {Code, Response}} ->
+            handle_phonebook_error(Context, Code, Response);
+        {'error', Message} ->
+            cb_context:add_system_error('datastore_fault', Message, Context)
     end.
 
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
@@ -515,8 +517,10 @@ delete(Context, _Id) ->
     case phonebook:maybe_cancel_port_in(Context) of
         {'ok', _} ->
             crossbar_doc:delete(Context);
-        {'error', _} ->
-            cb_context:add_system_error('datastore_fault', <<"unable to cancel port request from carrier">>, Context)
+        {'error', {Code, Response}} ->
+            handle_phonebook_error(Context, Code, Response);
+        {'error', Message} ->
+            cb_context:add_system_error('datastore_fault', Message, Context)
     end.
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
