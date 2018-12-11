@@ -711,7 +711,7 @@ no_plan_is_good(Services, _Options) ->
 
 -spec has_no_expired_payment_tokens(services(), good_standing_options()) -> good_funs_ret().
 has_no_expired_payment_tokens(Services, _Options) ->
-    DefaultTokens = kz_services_payment_tokens:defaults(Services),
+    DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
     Now = kz_time:now_s(),
     case DefaultTokens =/= []
          andalso [T || T <- DefaultTokens,
