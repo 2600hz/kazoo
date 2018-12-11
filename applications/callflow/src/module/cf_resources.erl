@@ -147,6 +147,7 @@ get_channel_vars(Call) ->
                  ,fun maybe_require_ignore_early_media/2
                  ,fun maybe_require_single_fail/2
                  ,fun maybe_set_bridge_generate_comfort_noise/2
+                 ,fun maybe_call_forward/2
                  ],
     CCVs = lists:foldl(fun(F, Acc) -> F(Call, Acc) end
                       ,[]
@@ -166,6 +167,17 @@ maybe_require_ignore_early_media(Call, Acc) ->
 -spec maybe_require_single_fail(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
 maybe_require_single_fail(Call, Acc) ->
     [{<<"Require-Fail-On-Single-Reject">>, kapps_call:custom_channel_var(<<"Require-Fail-On-Single-Reject">>, Call)} | Acc].
+
+-spec maybe_call_forward(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
+maybe_call_forward(Call, Acc) ->
+    case kapps_call:is_call_forward(Call) of
+        'true' -> [{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+                  ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
+                  ,{<<"Application-Other-Leg-UUID">>, kapps_call:custom_channel_var(<<"Call-Forward-For-UUID">>, Call)}
+                   | Acc
+                  ];
+        'false' -> Acc
+    end.
 
 -spec get_bypass_e164(kz_json:object()) -> boolean().
 get_bypass_e164(Data) ->
