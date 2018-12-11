@@ -158,7 +158,7 @@ to_json(Reason='invalid', _, Cause) ->
 to_json('by_carrier', Num, {_Carrier,_Cause}) ->
     lager:error("carrier ~s fault: ~p", [_Carrier, _Cause]),
     build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);
-to_json('not_enough_credit', _AccountId, Units) ->
+to_json('not_enough_credit', AccountId, Units) ->
     Message = io_lib:format("account doesn't have enough credit ~p to perform the operation"
                            ,[Units]
                            ),
