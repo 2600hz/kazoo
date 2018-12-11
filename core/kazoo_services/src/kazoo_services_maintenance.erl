@@ -251,8 +251,18 @@ migrate_service_plans(Account) ->
         {'ok', JObjs} ->
             io:format("verifying ~p service plans have been migrated~n", [length(JObjs)]),
             migrate_service_plans(AccountDb, [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]);
+        {'error', 'not_found'} ->
+            case kz_datamgr:db_exists(AccountDb) of
+                'true' ->
+                    ?SUP_LOG_INFO("view is missing for account: ~s, creating view and trying again", [Account]),
+                    register_views(),
+                    _ = kapps_maintenance:refresh(Account),
+                    migrate_service_plans(Account);
+                'false' ->
+                    ?SUP_LOG_ERROR("error migrating the services/plans for account ~s error: database not_found", [Account])
+            end;
         _Else ->
-            lager:error("encountered issue when querying the services/plans view: ~p", [_Else]),
+            ?SUP_LOG_ERROR("error migrating the services/plans for account ~s error: ~p", [Account, _Else]),
             'no_return'
     end.
 
