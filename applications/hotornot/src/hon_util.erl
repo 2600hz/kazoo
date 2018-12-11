@@ -131,7 +131,7 @@ account_ratedeck('undefined', <<_/binary>> = RatedeckId) ->
     lager:info("using supplied ratedeck ~s", [RatedeckId]),
     kzd_ratedeck:format_ratedeck_db(RatedeckId);
 account_ratedeck(AccountId, _RatedeckId) ->
-    case kz_services:ratedeck_id(kz_services:fetch(AccountId)) of
+    case kz_services_ratedecks:id(AccountId) of
         'undefined' ->
             lager:debug("failed to find account ~s ratedeck, checking reseller", [AccountId]),
             reseller_ratedeck(AccountId, kz_services_reseller:get_id(AccountId));
@@ -148,7 +148,7 @@ reseller_ratedeck(ResellerId, ResellerId) ->
     lager:debug("account ~s is own reseller, using system setting", [ResellerId]),
     hotornot_config:default_ratedeck();
 reseller_ratedeck(_AccountId, ResellerId) ->
-    case kz_services:ratedeck_id(kz_services:fetch(ResellerId)) of
+    case kz_services_ratedecks:id(ResellerId) of
         'undefined' ->
             lager:debug("failed to find reseller ~s ratedeck, using default", [_AccountId]),
             hotornot_config:default_ratedeck();
@@ -243,7 +243,7 @@ matching_rate(Rate, <<"caller_id_numbers">>, RateReq) ->
 
 matching_rate(Rate, <<"ratedeck_id">>, RateReq) ->
     AccountId = kapi_rate:account_id(RateReq),
-    AccountRatedeck = kz_services:ratedeck_name(kz_services:fetch(AccountId)),
+    AccountRatedeck = kz_services_ratedecks:name(AccountId),
     RatedeckName = kzd_rates:ratedeck_id(Rate),
     AccountRatedeck =:= RatedeckName;
 
