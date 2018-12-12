@@ -703,7 +703,7 @@ is_good_standing_fold(Services, Options, [Fun | Funs]) ->
                          'not_applicable'.
 -spec no_plan_is_good(services(), good_standing_options()) -> good_funs_ret().
 no_plan_is_good(Services, _Options) ->
-    case dict:is_empty(plans(Services)) of
+    case kz_services_plans:is_empty(plans(Services)) of
         'true' ->
             {'true', <<"has no plans assigned">>};
         'false' -> 'not_applicable'
