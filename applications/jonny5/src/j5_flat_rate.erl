@@ -22,7 +22,19 @@
 %%------------------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
-    case eligible_for_flat_rate(Request) of
+    Options = #{allow_postpay => j5_limits:allow_postpay(Limits)
+               ,max_postpay_amount => j5_limits:max_postpay(Limits)
+               },
+    authorize(Request, Limits, kz_services:is_good_standing(j5_limits:account_id(Limits), Options)).
+
+-spec authorize(j5_request:request(), j5_limits:limits(), boolean()) -> j5_request:request().
+authorize(Request, Limits, 'false') ->
+    lager:debug("account ~s does not have enough credit for flat rate trunks"
+               ,[j5_limits:account_id(Limits)]
+               ),
+    Request;
+authorize(Request, Limits, 'true') ->
+    case is_number_eligible_for_flat_rate(Request) of
         'true' ->
             lager:debug("checking if account ~s has available flat rate trunks"
                        ,[j5_limits:account_id(Limits)]
@@ -46,8 +58,8 @@ reconcile_cdr(_, _) -> 'ok'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec eligible_for_flat_rate(j5_request:request()) -> boolean().
-eligible_for_flat_rate(Request) ->
+-spec is_number_eligible_for_flat_rate(j5_request:request()) -> boolean().
+is_number_eligible_for_flat_rate(Request) ->
     Number = knm_converters:normalize(j5_request:number(Request)),
     {TrunkWhitelist, TrunkBlacklist} = maybe_get_resource_flat_rate(Request),
     lager:debug("using whitelist: ~p for flat rate check", [TrunkWhitelist]),

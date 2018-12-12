@@ -3,9 +3,17 @@
     "_id": "system_config.jonny5",
     "description": "Schema for jonny5 system_config",
     "properties": {
+        "default_allow_postpay": {
+            "description": "jonny5 default_allow_postpay",
+            "type": "boolean"
+        },
         "default_inbound_trunks": {
             "description": "jonny5 default inbound trunks",
             "type": "integer"
+        },
+        "default_max_postpay_amount": {
+            "description": "jonny5 default_max_postpay_amount",
+            "type": "number"
         },
         "default_twoway_trunks": {
             "description": "jonny5 default twoway trunks",
