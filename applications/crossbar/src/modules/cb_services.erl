@@ -73,7 +73,9 @@ authorize(Context, _Path) ->
 is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?EDITABLE]}]) ->
     'true';
 is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?QUOTE]}]) ->
-    'true'.
+    'true';
+is_authorized(_Context, _, _) ->
+    'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
