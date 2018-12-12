@@ -22,40 +22,43 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_services:services() | kz_term:ne_binary()) ->  kz_json:objects().
+-spec fetch(kz_services:services() | kz_term:ne_binary()) ->  kz_json:object().
 fetch(?NE_BINARY = AccountId) ->
     fetch(kz_services:fetch(AccountId));
 fetch(Services) ->
     ServicesJObj = kz_services:services_jobj(Services),
-    kzd_services:payment_token(ServicesJObj, []).
+    kzd_services:payment_tokens(ServicesJObj, kz_json:new()).
 
--spec fetch(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) ->  kz_json:objects().
+-spec fetch(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) ->  kz_json:object().
 fetch(Thing, ?NE_BINARY = Bookkeeper) ->
-    [Token
-     || Token <- fetch(Thing),
-        Bookkeeper =:= kz_json:get_ne_binary_value(<<"bookkeeper">>, Token)
-    ].
+    kz_json:filter(fun({_TokenId, Token}) ->
+                           Bookkeeper =/= kz_json:get_ne_binary_value(<<"bookkeeper">>, Token)
+                   end
+                  ,fetch(Thing)
+                  ).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec defaults(kz_services:services() | kz_term:ne_binary()) ->  kz_json:objects().
+-spec defaults(kz_services:services() | kz_term:ne_binary()) ->  kz_json:object().
 defaults(Thing) ->
-    [Token
-     || Token <- fetch(Thing),
-        kz_json:is_true(<<"default">>, Token)
-    ].
+    kz_json:filter(fun({_TokenId, Token}) ->
+                           kz_json:is_true(<<"default">>, Token)
+                   end
+                  ,fetch(Thing)
+                  ).
 
 -spec default(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
 default(Thing, Bookkeeper) ->
-    case [Token
-          || Token <- fetch(Thing, Bookkeeper),
-             kz_json:is_true(<<"default">>, Token)
-         ]
-    of
-        [First|_] -> First;
-        _Else -> 'undefined'
+    Pays = kz_json:filter(fun({_TokenId, Token}) ->
+                                  kz_json:is_true(<<"default">>, Token)
+                          end
+                         ,fetch(Thing, Bookkeeper)
+                         ),
+    case kz_json:is_empty(Pays) of
+        'true' -> 'undefined';
+        'false' -> Pays
     end.
 
 %%------------------------------------------------------------------------------
