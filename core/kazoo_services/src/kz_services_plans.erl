@@ -508,4 +508,3 @@ get_ui_apps(ResellerId) ->
 -spec is_empty(plans()) -> boolean().
 is_empty(Plans) ->
     dict:is_empty(Plans).
-    
