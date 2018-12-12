@@ -23,6 +23,8 @@
         ,editable_fields/1
         ]).
 
+-export([is_empty/1]).
+
 -include("services.hrl").
 
 -opaque plans() :: dict:dict().
@@ -498,3 +500,11 @@ get_ui_apps(ResellerId) ->
             lager:debug("failed to read master's app_store: ~p", [_Reason]),
             [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}]
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_empty(plans()) -> boolean().
+is_empty(Plans) ->
+    dict:is_empty(Plans).

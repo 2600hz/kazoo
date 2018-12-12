@@ -14,6 +14,8 @@
 -export([changed/1]).
 -export([has_additions/1]).
 -export([additions/1]).
+-export([has_billable_additions/1]).
+-export([billable_additions/1]).
 
 -include("services.hrl").
 
@@ -187,6 +189,26 @@ additions(Thing) ->
     [Invoice
      || Invoice <- Invoices
             ,kz_services_invoice:has_additions(Invoice)
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_billable_additions(kz_services:services() | invoices()) -> boolean().
+has_billable_additions(Thing) ->
+    billable_additions(Thing) =/= [].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec billable_additions(kz_services:services() | invoices()) -> invoices().
+billable_additions(Thing) ->
+    Invoices = maybe_services(Thing),
+    [Invoice
+     || Invoice <- Invoices,
+        kz_services_invoice:has_billable_additions(Invoice)
     ].
 
 %%------------------------------------------------------------------------------
