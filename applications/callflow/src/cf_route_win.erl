@@ -268,6 +268,7 @@ update_ccvs(Call) ->
               [{<<"Hold-Media">>, kz_attributes:moh_attributes(<<"media_id">>, Call)}
               ,{<<"Caller-ID-Name">>, CIDName}
               ,{<<"Caller-ID-Number">>, CIDNumber}
+              ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
                | get_incoming_security(Call)
               ]),
     kapps_call:set_custom_channel_vars(Props, Call).
