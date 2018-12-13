@@ -326,43 +326,70 @@ check_port_suspended_message(_) ->
     <<"The port request requires you attention to continue.">>.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Return a low_balance alert when any of the following scenarios is met:
+%% - If threshold is configured then create an alert if their balance is below that amount.
+%% - If not threshold configured and post pay is not enabled create an alert if their
+%%   balance is less than or equal to 0.
+%% - If not threshold configured and post pay is enabled create an alert if their balance
+%%   is less than or equal to the maximum post pay amount.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_low_balance(cb_context:context()) -> cb_context:context().
 check_low_balance(Context) ->
     AccountId = cb_context:account_id(Context),
-    ThresholdDollars = kzd_accounts:low_balance_threshold(AccountId),
-    case kz_currency:available_dollars(AccountId) of
-        {'error', _R} ->
-            lager:debug("unable to get current balance: ~p", [_R]),
-            Context;
-        {'ok', AvailableDollars} when AvailableDollars >= ThresholdDollars ->
-            Context;
-        {'ok', AvailableDollars} ->
-            Metadata = kz_json:from_list(
-                         [{<<"available">>, AvailableDollars}
-                         ,{<<"threshold">>, ThresholdDollars}
-                         ]
-                        ),
-            From = kz_json:from_list(
-                     [{<<"type">>, <<"account">>}
-                     ,{<<"value">>, AccountId}
+    AvailableDollars = kz_currency:available_dollars(AccountId),
+    ThresholdDollars = kzd_accounts:low_balance_threshold(AccountId, 'undefined'),
+    check_low_balance(Context, AvailableDollars, ThresholdDollars).
+
+-spec check_low_balance(cb_context:context(), kz_currency:available_dollars_return(), float() | 'undefined') ->
+                                  cb_context:context().
+check_low_balance(Context, {'error', _R}, _Threshold) ->
+    lager:debug("unable to get current balance: ~p", [_R]),
+    Context;
+check_low_balance(Context, {'ok', AvailableDollars}, 'undefined' = Threshold) ->
+    Limits = kz_services_limits:fetch(cb_context:account_id(Context)),
+    PostPayAmountUnits = kz_json:get_value(<<"pvt_max_postpay_amount">>, Limits, 0),
+    PostPayAmountDollars = kz_currency:units_to_dollars(PostPayAmountUnits),
+
+    case kz_json:get_value(<<"pvt_allow_postpay">>, Limits, 'false') of
+        'false' when AvailableDollars =< 0 ->
+            low_balance_alert(Context, AvailableDollars, Threshold);
+        'true' when AvailableDollars =< PostPayAmountDollars ->
+            low_balance_alert(Context, AvailableDollars, PostPayAmountDollars);
+        _ ->
+            %% Current balance is ok.
+            Context
+    end;
+check_low_balance(Context, {'ok', AvailableDollars}, ThresholdDollars)
+  when AvailableDollars < ThresholdDollars ->
+    low_balance_alert(Context, AvailableDollars, ThresholdDollars);
+check_low_balance(Context, {'ok', _AvailableDollars}, _ThresholdDollars) ->
+    Context.
+
+-spec low_balance_alert(cb_context:context(), float(), float() | 'undefined') -> cb_context:context().
+low_balance_alert(Context, AvailableDollars, ThresholdDollars) ->
+    AccountId = cb_context:account_id(Context),
+    Metadata = kz_json:from_list(
+                 [{<<"available">>, AvailableDollars}
+                 ,{<<"threshold">>, ThresholdDollars}
+                 ]
+                ),
+    From = kz_json:from_list(
+             [{<<"type">>, <<"account">>}
+             ,{<<"value">>, AccountId}
+             ]
+            ),
+    BalanceAlert = kz_json:from_list(
+                     [{<<"id">>, AccountId}
+                     ,{<<"title">>, <<"Balance below threshold">>}
+                     ,{<<"message">>, <<"Please add credit to your account to avoid service interruption.">>}
+                     ,{<<"metadata">>, Metadata}
+                     ,{<<"category">>, <<"low_balance">>}
+                     ,{<<"from">>, [From]}
+                     ,{<<"clearable">>, 'false'}
                      ]
                     ),
-            BalanceAlert = kz_json:from_list(
-                             [{<<"id">>, AccountId}
-                             ,{<<"title">>, <<"Balance below threshold">>}
-                             ,{<<"message">>, <<"Please add credit to your account to avoid service interruption.">>}
-                             ,{<<"metadata">>, Metadata}
-                             ,{<<"category">>, <<"low_balance">>}
-                             ,{<<"from">>, [From]}
-                             ,{<<"clearable">>, 'false'}
-                             ]
-                            ),
-            append_alert(Context, BalanceAlert)
-    end.
-
+    append_alert(Context, BalanceAlert).
 
 -spec check_payment_token(cb_context:context()) -> cb_context:context().
 check_payment_token(Context) ->

@@ -96,48 +96,134 @@ check_port_requests() ->
 check_low_balance() ->
     Context = cb_context:set_resp_data(cb_context:new(), []),
     ThresholdUSD = 5.0,
+    ThresholdNotConfigured = 'undefined',
+    PostPayAmountUnits = 20, %% expressed in units
+    PostPayAmountUSD = kz_currency:units_to_dollars(PostPayAmountUnits),
     Mod = 'kz_currency',
-    ToMeck = [Mod, 'kzd_accounts'],
+    ToMeck = [Mod, 'kzd_accounts', 'kz_services_limits'],
 
     lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
-    meck:expect('kzd_accounts', 'low_balance_threshold', fun(_) -> ThresholdUSD end),
-
-    %% error trying to get account's available dollars
     meck:expect(Mod, 'available_dollars', fun(_) -> {'error', 'reason'} end),
+    %% Limits with postpay disabled.
+    meck:expect('kz_services_limits', 'fetch', fun(_) -> limits() end),
+
+    %% error trying to get account's current balance and threshold configured
+    meck:expect('kzd_accounts', 'low_balance_threshold', fun(_, _) -> ThresholdUSD end),
     Context1 = cb_alerts:check_low_balance(Context),
 
-    %% available dollars == Threshold dollars
-    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD} end),
+    %% error trying to get account's current balance and threshold NOT configured
+    meck:expect('kzd_accounts',
+                'low_balance_threshold',
+                fun(_, _) -> ThresholdNotConfigured end),
     Context2 = cb_alerts:check_low_balance(Context),
 
-    %% available dollars > Threshold dollars
-    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD + 1.0} end),
+    %% Threshold NOT configured, PostPay DISABLED, and current balance = 1.
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', 1.0} end),
     Context3 = cb_alerts:check_low_balance(Context),
 
-    %% available dollars < Threshold dollars
-    AD = ThresholdUSD - 1.0,
-    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', AD} end),
+    %% Threshold NOT configured, PostPay DISABLED, and current balance = 0.
+    ZeroBalance = 0.0,
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ZeroBalance} end),
     Context4 = cb_alerts:check_low_balance(Context),
     [Alert1] = cb_context:resp_data(Context4),
+
+    %% Threshold NOT configured, PostPay DISABLED, and current balance < 0.
+    NegativeBalance = -1.0,
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', NegativeBalance} end),
+    Context5 = cb_alerts:check_low_balance(Context),
+    [Alert2] = cb_context:resp_data(Context5),
+
+    %% Threshold NOT configured, PostPay ENABLED and current balance < PostPayAmountUSD.
+    BelowPostPayAmountUSD = PostPayAmountUSD - 1.0,
+    meck:expect('kz_services_limits',
+                'fetch',
+                fun(_) -> limits_enabled_postpay(PostPayAmountUnits) end),
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', PostPayAmountUSD - 1.0} end),
+    Context6 = cb_alerts:check_low_balance(Context),
+    [Alert3] = cb_context:resp_data(Context6),
+
+    %% Threshold NOT configured, PostPay ENABLED and current balance = PostPayAmountUSD.
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', PostPayAmountUSD} end),
+    Context7 = cb_alerts:check_low_balance(Context),
+    [Alert4] = cb_context:resp_data(Context7),
+
+    %% Threshold NOT configured, PostPay ENABLED
+    %% and current balance > PostPayAmountUSD.
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', PostPayAmountUSD + 1.0} end),
+    Context8 = cb_alerts:check_low_balance(Context),
+
+    %% Configure threshold
+    meck:expect('kzd_accounts', 'low_balance_threshold', fun(_, _) -> ThresholdUSD end),
+
+    %% Threshold configured and current balance < threshold.
+    BelowThresholdUSD = ThresholdUSD - 1.0,
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', BelowThresholdUSD} end),
+    Context9 = cb_alerts:check_low_balance(Context),
+    [Alert5] = cb_context:resp_data(Context9),
+
+    %% Threshold configured and current balance = threshold.
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD} end),
+    Context10 = cb_alerts:check_low_balance(Context),
+
+    %% Threshold configured and current balance > threshold.
+    meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD + 1.0} end),
+    Context11 = cb_alerts:check_low_balance(Context),
 
     %% Unload mecked modules
     lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
 
-    [{"If getting account's available units fails the context should not change"
+    [{"If getting account's current balance fails the context should not change"
      ,?_assertEqual(Context1, Context)
      }
-    ,{"If available dollars == Threshold dollars the context should not change"
+    ,{"If getting account's current balance fails the context should not change"
      ,?_assertEqual(Context2, Context)
      }
-    ,{"If available dollars > Threshold dollars the context should not change"
+    ,{"If threshold not configured, postpay disabled, and current balance > 0 the context should not change"
      ,?_assertEqual(Context3, Context)
      }
-    ,{"When available dolars < Threshold dollars return alert"
-     ,?_assertEqual({AD, ThresholdUSD, <<"low_balance">>},
-                    {kz_json:get_value([<<"metadata">>, <<"available">>], Alert1)
-                    ,kz_json:get_value([<<"metadata">>, <<"threshold">>], Alert1)
+    ,{"If threshold not configured, postpay disabled, and current balance == 0 raise an alert"
+     ,?_assertEqual({ZeroBalance, ThresholdNotConfigured, <<"low_balance">>},
+                    {available_from_low_balance_alert(Alert1)
+                    ,threshold_from_low_balance_alert(Alert1)
                     ,category_from_alert(Alert1)
                     })
+     }
+    ,{"If threshold not configured, postpay disabled, and current balance < 0 raise an alert"
+     ,?_assertEqual({NegativeBalance, ThresholdNotConfigured, <<"low_balance">>},
+                    {available_from_low_balance_alert(Alert2)
+                    ,threshold_from_low_balance_alert(Alert2)
+                    ,category_from_alert(Alert2)
+                    })
+     }
+    ,{"If threshold not configured, postpay enabled, and current balance < PostPayAmountUSD raise an alert"
+     ,?_assertEqual({BelowPostPayAmountUSD, PostPayAmountUSD, <<"low_balance">>},
+                    {available_from_low_balance_alert(Alert3)
+                    ,threshold_from_low_balance_alert(Alert3)
+                    ,category_from_alert(Alert3)
+                    })
+     }
+    ,{"If threshold not configured, postpay enabled, and current balance == PostPayAmountUSD raise an alert"
+     ,?_assertEqual({PostPayAmountUSD, PostPayAmountUSD, <<"low_balance">>},
+                    {available_from_low_balance_alert(Alert4)
+                    ,threshold_from_low_balance_alert(Alert4)
+                    ,category_from_alert(Alert4)
+                    })
+     }
+    ,{"If threshold not configured, postpay enabled, and current balance > PostPayAmountUSD the context should not change"
+     ,?_assertEqual(Context8, Context)
+     }
+    ,{"If threshold configured and current balance < threshold raise an alert"
+     ,?_assertEqual({BelowThresholdUSD, ThresholdUSD, <<"low_balance">>},
+                    {available_from_low_balance_alert(Alert5)
+                    ,threshold_from_low_balance_alert(Alert5)
+                    ,category_from_alert(Alert5)
+                    })
+     }
+    ,{"If threshold configured and current balance = threshold the context should not change"
+     ,?_assertEqual(Context10, Context)
+     }
+    ,{"If threshold configured and current balance > threshold the context should not change"
+     ,?_assertEqual(Context11, Context)
      }
     ].
 
@@ -199,6 +285,40 @@ state_from_port_alert(Alert) ->
 -spec is_port_suspended_state(kz_term:ne_binary()) -> boolean().
 is_port_suspended_state(State) ->
     lists:member(State, ?PORT_SUSPENDED_STATES).
+
+-spec available_from_low_balance_alert(kz_json:object()) -> float().
+available_from_low_balance_alert(Alert) ->
+    kz_json:get_value([<<"metadata">>, <<"available">>], Alert).
+
+-spec threshold_from_low_balance_alert(kz_json:object()) -> float() | 'undefined'.
+threshold_from_low_balance_alert(Alert) ->
+    kz_json:get_value([<<"metadata">>, <<"threshold">>], Alert).
+
+-spec limits_enabled_postpay(pos_integer()) -> kz_json:object().
+limits_enabled_postpay(MaxPostPayAmount) ->
+    kz_json:set_values([{<<"pvt_allow_postpay">>,'true'}
+                       ,{<<"pvt_max_postpay_amount">>,MaxPostPayAmount}
+                       ]
+                      ,limits()
+                      ).
+
+-spec limits() -> kz_json:object().
+limits() ->
+    {[{<<"pvt_vsn">>,1},
+      {<<"pvt_type">>,<<"limits">>},
+      {<<"pvt_modified">>,63691458866},
+      {<<"pvt_created">>,63691458866},
+      {<<"pvt_account_id">>,
+       <<"8a089c2a7e6c77be2e2e68c5c366f460">>},
+      {<<"pvt_account_db">>,
+       <<"account%2F8a%2F08%2F9c2a7e6c77be2e2e68c5c366f460">>},
+      {<<"_rev">>,<<"1-1397a5be21ce5cd08e4c7e32ef94e63c">>},
+      {<<"_id">>,<<"limits">>},
+      {<<"pvt_cache_origins">>,
+       [{db,<<"account%2F8a%2F08%2F9c2a7e6c77be2e2e68c5c366f460">>,
+            <<"limits">>},
+        {db,<<"services">>,
+            <<"8a089c2a7e6c77be2e2e68c5c366f460">>}]}]}.
 
 -spec example_port_request() -> kzd_port_requests:doc().
 example_port_request() ->
