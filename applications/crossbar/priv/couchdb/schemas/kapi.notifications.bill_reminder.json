@@ -1,0 +1,81 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.bill_reminder",
+    "description": "AMQP API for notifications.bill_reminder",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "minLength": 1,
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Due-Date": {
+            "minimum": 1,
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "bill_reminder"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Items": {
+            "items": {
+                "type": "object"
+            },
+            "type": "string"
+        },
+        "Payment-Token": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "boolean"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "Timestamp": {
+            "minimum": 1,
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Due-Date",
+        "Items",
+        "Payment-Token",
+        "Timestamp"
+    ],
+    "type": "object"
+}

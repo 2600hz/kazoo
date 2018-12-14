@@ -499,6 +499,12 @@ headers(Id) ->
     kapi_notifications:headers(Id).
 
 -spec maybe_add_extra_data(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+maybe_add_extra_data(<<"bill_reminder">>, API) ->
+    Now = kz_time:now_s(),
+    props:set_values([{<<"Items">>, []}
+                     ,{<<"Timestamp">>, Now}
+                     ,{<<"Due-Date">>, Now}
+                     ], API);
 maybe_add_extra_data(<<"fax_inbound_error_to_email">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"500">>, API);
 maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
@@ -506,7 +512,7 @@ maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
 maybe_add_extra_data(<<"fax_outbound_smtp_error_to_email">>, API) ->
     props:set_value(<<"Errors">>, [<<"Not Deliverable">>], API);
 maybe_add_extra_data(<<"service_added">>, API) ->
-    props:set_value(<<"Items">>, [kz_json:new()], API);
+    props:set_value(<<"Items">>, [], API);
 maybe_add_extra_data(<<"transaction">>, API) ->
     props:set_value(<<"Success">>, 'true', API);
 maybe_add_extra_data(<<"transaction_failed">>, API) ->
@@ -518,6 +524,8 @@ maybe_add_extra_data(_Id, API) -> API.
 -spec publish_fun(kz_term:ne_binary()) -> fun((kz_term:api_terms()) -> 'ok').
 publish_fun(<<"account_zone_change">>) ->
     fun kapi_notifications:publish_account_zone_change/1;
+publish_fun(<<"bill_reminder">>) ->
+    fun kapi_notifications:publish_bill_reminder/1;
 publish_fun(<<"cnam_request">>) ->
     fun kapi_notifications:publish_cnam_request/1;
 publish_fun(<<"customer_update">>) ->

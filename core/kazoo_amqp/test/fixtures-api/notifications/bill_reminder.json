@@ -1,0 +1,117 @@
+{
+    "Account-ID": "account0000000000000000000000002",
+    "App-Name": "tasks",
+    "App-Version": "4.0.0",
+    "Due-Date": 63713520000,
+    "Event-Category": "notification",
+    "Event-Name": "bill_reminder",
+    "Items": [
+        {
+            "billable": 2,
+            "category": "users",
+            "item": "_all",
+            "quantity": 2,
+            "rate": 10,
+            "total": 20
+        },
+        {
+            "billable": 4,
+            "category": "devices",
+            "discounts": {
+                "cumulative": {
+                    "quantity": 3,
+                    "rate": 2
+                },
+                "total": 6
+            },
+            "item": "sip_device",
+            "name": "Device",
+            "quantity": 4,
+            "rate": 2,
+            "total": 2
+        },
+        {
+            "billable": 4,
+            "category": "devices",
+            "item": "mobile",
+            "name": "Mobile",
+            "quantity": 4,
+            "rate": 29.99,
+            "total": 119.96
+        },
+        {
+            "billable": 1,
+            "category": "ui_apps",
+            "item": "numbers",
+            "name": "Numbers App",
+            "quantity": 1,
+            "rate": 2,
+            "total": 2
+        },
+        {
+            "billable": 1,
+            "category": "ui_apps",
+            "item": "accounts",
+            "name": "Accounts App",
+            "quantity": 1,
+            "rate": 5,
+            "total": 5
+        },
+        {
+            "billable": 14,
+            "category": "phone_numbers",
+            "item": "did_us",
+            "name": "US DID Phone Number",
+            "quantity": 14,
+            "rate": 1,
+            "total": 14
+        },
+        {
+            "billable": 1,
+            "category": "phone_numbers",
+            "item": "tollfree_us",
+            "name": "US Tollfree Phone Number",
+            "quantity": 1,
+            "rate": 4.99,
+            "total": 4.99
+        },
+        {
+            "billable": 14,
+            "category": "number_services",
+            "item": "e911",
+            "name": "E911 Service",
+            "quantity": 14,
+            "rate": 0,
+            "total": 0
+        },
+        {
+            "billable": 4,
+            "category": "limits",
+            "item": "inbound_trunks",
+            "name": "Inbound Trunk",
+            "quantity": 4,
+            "rate": 6.99,
+            "total": 27.96
+        }
+    ],
+    "Msg-ID": "dab6c2826c1d2fa3",
+    "Node": "kazoo_apps@example.com",
+    "Payment-Token": {
+        "64e57d91081ec5a68d25343af8945073": {
+            "bookkeeper": "braintree",
+            "created": 63711779680,
+            "default": true,
+            "expiration": 63721296000,
+            "id": "64e57d91081ec5a68d25343af8945073",
+            "metadata": {
+                "card_type": "Visa",
+                "customer_id": "account0000000000000000000000002",
+                "last_four": "1111"
+            },
+            "modified": 63711779681
+        }
+    },
+    "Server-ID": "kazoo_apps@example.com-<0.797.0>-51857161",
+    "System-Log-ID": "bill_reminder_6c1d2fa3",
+    "Timestamp": 63712466464
+}
