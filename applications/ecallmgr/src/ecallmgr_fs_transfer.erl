@@ -20,8 +20,6 @@ attended(Node, UUID, JObj) ->
 
     Realm = transfer_realm(UUID, CCVs),
 
-    lager:info("transferring to ~s @ ~s", [TransferTo, Realm]),
-
     ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
 
     Vars = [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
@@ -38,12 +36,19 @@ attended(Node, UUID, JObj) ->
     Props = add_transfer_ccvs_to_vars(CCVs, Vars),
     [Export | Exports] = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'set'),
     Arg = [Export, [[",", Exported] || Exported <- Exports] ],
-    {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])}.
+
+    TransferContext = transfer_context(JObj),
+
+    lager:info("transferring to ~s @ ~s on context ~s", [TransferTo, Realm, TransferContext]),
+
+    {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, TransferContext])}.
 
 -spec blind(atom(), kz_term:ne_binary(), kz_json:object()) ->
                    [{kz_term:ne_binary(), kz_term:ne_binary()}].
 blind(Node, UUID, JObj) ->
     TransferTo = kz_json:get_ne_binary_value(<<"Transfer-To">>, JObj),
+
+    lager:debug("blind transfer to ~s: ~p", [TransferTo, JObj]),
 
     Realm = transfer_realm(UUID),
     TransferLeg = transfer_leg(JObj),
