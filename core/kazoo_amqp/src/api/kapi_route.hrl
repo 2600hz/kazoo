@@ -84,6 +84,7 @@
                                            ,<<"Caller-ID-Number">>
                                            ,<<"Caller-ID-Type">>
                                            ,<<"Codecs">>
+                                           ,<<"Context">>
                                            ,<<"Custom-Application-Vars">>
                                            ,<<"Custom-Channel-Vars">>
                                            ,<<"Custom-SIP-Headers">>

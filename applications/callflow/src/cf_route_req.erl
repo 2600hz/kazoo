@@ -24,8 +24,6 @@ handle_req(RouteReq, Props) ->
     kz_util:put_callid(CallId),
     'true' = kapi_route:req_v(RouteReq),
 
-    lager:debug("route req: ~p", [RouteReq]),
-
     gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
@@ -173,6 +171,7 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
              ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
+             ,{<<"Context">>, kapps_call:context(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(RouteReq),

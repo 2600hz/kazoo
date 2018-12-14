@@ -244,7 +244,6 @@ publish_req(Req, ContentType) ->
                                                  ,{'remove_recursive', 'false'}
                                                  ]
                                                 ),
-    lager:debug("req payload: ~s", [Payload]),
     kz_amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
