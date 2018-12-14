@@ -115,7 +115,7 @@
                ,defer = 'undefined' :: 'undefined' | {any(), {pid(), reference()}}
                ,confirm_timeout_ref :: kz_term:api_reference()
                ,confirm_start_time :: kz_time:now() | 'undefined'
-               ,timeout :: non_neg_integer()
+               ,timeout :: non_neg_integer() | 'undefined'
                ,method :: atom()
                ,reply_to :: kz_term:api_pid_ref()
                }).
