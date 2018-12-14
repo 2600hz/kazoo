@@ -739,7 +739,8 @@ arrange_acl_node({_, JObj}, Dict) ->
 
 -spec hunt_context(kz_term:proplist()) -> kz_term:api_binary().
 hunt_context(Props) ->
-    props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
+    DefContext = props:get_value(<<"context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT),
+    kzd_freeswitch:hunt_context(Props, DefContext).
 
 -spec context(kz_json:object()) -> kz_term:api_binary().
 context(JObj) ->
