@@ -23,6 +23,9 @@ handle_req(RouteReq, Props) ->
     CallId = kapi_route:call_id(RouteReq),
     kz_util:put_callid(CallId),
     'true' = kapi_route:req_v(RouteReq),
+
+    lager:debug("route req: ~p", [RouteReq]),
+
     gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
