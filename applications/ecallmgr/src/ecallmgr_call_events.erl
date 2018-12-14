@@ -35,8 +35,7 @@
 -export([transfer/3]).
 -export([get_application_name/1]).
 -export([get_event_name/1]).
--export([queue_name/1
-        ,callid/1
+-export([callid/1
         ,node/1
         ,update_node/2
         ]).
@@ -107,9 +106,6 @@ update_node(Srv, Node) -> gen_server:cast(Srv, {'update_node', Node}).
 
 -spec transfer(pid(), atom(), kz_term:proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) -> gen_server:cast(Srv, {TransferType, Props}).
-
--spec queue_name(pid()) -> kz_term:ne_binary().
-queue_name(Srv) -> gen_server:queue_name(Srv).
 
 -spec to_json(kz_term:proplist()) -> kz_json:object().
 to_json(Props) ->
@@ -237,10 +233,6 @@ handle_cast({'other_leg', OtherLeg}
     lager:debug("started event process: ~p", [_Started]),
 
     {'noreply', State#state{other_leg=OtherLeg}};
-handle_cast({'gen_server', {'created_queue', _Q}}, State) ->
-    {'noreply', State};
-handle_cast({'gen_server',{'is_consuming', _IsConsuming}}, State) ->
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
