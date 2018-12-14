@@ -191,6 +191,9 @@ wait_for_running(_Call, 5) ->
 wait_for_running(Call, N) ->
     FetchId = kapps_call:fetch_id(Call),
     receive
+        {'channel_destroy', 'undefined'} ->
+            cf_exe:hard_stop(Call),
+            lager:info("received channel destroy with undefined fetch-id while setting up callflow executor, exiting");
         {'channel_destroy', FetchId} ->
             cf_exe:hard_stop(Call),
             lager:info("received channel destroy while setting up callflow executor, exiting")
