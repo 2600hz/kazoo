@@ -279,7 +279,7 @@ route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
-    Context = hunt_context(Props),
+    Context = context(JObj, Props),
     ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
@@ -298,7 +298,7 @@ route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
              ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
-    Context = kz_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    Context = context(JObj, Props),
     ContextEl = context_el(Context, [ParkExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
@@ -318,7 +318,7 @@ route_resp_xml(<<"dialplan_error">>, _Routes, JObj, Props) ->
             ,action_el(<<"respond">>, [ErrCode, ErrMsg])
             ],
     ErrExtEl = extension_el([condition_el(Exten)]),
-    Context = kz_json:get_value(<<"Context">>, JObj, hunt_context(Props)),
+    Context = context(JObj, Props),
     ContextEl = context_el(Context, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
@@ -737,16 +737,16 @@ arrange_acl_node({_, JObj}, Dict) ->
             orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
     end.
 
--spec hunt_context(kz_term:proplist()) -> kz_term:api_binary().
+-spec hunt_context(kzd_freeswitch:data()) -> kz_term:api_ne_binary().
 hunt_context(Props) ->
     DefContext = props:get_value(<<"context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT),
     kzd_freeswitch:hunt_context(Props, DefContext).
 
--spec context(kz_json:object()) -> kz_term:api_binary().
+-spec context(kz_json:object()) -> kz_term:api_ne_binary().
 context(JObj) ->
     kz_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
 
--spec context(kz_json:object(), kz_term:proplist()) -> kz_term:api_binary().
+-spec context(kz_json:object(), kzd_freeswitch:data()) -> kz_term:api_ne_binary().
 context(JObj, Props) ->
     kz_json:get_value(<<"Context">>, JObj, hunt_context(Props)).
 
