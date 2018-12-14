@@ -180,7 +180,7 @@ notify_reseller(Services, Invoice, AuditJObj) ->
 %%------------------------------------------------------------------------------
 -spec update_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services(), kz_term:api_object()) ->
                                kz_amqp_worker:request_return().
-update_bookkeeper(Type, Invoice, Services, AuditJObj) ->
+update_bookkeeper(_Type, Invoice, Services, AuditJObj) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
