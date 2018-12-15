@@ -502,7 +502,8 @@ hunt_context(Props) ->
 
 -spec hunt_context(data(), Default) -> kz_term:ne_binary() | Default.
 hunt_context(Props, Default) ->
-    props:get_ne_binary_value(<<"Hunt-Context">>, Props, Default).
+    DefContext = props:get_value(<<"context">>, Props, Default),
+    props:get_ne_binary_value(<<"Hunt-Context">>, Props, DefContext).
 
 -spec join_time(data()) -> kz_time:gregorian_seconds().
 join_time(Props) ->

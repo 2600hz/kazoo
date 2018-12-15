@@ -739,16 +739,15 @@ arrange_acl_node({_, JObj}, Dict) ->
 
 -spec hunt_context(kzd_freeswitch:data()) -> kz_term:api_ne_binary().
 hunt_context(Props) ->
-    DefContext = props:get_value(<<"context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT),
-    kzd_freeswitch:hunt_context(Props, DefContext).
+    kzd_freeswitch:hunt_context(Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
 -spec context(kz_json:object()) -> kz_term:api_ne_binary().
 context(JObj) ->
-    kz_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
+    kz_json:get_ne_binary_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
 
 -spec context(kz_json:object(), kzd_freeswitch:data()) -> kz_term:api_ne_binary().
 context(JObj, Props) ->
-    kz_json:get_value(<<"Context">>, JObj, hunt_context(Props)).
+    kz_json:get_ne_binary_value(<<"Context">>, JObj, hunt_context(Props)).
 
 %%%-----------------------------------------------------------------------------
 %% XML record creators and helpers

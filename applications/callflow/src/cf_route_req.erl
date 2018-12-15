@@ -112,7 +112,7 @@ is_authz_context(_Call, 'false') ->
 is_authz_context(Call, 'true') ->
     AuthzContexts = kapps_config:get_ne_binaries(?APP_NAME, <<"authz_contexts">>, []),
     CallContext = kapps_call:context(Call),
-    lager:info("checking authz contexts: ~p against call's ~p", [AuthzContexts, CallContext]),
+    lager:debug("checking authz contexts: ~p against call's ~p", [AuthzContexts, CallContext]),
     is_binary(CallContext)
         andalso lists:member(CallContext, AuthzContexts).
 

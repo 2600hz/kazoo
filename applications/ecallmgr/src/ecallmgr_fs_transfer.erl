@@ -48,8 +48,6 @@ attended(Node, UUID, JObj) ->
 blind(Node, UUID, JObj) ->
     TransferTo = kz_json:get_ne_binary_value(<<"Transfer-To">>, JObj),
 
-    lager:debug("blind transfer to ~s: ~p", [TransferTo, JObj]),
-
     Realm = transfer_realm(UUID),
     TransferLeg = transfer_leg(JObj),
     TargetUUID = transfer_set_callid(UUID, TransferLeg),

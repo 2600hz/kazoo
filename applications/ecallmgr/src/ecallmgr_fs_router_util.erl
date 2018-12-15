@@ -134,8 +134,7 @@ route_resp_xml(_, Section, JObj, Props) ->
 -spec route_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> kz_term:proplist().
 route_req(CallId, FetchId, Props, Node) ->
     AccountId = kzd_freeswitch:account_id(Props),
-    DefContext = props:get_value(<<"context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT),
-    Context = kzd_freeswitch:hunt_context(Props, DefContext),
+    Context = kzd_freeswitch:hunt_context(Props, ?DEFAULT_FREESWITCH_CONTEXT),
 
     lager:debug("route req for ~s (~s context ~s)"
                ,[CallId, kzd_freeswitch:origination_call_id(Props), Context]

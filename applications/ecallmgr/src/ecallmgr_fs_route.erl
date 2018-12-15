@@ -147,8 +147,7 @@ handle_fetch(Section, FSId, CallId, FSData, Node) ->
     EventName = props:get_value(<<"Event-Name">>, FSData),
     SubClass = props:get_value(<<"Event-Subclass">>, FSData),
 
-    DefContext = props:get_value(<<"context">>, FSData, ?DEFAULT_FREESWITCH_CONTEXT),
-    Context = kzd_freeswitch:hunt_context(FSData, DefContext),
+    Context = kzd_freeswitch:hunt_context(FSData, ?DEFAULT_FREESWITCH_CONTEXT),
 
     Msg = {'route', Section, EventName, SubClass, Context, FSId, CallId, FSData},
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, Context)}, Msg),
