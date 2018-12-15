@@ -288,7 +288,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
 
     Call1#kapps_call{call_id=CallId
                     ,origination_call_id=kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, RouteReq, origination_call_id(Call1))
-                    ,context=kz_json:get_ne_binary_value(<<"Context">>, RouteReq)
+                    ,context=kz_json:get_ne_binary_value(<<"Context">>, RouteReq, context(Call))
                     ,request=Request
                     ,request_user=to_e164(RequestUser)
                     ,request_realm=RequestRealm
@@ -440,6 +440,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Call#kapps_call{call_id = kz_json:get_ne_binary_value(<<"Call-ID">>, JObj, call_id_direct(Call))
                    ,origination_call_id = kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, JObj, origination_call_id(Call))
+                   ,context=kz_json:get_ne_binary_value(<<"Context">>, JObj, context(Call))
                    ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
                    ,controller_q = kz_json:get_ne_binary_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
                    ,caller_id_name = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
