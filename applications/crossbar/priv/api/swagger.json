@@ -22234,6 +22234,9 @@
                     },
                     "type": "array"
                 },
+                "Context": {
+                    "type": "string"
+                },
                 "Custom-Application-Vars": {
                     "type": "object"
                 },
