@@ -120,10 +120,14 @@ generate_invoices(AccountId) ->
     Invoices = kz_services:invoices(Services),
     {Services, Invoices}.
 
+-spec is_alread_ran_account(kz_term:ne_binary()) -> boolean().
 is_alread_ran_account(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             LastBilled = kzd_accounts:bill_early_task_timestamp(JObj),
+            %% If LastBilled is in future (payment due day) then we already visited
+            %% this account before for the current bill cycle, otherwise this is the first time
+            %% we visited this account for this current bill cycle.
             kz_time:now_s() - LastBilled > 0;
         {'error', _R} ->
             lager:debug("can't check early bill/reminder was ran for ~s, lets check it tomorrow again"
