@@ -103,6 +103,18 @@
 -type knm_phone_number() :: #knm_phone_number{}.
 
 -type knm_phone_numbers() :: [knm_phone_number(), ...].
+-type pns_map() :: #{kz_term:ne_binary() => knm_phone_numbers()}.
+-type bulk_change_error_fun() :: fun((kz_term:ne_binary()
+                                     ,kz_datamgr:data_error()
+                                     ,knm_numbers:collection()
+                                     ) -> knm_numbers:collection()
+                                              ).
+-type bulk_change_retry_fun() :: fun((kz_term:ne_binary()
+                                     ,pns_map()
+                                     ,knm_numbers:num()
+                                     ,knm_numbers:collection()
+                                     ) -> knm_numbers:collection()
+                                              ).
 
 -export_type([knm_phone_number/0
              ,knm_phone_numbers/0
@@ -240,7 +252,7 @@ bulk_fetch(T0, JObjs) ->
 
 %% @doc Works the same with the output of save_docs and del_docs
 %% @end
-handle_bulk_change(Db, JObjs, PNsMap, T0, ErrorF)
+handle_bulk_change(Db, JObjs, PNsMap, T0, ErrorF, RetryF)
   when is_map(PNsMap) ->
     F = fun (JObj, T) ->
                 Num = kz_json:get_ne_value(<<"id">>, JObj),
@@ -257,27 +269,42 @@ handle_bulk_change(Db, JObjs, PNsMap, T0, ErrorF)
                         ErrorF(Num, kz_term:to_atom(R, 'true'), T)
                 end
         end,
-    retry_conflicts(lists:foldl(F, T0, JObjs), Db, PNsMap, ErrorF);
-handle_bulk_change(Db, JObjs, PNs, T, ErrorF) ->
+    retry_conflicts(lists:foldl(F, T0, JObjs), Db, PNsMap, RetryF);
+handle_bulk_change(Db, JObjs, PNs, T, ErrorF, RetryF) ->
     PNsMap = group_by_num(PNs),
-    handle_bulk_change(Db, JObjs, PNsMap, T, ErrorF).
+    handle_bulk_change(Db, JObjs, PNsMap, T, ErrorF, RetryF).
 
-handle_bulk_change(Db, JObjs, PNs, T) ->
-    ErrorF = fun database_error/3,
-    handle_bulk_change(Db, JObjs, PNs, T, ErrorF).
+handle_bulk_change(Db, JObjs, PNs, T, ErrorF) ->
+    RetryF = fun(Db1, PNs1, Num, T1) ->
+                     retry_save(Db1, PNs1, ErrorF, Num, T1)
+             end,
+    handle_bulk_change(Db, JObjs, PNs, T, ErrorF, RetryF).
 
-%% On delete there won't be conflicts.
-retry_conflicts(T0, Db, PNsMap, ErrorF) ->
+-spec retry_save(kz_term:ne_binary(), pns_map(), bulk_change_error_fun(), knm_numbers:num(), knm_numbers:collection()) ->
+                        knm_numbers:collection().
+retry_save(Db, PNsMap, ErrorF, Num, T) ->
+    PN = maps:get(Num, PNsMap),
+    Update = kz_json:to_proplist(kz_json:delete_key(<<"_rev">>, to_json(PN))),
+    case kz_datamgr:update_doc(Db, Num, [{'update', Update}
+                                        ,{'ensure_saved', 'true'}
+                                        ])
+    of
+        {'ok', _} -> knm_numbers:ok(PN, T);
+        {'error', R} -> ErrorF(Num, R, T)
+    end.
+
+-spec retry_delete(kz_term:ne_binary(), pns_map(), bulk_change_error_fun(), knm_numbers:num(), knm_numbers:collection()) ->
+                          knm_numbers:collection().
+retry_delete(Db, PNsMap, ErrorF, Num, T) ->
+    PN = maps:get(Num, PNsMap),
+    case kz_datamgr:del_doc(Db, to_json(PN)) of
+        {'ok', _} -> knm_numbers:ok(PN, T);
+        {'error', R} -> ErrorF(Num, R, T)
+    end.
+
+retry_conflicts(T0, Db, PNsMap, RetryF) ->
     {Conflicts, BaseT} = take_conflits(T0),
-    F = fun (Num, T) ->
-                lager:error("~s conflicted, retrying", [Num]),
-                PN = maps:get(Num, PNsMap),
-                case kz_datamgr:ensure_saved(Db, to_json(PN)) of
-                    {'ok', _} -> knm_numbers:ok(PN, T);
-                    {'error', R} -> ErrorF(Num, R, T)
-                end
-        end,
-    lists:foldl(F, BaseT, Conflicts).
+    fold_retry(RetryF, Db, PNsMap, Conflicts, BaseT).
 
 take_conflits(T=#{ko := KOs}) ->
     F = fun ({_Num, R}) when is_atom(R) -> 'false';
@@ -286,6 +313,14 @@ take_conflits(T=#{ko := KOs}) ->
     {Conflicts, NewKOs} = lists:partition(F, maps:to_list(KOs)),
     {Nums, _} = lists:unzip(Conflicts),
     {Nums, T#{ko => maps:from_list(NewKOs)}}.
+
+-spec fold_retry(bulk_change_retry_fun(), kz_term:ne_binary(), pns_map(), knm_numbers:nums(), knm_numbers:collection()) ->
+                        knm_numbers:collection().
+fold_retry(_, _, _, [], T) -> T;
+fold_retry(RetryF, Db, PNsMap, [Conflict|Conflicts], T0) ->
+    lager:error("~s conflicted, retrying", [Conflict]),
+    T = RetryF(Db, PNsMap, Conflict, T0),
+    fold_retry(RetryF, Db, PNsMap, Conflicts, T).
 
 do_handle_fetch(T=#{options := Options}, Doc) ->
     case knm_number:attempt(fun handle_fetch/2, [Doc, Options]) of
@@ -1750,7 +1785,11 @@ try_delete_from(SplitBy, T0, IgnoreDbNotFound) ->
                 ?LOG_DEBUG("deleting from ~s", [Db]),
                 Nums = [kz_doc:id(to_json(PN)) || PN <- PNs],
                 case delete_docs(Db, Nums) of
-                    {'ok', JObjs} -> handle_bulk_change(Db, JObjs, PNs, T);
+                    {'ok', JObjs} ->
+                        RetryF = fun(Db1, PNs1, Num, T1) ->
+                                         retry_delete(Db1, PNs1, fun database_error/3, Num, T1)
+                                 end,
+                        handle_bulk_change(Db, JObjs, PNs, T, fun database_error/3, RetryF);
                     {'error', 'not_found'} when IgnoreDbNotFound ->
                         lager:debug("db ~s does not exist, ignoring", [Db]),
                         knm_numbers:add_oks(PNs, T);
