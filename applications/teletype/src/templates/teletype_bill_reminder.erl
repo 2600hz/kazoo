@@ -160,7 +160,19 @@ fake_invoice(Now) ->
     {'ok', Invoice} = teletype_util:read_preview_doc(<<"service_invoice">>),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Now),
     DueDate = calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month + 1, 1}), {1, 0, 0}}),
-    kz_json:set_value(<<"due_date">>, DueDate, Invoice).
+
+    Token = kz_json:from_list(
+              [{<<"card_type">>, <<"Visa">>}
+              ,{<<"last_four">>, <<"1111">>}
+              ,{<<"method">>, <<"Credit Card">>}
+              ]
+             ),
+
+    kz_json:set_values(
+      [{<<"due_date">>, DueDate}
+      ,{<<"payment_method">>, Token}
+      ], Invoice
+     ).
 
 -spec timestamp(kz_json:object()) -> kz_term:proplist().
 timestamp(DataJObj) ->

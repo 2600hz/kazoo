@@ -44,9 +44,9 @@ Thank you for your business!
 
 Account Information
 
-    Account ID: {{affected.id}}
-    Account Name: {{affected.name}}
-    Account Realm: {{affected.realm}}
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
 
 
 
