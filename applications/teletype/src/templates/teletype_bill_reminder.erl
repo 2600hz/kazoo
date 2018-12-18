@@ -199,7 +199,7 @@ invoice_data(DataJObj) ->
             {TotalDiscounts, Total, Items} = invoice_items_fold(Items0),
             props:filter_undefined(
               [{<<"due_date">>
-               ,teletype_util:fix_timestamp(kz_json:get_integer_value(<<"due_date">>, DataJObj))
+               ,teletype_util:fix_timestamp(kz_json:get_integer_value(<<"due_date">>, DataJObj, kz_time:now_s()))
                }
               ,{<<"items">>, Items}
               ,{<<"payment_method">>, get_payment_token(kz_json:get_ne_json_value(<<"payment_token">>, DataJObj))}
