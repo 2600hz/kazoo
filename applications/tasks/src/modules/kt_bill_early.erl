@@ -62,7 +62,8 @@ bill_early(Account) ->
 
     EarlyDays = kapps_config:get_integer(?MOD_CAT, <<"reminder_early_days">>, 5),
     {DueDate, _} = is_days_early_yet(EarlyDays),
-    do_bill_early(AccountId, DueDate).
+    Services = get_services(AccountId),
+    do_bill_early(AccountId, Services, DueDate).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -74,7 +75,8 @@ send_reminder(Account) ->
 
     EarlyDays = kapps_config:get_integer(?MOD_CAT, <<"reminder_early_days">>, 5),
     {DueDate, _} = is_days_early_yet(EarlyDays),
-    do_send_reminder(AccountId, DueDate).
+    Services = get_services(AccountId),
+    do_send_reminder(AccountId, Services, DueDate).
 
 %%%=============================================================================
 %%% Internal functions
@@ -88,9 +90,9 @@ send_reminder(Account) ->
 handle_req(_, _, 'false', _ShouldBill, _ShouldRemind) ->
     'ok';
 handle_req(AccountId, DueDate, 'true', 'true', _ShouldRemind) ->
-    bill_early(AccountId, DueDate, is_alread_ran_account(AccountId));
+    bill_early(AccountId, DueDate, is_already_ran_account(AccountId));
 handle_req(AccountId, DueDate, 'true', 'false', 'true') ->
-    send_reminder(AccountId, DueDate, is_alread_ran_account(AccountId));
+    send_reminder(AccountId, DueDate, is_already_ran_account(AccountId));
 handle_req(_, _, _, _ShouldBill, _ShouldRemind) ->
     'ok'.
 
@@ -109,19 +111,17 @@ is_days_early_yet(EarlyDays) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec generate_invoices(kz_term:ne_binary()) -> {kz_services:services(), kz_services_invoice:invoice()}.
-generate_invoices(AccountId) ->
+-spec get_services(kz_term:ne_binary()) -> kz_services:services().
+get_services(AccountId) ->
     FetchOptions = ['hydrate_account_quantities'
                    ,'hydrate_cascade_quantities'
                    ,'hydrate_plans'
                    ,'hydrate_invoices'
                    ],
-    Services = kz_services:fetch(AccountId, FetchOptions),
-    Invoices = kz_services:invoices(Services),
-    {Services, Invoices}.
+    kz_services:fetch(AccountId, FetchOptions).
 
--spec is_alread_ran_account(kz_term:ne_binary()) -> boolean().
-is_alread_ran_account(AccountId) ->
+-spec is_already_ran_account(kz_term:ne_binary()) -> boolean().
+is_already_ran_account(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             LastBilled = kzd_accounts:bill_early_task_timestamp(JObj),
@@ -142,23 +142,32 @@ is_alread_ran_account(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec bill_early(kz_term:ne_binary(), non_neg_integer(), boolean()) -> 'ok'.
 bill_early(AccountId, DueDate, 'false') ->
-    do_bill_early(AccountId, DueDate);
+    lager:debug("attempting to early billing ~s", [AccountId]),
+    Services = get_services(AccountId),
+    case kz_services_plans:is_empty(kz_services:plans(Services)) of
+        'true' ->
+            lager:debug("account ~s has no plan assigned, ignoring", [AccountId]),
+            set_bill_early_task_timestamp(AccountId, DueDate);
+        'false' ->
+            do_bill_early(AccountId, Services, DueDate)
+    end;
 bill_early(_, _, 'true') ->
     'ok'.
 
--spec do_bill_early(kz_term:ne_binary(), non_neg_integer()) -> 'ok'.
-do_bill_early(AccountId, DueDate) ->
-    {Services, Invoices} = generate_invoices(AccountId),
+-spec do_bill_early(kz_term:ne_binary(), kz_services:services(), non_neg_integer()) -> 'ok'.
+do_bill_early(AccountId, Services, DueDate) ->
+    Invoices = kz_services:invoices(Services),
     _ = kz_services_invoices:foldl(fun(Invoice, _Acc) ->
-                                           do_bill_early(Services, Invoice, DueDate)
+                                           do_bill_early(AccountId, Services, Invoice, DueDate)
                                    end
                                   ,'ok'
                                   ,Invoices
                                   ),
     'ok'.
 
--spec do_bill_early(kz_services:services(), kz_services_invoice:invoice(), non_neg_integer()) -> 'ok'.
-do_bill_early(Services, Invoice, DueDate) ->
+-spec do_bill_early(kz_term:ne_binary(), kz_services:services(), kz_services_invoice:invoice(), non_neg_integer()) -> 'ok'.
+do_bill_early(AccountId, Services, Invoice, DueDate) ->
+    lager:debug("trying to sync bookkeeper for ~s", [AccountId]),
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
@@ -176,7 +185,7 @@ do_bill_early(Services, Invoice, DueDate) ->
                               ,fun kapi_bookkeepers:update_resp_v/1
                               ,20 * ?MILLISECONDS_IN_SECOND
                               ),
-    check_bokkkeeper_response(kz_services:account_id(Services), DueDate, Resp).
+    check_bokkkeeper_response(AccountId, DueDate, Resp).
 
 check_bokkkeeper_response(_AccountId, _, {'error', 'timeout'}) ->
     lager:debug("timeout when running early bill for ~s, trying again tomorrow", [_AccountId]);
@@ -187,6 +196,7 @@ check_bokkkeeper_response(AccountId, DueDate, Resp) ->
                        ,[AccountId, kz_json:get_ne_binary_value(<<"Reason">>, Resp, <<"unknown">>)]
                        );
         _ ->
+            lager:debug("successfully billed early ~s", [AccountId]),
             set_bill_early_task_timestamp(AccountId, DueDate)
     end.
 
@@ -196,13 +206,21 @@ check_bokkkeeper_response(AccountId, DueDate, Resp) ->
 %%------------------------------------------------------------------------------
 -spec send_reminder(kz_term:ne_binary(), non_neg_integer(), boolean()) -> 'ok'.
 send_reminder(AccountId, DueDate, 'false') ->
-    do_send_reminder(AccountId, DueDate);
+    lager:debug("attempting to send bill reminder ~s", [AccountId]),
+    Services = get_services(AccountId),
+    case kz_services_plans:is_empty(kz_services:plans(Services)) of
+        'true' ->
+            lager:debug("account ~s has no plan assigned, ignoring", [AccountId]),
+            set_bill_early_task_timestamp(AccountId, DueDate);
+        'false' ->
+            do_send_reminder(AccountId, Services, DueDate)
+    end;
 send_reminder(_, _, 'true') ->
     'ok'.
 
--spec do_send_reminder(kz_term:ne_binary(), non_neg_integer()) -> 'ok'.
-do_send_reminder(AccountId, DueDate) ->
-    {Services, Invoices} = generate_invoices(AccountId),
+-spec do_send_reminder(kz_term:ne_binary(), kz_services:services(), non_neg_integer()) -> 'ok'.
+do_send_reminder(AccountId, Services, DueDate) ->
+    Invoices = kz_services:invoices(Services),
     _ = kz_services_invoices:foldl(fun(Invoice, _Acc) ->
                                            do_notify_reseller(AccountId, Services, Invoice, DueDate)
                                    end
