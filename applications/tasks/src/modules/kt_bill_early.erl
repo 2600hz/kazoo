@@ -60,7 +60,7 @@ handle_req(AccountDb) ->
 bill_early(Account) ->
     AccountId = kz_util:format_account_id(Account),
 
-    EarlyDays = kapps_config:get_integer(?MOD_CAT, <<"reminder_early_days">>, 5),
+    EarlyDays = kapps_config:get_integer(?MOD_CAT, <<"how_many_early_days">>, 5),
     {DueDate, _} = is_days_early_yet(EarlyDays),
     Services = get_services(AccountId),
     do_bill_early(AccountId, Services, DueDate).
@@ -73,7 +73,7 @@ bill_early(Account) ->
 send_reminder(Account) ->
     AccountId = kz_util:format_account_id(Account),
 
-    EarlyDays = kapps_config:get_integer(?MOD_CAT, <<"reminder_early_days">>, 5),
+    EarlyDays = kapps_config:get_integer(?MOD_CAT, <<"how_many_early_days">>, 5),
     {DueDate, _} = is_days_early_yet(EarlyDays),
     Services = get_services(AccountId),
     do_send_reminder(AccountId, Services, DueDate).
