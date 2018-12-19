@@ -20,6 +20,8 @@
                 "oauth_doc_id": {
                     "description": "Doc ID in the system 'auth' database",
                     "kazoo-validation": true,
+                    "minLength": 1,
+                    "patern": "^[^\\s]*$",
                     "type": "string"
                 }
             },

@@ -27128,6 +27128,8 @@
                     "properties": {
                         "oauth_doc_id": {
                             "description": "Doc ID in the system 'auth' database",
+                            "minLength": 1,
+                            "patern": "^[^\\s]*$",
                             "type": "string"
                         }
                     },
@@ -27162,6 +27164,8 @@
                         },
                         "oauth_doc_id": {
                             "description": "Doc ID in the system 'auth' database",
+                            "minLength": 1,
+                            "patern": "^[^\\s]*$",
                             "type": "string"
                         }
                     },
@@ -27238,6 +27242,8 @@
                     "properties": {
                         "oauth_doc_id": {
                             "description": "Doc ID in the system 'auth' database",
+                            "minLength": 1,
+                            "patern": "^[^\\s]*$",
                             "type": "string"
                         }
                     },
