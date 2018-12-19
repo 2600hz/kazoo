@@ -104,7 +104,7 @@ handle_req(_, _, _, _ShouldBill, _ShouldRemind) ->
 is_days_early_yet(EarlyDays) ->
     {Year, Month, Day} = erlang:date(),
     LastDay = calendar:last_day_of_the_month(Year, Month),
-    DueTimestamp = calendar:datetime_to_gregorian_seconds({{Year, Month, LastDay}, {23, 59, 59}}),
+    DueTimestamp = calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month, LastDay + 1}), {0, 0, 0}}),
     {DueTimestamp, LastDay - EarlyDays < Day}.
 
 %%------------------------------------------------------------------------------
@@ -124,11 +124,14 @@ get_services(AccountId) ->
 is_already_ran_account(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
-            LastBilled = kzd_accounts:bill_early_task_timestamp(JObj),
-            %% If LastBilled is in future (payment due day) then we already visited
-            %% this account before for the current bill cycle, otherwise this is the first time
-            %% we visited this account for this current bill cycle.
-            kz_time:now_s() - LastBilled > 0;
+            case kzd_accounts:bill_early_task_timestamp(JObj) of
+                'undefined' -> 'false';
+                DueDate ->
+                    %% If DueDate is in future (payment due day) then we already visited
+                    %% this account before for the current bill cycle, otherwise this is the first time
+                    %% we visited this account for this current bill cycle.
+                    kz_time:now_s() =< DueDate
+            end;
         {'error', _R} ->
             lager:debug("can't check early bill/reminder was ran for ~s, lets check it tomorrow again"
                        ,[AccountId]
@@ -255,7 +258,7 @@ maybe_add_payment_token(Services, Invoice) ->
     case kz_services_invoice:bookkeeper_type(Invoice) of
         'undefined' -> [];
         Bookkeeper ->
-            [{<<"Payment-Token">>, kz_services_payment_token:default(Services, Bookkeeper)}]
+            [{<<"Payment-Token">>, kz_services_payment_tokens:default(Services, Bookkeeper)}]
     end.
 
 -spec set_bill_early_task_timestamp(kz_term:ne_binary(), non_neg_integer()) -> 'ok'.
