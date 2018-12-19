@@ -200,11 +200,20 @@ load_summary(Context) ->
                ,fun check_low_balance/1
                ,fun check_payment_token/1
                ,fun check_system_alerts/1
+               ,fun set_success_resp_status/1
                ],
     lists:foldl(fun(F, C) -> F(C) end
                ,cb_context:set_resp_data(Context, [])
                ,Routines
                ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_success_resp_status(cb_context:context()) -> cb_context:context().
+set_success_resp_status(Context) ->
+    cb_context:set_resp_status(Context, 'success').
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -484,6 +493,8 @@ check_system_alerts(Context) ->
     case kz_datamgr:get_results(?KZ_ALERTS_DB, ?AVAILABLE_LIST, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to get manual alerts: ~p", [_R]),
+            Context;
+        {'ok', []} ->
             Context;
         {'ok', JObjs} ->
             Alerts = [kz_json:set_value(<<"clearable">>, 'true', JObj)

@@ -305,24 +305,23 @@ check_payment_token() ->
     ,{"If account doesn't have service plans assigned the context should not change"
      ,?_assertEqual(Context2, Context)
      }
-    ,{"If account has service plans assigned and doesn't have any default payment " ++
-      "tokens raise an alert"
+    ,{"If account has service plans assigned and doesn't have any default payment tokens raise an alert"
      ,?_assertEqual(<<"no_payment_token">>, category_from_alert(Alert))
      }
-    ,{"If account has service plans assigned and default payment tokens are not " ++
-      "expired nor about to expire the context should not change"
+    ,{"If account has service plans assigned and default payment tokens are not "
+      ++ "expired nor about to expire the context should not change"
      ,?_assertEqual(Context4, Context)
      }
-    ,{"If account has service plans assigned + default payment tokens configured and " ++
-      "any of those tokens has expired or is about to expire raise an alert"
+    ,{"If account has service plans assigned + default payment tokens configured and "
+      ++ "any of those tokens has expired or is about to expire raise an alert"
      ,?_assertEqual(<<"expired_payment_token">>, category_from_alert(Alert1))
      }
-    ,{"If account has service plans assigned + default payment tokens configured and " ++
-      "any of those tokens has expired or is about to expire raise an alert"
+    ,{"If account has service plans assigned + default payment tokens configured and "
+      ++ "any of those tokens has expired or is about to expire raise an alert"
      ,?_assertEqual(<<"expired_payment_token">>, category_from_alert(Alert2))
      }
-    ,{"If account has service plans assigned + default payment tokens configured and " ++
-      "any of those tokens has expired or is about to expire raise an alert"
+    ,{"If account has service plans assigned + default payment tokens configured and "
+      ++ "any of those tokens has expired or is about to expire raise an alert"
      ,?_assertEqual({<<"expired_payment_token">>, <<"expired_payment_token">>},
                     {category_from_alert(Alert3), category_from_alert(Alert4)})
      }
@@ -407,12 +406,12 @@ limits_enabled_postpay(MaxPostPayAmount) ->
 payment_token() ->
     Id = kz_binary:rand_hex(5),
     Props = [{<<"id">>, Id}
-             ,{<<"default">>, 'true'}
-              %% If expiration > kz_time:now_s() + 60 days then it is not expired.
-             ,{<<"expiration">>, kz_time:now_s() + (?SECONDS_IN_DAY * 61)}
-             ,{<<"created">>, kz_time:now_s()}
-             ,{<<"modified">>, kz_time:now_s()}
-             ],
+            ,{<<"default">>, 'true'}
+             %% If expiration > kz_time:now_s() + 60 days then it is not expired.
+            ,{<<"expiration">>, kz_time:now_s() + (?SECONDS_IN_DAY * 61)}
+            ,{<<"created">>, kz_time:now_s()}
+            ,{<<"modified">>, kz_time:now_s()}
+            ],
     {Id, kz_json:from_list(Props)}.
 
 -spec expired_payment_token() -> kz_json:object().
