@@ -256,7 +256,7 @@ bill_reminder_definition() ->
                     ,binding = ?BINDING_STRING(<<"account">>, <<"reminder">>)
                     ,restrict_to = 'bill_reminder'
                     ,required_headers = [<<"Account-ID">>
-                                        ,<<"Due-Days">>
+                                        ,<<"Due-Date">>
                                         ,<<"Items">>
                                         ,<<"Payment-Token">>
                                         ,<<"Timestamp">>
@@ -266,7 +266,7 @@ bill_reminder_definition() ->
                                         ]
                     ,values = ?NOTIFY_VALUES(<<"bill_reminder">>)
                     ,types = [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
-                             ,{<<"Due-Date">>, fun kz_term:is_integer/1}
+                             ,{<<"Due-Date">>, fun kz_term:is_pos_integer/1}
                              ,{<<"Items">>, fun kz_json:are_json_objects/1}
                              ,{<<"Payment-Token">>, fun kz_json:is_json_object/1}
                              ,{<<"Timestamp">>, fun kz_term:is_pos_integer/1}

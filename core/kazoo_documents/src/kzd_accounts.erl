@@ -1076,9 +1076,9 @@ path_low_balance_sent() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bill_early_task_timestamp(doc()) -> non_neg_integer().
+-spec bill_early_task_timestamp(doc()) -> kz_term:api_integer().
 bill_early_task_timestamp(Doc) ->
-    kz_json:get_integer_value(path_bill_early_task_timestamp(), Doc, 0).
+    kz_json:get_integer_value(path_bill_early_task_timestamp(), Doc).
 
 -spec set_bill_early_task_timestamp(doc(), non_neg_integer()) -> doc().
 set_bill_early_task_timestamp(Doc, Timestamp) ->
