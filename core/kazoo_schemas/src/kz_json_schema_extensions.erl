@@ -136,9 +136,16 @@ validate_attachment_oauth_doc_id(Value, State) ->
     case kz_datamgr:open_doc(<<"system_auth">>, Value) of
         {ok, _Obj} ->
             State;
+        {error, empty_doc_id} ->
+            ErrorMsg = <<"empty oauth_doc_id">>,
+            jesse_error:handle_data_invalid('external_error', ErrorMsg, State);
         {error, not_found} ->
             ErrorMsg = <<"Invalid oauth_doc_id: ", Value/binary>>,
             lager:debug("~s", [ErrorMsg]),
+            jesse_error:handle_data_invalid('external_error', ErrorMsg, State);
+        {error, _Err} ->
+            ErrorMsg = <<"Error validating oauth_doc_id: ", Value/binary>>,
+            lager:debug("~s : ~p", [ErrorMsg, _Err]),
             jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
     end.
 

@@ -92,7 +92,7 @@ schema for dropbox attachment entry
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('dropbox')` |   | `true` |
-`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |
+`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string(1..)` |   | `true` |
 `settings` | Settings for the Dropbox account | `object()` |   | `true` |
 
 ### storage.attachment.google_drive
@@ -104,7 +104,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('google_drive')` |   | `true` |
 `settings.folder_id` | Folder ID in which to store the file, if any | `string()` |   | `false` |
-`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |
+`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string(1..)` |   | `true` |
 `settings` | Settings for the Google Drive account | `object()` |   | `true` |
 
 ### storage.attachment.google_storage
@@ -125,7 +125,7 @@ schema for OneDrive attachment entry
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('onedrive')` |   | `true` |
-`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true` |
+`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string(1..)` |   | `true` |
 `settings` | Settings for the OneDrive account | `object()` |   | `true` |
 
 ### storage.attachments
