@@ -192,8 +192,7 @@ affected_account_data(DataJObj) ->
 
 -spec invoice_data(kz_json:object()) -> kz_term:proplist().
 invoice_data(DataJObj) ->
-    case kz_json:get_list_value(<<"items">>, DataJObj) of
-        'undefined' -> [];
+    case kz_json:get_list_value(<<"items">>, DataJObj, []) of
         [] -> [];
         Items0 ->
             {TotalDiscounts, Total, Items} = invoice_items_fold(Items0),
@@ -202,17 +201,19 @@ invoice_data(DataJObj) ->
                ,teletype_util:fix_timestamp(kz_json:get_integer_value(<<"due_date">>, DataJObj, kz_time:now_s()))
                }
               ,{<<"items">>, Items}
-              ,{<<"payment_method">>, get_payment_token(kz_json:get_ne_json_value(<<"payment_token">>, DataJObj))}
+              ,{<<"payment_method">>
+               ,get_payment_token(kz_json:values(kz_json:get_json_value(<<"payment_token">>, DataJObj, kz_json:new())))
+               }
               ,{<<"total_discounts">>, format_price(TotalDiscounts)}
               ,{<<"total">>, format_price(Total)}
               ]
              )
     end.
 
-get_payment_token('undefined') ->
+get_payment_token([]) ->
     'undefined';
-get_payment_token(Token) ->
-    case kz_json:get_ne_json_value(<<"bookkeeper">>, Token) of
+get_payment_token([Token|_]) ->
+    case kz_json:get_ne_binary_value(<<"bookkeeper">>, Token) of
         'undefined' -> 'undefined';
         <<"braintree">> -> get_payment_token(<<"Credit Card">>, Token);
         <<"iou">> -> get_payment_token(<<"Credit Card">>, Token);
