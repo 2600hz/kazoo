@@ -44,6 +44,7 @@
 -define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
 -define(LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
+-define(LISTING_BY_NUMBER, <<"port_requests/listing_by_number">>).
 -define(DESCENDANT_LISTING_BY_STATE, <<"port_requests/listing_by_descendant_state">>).
 
 -define(DESCENDANTS, <<"descendants">>).
@@ -408,7 +409,7 @@ handle_phonebook_response(Context, Response) ->
     Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
     Comments = kz_json:get_list_value(<<"comments">>, Data, []),
     {NewContext, NewData} = maybe_phonebook_comments(Context, Data, Comments),
-    NewDoc = kz_json:merge([cb_context:doc(Context), NewData]),
+    NewDoc = kz_json:merge([cb_context:doc(NewContext), NewData]),
     cb_context:set_doc(NewContext, NewDoc).
 
 -spec maybe_phonebook_comments(cb_context:context(), kz_json:object(), kz_json:objects()) -> {cb_context:context(), kz_json:object()}.
@@ -870,7 +871,7 @@ load_summary_by_number(Context, Number) ->
 
 -spec load_global_summary_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_global_summary_by_number(Context, Number) ->
-    load_summary(Context, {'keymap', Number}, ?PORT_REQ_NUMBERS).
+    load_summary(Context, {'keymap', Number}, ?LISTING_BY_NUMBER).
 
 -spec load_account_summary_by_number(cb_context:context(), [kz_term:ne_binaries()]) ->
                                             cb_context:context().

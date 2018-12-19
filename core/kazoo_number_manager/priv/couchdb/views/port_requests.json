@@ -54,6 +54,16 @@
                 "}"
             ]
         },
+        "listing_by_number": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'completed' || doc.pvt_port_state == 'canceled') return;",
+                "  for (i in doc.numbers) {",
+                "    emit(i, doc.pvt_account_id);",
+                "  }",
+                "}"
+            ]
+        },
         "listing_by_state": {
             "map": [
                 "function(doc) {",
