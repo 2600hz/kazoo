@@ -13,13 +13,8 @@
             "description": "How many days before first of the next month this task should start processing accounts",
             "type": "integer"
         },
-        "reminder_early_days": {
-            "default": 5,
-            "description": "tasks bill_early reminder_early_days",
-            "type": "integer"
-        },
         "reminder_enabled": {
-            "default": true,
+            "default": false,
             "description": "Controls whether we should send bill reminder for the accounts a few days before due date",
             "type": "boolean"
         }

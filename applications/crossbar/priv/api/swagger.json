@@ -397,7 +397,7 @@
                     "type": "boolean"
                 },
                 "reminder_enabled": {
-                    "default": true,
+                    "default": false,
                     "description": "Controls whether we should send bill reminder for this account a few days before due date",
                     "type": "boolean"
                 }
@@ -33753,7 +33753,7 @@
                     "type": "integer"
                 },
                 "reminder_enabled": {
-                    "default": true,
+                    "default": false,
                     "description": "Controls whether we should send bill reminder for the accounts a few days before due date",
                     "type": "boolean"
                 }

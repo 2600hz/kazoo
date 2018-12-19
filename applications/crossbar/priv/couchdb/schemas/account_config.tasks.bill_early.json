@@ -9,7 +9,7 @@
             "type": "boolean"
         },
         "reminder_enabled": {
-            "default": true,
+            "default": false,
             "description": "Controls whether we should send bill reminder for this account a few days before due date",
             "type": "boolean"
         }

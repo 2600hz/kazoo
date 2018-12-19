@@ -17,7 +17,7 @@ After the task is checking an account, and the current day is within the the ear
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `bill_early_enabled` | Controls whether we should bill early this account | `boolean()` | `false` | `false` |
-`reminder_enabled` | Controls whether we should send bill reminder for this account a few days before due date | `boolean()` | `true` | `false` |
+`reminder_enabled` | Controls whether we should send bill reminder for this account a few days before due date | `boolean()` | `false` | `false` |
 
 
 ## Parameters Configurable at system level
@@ -26,5 +26,4 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `bill_early_enabled` | Controls whether we should bill early the accounts | `boolean()` | `false` | `false` |
 `how_many_early_days` | How many days before first of the next month this task should start processing accounts | `integer()` | `5` | `false` |
-`reminder_early_days` | tasks bill_early reminder_early_days | `integer()` | `5` | `false` |
-`reminder_enabled` | Controls whether we should send bill reminder for the accounts a few days before due date | `boolean()` | `true` | `false` |
+`reminder_enabled` | Controls whether we should send bill reminder for the accounts a few days before due date | `boolean()` | `false` | `false` |

@@ -48,7 +48,7 @@ handle_req(AccountDb) ->
     {DueDate, IsDaysEarlyYet} = is_days_early_yet(EarlyDays),
 
     ShouldBill = kapps_account_config:get_global(AccountId, ?MOD_CAT, <<"bill_early_enabled">>, 'false'),
-    ShouldRemind = kapps_account_config:get_global(AccountId, ?MOD_CAT, <<"reminder_enabled">>, 'true'),
+    ShouldRemind = kapps_account_config:get_global(AccountId, ?MOD_CAT, <<"reminder_enabled">>, 'false'),
 
     handle_req(AccountId, DueDate, IsDaysEarlyYet, ShouldBill, ShouldRemind).
 
