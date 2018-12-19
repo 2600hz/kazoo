@@ -17,6 +17,7 @@
 -ifdef(TEST).
 -export([check_port_requests/1
         ,check_low_balance/1
+        ,check_payment_token/1
         ]).
 -endif.
 
@@ -346,13 +347,14 @@ check_low_balance(Context) ->
 check_low_balance(Context, {'error', _R}, _Threshold) ->
     lager:debug("unable to get current balance: ~p", [_R]),
     Context;
-check_low_balance(Context, {'ok', AvailableDollars}, 'undefined' = Threshold) ->
+check_low_balance(Context, {'ok', AvailableDollars}, 'undefined') ->
+    Threshold = 0,
     Limits = kz_services_limits:fetch(cb_context:account_id(Context)),
     PostPayAmountUnits = kz_json:get_value(<<"pvt_max_postpay_amount">>, Limits, 0),
     PostPayAmountDollars = kz_currency:units_to_dollars(PostPayAmountUnits),
 
     case kz_json:get_value(<<"pvt_allow_postpay">>, Limits, 'false') of
-        'false' when AvailableDollars =< 0 ->
+        'false' when AvailableDollars =< Threshold ->
             low_balance_alert(Context, AvailableDollars, Threshold);
         'true' when AvailableDollars =< PostPayAmountDollars ->
             low_balance_alert(Context, AvailableDollars, PostPayAmountDollars);
@@ -391,21 +393,86 @@ low_balance_alert(Context, AvailableDollars, ThresholdDollars) ->
                     ),
     append_alert(Context, BalanceAlert).
 
+%%------------------------------------------------------------------------------
+%% @doc Return a payment token alert when any of the following scenarios is met:
+%% - If the account does not have service plans assigned, then ignore this check.
+%% - If the account does have service plans assigned and has no default tokens trigger an
+%%   alert for ‘no_payment_token’.
+%% - If the account does have service plans assigned trigger an alert for any default
+%%   token with an expiration that has expired or will expire within the 60 days.
+%% @end
+%%------------------------------------------------------------------------------
 -spec check_payment_token(cb_context:context()) -> cb_context:context().
 check_payment_token(Context) ->
-%%-spec check_credit_card(cb_context:context()) -> cb_context:context().
-%%check_credit_card(Context) ->
-%%    %% TODO: check implementation once kz_services:is_good_standing/1 gets created.
-%%    Resp = kz_services:is_good_standing(kz_services:fetch(cb_context:account_id(Context))),
-%%    check_credit_card(Context, Resp).
-%%
-%%-spec check_credit_card(cb_context:context(), atom() | {'error', atom()}) -> cb_context:context().
-%%check_credit_card(Context, 'true') ->
-%%    Context;
-%%check_credit_card(Context, {'error', Error}) ->
-%%    JObj = check_result_to_jobj(<<"credit_about_to_expire">>, Error),
-%%    cb_context:set_resp_data(Context, [AlertJObj | context_resp_data(Context)]).
-    Context.
+    Services = kz_services:fetch(cb_context:account_id(Context)),
+    case kz_services_plans:is_empty(kz_services:plans(Services)) of
+        'true' ->
+            Context;
+        'false' ->
+            DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
+            check_payment_token(Context, DefaultTokens)
+    end.
+
+-spec check_payment_token(cb_context:context(), kz_json:objects()) -> cb_context:context().
+check_payment_token(Context, []) ->
+    %% No default payment tokens.
+    payment_token_alert('no_payment_token', Context);
+check_payment_token(Context, DefaultTokens) ->
+    SixtyDaysFromNow = kz_time:now_s() + (?SECONDS_IN_DAY * 60),
+    case [T || T <- DefaultTokens,
+               Expiration <- [kz_json:get_integer_value(<<"expiration">>, T)],
+               Expiration =/= 'undefined',
+               Expiration =< SixtyDaysFromNow
+         ]
+    of
+        [] ->
+            %% No default payment tokens expired found.
+            Context;
+        DefaultTokensExpired ->
+            %% Default payment tokens are expired or will expire within the next 60 days.
+            lists:foldl(fun payment_token_alert/2, Context, DefaultTokensExpired)
+    end.
+
+-spec payment_token_alert(cb_context:context(), kz_json:object() | 'no_payment_token') -> cb_context:context().
+payment_token_alert('no_payment_token', Context) ->
+    AccountId = cb_context:account_id(Context),
+    From = kz_json:from_list(
+             [{<<"type">>, <<"account">>}
+             ,{<<"value">>, AccountId}
+             ]
+            ),
+    BalanceAlert = kz_json:from_list(
+                     [{<<"id">>, AccountId}
+                     ,{<<"title">>, <<"No payment token configured">>}
+                     ,{<<"message">>, <<"Please add a payment token to avoid service interruption.">>}
+                     ,{<<"metadata">>, kz_json:new()}
+                     ,{<<"category">>, <<"no_payment_token">>}
+                     ,{<<"from">>, [From]}
+                     ,{<<"clearable">>, 'false'}
+                     ]
+                    ),
+    append_alert(Context, BalanceAlert);
+payment_token_alert(ExpiredToken, Context) ->
+    Metadata = kz_json:from_list(
+                 [{<<"expires_on">>, kz_json:get_integer_value(<<"expiration">>, ExpiredToken)}
+                 ]
+                ),
+    From = kz_json:from_list(
+             [{<<"type">>, <<"account">>}
+             ,{<<"value">>, cb_context:account_id(Context)}
+             ]
+            ),
+    BalanceAlert = kz_json:from_list(
+                     [{<<"id">>, kz_json:get_integer_value(<<"id">>, ExpiredToken)}
+                     ,{<<"title">>, <<"Payment method expired or about to expire">>}
+                     ,{<<"message">>, <<"Please update your payment tokens to avoid service interruption.">>}
+                     ,{<<"metadata">>, Metadata}
+                     ,{<<"category">>, <<"expired_payment_token">>}
+                     ,{<<"from">>, [From]}
+                     ,{<<"clearable">>, 'false'}
+                     ]
+                    ),
+    append_alert(Context, BalanceAlert).
 
 %%------------------------------------------------------------------------------
 %% @doc
