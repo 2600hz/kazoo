@@ -352,7 +352,7 @@ check_low_balance(Context) ->
     check_low_balance(Context, AvailableDollars, ThresholdDollars).
 
 -spec check_low_balance(cb_context:context(), kz_currency:available_dollars_return(), float() | 'undefined') ->
-                                  cb_context:context().
+                               cb_context:context().
 check_low_balance(Context, {'error', _R}, _Threshold) ->
     lager:debug("unable to get current balance: ~p", [_R]),
     Context;
