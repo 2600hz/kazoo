@@ -58,6 +58,11 @@
             "description": "What sampling rate to use on the recording",
             "type": "integer"
         },
+        "should_follow_transfer": {
+            "default": true,
+            "description": "If true, the recording will continue after a transfer on the active leg",
+            "type": "boolean"
+        },
         "time_limit": {
             "default": 3600,
             "description": "Time limit, in seconds, for the recording",
