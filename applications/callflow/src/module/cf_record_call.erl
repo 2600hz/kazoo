@@ -29,7 +29,9 @@ handle(Data0, Call) ->
 
 -spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> kapps_call:call().
 handle(Data, Call, <<"start">>) ->
-    cf_exe:update_call(kapps_call:start_recording(Data, Call));
+    Call1 = kapps_call:kvs_store('recording_follow_transfer', 'true', Call),
+    lager:info("starting call recording via action"),
+    cf_exe:update_call(kapps_call:start_recording(Data, Call1));
 
 handle(_Data, Call, <<"stop">>) ->
     cf_exe:update_call(kapps_call:stop_recording(Call)).
