@@ -10,7 +10,6 @@
 -export([connections/1, connections/2, set_connections/2]).
 -export([id/1, id/2, set_id/2]).
 -export([plan/1, plan/2, set_plan/2]).
--export([ui_metadata/1, ui_metadata/2, set_ui_metadata/2]).
 -export([index/2, index/3, set_index/3]).
 
 -include("kz_documents.hrl").
@@ -71,18 +70,6 @@ plan(Doc, Default) ->
 -spec set_plan(doc(), kz_json:object()) -> doc().
 set_plan(Doc, Plan) ->
     kz_json:set_value([<<"plan">>], Plan, Doc).
-
--spec ui_metadata(doc()) -> kz_term:api_object().
-ui_metadata(Doc) ->
-    ui_metadata(Doc, 'undefined').
-
--spec ui_metadata(doc(), Default) -> kz_json:object() | Default.
-ui_metadata(Doc, Default) ->
-    kz_json:get_json_value([<<"ui_metadata">>], Doc, Default).
-
--spec set_ui_metadata(doc(), kz_json:object()) -> doc().
-set_ui_metadata(Doc, UiMetadata) ->
-    kz_json:set_value([<<"ui_metadata">>], UiMetadata, Doc).
 
 -spec index(doc(), kz_json:key()) -> any().
 index(Doc, Index) ->

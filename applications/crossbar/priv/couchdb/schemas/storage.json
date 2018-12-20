@@ -50,9 +50,6 @@
         "plan": {
             "$ref": "storage.plan",
             "description": "Describes how to store documents depending on the database or document type"
-        },
-        "ui_metadata": {
-            "type": "object"
         }
     },
     "type": "object"
