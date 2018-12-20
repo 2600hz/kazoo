@@ -442,7 +442,7 @@ check_payment_token(Context, DefaultTokens) ->
             lists:foldl(fun payment_token_alert/2, Context, DefaultTokensExpired)
     end.
 
--spec payment_token_alert(cb_context:context(), kz_json:object() | 'no_payment_token') -> cb_context:context().
+-spec payment_token_alert(kz_json:object() | 'no_payment_token', cb_context:context()) -> cb_context:context().
 payment_token_alert('no_payment_token', Context) ->
     AccountId = cb_context:account_id(Context),
     From = kz_json:from_list(
@@ -462,10 +462,6 @@ payment_token_alert('no_payment_token', Context) ->
                     ),
     append_alert(Context, BalanceAlert);
 payment_token_alert(ExpiredToken, Context) ->
-    Metadata = kz_json:from_list(
-                 [{<<"expires_on">>, kz_json:get_integer_value(<<"expiration">>, ExpiredToken)}
-                 ]
-                ),
     From = kz_json:from_list(
              [{<<"type">>, <<"account">>}
              ,{<<"value">>, cb_context:account_id(Context)}
@@ -475,7 +471,7 @@ payment_token_alert(ExpiredToken, Context) ->
                      [{<<"id">>, kz_json:get_integer_value(<<"id">>, ExpiredToken)}
                      ,{<<"title">>, <<"Payment method expired or about to expire">>}
                      ,{<<"message">>, <<"Please update your payment tokens to avoid service interruption.">>}
-                     ,{<<"metadata">>, Metadata}
+                     ,{<<"metadata">>, ExpiredToken}
                      ,{<<"category">>, <<"expired_payment_token">>}
                      ,{<<"from">>, [From]}
                      ,{<<"clearable">>, 'false'}
