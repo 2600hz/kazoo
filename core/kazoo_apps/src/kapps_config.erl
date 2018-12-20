@@ -609,42 +609,43 @@ set_json(Category, Key, Value) ->
 %% @doc Set the key to the value in the given category but specific to this node.
 %% @end
 %%------------------------------------------------------------------------------
--spec set(config_category(), config_key(), any()) ->
+-spec set(config_category(), config_key(), kz_json:json_term()) ->
                  {'ok', kz_json:object()}.
 set(Category, Key, Value) ->
     set(Category, Key, Value, node()).
 
--spec set(config_category(), config_key(), any(), kz_term:ne_binary() | atom()) ->
-                 {'ok', kz_json:object()}.
+-spec set(config_category(), config_key(), kz_json:json_term(), kz_term:ne_binary() | atom()) ->
+                 {'ok', kz_json:object()} |
+                 {'error', kz_datamgr:data_error()}.
 set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
--spec set_default(config_category(), config_key(), any()) ->
-                         {'ok', kz_json:object()} | 'ok' |
-                         {'error', any()}.
+-spec set_default(config_category(), config_key(), kz_json:json_term()) ->
+                         {'ok', kz_json:object()} |
+                         {'error', kz_datamgr:data_error()}.
 set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term()) ->
-                            {'ok', kz_json:object()} | 'ok' |
-                            {'error', any()}.
+                            {'ok', kz_json:object()} |
+                            {'error', kz_datamgr:data_error()}.
 update_default(Category, Key, Value) ->
     update_default(Category, Key, Value, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term(), update_options()) ->
-                            {'ok', kz_json:object()} | 'ok' |
-                            {'error', any()}.
+                            {'ok', kz_json:object()} |
+                            {'error', kz_datamgr:data_error()}.
 update_default(Category, Key, Value, Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
 
--spec set_node(config_category(), config_key(), any(), kz_term:ne_binary() | atom()) ->
-                      'ok' |
-                      {'ok', kz_json:object()}.
+-spec set_node(config_category(), config_key(), kz_json:json_term(), kz_term:ne_binary() | atom()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', kz_datamgr:data_error()}.
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
--spec update_category(config_category(), config_key(), any(), kz_term:ne_binary() | atom(), update_options()) ->
+-spec update_category(config_category(), config_key(), kz_json:json_term(), kz_term:ne_binary() | atom(), update_options()) ->
                              {'ok', kz_json:object()} |
                              {'error', kz_datamgr:data_error()}.
 -ifdef(TEST).

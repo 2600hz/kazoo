@@ -825,11 +825,15 @@ connection_cavs(#channel{}) -> 'undefined'.
 max_channel_uptime() ->
     kapps_config:get_integer(?APP_NAME, ?MAX_CHANNEL_UPTIME_KEY, 0).
 
--spec set_max_channel_uptime(non_neg_integer()) -> 'ok'.
+-spec set_max_channel_uptime(non_neg_integer()) ->
+                                    {'ok', kz_json:object()} |
+                                    {'error', kz_datamgr:data_error()}.
 set_max_channel_uptime(MaxAge) ->
     set_max_channel_uptime(MaxAge, 'true').
 
--spec set_max_channel_uptime(non_neg_integer(), boolean()) -> 'ok'.
+-spec set_max_channel_uptime(non_neg_integer(), boolean()) ->
+                                    {'ok', kz_json:object()} |
+                                    {'error', kz_datamgr:data_error()}.
 set_max_channel_uptime(MaxAge, 'true') ->
     kapps_config:set_default(?APP_NAME, ?MAX_CHANNEL_UPTIME_KEY, kz_term:to_integer(MaxAge));
 set_max_channel_uptime(MaxAge, 'false') ->

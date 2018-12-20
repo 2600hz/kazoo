@@ -717,10 +717,10 @@ build_bridge_string(Endpoints, Separator, _DefaultFailover) ->
 filter_bridge_strings(Endpoints) ->
     case classify_endpoints(Endpoints) of
         {[], Failover} ->
-            lager:info("No device endpoints available, using failover routes."),
+            lager:info("no device endpoints available, using failover routes."),
             Failover;
         {Devices, _} ->
-            lager:info("Device endpoints registered, ignoring failover routes."),
+            lager:info("device endpoints registered, ignoring failover routes."),
             Devices
     end.
 
@@ -741,7 +741,7 @@ classify_endpoints([Endpoint | Endpoints], Devices, Failover) ->
             classify_endpoints(Endpoints, Devices, F2)
     end.
 
--spec maybe_use_fwd_endpoint(bridge_channels(), bridge_channel()) -> bridge_channel().
+-spec maybe_use_fwd_endpoint(bridge_channels(), bridge_channel()) -> bridge_channels().
 maybe_use_fwd_endpoint([], Destination) ->
     [Destination];
 maybe_use_fwd_endpoint([Endpoint | Endpoints], Destination) ->
