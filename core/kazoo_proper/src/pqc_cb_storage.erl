@@ -8,7 +8,9 @@
 %% -behaviour(proper_statem).
 
 %% Manual testing
--export([seq/0]).
+-export([seq/0
+        ,cleanup/0
+        ]).
 
 %% API Shims
 %% -export([create/2
@@ -33,6 +35,8 @@
 -define(ACCOUNT_NAMES, [<<"account_for_storage">>]).
 -define(UUID, <<"2426cb457dc530acc881977ccbc9a7a7">>).
 
+-spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
+                    pqc_cb_api:response().
 create(API, ?NE_BINARY=AccountId, ?NE_BINARY=UUID) ->
     create(API, AccountId, storage_doc(UUID));
 create(API, ?NE_BINARY=AccountId, StorageDoc) ->
@@ -66,7 +70,7 @@ init_system() ->
             Mod <- ['cb_storage']
         ],
 
-    _HTTPD = pqc_httpd:start_link(),
+    _HTTPD = pqc_httpd:start_link(TestId),
     ?INFO("HTTPD started: ~p", [_HTTPD]),
 
     ?INFO("INIT FINISHED").
@@ -85,8 +89,16 @@ seq() ->
     Created = create(API, AccountId, StorageDoc),
     ?INFO("created storage: ~p", [Created]),
 
+    Test = pqc_httpd:get_req([<<?MODULE_STRING>>]),
+    ?INFO("test created ~p", [Test]),
+
     cleanup(API),
     ?INFO("FINISHED").
+
+-spec cleanup() -> 'ok'.
+cleanup() ->
+    _ = pqc_cb_accounts:cleanup_accounts(?ACCOUNT_NAMES),
+    cleanup_system().
 
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
