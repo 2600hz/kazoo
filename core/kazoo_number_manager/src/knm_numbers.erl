@@ -701,10 +701,10 @@ check_creditably(_Services, _Quotes, Amount) when Amount =< 0 ->
 check_creditably(Services, _Quotes, Amount) ->
     Options = #{amount => kz_currency:dollars_to_units(Amount)},
     case kz_services:is_good_standing(Services, Options) of
-        'true' -> 'ok';
-        'false' ->
+        {'true', _} -> 'ok';
+        {'false', Reason} ->
             knm_errors:not_enough_credit(kz_services:account_id(Services)
-                                        ,kz_currency:dollars_to_units(Amount)
+                                        ,Reason
                                         )
     end.
 
