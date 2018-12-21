@@ -589,7 +589,7 @@ save_jobjs(Context, JObjs0, Options) ->
         {'ok', JObjs1} ->
             Context1 = handle_datamgr_success(JObjs1, Context),
             maybe_send_contact_list(Context1),
-            maybe_spawn_service_updates(Context, JObjs0, cb_context:req_param(Context, <<"wait_for_service_update">>, 'false')),
+            maybe_spawn_service_updates(Context1, JObjs0, cb_context:req_param(Context1, <<"wait_for_service_update">>, 'false')),
             Context1
     end.
 
@@ -625,7 +625,7 @@ save_jobj(Context, JObj0, Options) ->
         {'ok', JObj1} ->
             Context1 = handle_datamgr_success(JObj1, Context),
             maybe_send_contact_list(Context1),
-            maybe_spawn_service_updates(Context, JObj0, cb_context:req_param(Context, <<"wait_for_service_update">>, 'false')),
+            maybe_spawn_service_updates(Context1, JObj0, cb_context:req_param(Context1, <<"wait_for_service_update">>, 'false')),
             Context1
     end.
 
@@ -647,7 +647,7 @@ update(Context, DocId, Updates, Creates) ->
         {'ok', Saved} ->
             Context1 = handle_datamgr_success(Saved, Context),
             maybe_send_contact_list(Context1),
-            maybe_spawn_service_updates(Context, Saved, cb_context:req_param(Context, <<"wait_for_service_update">>, 'false')),
+            maybe_spawn_service_updates(Context1, Saved, cb_context:req_param(Context1, <<"wait_for_service_update">>, 'false')),
             Context1
     end.
 
@@ -788,7 +788,7 @@ do_delete(Context, JObj, CouchFun) ->
             _ = case kz_doc:type(JObj) =/= <<"account">> of
                     'true' ->
                         maybe_send_contact_list(Context1),
-                        maybe_spawn_service_updates(Context, [], cb_context:req_param(Context, <<"wait_for_service_update">>, 'false'));
+                        maybe_spawn_service_updates(Context1, [], cb_context:req_param(Context1, <<"wait_for_service_update">>, 'false'));
                     'false' -> lager:debug("not calling services/provisioner routines for deleted account")
                 end,
             Context1
