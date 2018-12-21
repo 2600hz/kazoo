@@ -588,9 +588,20 @@ save_jobjs(Context, JObjs0, Options) ->
             handle_datamgr_errors(Error, IDs, Context);
         {'ok', JObjs1} ->
             Context1 = handle_datamgr_success(JObjs1, Context),
-            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs0]),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            maybe_spawn_service_updates(Context, JObjs0),
             Context1
+    end.
+
+-spec maybe_spawn_service_updates(cb_context:context(), kz_json:object() | kz_json:objects()) -> 'ok'.
+maybe_spawn_service_updates(Context, JObjs) ->
+    case kz_json:get_value(<<"wait_for_service_update">>, cb_context:doc(Context), 'false') of
+        'true' ->
+            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs]),
+            lager:debug("executing service subscriptions update in the background");
+        'false' ->
+            _ = crossbar_services:update_subscriptions(Context, JObjs),
+            lager:debug("executing service subscriptions update in the foreground, this will take a while")
     end.
 
 -spec save_jobj(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
@@ -602,8 +613,8 @@ save_jobj(Context, JObj0, Options) ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_datamgr_success(JObj1, Context),
-            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObj0]),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            maybe_spawn_service_updates(Context, JObj0),
             Context1
     end.
 
@@ -624,8 +635,8 @@ update(Context, DocId, Updates, Creates) ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', Saved} ->
             Context1 = handle_datamgr_success(Saved, Context),
-            _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, Saved]),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            maybe_spawn_service_updates(Context, Saved),
             Context1
     end.
 
@@ -765,8 +776,8 @@ do_delete(Context, JObj, CouchFun) ->
             Context1 = handle_datamgr_success(JObj, Context),
             _ = case kz_doc:type(JObj) =/= <<"account">> of
                     'true' ->
-                        _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, []]),
-                        _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]);
+                        _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+                        maybe_spawn_service_updates(Context, []);
                     'false' -> lager:debug("not calling services/provisioner routines for deleted account")
                 end,
             Context1
