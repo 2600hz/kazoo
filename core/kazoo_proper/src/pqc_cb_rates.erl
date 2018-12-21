@@ -313,7 +313,6 @@ initial_state() ->
 
 -spec seq() -> any().
 seq() ->
-    init(),
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
