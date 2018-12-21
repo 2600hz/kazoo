@@ -81,9 +81,9 @@ service_restriction(Number, Message) ->
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
 
--spec not_enough_credit(kz_term:ne_binary(), integer()) -> no_return().
-not_enough_credit(AccountId, Units) ->
-    throw({'error', 'not_enough_credit', AccountId, Units}).
+-spec not_enough_credit(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return().
+not_enough_credit(AccountId, Reason) ->
+    throw({'error', 'not_enough_credit', AccountId, Reason}).
 
 -spec invalid(kn(), kz_term:ne_binary()) -> no_return().
 invalid(Number, Reason) ->
@@ -158,9 +158,9 @@ to_json(Reason='invalid', _, Cause) ->
 to_json('by_carrier', Num, {_Carrier,_Cause}) ->
     lager:error("carrier ~s fault: ~p", [_Carrier, _Cause]),
     build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);
-to_json('not_enough_credit', AccountId, Units) ->
-    Message = io_lib:format("account doesn't have enough credit ~p to perform the operation"
-                           ,[Units]
+to_json('not_enough_credit', AccountId, Reason) ->
+    Message = io_lib:format("not enough credit to perform the operation due to account ~s"
+                           ,[Reason]
                            ),
     build_error(402, 'not_enough_credit', kz_term:to_binary(Message), AccountId);
 to_json(Reason, _, Cause) ->
