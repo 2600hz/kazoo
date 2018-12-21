@@ -783,13 +783,8 @@ do_delete(Context, JObj, CouchFun) ->
             Context1 = handle_datamgr_success(JObj, Context),
             _ = case kz_doc:type(JObj) =/= <<"account">> of
                     'true' ->
-<<<<<<< HEAD
                         _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
-                        maybe_spawn_service_updates(Context, []);
-=======
-                        maybe_send_contact_list(Context1),
                         maybe_spawn_service_updates(Context, [], kz_json:get_value(<<"wait_for_service_update">>, JObj, 'false'));
->>>>>>> 06da175... delete parameter while processing it
                     'false' -> lager:debug("not calling services/provisioner routines for deleted account")
                 end,
             Context1
