@@ -429,6 +429,7 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     %% TODO: move this tmp doc creation to maybe_check_storage_settings function.
     TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
                                ,<<"pvt_type">> => <<"storage_settings_probe">>
+                               ,<<"content">> => Content
                                }),
     DbName = kazoo_modb:get_modb(AccountId),
     UpdatedDoc = kz_doc:update_pvt_parameters(TmpDoc, DbName),
@@ -452,8 +453,12 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
         {'ok', _CreatedDoc, _CreatedProps} ->
             %% Check the storage settings have permissions to read files
             case kz_datamgr:fetch_attachment(DbName, DocId, AName, Opts) of
-                {'ok', _Content} ->
+                {'ok', Content} ->
+                    lager:debug("successfully got content back from storage backend"),
                     ContextAcc;
+                {'ok', _C} ->
+                    lager:notice("got unexpected contents back on fetch: ~p", [_C]),
+                    add_datamgr_error(AttId, 'invalid_data', ContextAcc);
                 {'error', Error} ->
                     add_datamgr_error(AttId, Error, ContextAcc);
                 AttachmentError ->
