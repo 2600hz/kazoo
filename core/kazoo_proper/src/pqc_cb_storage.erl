@@ -65,6 +65,10 @@ init_system() ->
     _ = [crossbar_maintenance:start_module(Mod) ||
             Mod <- ['cb_storage']
         ],
+
+    _HTTPD = pqc_httpd:start_link(),
+    ?INFO("HTTPD started: ~p", [_HTTPD]),
+
     ?INFO("INIT FINISHED").
 
 -spec seq() -> 'ok'.
@@ -87,7 +91,11 @@ seq() ->
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
-    pqc_cb_api:cleanup(API).
+    pqc_cb_api:cleanup(API),
+    cleanup_system().
+
+cleanup_system() ->
+    pqc_httpd:stop().
 
 storage_doc(UUID) ->
     kz_json:from_list([{<<"attachments">>, storage_attachments(UUID)}
@@ -104,7 +112,10 @@ http_handler() ->
                       ]).
 
 http_handler_settings() ->
-    kz_json:from_list([{<<"url">>, <<"https://localhost/kazoo">>}
+    Base = pqc_httpd:base_url(),
+    URL = <<Base/binary, ?MODULE_STRING>>,
+
+    kz_json:from_list([{<<"url">>, URL}
                       ,{<<"verb">>, <<"POST">>}
                       ]).
 
