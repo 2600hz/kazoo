@@ -133,6 +133,7 @@ relay_stream_attachment(Caller, Ref, Bin) ->
 
 put_attachment(#{att_handler := {Handler, Params}}=Map
               ,DbName, DocId, AName, Contents, Options) ->
+    lager:debug("using handler ~s to store ~s/~s/~s", [Handler, DbName, DocId, AName]),
     case Handler:put_attachment(Params, DbName, DocId, AName, Contents, Options) of
         {'ok', Props} ->
             CT = props:get_value('content_type', Options, kz_mime:from_filename(AName)),
