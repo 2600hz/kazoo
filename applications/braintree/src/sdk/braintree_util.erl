@@ -89,28 +89,28 @@ props_to_xml([{K, V}|T], Xml) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_services_card(kz_term:ne_binary(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
-update_services_card(CustomerId, Card) ->
+-spec update_services_card(kz_term:ne_binary() | kz_services:services(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
+update_services_card(CustomerIdOrServices, Card) ->
     Token = braintree_card:record_to_payment_token(Card),
-    save_services(kz_services_payment_tokens:update(CustomerId, <<"braintree">>, Token)).
+    save_services(kz_services_payment_tokens:update(CustomerIdOrServices, <<"braintree">>, Token)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_services_cards(kz_term:ne_binary(), bt_cards()) -> {'ok' | 'error', kz_services:services()}.
-update_services_cards(CustomerId, Cards) ->
+-spec update_services_cards(kz_term:ne_binary() | kz_services:services(), bt_cards()) -> {'ok' | 'error', kz_services:services()}.
+update_services_cards(CustomerIdOrServices, Cards) ->
     Tokens = [braintree_card:record_to_payment_token(Card) || Card <- Cards],
-    save_services(kz_services_payment_tokens:updates(CustomerId, <<"braintree">>, Tokens)).
+    save_services(kz_services_payment_tokens:updates(CustomerIdOrServices, <<"braintree">>, Tokens)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_services_card(kz_term:ne_binary(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
-delete_services_card(CustomerId, #bt_card{}=Card) ->
+-spec delete_services_card(kz_term:ne_binary() | kz_services:services(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
+delete_services_card(CustomerIdOrServices, #bt_card{}=Card) ->
     Token = braintree_card:record_to_payment_token(Card),
-    save_services(kz_services_payment_tokens:delete(CustomerId, <<"braintree">>, Token)).
+    save_services(kz_services_payment_tokens:delete(CustomerIdOrServices, <<"braintree">>, Token)).
 
 -spec save_services(kz_services:services()) -> {'ok' | 'error', kz_services:services()}.
 save_services(Services) ->

@@ -13,6 +13,7 @@
         ,set_current_services_jobj/2
         ]).
 -export([plans/1
+        ,has_plans/1
         ,plans_foldl/3
         ,hydrate_plans/1
         ,reset_plans/1
@@ -189,6 +190,12 @@ plans(#kz_services{plans='undefined'}=Services) ->
     kz_services_plans:fetch(Services);
 plans(#kz_services{plans=Plans}) ->
     Plans.
+
+-spec has_plans(services() | kz_term:ne_binary()) -> boolean().
+has_plans(?NE_BINARY = AccountId) ->
+    has_plans(fetch(AccountId));
+has_plans(#kz_services{}=Services) ->
+    not kz_services_plans:is_empty(plans(Services)).
 
 -spec plans_foldl(plans_foldl(), Acc, services()) -> Acc.
 plans_foldl(FoldFun, Acc, Services) ->
@@ -704,10 +711,10 @@ is_good_standing_fold(Services, Options, [Fun | Funs]) ->
                          'not_applicable'.
 -spec no_plan_is_good(services(), good_standing_options()) -> good_funs_ret().
 no_plan_is_good(Services, _Options) ->
-    case kz_services_plans:is_empty(plans(Services)) of
-        'true' ->
+    case has_plans(Services) of
+        'false' ->
             {'true', <<"has no plans assigned">>};
-        'false' -> 'not_applicable'
+        'true' -> 'not_applicable'
     end.
 
 -spec has_no_expired_payment_tokens(services(), good_standing_options()) -> good_funs_ret().
