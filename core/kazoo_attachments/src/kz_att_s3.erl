@@ -39,13 +39,13 @@
 put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     {Bucket, FilePath, Config} = aws_bpc(Params, {DbName, DocId, AName}),
     case put_object(Bucket, FilePath, Contents, Config) of
-        {'ok', Props} ->
-            Metadata = [ convert_kv(KV) || KV <- Props, filter_kv(KV)],
+        {'ok', RespHeaders} ->
+            Metadata = create_metadata(RespHeaders),
             S3Key = encode_retrieval(Params, FilePath),
             {'ok', [{'attachment', [{<<"S3">>, S3Key}
                                    ,{<<"metadata">>, kz_json:from_list(Metadata)}
                                    ]}
-                   ,{'headers', Props}
+                   ,{'headers', RespHeaders}
                    ]};
         {'error', _FilePath, Error} ->
             Routines = [{fun kz_att_error:set_req_url/2, FilePath}
@@ -69,8 +69,8 @@ fetch_attachment(Conn, DbName, DocId, AName) ->
         S3 ->
             {Bucket, FilePath, Config} = aws_bpc(S3, HandlerProps, {DbName, DocId, AName}),
             case get_object(Bucket, FilePath, Config) of
-                {'ok', Props} ->
-                    {'ok', props:get_value('content', Props)};
+                {'ok', RespHeaders} ->
+                    {'ok', props:get_value('content', RespHeaders)};
                 {'error', FilePath, Error} ->
                     NewRoutines = [{fun kz_att_error:set_req_url/2, FilePath}
                                    | Routines
@@ -198,6 +198,12 @@ decode_retrieval(S3) ->
         #{} = Map -> Map
     end.
 
+-spec create_metadata(kz_term:proplist()) -> kz_term:proplist().
+create_metadata(RespHeaders) ->
+    [convert_kv(KV) || KV <- RespHeaders,
+                       filter_kv(KV)
+    ].
+
 filter_kv({"x-amz" ++ _, _V}) -> 'true';
 filter_kv({"etag", _V}) -> 'true';
 filter_kv(_KV) -> 'false'.
@@ -234,7 +240,7 @@ get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
     lager:debug("retrieving ~s from ~s", [FilePath, Host]),
     Options = [],
     try erlcloud_s3:get_object(Bucket, kz_term:to_list(FilePath), Options, Config) of
-        Headers -> {'ok', Headers}
+        RespHeaders -> {'ok', RespHeaders}
     catch
         'error':Error -> {'error', FilePath, Error}
     end.

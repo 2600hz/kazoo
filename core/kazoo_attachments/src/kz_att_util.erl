@@ -23,6 +23,7 @@
                       | {'group', kz_term:proplist()}
                       | {'arg', kz_term:ne_binary()}
                       | {'field', kz_term:ne_binary()}
+                      | {'const', kz_term:ne_binary()}
                       | kz_term:ne_binary().
 -type format_fields() :: [format_field()].
 
