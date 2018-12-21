@@ -582,16 +582,15 @@ save(Context, JObj, Options) ->
 -spec save_jobjs(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
                         cb_context:context().
 save_jobjs(Context, JObjs0, Options) ->
-    {Context1, WaitFor} = extract_wait_for_service_update(Context),
-    case kz_datamgr:save_docs(cb_context:account_db(Context1), JObjs0, Options) of
+    case kz_datamgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
         {'error', Error} ->
             IDs = [kz_doc:id(JObj) || JObj <- JObjs0],
-            handle_datamgr_errors(Error, IDs, Context1);
+            handle_datamgr_errors(Error, IDs, Context);
         {'ok', JObjs1} ->
-            Context2 = handle_datamgr_success(JObjs1, Context1),
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context2]),
-            maybe_spawn_service_updates(Context1, JObjs0, WaitFor),
-            Context2
+            Context1 = handle_datamgr_success(JObjs1, Context),
+            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            maybe_spawn_service_updates(Context, JObjs0, cb_context:req_param(Context, <<"wait_for_service_update">>, 'false')),
+            Context1
     end.
 
 -spec maybe_spawn_service_updates(cb_context:context(), kz_json:object() | kz_json:objects(), boolean()) -> 'ok'.
@@ -605,24 +604,16 @@ maybe_spawn_service_updates(Context, JObjs, 'true') ->
 -spec save_jobj(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
                        cb_context:context().
 save_jobj(Context, JObj0, Options) ->
-    {Context1, WaitFor} = extract_wait_for_service_update(Context),
-    case kz_datamgr:save_doc(cb_context:account_db(Context1), JObj0, Options) of
+    case kz_datamgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
             DocId = kz_doc:id(JObj0),
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
-            Context2 = handle_datamgr_success(JObj1, Context),
+            Context1 = handle_datamgr_success(JObj1, Context),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
-            maybe_spawn_service_updates(Context1, JObj0, WaitFor),
-            Context2
+            maybe_spawn_service_updates(Context1, JObj0, cb_context:req_param(Context, <<"wait_for_service_update">>, 'false')),
+            Context1
     end.
-
--spec extract_wait_for_service_update(cb_context:context()) -> {cb_context:context(), boolean()}.
-extract_wait_for_service_update(Context) ->
-    Doc = cb_context:doc(Context),
-    {cb_context:set_doc(kz_json:delete_key(<<"wait_for_service_update">>, Doc))
-    ,kz_json:get_value(<<"wait_for_service_update">>, Doc, 'false')
-    }.
 
 -spec update(cb_context:context(), kz_json:key(), kz_json:flat_proplist()) ->
                     cb_context:context().
@@ -636,15 +627,14 @@ update(Context, DocId, Updates, Creates) ->
                     ,{'create', Creates}
                     ,{'ensure_saved', 'true'}
                     ],
-    {Context1, WaitFor} = extract_wait_for_service_update(Context),
-    case kz_datamgr:update_doc(cb_context:account_db(Context1), DocId, UpdateOptions) of
+    case kz_datamgr:update_doc(cb_context:account_db(Context), DocId, UpdateOptions) of
         {'error', Error} ->
-            handle_datamgr_errors(Error, DocId, Context1);
+            handle_datamgr_errors(Error, DocId, Context);
         {'ok', Saved} ->
-            Context2 = handle_datamgr_success(Saved, Context1),
+            Context1 = handle_datamgr_success(Saved, Context),
             _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
-            maybe_spawn_service_updates(Context1, Saved, WaitFor),
-            Context2
+            maybe_spawn_service_updates(Context, Saved, cb_context:req_param(Context, <<"wait_for_service_update">>, 'false')),
+            Context1
     end.
 
 %% @equiv save_attachment(DocId, AName, Contents, Context, [])
@@ -784,7 +774,7 @@ do_delete(Context, JObj, CouchFun) ->
             _ = case kz_doc:type(JObj) =/= <<"account">> of
                     'true' ->
                         _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
-                        maybe_spawn_service_updates(Context, [], kz_json:get_value(<<"wait_for_service_update">>, JObj, 'false'));
+                        maybe_spawn_service_updates(Context, [], cb_context:req_param(Context, <<"wait_for_service_update">>, 'false'));
                     'false' -> lager:debug("not calling services/provisioner routines for deleted account")
                 end,
             Context1
