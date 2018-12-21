@@ -34,7 +34,7 @@ sync_all_accounts_payments_info_fold(Account, Count, TotalLength) ->
             timer:sleep(1000),
             Count + 1;
         'false' ->
-            io:format(" (~b/~b) account ~s has no plans assigned, ignoring~n", [Count, TotalLength, AccountId]),
+            io:format(" (~b/~b) account ~s has no plans assigned: ignoring~n", [Count, TotalLength, AccountId]),
             Count + 1
     end.
 
