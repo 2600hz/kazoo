@@ -72,7 +72,9 @@ new(Call, Options) ->
                                ,[BoxId, kapps_call:account_id(Call)]
                                ),
             {'error', Call, Msg};
-        {MessageId, MediaUrl} ->
+        {'ok', MessageDoc} ->
+            MediaUrl = fun() -> kz_media_url:store(MessageDoc, AttachmentName) end,
+            MessageId = kz_doc:id(MessageDoc),
             Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
                                ,[MessageId, BoxId, kapps_call:account_id(Call)]
                                ),
@@ -594,14 +596,14 @@ media_url(AccountId, Message) ->
 %%% Internal functions
 %%%=============================================================================
 
--type sotre_media_url() :: fun(() -> kz_term:ne_binary() | {'error', any()}).
+-type store_media_url() :: fun(() -> kz_term:ne_binary() | {'error', any()}).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_new_message_doc(kapps_call:call(), kz_term:proplist()) ->
-                                    {kz_term:ne_binary(), sotre_media_url()} |
+                                    {'ok', kzd_box_message:doc()} |
                                     {'error', any()}.
 create_new_message_doc(Call, Props) ->
     AccountId = kapps_call:account_id(Call),
@@ -615,16 +617,10 @@ create_new_message_doc(Call, Props) ->
 
     MsgJObj = kzd_box_message:set_metadata(Metadata, JObj),
 
-    AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
-    case try_save_document(Call, MsgJObj, 3) of
-        {'ok', SavedJObj} ->
-            MediaUrl = fun() -> kz_media_url:store(SavedJObj, AttachmentName) end,
-            {kz_doc:id(SavedJObj), MediaUrl};
-        {'error', _}=Error -> Error
-    end.
+    try_save_document(Call, MsgJObj, 3).
 
 -spec create_forward_message_doc(kapps_call:call(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) ->
-                                        {kz_term:ne_binary(), sotre_media_url()} |
+                                        {kz_term:ne_binary(), store_media_url()} |
                                         {'error', any()}.
 create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
     AccountId = kapps_call:account_id(Call),
@@ -692,7 +688,7 @@ fake_vmbox_jobj(Call, Props) ->
                       ]
                      ).
 
--spec store_recording(kz_term:ne_binary(), kz_term:ne_binary() | sotre_media_url(), kapps_call:call(), kz_term:ne_binary()) ->
+-spec store_recording(kz_term:ne_binary(), kz_term:ne_binary() | store_media_url(), kapps_call:call(), kz_term:ne_binary()) ->
                              'ok' |
                              {'error', kapps_call:call()}.
 store_recording(AttachmentName, Url, Call, MessageId) ->
