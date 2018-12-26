@@ -230,8 +230,6 @@ put(Context, DeviceId) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
-    _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
-    _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
     handle_device_removal(DeviceId, Context1).
 
@@ -961,6 +959,8 @@ handle_device_removal(DeviceId, Context) ->
     case cb_context:resp_status(Context) =:= 'success' of
         'false' -> Context;
         'true' ->
+            _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
+            _ = crossbar_util:refresh_fs_xml(Context),
             Routines = [fun maybe_remove_aggregate/2
                        ,fun maybe_delete_provision/2
                        ,fun maybe_remove_mdn/2
