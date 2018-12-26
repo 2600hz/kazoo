@@ -236,11 +236,11 @@ patch(Context, ?PLANS_TOKEN, PlanId) ->
 %%------------------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
-    crossbar_doc:delete(Context).
+    crossbar_doc:delete(Context, 'false').
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ?PLANS_TOKEN, _PlanId) ->
-    crossbar_doc:delete(Context).
+    crossbar_doc:delete(Context, 'false').
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new instance with the data provided, if it is valid
