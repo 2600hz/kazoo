@@ -13,7 +13,7 @@
         ]).
 
 %% API Shims
-%% -export([create/2
+-export([create/3]).
 %%         ,fetch/1
 %%         ]).
 
@@ -54,7 +54,7 @@ storage_url(AccountId) ->
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
-    init_system(),
+    _ = init_system(),
     API = pqc_cb_api:authenticate(),
     pqc_kazoo_model:new(API).
 
@@ -103,7 +103,7 @@ cleanup() ->
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
-    pqc_cb_api:cleanup(API),
+    _ = pqc_cb_api:cleanup(API),
     cleanup_system().
 
 cleanup_system() ->

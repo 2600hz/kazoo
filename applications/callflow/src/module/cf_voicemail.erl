@@ -541,8 +541,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                              ]),
     kapps_call_command:tones([Tone], Call),
     lager:info("composing new voicemail to ~s", [AttachmentName]),
-    Routins = [{fun kapps_call:set_message_left/2, 'true'}
-              ],
+    Routines = [{fun kapps_call:set_message_left/2, 'true'}],
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
@@ -550,18 +549,18 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                 andalso review_recording(AttachmentName, 'true', Box, Call)
             of
                 'false' ->
-                    _ = cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routines),
                     new_message(AttachmentName, Length, Box, Call);
                 {'ok', 'record'} ->
                     record_voicemail(tmp_file(Ext), Box, Call);
                 {'ok', _Selection} ->
-                    _ = cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routines),
                     cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     _ = kapps_call_command:prompt(<<"vm-thank_you">>, Call),
                     'ok';
                 {'branch', Flow} ->
-                    _ = cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routines),
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     {'branch', Flow}
@@ -1066,7 +1065,7 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Next} -> {'ok', 'next'};
         {'error', _}=E -> E;
         _ ->
-            kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+            _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
             message_menu(Box, Call)
     end.
 

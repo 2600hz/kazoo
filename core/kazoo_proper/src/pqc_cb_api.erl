@@ -151,6 +151,7 @@ default_request_headers(RequestId) ->
                          }.
 
 -type response() :: binary() |
+                    kz_http:ret() |
                     {'error', binary()}.
 
 -type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
