@@ -250,13 +250,15 @@ get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
 %% within `erlcloud_aws:request_to_return/1' and the return is also modified at
 %% `erlcloud_s3:s3_request2/8'.
 -spec handle_s3_error(s3_error(), kz_att_error:update_routines()) -> kz_att_error:error().
-handle_s3_error({'aws_error',
-                 {'http_error', RespCode, RespStatusLine, RespBody}} = _E
+handle_s3_error({'aws_error'
+                ,{'http_error', RespCode, RespStatusLine, RespBody}
+                } = _E
                ,Routines
                ) ->
     Reason = get_reason(RespCode, RespBody),
     NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
                   ,{fun kz_att_error:set_resp_body/2, RespBody}
+                  ,{fun kz_att_error:set_resp_headers/2, []}
                    | Routines
                   ],
     lager:error("S3 error: ~p (code: ~p)", [_E, RespCode]),
