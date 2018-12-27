@@ -5,7 +5,6 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pqc_cb_storage).
-%% -behaviour(proper_statem).
 
 %% Manual testing
 -export([seq/0

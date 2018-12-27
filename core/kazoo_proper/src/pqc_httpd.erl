@@ -247,7 +247,10 @@ handle_info({'timeout', TRef, {From, Path}}
            ,#state{waits=Waits}=State
            ) ->
     {Relays, StillWaiting}
-        = lists:splitwith(fun({F, T, P}) -> F =:= From andalso T =:= TRef andalso P =:= Path end
+        = lists:splitwith(fun({F, T, P}) -> F =:= From
+                                                andalso T =:= TRef
+                                                andalso P =:= Path
+                          end
                          ,Waits
                          ),
     _ = relay(Relays, {'error', 'timeout'}),
