@@ -104,19 +104,49 @@ seq() ->
 
     GetVM = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
     ?INFO("get VM: ~p", [GetVM]),
+    {[RequestBody], [_AttachmentName]} = kz_json:get_values(GetVM),
 
-    {[MP3], [_FileName]} = kz_json:get_values(GetVM),
+    handle_multipart_store(MediaId, MP3, RequestBody),
     ?INFO("got mp3 data on our web server!"),
 
     cleanup(API),
     ?INFO("FINISHED").
 
 create_voicemail(API, AccountId, BoxId, MP3) ->
-    MessageJObj = kz_json:from_list([{<<"folder">>, <<"new">>}
-                                    ,{<<"caller_id_name">>, <<?MODULE_STRING>>}
-                                    ,{<<"caller_id_number">>, <<?MODULE_STRING>>}
-                                    ]),
+    MessageJObj = default_message(),
     pqc_cb_vmboxes:new_message(API, AccountId, BoxId, MessageJObj, MP3).
+
+default_message() ->
+    kz_json:from_list([{<<"folder">>, <<"new">>}
+                      ,{<<"caller_id_name">>, <<?MODULE_STRING>>}
+                      ,{<<"caller_id_number">>, <<?MODULE_STRING>>}
+                      ]).
+
+handle_multipart_store(MediaId, MP3, RequestBody) ->
+    handle_multipart_contents(MediaId, MP3, binary:split(RequestBody, <<"\r\n">>, ['global'])).
+
+handle_multipart_contents(_MediaId, _MP3, []) -> 'ok';
+handle_multipart_contents(MediaId, MP3, [<<>> | Parts]) ->
+    handle_multipart_contents(MediaId, MP3, Parts);
+handle_multipart_contents(MediaId, MP3, [<<"content-type: application/json">>, <<>>, JSON | Parts]) ->
+    ?INFO("json body: ~s", [JSON]),
+    JObj = kz_json:decode(JSON),
+    MediaId = kz_json:get_ne_binary_value([<<"metadata">>, <<"media_id">>], JObj),
+    ?INFO("got expected media id ~s", [MediaId]),
+
+    kz_json:all(fun({MessageKey, MessageValue}) ->
+                        MessageValue =:= kz_json:get_value([<<"metadata">>, MessageKey], JObj)
+                end
+               ,default_message()
+               ),
+
+    handle_multipart_contents(MediaId, MP3, Parts);
+handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mp3">>, <<>>, MP3 | Parts]) ->
+    ?INFO("got expected mp3 data"),
+    handle_multipart_contents(MediaId, MP3, Parts);
+handle_multipart_contents(MediaId, MP3, [_Part | Parts]) ->
+    ?DEBUG("skipping part ~s", [_Part]),
+    handle_multipart_contents(MediaId, MP3, Parts).
 
 -spec cleanup() -> 'ok'.
 cleanup() ->
