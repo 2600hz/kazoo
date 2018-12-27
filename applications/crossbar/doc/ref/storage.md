@@ -14,7 +14,6 @@ Key | Description | Type | Default | Required | Support Level
 `connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false` |  
 `id` | ID of the storage document | `string()` |   | `false` |  
 `plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false` |  
-`ui_metadata` |   | `object()` |   | `false` |  
 
 ### storage.attachment.aws
 
@@ -80,6 +79,19 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('google_storage')` |   | `true` |  
 `settings` | Settings for the Google Storage account | `object()` |   | `true` |  
+
+### storage.attachment.http
+
+schema for HTTP(s) attachment entry
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`handler` | The handler interface to use | `string('http')` |   | `true` |  
+`name` | Friendly name for this attachment handler | `string()` |   | `false` |  
+`settings.url` | The base HTTP(s) URL to use when creating the request | `string()` |   | `true` |  
+`settings.verb` | The HTTP verb to use when sending the data | `string('POST' | 'PUT')` | `POST` | `false` |  
+`settings` | HTTP server settings | `object()` |   | `true` |  
 
 ### storage.attachment.onedrive
 

@@ -27334,9 +27334,6 @@
                 "plan": {
                     "$ref": "#/definitions/storage.plan",
                     "description": "Describes how to store documents depending on the database or document type"
-                },
-                "ui_metadata": {
-                    "type": "object"
                 }
             },
             "type": "object"
@@ -27571,6 +27568,49 @@
                                 "oauth_doc_id"
                             ]
                         }
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "handler",
+                "settings"
+            ],
+            "type": "object"
+        },
+        "storage.attachment.http": {
+            "description": "schema for HTTP(s) attachment entry",
+            "properties": {
+                "handler": {
+                    "description": "The handler interface to use",
+                    "enum": [
+                        "http"
+                    ],
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Friendly name for this attachment handler",
+                    "type": "string"
+                },
+                "settings": {
+                    "description": "HTTP server settings",
+                    "properties": {
+                        "url": {
+                            "description": "The base HTTP(s) URL to use when creating the request",
+                            "type": "string"
+                        },
+                        "verb": {
+                            "default": "POST",
+                            "description": "The HTTP verb to use when sending the data",
+                            "enum": [
+                                "POST",
+                                "PUT"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "url"
                     ],
                     "type": "object"
                 }
