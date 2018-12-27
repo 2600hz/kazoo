@@ -12,7 +12,6 @@
         ,combined_path/2
         ,path_from_settings/1
         ,headers_as_binaries/1
-        ,encode_multipart/2
         ]).
 
 -export_type([format_field/0, format_fields/0]).
@@ -146,27 +145,3 @@ path_from_settings(Map) ->
 -spec headers_as_binaries(kz_term:proplist()) -> kz_term:proplist().
 headers_as_binaries(Headers) ->
     [{kz_term:to_binary(K), kz_term:to_binary(V)} || {K,V} <- Headers].
-
--spec encode_multipart([tuple()], binary()) -> binary().
-encode_multipart(Parts, Boundary) ->
-    encode_multipart(Parts, Boundary, <<>>).
-
--spec encode_multipart([tuple()], binary(), binary()) -> binary().
-encode_multipart([], Boundary, Encoded) ->
-    Close = <<"\r\n--" , Boundary/binary, "--">>,
-    <<Encoded/binary, Close/binary>>;
-encode_multipart([{Body, Headers} | Parts], Boundary, Encoded) ->
-    Delimiter = <<"\r\n--" ,Boundary/binary, "\r\n">>,
-    H = encode_multipart_headers(Headers),
-    Acc = <<Encoded/binary, Delimiter/binary, H/binary, Body/binary>>,
-    encode_multipart(Parts, Boundary, Acc).
-
--spec encode_multipart_headers(kz_term:proplist()) -> binary().
-encode_multipart_headers(Headers) ->
-    encode_multipart_headers(Headers, <<>>).
-
--spec encode_multipart_headers(kz_term:proplist(), binary()) -> binary().
-encode_multipart_headers([], Encoded) -> <<Encoded/binary, "\r\n">>;
-encode_multipart_headers([{K, V} | Headers], Encoded) ->
-    Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,
-    encode_multipart_headers(Headers, Acc).
