@@ -4,7 +4,9 @@
 
 -export([fetch_req/1
         ,get_req/1
+        ,wait_for_req/1, wait_for_req/2
         ,base_url/0
+        ,status/0
         ,stop/0
         ]).
 
@@ -28,8 +30,13 @@
 
 -define(LISTENER, 'kazoo_proper_httpd').
 
-%% {[URIPath], Body}
--type state() :: kz_json:object().
+%% {{Pid, MRef}, TRef, JSONPath}
+-type wait() :: {kz_term:pid_ref(), reference(), kz_json:path()}.
+-type waits() :: [wait()].
+-record(state, {requests = kz_json:new() :: kz_json:object()
+               ,waits = [] :: waits()
+               }).
+-type state() :: #state{}.
 
 -spec start_link() -> {'ok', pid()}.
 start_link() ->
@@ -38,6 +45,10 @@ start_link() ->
 -spec start_link(kz_term:ne_binary()) -> {'ok', pid()}.
 start_link(LogId) ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [LogId], []).
+
+-spec status() -> kz_json:object().
+status() ->
+    gen_server:call(?MODULE, 'status').
 
 -spec stop() -> 'ok'.
 stop() ->
@@ -58,6 +69,17 @@ fetch_req(Path) ->
 get_req(Path) ->
     gen_server:call(?MODULE, {'get_req', Path}).
 
+-spec wait_for_req(kz_json:path()) -> {'ok', kz_json:api_json_term()} |
+                                      {'error', 'timeout'}.
+wait_for_req(Path) ->
+    wait_for_req(Path, 5 * ?MILLISECONDS_IN_SECOND).
+
+-spec wait_for_req(kz_json:path(), pos_integer()) ->
+                          {'ok', kz_json:api_json_term()} |
+                          {'error', 'timeout'}.
+wait_for_req(Path, TimeoutMs) ->
+    gen_server:call(?MODULE, {'wait_for_req', Path, TimeoutMs}, TimeoutMs + 100).
+
 log_meta(LogId) ->
     kz_util:put_callid(LogId),
     lager:md([{'request_id', LogId}]),
@@ -72,7 +94,7 @@ init([LogId]) ->
     Dispatch = cowboy_router:compile(routes(LogId)),
     {'ok', _Pid} = start_plaintext(Dispatch),
     ?INFO("started HTTPD(~p) at ~s", [_Pid, base_url()]),
-    {'ok', kz_json:new()}.
+    {'ok', #state{}}.
 
 -spec routes(kz_term:ne_binary()) -> cowboy_router:routes().
 routes(LogId) -> [{'_', paths_list(LogId)}].
@@ -159,7 +181,8 @@ terminate(_Reason, _Req, _State) -> 'ok'.
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     stop_listener(),
-    lager:debug("terminating: ~p", [_Reason]).
+    lager:debug("terminating: ~p", [_Reason]),
+    lager:debug("state: ~p", [_State]).
 
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
@@ -168,22 +191,83 @@ code_change(_OldVsn, State, _Extra) ->
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
                          {'noreply', state()} |
                          {'reply', kz_json:api_json_term(), state()}.
-handle_call({'fetch_req', Path}, _From, State) ->
-    case kz_json:take_value(Path, State) of
-        'false' -> {'reply', 'undefined', State};
-        {'value', Value, NewState} -> {'reply', Value, NewState}
+handle_call({'wait_for_req', Path, TimeoutMs}
+           ,From
+           ,#state{requests=Requests
+                  ,waits=Waits
+                  }=State
+           ) ->
+    case kz_json:get_value(Path, Requests) of
+        'undefined' ->
+            {'noreply', State#state{waits=[new_wait(From, Path, TimeoutMs) | Waits]}};
+        Value ->
+            {'reply', Value, State}
     end;
-handle_call({'get_req', Path}, _From, State) ->
-    {'reply', kz_json:get_value(Path, State), State};
+handle_call('status', _From, State) ->
+    {'reply', State, State};
+handle_call({'fetch_req', Path}, _From, #state{requests=Requests}=State) ->
+    case kz_json:take_value(Path, Requests) of
+        'false' -> {'reply', 'undefined', State};
+        {'value', Value, NewRequests} -> {'reply', Value, State#state{requests=NewRequests}}
+    end;
+handle_call({'get_req', Path}, _From, #state{requests=Requests}=State) ->
+    {'reply', kz_json:get_value(Path, Requests), State};
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
-handle_cast({'req', PathInfo, ReqBody}, State) ->
-    {'noreply', kz_json:set_value(PathInfo, ReqBody, State)};
+handle_cast({'req', PathInfo, ReqBody}, #state{requests=Requests
+                                              ,waits=Waits
+                                              }=State) ->
+    UpdatedReqs = kz_json:set_value(PathInfo, ReqBody, Requests),
+
+    {Relays, StillWaiting} =
+        lists:splitwith(fun({_F, _T, P}) -> lists:prefix(P, PathInfo) end
+                       ,Waits
+                       ),
+
+    relay(Relays, UpdatedReqs),
+
+    {'noreply', State#state{requests=UpdatedReqs
+                           ,waits=StillWaiting
+                           }};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 -spec handle_info(any(), state()) -> {'noreply', state()}.
+handle_info({'DOWN', MRef, 'process', Pid, _Reason}
+           ,#state{waits=Waits}=State
+           ) ->
+    {'noreply', State#state{waits=[Wait || {{P, R}, _, _}=Wait <- Waits, P =/= Pid, R =/= MRef]}};
+handle_info({'EXIT', Pid, _Reason}
+           ,#state{waits=Waits}=State
+           ) ->
+    {'noreply', State#state{waits=[Wait || {{P, _R}, _, _}=Wait <- Waits, P =/= Pid]}};
+handle_info({'timeout', TRef, {From, Path}}
+           ,#state{waits=Waits}=State
+           ) ->
+    {Relays, StillWaiting}
+        = lists:splitwith(fun({F, T, P}) -> F =:= From andalso T =:= TRef andalso P =:= Path end
+                         ,Waits
+                         ),
+    _ = relay(Relays, {'error', 'timeout'}),
+
+    {'noreply', State#state{waits=StillWaiting}};
 handle_info(_Msg, State) ->
     {'noreply', State}.
+
+-spec relay(waits(), kz_json:object() | {'error', 'timeout'}) -> ['ok'].
+relay(Relays, {'error', _}=Msg) ->
+    [gen_server:reply(From, Msg) || {From, _, _} <- Relays];
+relay(Relays, Requests) ->
+    [begin
+         erlang:cancel_timer(TRef),
+         gen_server:reply(From, {'ok', kz_json:get_value(Path, Requests)})
+     end
+     || {From, TRef, Path} <- Relays
+    ].
+
+-spec new_wait(kz_term:pid_ref(), kz_json:path(), pos_integer()) -> wait().
+new_wait(From, Path, TimeoutMs) ->
+    TRef = erlang:start_timer(TimeoutMs, self(), {From, Path}),
+    {From, TRef, Path}.
