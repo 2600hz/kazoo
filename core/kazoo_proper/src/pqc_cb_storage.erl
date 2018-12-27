@@ -89,22 +89,30 @@ seq() ->
     Created = create(API, AccountId, StorageDoc),
     ?INFO("created storage: ~p", [Created]),
 
-    Test = pqc_httpd:get_req([<<?MODULE_STRING>>]),
+    Test = pqc_httpd:get_req([<<?MODULE_STRING>>, AccountId]),
     ?INFO("test created ~p", [Test]),
 
     CreateBox = pqc_cb_vmboxes:create_box(API, AccountId, <<"1010">>),
     ?INFO("create VM box: ~p", [CreateBox]),
     BoxId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(CreateBox)),
 
-    _CreateVM = create_voicemail(API, AccountId, BoxId),
-    ?INFO("create VM: ~p", [_CreateVM]),
+    {'ok', MP3} = file:read_file(filename:join([code:priv_dir('kazoo_proper'), "mp3.mp3"])),
+    CreateVM = create_voicemail(API, AccountId, BoxId, MP3),
+    ?INFO("create VM: ~p", [CreateVM]),
+
+    CreatedVM = kz_json:decode(CreateVM),
+    MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], CreatedVM),
+
+    GetVM = pqc_httpd:get_req([<<?MODULE_STRING>>, AccountId]),
+    ?INFO("get VM: ~p", [GetVM]),
+
+    {[MP3], [_FileName]} = kz_json:get_values(MediaId, GetVM),
+    ?INFO("got mp3 data on our web server!"),
 
     cleanup(API),
     ?INFO("FINISHED").
 
-create_voicemail(API, AccountId, BoxId) ->
-    {'ok', MP3} = file:read_file(filename:join([code:priv_dir('kazoo_proper'), "mp3.mp3"])),
-
+create_voicemail(API, AccountId, BoxId, MP3) ->
     MessageJObj = kz_json:from_list([{<<"folder">>, <<"new">>}
                                     ,{<<"caller_id_name">>, <<?MODULE_STRING>>}
                                     ,{<<"caller_id_number">>, <<?MODULE_STRING>>}
