@@ -67,7 +67,7 @@ init_system() ->
             App <- ['crossbar']
         ],
     _ = [crossbar_maintenance:start_module(Mod) ||
-            Mod <- ['cb_storage']
+            Mod <- ['cb_storage', 'cb_vmboxes']
         ],
 
     _HTTPD = pqc_httpd:start_link(TestId),
