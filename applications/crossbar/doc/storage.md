@@ -351,6 +351,36 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
 ```
 
+For instance, setting up your HTTP server to receive new voicemails for the account:
+
+```json
+{
+  "data": {
+    "attachments": {
+      "{UUID}": {
+        "handler": "http",
+        "name": "My HTTP server",
+        "settings": {
+          "url": "http://my.http.server:37635/some_prefix",
+          "verb": "POST"
+        }
+      }
+    },
+    "plan": {
+      "modb": {
+        "types": {
+          "mailbox_message": {
+            "attachments": {
+              "handler": "{UUID}"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/storage

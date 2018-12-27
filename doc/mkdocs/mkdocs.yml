@@ -89,6 +89,8 @@ pages:
     - 'applications/crossbar/doc/registrations.md'
   - 'Storage':
     - 'applications/crossbar/doc/storage.md'
+    - 'Backends':
+        - 'HTTP': 'applications/crossbar/doc/storage.http.md'
   - 'System Management':
     - 'applications/crossbar/doc/alerts.md'
     - 'applications/crossbar/doc/apps_link.md'
