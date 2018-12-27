@@ -27595,6 +27595,10 @@
                 "settings": {
                     "description": "HTTP server settings",
                     "properties": {
+                        "send_multipart": {
+                            "description": "Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true",
+                            "type": "boolean"
+                        },
                         "url": {
                             "description": "The base HTTP(s) URL to use when creating the request",
                             "type": "string"
