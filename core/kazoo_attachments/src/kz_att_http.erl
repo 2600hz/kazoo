@@ -31,19 +31,48 @@
                     ,gen_attachment:options()
                     ) -> gen_attachment:put_response().
 put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
-    #{url := BaseUrlParam, verb := Verb} = Settings,
-    DocUrlField = maps:get('document_url_field', Settings, 'undefined'),
+    #{url := BaseUrlParam
+     ,verb := Verb
+     } = Settings,
+
     BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
     Url = list_to_binary([BaseUrl, base_separator(BaseUrl), kz_att_util:format_url(Settings, {DbName, DocId, AName})]),
-    Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],
-    case send_request(Url, format_verb(Verb), Headers, Contents) of
-        {'ok', NewUrl, _Body, _Debug} -> {'ok', url_fields(DocUrlField, NewUrl)};
+
+    DefaultContentType = props:get_value('content_type', Options, kz_mime:from_filename(AName)),
+
+    {ContentType, Body} = build_req_body(Settings, DbName, DocId, Contents, DefaultContentType),
+    Headers = [{'content_type', ContentType}],
+
+    case send_request(Url, format_verb(Verb), Headers, Body) of
+        {'ok', NewUrl, _Body, _Debug} ->
+            DocUrlField = maps:get('document_url_field', Settings, 'undefined'),
+            {'ok', url_fields(DocUrlField, NewUrl)};
         {'error', ErrorUrl, Resp} ->
             Routines = [{fun kz_att_error:set_req_url/2, ErrorUrl}
                         | kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options)
                        ],
             handle_http_error_response(Resp, Routines)
     end.
+
+build_req_body(#{'send_multipart' := SendMultipart}, DbName, DocId, Contents, DefaultContentType) ->
+    case kz_term:is_true(SendMultipart) of
+        'true' -> build_multipart_body(DbName, DocId, Contents, DefaultContentType);
+        'false' -> {DefaultContentType, Contents}
+    end;
+build_req_body(_Settings, _DbName, _DocId, Contents, DefaultContentType) ->
+    {DefaultContentType, Contents}.
+
+build_multipart_body(DbName, DocId, Contents, DefaultContentType) ->
+    {'ok', Doc} = kz_datamgr:open_cache_doc(DbName, DocId),
+    Metadata = kz_doc:public_fields(Doc),
+
+    Parts = [{kz_json:encode(Metadata), [{<<"content-type">>, <<"application/json">>}]}
+            ,{Contents, [{<<"content-type">>, DefaultContentType}]}
+            ],
+
+    {<<"multipart/mixed">>
+    ,kz_http_util:encode_multipart(Parts)
+    }.
 
 -spec format_verb(kz_term:ne_binary()) -> 'put' | 'post'.
 format_verb(<<"POST">>) ->
