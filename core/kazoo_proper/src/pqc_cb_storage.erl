@@ -92,8 +92,26 @@ seq() ->
     Test = pqc_httpd:get_req([<<?MODULE_STRING>>]),
     ?INFO("test created ~p", [Test]),
 
+    CreateBox = pqc_cb_vmboxes:create_box(API, AccountId, <<"1010">>),
+    ?INFO("create VM box: ~p", [CreateBox]),
+    BoxId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(CreateBox)),
+
+    _CreateVM = create_voicemail(API, AccountId, BoxId),
+    ?INFO("create VM: ~p", [_CreateVM]),
+
     cleanup(API),
     ?INFO("FINISHED").
+
+
+
+create_voicemail(API, AccountId, BoxId) ->
+    {'ok', MP3} = file:read_file(filename:join([code:priv_dir('kazoo_proper'), "mp3.mp3"])),
+
+    MessageJObj = kz_json:from_list([{<<"folder">>, <<"new">>}
+                                    ,{<<"caller_id_name">>, <<?MODULE_STRING>>}
+                                    ,{<<"caller_id_number">>, <<?MODULE_STRING>>}
+                                    ]),
+    pqc_cb_vmboxes:new_message(API, AccountId, BoxId, MessageJObj, MP3).
 
 -spec cleanup() -> 'ok'.
 cleanup() ->
