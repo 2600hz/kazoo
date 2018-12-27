@@ -169,7 +169,8 @@ dataplan_match(Classification, Plan, AccountId) ->
     Others = [T || T <- lists:usort(fun({T1,_}, {T2, _}) -> T1 =< T2 end
                                    ,dataplan_connections(Types, GCon)
                                    ),
-                   T =/= Tag],
+                   T =/= Tag
+             ],
 
     case maps:get(<<"handler">>, CAtt, 'undefined') of
         'undefined' ->

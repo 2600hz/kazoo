@@ -85,8 +85,8 @@ seq() ->
 
     AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
 
-    Created = create(API, AccountId, StorageDoc),
-    ?INFO("created storage: ~p", [Created]),
+    CreatedStorage = create(API, AccountId, StorageDoc),
+    ?INFO("created storage: ~p", [CreatedStorage]),
 
     Test = pqc_httpd:get_req([<<?MODULE_STRING>>, AccountId]),
     ?INFO("test created ~p", [Test]),
@@ -102,10 +102,10 @@ seq() ->
     CreatedVM = kz_json:decode(CreateVM),
     MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], CreatedVM),
 
-    GetVM = pqc_httpd:get_req([<<?MODULE_STRING>>, AccountId]),
+    GetVM = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
     ?INFO("get VM: ~p", [GetVM]),
 
-    {[MP3], [_FileName]} = kz_json:get_values(MediaId, GetVM),
+    {[MP3], [_FileName]} = kz_json:get_values(GetVM),
     ?INFO("got mp3 data on our web server!"),
 
     cleanup(API),
@@ -152,6 +152,7 @@ http_handler_settings() ->
 
     kz_json:from_list([{<<"url">>, URL}
                       ,{<<"verb">>, <<"POST">>}
+                      ,{<<"send_multipart">>, 'true'}
                       ]).
 
 storage_plan(UUID) ->
