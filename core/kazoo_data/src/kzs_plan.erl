@@ -378,7 +378,7 @@ bind() -> 'ok'.
 -else.
 bind() ->
     RK = kz_binary:join([<<"kapi.conf">>
-                        ,kz_term:to_binary(?CACHE_NAME)
+                        ,kz_term:to_binary(?KAZOO_DATA_PLAN_CACHE)
                         ,?KZ_DATA_DB
                         ,<<"storage">>
                         ,<<"doc_created">>
