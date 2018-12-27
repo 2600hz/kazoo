@@ -240,7 +240,7 @@ check_mailbox(#mailbox{exists='false'
     case find_mailbox(Box, Call, ?DEFAULT_FIND_BOX_PROMPT, Loop) of
         {'ok', PossibleBox, NewLoop} -> check_mailbox(PossibleBox, Call, NewLoop);
         {'error', 'not_found'} ->
-            %% can't find mailbox, set Loop to max to play abort prompts in above func clause
+            %% can't find mailbox, set Loop to max to play abort prompts in above function clause
             check_mailbox(Box, Call, MaxLoginAttempts + 1)
     end;
 check_mailbox(#mailbox{is_setup='false'}=Box, 'true', Call, _) ->
@@ -369,7 +369,7 @@ find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, Call
             find_destination_mailbox(Box, Call, SrcBoxId, NewLoop + 1);
         {'ok', DestBox, _NewLoop} -> DestBox;
         {'error', 'not_found'} ->
-            %% can't find mailbox, set Loop to max to play abort prompts in above func clause
+            %% can't find mailbox, set Loop to max to play abort prompts in above function clause
             find_destination_mailbox(Box, Call, SrcBoxId, MaxLoginAttempts + 1)
     end.
 
