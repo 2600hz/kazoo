@@ -15,7 +15,7 @@
         ,props_to_querystring/1
         ,http_code_to_status_line/1
         ,get_resp_header/2, get_resp_header/3
-        ,encode_multipart/2
+        ,encode_multipart/1, encode_multipart/2
         ,create_boundary/0
         ]).
 
@@ -408,6 +408,11 @@ get_resp_header(RespHeader, RespHeaders, Default) ->
 
 -type part() :: {binary(), kz_term:proplist()}.
 -type parts() :: [part()].
+
+-spec encode_multipart(parts()) -> binary().
+encode_multipart(Parts) ->
+    encode_multipart(Parts, create_boundary()).
+
 -spec encode_multipart(parts(), binary()) -> binary().
 encode_multipart(Parts, Boundary) ->
     encode_multipart(Parts, Boundary, <<>>).
@@ -434,4 +439,4 @@ encode_multipart_headers([{K, V} | Headers], Encoded) ->
 
 -spec create_boundary() -> kz_term:ne_binary().
 create_boundary() ->
-    <<"------", (kz_binary:rand_hex(16))/binary>>.
+    cow_multipart:boundary().
