@@ -226,7 +226,7 @@ handle_cast({'req', PathInfo, ReqBody}, #state{requests=Requests
                        ,Waits
                        ),
 
-    relay(Relays, UpdatedReqs),
+    _ = relay(Relays, UpdatedReqs),
 
     {'noreply', State#state{requests=UpdatedReqs
                            ,waits=StillWaiting
@@ -264,7 +264,7 @@ relay(Relays, {'error', _}=Msg) ->
     [gen_server:reply(From, Msg) || {From, _, _} <- Relays];
 relay(Relays, Requests) ->
     [begin
-         erlang:cancel_timer(TRef),
+         _ = erlang:cancel_timer(TRef),
          gen_server:reply(From, {'ok', kz_json:get_value(Path, Requests)})
      end
      || {From, TRef, Path} <- Relays
