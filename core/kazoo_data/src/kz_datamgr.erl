@@ -1203,7 +1203,10 @@ missing_required_options(Options, RequiredOptions) ->
                             'true' -> Acc;
                             'false' -> [Key | Acc]
                         end
-                end, [], RequiredOptions).
+                end
+               ,[]
+               ,RequiredOptions
+               ).
 
 add_required_options(Options, RequiredOptions, JObj) ->
     {_, NewOptions} = lists:foldl(fun add_required_option/2, {JObj, Options}, RequiredOptions),

@@ -102,8 +102,6 @@ seq() ->
     cleanup(API),
     ?INFO("FINISHED").
 
-
-
 create_voicemail(API, AccountId, BoxId) ->
     {'ok', MP3} = file:read_file(filename:join([code:priv_dir('kazoo_proper'), "mp3.mp3"])),
 
