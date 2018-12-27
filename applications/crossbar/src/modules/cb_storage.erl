@@ -456,6 +456,8 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
                 {'ok', Content} ->
                     lager:debug("successfully got content back from storage backend"),
                     ContextAcc;
+                {'ok', <<"\r\n", _/binary>>=Multipart} ->
+                    handle_multipart_fetch(ContextAcc, AttId, Content, Multipart);
                 {'ok', _C} ->
                     lager:notice("got unexpected contents back on fetch: ~p", [_C]),
                     add_datamgr_error(AttId, 'invalid_data', ContextAcc);
@@ -469,6 +471,28 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
         AttachmentError ->
             add_att_settings_validation_error(AttId, AttachmentError, ContextAcc)
     end.
+
+-spec handle_multipart_fetch(cb_context:context(), kz_term:ne_binary(), binary(), binary()) ->
+                                    cb_context:context().
+handle_multipart_fetch(Context, AttId, Content, Multipart) ->
+    handle_multipart_contents(Context, AttId, Content
+                             ,binary:split(Multipart, <<"\r\n">>, ['global'])
+                             ).
+
+-spec handle_multipart_contents(cb_context:context(), kz_term:ne_binary(), binary(), [binary()]) ->
+                                       cb_context:context().
+handle_multipart_contents(Context, AttId, _Content, []) ->
+    lager:notice("failed to find content in multipart data"),
+    add_datamgr_error(AttId, 'invalid_data', Context);
+handle_multipart_contents(Context, _AttId, Content, [<<"content-type: text/plain">>, Content | _]) ->
+    lager:debug("got contents back in multipart response"),
+    Context;
+handle_multipart_contents(Context, _AttId, Content, [Content | _]) ->
+    lager:debug("got contents back in multipart response"),
+    Context;
+handle_multipart_contents(Context, AttId, Content, [_Part | Parts]) ->
+    lager:debug("skipping part ~s", [_Part]),
+    handle_multipart_contents(Context, AttId, Content, Parts).
 
 -spec add_datamgr_error(kz_term:ne_binary(), kz_datamgr:data_errors(), cb_context:context()) ->
                                cb_context:context().
