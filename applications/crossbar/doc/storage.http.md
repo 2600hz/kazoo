@@ -57,3 +57,33 @@ If both the PUT/POST and the GET are successful, the API request to create the s
 Now, when a voicemail is saved to the account, your web server will receive a PUT/POST request to `PUT req /some_prefix/{ACCOUNT_ID}/{MESSAGE_ID}/uploaded_file_{TIMESTAMP}.mp3` with the binary data as the body. Your web server will then need to respond with a 201 to let KAZOO know storing the data was successful.
 
 !!!note save processing of the file for a later process; return the 201 to KAZOO as soon as your server confirms storing the file was successful locally.
+
+### Multipart requests
+
+If you want to receive both the binary data and the JSON metadata, you can add `"send_multipart":true` to the settings of the handler:
+
+```json
+"{UUID}": {
+    "handler": "http",
+    "name": "My HTTP server",
+    "settings": {
+        "url": "http://my.http.server:37635/some_prefix",
+        "verb": "POST",
+        "send_multipart":true
+    }
+}
+```
+
+On save, KAZOO will send a `multipart/mixed` request that will something like:
+
+```
+{BOUNDARY}
+content-type: application/json
+
+{"name":"mailbox 1010 message MM-DD-YYYY HH:MM:SS","description":"voicemail message with media","source_type":"voicemail","source_id":"{SOURCE_ID}","media_source":"recording","streamable":true,"utc_seconds":{TIMESTAMP},"metadata":{"timestamp":{TIMESTAMP},"from":"{SIP_FROM}","to":"{SIP_TO}","caller_id_number":"{CID_NUMBER}","caller_id_name":"{CID_NAME}","call_id":"{CALL_ID}","folder":"new","length":1,"media_id":"{MEDIA_ID}"},"id":"{MEDIA_ID}"}
+{BOUNDARY}
+content-type: audio/mp3
+
+{BINARY_DATA}
+{BOUNDARY}
+```
