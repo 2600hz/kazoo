@@ -125,6 +125,7 @@ init(Req, HandlerOpts) ->
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
 handle(Req, State) ->
+    put('now', kz_time:now()),
     handle(Req, State, cowboy_req:method(Req)).
 
 handle(Req, State, <<"POST">>) ->
@@ -176,7 +177,8 @@ read_body({'more', BodyPart, Req}) ->
     [BodyPart, read_body(cowboy_req:read_body(Req))].
 
 -spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
-terminate(_Reason, _Req, _State) -> 'ok'.
+terminate(_Reason, _Req, _State) ->
+    ?INFO("finished req ~p", [kz_time:elapsed_ms(get('now'))]).
 
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
