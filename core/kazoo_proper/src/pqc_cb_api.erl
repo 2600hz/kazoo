@@ -48,11 +48,20 @@ cleanup(#{'trace_file' := Trace
     ?INFO("cleanup after ~p ms", [kz_time:elapsed_ms(Start)]),
     kz_data_tracing:stop_trace(Trace).
 
--define(API_BASE, "http://" ++ net_adm:localhost() ++ ":8000/v2").
+-define(API_BASE, net_adm:localhost()).
+
+api_base() ->
+    Host = kz_network_utils:get_hostname(),
+    {Scheme, Port} = case kapps_config:get_integer(<<"crossbar">>, <<"port">>) of
+                         'undefined' ->
+                             {"https://", kapps_config:get_integer(<<"crossbar">>, <<"ssl_port">>)};
+                         P -> {"http://", P}
+                     end,
+    Scheme ++ Host ++ [$: | integer_to_list(Port)] ++ "/v2".
 
 -spec authenticate() -> state().
 authenticate() ->
-    URL =  ?API_BASE ++ "/api_auth",
+    URL =  api_base() ++ "/api_auth",
     Data = kz_json:from_list([{<<"api_key">>, api_key()}]),
     Envelope = create_envelope(Data),
 
@@ -106,7 +115,7 @@ create_api_state(<<_/binary>> = RespJSON, Trace) ->
      }.
 
 -spec v2_base_url() -> string().
-v2_base_url() -> ?API_BASE.
+v2_base_url() -> api_base().
 
 -spec auth_account_id(state()) -> kz_term:ne_binary().
 auth_account_id(#{'account_id' := AccountId}) -> AccountId.
