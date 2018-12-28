@@ -258,8 +258,14 @@ att_post_handler(#{}) -> 'external'.
 fetch_cached_dataplan(Key, Fun) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}) of
         {'ok', Plan} -> Plan;
-        {'error', 'not_found'} when Key =:= ?SYSTEM_DATAPLAN -> load_dataplan(Key, Fun);
-        {'error', 'not_found'} -> ?CACHED_SYSTEM_DATAPLAN
+        {'error', 'not_found'} when Key =:= ?SYSTEM_DATAPLAN ->
+            load_dataplan(Key, Fun);
+        {'error', 'not_found'} when is_tuple(Key) ->
+            {AccountId, OwnerId} = Key,
+            lager:debug("failed to find owner ~s dataplan, trying account ~s", [OwnerId, AccountId]),
+            ?CACHED_ACCOUNT_DATAPLAN(AccountId);
+        {'error', 'not_found'} ->
+            ?CACHED_SYSTEM_DATAPLAN
     end.
 
 -spec load_dataplan(kz_term:ne_binary(), fun()) -> map().
