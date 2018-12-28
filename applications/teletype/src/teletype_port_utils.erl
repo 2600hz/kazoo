@@ -139,52 +139,13 @@ fix_comments(JObj, DataJObj) ->
             Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, DataJObj)),
             Props = [{<<"date">>, Date}
                     ,{<<"timestamp">>, kz_json:get_value(<<"local">>, Date)} %% backward compatibility
-                    ,{<<"author">>, get_author(DataJObj)}
+                     | get_commenter_info(DataJObj)
                     ],
             kz_json:set_value(<<"comment">>
                              ,kz_json:set_values(Props, Comment)
                              ,kz_json:delete_key(<<"comments">>, JObj)
                              )
     end.
-
--spec get_author(kz_json:object()) -> kz_term:ne_binary().
-get_author(DataJObj) ->
-    case kz_json:get_ne_binary_value(<<"author">>, DataJObj) of
-        'undefined' ->
-            get_user_data(DataJObj);
-        Author -> Author
-    end.
-
--spec get_user_data(kz_json:object()) -> kz_term:ne_binary().
-get_user_data(DataJObj) ->
-    get_user_data(DataJObj, teletype_util:is_preview(DataJObj)).
-
--spec get_user_data(kz_json:object(), boolean()) -> kz_term:ne_binary().
-get_user_data(DataJObj, 'true') ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    case teletype_util:find_account_admin(AccountId) of
-        'undefined' -> <<"An agent">>;
-        UserDoc ->
-            first_last_name(kzd_users:first_name(UserDoc), kzd_users:last_name(UserDoc))
-    end;
-get_user_data(DataJObj, 'false') ->
-    AccountId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"account_id">>], DataJObj),
-    UserId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"user_id">>], DataJObj),
-    case kzd_users:fetch(AccountId, UserId) of
-        'undefined' -> <<"An agent">>;
-        UserDoc ->
-            first_last_name(kzd_users:first_name(UserDoc), kzd_users:last_name(UserDoc))
-    end.
-
--spec first_last_name(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
-first_last_name(?NE_BINARY = First, ?NE_BINARY = Last) ->
-    <<First/binary, " ", Last/binary>>;
-first_last_name(_, ?NE_BINARY = Last) ->
-    <<Last/binary>>;
-first_last_name(?NE_BINARY = First, _) ->
-    <<First/binary>>;
-first_last_name(_, _) ->
-    <<"An agent">>.
 
 -spec fix_dates(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_dates(JObj, _DataJObj) ->
@@ -234,9 +195,7 @@ maybe_add_reason(JObj, DataJObj) ->
     case kz_json:get_ne_json_value(<<"reason">>, DataJObj) of
         'undefined' -> JObj;
         Reason ->
-            UserInfo = get_commenter_info(kz_json:get_ne_binary_value(<<"account_id">>, Reason)
-                                         ,kz_json:get_ne_binary_value(<<"user_id">>, Reason)
-                                         ),
+            UserInfo = get_commenter_info(DataJObj),
             Timestamp = kz_json:get_integer_value(<<"timestamp">>, Reason),
             Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, DataJObj)),
             Props = [{<<"content">>, kz_json:get_ne_binary_value(<<"content">>, Reason)}
@@ -246,13 +205,67 @@ maybe_add_reason(JObj, DataJObj) ->
             kz_json:set_value(<<"transition_reason">>, kz_json:from_list(Props), JObj)
     end.
 
--spec get_commenter_info(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:proplist().
-get_commenter_info(?NE_BINARY=AccountId, ?NE_BINARY=UserId) ->
-    case kzd_users:fetch(AccountId, UserId) of
-        {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
-        {'error', _Reason} ->
-            lager:debug("failed to get commenter info: account_id ~s user_id ~s", [AccountId, UserId]),
-            []
+-spec get_commenter_info(kz_json:object()) -> kz_term:proplist().
+get_commenter_info(DataJObj) ->
+    maybe_add_user_data(DataJObj
+                       ,kz_json:get_first_defined([[<<"comment">>, <<"author">>]
+                                                  ,[<<"reason">>, <<"author">>]
+                                                  ], DataJObj)
+                       ).
+
+-spec maybe_add_user_data(kz_json:object(), kz_term:api_binary()) -> kz_term:proplist().
+maybe_add_user_data(DataJObj, Author) ->
+    maybe_add_user_data(DataJObj, Author, teletype_util:is_preview(DataJObj)).
+
+-spec maybe_add_user_data(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_term:proplist().
+maybe_add_user_data(DataJObj, Author, 'true') ->
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
+    case teletype_util:find_account_admin(AccountId) of
+        'undefined' when Author =:= 'undefined' ->
+            [{<<"author">>, <<"An agent">>}];
+        'undefined' ->
+            [{<<"author">>, Author}];
+        UserDoc when Author =:= 'undefined' ->
+            [{<<"author">>, first_last_name(kzd_users:first_name(UserDoc), kzd_users:last_name(UserDoc))}
+             | teletype_util:user_params(UserDoc)
+            ];
+        UserDoc ->
+            [{<<"author">>, Author}
+             | teletype_util:user_params(UserDoc)
+            ]
     end;
-get_commenter_info(_, _) ->
-    [].
+maybe_add_user_data(DataJObj, Author, 'false') ->
+    AccountId = kz_json:get_first_defined([[<<"comment">>, <<"account_id">>]
+                                          ,[<<"reason">>, <<"account_id">>]
+                                          ]
+                                         ,DataJObj
+                                         ),
+    UserId = kz_json:get_first_defined([[<<"comment">>, <<"user_id">>]
+                                       ,[<<"reason">>, <<"user_id">>]
+                                       ]
+                                      ,DataJObj
+                                      ),
+    case kzd_users:fetch(AccountId, UserId) of
+        {'error', _} when Author =:= 'undefined' ->
+            [{<<"author">>, <<"An agent">>}];
+        {'error', _} ->
+            [{<<"author">>, Author}];
+        {'ok', UserDoc} when Author =:= 'undefined' ->
+            [{<<"author">>, first_last_name(kzd_users:first_name(UserDoc), kzd_users:last_name(UserDoc))}
+             | teletype_util:user_params(UserDoc)
+            ];
+        {'ok', UserDoc} ->
+            [{<<"author">>, Author}
+             | teletype_util:user_params(UserDoc)
+            ]
+    end.
+
+-spec first_last_name(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
+first_last_name(?NE_BINARY = First, ?NE_BINARY = Last) ->
+    <<First/binary, " ", Last/binary>>;
+first_last_name(_, ?NE_BINARY = Last) ->
+    <<Last/binary>>;
+first_last_name(?NE_BINARY = First, _) ->
+    <<First/binary>>;
+first_last_name(_, _) ->
+    <<"An agent">>.
