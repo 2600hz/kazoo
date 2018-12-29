@@ -685,6 +685,29 @@ get_value_test_() ->
                   )
     ].
 
+take_value_test_() ->
+    Tests = [{'false', <<"foo">>, kz_json:new()}
+            ,{{'value', <<"bar">>, kz_json:new()}
+             ,<<"foo">>
+             ,kz_json:from_list([{<<"foo">>, <<"bar">>}])
+             }
+            ,{'false'
+             ,<<"fuu">>
+             ,kz_json:from_list([{<<"foo">>, <<"bar">>}])
+             }
+            ,{'false'
+             ,[<<"foo">>, <<"fuu">>]
+             ,kz_json:from_list([{<<"foo">>, kz_json:from_list([{<<"fii">>, <<"bar">>}])}])
+             }
+            ,{{'value', <<"bar">>, kz_json:from_list([{<<"foo">>, kz_json:new()}])}
+             ,[<<"foo">>, <<"fuu">>]
+             ,kz_json:from_list([{<<"foo">>, kz_json:from_list([{<<"fuu">>, <<"bar">>}])}])
+             }
+            ],
+    [?_assertEqual(Result, kz_json:take_value(Key, JObj))
+     || {Result, Key, JObj} <- Tests
+    ].
+
 -define(T2R1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(T2R2, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, <<"new_value">>}])).
 -define(T2R3, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, ?JSON_WRAPPER([{<<"new_key">>, <<"added_value">>}])}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).

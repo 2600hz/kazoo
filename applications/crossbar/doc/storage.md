@@ -50,7 +50,6 @@ Key | Description | Type | Default | Required | Support Level
 `connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false` |
 `id` | ID of the storage document | `string()` |   | `false` |
 `plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false` |
-`ui_metadata` |   | `object()` |   | `false` |
 
 ### storage.attachment.aws
 
@@ -116,6 +115,20 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | What handler module to use | `string('google_storage')` |   | `true` |
 `settings` | Settings for the Google Storage account | `object()` |   | `true` |
+
+### storage.attachment.http
+
+schema for HTTP(s) attachment entry
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`handler` | The handler interface to use | `string('http')` |   | `true` |
+`name` | Friendly name for this attachment handler | `string()` |   | `false` |
+`settings.send_multipart` | Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true | `boolean()` |   | `false` |
+`settings.url` | The base HTTP(s) URL to use when creating the request | `string()` |   | `true` |
+`settings.verb` | The HTTP verb to use when sending the data | `string('POST' | 'PUT')` | `POST` | `false` |
+`settings` | HTTP server settings | `object()` |   | `true` |
 
 ### storage.attachment.onedrive
 
@@ -349,6 +362,36 @@ curl -v -X GET \
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
+```
+
+For instance, setting up your HTTP server to receive new voicemails for the account:
+
+```json
+{
+  "data": {
+    "attachments": {
+      "{UUID}": {
+        "handler": "http",
+        "name": "My HTTP server",
+        "settings": {
+          "url": "http://my.http.server:37635/some_prefix",
+          "verb": "POST"
+        }
+      }
+    },
+    "plan": {
+      "modb": {
+        "types": {
+          "mailbox_message": {
+            "attachments": {
+              "handler": "{UUID}"
+            }
+          }
+        }
+      }
+    }
+  }
+}
 ```
 
 ## Change

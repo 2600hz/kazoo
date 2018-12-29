@@ -240,7 +240,7 @@ check_mailbox(#mailbox{exists='false'
     case find_mailbox(Box, Call, ?DEFAULT_FIND_BOX_PROMPT, Loop) of
         {'ok', PossibleBox, NewLoop} -> check_mailbox(PossibleBox, Call, NewLoop);
         {'error', 'not_found'} ->
-            %% can't find mailbox, set Loop to max to play abort prompts in above func clause
+            %% can't find mailbox, set Loop to max to play abort prompts in above function clause
             check_mailbox(Box, Call, MaxLoginAttempts + 1)
     end;
 check_mailbox(#mailbox{is_setup='false'}=Box, 'true', Call, _) ->
@@ -369,7 +369,7 @@ find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, Call
             find_destination_mailbox(Box, Call, SrcBoxId, NewLoop + 1);
         {'ok', DestBox, _NewLoop} -> DestBox;
         {'error', 'not_found'} ->
-            %% can't find mailbox, set Loop to max to play abort prompts in above func clause
+            %% can't find mailbox, set Loop to max to play abort prompts in above function clause
             find_destination_mailbox(Box, Call, SrcBoxId, MaxLoginAttempts + 1)
     end.
 
@@ -378,30 +378,82 @@ find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, Call
 %% @end
 %%------------------------------------------------------------------------------
 
--spec compose_voicemail(mailbox(), kapps_call:call()) ->
-                               'ok' | {'branch', _} |
-                               {'error', 'channel_hungup'}.
+-type compose_return() :: 'ok' |
+                          {'branch', _} |
+                          {'error', 'channel_hungup'}.
+-spec compose_voicemail(mailbox(), kapps_call:call()) -> compose_return().
 compose_voicemail(#mailbox{owner_id=OwnerId}=Box, Call) ->
     IsOwner = is_owner(Call, OwnerId),
     compose_voicemail(Box, IsOwner, Call).
 
--spec compose_voicemail(mailbox(), boolean(), kapps_call:call()) ->
-                               'ok' | {'branch', _} |
-                               {'error', 'channel_hungup'}.
+-spec compose_voicemail(mailbox(), boolean(), kapps_call:call()) -> compose_return().
 compose_voicemail(#mailbox{check_if_owner='true'}=Box, 'true', Call) ->
     lager:info("caller is the owner of this mailbox"),
     lager:info("overriding action as check (instead of compose)"),
     check_mailbox(Box, Call);
-compose_voicemail(#mailbox{exists='false'}, _, Call) ->
+compose_voicemail(#mailbox{exists='false'}, _IsOwner, Call) ->
     lager:info("attempted to compose voicemail for missing mailbox"),
     _ = kapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     'ok';
 compose_voicemail(#mailbox{max_message_count=MaxCount
                           ,message_count=Count
-                          ,mailbox_id=VMBId
-                          ,keys=#keys{login=Login}
-                          }=Box, _, Call) when Count >= MaxCount
-                                               andalso MaxCount > 0 ->
+                          }=Box
+                 ,_IsOwner
+                 ,Call
+                 )
+  when Count >= MaxCount
+       andalso MaxCount > 0 ->
+    handle_full_mailbox(Box, Call);
+compose_voicemail(Box, _IsOwner, Call) ->
+    start_composing_voicemail(Box, Call).
+
+-spec start_composing_voicemail(mailbox(), kapps_call:call()) -> compose_return().
+start_composing_voicemail(#mailbox{media_extension=Ext}=Box, Call) ->
+    lager:debug("playing mailbox greeting to caller"),
+    _ = play_greeting_intro(Box, Call),
+    _ = play_greeting(Box, Call),
+    _ = play_instructions(Box, Call),
+    _NoopId = kapps_call_command:noop(Call),
+    %% timeout after 5 min for safety, so this process cant hang around forever
+    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
+        {'ok', _} ->
+            lager:info("played greeting and instructions to caller, recording new message"),
+            record_voicemail(tmp_file(Ext), Box, Call);
+        {'dtmf', Digit} ->
+            _ = kapps_call_command:b_flush(Call),
+            handle_compose_dtmf(Box, Call, Digit);
+        {'error', R} ->
+            lager:info("error while playing voicemail greeting: ~p", [R])
+    end.
+
+-spec handle_compose_dtmf(mailbox(), kapps_call:call(), kz_term:ne_binary()) -> compose_return().
+handle_compose_dtmf(#mailbox{keys=#keys{login=Login}}=Box, Call, Login) ->
+    lager:info("caller pressed '~s', redirecting to check voicemail", [Login]),
+    check_mailbox(Box, Call);
+handle_compose_dtmf(#mailbox{media_extension=Ext
+                            ,keys=#keys{operator=Operator}
+                            }=Box
+                   ,Call
+                   ,Operator
+                   ) ->
+    lager:info("caller chose to ring the operator"),
+    case cf_util:get_operator_callflow(kapps_call:account_id(Call)) of
+        {'ok', Flow} -> {'branch', Flow};
+        {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
+    end;
+handle_compose_dtmf(#mailbox{keys=#keys{continue=Continue}}=_Box, _Call, Continue) ->
+    lager:info("caller chose to continue to the next element in the callflow");
+handle_compose_dtmf(#mailbox{media_extension=Ext}=Box, Call, _DTMF) ->
+    lager:info("caller pressed unbound '~s', skip to recording new message", [_DTMF]),
+    record_voicemail(tmp_file(Ext), Box, Call).
+
+-spec handle_full_mailbox(mailbox(), kapps_call:call()) ->
+                                 'ok' | {'error', 'channel_hungup'}.
+handle_full_mailbox(#mailbox{mailbox_id=VMBId
+                            ,keys=#keys{login=Login}
+                            ,max_message_count=MaxCount
+                            ,message_count=Count
+                            }=Box, Call) ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
     Props = [{<<"Account-ID">>, kapps_call:account_id(Call)}
             ,{<<"Voicemail-Box">>, VMBId}
@@ -423,43 +475,6 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
             check_mailbox(Box, Call);
         _Else ->
             lager:debug("finished with call")
-    end;
-compose_voicemail(#mailbox{keys=#keys{login=Login
-                                     ,operator=Operator
-                                     ,continue=Continue
-                                     }
-                          ,media_extension=Ext
-                          }=Box, _, Call) ->
-    lager:debug("playing mailbox greeting to caller"),
-    _ = play_greeting_intro(Box, Call),
-    _ = play_greeting(Box, Call),
-    _ = play_instructions(Box, Call),
-    _NoopId = kapps_call_command:noop(Call),
-    %% timeout after 5 min for safety, so this process cant hang around forever
-    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
-        {'ok', _} ->
-            lager:info("played greeting and instructions to caller, recording new message"),
-            record_voicemail(tmp_file(Ext), Box, Call);
-        {'dtmf', Digit} ->
-            _ = kapps_call_command:b_flush(Call),
-            case Digit of
-                Login ->
-                    lager:info("caller pressed '~s', redirecting to check voicemail", [Login]),
-                    check_mailbox(Box, Call);
-                Operator ->
-                    lager:info("caller chose to ring the operator"),
-                    case cf_util:get_operator_callflow(kapps_call:account_id(Call)) of
-                        {'ok', Flow} -> {'branch', Flow};
-                        {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
-                    end;
-                Continue ->
-                    lager:info("caller chose to continue to the next element in the callflow");
-                _Else ->
-                    lager:info("caller pressed unbound '~s', skip to recording new message", [_Else]),
-                    record_voicemail(tmp_file(Ext), Box, Call)
-            end;
-        {'error', R} ->
-            lager:info("error while playing voicemail greeting: ~p", [R])
     end.
 
 %%------------------------------------------------------------------------------
@@ -526,8 +541,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                              ]),
     kapps_call_command:tones([Tone], Call),
     lager:info("composing new voicemail to ~s", [AttachmentName]),
-    Routins = [{fun kapps_call:set_message_left/2, 'true'}
-              ],
+    Routines = [{fun kapps_call:set_message_left/2, 'true'}],
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
@@ -535,18 +549,18 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                 andalso review_recording(AttachmentName, 'true', Box, Call)
             of
                 'false' ->
-                    _ = cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routines),
                     new_message(AttachmentName, Length, Box, Call);
                 {'ok', 'record'} ->
                     record_voicemail(tmp_file(Ext), Box, Call);
                 {'ok', _Selection} ->
-                    _ = cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routines),
                     cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     _ = kapps_call_command:prompt(<<"vm-thank_you">>, Call),
                     'ok';
                 {'branch', Flow} ->
-                    _ = cf_exe:update_call(Call, Routins),
+                    _ = cf_exe:update_call(Call, Routines),
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     {'branch', Flow}
@@ -1051,7 +1065,7 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Next} -> {'ok', 'next'};
         {'error', _}=E -> E;
         _ ->
-            kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+            _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
             message_menu(Box, Call)
     end.
 

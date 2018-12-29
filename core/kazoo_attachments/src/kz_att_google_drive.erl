@@ -261,7 +261,7 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
 
     Boundary = <<"------", (kz_binary:rand_hex(16))/binary>>,
 
-    Body = kz_att_util:encode_multipart([JsonPart, FilePart], Boundary),
+    Body = kz_http_util:encode_multipart([JsonPart, FilePart], Boundary),
     ContentType = kz_term:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, ContentType}

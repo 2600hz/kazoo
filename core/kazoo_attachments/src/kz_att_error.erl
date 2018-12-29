@@ -57,7 +57,10 @@ new(Reason, Routines) ->
     NewRoutines = props:insert_values(default_routines(Reason), Routines),
     Extended = lists:foldl(fun({F, Value}, M) ->
                                    F(M, Value)
-                           end, #{}, NewRoutines),
+                           end
+                          ,#{}
+                          ,NewRoutines
+                          ),
     {'error', Reason, Extended}.
 
 -spec fetch_routines(gen_attachment:handler_props()
@@ -175,6 +178,12 @@ to_json(ExtendedError) ->
 %% @end
 %%------------------------------------------------------------------------------
 default_routines('oauth_failure') ->
-    [{fun set_resp_code/2, 401}, {fun set_resp_body/2, <<>>}];
+    [{fun set_resp_code/2, 401}
+    ,{fun set_resp_body/2, <<>>}
+    ,{fun set_resp_headers/2, []}
+    ];
 default_routines(_) ->
-    [{fun set_resp_code/2, 500}, {fun set_resp_body/2, <<>>}].
+    [{fun set_resp_code/2, 500}
+    ,{fun set_resp_body/2, <<>>}
+    ,{fun set_resp_headers/2, []}
+    ].

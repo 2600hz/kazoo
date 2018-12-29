@@ -23,6 +23,9 @@
                 },
                 {
                     "$ref": "storage.attachment.dropbox"
+                },
+                {
+                    "$ref": "storage.attachment.http"
                 }
             ],
             "properties": {

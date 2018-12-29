@@ -257,17 +257,19 @@ execute_request(Method, Request, Opts) ->
                 ,catch httpc:request(Method, Request, HTTPOptions, Options)
                 }
         end,
-    handle_response(timer:tc(F)).
+    handle_timed_response(timer:tc(F)).
 
 %%------------------------------------------------------------------------------
 %% @doc Response to caller in a proper manner.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_response(httpc_ret() | {pos_integer(), {method(), kz_term:text(), httpc_ret()}}) -> ret().
-handle_response({Micros, {_Method, _Url, Resp}}) when is_integer(Micros) ->
+-spec handle_timed_response({pos_integer(), {method(), kz_term:text(), httpc_ret()}}) -> ret().
+handle_timed_response({Micros, {_Method, _Url, Resp}}) when is_integer(Micros) ->
     ElapsedMs = float_to_list(Micros / ?MILLISECONDS_IN_SECOND, [{'decimals', 2}, 'compact']),
     lager:debug("~sms: ~s ~s", [ElapsedMs, _Method, _Url]),
-    handle_response(Resp);
+    handle_response(Resp).
+
+-spec handle_response(httpc_ret()) -> ret().
 handle_response({'ok', 'saved_to_file'}=Ok) -> Ok;
 handle_response({'ok', ReqId})
   when is_reference(ReqId) ->

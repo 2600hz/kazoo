@@ -16,8 +16,7 @@
 -include("kazoo_proper.hrl").
 
 -spec create_service_plan(pqc_cb_api:state(), kzd_service_plan:doc()) ->
-                                 {'ok', kzd_service_plan:doc()} |
-                                 {'error', any()}.
+                                 {'ok', kzd_service_plan:doc()}.
 create_service_plan(_API, ServicePlan) ->
     %% No API to add service plans to master account
     %% Doing so manually for now

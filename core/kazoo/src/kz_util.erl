@@ -352,7 +352,7 @@ put_callid(Atom) when is_atom(Atom) ->
 put_callid(APITerm) ->
     put_callid(find_callid(APITerm)).
 
--spec get_callid() -> kz_term:ne_binary().
+-spec get_callid() -> kz_term:api_ne_binary().
 get_callid() -> erlang:get('callid').
 
 -spec find_callid(kz_term:api_terms()) -> kz_term:api_binary().

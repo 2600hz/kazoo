@@ -5,13 +5,13 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_plan).
 
--include("kz_data.hrl").
-
 -export([plan/0, plan/1, plan/2, plan/3]).
 
 -export([get_dataplan/2]).
 
 -export([init/1, reload/0, reload/1]).
+
+-include("kz_data.hrl").
 
 -define(IS_JSON_GUARD(Obj), is_tuple(Obj)
         andalso is_list(element(1, Obj))
@@ -169,7 +169,8 @@ dataplan_match(Classification, Plan, AccountId) ->
     Others = [T || T <- lists:usort(fun({T1,_}, {T2, _}) -> T1 =< T2 end
                                    ,dataplan_connections(Types, GCon)
                                    ),
-                   T =/= Tag],
+                   T =/= Tag
+             ],
 
     case maps:get(<<"handler">>, CAtt, 'undefined') of
         'undefined' ->
@@ -257,8 +258,14 @@ att_post_handler(#{}) -> 'external'.
 fetch_cached_dataplan(Key, Fun) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}) of
         {'ok', Plan} -> Plan;
-        {'error', 'not_found'} when Key =:= ?SYSTEM_DATAPLAN -> load_dataplan(Key, Fun);
-        {'error', 'not_found'} -> ?CACHED_SYSTEM_DATAPLAN
+        {'error', 'not_found'} when Key =:= ?SYSTEM_DATAPLAN ->
+            load_dataplan(Key, Fun);
+        {'error', 'not_found'} when is_tuple(Key) ->
+            {AccountId, OwnerId} = Key,
+            lager:debug("failed to find owner ~s dataplan, trying account ~s", [OwnerId, AccountId]),
+            ?CACHED_ACCOUNT_DATAPLAN(AccountId);
+        {'error', 'not_found'} ->
+            ?CACHED_SYSTEM_DATAPLAN
     end.
 
 -spec load_dataplan(kz_term:ne_binary(), fun()) -> map().
@@ -304,16 +311,16 @@ fetch_account_dataplan(AccountId) ->
     end.
 
 -spec fetch_account_dataplan(kz_term:ne_binary(), kz_json:object()) -> fetch_dataplan_ret().
-fetch_account_dataplan(AccountId, JObj) ->
+fetch_account_dataplan(AccountId, AccountJObj) ->
     SystemJObj = fetch_dataplan(?SYSTEM_DATAPLAN),
-    case kz_json:get_ne_binary_value(<<"pvt_plan_id">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"pvt_plan_id">>, AccountJObj) of
         'undefined' ->
             Keys = [AccountId, ?SYSTEM_DATAPLAN],
-            MergedJObj = kz_json:merge_recursive(SystemJObj, JObj),
+            MergedJObj = kz_json:merge_recursive(SystemJObj, AccountJObj),
             {Keys, MergedJObj};
         PlanId ->
             PlanJObj = kz_json:merge_recursive(SystemJObj, fetch_dataplan(PlanId)),
-            MergedJObj = kz_json:merge_recursive(PlanJObj, JObj),
+            MergedJObj = kz_json:merge_recursive(PlanJObj, AccountJObj),
             Keys = [AccountId, PlanId, ?SYSTEM_DATAPLAN],
             {Keys, MergedJObj}
     end.
@@ -378,12 +385,13 @@ bind() -> 'ok'.
 -else.
 bind() ->
     RK = kz_binary:join([<<"kapi.conf">>
-                        ,kz_term:to_binary(?CACHE_NAME)
+                        ,kz_term:to_binary(?KAZOO_DATA_PLAN_CACHE)
                         ,?KZ_DATA_DB
                         ,<<"storage">>
                         ,<<"doc_created">>
                         ,<<"*">>
                         ], <<".">>),
+    lager:debug("binding for new storage: ~s", [RK]),
     kazoo_bindings:bind(RK, fun handle_new/1).
 
 -spec handle_new(kz_json:objects()) -> 'ok'.

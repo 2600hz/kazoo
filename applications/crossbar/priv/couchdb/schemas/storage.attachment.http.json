@@ -1,0 +1,49 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.attachment.http",
+    "description": "schema for HTTP(s) attachment entry",
+    "properties": {
+        "handler": {
+            "description": "The handler interface to use",
+            "enum": [
+                "http"
+            ],
+            "type": "string"
+        },
+        "name": {
+            "description": "Friendly name for this attachment handler",
+            "type": "string"
+        },
+        "settings": {
+            "description": "HTTP server settings",
+            "properties": {
+                "send_multipart": {
+                    "description": "Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true",
+                    "type": "boolean"
+                },
+                "url": {
+                    "description": "The base HTTP(s) URL to use when creating the request",
+                    "type": "string"
+                },
+                "verb": {
+                    "default": "POST",
+                    "description": "The HTTP verb to use when sending the data",
+                    "enum": [
+                        "POST",
+                        "PUT"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "url"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "handler",
+        "settings"
+    ],
+    "type": "object"
+}

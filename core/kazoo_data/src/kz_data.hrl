@@ -8,7 +8,7 @@
 -define(CACHE_NAME, 'kazoo_data_cache').
 -define(KAZOO_DATA_PLAN_CACHE, 'kazoo_data_plan_cache').
 
--define(APP, kazoo_data).
+-define(APP, 'kazoo_data').
 -define(APP_NAME, <<"datamgr">>).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).

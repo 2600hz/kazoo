@@ -8,7 +8,7 @@
 
 -include("kz_att.hrl").
 
--type settings()         :: kz_data:connection().
+-type settings()         :: map(). % map of the "settings" object from handler's config
 -type db_name()          :: kz_term:ne_binary().
 -type doc_id()           :: kz_term:ne_binary().
 -type att_name()         :: kz_term:ne_binary().
