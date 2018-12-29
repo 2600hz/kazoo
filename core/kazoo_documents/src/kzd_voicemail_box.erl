@@ -103,8 +103,13 @@ timezone(Box, Default) ->
 
 -spec owner_timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_timezone(Box, Default) ->
-    case kzd_user:fetch(kz_doc:account_db(Box), owner_id(Box)) of
-        {'ok', OwnerJObj} -> kzd_user:timezone(OwnerJObj, Default);
+    owner_timezone(Box, Default, owner_id(Box)).
+
+owner_timezone(Box, Default, 'undefined') ->
+    kzd_accounts:timezone(kz_doc:account_id(Box), Default);
+owner_timezone(Box, Default, OwnerId) ->
+    case kzd_users:fetch(kz_doc:account_db(Box), OwnerId) of
+        {'ok', OwnerJObj} -> kzd_users:timezone(OwnerJObj, Default);
         {'error', _} -> kzd_accounts:timezone(kz_doc:account_id(Box), Default)
     end.
 

@@ -5,13 +5,13 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_plan).
 
--include("kz_data.hrl").
-
 -export([plan/0, plan/1, plan/2, plan/3]).
 
 -export([get_dataplan/2]).
 
--export([init/1, reload/0, reload/1]).
+-export([init/1, reload/0, reload/1, reload/2]).
+
+-include("kz_data.hrl").
 
 -define(IS_JSON_GUARD(Obj), is_tuple(Obj)
         andalso is_list(element(1, Obj))
@@ -28,6 +28,7 @@
 
 -define(KZS_PLAN_INIT_SLICE, 100).
 -define(KZS_PLAN_INIT_VIEW, <<"storage/accounts">>).
+-define(KZS_PLAN_ACCOUNT_VIEW, <<"storage/storage_by_account">>).
 
 -spec plan() -> map().
 plan() ->
@@ -169,7 +170,8 @@ dataplan_match(Classification, Plan, AccountId) ->
     Others = [T || T <- lists:usort(fun({T1,_}, {T2, _}) -> T1 =< T2 end
                                    ,dataplan_connections(Types, GCon)
                                    ),
-                   T =/= Tag],
+                   T =/= Tag
+             ],
 
     case maps:get(<<"handler">>, CAtt, 'undefined') of
         'undefined' ->
@@ -254,24 +256,34 @@ att_post_handler(#{}) -> 'external'.
 -type fetch_dataplan_ret() :: {list(), kz_json:object()}.
 
 -spec fetch_cached_dataplan(term(), fun()) -> map().
-fetch_cached_dataplan(Key, Fun) ->
+fetch_cached_dataplan({AccountId, _StorageId} = Key, _Fun) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}) of
         {'ok', Plan} -> Plan;
-        {'error', 'not_found'} when Key =:= ?SYSTEM_DATAPLAN -> load_dataplan(Key, Fun);
+        {'error', 'not_found'} -> ?CACHED_ACCOUNT_DATAPLAN(AccountId)
+    end;
+fetch_cached_dataplan(?SYSTEM_DATAPLAN = Key, Fun) ->
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}) of
+        {'ok', Plan} -> Plan;
+        {'error', 'not_found'} -> load_dataplan(Key, Fun)
+    end;
+fetch_cached_dataplan(Key, _Fun) ->
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}) of
+        {'ok', Plan} -> Plan;
         {'error', 'not_found'} -> ?CACHED_SYSTEM_DATAPLAN
     end.
 
--spec load_dataplan(kz_term:ne_binary(), fun()) -> map().
+-type storage_key() :: kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec load_dataplan(storage_key(), fun()) -> map().
 load_dataplan(Key, Fun) ->
     case Fun(Key) of
         'invalid' ->
             lager:error("something is wrong!! dataplan key ~s is invalid", [Key]),
             kz_json:to_map(default_dataplan());
-        {Keys, PlanJObj} -> cache_dataplan(Keys, PlanJObj)
+        {Keys, PlanJObj} -> cache_dataplan(Key, Keys, PlanJObj)
     end.
 
--spec cache_dataplan(kz_term:ne_binaries(), kz_json:object()) -> map().
-cache_dataplan([Key|_] = Keys, PlanJObj) ->
+-spec cache_dataplan(term(), kz_term:ne_binaries(), kz_json:object()) -> map().
+cache_dataplan(Key, Keys, PlanJObj) ->
     Plan = kz_json:to_map(PlanJObj),
     CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- Keys]}
                  ,{'expires','infinity'}
@@ -285,8 +297,24 @@ cache_callback({'plan', ?SYSTEM_DATAPLAN}, _V, 'erase') ->
     lager:warning("received dataplan cache update for system plan"),
     _ = load_dataplan(?SYSTEM_DATAPLAN, fun fetch_simple_dataplan/1),
     'ok';
+cache_callback({'plan', {AccountId, StorageId}}, _V, 'erase') ->
+    lager:warning("received dataplan cache update for account ~s/~s", [AccountId, StorageId]),
+    _ = load_dataplan({AccountId, StorageId}, fun fetch_storage_dataplan/1),
+    'ok';
 cache_callback({'plan', AccountId}, _V, 'erase') ->
     lager:warning("received dataplan cache update for account ~s", [AccountId]),
+    _ = load_dataplan(AccountId, fun fetch_account_dataplan/1),
+    'ok';
+cache_callback({'plan', ?SYSTEM_DATAPLAN}, _V, 'flush') ->
+    lager:warning("received flush dataplan cache for system plan"),
+    _ = load_dataplan(?SYSTEM_DATAPLAN, fun fetch_simple_dataplan/1),
+    'ok';
+cache_callback({'plan', {AccountId, StorageId}}, _V, 'flush') ->
+    lager:warning("received flush dataplan cache for account ~s/~s", [AccountId, StorageId]),
+    _ = load_dataplan({AccountId, StorageId}, fun fetch_storage_dataplan/1),
+    'ok';
+cache_callback({'plan', AccountId}, _V, 'flush') ->
+    lager:warning("received flush dataplan cache for account ~s", [AccountId]),
     _ = load_dataplan(AccountId, fun fetch_account_dataplan/1),
     'ok';
 cache_callback(_Key, _V, _Action) ->
@@ -296,7 +324,7 @@ cache_callback(_Key, _V, _Action) ->
 fetch_simple_dataplan(Id) ->
     {[Id], fetch_dataplan(Id)}.
 
--spec fetch_account_dataplan(kz_term:ne_binary()) -> fetch_dataplan_ret().
+-spec fetch_account_dataplan(storage_key()) -> fetch_dataplan_ret().
 fetch_account_dataplan(AccountId) ->
     case fetch_dataplan(AccountId) of
         'undefined' -> 'invalid';
@@ -304,27 +332,31 @@ fetch_account_dataplan(AccountId) ->
     end.
 
 -spec fetch_account_dataplan(kz_term:ne_binary(), kz_json:object()) -> fetch_dataplan_ret().
-fetch_account_dataplan(AccountId, JObj) ->
+fetch_account_dataplan(AccountId, AccountJObj) ->
     SystemJObj = fetch_dataplan(?SYSTEM_DATAPLAN),
-    case kz_json:get_ne_binary_value(<<"pvt_plan_id">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"pvt_plan_id">>, AccountJObj) of
         'undefined' ->
             Keys = [AccountId, ?SYSTEM_DATAPLAN],
-            MergedJObj = kz_json:merge_recursive(SystemJObj, JObj),
+            MergedJObj = kz_json:merge_recursive(SystemJObj, AccountJObj),
             {Keys, MergedJObj};
         PlanId ->
             PlanJObj = kz_json:merge_recursive(SystemJObj, fetch_dataplan(PlanId)),
-            MergedJObj = kz_json:merge_recursive(PlanJObj, JObj),
+            MergedJObj = kz_json:merge_recursive(PlanJObj, AccountJObj),
             Keys = [AccountId, PlanId, ?SYSTEM_DATAPLAN],
             {Keys, MergedJObj}
     end.
 
--spec fetch_storage_dataplan({kz_term:ne_binary(), kz_term:ne_binary()}) -> fetch_dataplan_ret().
+-spec fetch_storage_dataplan(storage_key()) -> fetch_dataplan_ret().
 fetch_storage_dataplan({AccountId, StorageId}) ->
-    {Keys, AccountPlan} = fetch_account_dataplan(AccountId),
-    MergedJObj = kz_json:merge_recursive(AccountPlan, fetch_dataplan(StorageId)),
-    {[StorageId | Keys], MergedJObj}.
+    AccountPlan = fetch_dataplan(AccountId),
+    StoragePlan = case fetch_dataplan(StorageId) of
+                      'undefined' -> kz_json:new();
+                      P -> P
+                  end,
+    MergedJObj = kz_json:merge_recursive(AccountPlan, StoragePlan),
+    {[StorageId], MergedJObj}.
 
--spec fetch_dataplan(kz_term:ne_binary()) -> kz_json:api_object().
+-spec fetch_dataplan(storage_key()) -> kz_json:api_object().
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id) of
         {'ok', JObj} -> JObj;
@@ -384,13 +416,24 @@ bind() ->
                         ,<<"doc_created">>
                         ,<<"*">>
                         ], <<".">>),
+    lager:debug("binding for new storage: ~s", [RK]),
     kazoo_bindings:bind(RK, fun handle_new/1).
 
 -spec handle_new(kz_json:objects()) -> 'ok'.
 handle_new([JObj]) ->
-    AccountId = kz_json:get_ne_binary_value(<<"ID">>, JObj),
-    lager:warning("received new storage for account ~s", [AccountId]),
-    load_account(AccountId).
+    ID = kz_json:get_ne_binary_value(<<"ID">>, JObj),
+    lager:warning("received new storage ~s", [ID]),
+    case kz_datamgr:open_cache_doc(?KZ_DATA_DB, ID) of
+        {'ok', Doc} -> load_account_or_storage(kz_doc:account_id(Doc), ID);
+        {'error', _ERR} -> lager:error("error fetching storage doc ~s", [ID])
+    end.
+
+-spec load_account_or_storage(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+load_account_or_storage(AccountId, AccountId) ->
+    load_account(AccountId);
+load_account_or_storage(AccountId, StorageId) ->
+    load_storage(AccountId, StorageId).
+
 -endif.
 
 -spec flush() -> 'ok'.
@@ -413,6 +456,13 @@ reload(AccountId) ->
         _Else -> load_account(AccountId)
     end.
 
+-spec reload(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+reload(AccountId, StorageId) ->
+    case kz_cache:peek_local(?KAZOO_DATA_PLAN_CACHE, {'plan', {AccountId, StorageId}}) of
+        {'ok', _Plan} -> kz_cache:erase_local(?KAZOO_DATA_PLAN_CACHE, {'plan', {AccountId, StorageId}});
+        _Else -> load_storage(AccountId, StorageId)
+    end.
+
 -spec load_accounts(kz_term:ne_binaries()) -> 'ok'.
 load_accounts(Accounts)
   when length(Accounts) > ?KZS_PLAN_INIT_SLICE ->
@@ -426,4 +476,23 @@ load_accounts(Accounts) ->
 -spec load_account(kz_term:ne_binary()) -> 'ok'.
 load_account(AccountId) ->
     _ = load_dataplan(AccountId, fun fetch_account_dataplan/1),
+    load_account_storage(AccountId),
+    'ok'.
+
+-spec load_account_storage(kz_term:ne_binary()) -> 'ok'.
+load_account_storage(AccountId) ->
+    case kz_datamgr:get_result_ids(?KZ_DATA_DB, ?KZS_PLAN_ACCOUNT_VIEW, [{'key', AccountId}]) of
+        {'ok', []} -> 'ok';
+        {'ok', StorageIds} -> load_account_storage(AccountId, StorageIds);
+        Error -> lager:error_unsafe("error reloading dataplans ~p", [Error])
+    end.
+
+-spec load_account_storage(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
+load_account_storage(AccountId, StorageIds) ->
+    lists:foreach(fun(StorageId) -> load_storage(AccountId, StorageId) end, StorageIds),
+    'ok'.
+
+-spec load_storage(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+load_storage(AccountId, StorageId) ->
+    _ = load_dataplan({AccountId, StorageId}, fun fetch_storage_dataplan/1),
     'ok'.

@@ -48,25 +48,32 @@ cleanup(#{'trace_file' := Trace
     ?INFO("cleanup after ~p ms", [kz_time:elapsed_ms(Start)]),
     kz_data_tracing:stop_trace(Trace).
 
--define(API_BASE, "http://" ++ net_adm:localhost() ++ ":8000/v2").
+-define(API_BASE, net_adm:localhost()).
+
+api_base() ->
+    Host = kz_network_utils:get_hostname(),
+    {Scheme, Port} = case kapps_config:get_integer(<<"crossbar">>, <<"port">>) of
+                         'undefined' ->
+                             {"https://", kapps_config:get_integer(<<"crossbar">>, <<"ssl_port">>)};
+                         P -> {"http://", P}
+                     end,
+    Scheme ++ Host ++ [$: | integer_to_list(Port)] ++ "/v2".
 
 -spec authenticate() -> state().
 authenticate() ->
-    URL =  ?API_BASE ++ "/api_auth",
+    URL =  api_base() ++ "/api_auth",
     Data = kz_json:from_list([{<<"api_key">>, api_key()}]),
     Envelope = create_envelope(Data),
 
-    RequestId = kz_binary:rand_hex(5),
-
-    {'ok', Trace} = start_trace(RequestId),
+    {'ok', Trace} = start_trace(),
 
     Resp = make_request([201]
                        ,fun kz_http:put/3
                        ,URL
-                       ,default_request_headers(RequestId)
+                       ,default_request_headers(kz_util:get_callid())
                        ,kz_json:encode(Envelope)
                        ),
-    create_api_state(Resp, RequestId, Trace).
+    create_api_state(Resp, Trace).
 
 -spec api_key() -> kz_term:ne_binary().
 api_key() ->
@@ -94,21 +101,21 @@ api_key(MasterAccountId) ->
             throw('missing_master_account')
     end.
 
--spec create_api_state(response(), binary(), kz_data_tracing:trace_ref()) -> state().
-create_api_state({'error', {'failed_connect', 'econnrefused'}}, _RequestId, _Trace) ->
+-spec create_api_state(response(), kz_data_tracing:trace_ref()) -> state().
+create_api_state({'error', {'failed_connect', 'econnrefused'}}, _Trace) ->
     lager:warning("failed to connect to Crossbar; is it running?"),
     throw({'error', 'econnrefused'});
-create_api_state(<<_/binary>> = RespJSON, RequestId, Trace) ->
+create_api_state(<<_/binary>> = RespJSON, Trace) ->
     RespEnvelope = kz_json:decode(RespJSON),
     #{'auth_token' => kz_json:get_ne_binary_value(<<"auth_token">>, RespEnvelope)
      ,'account_id' => kz_json:get_ne_binary_value([<<"data">>, <<"account_id">>], RespEnvelope)
-     ,'request_id' => RequestId
+     ,'request_id' => kz_util:get_callid()
      ,'trace_file' => Trace
      ,'start' => get('now')
      }.
 
 -spec v2_base_url() -> string().
-v2_base_url() -> ?API_BASE.
+v2_base_url() -> api_base().
 
 -spec auth_account_id(state()) -> kz_term:ne_binary().
 auth_account_id(#{'account_id' := AccountId}) -> AccountId.
@@ -153,6 +160,7 @@ default_request_headers(RequestId) ->
                          }.
 
 -type response() :: binary() |
+                    kz_http:ret() |
                     {'error', binary()}.
 
 -type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
@@ -215,7 +223,7 @@ response_code_matches(#{'response_codes' := ResponseCodes}, ResponseCode) ->
     case lists:member(ResponseCode, ResponseCodes) of
         'true' -> 'true';
         'false' ->
-            ?ERROR("failed expectation: code ~p but expected ~p"
+            ?ERROR("failed expectation: code ~w but expected ~w"
                   ,[ResponseCode, ResponseCodes]
                   ),
             'false'
@@ -242,8 +250,15 @@ response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
             'false'
     end.
 
--spec start_trace(kz_term:ne_binary()) -> {'ok', kz_data_tracing:trace_ref()}.
-start_trace(RequestId) ->
+-spec start_trace() -> {'ok', kz_data_tracing:trace_ref()}.
+start_trace() ->
+    RequestId = case kz_util:get_callid() of
+                    'undefined' ->
+                        RID = kz_binary:rand_hex(5),
+                        kz_util:put_callid(RID),
+                        RID;
+                    RID -> RID
+                end,
     lager:md([{'request_id', RequestId}]),
     put('now', kz_time:now()),
 

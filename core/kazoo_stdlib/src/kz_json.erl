@@ -56,6 +56,7 @@
 -export([get_value/2, get_value/3
         ,get_values/1, get_values/2
         ,values/1, values/2
+        ,take_value/2, take_value/3
         ]).
 -export([get_keys/1, get_keys/2]).
 
@@ -955,6 +956,19 @@ get_first_defined([H|T], JObj, Default) ->
         V -> V
     catch
         'error':'badarg' -> get_first_defined(T, JObj, Default)
+    end.
+
+-type take_return() :: 'false' |
+                       {'value', json_term(), object()}.
+-spec take_value(get_key(), object()) -> take_return().
+take_value(Key, JObj) ->
+    take_value(Key, JObj, 'undefined').
+
+-spec take_value(get_key(), object(), any()) -> take_return().
+take_value(Key, JObj, Default) ->
+    case get_value(Key, JObj, Default) of
+        'undefined' -> 'false';
+        Value -> {'value', Value, delete_key(Key, JObj)}
     end.
 
 -spec get_value(get_key(), object() | objects()) -> json_term() | 'undefined'.

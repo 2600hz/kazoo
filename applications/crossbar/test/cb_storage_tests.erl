@@ -4,8 +4,9 @@
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
 -include("cb_token_restrictions_test.hrl").
 
--define(ACCOUNT_DB_CURRENT_MONTH,
-        kazoo_modb:get_modb(kz_util:format_account_id(?FIXTURE_MASTER_ACCOUNT_ID))).
+-define(ACCOUNT_DB_CURRENT_MONTH
+       ,kazoo_modb:get_modb(kz_util:format_account_id(?FIXTURE_MASTER_ACCOUNT_ID))
+       ).
 
 %%%=============================================================================
 %%% Fixtures / Generators
@@ -16,7 +17,7 @@
 %% @end
 %%--------------------------------------------------------------------
 maybe_check_storage_settings_test_() ->
-    {setup
+    {'setup'
     ,fun setup/0
     ,fun cleanup/1
     ,fun (_ReturnOfSetup) ->
@@ -34,16 +35,16 @@ maybe_check_storage_settings_test_() ->
 %%--------------------------------------------------------------------
 setup() ->
     %% Required for s3 attachment handler
-    _ = application:ensure_all_started(erlcloud),
+    _ = application:ensure_all_started('erlcloud'),
     Pid = kz_fixturedb_util:start_me(),
-    meck:new(kz_fixturedb_db, [unstick, passthrough]),
-    meck:new(kz_fixturedb_doc, [unstick, passthrough]),
-    meck:expect(kz_fixturedb_db, db_exists, this_month_db_exists()),
-    meck:expect(kz_fixturedb_doc, open_doc, fun open_doc/4),
+    meck:new('kz_fixturedb_db', ['unstick', 'passthrough']),
+    meck:new('kz_fixturedb_doc', ['unstick', 'passthrough']),
+    meck:expect('kz_fixturedb_db', 'db_exists', this_month_db_exists()),
+    meck:expect('kz_fixturedb_doc', 'open_doc', fun open_doc/4),
     Pid.
 
 cleanup(Pid) ->
-    _ = application:stop(erlcloud),
+    _ = application:stop('erlcloud'),
     kz_fixturedb_util:stop_me(Pid),
     meck:unload().
 
@@ -142,15 +143,15 @@ this_month_db_exists() ->
             %% in meck:passthrough/1
             (kz_datamgr:db_classification(Db) =:= 'modb'
              andalso is_db_under_test(Db, ?ACCOUNT_DB_CURRENT_MONTH))
-                orelse erlang:apply('kz_fixturedb_db_meck_original', db_exists, [Server, Db])
+                orelse erlang:apply('kz_fixturedb_db_meck_original', 'db_exists', [Server, Db])
     end.
 
-is_db_under_test(ThisMonth, ThisMonth) ->                                             true;
-is_db_under_test(_, _) ->                                                             false.
+is_db_under_test(ThisMonth, ThisMonth) -> 'true';
+is_db_under_test(_, _) ->                 'false'.
 
 open_doc(Server, DbName, DocId, Options) ->
     case ?ACCOUNT_DB_CURRENT_MONTH of
-        DbName -> {ok, kz_json:new()};
+        DbName -> {'ok', kz_json:new()};
         _ -> meck:passthrough([Server, DbName, DocId, Options])
     end.
 

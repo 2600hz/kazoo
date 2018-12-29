@@ -15,6 +15,8 @@
         ,props_to_querystring/1
         ,http_code_to_status_line/1
         ,get_resp_header/2, get_resp_header/3
+        ,encode_multipart/1, encode_multipart/2
+        ,create_boundary/0
         ]).
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -402,3 +404,39 @@ get_resp_header(RespHeader, RespHeaders, Default) ->
         {_, Value} -> Value;
         'false' -> Default
     end.
+
+
+-type part() :: {binary(), kz_term:proplist()}.
+-type parts() :: [part()].
+
+-spec encode_multipart(parts()) -> binary().
+encode_multipart(Parts) ->
+    encode_multipart(Parts, create_boundary()).
+
+-spec encode_multipart(parts(), binary()) -> binary().
+encode_multipart(Parts, Boundary) ->
+    encode_multipart(Parts, Boundary, <<>>).
+
+-spec encode_multipart(parts(), binary(), binary()) -> binary().
+encode_multipart([], Boundary, Encoded) ->
+    Close = <<"\r\n--" , Boundary/binary, "--">>,
+    <<Encoded/binary, Close/binary>>;
+encode_multipart([{Body, Headers} | Parts], Boundary, Encoded) ->
+    Delimiter = <<"\r\n--" ,Boundary/binary, "\r\n">>,
+    H = encode_multipart_headers(Headers),
+    Acc = <<Encoded/binary, Delimiter/binary, H/binary, Body/binary>>,
+    encode_multipart(Parts, Boundary, Acc).
+
+-spec encode_multipart_headers(kz_term:proplist()) -> binary().
+encode_multipart_headers(Headers) ->
+    encode_multipart_headers(Headers, <<>>).
+
+-spec encode_multipart_headers(kz_term:proplist(), binary()) -> binary().
+encode_multipart_headers([], Encoded) -> <<Encoded/binary, "\r\n">>;
+encode_multipart_headers([{K, V} | Headers], Encoded) ->
+    Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,
+    encode_multipart_headers(Headers, Acc).
+
+-spec create_boundary() -> kz_term:ne_binary().
+create_boundary() ->
+    cow_multipart:boundary().

@@ -468,9 +468,9 @@ create_fold(F, {'ok', C}) -> F(C).
 
 -spec update_system_config(kz_term:ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
-    {'ok', _} = kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
-    io:format("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]),
-    lager:debug("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
+    {'ok', _} = kapps_config:set(<<"accounts">>, <<"master_account_id">>, AccountId),
+    io:format("updated master account id in system_config.accounts~n"),
+    lager:debug("updated master account id in system_config.accounts~n").
 
 -spec prechecks(cb_context:context()) -> {'ok', cb_context:context()}.
 prechecks(Context) ->

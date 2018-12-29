@@ -15,6 +15,7 @@ cd $(pwd -P)/..
 ERL_FILES=${ERL_FILES:-$(git --no-pager diff --name-only HEAD origin/4.3 -- applications core | grep erl)}
 
 HOST=${HOST:-"192.168.1.186"}
+PORT=${PORT:-"22"}
 BEAM_PATH=${BEAM_PATH:-"/tmp/beams"}
 
 function erl_to_beam {
@@ -29,7 +30,7 @@ function erl_to_beam {
 for ERL in $ERL_FILES; do
     BEAM=$(erl_to_beam $ERL)
     echo -n "."
-    [ -f $BEAM ] && $(scp "$BEAM" "$HOST:$BEAM_PATH")
+    [ -f $BEAM ] && $(scp -P$PORT "$BEAM" "$HOST:$BEAM_PATH")
 done
 echo " done"
 

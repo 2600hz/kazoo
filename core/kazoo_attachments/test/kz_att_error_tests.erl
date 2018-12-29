@@ -21,13 +21,18 @@ error_response_test_() ->
                           ,handler_props => []
                           ,resp_code => 500
                           ,resp_body => <<>>
+                          ,resp_headers => []
                           },
     PutExtendedError = FetchExtendedError#{handler_props => #{}, options => options()},
 
     %% Attachment handlers must always return extended errors (3 elements tuple),
     %% e.g: `{error, Reason, ExtendedError}'.
     [{"error_verbosity key not set (without routines)"
-     ,?_assertEqual({'error', ErrorReason, #{resp_code => 500, resp_body => <<>>}}
+     ,?_assertEqual({'error', ErrorReason, #{resp_code => 500
+                                            ,resp_body => <<>>
+                                            ,resp_headers => []
+                                            }
+                    }
                    ,WithoutRoutines
                    )
      }
@@ -63,5 +68,4 @@ put_routines() ->
     put_routines([]).
 
 put_routines(Options) ->
-    kz_att_error:put_routines(#{}, db_name(), document_id(), att_name(), att_content(),
-                              Options).
+    kz_att_error:put_routines(#{}, db_name(), document_id(), att_name(), att_content(), Options).

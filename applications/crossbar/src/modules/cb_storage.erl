@@ -429,11 +429,14 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     %% TODO: move this tmp doc creation to maybe_check_storage_settings function.
     TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
                                ,<<"pvt_type">> => <<"storage_settings_probe">>
+                               ,<<"content">> => Content
                                }),
     DbName = kazoo_modb:get_modb(AccountId),
     UpdatedDoc = kz_doc:update_pvt_parameters(TmpDoc, DbName),
-    {ok, Doc} = kazoo_modb:save_doc(AccountId, UpdatedDoc),
-    DocId = kz_json:get_value(<<"_id">>, Doc),
+    {'ok', Doc} = kazoo_modb:save_doc(AccountId, UpdatedDoc),
+
+    DocId = kz_doc:id(Doc),
+
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
     Settings = kz_json:get_json_value(<<"settings">>, Att),
     AttHandler = kz_term:to_atom(<<"kz_att_", Handler/binary>>, 'true'),
@@ -450,8 +453,14 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
         {'ok', _CreatedDoc, _CreatedProps} ->
             %% Check the storage settings have permissions to read files
             case kz_datamgr:fetch_attachment(DbName, DocId, AName, Opts) of
-                {'ok', _Content} ->
+                {'ok', Content} ->
+                    lager:debug("successfully got content back from storage backend"),
                     ContextAcc;
+                {'ok', <<"\r\n", _/binary>>=Multipart} ->
+                    handle_multipart_fetch(ContextAcc, AttId, Content, Multipart);
+                {'ok', _C} ->
+                    lager:notice("got unexpected contents back on fetch: ~p", [_C]),
+                    add_datamgr_error(AttId, 'invalid_data', ContextAcc);
                 {'error', Error} ->
                     add_datamgr_error(AttId, Error, ContextAcc);
                 AttachmentError ->
@@ -462,6 +471,28 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
         AttachmentError ->
             add_att_settings_validation_error(AttId, AttachmentError, ContextAcc)
     end.
+
+-spec handle_multipart_fetch(cb_context:context(), kz_term:ne_binary(), binary(), binary()) ->
+                                    cb_context:context().
+handle_multipart_fetch(Context, AttId, Content, Multipart) ->
+    handle_multipart_contents(Context, AttId, Content
+                             ,binary:split(Multipart, <<"\r\n">>, ['global'])
+                             ).
+
+-spec handle_multipart_contents(cb_context:context(), kz_term:ne_binary(), binary(), [binary()]) ->
+                                       cb_context:context().
+handle_multipart_contents(Context, AttId, _Content, []) ->
+    lager:notice("failed to find content in multipart data"),
+    add_datamgr_error(AttId, 'invalid_data', Context);
+handle_multipart_contents(Context, _AttId, Content, [<<"content-type: text/plain">>, Content | _]) ->
+    lager:debug("got contents back in multipart response"),
+    Context;
+handle_multipart_contents(Context, _AttId, Content, [Content | _]) ->
+    lager:debug("got contents back in multipart response"),
+    Context;
+handle_multipart_contents(Context, AttId, Content, [_Part | Parts]) ->
+    lager:debug("skipping part ~s", [_Part]),
+    handle_multipart_contents(Context, AttId, Content, Parts).
 
 -spec add_datamgr_error(kz_term:ne_binary(), kz_datamgr:data_errors(), cb_context:context()) ->
                                cb_context:context().
@@ -475,16 +506,18 @@ add_datamgr_error(AttId, Error, Context) ->
 add_att_settings_validation_error(AttId, {'error', Reason, ExtendedError}, Context) ->
     ErrorCode = kz_att_error:resp_code(ExtendedError),
     ErrorBody = kz_att_error:resp_body(ExtendedError),
-    EmptyJObj = kz_json:new(),
+    ErrorHeaders = kz_att_error:resp_headers(ExtendedError),
+
+    lager:info("error ~p: ~p", [ErrorCode, ErrorHeaders]),
+
     %% Some attachment handlers return a bitstring as the value for `ErrorBody` variable,
     %% some other return an encoded JSON object which is also a binary value but
     %% if you pass a bitstring to kz_json:decode/1 you will get an empty object.
-    NewErrorBody = case kz_json:decode(ErrorBody) of
-                       EmptyJObj -> ErrorBody;
-                       DecodedErrorBody -> DecodedErrorBody
-                   end,
+
+    ErrorResp = get_error_response(ErrorHeaders, ErrorBody),
+
     Error = [{<<"error_code">>, ErrorCode}
-            ,{<<"error_body">>, NewErrorBody}
+            ,{<<"error_body">>, ErrorResp}
             ,{<<"message">>, Reason}
             ],
     ErrorObj = kz_json:insert_values(Error, kz_json:new()),
@@ -493,3 +526,32 @@ add_att_settings_validation_error(AttId, {'error', Reason, ExtendedError}, Conte
                                    ,ErrorObj
                                    ,Context
                                    ).
+
+-spec get_error_response(kz_term:proplist(), Bin) ->
+                                Bin | kz_json:object()
+                                    when Bin :: binary().
+get_error_response(ErrorHeaders, ErrorBody) ->
+    get_error_response(ErrorHeaders, ErrorBody, props:get_value(<<"content-type">>, ErrorHeaders)).
+
+-spec get_error_response(kz_term:proplist(), Bin, kz_term:api_ne_binary()) ->
+                                Bin | kz_json:object()
+                                    when Bin :: binary().
+get_error_response(_Headers, ErrorBody, 'undefined') ->
+    lager:debug("no error content-type returned, trying JSON decoding"),
+    decode_json(ErrorBody);
+get_error_response(_Headers, ErrorBody, <<"application/json", _/binary>>) ->
+    decode_json(ErrorBody);
+get_error_response(_Headers, ErrorBody, _CT) ->
+    lager:debug("not handling content-type ~s, using resp body as-is", [_CT]),
+    ErrorBody.
+
+-spec decode_json(Bin) -> kz_json:object() | Bin
+                              when Bin :: binary().
+decode_json(RespBody) ->
+    try kz_json:unsafe_decode(RespBody) of
+        DecodedErrorBody -> DecodedErrorBody
+    catch
+        'throw':{'invalid_json', _Error, _Bin} ->
+            lager:debug("error body not JSON"),
+            RespBody
+    end.

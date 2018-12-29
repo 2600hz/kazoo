@@ -112,7 +112,8 @@ new(AccountId, Props) ->
 
     Name = create_message_name(props:get_value(<<"Box-Num">>, Props)
                               ,props:get_value(<<"Timezone">>, Props)
-                              ,UtcSeconds),
+                              ,UtcSeconds
+                              ),
     Description = props:get_value(<<"Description">>, Props, <<"voicemail message with media">>),
 
     DocProps = props:filter_undefined(

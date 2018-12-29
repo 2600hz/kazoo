@@ -684,18 +684,27 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                        ),
             _ = maybe_delete_doc(Context, DocId),
             handle_datamgr_errors(Error, AName, Context);
+        {'ok', _Res, _Params} ->
+            lager:debug("saved attachment ~s to doc ~s to db ~s"
+                       ,[AName, DocId, cb_context:account_db(Context)]
+                       ),
+            lager:debug("attachment params: ~p", [_Params]),
+            handle_saved_attachment(Context, DocId);
         {'ok', _Res} ->
             lager:debug("saved attachment ~s to doc ~s to db ~s"
                        ,[AName, DocId, cb_context:account_db(Context)]
                        ),
-            {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-            cb_context:setters(Context
-                              ,[{fun cb_context:set_doc/2, kz_json:new()}
-                               ,{fun cb_context:set_resp_status/2, 'success'}
-                               ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                               ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
-                               ])
+            handle_saved_attachment(Context, DocId)
     end.
+
+handle_saved_attachment(Context, DocId) ->
+    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_doc/2, kz_json:new()}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, kz_json:new()}
+                       ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
+                       ]).
 
 -spec maybe_delete_doc(cb_context:context(), kz_term:ne_binary()) ->
                               {'ok', _} |
