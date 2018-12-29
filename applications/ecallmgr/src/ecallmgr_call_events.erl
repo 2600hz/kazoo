@@ -35,8 +35,7 @@
 -export([transfer/3]).
 -export([get_application_name/1]).
 -export([get_event_name/1]).
--export([queue_name/1
-        ,callid/1
+-export([callid/1
         ,node/1
         ,update_node/2
         ]).
@@ -75,14 +74,14 @@ start_link(Node, CallId) ->
 
 -spec graceful_shutdown(atom(), kz_term:ne_binary()) -> 'ok'.
 graceful_shutdown(Node, UUID) ->
-    _ = [gen_listener:cast(Pid, {'graceful_shutdown', UUID})
+    _ = [gen_server:cast(Pid, {'graceful_shutdown', UUID})
          || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
     'ok'.
 
 -spec shutdown(atom(), kz_term:ne_binary()) -> 'ok'.
 shutdown(Node, UUID) ->
-    _ = [gen_listener:cast(Pid, 'shutdown')
+    _ = [gen_server:cast(Pid, 'shutdown')
          || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
     'ok'.
@@ -91,32 +90,29 @@ shutdown(Node, UUID) ->
 listen_for_other_leg(_Node, _UUID, 'undefined') -> 'ok';
 listen_for_other_leg(_Node, _UUID, []) -> 'ok';
 listen_for_other_leg(Node, UUID, [_|_] = Events) ->
-    _ = [gen_listener:cast(Pid, {'b_leg_events', Events})
+    _ = [gen_server:cast(Pid, {'b_leg_events', Events})
          || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
     lager:debug("sent msg to ~s to bind for b leg events ~p", [UUID, Events]).
 
 -spec callid(pid()) -> kz_term:ne_binary().
-callid(Srv) -> gen_listener:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND).
+callid(Srv) -> gen_server:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND).
 
 -spec node(pid()) -> kz_term:ne_binary().
-node(Srv) -> gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
+node(Srv) -> gen_server:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 
 -spec update_node(pid(), atom()) -> 'ok'.
-update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
+update_node(Srv, Node) -> gen_server:cast(Srv, {'update_node', Node}).
 
 -spec transfer(pid(), atom(), kz_term:proplist()) -> 'ok'.
-transfer(Srv, TransferType, Props) -> gen_listener:cast(Srv, {TransferType, Props}).
-
--spec queue_name(pid()) -> kz_term:ne_binary().
-queue_name(Srv) -> gen_listener:queue_name(Srv).
+transfer(Srv, TransferType, Props) -> gen_server:cast(Srv, {TransferType, Props}).
 
 -spec to_json(kz_term:proplist()) -> kz_json:object().
 to_json(Props) ->
     kz_json:from_list(create_event(Props)).
 
 %%%=============================================================================
-%%% gen_listener callbacks
+%%% gen_server callbacks
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
@@ -136,7 +132,7 @@ init([Node, CallId]) when is_atom(Node)
 init(Node, CallId) ->
     kz_util:put_callid(CallId),
     register_for_events(Node, CallId),
-    gen_listener:cast(self(), 'init'),
+    gen_server:cast(self(), 'init'),
     lager:debug("started call event publisher"),
     {'ok', #state{node=Node
                  ,call_id=CallId
@@ -237,10 +233,6 @@ handle_cast({'other_leg', OtherLeg}
     lager:debug("started event process: ~p", [_Started]),
 
     {'noreply', State#state{other_leg=OtherLeg}};
-handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
-    {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -284,7 +276,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
          }
     of
         {_, <<"redirect">>} ->
-            gen_listener:cast(self(), {'channel_redirected', Props}),
+            gen_server:cast(self(), {'channel_redirected', Props}),
             {'noreply', State};
         {<<"CHANNEL_DESTROY">>, _} ->
             maybe_process_channel_destroy(Node, CallId, Props),
@@ -451,9 +443,9 @@ handle_bowout(Node, Props, ResigningUUID) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a `gen_listener' when it is about to
+%% @doc This function is called by a `gen_server' when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
-%% necessary cleaning up. When it returns, the `gen_listener' terminates
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -637,7 +629,7 @@ publish_event(Props) ->
                        );
         {<<>>, <<"channel_bridge">>} ->
             OtherLeg = get_other_leg(Props),
-            gen_listener:cast(self(), {'other_leg', OtherLeg}),
+            gen_server:cast(self(), {'other_leg', OtherLeg}),
             lager:debug("publishing channel_bridge to other leg ~s", [OtherLeg]);
         {<<>>, _Event} ->
             lager:debug("publishing call event ~s", [_Event]);

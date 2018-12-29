@@ -12,7 +12,6 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/2
         ,terminate/2
         ,code_change/3
         ]).
@@ -153,14 +152,6 @@ handle_cast(_Msg, TemplateName) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, TemplateName) ->
     {'noreply', TemplateName}.
-
-%%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers.
-%% @end
-%%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _TemplateName) ->
-    {'reply', []}.
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
