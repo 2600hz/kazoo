@@ -343,11 +343,10 @@ maybe_start_onnet_endpoint_recording('undefined', _To, Call) -> Call;
 maybe_start_onnet_endpoint_recording(EndpointId, To, Call) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} ->
-            Call1 = kapps_call:kvs_store('recording_follow_transfer', 'false', Call),
             maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To)
                                       ,?ENDPOINT_OUTBOUND_RECORDING_LABEL(To)
                                       ,Endpoint
-                                      ,Call1
+                                      ,Call
                                       );
         _ -> Call
     end.
@@ -362,7 +361,10 @@ maybe_start_call_recording('undefined', _, Call) ->
 maybe_start_call_recording(Data, Label, Call) ->
     case kz_json:is_false(<<"enabled">>, Data) of
         'true' -> Call;
-        'false' -> kapps_call:start_recording(kz_json:set_value(<<"origin">>, Label, Data), Call)
+        'false' ->
+            lager:info("starting call recording by configuration"),
+            Call1 = kapps_call:kvs_store('recording_follow_transfer', 'false', Call),
+            kapps_call:start_recording(kz_json:set_value(<<"origin">>, Label, Data), Call1)
     end.
 
 -spec get_incoming_security(kapps_call:call()) -> kz_term:proplist().
@@ -385,4 +387,3 @@ execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
     {'ok', Pid} = cf_exe_sup:new(Call),
     kapps_call:kvs_store('consumer_pid', Pid, Call).
-
