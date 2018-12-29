@@ -1497,7 +1497,7 @@ start_recording(Data0, Call) ->
                        ],
             exec(Routines, Call);
         _Err ->
-            lager:debug("error starting recording ~p", [_Err]),
+            lager:notice("error starting recording ~p", [_Err]),
             Call
     end.
 
