@@ -497,7 +497,10 @@ is_in_account_and_in_service(AccountId, PN) ->
 %%------------------------------------------------------------------------------
 -spec clear_numbers_from_port(kz_json:object()) -> {ok, kz_json:object()}.
 clear_numbers_from_port(PortReq) ->
-    Cleared = kz_json:set_value(?NUMBERS_KEY, kz_json:new(), PortReq),
+    Update = [{?NUMBERS_KEY, kz_json:new()}
+             ,{<<"ported_numbers">>, kz_json:get_json_value(?NUMBERS_KEY, PortReq)}
+             ],
+    Cleared = kz_json:set_values(Update, PortReq),
     case save_doc(Cleared) of
         {'ok', _PortReq1}=Ok ->
             lager:debug("port numbers cleared"),
