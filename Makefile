@@ -69,13 +69,20 @@ clean-deps:
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
 	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
+	$(if $(wildcard make/.deps.mk.*), rm make/.deps.mk.*)
 
 .erlang.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ROOT)/erlang.mk
 	@ERLANG_MK_COMMIT=$(ERLANG_MK_COMMIT) $(MAKE) -f erlang.mk erlang-mk
 
-deps: deps/Makefile
+DEPS_HASH := $(shell md5sum make/deps.mk | cut -d' ' -f1)
+DEPS_HASH_FILE := make/.deps.mk.$(DEPS_HASH)
+
+deps: $(DEPS_HASH_FILE)
+
+$(DEPS_HASH_FILE): deps/Makefile
 	@$(MAKE) -C deps/ all
+	touch $(DEPS_HASH_FILE)
 deps/Makefile: .erlang.mk
 	mkdir -p deps
 	@$(MAKE) -f erlang.mk deps
@@ -87,7 +94,7 @@ core:
 apps: core
 	@$(MAKE) -j$(JOBS) -C applications/ all
 
-kazoo: apps $(TAGS)
+kazoo: deps apps $(TAGS)
 
 tags: $(TAGS)
 
