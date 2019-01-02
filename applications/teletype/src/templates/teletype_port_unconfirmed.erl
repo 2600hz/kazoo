@@ -21,7 +21,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Unfinished port request '{{port_request.name}}' reminder">>).
+-define(TEMPLATE_SUBJECT, <<"Unfinished port request '{{port_request.name|safe}}' reminder">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Unconfirmed">>).
 

@@ -21,7 +21,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Number port request '{{port_request.name}}' completed">>).
+-define(TEMPLATE_SUBJECT, <<"Number port request '{{port_request.name|safe}}' completed">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Successful">>).
 

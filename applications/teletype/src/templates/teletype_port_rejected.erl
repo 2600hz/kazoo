@@ -21,7 +21,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Port request '{{port_request.name}}' has been rejected">>).
+-define(TEMPLATE_SUBJECT, <<"Port request '{{port_request.name|safe}}' has been rejected">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Rejected">>).
 

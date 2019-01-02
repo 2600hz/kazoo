@@ -22,7 +22,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"New comment for port request '{{port_request.name}}'">>).
+-define(TEMPLATE_SUBJECT, <<"New comment for port request '{{port_request.name|safe}}'">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Comment">>).
 
@@ -122,5 +122,7 @@ user_data(DataJObj, 'true') ->
 user_data(DataJObj, 'false') ->
     AccountId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"account_id">>], DataJObj),
     UserId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"user_id">>], DataJObj),
-    {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
-    teletype_util:user_params(UserJObj).
+    case kzd_users:fetch(AccountId, UserId) of
+        {error, _} -> [];
+        {ok, UserJObj} -> teletype_util:user_params(UserJObj)
+    end.

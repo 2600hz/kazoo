@@ -110,7 +110,10 @@ fix_port_request_data(JObj, DataJObj) ->
 
 -spec fix_numbers(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_numbers(JObj, _DataJObj) ->
-    NumbersJObj = kz_json:get_value(<<"numbers">>, JObj, kz_json:new()),
+    NumbersJObj = kz_json:get_json_value(<<"numbers">>
+                                        ,JObj
+                                        ,kz_json:get_json_value(<<"ported_numbers">>, JObj, kz_json:new())
+                                        ),
     Numbers = kz_json:foldl(fun fix_number_fold/3, [], NumbersJObj),
     kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
@@ -149,9 +152,24 @@ fix_comments(JObj, DataJObj) ->
 
 -spec fix_dates(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_dates(JObj, _DataJObj) ->
-    lists:foldl(fun fix_date_fold/2, JObj, [<<"transfer_date">>, <<"scheduled_date">>]).
+    lists:foldl(fun fix_date_fold/2
+               ,kz_json:set_value(<<"created">>, kz_doc:created(JObj), JObj)
+               ,[<<"transfer_date">>, <<"scheduled_date">>, <<"created">>, <<"ported_date">>]
+               ).
 
 -spec fix_date_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
+fix_date_fold(<<"ported_date">> = Key, JObj) ->
+    case [TransitionJObj
+          || TransitionJObj <- kz_json:get_list_value(<<"pvt_transitions">>, JObj, []),
+             kz_json:get_ne_binary_value([<<"transition">>, <<"new">>], TransitionJObj) =:= <<"completed">>
+         ]
+    of
+        [] -> JObj;
+        [Completed|_] ->
+            Timestamp = kz_json:get_integer_value([<<"transition">>, <<"timestamp">>], Completed),
+            Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, JObj)),
+            kz_json:set_value(Key, Date, JObj)
+    end;
 fix_date_fold(Key, JObj) ->
     case kz_json:get_integer_value(Key, JObj) of
         'undefined' -> JObj;
@@ -162,17 +180,26 @@ fix_date_fold(Key, JObj) ->
 
 -spec fix_notifications(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_notifications(JObj, _DataJObj) ->
-    kz_json:set_value(<<"customer_contact">>
-                     ,kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], JObj)
-                     ,JObj %% not deleting the key for backward compatibility
-                     ).
+    case kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], JObj) of
+        <<_/binary>> =Email -> kz_json:set_value(<<"customer_contact">>, [Email], JObj);
+        [_|_]=Emails -> kz_json:set_value(<<"customer_contact">>, Emails, JObj);
+        _ -> JObj
+    end.
 
 -spec fix_carrier(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_carrier(JObj, _DataJObj) ->
-    kz_json:set_value(<<"service_provider">>
-                     ,kz_json:get_value(<<"carrier">>, JObj)
-                     ,JObj %% not deleting the key for backward compatibility
-                     ).
+    kz_json:set_values([{<<"losing_carrier">>, kz_json:get_first_defined([<<"carrier">>
+                                                                         ,[<<"billing">>, <<"carrier">>]
+                                                                         ,<<"bill_carrier">>
+                                                                         ]
+                                                                        ,JObj
+                                                                        ,<<"Unknown Carrier">>
+                                                                        )
+                        }
+                       ,{<<"winning_carrier">>, kz_json:get_value(<<"winning_carrier">>, JObj, <<"Unknown Carrier">>)}
+                       ]
+                      ,JObj %% not deleting the key for backward compatibility
+                      ).
 
 -spec fix_transfer_date(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_transfer_date(JObj, _DataJObj) ->

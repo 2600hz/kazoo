@@ -2,7 +2,7 @@
 
 {{port_request.author}} commented on your port request.
 
-{{port_request.comment.date.local|date:"l, F j, Y H:i A"}} ({{port_request.requested_port_date.timezone}})
+{{port_request.comment.date.local|date:"F j, Y H:i A"}}
 
 
 > {{port_request.comment.content}}

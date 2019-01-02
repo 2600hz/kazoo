@@ -21,7 +21,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name}}'">>).
+-define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name|safe}}'">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Request">>).
 

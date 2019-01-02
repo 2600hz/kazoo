@@ -21,7 +21,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Port request: '{{port_request.name}}' is now pending">>).
+-define(TEMPLATE_SUBJECT, <<"Port request: '{{port_request.name|safe}}' is now pending">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Pending">>).
 

@@ -65,6 +65,7 @@
                             <b>-&nbsp;&nbsp;&nbsp;Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.name}}</span><br>
                             <b>-&nbsp;&nbsp;&nbsp;State:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.port_state}}</span><br>
                             <b>-&nbsp;&nbsp;&nbsp;ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.id}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Requested Transfer Date:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}})</span><br>
                             <b>-&nbsp;&nbsp;&nbsp;Numbers:</b><br><span style="font-family:monospace;">{{ port_request.numbers|join:", " }}</span>
                         </p>
                     </td>
@@ -79,6 +80,7 @@
                         </p>
                     </td>
                 </tr>
+            </table>
             <!-- Email Footer -->
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#202029" align="center" width="100%" style="background-color:#202029;border-color:#202029;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr><td style="font-size:50px;line-height:50px;" height="50">&nbsp;</td></tr>

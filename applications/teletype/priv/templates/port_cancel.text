@@ -12,6 +12,7 @@ Port Request Information
     Name:  {{port_request.name}}
     State:  {{port_request.port_state}}
     ID:  {{port_request.id}}
+    Requested Transfer Date:  {{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}})
     Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
 
 
