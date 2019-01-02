@@ -65,10 +65,12 @@ coverage-report:
 check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
 
-clean-deps:
+clean-deps: clean-deps-hash
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
 	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
+
+clean-deps-hash:
 	$(if $(wildcard make/.deps.mk.*), rm make/.deps.mk.*)
 
 .erlang.mk:
@@ -80,9 +82,12 @@ DEPS_HASH_FILE := make/.deps.mk.$(DEPS_HASH)
 
 deps: $(DEPS_HASH_FILE)
 
-$(DEPS_HASH_FILE): deps/Makefile
+$(DEPS_HASH_FILE):
+	@$(MAKE) clean-deps
+	@$(MAKE) deps/Makefile
 	@$(MAKE) -C deps/ all
 	touch $(DEPS_HASH_FILE)
+
 deps/Makefile: .erlang.mk
 	mkdir -p deps
 	@$(MAKE) -f erlang.mk deps
