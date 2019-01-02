@@ -249,13 +249,12 @@ migrate_service_plans(Account) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(AccountDb, <<"services/plans">>, ViewOptions) of
         {'ok', JObjs} ->
-            io:format("verifying ~p service plans have been migrated~n", [length(JObjs)]),
+            ?SUP_LOG_INFO("verifying ~p service plans have been migrated~n", [length(JObjs)]),
             migrate_service_plans(AccountDb, [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]);
         {'error', 'not_found'} ->
             case kz_datamgr:db_exists(AccountDb) of
                 'true' ->
                     ?SUP_LOG_INFO("view is missing for account: ~s, creating view and trying again", [Account]),
-                    register_views(),
                     _ = kapps_maintenance:refresh(Account),
                     migrate_service_plans(Account);
                 'false' ->
