@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz
+%%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc Manage the bucket servers
 %%% @author James Aimonetti
 %%% @end

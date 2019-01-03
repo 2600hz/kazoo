@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-, 2600Hz
+%%% @copyright (C) 2018-2019, 2600Hz
 %%% @doc
 %%% @author Sergey Safarov <s.safarov@gmail.com>, Sponsored by Audian
 %%% @end

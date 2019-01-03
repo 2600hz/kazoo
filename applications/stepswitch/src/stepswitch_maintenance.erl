@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc Preforms maintenance operations against the stepswitch dbs
 %%% @author Karl Anderson
 %%% @end
