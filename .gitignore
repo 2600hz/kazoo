@@ -68,6 +68,7 @@ compile_commands.json
 
 /make/core.mk
 /make/cover.mk
+/make/.deps.mk.*
 /core/*/cover/*.html
 /applications/*/cover/*.html
 
