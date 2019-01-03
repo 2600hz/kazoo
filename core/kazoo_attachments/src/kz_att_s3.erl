@@ -15,6 +15,7 @@
 -export([fetch_attachment/4]).
 
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
+-define(AMAZON_S3_UPLOAD_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 30).
 
 -type s3_error() :: {'aws_error'
                     ,{'socket_error', binary()} |
@@ -50,7 +51,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
         {'error', _FilePath, Error} ->
             Routines = [{fun kz_att_error:set_req_url/2, FilePath}
                         | kz_att_error:put_routines(Params, DbName, DocId, AName,
-                                                    Contents, Options)
+                                                    <<>>, Options)
                        ],
             handle_s3_error(Error, Routines)
     end.
@@ -103,6 +104,8 @@ aws_config(#{'key' := Key
             }=Map) ->
     BucketAfterHost = kz_term:is_true(maps:get('bucket_after_host', Map, 'false')),
     BucketAccess = kz_term:to_atom(maps:get('bucket_access_method', Map, 'auto'), 'true'),
+    Timeout = kz_term:to_integer(maps:get('upload_timeout', Map, ?AMAZON_S3_UPLOAD_TIMEOUT)),
+    HttpClient = kz_term:to_atom(maps:get('http_client', Map, 'httpc'), 'true'),
     Region = case maps:get('region', Map, 'undefined') of
                  'undefined' -> 'undefined';
                  Bin -> kz_term:to_list(Bin)
@@ -125,6 +128,8 @@ aws_config(#{'key' := Key
                ,s3_bucket_access_method=BucketAccess
                ,s3_follow_redirect=true
                ,s3_follow_redirect_count=3
+               ,timeout=Timeout
+               ,http_client=HttpClient
                ,aws_region=Region
                }.
 
@@ -227,7 +232,9 @@ put_object(Bucket, FilePath, Contents,Config)
 put_object(Bucket, FilePath, Contents, #aws_config{s3_host=Host} = Config) ->
     lager:debug("storing ~s to ~s", [FilePath, Host]),
     Options = ['return_all_headers'],
-    try erlcloud_s3:put_object(Bucket, FilePath, Contents, Options, [], Config) of
+    CT = kz_mime:from_filename(FilePath),
+    ReqHeaders = [{"content-type", kz_term:to_list(CT)}],
+    try erlcloud_s3:put_object(Bucket, FilePath, Contents, Options, ReqHeaders, Config) of
         Headers -> {'ok', Headers}
     catch
         'error':Error -> {'error', FilePath, Error}
@@ -267,6 +274,10 @@ handle_s3_error({'aws_error', {'socket_error', RespBody}} = _E, Routines) ->
     lager:error("S3 request error: ~p", [_E]),
     RespBodyBin = list_to_binary(io_lib:format("~p", [RespBody])),
     Reason = <<"Socket error: ", RespBodyBin/binary>>,
+    kz_att_error:new(Reason, Routines);
+handle_s3_error(_E, Routines) ->
+    lager:error("S3 request error: ~p", [_E]),
+    Reason = <<"Unknown Error">>,
     kz_att_error:new(Reason, Routines).
 
 -spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
