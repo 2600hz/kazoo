@@ -12,7 +12,7 @@ Request "{{port_request.name}}" to port numbers into account '{{account.name}}' 
     Port ID:  {{port_request.id}}
     State:  {{port_request.port_state}}
     Numbers:  Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
-    Requested Port Date:  {{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}})
+    Requested Port Date:  {% if port_request.requested_port_date %}{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% else %}Not scheduled{% endif %}
     Losing Carrier:  {{port_request.losing_carrier}}
     Winning Carrier:  {{port_request.winning_carrier}}
     Carrier Reference Number:  {{port_request.carrier_reference_number}}

@@ -68,8 +68,8 @@
                         <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
                             <b>-&nbsp;&nbsp;&nbsp;Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.name}}</span><br>
                             <b>-&nbsp;&nbsp;&nbsp;State:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.port_state}}</span><br>
-                            <b>-&nbsp;&nbsp;&nbsp;ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.id}}</span><br>
-                            <b>-&nbsp;&nbsp;&nbsp;Requested Transfer Date:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}})</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.id}}</span><br>{% if port_request.requested_port_date %}
+                            <b>-&nbsp;&nbsp;&nbsp;Requested Transfer Date:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}})</span><br>{% endif %}
                             <b>-&nbsp;&nbsp;&nbsp;Numbers:</b><br><span style="font-family:monospace;">{{ port_request.numbers|join:", " }}</span>
                         </p>
                     </td>
