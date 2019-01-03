@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc Intercept a call in the specified device/user/extension.
 %%%
 %%% <h4>Data options:</h4>

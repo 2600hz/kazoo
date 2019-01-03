@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc utility functions for Trunkstore
 %%% Some functions make use of the inet_parse module. This is an undocumented
 %%% module, and as such the functions may change or be removed.

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Behaviour for setting up an AMQP listener.
 %%% Add/remove responders for `Event-Cat'/`Event-Name' pairs. Each responder
 %%% corresponds to a module that has defined a `handle/1' function, receiving

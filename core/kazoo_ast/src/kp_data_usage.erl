@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz
+%%% @copyright (C) 2015-2019, 2600Hz
 %%% @doc Module for parsing Konami Pro actions for Data usage.
 %%% @author James Aimonetti
 %%% @end

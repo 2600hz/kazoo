@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
 %%% @end
@@ -285,4 +285,3 @@ format_price(Price) when is_integer(Price) ->
     kz_term:to_binary(io_lib:format("~b", [Price]));
 format_price(Price) when is_float(Price) ->
     kz_term:to_binary(io_lib:format("~.2f", [Price])).
-

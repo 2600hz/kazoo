@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz
+%%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc Sends request to start the call to recipient when they available.
 %%%
 %%% <h4>Data options:</h4>

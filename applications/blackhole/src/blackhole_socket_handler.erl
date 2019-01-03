@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz
+%%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -81,4 +81,3 @@ session_id(Req) ->
     BinPort = kz_term:to_binary(Port),
 
     <<BinIP/binary, ":", BinPort/binary>>.
-

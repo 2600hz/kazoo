@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-, 2600Hz
+%%% @copyright (C) 2018-2019, 2600Hz
 %%% @doc Message Wait Indicator utilities.
 %%% @author Luis Azedo
 %%% @end
