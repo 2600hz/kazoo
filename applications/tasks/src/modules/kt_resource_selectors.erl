@@ -1,11 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz
+%%% @copyright (C) 2016-2019, 2600Hz
 %%% @doc
 %%% @author Sergey Korobkov
+%%% behaviour: tasks_provider
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_resource_selectors).
-%% behaviour: tasks_provider
 
 -export([init/0
         ,help/1, help/2, help/3

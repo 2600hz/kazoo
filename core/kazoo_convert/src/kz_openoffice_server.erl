@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz
+%%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
 %%% @author Sean Wysor
 %%% @end
@@ -159,4 +159,3 @@ start_timer(?TIMEOUT_CANCEL) ->
 -spec stop_timer(reference()) -> integer() | boolean() | 'ok'.
 stop_timer(Ref) ->
     erlang:cancel_timer(Ref).
-

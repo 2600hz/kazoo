@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz
+%%% @copyright (C) 2014-2019, 2600Hz
 %%% @doc Fax document manipulation
 %%% @author Luis Azedo
 %%% @end
@@ -228,4 +228,3 @@ retry_after(FaxDoc) ->
 -spec retry_after(doc(), Default) -> integer() | Default.
 retry_after(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_RETRY_AFTER, FaxDoc, Default).
-

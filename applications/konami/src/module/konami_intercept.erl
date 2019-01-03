@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc data:
 %%%   target_type: "user" or "device"
 %%%   target_id: Device-ID or User-ID where Call-ID will be bridged (intercepted)

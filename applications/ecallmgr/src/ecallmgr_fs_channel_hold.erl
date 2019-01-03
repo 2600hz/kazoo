@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc Receives HOLD/UNHOLD CHANNEL event
 %%% @author Hesaam Farhang
 %%% @end

@@ -1,9 +1,9 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @doc Listener for authn_req, reg_success, and reg_query AMQP requests
-%%% @end
 %%% Created : 13 Jan 2011 by James Aimonetti <james@2600hz.org>
+%%% @end
 %%%-----------------------------------------------------------------------------
 -module(dth_listener).
 -behaviour(gen_listener).

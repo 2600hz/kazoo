@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz
+%%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -325,4 +325,3 @@ to_number(JObj) ->
 -spec state(kz_json:object()) -> kz_term:ne_binary().
 state(JObj) ->
     kz_json:get_ne_binary_value(<<"Fax-State">>, JObj).
-

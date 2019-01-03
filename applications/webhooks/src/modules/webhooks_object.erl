@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -163,4 +163,3 @@ find_account_id(Classification, DB, _Id)
     kz_util:format_account_id(DB, 'raw');
 find_account_id('aggregate', <<"accounts">>, Id) -> Id;
 find_account_id(_, _, _) -> 'undefined'.
-

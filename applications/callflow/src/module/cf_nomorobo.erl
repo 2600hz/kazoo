@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc Look up caller ID number for spam score using Nomorobo.
 %%%
 %%% <h4>Data options:</h4>

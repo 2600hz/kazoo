@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc A Number Manager module for carrier: VoIPInnovations.com
 %%% @author Pierre Fenoll, Joe Black
 %%% @end

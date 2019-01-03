@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2018, 2600Hz
+%%% @copyright (C) 2017-2019, 2600Hz
 %%% @doc EDR.
 %%%
 %%% <div class="notice">{@link edr_be_amqp} must be running, otherwise no events will come

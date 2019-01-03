@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz
+%%% @copyright (C) 2016-2019, 2600Hz
 %%% @doc Run tasks without CSV input file, scheduled by kz_tasks.
 %%% @author Pierre Fenoll
 %%% @end
