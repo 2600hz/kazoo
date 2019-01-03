@@ -2,7 +2,6 @@
 %%% @copyright (C) 2010-2019, 2600Hz
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @doc
-%%% Created : 27 June 2011 by Karl Anderson <karl@2600hz.org>
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(conference_app).

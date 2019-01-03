@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Created : 17 Jul 2016
+%%% @doc
 %%% @author SIPLABS, LLC (Vorontsov Nikita)
 %%% @author Conversant Ltd (Max Lay)
 %%% @end

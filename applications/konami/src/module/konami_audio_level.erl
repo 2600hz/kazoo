@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-, 2600Hz
+%%% @copyright (C) 2018-2019, 2600Hz
 %%% @author Vladimir Ralev
 %%% @doc Allow to change volume for channels, mute and unmute.
 %%% Data = {

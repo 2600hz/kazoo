@@ -1,8 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @doc Send a CDR payload to DTH
-%%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(dth_cdr_handler).
