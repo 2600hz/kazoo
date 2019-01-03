@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz
+%%% @copyright (C) 2016-2019, 2600Hz
 %%% @doc Trigger jobs for execution
 %%% @author Pierre Fenoll
 %%% @end

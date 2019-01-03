@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-, 2600Hz
+%%% @copyright (C) 2018-2019, 2600Hz
 %%% @doc Kazoo document accessors builder.
 %%% @author James Aimonetti
 %%% @end
@@ -315,8 +315,9 @@ base_module(SchemaName) ->
     module_comment(Name) ++ ["-", "module(kzd_"] ++ [Name] ++ [").\n"].
 
 module_comment(Name) ->
+    {Year, _, _} = erlang:date(),
     ["%%%-----------------------------------------------------------------------------\n"
-    ,"%%% @copyright (C) 2010-2018, 2600Hz\n"
+    ,"%%% @copyright (C) 2010-" ++ kz_term:to_list(Year) ++ ", 2600Hz\n"
     ,"%%% @doc Accessors for `" ++ [Name] ++ "' document.\n"
     ,"%%% @end\n"
     ,"%%%-----------------------------------------------------------------------------\n"].

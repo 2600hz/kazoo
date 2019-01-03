@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc For `gen_listeners' that bind to targeted for direct messaging.
 %%% @author James Aimonetti
 %%% @end

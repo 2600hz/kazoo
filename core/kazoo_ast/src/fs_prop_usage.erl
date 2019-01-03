@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz
+%%% @copyright (C) 2015-2019, 2600Hz
 %%% @doc Module for parsing ECallMgr modules, looking for Props from FreeSWITCH.
 %%% @author James Aimonetti
 %%% @end

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Crawl accounts and disable notify settings so that we use Teletype instead
 %%% @author Mark Magnusson
 %%% @end

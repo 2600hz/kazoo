@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -48,4 +48,3 @@ does_system_has_network_subsystem() ->
             io:format("~n~nCRITICAL ERROR: ~s~n~n", [Reason]),
             throw({'error', Reason})
     end.
-

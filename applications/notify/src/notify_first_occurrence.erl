@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc Notification for 'first' registration and call
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @author Hesaam Farhang

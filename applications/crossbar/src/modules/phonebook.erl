@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz
+%%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc Common functions for interacting with the 2600Hz phonebook service
 %%% @author Sean Wysor
 %%% @end
