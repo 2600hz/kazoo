@@ -272,7 +272,8 @@ fetch_cached_dataplan(Key, _Fun) ->
         {'error', 'not_found'} -> ?CACHED_SYSTEM_DATAPLAN
     end.
 
--spec load_dataplan(kz_term:ne_binary(), fun()) -> map().
+-type storage_key() :: kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec load_dataplan(storage_key(), fun()) -> map().
 load_dataplan(Key, Fun) ->
     case Fun(Key) of
         'invalid' ->
@@ -323,7 +324,7 @@ cache_callback(_Key, _V, _Action) ->
 fetch_simple_dataplan(Id) ->
     {[Id], fetch_dataplan(Id)}.
 
--spec fetch_account_dataplan(kz_term:ne_binary()) -> fetch_dataplan_ret().
+-spec fetch_account_dataplan(storage_key()) -> fetch_dataplan_ret().
 fetch_account_dataplan(AccountId) ->
     case fetch_dataplan(AccountId) of
         'undefined' -> 'invalid';
@@ -345,7 +346,7 @@ fetch_account_dataplan(AccountId, AccountJObj) ->
             {Keys, MergedJObj}
     end.
 
--spec fetch_storage_dataplan({kz_term:ne_binary(), kz_term:ne_binary()}) -> fetch_dataplan_ret().
+-spec fetch_storage_dataplan(storage_key()) -> fetch_dataplan_ret().
 fetch_storage_dataplan({AccountId, StorageId}) ->
     AccountPlan = fetch_dataplan(AccountId),
     StoragePlan = case fetch_dataplan(StorageId) of
@@ -355,7 +356,7 @@ fetch_storage_dataplan({AccountId, StorageId}) ->
     MergedJObj = kz_json:merge_recursive(AccountPlan, StoragePlan),
     {[StorageId], MergedJObj}.
 
--spec fetch_dataplan(kz_term:ne_binary()) -> kz_json:api_object().
+-spec fetch_dataplan(storage_key()) -> kz_json:api_object().
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id) of
         {'ok', JObj} -> JObj;
