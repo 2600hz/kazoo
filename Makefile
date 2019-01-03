@@ -66,7 +66,7 @@ check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
 
 clean-deps: clean-deps-hash
-	$(if $(wildcard deps/), rm -r deps/)
+	$(if $(wildcard deps/), rm -rf deps/)
 	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
 
 clean-deps-hash:
