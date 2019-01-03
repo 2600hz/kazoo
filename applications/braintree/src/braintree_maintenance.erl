@@ -23,7 +23,7 @@ sync_all_accounts_payments_info() ->
     _ = lists:foldl(Fun, 1, Accounts),
     'ok'.
 
--spec sync_all_accounts_payments_info_fold(kz_term:ne_binary(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+-spec sync_all_accounts_payments_info_fold(kz_term:ne_binary(), non_neg_integer(), non_neg_integer()) -> integer().
 sync_all_accounts_payments_info_fold(Account, Count, TotalLength) ->
     AccountId = kz_util:format_account_id(Account),
     Services = kz_services:fetch(AccountId),

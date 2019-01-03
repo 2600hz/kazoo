@@ -680,7 +680,7 @@ run_services([AccountId|AccountIds], Updates, UpdatedServicesAcc) ->
     check_creditably(Services, Quotes, HasAdditions),
     run_services(AccountIds, Updates, [UpdatedServices | UpdatedServicesAcc]).
 
--spec check_creditably(kz_services:services(), kz_services_invoices:invoices(), boolean()) -> 'ok'.
+-spec check_creditably(kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) -> 'ok'.
 check_creditably(_Services, _Quotes, 'false') ->
     'ok';
 check_creditably(Services, Quotes, 'true') ->
