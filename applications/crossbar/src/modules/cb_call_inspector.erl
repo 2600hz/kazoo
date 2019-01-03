@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -214,4 +214,3 @@ filter_callids(CallIds) ->
             lager:debug("error: ~p", [_Reason]),
             {'error', <<"unknown error occurred during querying call inspector">>}
     end.
-

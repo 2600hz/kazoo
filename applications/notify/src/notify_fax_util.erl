@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz
+%%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
@@ -77,4 +77,3 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
                     raw_attachment_binary(Db, FaxId, Retries)
             end
     end.
-

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz
+%%% @copyright (C) 2015-2019, 2600Hz
 %%% @doc Modules to count usage of some specific case like `M:F/A' calls.
 %%% @author James Aimonetti
 %%% @end

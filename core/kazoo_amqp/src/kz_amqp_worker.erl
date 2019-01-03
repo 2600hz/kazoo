@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz
+%%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc Worker with a dedicated targeted queue.
 %%% Inserts Queue Name as the `Server-ID' and proxies the AMQP request
 %%% (expects responses to the request).

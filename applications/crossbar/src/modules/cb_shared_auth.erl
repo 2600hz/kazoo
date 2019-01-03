@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Shared token auth module, this module validates the token
 %%% against a trusted central token server.  If the token
 %%% is valid then it will create a local token.  It will

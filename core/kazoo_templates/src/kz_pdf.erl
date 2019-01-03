@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Builds PDF from an HTML template using
 %%% <a href="http://www.msweet.org/projects.php?Z1">HTMLDoc</a>.
 %%% @author Peter Defebvre

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Make a request for authorization, and answer queries about the CallID
 %%% @author James Aimonetti
 %%% @author Karl Anderson
