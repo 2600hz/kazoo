@@ -194,6 +194,7 @@ revise_docs_from_folder(DbName, App, Folder, Sleep) ->
 
         ValidDir ->
             Files = filelib:wildcard([ValidDir, "/couchdb/", kz_term:to_list(Folder), "/*.json"]),
+            lager:debug("refreshing ~B documents in db ~s for ~s", [length(Files), DbName, App]),
             do_revise_docs_from_folder(DbName, Sleep, Files)
     end.
 
@@ -1274,13 +1275,39 @@ get_results_count(DbName, DesignDoc, Options) ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     kzs_view:get_results_count(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options).
 
+-spec get_registered_view(kz_term:ne_binary(), map(), kz_term:ne_binary()) -> 'not_registered' | kz_json:object().
+get_registered_view(DbName, Plan, DesignDoc) ->
+    Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
+    Keys = [[Classification, DesignDoc]
+           ,[DbName, DesignDoc]
+           ],
+    Opts = ['include_docs'
+           ,{'keys', Keys}
+           ],
+    case kzs_view:get_results(Plan, ?KZ_DATA_DB, <<"views/registered">>, Opts) of
+        {'ok', []} -> 'not_registered';
+        {'ok', [JObj | _]} -> kz_json:get_json_value(<<"doc">>, JObj);
+        {'error', _Err} ->
+            lager:error("error getting registered view : ~p", [_Err]),
+            'not_registered'
+    end.
+
 -spec maybe_create_view(kz_term:ne_binary(), map(), kz_term:ne_binary(), view_options()) -> get_results_return().
 maybe_create_view(DbName, Plan, DesignDoc, Options) ->
-    case props:get_value('view_json', Options) of
-        'undefined' -> {'error', 'not_found'};
+    case kzs_db:db_exists(Plan, DbName)
+        andalso get_registered_view(DbName, Plan, DesignDoc)
+    of
+        'false' -> {'error', 'not_found'};
+        'not_registered' -> {'error', 'not_found'};
         ViewJson ->
-            'true' = db_view_update(DbName, ViewJson),
-            kzs_view:get_results(Plan, DbName, DesignDoc, Options)
+            ViewDoc = kz_json:get_json_value(<<"view_definition">>, ViewJson),
+            case kzs_doc:save_doc(Plan, DbName, ViewDoc, []) of
+                {'ok', _ViewDoc} -> kzs_view:get_results(Plan, DbName, DesignDoc, Options);
+                {'error', 'conflict'} -> kzs_view:get_results(Plan, DbName, DesignDoc, Options);
+                {'error', _Err} ->
+                    lager:error("error saving registered view ~s to database ~s : ~p", [DesignDoc, DbName, _Err]),
+                    {'error', 'not_found'}
+            end
     end.
 
 -spec get_result_keys(kz_term:ne_binary(), kz_term:ne_binary()) ->
