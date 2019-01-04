@@ -220,7 +220,7 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
     case open_doc(Src, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}
-                     | maybe_set_account_db(kz_doc:account_db(SourceDoc), SourceDbName, DestDbName)
+                    ,{<<"pvt_account_db">>, DestDbName}
                     ],
             DestinationDoc = kz_json:set_values(Props, kz_json:delete_keys(?DELETE_KEYS, SourceDoc)),
             Doc = copy_transform(Transform, SourceDoc, DestinationDoc),
@@ -268,11 +268,6 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}, Rev) ->
             end;
         Error -> Error
     end.
-
--spec maybe_set_account_db(api_binary(), ne_binary(), ne_binary()) -> kz_proplist().
-maybe_set_account_db(DB, DB, DestDbName) ->
-    [{<<"pvt_account_db">>, DestDbName}];
-maybe_set_account_db(_1, _, _) -> [].
 
 -spec move_doc(map(), map(), copy_doc(), kz_proplist()) ->
                       {'ok', kz_json:object()} |

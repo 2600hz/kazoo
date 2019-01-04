@@ -605,7 +605,7 @@ account_id(JObj) ->
     kz_json:get_first_defined(Paths, JObj).
 
 -spec account_db(kz_json:object(), boolean()) -> api_ne_binary().
-account_db(JObj, MaybeAssumeMODB) ->
+account_db(JObj, StrictMODB) ->
     Paths = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
     case kz_json:get_first_defined(Paths, JObj) of
         'undefined' ->
@@ -613,12 +613,21 @@ account_db(JObj, MaybeAssumeMODB) ->
                 'undefined' -> 'undefined';
                 AccountId -> kz_util:format_account_db(AccountId)
             end;
-        ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db when MaybeAssumeMODB -> kz_util:format_account_modb(Db, 'encoded');
-        ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db when MaybeAssumeMODB -> kz_util:format_account_modb(Db, 'encoded');
-        ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db when MaybeAssumeMODB -> Db;
-        ?NE_BINARY=Db -> kz_util:format_account_db(Db);
-        _ -> 'undefined'
+        ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
+        ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
+        ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
+        ?MATCH_ACCOUNT_RAW(_)=Db -> kz_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kz_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_db(Db);
+        OtherDb -> OtherDb
     end.
+
+-spec maybe_strict_modb(kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
+maybe_strict_modb(Db, 'true') ->
+    kz_util:format_account_modb(Db, 'encoded');
+maybe_strict_modb(Db, 'false') ->
+    kz_util:format_account_db(Db).
 
 -spec headers(ne_binary()) -> ne_binaries().
 headers(<<"voicemail_new">>) ->
