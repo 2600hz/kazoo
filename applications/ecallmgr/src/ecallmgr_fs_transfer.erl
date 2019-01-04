@@ -54,7 +54,7 @@ blind(Node, UUID, JObj) ->
 
     lager:info("transferring to ~s @ ~s", [TransferTo, Realm]),
 
-    KVs = [{<<"SIP-Refer-To">>, <<"<sip:", TransferTo/binary, "@", Realm/binary>>}
+    KVs = [{<<"SIP-Refer-To">>, <<"<sip:", TransferTo/binary, "@", Realm/binary, ">">>}
           ,{<<"SIP-Referred-By">>, transfer_referred(UUID, TransferLeg)}
           ],
     Args = kz_binary:join(ecallmgr_util:process_fs_kv(Node, TargetUUID, KVs, 'set'), <<";">>),
