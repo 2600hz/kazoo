@@ -122,7 +122,9 @@ allow_no_match_type(Call) ->
         'undefined' -> 'false';
         <<"resource">> -> 'false';
         <<"sys_info">> -> 'false';
-        _ -> 'true'
+        _Type ->
+            lager:debug("allowing no-match for authz type ~s", [_Type]),
+            'true'
     end.
 
 %%------------------------------------------------------------------------------
@@ -303,7 +305,9 @@ is_valid_endpoint(Contact, Call) ->
     case catch(re:run(Contact, <<".*sip:(.*)@.*">>, ReOptions)) of
         {'match', [Match]} ->
             case cf_util:endpoint_id_by_sip_username(kapps_call:account_db(Call), Match) of
-                {'ok', _EndpointId} -> 'true';
+                {'ok', _EndpointId} ->
+                    lager:debug("matched ~p to endpoint ~p", [Match, _EndpointId]),
+                    'true';
                 {'error', 'not_found'} -> 'false'
             end;
         _ -> 'false'
