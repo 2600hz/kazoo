@@ -1,0 +1,224 @@
+{
+    "_attachments": {
+        "template.text/html": {
+            "content_type": "text/html",
+            "digest": "md5-iXv7fPcDxzx3A6d2nbbAzA==",
+            "length": 13638,
+            "revpos": 33,
+            "stub": true
+        },
+        "template.text/plain": {
+            "content_type": "text/plain",
+            "digest": "md5-tCpQl86T922pJUmlpHRA0Q==",
+            "length": 2501,
+            "revpos": 32,
+            "stub": true
+        }
+    },
+    "_id": "notification.bill_reminder",
+    "_rev": "1-bb48535c8eed07ee3e658e70b4c85651",
+    "bcc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "category": "account",
+    "cc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "friendly_name": "Payment Reminder",
+    "from": "no_reply@kazoo_apps.1",
+    "macros": {
+        "account.id": {
+            "description": "Account ID",
+            "friendly_name": "Account ID",
+            "i18n_label": "account_id"
+        },
+        "account.language": {
+            "description": "Account Language",
+            "friendly_name": "Account Language",
+            "i18n_label": "account_language"
+        },
+        "account.name": {
+            "description": "Name of the account",
+            "friendly_name": "Account Name",
+            "i18n_label": "account_name"
+        },
+        "account.parent_id": {
+            "description": "Parent Account ID",
+            "friendly_name": "Parent Account ID",
+            "i18n_label": "account_parent_id"
+        },
+        "account.parent_name": {
+            "description": "Parent Account Name",
+            "friendly_name": "Parent Account Name",
+            "i18n_label": "account_parent_name"
+        },
+        "account.parent_realm": {
+            "description": "Parent Account Realm",
+            "friendly_name": "Parent Account Realm",
+            "i18n_label": "account_parent_realm"
+        },
+        "account.realm": {
+            "description": "SIP Realm of the account",
+            "friendly_name": "Account Realm",
+            "i18n_label": "account_realm"
+        },
+        "account.timezone": {
+            "description": "Account Timezone",
+            "friendly_name": "Account Timezone",
+            "i18n_label": "account_timezone"
+        },
+        "invoice.card_type": {
+            "description": "Default payment method card type",
+            "friendly_name": "Credit Card Type",
+            "i18n_label": "invoice_card_type"
+        },
+        "invoice.due_date.local": {
+            "description": "Invoice due date (Local)",
+            "friendly_name": "Due Date (Local)",
+            "i18n_label": "invoice_due_date_local"
+        },
+        "invoice.due_date.timestamp": {
+            "description": "Due Date Timestamp (Gregorian)",
+            "friendly_name": "Due Date Timestamp (Gregorian)",
+            "i18n_label": "invoice_due_date_timestamp"
+        },
+        "invoice.due_date.timezone": {
+            "description": "Invoice due date (Local Timezone)",
+            "friendly_name": "Due Date Local Timezone",
+            "i18n_label": "invoice_due_date_timezone"
+        },
+        "invoice.due_date.utc": {
+            "description": "Invoice due date (UTC)",
+            "friendly_name": "Due Date (Local)",
+            "i18n_label": "invoice_due_date_utc"
+        },
+        "invoice.items.[item_name].category": {
+            "description": "Category name that the item belongs to",
+            "friendly_name": "Invoice Item Category",
+            "i18n_label": "invoice_item_category"
+        },
+        "invoice.items.[item_name].discounts": {
+            "description": "Item's discounts",
+            "friendly_name": "Invoice Item Discounts",
+            "i18n_label": "invoice_item_discounts"
+        },
+        "invoice.items.[item_name].item": {
+            "description": "Item in the category",
+            "friendly_name": "Invoice Item",
+            "i18n_label": "invoice_item_item"
+        },
+        "invoice.items.[item_name].quantity": {
+            "description": "Item's quantity",
+            "friendly_name": "Invoice Item Quantity",
+            "i18n_label": "invoice_item_quantity"
+        },
+        "invoice.items.[item_name].rate": {
+            "description": "Item's rate",
+            "friendly_name": "Invoice Item Rate",
+            "i18n_label": "invoice_item_rate"
+        },
+        "invoice.items.[item_name].total": {
+            "description": "Item's total price",
+            "friendly_name": "Invoice Item Total",
+            "i18n_label": "invoice_item_total"
+        },
+        "invoice.last_four": {
+            "description": "Credit Card Last Four Digits",
+            "friendly_name": "Credit Card Last Four Digits",
+            "i18n_label": "invoice_last_four"
+        },
+        "invoice.method": {
+            "description": "Default payment method",
+            "friendly_name": "Payment Method",
+            "i18n_label": "invoice_method"
+        },
+        "invoice.total": {
+            "description": "Invoice total price",
+            "friendly_name": "Invoice Total",
+            "i18n_label": "invoice_total"
+        },
+        "invoice.total_discounts": {
+            "description": "Invoice total discounts",
+            "friendly_name": "Invoice Total Discounts",
+            "i18n_label": "invoice_total_discounts"
+        },
+        "reseller.id": {
+            "description": "Reseller Account ID",
+            "friendly_name": "Reseller Account ID",
+            "i18n_label": "reseller_id"
+        },
+        "reseller.language": {
+            "description": "Reseller Account Language",
+            "friendly_name": "Reseller Account Language",
+            "i18n_label": "reseller_language"
+        },
+        "reseller.name": {
+            "description": "Reseller Account Name",
+            "friendly_name": "Reseller Account Name",
+            "i18n_label": "reseller_name"
+        },
+        "reseller.realm": {
+            "description": "Reseller Account Realm",
+            "friendly_name": "Reseller Account Realm",
+            "i18n_label": "reseller_realm"
+        },
+        "reseller.timezone": {
+            "description": "Reseller Account Timezone",
+            "friendly_name": "Reseller Account Timezone",
+            "i18n_label": "reseller_timezone"
+        },
+        "system.encoded_hostname": {
+            "description": "Hostname of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Hostname",
+            "i18n_label": "system_encoded_hostname"
+        },
+        "system.encoded_node": {
+            "description": "Node name of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Node",
+            "i18n_label": "system_encoded_node"
+        },
+        "system.hostname": {
+            "description": "Hostname of system generating the email",
+            "friendly_name": "Hostname",
+            "i18n_label": "system_hostname"
+        },
+        "system.node": {
+            "description": "Node name of system generating the email",
+            "friendly_name": "Node",
+            "i18n_label": "system_node"
+        },
+        "timestamp.local": {
+            "description": "When was the changed happened (Local time)",
+            "friendly_name": "Date (Local)",
+            "i18n_label": "date_called_local"
+        },
+        "timestamp.timestamp": {
+            "description": "Timestamp",
+            "friendly_name": "Timestamp",
+            "i18n_label": "date_called_timestamp"
+        },
+        "timestamp.timezone": {
+            "description": "Timezone",
+            "friendly_name": "Timezone",
+            "i18n_label": "date_called_timezone"
+        },
+        "timestamp.utc": {
+            "description": "When was the change happened (UTC)",
+            "friendly_name": "Date (UTC)",
+            "i18n_label": "date_called_utc"
+        }
+    },
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63712465988,
+    "pvt_document_hash": "d10cec9092a238d39d8af81072ee3820",
+    "pvt_modified": 63712465988,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "notification",
+    "subject": "Payment Reminder for account '{{account.name}}'",
+    "to": {
+        "type": "admins"
+    }
+}

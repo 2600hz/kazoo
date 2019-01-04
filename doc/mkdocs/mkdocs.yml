@@ -346,6 +346,7 @@ pages:
   - 'Tasks':
     - 'applications/tasks/doc/README.md'
     - 'applications/tasks/doc/compaction.md'
+    - 'applications/tasks/doc/kazoo_bill_early_task.md'
     - 'applications/tasks/doc/kz_notify_resender.md'
     - 'applications/tasks/doc/maintenance.md'
     - 'applications/tasks/doc/notify_resend_maintenance.md'

@@ -19,6 +19,7 @@
 
 -export([%% Account notifications
          account_zone_change/1, account_zone_change_v/1
+        ,bill_reminder/1, bill_reminder_v/1
         ,low_balance/1, low_balance_v/1
         ,new_account/1, new_account_v/1
         ,service_added/1, service_added_v/1
@@ -78,6 +79,7 @@
 
 -export([%% Account notifications
          publish_account_zone_change/1, publish_account_zone_change/2
+        ,publish_bill_reminder/1, publish_bill_reminder/2
         ,publish_low_balance/1, publish_low_balance/2
         ,publish_new_account/1, publish_new_account/2
         ,publish_service_added/1, publish_service_added/2
@@ -230,6 +232,41 @@ account_zone_change_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"account_zone_change">>)
                     ,types = []
                     }.
+
+%%------------------------------------------------------------------------------
+%% @doc Bill Reminder Notification (service invoices) API definition.
+%% @end
+%%------------------------------------------------------------------------------
+-spec bill_reminder_definition() -> kapi_definition:api().
+bill_reminder_definition() ->
+    #kapi_definition{name = <<"bill_reminder">>
+                    ,friendly_name = <<"Bill Reminder">>
+                    ,description = <<"This event is triggered before a few days before the end of the month to"
+                                     "remind account's owners of estimated service plan charges"
+                                   >>
+                    ,build_fun = fun bill_reminder/1
+                    ,validate_fun = fun bill_reminder_v/1
+                    ,publish_fun = fun publish_bill_reminder/1
+                    ,binding = ?BINDING_STRING(<<"account">>, <<"reminder">>)
+                    ,restrict_to = 'bill_reminder'
+                    ,required_headers = [<<"Account-ID">>
+                                        ,<<"Due-Date">>
+                                        ,<<"Items">>
+                                        ,<<"Payment-Token">>
+                                        ,<<"Timestamp">>
+                                        ]
+                    ,optional_headers = [<<"Payment-Token">>
+                                             | ?DEFAULT_OPTIONAL_HEADERS
+                                        ]
+                    ,values = ?NOTIFY_VALUES(<<"bill_reminder">>)
+                    ,types = [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
+                             ,{<<"Due-Date">>, fun kz_term:is_pos_integer/1}
+                             ,{<<"Items">>, fun kz_json:are_json_objects/1}
+                             ,{<<"Payment-Token">>, fun kz_json:is_json_object/1}
+                             ,{<<"Timestamp">>, fun kz_term:is_pos_integer/1}
+                             ]
+                    }.
+
 %%------------------------------------------------------------------------------
 %% @doc Get Low Balance Notification API definition.
 %% @end
@@ -1183,6 +1220,7 @@ webhook_disabled_definition() ->
 api_definitions() ->
     [notify_update_definition()
     ,skel_definition()
+    ,bill_reminder_definition()
     ,low_balance_definition()
     ,new_account_definition()
     ,service_added_definition()
@@ -1235,6 +1273,8 @@ api_definition(<<"skel">>) ->
     skel_definition();
 api_definition(<<"account_zone_change">>) ->
     account_zone_change_definition();
+api_definition(<<"bill_reminder">>) ->
+    bill_reminder_definition();
 api_definition(<<"low_balance">>) ->
     low_balance_definition();
 api_definition(<<"new_account">>) ->
@@ -1590,6 +1630,30 @@ publish_account_zone_change(API, ContentType) ->
                     ,values = Values
                     } = account_zone_change_definition(),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun account_zone_change/1),
+    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec bill_reminder(kz_term:api_terms()) -> api_formatter_return().
+bill_reminder(Prop) ->
+    build_message(Prop, bill_reminder_definition()).
+
+-spec bill_reminder_v(kz_term:api_terms()) -> boolean().
+bill_reminder_v(Prop) ->
+    validate(Prop, bill_reminder_definition()).
+
+-spec publish_bill_reminder(kz_term:api_terms()) -> 'ok'.
+publish_bill_reminder(JObj) ->
+    publish_bill_reminder(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_bill_reminder(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_bill_reminder(API, ContentType) ->
+    #kapi_definition{binding = Binding
+                    ,values = Values
+                    } = bill_reminder_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun bill_reminder/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------

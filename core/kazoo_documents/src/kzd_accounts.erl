@@ -91,6 +91,8 @@
         ,parent_account_id/1
         ,preflow_id/1
 
+        ,bill_early_task_timestamp/1, set_bill_early_task_timestamp/2, path_bill_early_task_timestamp/0
+
         ,home_zone/1, home_zone/2, set_home_zone/2
 
         ,sent_initial_call/1
@@ -1030,6 +1032,23 @@ reset_low_balance_sent(Doc) ->
 -spec path_low_balance_sent() -> kz_json:path().
 path_low_balance_sent() ->
     [<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec bill_early_task_timestamp(doc()) -> kz_term:api_integer().
+bill_early_task_timestamp(Doc) ->
+    kz_json:get_integer_value(path_bill_early_task_timestamp(), Doc).
+
+-spec set_bill_early_task_timestamp(doc(), non_neg_integer()) -> doc().
+set_bill_early_task_timestamp(Doc, Timestamp) ->
+    kz_json:set_value(path_bill_early_task_timestamp(), Doc, Timestamp).
+
+-spec path_bill_early_task_timestamp() -> kz_json:path().
+path_bill_early_task_timestamp() ->
+    [<<"notifications">>, <<"low_balance">>, <<"bill_early_task_timestamp">>].
+
 
 %%------------------------------------------------------------------------------
 %% @doc
