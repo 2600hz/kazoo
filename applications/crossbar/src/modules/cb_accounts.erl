@@ -1135,8 +1135,7 @@ after_create(Context, AccountDoc) ->
 
 -spec maybe_notify_new_account(cb_context:context()) -> 'ok'.
 maybe_notify_new_account(Context) ->
-    ReqJObj = cb_context:req_data(Context),
-    case kz_json:is_true(<<"send_email_on_creation">>, ReqJObj, 'true') of
+    case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>, 'true')) of
         'false' -> 'ok';
         'true' -> notify_new_account(Context)
     end.
