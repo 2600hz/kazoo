@@ -21,7 +21,6 @@
         ,patch/2
         ]).
 
--export([notify_new_account/1]).
 -export([is_unique_realm/2
         ,is_unique_account_name/2
         ]).
@@ -1297,10 +1296,7 @@ create_new_account_db(Context) ->
             _ = maybe_set_notification_preference(C),
             lager:debug("set notification preference"),
 
-            %% Give onboarding tools time to add initial users...
-            Delay = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"new_account_notify_delay_s">>, 30),
-            _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [C]),
-            lager:debug("started ~ps timer for new account notification", [Delay]),
+            maybe_notify_new_account(Context),
             C
     end.
 
@@ -1415,11 +1411,15 @@ is_unique_account_name(AccountId, Name) ->
             'false'
     end.
 
+-spec maybe_notify_new_account(cb_context:context()) -> 'ok'.
+maybe_notify_new_account(Context) ->
+    case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>), 'true') of
+        'false' -> 'ok';
+        'true' -> notify_new_account(Context)
+    end.
+
 %%------------------------------------------------------------------------------
-%% @doc Send a notification that the account has been created
-%%
-%% <div class="notice">When the `auth_token' is empty either sign ups or on-board
-%% allowed this request and they will notify once complete.</div>
+%% @doc Send a notification that the account has been created.
 %% @end
 %%------------------------------------------------------------------------------
 -spec notify_new_account(cb_context:context()) -> 'ok'.
