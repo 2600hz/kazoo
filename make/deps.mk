@@ -35,6 +35,7 @@ DEPS = amqp_client \
 	plists \
 	poolboy \
 	proper \
+	ranch \
 	recon \
 	reloader \
 	syslog \
@@ -55,7 +56,7 @@ dep_amqp_client = hex 3.7.3
 dep_apns = git https://github.com/inaka/apns4erl.git 2.2.1
 dep_certifi = hex 0.3.0
 dep_chatterbox = hex 0.7.0
-dep_cowboy = git https://github.com/ninenines/cowboy 2.2.0
+dep_cowboy = git https://github.com/ninenines/cowboy 2.6.1
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
 dep_eiconv = git https://github.com/zotonic/eiconv
@@ -65,6 +66,7 @@ dep_jiffy = git https://github.com/lazedo/jiffy utf8  ## utf8 decode
 dep_meck = git https://github.com/eproxus/meck
 dep_nklib = git https://github.com/NetComposer/nklib v0.4.1
 dep_plists = hex 1.0.0
+dep_ranch = git https://github.com/ninenines/ranch 1.7.1
 
 dep_erlcloud = git https://github.com/lazedo/erlcloud 54fe6b96eb0bc591b80161fc552afb821072222c
 ## waiting on pull request https://github.com/erlcloud/erlcloud/pull/437
