@@ -27,7 +27,7 @@ main(_) ->
            ,fun evil_specs/1
            }
 
-          ,{"ag -lG '(applications|core)/.*/src/.*.(erl|erl.src)$'"
+          ,{"find applications/ core/ -regextype egrep -regex '.*/src/.*.(erl|erl.src)$'"
            ,"bump/fix copyright"
            ,fun(R) -> bump_copyright(R, Year) end
            }
