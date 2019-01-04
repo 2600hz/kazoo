@@ -7,6 +7,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(api_resource).
+-behaviour(cowboy_rest).
 
 -export([init/2, rest_init/2
         ,terminate/3
@@ -548,7 +549,7 @@ content_types_accepted(Req0, Context0) ->
             lager:debug("no content type on request, checking defaults"),
             default_content_types_accepted(Req0, Context1);
         CT ->
-            lager:debug("checking content type '~p' against accepted", [CT]),
+            lager:debug("checking client content type '~p' against accepted", [CT]),
             content_types_accepted(CT, Req0, Context1)
     end.
 
@@ -596,7 +597,7 @@ content_types_accepted(CT, Req, Context) ->
 -spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
                                     {content_types_funs(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(CT, Req, Context, []) ->
-    lager:debug("no content-types accepted, using defaults"),
+    lager:debug("endpoint(s) specify no accepted content-types, using defaults"),
     content_types_accepted(CT, Req, cb_context:set_content_types_accepted(Context, ?CONTENT_ACCEPTED));
 content_types_accepted(CT, Req, Context, Accepted) ->
     CTA = lists:foldl(fun(I, Acc) ->
@@ -605,7 +606,7 @@ content_types_accepted(CT, Req, Context, Accepted) ->
                      ,[]
                      ,Accepted
                      ),
-    lager:debug("cta: ~p", [CTA]),
+    lager:debug("endpoint(s) accepted content-types: ~p", [CTA]),
     {CTA, Req, Context}.
 
 -spec content_types_accepted_fold(crossbar_content_handler(), content_types_funs(), content_type()) ->
@@ -622,10 +623,15 @@ content_types_accepted_fold({Fun, L}, Acc, CT) ->
                                         content_type_fun().
 content_type_accepted_fold({Type, SubType}, Acc, Fun, CT) ->
     case api_util:content_type_matches(CT, {Type, SubType, []}) of
-        'true' -> [{CT, Fun} | Acc];
-        'false' -> Acc
+        'true' ->
+            lager:debug("added accepted content-type: ~p(~p)", [{Type, SubType}, Fun]),
+            [{{Type, SubType, '*'}, Fun} | Acc];
+        'false' ->
+            lager:debug("skipping content-type: ~p", [{Type, SubType}]),
+            Acc
     end;
 content_type_accepted_fold({_,_,_}=EncType, Acc, Fun, _CT) ->
+    lager:debug("adding accepted content-type: ~p(~p)", [EncType, Fun]),
     [{EncType, Fun} | Acc].
 
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
