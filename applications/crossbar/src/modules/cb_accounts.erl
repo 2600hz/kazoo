@@ -1413,7 +1413,7 @@ is_unique_account_name(AccountId, Name) ->
 
 -spec maybe_notify_new_account(cb_context:context()) -> 'ok'.
 maybe_notify_new_account(Context) ->
-    case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>), 'true') of
+    case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>, 'true')) of
         'false' -> 'ok';
         'true' -> notify_new_account(Context)
     end.

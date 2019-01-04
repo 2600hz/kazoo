@@ -379,7 +379,7 @@ update_device_presence(Context, DeviceDoc) ->
 %%------------------------------------------------------------------------------
 -spec maybe_send_email(cb_context:context()) -> 'ok'.
 maybe_send_email(Context) ->
-    case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>), 'true') of
+    case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>, 'true')) of
         'false' -> 'ok';
         'true' -> send_email(Context)
     end.
