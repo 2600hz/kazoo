@@ -95,10 +95,16 @@ process_req(DataJObj) ->
     Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, id()),
 
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
+    case teletype_util:send_email(fix_to_addresses(DataJObj, Emails), Subject, RenderedTemplates) of
         'ok' -> teletype_util:notification_completed(id());
         {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
+
+-spec fix_to_addresses(kz_json:object(), email_map()) -> email_map().
+fix_to_addresses(DataJObj, Emails) ->
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
+    ResellerId = teletype_util:find_reseller_id(AccountId),
+    props:set_value(<<"to">>, teletype_util:find_account_admin_email(ResellerId), Emails).
 
 -spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
