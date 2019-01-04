@@ -87,7 +87,7 @@ $(DEPS_HASH_FILE):
 	@$(MAKE) -C deps/ all
 	touch $(DEPS_HASH_FILE)
 
-deps/Makefile: .erlang.mk
+deps/Makefile: .erlang.mk clean-plt
 	mkdir -p deps
 	@$(MAKE) -f erlang.mk deps
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
