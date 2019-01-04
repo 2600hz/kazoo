@@ -11,6 +11,7 @@
         ,get/1
         ,new/3
         ,account_active_ports/1
+        ,descendant_active_ports/1
         ,account_has_active_port/1
         ,normalize_attachments/1
         ,normalize_numbers/1
@@ -32,6 +33,7 @@
 
 -define(VIEW_LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).
 -define(ACTIVE_PORT_LISTING, <<"port_requests/active_port_request">>).
+-define(DESCENDANT_ACTIVE_PORT_LISTING, <<"port_requests/listing_by_descendant_state">>).
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 
 -type transition_response() :: {'ok', kz_json:object()} |
@@ -113,6 +115,35 @@ account_active_ports(AccountId) ->
             lager:error("failed to query for account port numbers ~p", [_R]),
             {'error', 'not_found'}
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec descendant_active_ports(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
+                                                      {'error', 'not_found'}.
+descendant_active_ports(AccountId) ->
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?DESCENDANT_ACTIVE_PORT_LISTING, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', Ports} ->
+            {'ok', [kz_json:get_value(<<"doc">>, Doc)
+                    || Doc <- Ports
+                           ,is_active_descendant_port(Doc)
+                   ]
+            };
+        {'error', _R} ->
+            lager:error("failed to query for descendant port numbers ~p", [_R]),
+            {'error', 'not_found'}
+    end.
+
+-spec is_active_descendant_port(kz_json:object()) -> boolean().
+is_active_descendant_port(JObj) ->
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    lists:member(kzd_port_requests:port_state(Doc), ?PORT_ACTIVE_STATES).
 
 %%------------------------------------------------------------------------------
 %% @doc
