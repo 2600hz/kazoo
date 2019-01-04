@@ -1363,10 +1363,13 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
         Route ->
             Codecs = kapps_config:get(?MOBILE_CONFIG_CAT, <<"codecs">>, ?DEFAULT_MOBILE_CODECS),
             SIPInterface = kapps_config:get_binary(?MOBILE_CONFIG_CAT, <<"custom_sip_interface">>),
+            SIPSettings = kz_json:get_json_value(<<"sip">>, Endpoint, kz_json:new()),
             kz_json:from_list(
               [{<<"Invite-Format">>, <<"route">>}
               ,{<<"Ignore-Early-Media">>, <<"true">>}
               ,{<<"Route">>, Route}
+              ,{<<"To-User">>, get_to_user(SIPSettings, Properties)}
+              ,{<<"To-Username">>, get_to_username(SIPSettings)}
               ,{<<"To-Realm">>, get_sip_realm(Endpoint, kapps_call:account_id(Call))}
               ,{<<"Ignore-Early-Media">>, <<"true">>}
               ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
