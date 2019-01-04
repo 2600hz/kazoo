@@ -388,6 +388,22 @@
             },
             "type": "object"
         },
+        "account_config.tasks.bill_early": {
+            "description": "Schema for tasks.bill_early account_config",
+            "properties": {
+                "bill_early_enabled": {
+                    "default": false,
+                    "description": "Controls whether we should bill early this account",
+                    "type": "boolean"
+                },
+                "reminder_enabled": {
+                    "default": false,
+                    "description": "Controls whether we should send bill reminder for this account a few days before due date",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "account_config.webhooks": {
             "description": "Schema for webhooks account_config",
             "properties": {
@@ -16366,6 +16382,85 @@
             "required": [
                 "Account-ID",
                 "Zones"
+            ],
+            "type": "object"
+        },
+        "kapi.notifications.bill_reminder": {
+            "description": "AMQP API for notifications.bill_reminder",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Due-Date": {
+                    "minimum": 1,
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "bill_reminder"
+                    ],
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Items": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "string"
+                },
+                "Payment-Token": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "boolean"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "minimum": 1,
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Due-Date",
+                "Items",
+                "Payment-Token",
+                "Timestamp"
             ],
             "type": "object"
         },
@@ -33640,6 +33735,27 @@
                     "description": "tasks wait after row in milliseconds",
                     "minimum": 0,
                     "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.tasks.bill_early": {
+            "description": "Schema for tasks.bill_early system_config",
+            "properties": {
+                "bill_early_enabled": {
+                    "default": false,
+                    "description": "Controls whether we should bill early the accounts",
+                    "type": "boolean"
+                },
+                "how_many_early_days": {
+                    "default": 5,
+                    "description": "How many days before first of the next month this task should start processing accounts",
+                    "type": "integer"
+                },
+                "reminder_enabled": {
+                    "default": false,
+                    "description": "Controls whether we should send bill reminder for the accounts a few days before due date",
+                    "type": "boolean"
                 }
             },
             "type": "object"

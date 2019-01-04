@@ -47,7 +47,8 @@ test_notify_publisher() ->
     [{"Test publishing " ++ binary_to_list(Id) ++ " notification"
      ,pulish_notification(Id, PubFun)
      }
-     || {Id, PubFun} <- [{teletype_voicemail_to_email:id(), fun kapi_notifications:publish_voicemail_new/1}
+     || {Id, PubFun} <- [{teletype_bill_reminder:id(), fun kapi_notifications:publish_bill_reminder/1}
+                        ,{teletype_voicemail_to_email:id(), fun kapi_notifications:publish_voicemail_new/1}
                         ,{teletype_deregister:id(), fun kapi_notifications:publish_deregister/1}
                         ]
     ].
@@ -56,7 +57,11 @@ pulish_notification(TemplateId, PubFun) ->
     TemplateIdStr = binary_to_list(TemplateId),
     Path = "fixtures-api/notifications/" ++ TemplateIdStr ++ ".json",
     {ok, Payload} = kz_json:fixture(kazoo_amqp, Path),
-    ?_assertEqual(<<"completed">>, get_status(kapps_notify_publisher:call_collect(Payload, PubFun))).
+    ?_assertEqual(<<"completed">>
+                 ,get_status(
+                    kapps_notify_publisher:call_collect(kz_json:to_proplist(Payload), PubFun)
+                   )
+                 ).
 
 get_status([]) -> false;
 get_status([JObj|_]) ->

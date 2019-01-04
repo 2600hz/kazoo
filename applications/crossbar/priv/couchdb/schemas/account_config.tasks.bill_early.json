@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.tasks.bill_early",
+    "description": "Schema for tasks.bill_early account_config",
+    "properties": {
+        "bill_early_enabled": {
+            "default": false,
+            "description": "Controls whether we should bill early this account",
+            "type": "boolean"
+        },
+        "reminder_enabled": {
+            "default": false,
+            "description": "Controls whether we should send bill reminder for this account a few days before due date",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

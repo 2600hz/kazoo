@@ -1,0 +1,53 @@
+                           Payment Reminder
+
+Due Date: {{ invoice.due_date.local | date:"m/d/Y" }}
+Amount Due: {{invoice.total}} USD
+
+This is a notice that an invoice has been generated for account {{account.name}}.
+
+Payment will be taken automatically on {{ invoice.due_date.local | date:"m/d/Y" }} from
+your default payment method on record with us.
+
+{% if invoice.payment_method.method %}
+Your default payment method is {{invoice.payment_method.method}}.{% if invoice.payment_method.card_type %}
+The card is a {{invoice.payment_method.card_type}} card ending in {{invoice.payment_method.last_four}}{% endif %}.{% endif %}
+{% if invoice %}{% if invoice.items %}
+-----------------------------------------------------------------------------------
+| Service                                                          |        PRICE |
+-----------------------------------------------------------------------------------{% for srv_item, item_props in invoice.items %}
+|                                                                                 |
++ Service Name: {{srv_item|ljust:51}}{{"$"|add:item_props.total|rjust:14}} |
+| Quantity: {{item_props.quantity|stringformat:"d"|ljust:54}}                |
+| Rate: {{"$"|add:item_props.rate|ljust:74}}|{% if item_props.discounts != "0.00" %}
+| Discounts: {{"$"|add:item_props.discounts|ljust:53}}                |{% endif %}{% endfor %}
+|                                                                                 |
+-----------------------------------------------------------------------------------
+|                                                          TOTAL | {{"$"|add:invoice.total|rjust:14}} |
+-----------------------------------------------------------------------------------{% endif %}{% endif %}
+
+
+Questions?
+If you have any questions about your service invoice, please contact support and
+we'll be happy to help you.
+
+Need to update your billing info?
+If you have no card on record you will need to update your card details. To update
+or change the credit card details we hold for your account please login to the portal
+and go in Account Settings and click on Credit Card then following the instructions
+on screen. If you wish for the payment to be taken from your card on file,
+and it is up to date then no action is needed on your part.
+
+
+Thank you for your business!
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

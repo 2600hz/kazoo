@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>Payment Reminder for account '{{account.name}}'</title>
+    <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
+    <style>
+        /* CSS Reset */
+        html,body{margin:0 auto !important;padding:0 !important;height:100% !important;width:100% !important;} *{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;}div[style*="margin:16px 0"]{margin:0 !important;}table,td{mso-table-lspace:0pt !important;mso-table-rspace:0pt !important;}table{border-spacing:0 !important;border-collapse:collapse !important;table-layout:fixed !important;margin:0 auto !important;}table table table{table-layout:auto;}img{-ms-interpolation-mode:bicubic;}*[x-apple-data-detectors]{color:inherit !important;text-decoration:none !important;}.x-gmail-data-detectors,.x-gmail-data-detectors *,.aBn{border-bottom:0 !important;cursor:default !important;}.a6S{display:none !important;opacity:0.01 !important;}img.g-img + div{display:none !important;}.button-link{text-decoration:none !important;}@media only screen and (min-device-width:375px) and (max-device-width:413px){.email-container{min-width:375px !important;}}
+        /* Progressive Enhancements */
+        *{font-family:'Open Sans',Arial,sans-serif;}
+        html,body{font-size:15px;line-height:20px;}
+    </style>
+</head>
+<body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
+    <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
+        <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
+            Payment Reminder for account '{{account.name}}' -
+        </div>
+        <div style="max-width:600px; margin:auto;" class="email-container">
+            <!--[if mso]>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center">
+            <tr>
+            <td>
+            <![endif]-->
+            <!-- 1 Column Text:BEGIN -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#5995f7" align="center" width="100%" style="background-color:#5995f7;border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td height="10" style="font-size:10px;line-height:10px;">&nbsp;</td></tr>
+            </table>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:40px;text-align:center;">
+                        <h2 style="margin:0;padding:0;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Payment Reminder</h2>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="text-align:left;padding:0 20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <span style="margin:4px 0;padding:25px 0 0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Due Date:</b>&nbsp;{{ invoice.due_date.local | date:"m/d/Y" }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="text-align:left;padding:0 20px 20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <span style="margin:4px 0;padding:0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Amount Due:</b>&nbsp;{{invoice.total}} USD</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <p style="margin-top:0;font-family:'Open Sans',sans-serif;color:#555555;">This is a notice that an invoice has been generated for account <b>{{account.name}}</b>.</p>
+                        <p style="font-family:'Open Sans',sans-serif;color:#555555;">Payment will be taken automatically on {{ invoice.due_date.local | date:"m/d/Y" }} from your default payment method on record with us.</p>
+                    </td>
+                </tr>
+            </table>{% if invoice.payment_method.method %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;line-height:1">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Your Payment Information</h3>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:0 20px 40px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><span style="font-weight:600">Payment method:</span>&nbsp;{{invoice.payment_method.method}}</p>{% if invoice.payment_method.card_type %}
+                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><span style="font-weight:600">Card type:</span>&nbsp;{{invoice.payment_method.card_type}}</p>
+                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><span style="font-weight:600">Last 4 digits:</span>&nbsp;{{invoice.payment_method.last_four}}</p>{% endif %}
+                    </td>
+                </tr>
+            </table>{% endif %}
+            {% if invoice %}{% if invoice.items %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;line-height:1">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:0 20px;">
+                        <table role="presentation" aria-hidden="true" border="0" cellpadding="0" cellspacing="0" align="center" width="100%" style="max-width:560px;border:1px solid #dedede;">
+                            <tr height="24">
+                                <td valign="middle" colspan="2" bgcolor="#f5f5f5" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#555555;background-color:#f5f5f5;"><b>Service</b></td>
+                                <td align="right" valign="middle" colspan="1" bgcolor="#f5f5f5" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#999999;background-color:#f5f5f5;"><span style="color: #999999"><small>PRICE</small></span></td>
+                            </tr>
+                            <tr>
+                                <td bgcolor="#ffffff" colspan="3" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                                    {% for srv_item, item_props in invoice.items %}
+                                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" width="100%">
+                                        <tr>
+                                            <td valign="middle" colspan="2" style="padding:10px 0;font-family:'Open Sans',sans-serif;color:#555555;">
+                                                <b>{{srv_item}}</b><br><span style="color:#999999;font-size:13px"><small>Quantity: {{item_props.quantity}}<br>Rate: {{item_props.rate}}{% if item_props.discounts != "0.00" %}<br>Discounts: {{item_props.discounts}}{% endif %}
+                                            </td>
+                                            <td align="right" valign="top" colspan="1" style="padding:10px 0;font-family:'Open Sans',sans-serif;color:#555555;">
+                                                {{item_props.total}}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:0 20px;">
+                        <table role="presentation" aria-hidden="true" border="0" cellpadding="0" cellspacing="0" align="center" width="100%" style="max-width:560px;border:1px solid #dedede;border-top-style:none;">
+                            <tr>
+                                <td align="right" bgcolor="#ffffff" colspan="2" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#999999;border-right:1px solid #dedede;"><small>TOTAL</small></td>
+                                <td align="right" bgcolor="#ffffff" colspan="1" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#555555">{{invoice.total}} USD</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            {% endif %}{% endif %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans',sans-serif;line-height:20px;color:#555555;">Questions?</small></h4>
+                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">If you have any questions about your service invoice, please contact support and we'll be happy to help you.</small></p>
+                        <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans',sans-serif;line-height:20px;color:#555555;">Need to update your billing info?</small></h4>
+                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">If you have no card on record you will need to update your card details. To update or change the credit card details we hold for your account please login to the portal and go in Account Settings and click on Credit Card then following the instructions on screen. If you wish for the payment to be taken from your card on file, and it is up to date then no action is needed on your part.</small></p><br>
+                        <p style="margin:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">Thank you for your business!</p>
+                    </td>
+                </tr>
+                <!-- Clear Spacer : BEGIN -->
+                <tr><td height="50" style="background-color:#ffffff;font-size:50px;line-height:50px;">&nbsp;</td></tr>
+                <!-- Clear Spacer : END -->
+            </table>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;border-bottom:2px solid #ffffff">
+                        <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">Account Information</h4>
+                        <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
+                            <b>-&nbsp;&nbsp;&nbsp;Account ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.id}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.name}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Realm:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.realm}}</span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <!-- Email Footer -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#202029" align="center" width="100%" style="background-color:#202029;border-color:#202029;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td style="font-size:50px;line-height:50px;" height="50">&nbsp;</td></tr>
+            </table>
+            <p style="margin:0;padding:5px 0;font-family:'Open Sans',sans-serif;color:#a9a9a9;font-size:10px;">Sent from {{system.encoded_node}}</p>
+            <!--[if mso]>
+            </td>
+            </tr>
+            </table>
+            <![endif]-->
+        </div>
+    </center>
+</body>
+</html>
