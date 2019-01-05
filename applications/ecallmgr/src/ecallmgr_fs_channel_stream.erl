@@ -18,6 +18,7 @@
         ,channel_data/1
         ,channel_sync/1
         ,channel_hold/1, channel_unhold/1
+        ,channel_update/1
         ]).
 
 -include("ecallmgr.hrl").
@@ -40,6 +41,7 @@ init() ->
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_HOLD">>, ?MODULE, 'channel_hold'),
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_UNHOLD">>, ?MODULE, 'channel_unhold'),
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_DATA">>, ?MODULE, 'channel_data'),
+    kazoo_bindings:bind(<<"event_stream.process.call_event.CALL_UPDATE">>, ?MODULE, 'channel_update'),
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_SYNC">>, ?MODULE, 'channel_sync'),
     'ok'.
 
@@ -58,6 +60,10 @@ channel_answer(#{call_id := UUID}) ->
 
 -spec channel_data(map()) -> any().
 channel_data(#{node := Node, call_id := UUID, payload := JObj}) ->
+    ecallmgr_fs_channel:update(Node, UUID, JObj).
+
+-spec channel_update(map()) -> any().
+channel_update(#{node := Node, call_id := UUID, payload := JObj}) ->
     ecallmgr_fs_channel:update(Node, UUID, JObj).
 
 -spec channel_sync(map()) -> any().
