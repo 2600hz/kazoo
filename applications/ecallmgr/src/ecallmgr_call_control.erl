@@ -439,19 +439,7 @@ publish_route_win(#state{call_id=CallId
                         ,controller_p=ControllerP
                         ,control_q=Q
                         ,initial_ccvs=CCVs
-                        ,node=Node
                         }) ->
-    App = <<"kz_multiset">>,
-    Arg = list_to_binary(["^^;Call-Control-Queue="
-                         ,Q
-                         ,";Call-Control-PID="
-                         ,kz_term:to_binary(self())
-                         ]),
-    Command = [{<<"call-command">>, <<"execute">>}
-              ,{<<"execute-app-name">>, App}
-              ,{<<"execute-app-arg">>, Arg}
-              ],
-    freeswitch:cast_cmd(Node, CallId, Command),
 
     Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Reply-To-PID">>, ControllerP}
