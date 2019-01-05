@@ -23,6 +23,7 @@ handle_req(RouteReq, Props) ->
     CallId = kapi_route:call_id(RouteReq),
     kz_util:put_callid(CallId),
     'true' = kapi_route:req_v(RouteReq),
+
     gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
@@ -110,7 +111,10 @@ is_authz_context(_Call, 'false') ->
     'false';
 is_authz_context(Call, 'true') ->
     AuthzContexts = kapps_config:get_ne_binaries(?APP_NAME, <<"authz_contexts">>, []),
-    lists:member(kapps_call:context(Call), AuthzContexts).
+    CallContext = kapps_call:context(Call),
+    lager:debug("checking authz contexts: ~p against call's ~p", [AuthzContexts, CallContext]),
+    is_binary(CallContext)
+        andalso lists:member(CallContext, AuthzContexts).
 
 -spec allow_no_match_type(kapps_call:call()) -> boolean().
 allow_no_match_type(Call) ->
@@ -118,7 +122,9 @@ allow_no_match_type(Call) ->
         'undefined' -> 'false';
         <<"resource">> -> 'false';
         <<"sys_info">> -> 'false';
-        _ -> 'true'
+        _Type ->
+            lager:debug("allowing no-match for authz type ~s", [_Type]),
+            'true'
     end.
 
 %%------------------------------------------------------------------------------
@@ -167,6 +173,7 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
              ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
+             ,{<<"Context">>, kapps_call:context(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(RouteReq),
@@ -298,7 +305,9 @@ is_valid_endpoint(Contact, Call) ->
     case catch(re:run(Contact, <<".*sip:(.*)@.*">>, ReOptions)) of
         {'match', [Match]} ->
             case cf_util:endpoint_id_by_sip_username(kapps_call:account_db(Call), Match) of
-                {'ok', _EndpointId} -> 'true';
+                {'ok', _EndpointId} ->
+                    lager:debug("matched ~p to endpoint ~p", [Match, _EndpointId]),
+                    'true';
                 {'error', 'not_found'} -> 'false'
             end;
         _ -> 'false'

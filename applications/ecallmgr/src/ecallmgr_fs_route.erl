@@ -146,12 +146,13 @@ handle_info(_Other, State) ->
 handle_fetch(Section, FSId, CallId, FSData, Node) ->
     EventName = props:get_value(<<"Event-Name">>, FSData),
     SubClass = props:get_value(<<"Event-Subclass">>, FSData),
-    DefContext = props:get_value(<<"context">>, FSData, ?DEFAULT_FREESWITCH_CONTEXT),
-    Context = props:get_value(<<"Hunt-Context">>, FSData, DefContext),
+
+    Context = kzd_freeswitch:hunt_context(FSData, ?DEFAULT_FREESWITCH_CONTEXT),
+
     Msg = {'route', Section, EventName, SubClass, Context, FSId, CallId, FSData},
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, Context)}, Msg),
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, <<"*">>)}, Msg),
-    lager:debug("routed fetch ~s along to interested parties", [FSId]).
+    lager:debug("routed fetch ~s (context ~s) along to interested parties", [FSId, Context]).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
