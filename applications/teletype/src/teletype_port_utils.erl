@@ -12,6 +12,7 @@
 -export([fix_port_request_data/2]).
 
 -include("teletype.hrl").
+-include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -spec is_comment_private(kz_json:object()) -> boolean().
 is_comment_private(DataJObj) ->
@@ -110,10 +111,16 @@ fix_port_request_data(JObj, DataJObj) ->
 
 -spec fix_numbers(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_numbers(JObj, _DataJObj) ->
-    NumbersJObj = kz_json:get_json_value(<<"numbers">>
-                                        ,JObj
-                                        ,kz_json:get_json_value(<<"ported_numbers">>, JObj, kz_json:new())
-                                        ),
+    NumbersJObj = case kz_json:get_value(?PORT_PVT_STATE, JObj) of
+                      ?PORT_COMPLETED ->
+                          kz_json:get_json_value(<<"ported_numbers">>
+                                                ,JObj
+                                                 %% in case the doc is not saved/replicated yet
+                                                ,kz_json:get_json_value(<<"numbers">>, JObj, kz_json:new())
+                                                );
+                      _ ->
+                          kz_json:get_json_value(<<"numbers">>, JObj, kz_json:new())
+                  end,
     Numbers = kz_json:foldl(fun fix_number_fold/3, [], NumbersJObj),
     kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
@@ -161,7 +168,7 @@ fix_dates(JObj, _DataJObj) ->
 fix_date_fold(<<"ported_date">> = Key, JObj) ->
     case [TransitionJObj
           || TransitionJObj <- kz_json:get_list_value(<<"pvt_transitions">>, JObj, []),
-             kz_json:get_ne_binary_value([<<"transition">>, <<"new">>], TransitionJObj) =:= <<"completed">>
+             kz_json:get_ne_binary_value([<<"transition">>, <<"new">>], TransitionJObj) =:= ?PORT_COMPLETED
          ]
     of
         [] -> JObj;
