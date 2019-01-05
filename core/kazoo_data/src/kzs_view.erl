@@ -5,7 +5,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_view).
 
-
 %% View-related
 -export([design_compact/3
         ,design_info/3
