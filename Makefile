@@ -5,6 +5,10 @@ FMT = $(ROOT)/make/erlang-formatter/fmt.sh
 TAGS = $(ROOT)/TAGS
 ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
+## list files changed for more focused checks
+CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
+
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
 JOBS ?= 1
@@ -293,61 +297,7 @@ sdks:
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
-CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
-PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
-
-circle-pre:
-ifneq ($(PIP2),)
-## needs root access
-	@echo $(CHANGED)
-	@$(PIP2) install --user --upgrade pip
-	@$(PIP2) install --user PyYAML mkdocs pyembed-markdown jsonschema
-else
-	$(error "pip/pip2 is not available, please install python2-pip package")
-endif
-
-circle-docs:
-	@./scripts/state-of-docs.sh || true
-	@$(ROOT)/scripts/state-of-edoc.escript
-	@$(MAKE) apis
-	@$(MAKE) docs
-
-circle-codechecks:
-	@./scripts/code_checks.bash $(CHANGED)
-	@$(MAKE) code_checks
-	@$(MAKE) app_applications
-	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
-
-circle-fmt:
-	@$(MAKE) fmt
-	@$(MAKE) elvis
-
-circle-build:
-	@$(MAKE) clean clean-deps deps kazoo xref sup_completion
-
-circle-schemas:
-	@$(MAKE) validate-schemas
-	@$(if $(CHANGED_SWAGGER), $(MAKE) circle-swagger)
-
-circle-swagger:
-	@-$(MAKE) validate-swagger
-
-circle-unstaged:
-	echo Unstaged changes!
-	git status --porcelain
-	git --no-pager diff
-	echo 'Maybe try `make apis` and see if that fixes anything ;)'
-	exit 1
-
-circle-dialyze: build-plt
-circle-dialyze:
-	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze-it
-
-circle-release:
-	@$(MAKE) build-ci-release
-
-circle: circle-pre circle-fmt circle-build circle-codechecks circle-docs circle-schemas circle-dialyze circle-release
-	@$(if $(git status --porcelain | wc -l), $(MAKE) circle-unstaged)
-
 include make/splchk.mk
+include make/ci.mk
+
+circle: ci
