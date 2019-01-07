@@ -41,7 +41,7 @@ get_custom_application_vars(Data) ->
 -spec set_variables(boolean(), kz_term:proplist(), kapps_call:call()) -> kapps_call:call().
 set_variables('true', CAVs, Call) ->
     lager:debug("exporting custom app vars: ~p", [CAVs]),
-    kapps_call:set_custom_application_vars(CAVs, Call);
+    kapps_call:set_custom_application_vars(CAVs, Call, 'true');
 set_variables('false', CAVs, Call) ->
     lager:debug("setting custom app vars: ~p", [CAVs]),
-    kapps_call:set_custom_application_vars(CAVs, Call).
+    kapps_call:set_custom_application_vars(CAVs, Call, 'false').

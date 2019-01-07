@@ -92,7 +92,7 @@
 
 -export([set_custom_application_var/3
         ,insert_custom_application_var/3
-        ,set_custom_application_vars/2
+        ,set_custom_application_vars/2, set_custom_application_vars/3
         ,custom_application_var/3
         ,custom_application_var/2
         ,custom_application_vars/1
@@ -1266,19 +1266,24 @@ insert_custom_application_var(Key, Value, #kapps_call{cavs=CAVs}=Call) ->
     Call#kapps_call{cavs=kz_json:set_value(Key, Value, CAVs)}.
 
 -spec set_custom_application_vars(kz_term:proplist(), call()) -> call().
-set_custom_application_vars(Props, #kapps_call{cavs=CAVs}=Call) ->
+set_custom_application_vars(Props, Call) ->
+    set_custom_application_vars(Props, Call, 'false').
+
+-spec set_custom_application_vars(kz_term:proplist(), call(), boolean()) -> call().
+set_custom_application_vars(Props, #kapps_call{cavs=CAVs}=Call, Export) ->
     NewCAVs = kz_json:set_values(Props, CAVs),
 
-    maybe_update_call_cavs(Call, Props, kz_json:to_proplist(CAVs)),
+    maybe_update_call_cavs(Call, Props, kz_json:to_proplist(CAVs), Export),
 
     Call#kapps_call{cavs=NewCAVs}.
 
--spec maybe_update_call_cavs(call(), kz_term:proplist(), kz_term:proplist()) -> 'ok'.
-maybe_update_call_cavs(Call, NewCAVs, ExistingCAVs) ->
+-spec maybe_update_call_cavs(call(), kz_term:proplist(), kz_term:proplist(), boolean()) -> 'ok'.
+maybe_update_call_cavs(Call, NewCAVs, ExistingCAVs, Export) ->
     %% Modeled after updateable_ccvs/2
     case NewCAVs -- ExistingCAVs of
         [] -> 'ok';
-        Updates -> kapps_call_command:set('undefined', 'undefined', kz_json:from_list(Updates), Call)
+        Updates ->
+            kapps_call_command:set('undefined', 'undefined', kz_json:from_list(Updates), Export, Call)
     end.
 
 -spec custom_application_var(any(), Default, call()) -> Default | _.

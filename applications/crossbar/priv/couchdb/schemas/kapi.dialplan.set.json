@@ -33,6 +33,9 @@
             ],
             "type": "string"
         },
+        "Export-All": {
+            "type": "boolean"
+        },
         "Insert-At": {
             "enum": [
                 "head",

@@ -450,6 +450,7 @@
                          ]).
 -define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>
                                   ,<<"Custom-Application-Vars">>
+                                  ,<<"Export-All">>
                                   ]).
 -define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                         ,{<<"Event-Name">>, <<"command">>}
@@ -459,6 +460,7 @@
 -define(SET_REQ_TYPES, [{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                        ,{<<"Custom-Channel-Vars">>,fun kz_json:is_json_object/1}
                        ,{<<"Custom-Call-Vars">>, fun kz_json:is_json_object/1}
+                       ,{<<"Export-All">>, fun is_boolean/1}
                        ]).
 
 %% Set Terminators
