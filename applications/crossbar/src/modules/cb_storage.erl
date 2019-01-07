@@ -396,11 +396,15 @@ doc_id(Context) -> doc_id(scope(Context)).
 maybe_check_storage_settings(Context, ReqVerb) when ReqVerb =:= ?HTTP_PUT
                                                     orelse ReqVerb =:= ?HTTP_POST
                                                     orelse ReqVerb =:= ?HTTP_PATCH ->
+    ValidateSettings = kz_term:is_true(cb_context:req_value(Context, <<"validate_settings">>, 'true')),
     case cb_context:resp_status(Context) of
-        'success' ->
+        'success' when ValidateSettings ->
             lager:debug("validating storage settings"),
             Attachments = kz_json:get_json_value(<<"attachments">>, cb_context:doc(Context)),
             validate_attachments_settings(Attachments, Context);
+        'success' ->
+            lager:notice("client has explicitly disabled validating attachment settings"),
+            Context;
         _ ->
             Context
     end;

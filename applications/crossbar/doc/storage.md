@@ -483,3 +483,19 @@ curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
 ```
+
+## Skipping attachment settings validation
+
+When a storage plan is PUT/POSTed to Crossbar, KAZOO will attempt to use the attachments' settings and store a small text file to verify that files can be stored remotely. KAZOO will then issue a GET request to read the file back to test retrieval.
+
+For "dumb" storage backends this is typically a non-issue as storing/retrieving files is what the backend does!
+
+For "smart" backends, where a custom handler (like an HTTP web app) is accepting the files, adding code to handle this test file's storage/retrieval could place an unnecessary burden on the backend or be redundant after the first test if using the same destination for all accounts. As such, a request parameter can be included to skip this portion of the validation:
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data":{...}}' \
+  http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage?validate_settings=false
+```
