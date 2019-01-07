@@ -84,10 +84,13 @@ check_creditably(Context, Services, _Quotes, Amount) ->
     case kz_services:is_good_standing(Services, Options) of
         {'true', _} -> Context;
         {'false', Reason} ->
-            Msg = io_lib:format("not enough credit to perform the operation due to account ~s ~s"
-                               ,[kz_services:account_id(Services), Reason]
+            Msg = io_lib:format("account ~s does not have enough credit to perform the operation"
+                               ,[kz_services:account_id(Services)]
                                ),
-            cb_context:add_system_error(402, 'no_credit', kz_term:to_binary(Msg), Context)
+            ErrorJObj = kz_json:from_list([{<<"message">>, kz_term:to_binary(Msg)}
+                                          ,{<<"reason">>, Reason}
+                                          ]),
+            cb_context:add_system_error(402, 'no_credit', ErrorJObj, Context)
     end.
 
 %%------------------------------------------------------------------------------
