@@ -2,6 +2,7 @@ ROOT = $(shell cd "$(dirname '.')" && pwd -P)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -60,6 +61,7 @@ clean-deps:
 
 .erlang.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.07.06/erlang.mk' -O $(ROOT)/erlang.mk
+	@ERLANG_MK_COMMIT=$(ERLANG_MK_COMMIT) $(MAKE) -f erlang.mk erlang-mk
 
 deps: deps/Makefile
 	@$(MAKE) -C deps/ all
