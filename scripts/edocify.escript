@@ -27,7 +27,7 @@ main(_) ->
            ,fun evil_specs/1
            }
 
-          ,{"ag -lG '(applications|core)/.*/src/.*.(erl|erl.src)$' 'copyright.+2600[Hh]z$'"
+          ,{"find applications/ core/ -regextype egrep -regex '.*/src/.*.(erl|erl.src)$'"
            ,"bump/fix copyright"
            ,fun(R) -> bump_copyright(R, Year) end
            }
@@ -335,14 +335,22 @@ bump_copyright_file(File, Year) ->
     {Module, Header, OtherLines} = get_module_header_comments(Lines, [], []),
     case re:run(iolist_to_binary(Header), "2600[Hh]z", [global]) of
         {match, _} ->
-            MaybeBumped = bump_copyright(Module, Header, [], [], Year),
-            case is_bumped(Header, MaybeBumped, Module) of
-                true -> ignore;
-                false ->
-                    io:format("processing ~s~n", [File]),
-                    save_lines(File,  MaybeBumped ++ OtherLines)
-            end;
-        _ -> ignore
+            bump_copyright_file(File, Module, Header, OtherLines, Year);
+        _ ->
+            case re:run(iolist_to_binary(Header), "@copyright", [global]) of
+                {match, _} -> ignore;
+                _ ->
+                    bump_copyright_file(File, Module, Header, OtherLines, Year)
+            end
+    end.
+
+bump_copyright_file(File, Module, Header, OtherLines, Year) ->
+    MaybeBumped = bump_copyright(Module, Header, [], [], Year),
+    case is_bumped(Header, MaybeBumped, Module) of
+        true -> ignore;
+        false ->
+            io:format("processing ~s~n", [File]),
+            save_lines(File,  MaybeBumped ++ OtherLines)
     end.
 
 is_bumped(OldHeader, NewHeader, Module) ->
