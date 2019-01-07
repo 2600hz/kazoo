@@ -688,7 +688,7 @@ is_good_standing(Services, Options) ->
     is_good_standing_fold(Services, NewOptions, GoodFuns).
 
 is_good_standing_fold(Services, _Options, []) ->
-    Msg = io_lib:format("all checks for finding balance standing of account ~s are failed"
+    Msg = io_lib:format("account ~s is delinquent, all checks have failed"
                        ,[account_id(Services)]
                        ),
     lager:debug("~s", [Msg]),
@@ -701,7 +701,7 @@ is_good_standing_fold(Services, Options, [Fun | Funs]) ->
                        ),
             {'true', Reason};
         {'false', Reason} = _TheBad ->
-            lager:debug("account ~s is in bad standing: ~s"
+            lager:debug("account ~s is delinquent: ~s"
                        ,[account_id(Services), Reason]
                        ),
             {'false', Reason};
