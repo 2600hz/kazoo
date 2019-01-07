@@ -159,10 +159,10 @@ to_json('by_carrier', Num, {_Carrier,_Cause}) ->
     lager:error("carrier ~s fault: ~p", [_Carrier, _Cause]),
     build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);
 to_json('not_enough_credit', AccountId, Reason) ->
-    Message = io_lib:format("not enough credit to perform the operation due to account ~s"
-                           ,[Reason]
+    Message = io_lib:format("account ~s does not have enough credit to perform the operation"
+                           ,[AccountId]
                            ),
-    build_error(402, 'not_enough_credit', kz_term:to_binary(Message), AccountId);
+    build_error(402, 'not_enough_credit', kz_term:to_binary(Message), Reason);
 to_json(Reason, _, Cause) ->
     ?LOG_ERROR("funky 500 error: ~p/~p", [Reason, Cause]),
     build_error(500, 'unspecified_fault', Reason, Cause).

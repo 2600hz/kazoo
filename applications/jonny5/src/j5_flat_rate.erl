@@ -29,7 +29,7 @@ authorize(Request, Limits) ->
 
 -spec authorize(j5_request:request(), j5_limits:limits(), {boolean(), kz_term:ne_binary()}) -> j5_request:request().
 authorize(Request, Limits, {'false', Reason}) ->
-    lager:debug("not enough credit for flat rate trunks due to account ~s ~s"
+    lager:debug("account ~s does not have enough credit for flat rate trunks: ~s"
                ,[j5_limits:account_id(Limits), Reason]
                ),
     Request;
