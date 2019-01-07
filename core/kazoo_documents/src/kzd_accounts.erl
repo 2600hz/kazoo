@@ -86,7 +86,7 @@
         ,low_balance_sent/1, reset_low_balance_sent/1, path_low_balance_sent/0
 
 
-        ,low_balance_threshold/1, set_low_balance_threshold/2
+        ,low_balance_threshold/1, low_balance_threshold/2, set_low_balance_threshold/2
         ,low_balance_tstamp/1, remove_low_balance_tstamp/1, path_low_balance_tstamp/0
         ,parent_account_id/1
         ,preflow_id/1
