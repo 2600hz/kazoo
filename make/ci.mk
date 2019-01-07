@@ -1,3 +1,5 @@
+.PHONY: ci ci-config ci-steps ci-pre ci-fmt ci-build ci-codechecks ci-docs ci-schemas ci-dialyze ci-release
+
 PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 CI_DIR := $(CURDIR)/make
 CI_VALIDATOR := $(CI_DIR)/circleci
@@ -5,16 +7,18 @@ CI_CONFIG := $(CURDIR)/.circleci/config.yml
 
 ci: ci-config ci-steps
 
+
 ci-config: $(CI_VALIDATOR)
 	@$(CI_VALIDATOR) config validate -c $(CI_CONFIG) || (echo "$(CI_CONFIG):1:"; exit 1)
 
-$(CI_VALIDATOR): $(CI_DIR)
-	curl -fLSs https://circle.ci/cli | DESTDIR="$(CI_DIR)" bash
-	chmod 755 $(CI_VALIDATOR)
+# | $(CI_DIR): see https://www.gnu.org/software/make/manual/make.html#Prerequisite-Types
+# order-only-prereq
+# otherwise cURL will be run everytime
+$(CI_VALIDATOR): | $(CI_DIR)
+	@curl -fLSs https://circle.ci/cli | DESTDIR="$(CI_DIR)" bash
 
 $(CI_DIR):
-	echo creating $(CI_DIR)
-	mkdir $(CI_DIR)
+	@mkdir $(CI_DIR)
 
 ci-steps: ci-pre ci-fmt ci-build ci-codechecks ci-docs ci-schemas ci-dialyze ci-release
 	@$(if $(git status --porcelain | wc -l), $(MAKE) ci-unstaged)
