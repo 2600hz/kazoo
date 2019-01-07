@@ -31358,6 +31358,10 @@
                     "description": "media default language",
                     "type": "string"
                 },
+                "distributed_proxy": {
+                    "description": "media distributed_proxy",
+                    "type": "object"
+                },
                 "fix_media_names": {
                     "default": true,
                     "description": "media fix media names",

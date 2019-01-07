@@ -8,6 +8,8 @@
 -export([recording_url/2]).
 -export([base_url/2, base_url/3
         ,proxy_host/0
+        ,proxy_port/0
+        ,proxy_base_url/0, proxy_base_url/1
         ]).
 -export([convert_stream_type/1
         ,normalize_media/3, normalize_media/4
@@ -67,6 +69,8 @@
                                 {'output', 'binary' | 'file'} |
                                 {'to_args', binary()}.
 -type normalization_options() :: [normalization_option()].
+
+-type proxy_scheme() :: 'http' | 'https'.
 
 -spec normalize_media(kz_term:ne_binary(), kz_term:ne_binary(), binary()) ->
                              normalized_media().
@@ -375,29 +379,28 @@ base_url(Host, Port) ->
 -spec base_url(kz_term:text(), kz_term:text(), atom()) -> kz_term:ne_binary().
 base_url(Host, Port, 'proxy_playback') ->
     case ?AUTH_PLAYBACK of
-        'false' -> build_url(Host, Port, [], []);
-        'true' -> build_url(Host, Port, ?AUTH_USERNAME, ?AUTH_PASSWORD)
+        'false' -> build_url(Host, Port, <<>>);
+        'true' -> build_url(Host, Port, list_to_binary([?AUTH_USERNAME, ":", ?AUTH_PASSWORD, "@"]))
     end;
 base_url(Host, Port, 'proxy_store') ->
     case ?USE_AUTH_STORE of
-        'false' -> build_url(Host, Port, [], []);
-        'true' -> build_url(Host, Port, ?AUTH_USERNAME, ?AUTH_PASSWORD)
+        'false' -> build_url(Host, Port, <<>>);
+        'true' -> build_url(Host, Port, list_to_binary([?AUTH_USERNAME, ":", ?AUTH_PASSWORD, "@"]))
     end.
 
-build_url(H, P, [], []) ->
-    Scheme = case ?USE_HTTPS of
-                 'true' -> <<"https">>;
-                 'false' -> <<"http">>
-             end,
-    list_to_binary([Scheme, "://", kz_term:to_binary(H), ":", kz_term:to_binary(P)]);
-build_url(H, P, User, Pwd) ->
-    Scheme = case ?USE_HTTPS of
-                 'true' -> <<"https">>;
-                 'false' -> <<"http">>
-             end,
-    list_to_binary([Scheme, "://", User, ":", Pwd
-                   ,"@", kz_term:to_binary(H), ":", kz_term:to_binary(P)
-                   ]).
+-spec build_url(kz_term:ne_binary(), pos_integer(), binary()) -> kz_term:ne_binary().
+build_url(H, P, Creds) ->
+    build_url(proxy_scheme(), H, P, Creds).
+
+-spec build_url(proxy_scheme(), kz_term:ne_binary(), pos_integer(), binary()) -> kz_term:ne_binary().
+build_url('https', H, 443, Creds) ->
+    list_to_binary(["https://", Creds, kz_term:to_binary(H)]);
+build_url('https', H, P, Creds) ->
+    list_to_binary(["https://", Creds, kz_term:to_binary(H), ":", kz_term:to_binary(P)]);
+build_url('http', H, 80, Creds) ->
+    list_to_binary(["http://", Creds, kz_term:to_binary(H)]);
+build_url('http', H, P, Creds) ->
+    list_to_binary(["http://", Creds, kz_term:to_binary(H), ":", kz_term:to_binary(P)]).
 
 -spec convert_stream_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 convert_stream_type(<<"extant">>) -> <<"continuous">>;
@@ -722,3 +725,56 @@ proxy_host() ->
         'undefined' -> kz_network_utils:get_hostname();
         ProxyHostname -> ProxyHostname
     end.
+
+-spec proxy_port() -> pos_integer().
+proxy_port() ->
+    kapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517).
+
+-spec proxy_scheme() -> proxy_scheme().
+proxy_scheme() ->
+    proxy_scheme(?USE_HTTPS).
+
+-spec proxy_scheme(boolean()) -> proxy_scheme().
+proxy_scheme('true') -> 'https';
+proxy_scheme('false') -> 'http'.
+
+-spec proxy_default_port(proxy_scheme()) -> 80 | 443.
+proxy_default_port('http') -> 80;
+proxy_default_port('https') -> 443.
+
+-spec proxy_creds(atom()) -> binary().
+proxy_creds('proxy_playback') -> proxy_creds(?AUTH_PLAYBACK);
+proxy_creds('proxy_store') -> proxy_creds(?USE_AUTH_STORE);
+proxy_creds('true') -> list_to_binary([?AUTH_USERNAME, ":", ?AUTH_PASSWORD, "@"]);
+proxy_creds('false') -> <<>>.
+
+-spec proxy_base_url() -> kz_term:ne_binary().
+proxy_base_url() ->
+    proxy_base_url('proxy_playback').
+
+-spec proxy_base_url(kz_term:ne_binary() | atom()) -> kz_term:ne_binary().
+proxy_base_url(<<"store">>) ->
+    proxy_base_url('proxy_store');
+proxy_base_url(Type)
+  when is_binary(Type) ->
+    proxy_base_url('proxy_playback');
+proxy_base_url(Type) ->
+    case kapps_config:get_json(?CONFIG_CAT, <<"distributed_proxy">>) of
+        'undefined' -> base_url(proxy_host(), proxy_port(), Type);
+        JObj -> maybe_distributed_proxy_url(Type, JObj)
+    end.
+
+-spec maybe_distributed_proxy_url(atom(), kz_json:object()) -> kz_term:ne_binary().
+maybe_distributed_proxy_url(Type, JObj) ->
+    case kz_json:is_true(<<"enabled">>, JObj, 'false') of
+        'false' -> base_url(proxy_host(), proxy_port(), Type);
+        'true' -> distributed_proxy_url(Type, JObj)
+    end.
+
+-spec distributed_proxy_url(atom(), kz_json:object()) -> kz_term:ne_binary().
+distributed_proxy_url(Type, JObj) ->
+    Host = kz_json:get_ne_binary_value(<<"hostname">>, JObj, proxy_host()),
+    Scheme = kz_json:get_atom_value(<<"scheme">>, JObj, 'http'),
+    Port = kz_json:get_integer_value(<<"port">>, JObj, proxy_default_port(Scheme)),
+    Creds = proxy_creds(Type),
+    build_url(Scheme, Host, Port, Creds).

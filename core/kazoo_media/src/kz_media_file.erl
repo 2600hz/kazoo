@@ -89,15 +89,9 @@ proxy_uri(#media_store_path{db = Db
          ,StreamType
          ) ->
     _ = maybe_prepare_proxy(StreamType, Store),
-    Host = kz_media_util:proxy_host(),
-    Port = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
-    Permissions = case StreamType =:= <<"store">> of
-                      'true' -> 'proxy_store';
-                      'false' -> 'proxy_playback'
-                  end,
     Path = kz_util:uri_encode(base64:encode(term_to_binary({Db, Id, Attachment, Options}))),
     File = kz_util:uri_encode(Attachment),
-    UrlParts = [kz_media_util:base_url(Host, Port, Permissions)
+    UrlParts = [kz_media_util:proxy_base_url(StreamType)
                ,StreamType
                ,Path
                ,File
