@@ -499,3 +499,6 @@ curl -v -X PUT \
     -d '{"data":{...}}' \
   http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage?validate_settings=false
 ```
+
+!!! danger
+If the storage backend is unable to process the storage request, you could lose the data attempting to be stored.
