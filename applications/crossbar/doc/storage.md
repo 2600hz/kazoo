@@ -502,3 +502,13 @@ curl -v -X PUT \
 
 !!! danger
 If the storage backend is unable to process the storage request, you could lose the data attempting to be stored.
+
+### Enabling This Feature
+
+By default, Kazoo will not allow clients to skip settings validation. Clients that include the `validate_settings` request parameter on these systems will receive a 400 validation error indicating attachment storage settings must be tested.
+
+Sysadmins can allow clients by setting a `system_config` flag:
+
+```shell
+sup kapps_config set_default system_data allow_validation_overrides false
+```
