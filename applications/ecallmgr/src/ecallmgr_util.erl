@@ -701,7 +701,7 @@ build_bridge_string(Endpoints) ->
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints, Separator) ->
     %% HELP-34627: Branch here to handle only failover when all endpoints are unregistered.
-    build_bridge_string(Endpoints, Separator, kapps_config:get_boolean(?APP_NAME, <<"failover_when_all_unreg">>, 'false')).
+    build_bridge_string(Endpoints, Separator, kapps_config:get(?APP_NAME, <<"failover_when_all_unreg">>, 'false')).
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary(), kz_term:api_boolean()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints, Separator, ?FAIL_IF_ALL_UNREG) ->
