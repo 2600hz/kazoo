@@ -109,8 +109,8 @@ maybe_provision_v5(Context, ?HTTP_PUT) ->
 
 maybe_provision_v5(Context, ?HTTP_POST) ->
     AuthToken = cb_context:auth_token(Context),
-    NewDevice = ensure_mac_cleansed(cb_context:doc(Context)),
-    NewAddress = cleanse_mac_address(cb_context:req_value(Context, <<"mac_address">>)),
+    NewDevice = ensure_mac_cleansed(get_new_device(Context)),
+    NewAddress = kzd_devices:mac_address(NewDevice),
     OldDevice = ensure_mac_cleansed(cb_context:fetch(Context, 'db_doc')),
     OldAddress = kzd_devices:mac_address(OldDevice),
     case NewAddress =:= OldAddress of
@@ -130,6 +130,15 @@ ensure_mac_cleansed(JObj) ->
         MacAddress ->
             kzd_devices:set_mac_address(JObj, cleanse_mac_address(MacAddress))
     end.
+
+-spec get_new_device(cb_context:context()) -> kzd_devices:doc().
+get_new_device(Context) ->
+    JObj = cb_context:doc(Context),
+    Props = kz_json:to_proplist(
+              kz_doc:private_fields(JObj)
+             ),
+    ReqData = cb_context:fetch(Context, 'unfiltered_req_data', JObj),
+    kz_json:set_values(Props, ReqData).
 
 %%------------------------------------------------------------------------------
 %% @doc

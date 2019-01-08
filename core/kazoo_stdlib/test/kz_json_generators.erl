@@ -3,6 +3,7 @@
 -export([test_object/0
         ,non_empty_object/0
         ,deep_object/0, deep_object/1
+        ,path/1
 
         ,max_depth/1
         ]).

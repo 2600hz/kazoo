@@ -60,7 +60,9 @@
         ]).
 -export([get_keys/1, get_keys/2]).
 
--export([set_value/3, set_values/2
+-export([set_value_options/0
+        ,set_value/3, set_value/4
+        ,set_values/2, set_values/3
         ,insert_value/3, insert_values/2
         ,new/0
         ]).
@@ -70,8 +72,10 @@
 -export([merge_recursive/1
         ,merge_recursive/2
         ,merge_recursive/3
-        ,merge/1, merge/2, merge/3
-        ,merge_left/2, merge_right/2
+        ,merge/1, merge/2, merge/3, merge/4
+        ,merge_options/0
+        ,merge_left/2, merge_left/3
+        ,merge_right/2, merge_right/3
         ]).
 
 -export([from_list/1, from_list_recursive/1, merge_jobjs/2]).
@@ -287,40 +291,90 @@ recursive_from_list(_Else) -> 'null'.
 
 %% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
 
+-type merge_arg_2() :: {'left' | 'right', json_term()} | {'both', json_term(), json_term()}.
+-type merge_fun_result() :: 'undefined' | {'ok', json_term()}.
+-type merge_fun() :: fun((key(), merge_arg_2()) -> merge_fun_result()) |
+                     fun((key(), merge_arg_2(), merge_options()) -> merge_fun_result()).
+
+-type merge_options() :: #{'keep_null' => boolean()}.
+-spec merge_options() -> merge_options().
+merge_options() ->
+    #{'keep_null' => 'false'}.
+
 -spec merge(objects()) -> object().
 merge(JObjs) ->
     merge(fun merge_right/2, JObjs).
 
--spec merge(object() | merge_fun(), object() | objects()) -> object().
+-spec merge(object(), object()) -> object();
+           (merge_fun(), objects()) -> object();
+           (objects(), merge_options()) -> object().
 merge(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
     merge(fun merge_right/2, JObj1, JObj2);
 merge(MergeFun, [LeftJObj | RightJObjs]) when is_function(MergeFun, 2) ->
     lists:foldl(fun(Right, Left) -> merge(MergeFun, Left, Right) end
                ,LeftJObj
                ,RightJObjs
+               );
+merge(MergeFun, [LeftJObj | RightJObjs]) when is_function(MergeFun, 3) ->
+    lists:foldl(fun(Right, Left) -> merge(MergeFun, Left, Right) end
+               ,LeftJObj
+               ,RightJObjs
+               );
+merge([LeftJObj | RightJObjs], Options) when is_map(Options) ->
+    lists:foldl(fun(Right, Left) ->
+                        merge(Left, Right, Options)
+                end
+               ,LeftJObj
+               ,RightJObjs
                ).
 
--type merge_arg_2() :: {'left' | 'right', json_term()} | {'both', json_term(), json_term()}.
--type merge_fun_result() :: 'undefined' | {'ok', json_term()}.
--type merge_fun() :: fun((key(), merge_arg_2()) -> merge_fun_result()).
+-spec merge(merge_fun(), object(), object()) -> object();
+           (object(), object(), merge_options()) -> object();
+           (merge_fun(), objects(), merge_options()) -> object().
+merge(MergeFun, ?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) when is_function(MergeFun, 2) ->
+    merge(MergeFun, JObj1, JObj2, merge_options());
+merge(MergeFun, ?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) when is_function(MergeFun, 3) ->
+    merge(MergeFun, JObj1, JObj2, merge_options());
+merge(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Options) when is_map(Options) ->
+    merge(fun merge_right/3, JObj1, JObj2, Options);
+merge(MergeFun, [LeftJObj | RightJObjs], Options) when is_function(MergeFun, 2) ->
+    lists:foldl(fun(Right, Left) -> merge(MergeFun, Left, Right, Options) end
+               ,LeftJObj
+               ,RightJObjs
+               );
+merge(MergeFun, [LeftJObj | RightJObjs], Options) when is_function(MergeFun, 3) ->
+    lists:foldl(fun(Right, Left) -> merge(MergeFun, Left, Right, Options) end
+               ,LeftJObj
+               ,RightJObjs
+               ).
 
--spec merge(merge_fun(), object(), object()) -> object().
-merge(MergeFun, ?JSON_WRAPPER(PropsA), ?JSON_WRAPPER(PropsB)) ->
+-spec merge(merge_fun(), object(), object(), merge_options()) -> object().
+merge(MergeFun, ?JSON_WRAPPER(PropsA), ?JSON_WRAPPER(PropsB), Options) ->
     ListA = lists:sort(PropsA),
     ListB = lists:sort(PropsB),
-    merge(MergeFun, ListA, ListB, []).
+    merge(MergeFun, ListA, ListB, [], Options).
 
-merge(_MergeFun, [], [], Acc) ->
+merge(_MergeFun, [], [], Acc, _Options) ->
     from_list(Acc);
-merge(MergeFun, [{KX, VX}|Xs], [], Acc) ->
-    merge(MergeFun, Xs, [], f(KX, MergeFun(KX, {'left', VX}), Acc));
-merge(MergeFun, [], [{KY, VY}|Ys], Acc) ->
-    merge(MergeFun, Ys, [], f(KY, MergeFun(KY, {'right', VY}), Acc));
-merge(MergeFun, [{KX, VX}|Xs]=Left, [{KY, VY}|Ys]=Right, Acc) ->
+merge(MergeFun, [{KX, VX}|Xs], [], Acc, Options) when is_function(MergeFun, 2) ->
+    merge(MergeFun, Xs, [], f(KX, MergeFun(KX, {'left', VX}), Acc), Options);
+merge(MergeFun, [{KX, VX}|Xs], [], Acc, Options) when is_function(MergeFun, 3) ->
+    merge(MergeFun, Xs, [], f(KX, MergeFun(KX, {'left', VX}, Options), Acc), Options);
+merge(MergeFun, [], [{KY, VY}|Ys], Acc, Options) when is_function(MergeFun, 2) ->
+    merge(MergeFun, Ys, [], f(KY, MergeFun(KY, {'right', VY}), Acc), Options);
+merge(MergeFun, [], [{KY, VY}|Ys], Acc, Options) when is_function(MergeFun, 3) ->
+    merge(MergeFun, Ys, [], f(KY, MergeFun(KY, {'right', VY}, Options), Acc), Options);
+merge(MergeFun, [{KX, VX}|Xs]=Left, [{KY, VY}|Ys]=Right, Acc, Options) when is_function(MergeFun, 2) ->
     if
-        KX < KY -> merge(MergeFun, Xs, Right, f(KX, MergeFun(KX, {'left', VX}), Acc));
-        KX > KY -> merge(MergeFun, Left, Ys, f(KY, MergeFun(KY, {'right', VY}), Acc));
-        KX =:= KY -> merge(MergeFun, Xs, Ys, f(KX, MergeFun(KX, {'both', VX, VY}), Acc))
+        KX < KY -> merge(MergeFun, Xs, Right, f(KX, MergeFun(KX, {'left', VX}), Acc), Options);
+        KX > KY -> merge(MergeFun, Left, Ys, f(KY, MergeFun(KY, {'right', VY}), Acc), Options);
+        KX =:= KY -> merge(MergeFun, Xs, Ys, f(KX, MergeFun(KX, {'both', VX, VY}), Acc), Options)
+    end;
+merge(MergeFun, [{KX, VX}|Xs]=Left, [{KY, VY}|Ys]=Right, Acc, Options) when is_function(MergeFun, 3) ->
+    if
+        KX < KY -> merge(MergeFun, Xs, Right, f(KX, MergeFun(KX, {'left', VX}, Options), Acc), Options);
+        KX > KY -> merge(MergeFun, Left, Ys, f(KY, MergeFun(KY, {'right', VY}, Options), Acc), Options);
+        KX =:= KY -> merge(MergeFun, Xs, Ys, f(KX, MergeFun(KX, {'both', VX, VY}, Options), Acc), Options)
     end.
 
 -spec f(key(), merge_fun_result(), list()) -> list().
@@ -328,44 +382,56 @@ f(_K, 'undefined', Acc) -> Acc;
 f(K, {'ok', R}, Acc) -> [{K, R} | Acc].
 
 -spec merge_left(key(), merge_arg_2()) -> merge_fun_result().
-merge_left(_K, {_Dir, 'null'}) -> 'undefined';
-merge_left(_K, {_Dir, 'undefined'}) -> 'undefined';
-merge_left(_K, {'both', 'null', _Right}) -> 'undefined';
-merge_left(_K, {'both', 'undefined', _Right}) -> 'undefined';
+merge_left(Key, Merger) ->
+    merge_left(Key, Merger, merge_options()).
 
-merge_left(_K, {'left', ?JSON_WRAPPER(_)=Left}) ->
-    {'ok', merge(fun merge_left/2, Left, new())};
-merge_left(_K, {'left', V}) -> {'ok', V};
+-spec merge_left(key(), merge_arg_2(), merge_options()) -> merge_fun_result().
+merge_left(_K, {_Dir, 'null'}, #{'keep_null' := 'true'}) -> {'ok', 'null'};
+merge_left(_K, {_Dir, 'null'}, _Options) -> 'undefined';
+merge_left(_K, {_Dir, 'undefined'}, _Options) -> 'undefined';
+merge_left(_K, {'both', 'null', _Right}, #{'keep_null' := 'true'}) -> {'ok', 'null'};
+merge_left(_K, {'both', 'null', _Right}, _Options) -> 'undefined';
+merge_left(_K, {'both', 'undefined', _Right}, _Options) -> 'undefined';
 
-merge_left(_K, {'right', ?JSON_WRAPPER(_)=Right}) ->
-    {'ok', merge(fun merge_left/2, Right, new())};
-merge_left(_K, {'right', V}) -> {'ok', V};
+merge_left(_K, {'left', ?JSON_WRAPPER(_)=Left}, Options) ->
+    {'ok', merge(fun merge_left/3, Left, new(), Options)};
+merge_left(_K, {'left', V}, _Options) -> {'ok', V};
 
-merge_left(_K, {'both', ?EMPTY_JSON_OBJECT=Left, ?JSON_WRAPPER(_)=_Right}) ->
+merge_left(_K, {'right', ?JSON_WRAPPER(_)=Right}, Options) ->
+    {'ok', merge(fun merge_left/3, Right, new(), Options)};
+merge_left(_K, {'right', V}, _Options) -> {'ok', V};
+
+merge_left(_K, {'both', ?EMPTY_JSON_OBJECT=Left, ?JSON_WRAPPER(_)=_Right}, _Options) ->
     {'ok', Left};
-merge_left(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
-    {'ok', merge(fun merge_left/2, Left, Right)};
-merge_left(_K, {'both', Left, _Right}) -> {'ok', Left}.
+merge_left(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}, Options) ->
+    {'ok', merge(fun merge_left/3, Left, Right, Options)};
+merge_left(_K, {'both', Left, _Right}, _Options) -> {'ok', Left}.
 
 -spec merge_right(key(), merge_arg_2()) -> merge_fun_result().
-merge_right(_K, {_Dir, 'null'}) -> 'undefined';
-merge_right(_K, {_Dir, 'undefined'}) -> 'undefined';
-merge_right(_K, {'both', _Left, 'null'}) -> 'undefined';
-merge_right(_K, {'both', _Left, 'undefined'}) -> 'undefined';
+merge_right(Key, Merger) ->
+    merge_right(Key, Merger, merge_options()).
 
-merge_right(_K, {'left', ?JSON_WRAPPER(_)=Left}) ->
-    {'ok', merge(fun merge_right/2, new(), Left)};
-merge_right(_K, {'left', V}) -> {'ok', V};
+-spec merge_right(key(), merge_arg_2(), merge_options()) -> merge_fun_result().
+merge_right(_K, {_Dir, 'null'}, #{'keep_null' := 'true'}) -> {'ok', 'null'};
+merge_right(_K, {_Dir, 'null'}, _Options) -> 'undefined';
+merge_right(_K, {_Dir, 'undefined'}, _Options) -> 'undefined';
+merge_right(_K, {'both', _Left, 'null'}, #{'keep_null' := 'true'}) -> {'ok', 'null'};
+merge_right(_K, {'both', _Left, 'null'}, _Options) -> 'undefined';
+merge_right(_K, {'both', _Left, 'undefined'}, _Options) -> 'undefined';
 
-merge_right(_K, {'right', ?JSON_WRAPPER(_)=Right}) ->
-    {'ok', merge(fun merge_right/2, new(), Right)};
-merge_right(_K, {'right', V}) -> {'ok', V};
+merge_right(_K, {'left', ?JSON_WRAPPER(_)=Left}, Options) ->
+    {'ok', merge(fun merge_right/3, new(), Left, Options)};
+merge_right(_K, {'left', V}, _Options) -> {'ok', V};
 
-merge_right(_K, {'both', ?JSON_WRAPPER(_)=_Left, ?EMPTY_JSON_OBJECT=Right}) ->
+merge_right(_K, {'right', ?JSON_WRAPPER(_)=Right}, Options) ->
+    {'ok', merge(fun merge_right/3, new(), Right, Options)};
+merge_right(_K, {'right', V}, _Options) -> {'ok', V};
+
+merge_right(_K, {'both', ?JSON_WRAPPER(_)=_Left, ?EMPTY_JSON_OBJECT=Right}, _Options) ->
     {'ok', Right};
-merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
-    {'ok', merge(fun merge_right/2, Left, Right)};
-merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
+merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}, Options) ->
+    {'ok', merge(fun merge_right/3, Left, Right, Options)};
+merge_right(_K, {'both', _Left, Right}, _Options) -> {'ok', Right}.
 
 %% @doc Only a top-level merge.
 %% Merges JObj1 into JObj2
@@ -388,7 +454,9 @@ merge_true(_, _) -> 'true'.
 merge_recursive(JObjs) when is_list(JObjs) ->
     merge_recursive(JObjs, fun merge_true/2).
 
--spec merge_recursive(objects() | object(), merge_pred() | object()) -> object().
+-spec merge_recursive(objects(), merge_pred()) -> object();
+                     (objects(), merge_options()) -> object();
+                     (object(), object()) -> object().
 merge_recursive([], Pred) when is_function(Pred, 2) -> new();
 merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred) when is_function(Pred, 2) ->
     lists:foldl(fun(?JSON_WRAPPER(_)=JObj2, ?JSON_WRAPPER(_)=JObjAcc) ->
@@ -397,27 +465,45 @@ merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred) when is_function(Pred, 2) ->
                ,J
                ,JObjs
                );
+merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Options) when is_map(Options) ->
+    lists:foldl(fun(?JSON_WRAPPER(_)=JObj2, ?JSON_WRAPPER(_)=JObjAcc) ->
+                        merge_recursive(JObjAcc, JObj2, Options)
+                end
+               ,J
+               ,JObjs
+               );
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
     merge_recursive(JObj1, JObj2, fun merge_true/2).
 
--spec merge_recursive(object(), object() | json_term(), merge_pred()) -> object().
+-spec merge_recursive(objects(), merge_pred(), merge_options()) -> object();
+                     (object(), object(), merge_pred()) -> object();
+                     (object(), object(), merge_options()) -> object().
+merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred, Options) ->
+    lists:foldl(fun(?JSON_WRAPPER(_)=JObj2, ?JSON_WRAPPER(_)=JObjAcc) ->
+                        merge_recursive(JObjAcc, JObj2, Pred, [], Options)
+                end
+               ,J
+               ,JObjs
+               );
 merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
-    merge_recursive(JObj1, JObj2, Pred, []).
+    merge_recursive(JObj1, JObj2, Pred, [], merge_options());
+merge_recursive(JObj1, JObj2, Options) when is_map(Options) ->
+    merge_recursive(JObj1, JObj2, fun merge_true/2, [], Options).
 
 %% inserts values from JObj2 into JObj1
--spec merge_recursive(object(), object() | json_term(), merge_pred(), keys() | []) -> object().
-merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when is_function(Pred, 2) ->
+-spec merge_recursive(object(), object() | json_term(), merge_pred(), keys() | [], merge_options()) -> object().
+merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys, Options) when is_function(Pred, 2) ->
     foldl(fun(Key2, Value2, JObj1Acc) ->
-                  merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys])
+                  merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys], Options)
           end
          ,JObj1
          ,JObj2
          );
-merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
+merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys, Options) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
     case Pred(get_value(Syek, JObj1), Value) of
         'false' -> JObj1;
-        'true' -> set_value(Syek, Value, JObj1)
+        'true' -> set_value(Syek, Value, JObj1, Options)
     end.
 
 %% @equiv sum(JObj1, JObj2, fun kz_json:default_sumer/2)
@@ -1036,6 +1122,11 @@ get_values(JObj) ->
 get_values(Key, JObj) ->
     get_values(get_value(Key, JObj, new())).
 
+-type set_value_options() :: #{'keep_null' => boolean()}.
+-spec set_value_options() -> set_value_options().
+set_value_options() ->
+    #{'keep_null' => 'false'}.
+
 %% Figure out how to set the current key among a list of objects
 
 -type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()} |
@@ -1046,15 +1137,97 @@ get_values(Key, JObj) ->
 
 -spec set_values(set_value_kvs() | set_value_funs(), object()) -> object().
 set_values(KVs, JObj) when is_list(KVs) ->
-    lists:foldr(fun set_value_fold/2, JObj, KVs).
+    set_values(KVs, JObj, set_value_options()).
 
--spec set_value_fold(set_value_fun() | set_value_kv(), object()) -> object().
-set_value_fold({F, V}, JObj) when is_function(F, 2) ->
+-spec set_values(set_value_kvs() | set_value_funs(), object(), set_value_options()) -> object().
+set_values(KVs, JObj, Options) when is_list(KVs) ->
+    lists:foldr(fun(KV, J) -> set_value_fold(KV, J, Options) end
+               ,JObj
+               ,KVs
+               ).
+
+-spec set_value_fold(set_value_fun() | set_value_kv(), object(), set_value_options()) -> object().
+set_value_fold({F, V}, JObj, _Options) when is_function(F, 2) ->
     F(JObj, V);
-set_value_fold(F, JObj) when is_function(F, 1) ->
+set_value_fold(F, JObj, _Options) when is_function(F, 1) ->
     F(JObj);
-set_value_fold({K, V}, JObj) ->
-    set_value(K, V, JObj).
+set_value_fold({K, V}, JObj, Options) ->
+    set_value(K, V, JObj, Options).
+
+-spec set_value(get_key(), api_json_term() | 'null', object() | objects()) -> object() | objects().
+set_value(_Keys, 'undefined', JObj) -> JObj;
+set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
+set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
+
+-spec set_value(get_key(), api_json_term() | 'null', object() | objects(), set_value_options) -> object() | objects().
+set_value(_Keys, 'undefined', JObj, _Options) -> JObj;
+set_value(Keys, Value, JObj, Options) when is_list(Keys) ->
+    set_value1(Keys, Value, JObj, Options);
+set_value(Key, Value, JObj, Options) ->
+    set_value1([Key], Value, JObj, Options).
+
+-spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
+set_value1(Keys, Value, JObj) ->
+    set_value1(Keys, Value, JObj, set_value_options()).
+
+-spec set_value1(keys(), json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
+set_value1([Key|_]=Keys, Value, [], Options) when not is_integer(Key) ->
+    set_value1(Keys, Value, new(), Options);
+set_value1([Key|T], Value, JObjs, Options) when is_list(JObjs) ->
+    Key1 = kz_term:to_integer(Key),
+    case Key1 > length(JObjs) of
+        %% The object index does not exist so try to add a new one to the list
+        'true' ->
+            try
+                %% Create a new object with the next key as a property
+                JObjs ++ [set_value1(T, Value, set_value1([hd(T)], [], new(), Options), Options)]
+            catch
+                %% There are no more keys in the list, add it unless not an object
+                _:_ ->
+                    try
+                        JObjs ++ [Value]
+                    catch _:_ -> erlang:error('badarg')
+                    end
+            end;
+        %% The object index exists so iterate into the object and update it
+        'false' ->
+            element(1, lists:mapfoldl(fun(E, {Pos, Pos}) ->
+                                              {set_value1(T, Value, E, Options), {Pos + 1, Pos}};
+                                         (E, {Pos, Idx}) ->
+                                              {E, {Pos + 1, Idx}}
+                                      end, {1, Key1}, JObjs))
+    end;
+
+%% Figure out how to set the current key in an existing object
+set_value1([_|_]=Keys, 'null', JObj, #{'keep_null' := 'false'}) -> delete_key(Keys, JObj);
+set_value1([_|_]=Keys, 'undefined', JObj, _Options) -> delete_key(Keys, JObj);
+set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
+    case lists:keyfind(Key1, 1, Props) of
+        {Key1, ?JSON_WRAPPER(_)=V1} ->
+            %% Replace or add a property in an object in the object at this key
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1, Options)}));
+        {Key1, V1} when is_list(V1) ->
+            %% Replace or add a member in an array in the object at this key
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1, Options)}));
+        {Key1, _} when T == [] ->
+            %% This is the final key and the objects property should just be replaced
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, Value}));
+        {Key1, _} ->
+            %% This is not the final key and the objects property should just be
+            %% replaced so continue looping the keys creating the necessary json as we go
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new(), Options)}));
+        'false' when T == [] ->
+            %% This is the final key and doesn't already exist, just add it to this
+            %% objects existing properties
+            ?JSON_WRAPPER(Props ++ [{Key1, Value}]);
+        'false' ->
+            %% This is not the final key and this object does not have this key
+            %% so continue looping the keys creating the necessary json as we go
+            ?JSON_WRAPPER(Props ++ [{Key1, set_value1(T, Value, new(), Options)}])
+    end;
+
+%% There are no more keys to iterate through! Override the value here...
+set_value1([], Value, _JObj, _Options) -> Value.
 
 -spec insert_value(get_key(), json_term(), object()) -> object().
 insert_value(Key, Value, JObj) ->
@@ -1070,70 +1243,6 @@ insert_values(KVs, JObj) ->
 -spec insert_value_fold({get_key(), json_term()}, object()) -> object().
 insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
-
--spec set_value(get_key(), api_json_term() | 'null', object() | objects()) -> object() | objects().
-set_value(_Keys, 'undefined', JObj) -> JObj;
-set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
-set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
-
--spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
-set_value1([Key|_]=Keys, Value, []) when not is_integer(Key) ->
-    set_value1(Keys, Value, new());
-set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
-    Key1 = kz_term:to_integer(Key),
-    case Key1 > length(JObjs) of
-        %% The object index does not exist so try to add a new one to the list
-        'true' ->
-            try
-                %% Create a new object with the next key as a property
-                JObjs ++ [set_value1(T, Value, set_value1([hd(T)], [], new()))]
-            catch
-                %% There are no more keys in the list, add it unless not an object
-                _:_ ->
-                    try
-                        JObjs ++ [Value]
-                    catch _:_ -> erlang:error('badarg')
-                    end
-            end;
-        %% The object index exists so iterate into the object and update it
-        'false' ->
-            element(1, lists:mapfoldl(fun(E, {Pos, Pos}) ->
-                                              {set_value1(T, Value, E), {Pos + 1, Pos}};
-                                         (E, {Pos, Idx}) ->
-                                              {E, {Pos + 1, Idx}}
-                                      end, {1, Key1}, JObjs))
-    end;
-
-%% Figure out how to set the current key in an existing object
-set_value1([_|_]=Keys, 'null', JObj) -> delete_key(Keys, JObj);
-set_value1([_|_]=Keys, 'undefined', JObj) -> delete_key(Keys, JObj);
-set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
-    case lists:keyfind(Key1, 1, Props) of
-        {Key1, ?JSON_WRAPPER(_)=V1} ->
-            %% Replace or add a property in an object in the object at this key
-            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)}));
-        {Key1, V1} when is_list(V1) ->
-            %% Replace or add a member in an array in the object at this key
-            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)}));
-        {Key1, _} when T == [] ->
-            %% This is the final key and the objects property should just be replaced
-            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, Value}));
-        {Key1, _} ->
-            %% This is not the final key and the objects property should just be
-            %% replaced so continue looping the keys creating the necessary json as we go
-            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new())}));
-        'false' when T == [] ->
-            %% This is the final key and doesn't already exist, just add it to this
-            %% objects existing properties
-            ?JSON_WRAPPER(Props ++ [{Key1, Value}]);
-        'false' ->
-            %% This is not the final key and this object does not have this key
-            %% so continue looping the keys creating the necessary json as we go
-            ?JSON_WRAPPER(Props ++ [{Key1, set_value1(T, Value, new())}])
-    end;
-
-%% There are no more keys to iterate through! Override the value here...
-set_value1([], Value, _JObj) -> Value.
 
 %%------------------------------------------------------------------------------
 %% @doc
