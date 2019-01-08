@@ -15,7 +15,7 @@ will be billed at the start of each month.
 | Quantity: {{item_props.quantity|stringformat:"d"|ljust:54}}                |
 | Rate: {{"$"|add:item_props.rate|ljust:74}}|{% if item_props.discounts != "0.00" %}
 | Discounts: {{"$"|add:item_props.discounts|ljust:53}}                |{% endif %}{% if item_props.changes %}
-| {% if item_props.changes.type == "plan_new" %}{{"New service added to your plan"|ljust:80}}{% elif item_props.changes.type == "plan_removed" %}Service removed from your plan|ljust:80}}{% elif item_props.changes.type == "added" %}{{item_props.changes.quantity|add:" item(s) added to your service"|ljust:80}}{% elif item_props.changes.type == "removed" %}{{item_props.changes.quantity|add:" item(s) removed from your service"|ljust:80}}{% endif %}|{% endif %}{% endfor %}
+| {% if item_props.changes.type == "plan_new" %}{{"New service added to your service plan"|ljust:80}}{% elif item_props.changes.type == "plan_removed" %}Service removed from your plan|ljust:80}}{% elif item_props.changes.type == "added" %}{{item_props.changes.quantity|add:" item(s) added to your service"|ljust:80}}{% elif item_props.changes.type == "removed" %}{{item_props.changes.quantity|add:" item(s) removed from your service"|ljust:80}}{% endif %}|{% endif %}{% endfor %}
 |                                                                                 |
 -----------------------------------------------------------------------------------
 |                                                          TOTAL | {{"$"|add:invoice.total|rjust:14}} |
