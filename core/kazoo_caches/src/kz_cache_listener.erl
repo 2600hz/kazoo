@@ -158,7 +158,7 @@ handle_event(JObj, #state{name=Name}) ->
                     )
         of
             'true' -> handle_document_change(JObj, Name);
-            'false' when V -> 'ok';
+            'false' when V -> exec_bindings(Name, JObj);
             'false' -> lager:error("payload invalid for kapi_conf: ~p", [JObj])
         end,
     'ignore'.
