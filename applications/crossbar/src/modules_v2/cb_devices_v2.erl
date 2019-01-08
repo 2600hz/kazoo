@@ -175,7 +175,7 @@ validate(Context) ->
 validate_devices(Context, ?HTTP_GET) ->
     load_device_summary(Context);
 validate_devices(Context, ?HTTP_PUT) ->
-    validate_request('undefined', Context).
+    validate_device('undefined', Context).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, PathToken) ->
@@ -186,7 +186,7 @@ validate_device(Context, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
 validate_device(Context, DeviceId, ?HTTP_GET) ->
     load_device(DeviceId, Context);
 validate_device(Context, DeviceId, ?HTTP_POST) ->
-    validate_request(DeviceId, Context);
+    validate_device(DeviceId, load_device(DeviceId, Context));
 validate_device(Context, DeviceId, ?HTTP_PATCH) ->
     validate_patch(Context, DeviceId);
 validate_device(Context, DeviceId, ?HTTP_PUT) ->
@@ -195,7 +195,7 @@ validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
 validate_patch(Context, DeviceId) ->
-    crossbar_doc:patch_and_validate(DeviceId, Context, fun validate_request/2).
+    crossbar_doc:patch_and_validate(DeviceId, Context, fun validate_device/2).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
@@ -268,8 +268,8 @@ load_users_device_summary(Context, UserId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_request(DeviceId, Context) ->
+-spec validate_device(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+validate_device(DeviceId, Context) ->
     Routines = [fun prepare_mac_address/2
                ,fun prepare_outbound_flags/2
                ,fun prepare_device_realm/2
@@ -489,13 +489,20 @@ prepare_provisioner_fields(_DeviceId, Context) ->
     Keys = [<<"combo_keys">>
            ,<<"feature_keys">>
            ],
+    ReqData = cb_context:req_data(Context),
     JObj = case cb_context:req_value(Context, <<"provision">>) of
-               'undefined' -> cb_context:req_data(Context);
+               'undefined' -> ReqData;
                Provision ->
                    NewData = prune_null_provisioner_fields(Keys, Provision),
-                   kz_json:set_value(<<"provision">>, NewData, cb_context:req_data(Context))
+                   kz_json:set_value(<<"provision">>, NewData, ReqData)
            end,
-    cb_context:set_req_data(Context, JObj).
+    Setters = [{fun cb_context:set_req_data/2, JObj}
+              ,{fun cb_context:store/3
+               ,'unfiltered_req_data'
+               ,ReqData
+               }
+              ],
+    cb_context:setters(Context, Setters).
 
 -spec prune_null_provisioner_fields(kz_json:paths(), kz_json:object()) -> kz_json:object().
 prune_null_provisioner_fields([], JObj) -> JObj;
@@ -648,16 +655,13 @@ get_mac_addresses(DbName) ->
     [provisioner_util:cleanse_mac_address(MAC) || MAC <- MACs].
 
 -spec get_current_mac_address(kz_term:api_binary(), cb_context:context()) -> kz_term:api_binary().
-get_current_mac_address(DeviceId, Context) ->
-    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            JObj = cb_context:doc(Context1),
-            provisioner_util:cleanse_mac_address(
-              kzd_devices:mac_address(JObj)
-             );
-        _Else -> 'undefined'
-    end.
+get_current_mac_address('undefined', _Context) ->
+    'undefined';
+get_current_mac_address(_DeviceId, Context) ->
+    JObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
+    provisioner_util:cleanse_mac_address(
+      kzd_devices:mac_address(JObj)
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -885,11 +889,17 @@ maybe_update_provision(_DeviceId, Context) ->
 
 -spec update_provision(cb_context:context()) -> 'ok'.
 update_provision(Context) ->
-    _ = provisioner_util:provision_device(cb_context:doc(Context)
-                                         ,cb_context:fetch(Context, 'db_doc')
+    JObj = cb_context:doc(Context),
+    Props = kz_json:to_proplist(
+              kz_doc:private_fields(JObj)
+             ),
+    ReqData = cb_context:fetch(Context, 'unfiltered_req_data', JObj),
+    NewDevice = kz_json:set_values(Props, ReqData),
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    _ = provisioner_util:provision_device(NewDevice
+                                         ,OldDevice
                                          ,#{'req_verb' => cb_context:req_verb(Context)
                                            ,'auth_token' => cb_context:auth_token(Context)
-                                           ,'new_mac_address' => cb_context:req_value(Context, <<"mac_address">>)
                                            }
                                          ),
     sync_sip_data(Context, 'false').

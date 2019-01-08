@@ -213,8 +213,9 @@ check_MAC(MacAddress, AuthToken) ->
 set_owner(Device) ->
     OwnerId = kzd_devices:owner_id(Device),
     case get_owner(OwnerId, kz_doc:account_id(Device)) of
-        {'ok', Doc} -> kz_json:merge(Doc, Device);
-        {'error', _R} -> Device
+        {'error', _R} -> Device;
+        {'ok', Doc} ->
+            kz_json:merge(Doc, Device, #{'keep_null' => 'true'})
     end.
 
 -spec get_owner(kz_term:api_ne_binary(), kz_term:ne_binary()) ->
@@ -524,9 +525,8 @@ settings_audio(Device) ->
            ],
     settings_audio(Codecs, Keys, kz_json:new()).
 
-
 -spec settings_audio(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
-settings_audio([], [], JObj) -> JObj;
+settings_audio(_Codecs, [], JObj) -> JObj;
 settings_audio([], [Key|Keys], JObj) ->
     %% kz_json:set_value does not let you set null values so this does that...
     settings_audio([], Keys, kz_json:from_list([{Key, 'null'} | kz_json:to_proplist(JObj)]));
