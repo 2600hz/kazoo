@@ -372,11 +372,11 @@ max_recording_time_limit() ->
 %%     Port = kz_couch_connections:get_port(),
 %%     base_url(Host, Port).
 
--spec base_url(kz_term:text(), kz_term:text()) -> kz_term:ne_binary().
+-spec base_url(kz_term:text(), inet:port_number() | kz_term:text()) -> kz_term:ne_binary().
 base_url(Host, Port) ->
     base_url(Host, Port, 'proxy_playback').
 
--spec base_url(kz_term:text(), kz_term:text(), atom()) -> kz_term:ne_binary().
+-spec base_url(kz_term:text(), inet:port_number() | kz_term:text(), atom()) -> kz_term:ne_binary().
 base_url(Host, Port, 'proxy_playback') ->
     case ?AUTH_PLAYBACK of
         'false' -> build_url(Host, Port, <<>>);
@@ -388,11 +388,11 @@ base_url(Host, Port, 'proxy_store') ->
         'true' -> build_url(Host, Port, list_to_binary([?AUTH_USERNAME, ":", ?AUTH_PASSWORD, "@"]))
     end.
 
--spec build_url(kz_term:ne_binary(), pos_integer(), binary()) -> kz_term:ne_binary().
+-spec build_url(kz_term:ne_binary(), inet:port_number(), binary()) -> kz_term:ne_binary().
 build_url(H, P, Creds) ->
     build_url(proxy_scheme(), H, P, Creds).
 
--spec build_url(proxy_scheme(), kz_term:ne_binary(), pos_integer(), binary()) -> kz_term:ne_binary().
+-spec build_url(proxy_scheme(), kz_term:ne_binary(), inet:port_number(), binary()) -> kz_term:ne_binary().
 build_url('https', H, 443, Creds) ->
     list_to_binary(["https://", Creds, kz_term:to_binary(H)]);
 build_url('https', H, P, Creds) ->
