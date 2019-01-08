@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz
+%%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc Pickup a call in the specified group.
 %%%
 %%% <h4>Data options:</h4>

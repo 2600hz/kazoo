@@ -1,11 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz
+%%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%% behaviour: tasks_provider
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_webhooks).
-%% behaviour: tasks_provider
 
 -export([init/0
         ]).

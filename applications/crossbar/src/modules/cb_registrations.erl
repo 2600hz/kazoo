@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Registration viewer / creator
 %%% GET /v1/accounts/{account_id}/registrations :
 %%%   Get a list of account registrations

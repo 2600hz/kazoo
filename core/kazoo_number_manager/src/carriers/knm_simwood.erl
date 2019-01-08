@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz
+%%% @copyright (C) 2015-2019, 2600Hz
 %%% @doc Handle client requests for phone number at
 %%% <a href="https://www.simwood.com/services/api">Simwood</a> (UK based provider).
 %%%

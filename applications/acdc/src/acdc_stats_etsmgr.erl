@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc Manage the ETS table lookup for token server to account/client IP
 %%% @author James Aimonetti
 %%% @end

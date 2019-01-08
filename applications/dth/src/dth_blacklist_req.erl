@@ -1,9 +1,8 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
-%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Handle requests from WhApps for the blacklist
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @end
-%%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-----------------------------------------------------------------------------
 -module(dth_blacklist_req).
 

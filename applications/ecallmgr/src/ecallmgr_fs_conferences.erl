@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz
+%%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc Track FreeSWITCH conference information and provide accessors
 %%% @author James Aimonetti
 %%% @end

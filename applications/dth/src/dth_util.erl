@@ -1,9 +1,8 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
-%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @end
-%%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-----------------------------------------------------------------------------
 -module(dth_util).
 

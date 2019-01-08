@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2018, 2600Hz
+%%% @copyright (C) 2017-2019, 2600Hz
 %%% @doc Relays EDR messages to AMQP via {@link kapi_edr_amqp}.
 %%% @author Max Lay
 %%% @end
