@@ -507,8 +507,6 @@ If the storage backend is unable to process the storage request, you could lose 
 
 By default, Kazoo will not allow clients to skip settings validation. Clients that include the `validate_settings` request parameter on these systems will receive a 400 validation error indicating attachment storage settings must be tested.
 
-Sysadmins can allow clients by setting a `system_config` flag:
+Sysadmins can allow clients by setting a `system_config` flag: `sup kzs_plan allow_validation_overrides`
 
-```shell
-sup kapps_config set_default system_data allow_validation_overrides false
-```
+Disabling it later is similar: `sup kzs_plan disallow_validation_overrides`
