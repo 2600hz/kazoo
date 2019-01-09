@@ -9,6 +9,8 @@
 
 -export([get_dataplan/2
         ,should_allow_validation_overrides/0
+        ,allow_validation_overrides/0
+        ,disallow_validation_overrides/0
         ]).
 
 -export([init/1, reload/0, reload/1, reload/2]).
@@ -35,6 +37,16 @@
 -spec should_allow_validation_overrides() -> boolean().
 should_allow_validation_overrides() ->
     kapps_config:get_boolean(?KZ_DATA_DB, <<"allow_validation_overrides">>, 'false').
+
+-spec allow_validation_overrides() -> 'true'.
+allow_validation_overrides() ->
+    {'ok', _} = kapps_config:set_default(?KZ_DATA_DB, <<"allow_validation_overrides">>, 'true'),
+    'true'.
+
+-spec disallow_validation_overrides() -> 'false'.
+disallow_validation_overrides() ->
+    {'ok', _} = kapps_config:set_default(?KZ_DATA_DB, <<"allow_validation_overrides">>, 'false'),
+    'false'.
 
 -spec plan() -> map().
 plan() ->
