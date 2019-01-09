@@ -41,23 +41,40 @@
                         <p style="text-align:center;margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">Request <b>{{port_request.name}}</b> to port numbers into account <b>{{account.name}}</b> has been submitted.</p>
                     </td>
                 </tr>
-                <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
-                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Port Request Numbers</h3>
-                    </td>
-                </tr>
-                <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;">
-                        <ul style="padding:0;margin:0 20px;">{% for number in port_request.numbers %}<li style="font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;padding:5px 0;">{{number}}</li>{% endfor %}</ul>
-                    </td>
-                </tr>
-
             </table>
+            {% if port_request.transition_reason.content %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px">
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#eaeaea" width="80%" style="background-color:#eaeaea;border-radius:5px;">
+                            <tr>
+                                <td style="padding:.9em;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-radius:5px;">
+                                    <p style="margin:0;padding:0;font-size:.7em;font-family:'Open Sans',sans-serif;color:#555555;"><b>{{port_request.transition_reason.user.author}}</b> commented on {{port_request.transition_reason.date.local|date:"F j, Y \\a\\t h:i A"}}:</p>
+                                    <p style="margin:0;padding:0">{{port_request.transition_reason.content}}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            {% endif %}
             <!-- Pre-Footer -->
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <!-- Clear Spacer -->
                 <tr><td height="50" style="background-color:#ffffff;font-size:50px;line-height:50px;">&nbsp;</td></tr>
-                <tr><!-- #6a59f7 -->
+                <tr>
+                    <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;border-bottom:2px solid #ffffff;">
+                        <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">Port Request Information</h4>
+                        <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
+                            <b>-&nbsp;&nbsp;&nbsp;Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.name}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;State:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.port_state}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.id}}</span><br>{% if port_request.requested_port_date %}
+                            <b>-&nbsp;&nbsp;&nbsp;Requested Transfer Date:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}})</span><br>{% endif %}
+                            <b>-&nbsp;&nbsp;&nbsp;Numbers:</b><br><span style="font-family:monospace;">{{ port_request.numbers|join:", " }}</span>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
                     <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;">
                         <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">Account Information</h4>
                         <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">

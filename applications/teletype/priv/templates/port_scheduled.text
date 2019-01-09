@@ -1,18 +1,20 @@
                 Port Request Scheduled
 
 Your number port request "{{port_request.name}}" of account '{{account.name}}' has been scheduled
-to happen on {{port_request.port_scheduled_date.local|date:"l, F j, Y H:i"}}
-{% if port_request.transition_reason.content %}
+to port on {{port_request.port_scheduled_date.local|date:"l, F j, Y h:i A"}} ({{port_request.port_scheduled_date.timezone}}).{% if port_request.transition_reason.content %}
 
-{{port_request.transition_reason.user.first_name}} {{port_request.transition_reason.user.last_name}} commented on {{port_request.transition_reason.date.local|date:"l, F j, Y \\a\\t H:i"}}:
-{{port_request.transition_reason.content}}
+{{port_request.transition_reason.user.author}} commented on {{port_request.transition_reason.date.local|date:"F j, Y \\a\\t h:i A"}}:
+    > {{port_request.transition_reason.content}}
 {% endif %}
 
-=== Port Request Numbers ===
 
-{% for number in port_request.numbers %}
--   {{number}}
-{% endfor %}
+
+Port Request Information
+    Name:  {{port_request.name}}
+    State:  {{port_request.port_state}}
+    ID:  {{port_request.id}}
+    Scheduled Date:  {{port_request.port_scheduled_date.local|date:"l, F j, Y h:i A"}} ({{port_request.port_scheduled_date.timezone}})
+    Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
 
 
 

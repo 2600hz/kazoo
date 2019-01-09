@@ -21,7 +21,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name}}' (Details)">>).
+-define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name|safe}}' (Details)">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
 
@@ -119,9 +119,8 @@ maybe_set_emails(DataJObj) ->
 
 -spec maybe_set_from(kz_json:object()) -> kz_json:object().
 maybe_set_from(DataJObj) ->
-    SystemFrom = kz_term:to_binary(node()),
     PortRequest = kz_json:get_value(<<"port_request">>, DataJObj),
-    DefaultFrom = kz_json:get_value(<<"from">>, DataJObj, SystemFrom),
+    DefaultFrom = kz_json:get_value(<<"from">>, DataJObj, teletype_util:default_from_address()),
 
     Initiator = kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortRequest, DefaultFrom),
     kz_json:set_value(<<"from">>, Initiator, DataJObj).

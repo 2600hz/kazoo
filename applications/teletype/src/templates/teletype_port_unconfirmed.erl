@@ -21,7 +21,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Unfinished port request '{{port_request.name}}' reminder">>).
+-define(TEMPLATE_SUBJECT, <<"Unfinished port request '{{port_request.name|safe}}' reminder">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Unconfirmed">>).
 
@@ -102,8 +102,7 @@ handle_port_request(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
-    EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.

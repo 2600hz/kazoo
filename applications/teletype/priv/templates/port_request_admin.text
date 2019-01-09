@@ -1,28 +1,29 @@
                 Port Request Submitted (Admin Report)
 
+
+Submitted On: {{port_request.created.local|date:"l, F j, Y h:i A"}} ({{port_request.created.timezone}})
+
 Request "{{port_request.name}}" to port numbers into account '{{account.name}}' has been submitted.
-
-
-=== Port Request Numbers ===
-
-{% for number in port_request.numbers %}
--   {{number}}
-{% endfor %}
 
 
 === Port Request Details ===
 
-    Name: {{port_request.name}}
-    Port ID: {{port_request.id}}
-    State: {{port_request.state}}
-    Requested Port Date: {{port_request.requested_port_date.local|date:"l, F j, Y H:i"}}
-    Service Provider: {{port_request.service_provider}}
-    Customer Contact: {{port_request.customer_contact}}
-    Billing Name: {{port_request.billing_name}}
-    Billing Address: {% firstof port_request.bill_address port_request.street_address %}
-    Billing City: {{port_request.billing_locality}}
-    Billing State: {{port_request.region}}
-    Billing Zip Code: {{port_request.postal_code}}
+    Name:  {{port_request.name}}
+    Port ID:  {{port_request.id}}
+    State:  {{port_request.port_state}}
+    Numbers:  Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
+    Requested Port Date:  {% if port_request.requested_port_date %}{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% else %}Not scheduled{% endif %}
+    Losing Carrier:  {{port_request.losing_carrier}}
+    Winning Carrier:  {{port_request.winning_carrier}}
+    Carrier Reference Number:  {{port_request.carrier_reference_number}}
+    Customer Contact:  {{ port_request.customer_contact|join:", "}}
+    Billing Name:  {{port_request.bill_name}}
+    Billing Street Number:  {{port_request.bill_street_number}}
+    Billing Street:  {{port_request.bill_street_address}}
+    Billing Street Type:  {{port_request.bill_street_type}}
+    Billing City:  {{port_request.bill_locality}}
+    Billing State:  {{port_request.bill_region}}
+    Billing Postal Code:  {{port_request.bill_postal_code}}
 
 
 
