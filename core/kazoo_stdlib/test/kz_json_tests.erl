@@ -454,27 +454,11 @@ proper_findings_lift_1_test_() ->
                                 ,{<<"sub_d1">>, ?D1_MERGE}
                                 ,{<<"blip">>, ?JSON_WRAPPER([{<<"blop">>, null}])}
                                 ])).
-
--define(D1_D2_MERGE, ?JSON_WRAPPER([{<<"d1k1">>, 1}
-                                   ,{<<"d1k2">>, 3.14}
-                                   ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
-                                   ,{<<"sub_d1">>, ?D1}
-                                   ])).
-
--define(D2_D1_MERGE, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
-                                   ,{<<"d1k2">>, <<"d1v2">>}
-                                   ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
-                                   ,{<<"sub_d1">>, ?D1}
-                                   ])).
-
-
-
 -define(D3, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}
                           ,{<<"d3k2">>, []}
                           ,{<<"sub_docs">>, [?D1, ?D2]}
                           ])).
 -define(D4, [?D1, ?D2, ?D3]).
-
 -define(D6, ?JSON_WRAPPER([{<<"d2k1">>, 1}
                           ,{<<"d2k2">>, 3.14}
                           ,{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}

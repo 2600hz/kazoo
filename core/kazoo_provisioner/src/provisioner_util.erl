@@ -90,11 +90,11 @@ do_provision_device(NewDeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
     MacAddress = kzd_devices:mac_address(NewDeviceDoc),
     case get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
-            do_full_provision(NewDeviceDoc, OldDeviceDoc, MACAddress);
-        <<"awesome_provisioner">> when MACAddress =/= 'undefined' ->
+            do_full_provision(NewDeviceDoc, OldDeviceDoc, MacAddress);
+        <<"awesome_provisioner">> when MacAddress =/= 'undefined' ->
             do_awesome_provision(NewDeviceDoc);
-        <<"simple_provisioner">> when MACAddress =/= 'undefined' ->
-            do_simple_provision(MACAddress, NewDeviceDoc);
+        <<"simple_provisioner">> when MacAddress =/= 'undefined' ->
+            do_simple_provision(MacAddress, NewDeviceDoc);
         <<"provisioner_v5">> ->
             do_provision_v5(NewDeviceDoc, OldDeviceDoc, ProvisionerOptions);
         _ -> 'false'
@@ -125,7 +125,7 @@ do_awesome_provision(NewDeviceDoc) ->
 do_provision_v5(NewDeviceDoc, _OldDeviceDoc, #{'req_verb' := ?HTTP_PUT
                                               ,'auth_token' := AuthToken
                                               }) ->
-    case kz_term:is_empty(kzd_devices:mac_address(NewDevice)) of
+    case kz_term:is_empty(kzd_devices:mac_address(NewDeviceDoc)) of
         'true' -> 'false';
         'false' ->
             _ = provisioner_v5:update_device(NewDeviceDoc, AuthToken),
@@ -138,9 +138,9 @@ do_provision_v5(NewDevice, OldDevice, #{'req_verb' := ?HTTP_POST
     OldMacAddress = kzd_devices:mac_address(OldDevice),
     case NewMacAddress =:= OldMacAddress of
         'true' ->
-            _ = provisioner_v5:update_device(NewDevice, AuthToken),
+            _ = provisioner_v5:update_device(NewDevice, AuthToken);
         'false' ->
-            NewDevice1 = kzd_devices:set_mac_address(NewDevice, OldAddress),
+            NewDevice1 = kzd_devices:set_mac_address(NewDevice, OldMacAddress),
             _ = provisioner_v5:delete_device(NewDevice1, AuthToken),
             _ = provisioner_v5:update_device(NewDevice, AuthToken)
     end,
