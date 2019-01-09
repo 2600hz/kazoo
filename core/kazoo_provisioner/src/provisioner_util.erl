@@ -40,12 +40,6 @@
 
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 
--spec get_mac_address(kzd_devices:doc() | 'undefined') -> kz_term:api_ne_binary().
-get_mac_address('undefined') -> 'undefined';
-get_mac_address(DeviceDoc) ->
-    MACAddress = kzd_devices:mac_address(DeviceDoc),
-    cleanse_mac_address(MACAddress).
-
 -spec cleanse_mac_address(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 cleanse_mac_address('undefined') -> 'undefined';
 cleanse_mac_address(MACAddress) ->
@@ -79,7 +73,7 @@ provision_device(NewDeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
 
 -spec ensure_mac_cleansed(kzd_devices:doc()) -> kzd_devices:doc().
 ensure_mac_cleansed(DeviceDoc) ->
-    case get_mac_address(DeviceDoc) of
+    case kzd_devices:mac_address(DeviceDoc) of
         'undefined' -> DeviceDoc;
         MacAddress ->
             kzd_devices:set_mac_address(DeviceDoc, MacAddress)
@@ -102,7 +96,7 @@ do_provision_device(NewDeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
 
 -spec do_full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:api_ne_binary()) -> boolean().
 do_full_provision(NewDeviceDoc, OldDeviceDoc, 'undefined') ->
-    case get_mac_address(OldDeviceDoc) of
+    case kzd_devices:mac_address(OldDeviceDoc) of
         'undefined' -> 'ok';
         OldMACAddress -> delete_full_provision(OldMACAddress, NewDeviceDoc)
     end,
@@ -153,7 +147,7 @@ do_provision_v5(NewDevice, OldDevice, #{'req_verb' := ?HTTP_POST
 
 -spec delete_provision(kzd_devices:doc(), kz_term:ne_binary()) -> boolean().
 delete_provision(NewDeviceDoc, AuthToken) ->
-    MACAddress = get_mac_address(NewDeviceDoc),
+    MACAddress = kzd_devices:mac_address(NewDeviceDoc),
     case MACAddress =/= 'undefined'
         andalso get_provisioning_type()
     of
@@ -345,8 +339,7 @@ delete_full_provision(MACAddress, NewDeviceDoc) ->
 -spec full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:ne_binary()) -> boolean().
 full_provision(NewDeviceDoc, OldDevice, MACAddress) ->
     {'ok', Data} = get_merged_device(MACAddress, NewDeviceDoc),
-
-    case get_mac_address(OldDevice) of
+    case kzd_devices:mac_address(OldDevice) of
         'undefined' -> 'ok';
         MACAddress -> 'ok';
         OldMACAddress ->

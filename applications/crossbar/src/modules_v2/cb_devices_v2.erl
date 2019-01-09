@@ -659,9 +659,7 @@ get_current_mac_address('undefined', _Context) ->
     'undefined';
 get_current_mac_address(_DeviceId, Context) ->
     JObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
-    provisioner_util:cleanse_mac_address(
-      kzd_devices:mac_address(JObj)
-     ).
+    kzd_devices:mac_address(JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1010,9 +1008,7 @@ remove_aggregate(DeviceId, Context) ->
 %%------------------------------------------------------------------------------
 -spec maybe_delete_provision(kz_term:api_binary(), cb_context:context()) -> 'ok'.
 maybe_delete_provision(_DeviceId, Context) ->
-    MacAddress = provisioner_util:cleanse_mac_address(
-                   kzd_devices:mac_address(cb_context:doc(Context))
-                  ),
+    MacAddress = kzd_devices:mac_address(cb_context:doc(Context)),
     case kz_term:is_not_empty(MacAddress) of
         'false' -> Context;
         'true' ->
