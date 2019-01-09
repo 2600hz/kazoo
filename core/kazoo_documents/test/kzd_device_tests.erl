@@ -57,7 +57,7 @@ test_auxiliary_functions() ->
     ,?_assertEqual(<<"device-1@4a6863.sip.2600hz.local">>, kzd_devices:presence_id(Device1))
     ,?_assertEqual(<<"contact">>, kzd_devices:sip_invite_format(Device1))
     ,?_assertEqual(<<"Test Device 1">>, kzd_devices:name(Device1))
-    ,?_assertEqual(<<"00:15:65:27:C9:8E">>, kzd_devices:mac_address(Device1))
+    ,?_assertEqual(<<"00156527c98">>, kzd_devices:mac_address(Device1))
     ,?_assertEqual(<<"fr-fr">>, kzd_devices:language(Device1))
     ,?_assertEqual(<<"sip_device">>, kzd_devices:device_type(Device1))
     ,?_assertEqual(<<"user0000000000000000000000000001">>, kzd_devices:owner_id(Device1))
@@ -243,7 +243,7 @@ test_device_param_setting() ->
             ,{<<"rick-l@4a6812.sip.2600hz.local">>, fun kzd_devices:set_presence_id/2, fun kzd_devices:presence_id/1}
             ,{<<"fax">>, fun kzd_devices:set_sip_invite_format/2, fun kzd_devices:sip_invite_format/1}
             ,{<<"Rick Sanchez">>, fun kzd_devices:set_name/2, fun kzd_devices:name/1}
-            ,{<<"00:14:65:26:C9:8Z">>, fun kzd_devices:set_mac_address/2, fun kzd_devices:mac_address/1}
+            ,{<<"00156527c98e">>, fun kzd_devices:set_mac_address/2, fun kzd_devices:mac_address/1}
             ,{<<"us-en">>, fun kzd_devices:set_language/2, fun kzd_devices:language/1}
             ,{<<"fax_machine">>, fun kzd_devices:set_device_type/2, fun kzd_devices:device_type/1}
             ,{<<"user0000000000000000000000000002">>, fun kzd_devices:set_owner_id/2, fun kzd_devices:owner_id/1}
