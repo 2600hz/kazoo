@@ -27,13 +27,13 @@ authorize(Request, Limits) ->
                },
     authorize(Request, Limits, kz_services:is_good_standing(j5_limits:account_id(Limits), Options)).
 
--spec authorize(j5_request:request(), j5_limits:limits(), boolean()) -> j5_request:request().
-authorize(Request, Limits, 'false') ->
-    lager:debug("account ~s does not have enough credit for flat rate trunks"
-               ,[j5_limits:account_id(Limits)]
+-spec authorize(j5_request:request(), j5_limits:limits(), {boolean(), kz_term:ne_binary()}) -> j5_request:request().
+authorize(Request, Limits, {'false', Reason}) ->
+    lager:debug("account ~s does not have enough credit for flat rate trunks: ~s"
+               ,[j5_limits:account_id(Limits), Reason]
                ),
     Request;
-authorize(Request, Limits, 'true') ->
+authorize(Request, Limits, {'true', _Reason}) ->
     case is_number_eligible_for_flat_rate(Request) of
         'true' ->
             lager:debug("checking if account ~s has available flat rate trunks"

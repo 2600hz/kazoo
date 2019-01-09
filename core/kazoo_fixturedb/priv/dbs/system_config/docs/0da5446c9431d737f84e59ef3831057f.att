@@ -1,52 +1,49 @@
-                Service Change
+                           Service Change Invoice
 
+Date: {{ timestamp.local | date:"l, F j, Y H:i" }}
 
-Date: {{ time_stamp.local | date:"l, F j, Y H:i" }}
+There have been some changes to your VoIP services in account {{affected.name}}.
 
-Services for your sub-account '{{sub_account.name}}' have been changed.
-
-{% if service_changes %} Here is the summary of changes.
-=== Service Change Summary ===
-
-============================================
-{% for srv_cat, srv_item in service_changes %}
-Service Category: {{srv_cat}}
-{% for item, quantity in srv_item %}
-*   Item: {{item}}  Quantity: {{quantity}}
-{% endfor %}
---------------------------------------------
-{% endfor %}
-
-{% endif %}
+Here is the invoice based on the service plan applied to your account. Your account
+will be billed at the start of each month.
+{% if invoice %}{% if invoice.items %}
+-----------------------------------------------------------------------------------
+| Service                                                          |        PRICE |
+-----------------------------------------------------------------------------------{% for srv_item, item_props in invoice.items %}
+|                                                                                 |
++ Service Name: {{srv_item|ljust:51}}{{"$"|add:item_props.total|rjust:14}} |
+| Quantity: {{item_props.quantity|stringformat:"d"|ljust:54}}                |
+| Rate: {{"$"|add:item_props.rate|ljust:74}}|{% if item_props.discounts != "0.00" %}
+| Discounts: {{"$"|add:item_props.discounts|ljust:53}}                |{% endif %}{% if item_props.changes %}
+| {% if item_props.changes.type == "plan_new" %}{{"New service added to your service plan"|ljust:80}}{% elif item_props.changes.type == "plan_removed" %}Service removed from your plan|ljust:80}}{% elif item_props.changes.type == "added" %}{{item_props.changes.quantity|add:" item(s) added to your service"|ljust:80}}{% elif item_props.changes.type == "removed" %}{{item_props.changes.quantity|add:" item(s) removed from your service"|ljust:80}}{% endif %}|{% endif %}{% endfor %}
+|                                                                                 |
+-----------------------------------------------------------------------------------
+|                                                          TOTAL | {{"$"|add:invoice.total|rjust:14}} |
+-----------------------------------------------------------------------------------{% endif %}{% endif %}
 
 
 Questions?
-Please email us and we'll be happy to help.
+If you have any questions about your service invoice, please contact support and
+we'll be happy to help you.
 
 Need to update your billing info?
-The Billing section can be accessed by your account owner{% if user.first_name or user.last_name %}, {{user.first_name}} {{user.last_name}}{% endif %}.
+The Billing section can be accessed by your account owner.
 
 
 Thank you for your business!
 
 
 
-{% if user.first_name or user.email %}User Information Making this Change
+{% if user.first_name or user.email %}Agent Information
 
     Name: {{user.first_name}} {{user.last_name}}
     Email: {{user.email}}
 
-{% endif %}Affected Account Information
+{% endif %}Account Information
 
-    Account ID: {{account.id}}
-    Account Name: {{account.name}}
-    Account Realm: {{account.realm}}
-
-Re-seller Account Information
-
-    Account ID: {{account.id}}
-    Account Name: {{account.name}}
-    Account Realm: {{account.realm}}
+    Account ID: {{affected.id}}
+    Account Name: {{affected.name}}
+    Account Realm: {{affected.realm}}
 
 
 

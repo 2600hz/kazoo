@@ -17,21 +17,37 @@
 sync_all_accounts_payments_info() ->
     Accounts = kapps_util:get_all_accounts(),
     TotalLength = length(Accounts),
-    Fun = fun(AccountId, Count) ->
-                  io:format(" (~b/~b) ", [Count, TotalLength]),
-                  sync_account_services_payments_info(kz_util:format_account_id(AccountId)),
-                  timer:sleep(1000),
-                  Count + 1
+    Fun = fun(Account, Count) ->
+                  sync_all_accounts_payments_info_fold(Account, Count, TotalLength)
           end,
     _ = lists:foldl(Fun, 1, Accounts),
     'ok'.
 
+-spec sync_all_accounts_payments_info_fold(kz_term:ne_binary(), non_neg_integer(), non_neg_integer()) -> integer().
+sync_all_accounts_payments_info_fold(Account, Count, TotalLength) ->
+    AccountId = kz_util:format_account_id(Account),
+    Services = kz_services:fetch(AccountId),
+    case kz_services:has_plans(Services) of
+        'true' ->
+            io:format(" (~b/~b) ", [Count, TotalLength]),
+            sync_account_services_payments_info(AccountId, Services),
+            timer:sleep(1000),
+            Count + 1;
+        'false' ->
+            io:format(" (~b/~b) account ~s has no plans assigned: ignoring~n", [Count, TotalLength, AccountId]),
+            Count + 1
+    end.
+
 -spec sync_account_services_payments_info(kz_term:ne_binary()) -> 'ok'.
 sync_account_services_payments_info(AccountId) ->
-    io:format("Syncing account ~s payments info: ", [AccountId]),
+    sync_account_services_payments_info(AccountId, kz_services:fetch(AccountId)).
+
+-spec sync_account_services_payments_info(kz_term:ne_binary(), kz_services:services()) -> 'ok'.
+sync_account_services_payments_info(AccountId, Services) ->
+    io:format("syncing account ~s payments info: ", [AccountId]),
     try braintree_customer:find(AccountId) of
         #bt_customer{credit_cards = Cards} ->
-            case braintree_util:update_services_cards(AccountId, Cards) of
+            case braintree_util:update_services_cards(Services, Cards) of
                 {'ok', _Services} -> io:format("synced~n", []);
                 {'error', _} -> io:format("failed to update service doc~n", [])
             end;
@@ -47,7 +63,7 @@ format_errors([#bt_error{code = Code, message = Msg}|_]) ->
 
 -spec sync_payment_info(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 sync_payment_info(AccountId, CardId) ->
-    io:format("Syncing account ~s card ~s info: ", [AccountId, CardId]),
+    io:format("syncing account ~s card ~s info: ", [AccountId, CardId]),
     try braintree_card:find(CardId) of
         #bt_card{customer_id = AccountId} = Card ->
             case braintree_util:update_services_card(AccountId, Card) of
