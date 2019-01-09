@@ -474,9 +474,12 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
             CallVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
             AppVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
 
+            Command = get_set_command(JObj),
+
             props:filter_undefined(
-              [{<<"kz_multiset">>, maybe_multi_set(Node, UUID, ChannelVars)}
-              ,{<<"kz_multiset">>, maybe_multi_set(Node, UUID, [{?CAV(K), V} || {K, V} <- AppVars])}
+              [{Command, maybe_multi_set(Node, UUID, ChannelVars)}
+              ,{Command, maybe_multi_set(Node, UUID, [{?CAV(K), V} || {K, V} <- AppVars])}
+               %% CallVars are always exported
               ,{<<"kz_export">>, maybe_multi_set(Node, UUID, CallVars)}
               ])
     end;
@@ -571,6 +574,12 @@ media_macro_to_file_string(Macro) ->
     Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
     list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]).
 
+-spec get_set_command(kz_json:object()) -> kz_term:ne_binary().
+get_set_command(JObj) ->
+    case kz_json:get_boolean_value(<<"Export-All">>, JObj, 'false') of
+        'true' -> <<"kz_export">>;
+        'false' -> <<"kz_multiset">>
+    end.
 
 -spec maybe_multi_set(atom(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:api_binary().
 maybe_multi_set(_Node, _UUID, []) -> 'undefined';
