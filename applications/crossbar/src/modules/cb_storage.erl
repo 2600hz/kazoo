@@ -396,7 +396,7 @@ doc_id(Context) -> doc_id(scope(Context)).
 maybe_check_storage_settings(Context, ReqVerb) when ReqVerb =:= ?HTTP_PUT
                                                     orelse ReqVerb =:= ?HTTP_POST
                                                     orelse ReqVerb =:= ?HTTP_PATCH ->
-    SystemAllowsSkippingValidation = kapps_config:get_boolean(?KZ_DATA_DB, <<"allow_validation_overrides">>, 'false'),
+    SystemAllowsSkippingValidation = kzs_plan:should_allow_validation_overrides(),
     ValidateSettings = kz_term:is_true(cb_context:req_value(Context, <<"validate_settings">>, 'true')),
     case cb_context:resp_status(Context) of
         'success' when ValidateSettings ->
