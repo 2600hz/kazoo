@@ -1,13 +1,19 @@
                 Port Request Submitted
 
-Request "{{port_request.name}}" to port numbers into account '{{account.name}}' has been submitted.
+Request "{{port_request.name}}" to port numbers into account '{{account.name}}' has been submitted.{% if port_request.transition_reason.content %}
+
+{{port_request.transition_reason.user.author}} commented on {{port_request.transition_reason.date.local|date:"F j, Y \\a\\t h:i A"}}:
+    > {{port_request.transition_reason.content}}
+{% endif %}
 
 
-=== Port Request Numbers ===
 
-{% for number in port_request.numbers %}
--   {{number}}
-{% endfor %}
+Port Request Information
+    Name:  {{port_request.name}}
+    State:  {{port_request.port_state}}
+    ID:  {{port_request.id}}{% if port_request.requested_port_date %}
+    Requested Transfer Date:  {{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% endif %}
+    Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
 
 
 

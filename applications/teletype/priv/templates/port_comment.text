@@ -1,9 +1,17 @@
                 Port Request Comment
 
-Comment on your port request "{{port_request.name}}" of account '{{account.name}}'.
+{{port_request.author}} commented on your port request.
 
-{{user.first_name}} {{user.last_name}} commented on {{port_request.comment.date.local|date:"l, F j, Y \\a\\t H:i"}}:
-{{port_request.comment.content}}
+{{port_request.comment.date.local|date:"F j, Y H:i A"}}
+
+
+> {{port_request.comment.content}}
+
+
+Port Request Information
+    Name:  {{port_request.name}}
+    State:  {{port_request.port_state}}
+    ID:  {{port_request.id}}
 
 
 Account Information

@@ -4,18 +4,20 @@
 Port request "{{port_request.name}}" of account '{{account.name}}' has been submitted
 a while back, but didn't have any action on it.
 
-Please review the port request and fully submitted or cancel it.
-{% if port_request.transition_reason.content %}
+Please review the port request and fully submitted or cancel it.{% if port_request.transition_reason.content %}
 
-{{port_request.transition_reason.user.first_name}} {{port_request.transition_reason.user.last_name}} commented on {{port_request.transition_reason.date.local|date:"l, F j, Y \\a\\t H:i"}}:
-{{port_request.transition_reason.content}}
+{{port_request.transition_reason.user.author}} commented on {{port_request.transition_reason.date.local|date:"F j, Y \\a\\t h:i A"}}:
+    > {{port_request.transition_reason.content}}
 {% endif %}
 
-=== Port Request Numbers ===
 
-{% for number in port_request.numbers %}
--   {{number}}
-{% endfor %}
+
+Port Request Information
+    Name:  {{port_request.name}}
+    State:  {{port_request.port_state}}
+    ID:  {{port_request.id}}
+    Date Submitted:  {{port_request.created.local|date:"l, F j, Y h:i A"}} ({{port_request.created.timezone}})
+    Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
 
 
 
