@@ -51,14 +51,17 @@
        ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
        ).
 
+-define(OAS3_YML_FILENAME, <<"openapi.yml">>).
 -define(OAS3_YML_FILE
        ,filename:join([code:priv_dir('crossbar'), "oas3", "openapi.yml"])
        ).
 
+-define(OAS3_SCHEMAS_FILENAME, <<"oas3-schemas.yml">>).
 -define(OAS3_SCHEMAS_FILE
        ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-schemas.yml"])
        ).
 
+-define(OAS3_PARAMETERS_FILENAME, <<"oas3-parameters.yml">>).
 -define(OAS3_PARAMETERS_FILE
        ,filename:join([code:priv_dir('crossbar'), "oas3", "oas3-parameters.yml"])
        ).
@@ -354,8 +357,63 @@ read_oas3_yaml(SwaggerFile) ->
         'thorw':Throw -> throw(Throw)
     end.
 
-to_oas3_paths(_Paths) ->
-    kz_json:new().
+to_oas3_paths(Paths) ->
+    kz_json:foldl(fun to_oas3_paths/3, #{}, Paths).
+
+to_oas3_paths(EndpointName, EndpointMeta, Map) ->
+    % App = props:get_value('app', EndpointMeta),
+    % BaseFile = filename:join([code:lib_dir(App), "doc/oas3_ref", <<EndpointName/binary, ".yml">>]),
+    % Base = kz_json:from_map(read_oas3_yaml(BaseFile)),
+
+    Paths = kz_json:get_json_value(<<"paths">>, EndpointMeta),
+    F = fun(Path, PathMeta, Acc1) -> to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Acc1) end,
+    kz_json:foldl(F, Map, Paths).
+
+to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Map) ->
+    Methods = kz_json:get_list_value(<<"allowed_methods">>, PathMeta, []),
+    F = fun(Method, Acc1) -> add_oas3_path(EndpointName, EndpointMeta, Path, Method, Acc1) end,
+    lists:foldl(F, Map, Methods).
+
+add_oas3_path(EndpointName, EndpointMeta, Path, Method, Map) ->
+
+    MethodMObj = #{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))
+                  ,<<"operationId">> => kz_binary:join([Method, EndpointName, kz_binary:rand_hex(3)], <<".">>)
+                  ,<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]
+                  ,<<"responses">> => #{<<"200">> => #{<<"summary">> => <<"Successful operation">>}}
+                  },
+
+    maybe_add_request_body(EndpointName, Method, MethodMObj, Acc).
+
+maybe_add_request_body(EndpointName, <<"get">>, MethodMObj, Acc) ->
+    maps:put(EndpointName, MethodJObj, Acc);
+maybe_add_request_body(EndpointName, Method, MethodMObj, Acc)
+  when Method =:= <<"put">>;
+       Method =:= <<"post">> ->
+    RequestBody = #{<<"application/json">> =>
+                    #{<<"schema">> =>
+                      #{<<"$ref">> =>
+                        <<"../", (kz_term:to_binary(?OAS3_SCHEMAS_FILENAME))/binary, "#/components/schemas/", EndpointName/binary>>
+                       }
+                     }
+                   },
+    Acc{EndpointName}
+
+
+generate_method_summary(EndpointName, <<"delete">>, _) ->
+    <<"Delete an instance of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"get">>, <<${, _/binary>>) ->
+    <<"Gets a ", EndpointName/binary, " by ID">>;
+generate_method_summary(EndpointName, <<"get">>, EndPointName) ->
+    <<"Gets all ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"get">>, Something) ->
+    <<"Gets ", Something/binary, " of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"patch">>, _) ->
+    <<"Patch specific fields of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"post">>, _) ->
+    <<"Update an instance of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"put">>, _) ->
+    <<"Add an instance of ", EndpointName/binary>>.
+
 
 -spec to_swagger_paths(kz_json:object(), kz_json:object()) -> kz_json:object().
 to_swagger_paths(Paths, BasePaths) ->
@@ -386,7 +444,7 @@ to_swagger_path(Path, PathMeta, Acc, SchemaParameter) ->
                               kz_json:object().
 add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
-    Parameters = make_parameters(Path, Method, SchemaParameter),
+    Parameters = make_parameters(Path, Method, SchemaParameter, <<"swagger2">>),
     BaseResponse = kz_json:from_list_recursive([{<<"200">>, [{<<"description">>, <<"request succeeded">>}]}]),
 
     Vs = props:filter_empty([{[Path, Method], MethodJObj}
@@ -395,14 +453,14 @@ add_swagger_path(Method, Acc, Path, SchemaParameter) ->
                             ]),
     kz_json:insert_values(Vs, Acc).
 
--spec make_parameters(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> kz_term:ne_binaries().
-make_parameters(Path, Method, SchemaParameter) ->
+-spec make_parameters(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object(), kz_term:ne_binary()) -> kz_json:objects().
+make_parameters(Path, Method, SchemaParameter, OasVersion) ->
     lists:usort(fun compare_parameters/2
                ,lists:flatten(
                   [Parameter
-                   || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
-                           ,fun auth_token_param/2
-                           ,fun path_params/2
+                   || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter, OasVersion) end
+                           ,fun (P, M) -> auth_token_param(P, M, OasVersion) end
+                           ,fun (P, M) -> path_params(P, M, OasVersion) end
                            ],
                       Parameter <- [F(Path, Method)],
                       not kz_term:is_empty(Parameter)
@@ -413,12 +471,14 @@ compare_parameters(Param1, Param2) ->
     Keys = [<<"name">>, <<"$ref">>],
     kz_json:get_first_defined(Keys, Param1) >= kz_json:get_first_defined(Keys, Param2).
 
--spec maybe_add_schema(any(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
-maybe_add_schema(_Path, Method, Schema)
+-spec maybe_add_schema(any(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_term:api_object().
+maybe_add_schema(_Path, _Method, _Schema, <<"oas3">>) ->
+    'undefined';
+maybe_add_schema(_Path, Method, Schema, _OasVersion)
   when Method =:= <<"put">>;
        Method =:= <<"post">> ->
     Schema;
-maybe_add_schema(_Path, _Method, _Parameters) ->
+maybe_add_schema(_Path, _Method, _Parameters, _) ->
     'undefined'.
 
 -spec swagger_body_param(kz_json:object()) -> kz_term:api_object().
@@ -436,13 +496,19 @@ swagger_body_param(PathMeta) ->
                               ])
     end.
 
--spec auth_token_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
-auth_token_param(Path, _Method) ->
+-spec auth_token_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
+auth_token_param(Path, _Method, OasVersion) ->
+    ParamsPath = oas_params_path(OasVersion),
     case is_authtoken_required(Path) of
         'undefined' -> 'undefined';
-        'true' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
-        'false' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
+        'true' -> kz_json:from_list([{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN))/binary>>}]);
+        'false' -> kz_json:from_list([{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN_NOT_REQUIRED))/binary>>}])
     end.
+
+oas_params_path(<<"oas3">>) ->
+    <<"../", (kz_term:to_binary(?OAS3_YML_FILENAME))/binary, "#/components/parameters/">>;
+oas_params_path(<<"swagger2">>) ->
+    <<"#/parameters/">>.
 
 -spec is_authtoken_required(kz_term:ne_binary()) -> kz_term:api_boolean().
 is_authtoken_required(<<"/"?ACCOUNTS_PREFIX"/", _/binary>>=Path) ->
@@ -454,16 +520,16 @@ is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
     kz_binary:suffix(<<"/connect">>, Path);
 is_api_c2c_connect(_) -> 'false'.
 
--spec path_params(kz_term:ne_binary(), any()) -> kz_json:objects().
-path_params(Path, _Method) ->
-    [path_param(Param) || Param <- split_url(Path),
-                          is_path_variable(Param)
+-spec path_params(kz_term:ne_binary(), any(), kz_term:ne_binary()) -> kz_json:objects().
+path_params(Path, _Method, OasVersion) ->
+    [path_param(Param, OasVersion) || Param <- split_url(Path),
+                                      is_path_variable(Param)
     ].
 
--spec path_param(kz_term:ne_binary()) -> kz_json:object().
-path_param(PathToken) ->
+-spec path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+path_param(PathToken, OasVersion) ->
     Param = unbrace_param(PathToken),
-    kz_json:from_list([{<<"$ref">>, <<"#/parameters/", Param/binary>>}]).
+    kz_json:from_list([{<<"$ref">>, <<(oas_params_path(OasVersion))/binary, Param/binary>>}]).
 
 -spec split_url(kz_term:ne_binary()) -> kz_term:ne_binaries().
 split_url(Path) ->
@@ -594,7 +660,7 @@ path_name(Module) ->
 
 %% API
 
--type callback_config() :: {callback(), [allowed_methods() | content_types_provided()]}.
+-type callback_config() :: {callback(), [allowed_methods() | content_types_provided() | {'app', atom()}]}.
 -type callback_configs() :: [callback_config()].
 -type callback() :: module().
 -spec get() -> callback_configs().
@@ -610,18 +676,19 @@ get_app(App, Acc) ->
 process_application(App, Acc) ->
     EBinDir = code:lib_dir(App, 'ebin'),
     io:format("processing ~s modules: ", [App]),
-    Processed = filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, Acc),
+    Fun = fun(File, Acc1) -> process_module(App, File, Acc1) end,
+    Processed = filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', Fun, Acc),
     io:format(" done~n"),
     Processed.
 
--spec process_module(file:filename_all(), callback_configs()) -> callback_configs().
-process_module(File, Acc) ->
+-spec process_module(atom(), file:filename_all(), callback_configs()) -> callback_configs().
+process_module(App, File, Acc) ->
     {'ok', {Module, [{'exports', Fs}]}} = beam_lib:chunks(File, ['exports']),
     io:format("."),
 
     case process_exports(File, Module, Fs) of
         'undefined' -> Acc;
-        Exports -> [Exports | Acc]
+        {Module, Exports} -> [{Module, props:set_value('app', App, Exports)} | Acc]
     end.
 
 -type fun_arity() :: {atom(), arity()}.

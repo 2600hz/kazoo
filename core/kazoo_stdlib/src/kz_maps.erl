@@ -73,15 +73,18 @@ merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 
 -spec get(term(), map()) -> term().
 get(Keys, Map) ->
-    get(Keys, Map, undefined).
+    get(Keys, Map, 'undefined').
 
 -spec get(term(), map(), term()) -> term().
 get([Key|Rest], Map, Default) ->
     case maps:get(Key, Map, {?MODULE, Default}) of
         {?MODULE, Default} ->
             Default;
-        NestedMap ->
-            get(Rest, NestedMap, Default)
+        #{} = NestedMap ->
+            get(Rest, NestedMap, Default);
+        Value when Rest =:= [] ->
+            Value;
+        _ -> Default
     end;
 get(NotAList, Value, Default)
   when not is_list(NotAList) ->
