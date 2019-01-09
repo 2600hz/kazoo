@@ -10,10 +10,10 @@
 
 -export([get/0
         ,get_app/2
-        ,process_module/2
+        ,process_module/3
         ,to_swagger_file/0
         ,to_oas3_file/0
-        ,to_ref_doc/0, to_ref_doc/1
+        ,to_ref_doc/0, to_ref_doc/2
         ,schema_to_doc/2, ref_tables_to_doc/1
 
         ,read_swagger_json/1
@@ -76,13 +76,13 @@
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
--spec to_ref_doc(atom()) -> 'ok'.
-to_ref_doc('crossbar_filter'=Module) ->
+-spec to_ref_doc(atom(), atom()) -> 'ok'.
+to_ref_doc(_, 'crossbar_filter'=Module) ->
     Filters = filters_from_module(Module),
     filters_to_ref_doc(Filters);
-to_ref_doc(CBModule) ->
+to_ref_doc(App, CBModule) ->
     Path = code:which(CBModule),
-    api_to_ref_doc(hd(process_module(Path, []))).
+    api_to_ref_doc(hd(process_module(App, Path, []))).
 
 -define(FILTER_ROW(Filter, OperatesOn, Description)
        ,[kz_binary:join([Filter, OperatesOn, Description], <<" | ">>), $\n]
@@ -361,34 +361,34 @@ to_oas3_paths(Paths) ->
     kz_json:foldl(fun to_oas3_paths/3, #{}, Paths).
 
 to_oas3_paths(EndpointName, EndpointMeta, Map) ->
-    % App = props:get_value('app', EndpointMeta),
-    % BaseFile = filename:join([code:lib_dir(App), "doc/oas3_ref", <<EndpointName/binary, ".yml">>]),
-    % Base = kz_json:from_map(read_oas3_yaml(BaseFile)),
+    %% App = props:get_value('app', EndpointMeta),
+    %% BaseFile = filename:join([code:lib_dir(App), "doc/oas3_ref", <<EndpointName/binary, ".yml">>]),
+    %% Base = kz_json:from_map(read_oas3_yaml(BaseFile)),
 
     Paths = kz_json:get_json_value(<<"paths">>, EndpointMeta),
     F = fun(Path, PathMeta, Acc1) -> to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Acc1) end,
     kz_json:foldl(F, Map, Paths).
 
-to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Map) ->
+to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Acc) ->
     Methods = kz_json:get_list_value(<<"allowed_methods">>, PathMeta, []),
     F = fun(Method, Acc1) -> add_oas3_path(EndpointName, EndpointMeta, Path, Method, Acc1) end,
-    lists:foldl(F, Map, Methods).
+    lists:foldl(F, Acc, Methods).
 
-add_oas3_path(EndpointName, EndpointMeta, Path, Method, Map) ->
+add_oas3_path(EndpointName, _EndpointMeta, Path, Method, Acc) ->
+    Map = #{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))
+           ,<<"operationId">> => kz_binary:join([Method, EndpointName, kz_binary:rand_hex(3)], <<".">>)
+           ,<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]
+           ,<<"responses">> => #{<<"200">> => #{<<"summary">> => <<"Successful operation">>}}
+           },
 
-    MethodMObj = #{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))
-                  ,<<"operationId">> => kz_binary:join([Method, EndpointName, kz_binary:rand_hex(3)], <<".">>)
-                  ,<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]
-                  ,<<"responses">> => #{<<"200">> => #{<<"summary">> => <<"Successful operation">>}}
-                  },
+    maybe_add_request_body(EndpointName, Method, Map, Acc).
 
-    maybe_add_request_body(EndpointName, Method, MethodMObj, Acc).
-
-maybe_add_request_body(EndpointName, <<"get">>, MethodMObj, Acc) ->
-    maps:put(EndpointName, MethodJObj, Acc);
-maybe_add_request_body(EndpointName, Method, MethodMObj, Acc)
+maybe_add_request_body(EndpointName, <<"get">>, Map, Acc) ->
+    maps:update_with(EndpointName, fun(E) -> E#{<<"get">> => Map} end, #{<<"get">> => Map}, Acc);
+maybe_add_request_body(EndpointName, Method, Map, Acc)
   when Method =:= <<"put">>;
-       Method =:= <<"post">> ->
+       Method =:= <<"post">>;
+       Method =:= <<"patch">> ->
     RequestBody = #{<<"application/json">> =>
                     #{<<"schema">> =>
                       #{<<"$ref">> =>
@@ -396,14 +396,16 @@ maybe_add_request_body(EndpointName, Method, MethodMObj, Acc)
                        }
                      }
                    },
-    Acc{EndpointName}
-
+    NewMap = Map#{<<"requestBody">> => RequestBody},
+    maps:update_with(EndpointName, fun(E) -> E#{Method => NewMap} end, #{Method => NewMap}, Acc);
+maybe_add_request_body(EndpointName, Method, Map, Acc) ->
+    maps:update_with(EndpointName, fun(E) -> E#{Method => Map} end, #{Method => Map}, Acc).
 
 generate_method_summary(EndpointName, <<"delete">>, _) ->
     <<"Delete an instance of ", EndpointName/binary>>;
 generate_method_summary(EndpointName, <<"get">>, <<${, _/binary>>) ->
     <<"Gets a ", EndpointName/binary, " by ID">>;
-generate_method_summary(EndpointName, <<"get">>, EndPointName) ->
+generate_method_summary(EndpointName, <<"get">>, EndpointName) ->
     <<"Gets all ", EndpointName/binary>>;
 generate_method_summary(EndpointName, <<"get">>, Something) ->
     <<"Gets ", Something/binary, " of ", EndpointName/binary>>;
