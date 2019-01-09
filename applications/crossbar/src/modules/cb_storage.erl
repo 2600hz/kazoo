@@ -417,7 +417,7 @@ maybe_check_storage_settings(Context, _ReqVerb) ->
 
 error_must_validate_settings(Context) ->
     cb_context:add_validation_error([<<"validate_settings">>]
-                                   ,400
+                                   ,<<"forbidden">>
                                    ,kz_json:from_list([{<<"message">>, <<"The system does not allow bypassing settings validation">>}])
                                    ,Context
                                    ).
