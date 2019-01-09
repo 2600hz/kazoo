@@ -13,6 +13,7 @@
         ,set_current_services_jobj/2
         ]).
 -export([plans/1
+        ,has_plans/1
         ,plans_foldl/3
         ,hydrate_plans/1
         ,reset_plans/1
@@ -189,6 +190,12 @@ plans(#kz_services{plans='undefined'}=Services) ->
     kz_services_plans:fetch(Services);
 plans(#kz_services{plans=Plans}) ->
     Plans.
+
+-spec has_plans(services() | kz_term:ne_binary()) -> boolean().
+has_plans(?NE_BINARY = AccountId) ->
+    has_plans(fetch(AccountId));
+has_plans(#kz_services{}=Services) ->
+    not kz_services_plans:is_empty(plans(Services)).
 
 -spec plans_foldl(plans_foldl(), Acc, services()) -> Acc.
 plans_foldl(FoldFun, Acc, Services) ->
@@ -649,7 +656,7 @@ billing_cycle(_Services) ->
      ).
 
 %% @equiv is_good_standing(Thing, 0)
--spec is_good_standing(kz_term:ne_binary() | services()) -> boolean().
+-spec is_good_standing(kz_term:ne_binary() | services()) -> {boolean(), kz_term:ne_binary()}.
 is_good_standing(Thing) ->
     is_good_standing(Thing, #{}).
 
@@ -666,7 +673,8 @@ is_good_standing(Thing) ->
 %% * All other cases the account is not in good standing
 %% @end
 %%------------------------------------------------------------------------------
--spec is_good_standing(kz_term:ne_binary() | services(), good_standing_options()) -> boolean().
+-spec is_good_standing(kz_term:ne_binary() | services(), good_standing_options()) ->
+                              {boolean(), kz_term:ne_binary()}.
 is_good_standing(?NE_BINARY=Account, Options) ->
     FetchOptions = ['hydrate_plans'],
     is_good_standing(fetch(Account, FetchOptions), Options);
@@ -680,22 +688,23 @@ is_good_standing(Services, Options) ->
     is_good_standing_fold(Services, NewOptions, GoodFuns).
 
 is_good_standing_fold(Services, _Options, []) ->
-    lager:debug("account ~s ran out of good funs, the ugly"
-               ,[account_id(Services)]
-               ),
-    'false';
+    Msg = io_lib:format("account ~s is delinquent, all checks have failed"
+                       ,[account_id(Services)]
+                       ),
+    lager:debug("~s", [Msg]),
+    {'false', Msg};
 is_good_standing_fold(Services, Options, [Fun | Funs]) ->
     case Fun(Services, Options) of
         {'true', Reason} = _TheGood ->
-            lager:debug("account ~s ~s, good standing"
+            lager:debug("account ~s is in good standing: ~s"
                        ,[account_id(Services), Reason]
                        ),
-            'true';
+            {'true', Reason};
         {'false', Reason} = _TheBad ->
-            lager:debug("account ~s ~s, bad standing"
+            lager:debug("account ~s is delinquent: ~s"
                        ,[account_id(Services), Reason]
                        ),
-            'false';
+            {'false', Reason};
         'not_applicable' -> is_good_standing_fold(Services, Options, Funs)
     end.
 
@@ -703,10 +712,10 @@ is_good_standing_fold(Services, Options, [Fun | Funs]) ->
                          'not_applicable'.
 -spec no_plan_is_good(services(), good_standing_options()) -> good_funs_ret().
 no_plan_is_good(Services, _Options) ->
-    case kz_services_plans:is_empty(plans(Services)) of
-        'true' ->
-            {'true', <<"has no plans assigned">>};
-        'false' -> 'not_applicable'
+    case has_plans(Services) of
+        'false' ->
+            {'true', <<"no service plans assigned">>};
+        'true' -> 'not_applicable'
     end.
 
 -spec has_no_expired_payment_tokens(services(), good_standing_options()) -> good_funs_ret().
@@ -737,20 +746,22 @@ has_good_balance(Services, #{amount := Amount}=Options) ->
 
 -spec has_good_balance(kz_currency:units(), kz_currency:units(), boolean(), kz_currency:units()) -> good_funs_ret().
 has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) > 0 ->
-    {'true', <<"has positive balance">>};
+    Msg = io_lib:format("debit of ~b from ~b results in a positive balance"
+                       ,[Amount, Balance]
+                       ),
+    {'true', kz_term:to_binary(Msg)};
 has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) =< 0 ->
-    Msg = io_lib:format("has negative balance, curr_balance: ~b amount: ~b proposed_balance: ~b"
-                       ,[Balance, Amount, Balance - Amount]
+    Msg = io_lib:format("debit of ~b from ~b results in a negative balance"
+                       ,[Amount, Balance]
                        ),
     {'false', kz_term:to_binary(Msg)};
 has_good_balance(Balance, Amount, 'true', MaxPostPay) ->
     case (Balance - Amount) > MaxPostPay of
         'true' ->
-            {'true', <<"has enough postpay balance">>};
+            {'true', <<"enough postpay balance">>};
         'false' ->
-            Msg = io_lib:format("has exceed the maximum postpay amount,"
-                                " curr_balance: ~b amount: ~b max_postpay: ~b proposed_balance: ~b"
-                               ,[Balance, Amount, MaxPostPay, Balance - Amount]
+            Msg = io_lib:format("debit of ~b from ~b exceeds the maximum postpay amount ~b"
+                               ,[Amount, Balance, MaxPostPay]
                                ),
             {'false', kz_term:to_binary(Msg)}
     end.

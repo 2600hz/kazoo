@@ -680,7 +680,7 @@ run_services([AccountId|AccountIds], Updates, UpdatedServicesAcc) ->
     check_creditably(Services, Quotes, HasAdditions),
     run_services(AccountIds, Updates, [UpdatedServices | UpdatedServicesAcc]).
 
--spec check_creditably(kz_services:services(), kz_services_invoices:invoices(), boolean()) -> 'ok'.
+-spec check_creditably(kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) -> 'ok'.
 check_creditably(_Services, _Quotes, 'false') ->
     'ok';
 check_creditably(Services, Quotes, 'true') ->
@@ -701,10 +701,10 @@ check_creditably(_Services, _Quotes, Amount) when Amount =< 0 ->
 check_creditably(Services, _Quotes, Amount) ->
     Options = #{amount => kz_currency:dollars_to_units(Amount)},
     case kz_services:is_good_standing(Services, Options) of
-        'true' -> 'ok';
-        'false' ->
+        {'true', _} -> 'ok';
+        {'false', Reason} ->
             knm_errors:not_enough_credit(kz_services:account_id(Services)
-                                        ,kz_currency:dollars_to_units(Amount)
+                                        ,Reason
                                         )
     end.
 
