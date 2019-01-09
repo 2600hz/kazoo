@@ -257,7 +257,7 @@ are_equal(JObj1, JObj2) ->
 %%------------------------------------------------------------------------------
 -spec from_list([set_value_kv()] | flat_proplist()) -> object() | flat_object().
 from_list(L) when is_list(L) ->
-    ?JSON_WRAPPER(props:filter_undefined(L)).
+    ?JSON_WRAPPER([{K, utf8_binary(V)} || {K, V} <- props:filter_undefined(L)]).
 
 -spec from_list_recursive(json_proplist()) -> object().
 from_list_recursive([]) -> new();
@@ -1121,7 +1121,7 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
             ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)}));
         {Key1, _} when T == [] ->
             %% This is the final key and the objects property should just be replaced
-            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, Value}));
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, utf8_binary(Value)}));
         {Key1, _} ->
             %% This is not the final key and the objects property should just be
             %% replaced so continue looping the keys creating the necessary json as we go
@@ -1129,7 +1129,7 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
         'false' when T == [] ->
             %% This is the final key and doesn't already exist, just add it to this
             %% objects existing properties
-            ?JSON_WRAPPER(Props ++ [{Key1, Value}]);
+            ?JSON_WRAPPER(Props ++ [{Key1, utf8_binary(Value)}]);
         'false' ->
             %% This is not the final key and this object does not have this key
             %% so continue looping the keys creating the necessary json as we go
@@ -1425,3 +1425,9 @@ exec(Funs, ?JSON_WRAPPER(_)=JObj) ->
 exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
 exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
 exec_fold(F, C) when is_function(F, 1) -> F(C).
+
+-spec utf8_binary(any()) -> kz_term:ne_binary().
+utf8_binary(Value) when is_binary(Value) ->
+    unicode:characters_to_binary(binary_to_list(Value));
+utf8_binary(Value) ->
+    Value.
