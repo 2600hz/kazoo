@@ -57,7 +57,7 @@ test_auxiliary_functions() ->
     ,?_assertEqual(<<"device-1@4a6863.sip.2600hz.local">>, kzd_devices:presence_id(Device1))
     ,?_assertEqual(<<"contact">>, kzd_devices:sip_invite_format(Device1))
     ,?_assertEqual(<<"Test Device 1">>, kzd_devices:name(Device1))
-    ,?_assertEqual(<<"00156527c98">>, kzd_devices:mac_address(Device1))
+    ,?_assertEqual(<<"00156527c98e">>, kzd_devices:mac_address(Device1))
     ,?_assertEqual(<<"fr-fr">>, kzd_devices:language(Device1))
     ,?_assertEqual(<<"sip_device">>, kzd_devices:device_type(Device1))
     ,?_assertEqual(<<"user0000000000000000000000000001">>, kzd_devices:owner_id(Device1))
