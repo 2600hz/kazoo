@@ -1105,13 +1105,15 @@ from_map_test_() ->
     ].
 
 utf8_binary_values_test_() ->
-    Props = [{<<"name">>, <<"Loïc">>}],
-    UTF8Props = [{<<"name">>, <<"Loïc"/utf8>>}],
+    V = <<"Bör">>,
+    VUTF8 = <<"Bör"/utf8>>,
+    Props = [{<<"key">>, V}],
+    UTF8Props = [{<<"key">>, VUTF8}],
     UTF8JObj = ?JSON_WRAPPER(UTF8Props),
-    UTF8EncJObj = <<"{\"name\":\"Loïc\"}"/utf8>>,
+    UTF8EncJObj = <<"{\"key\":\"Bör\"}"/utf8>>,
 
-    Flat = [{[<<"foo">>,<<"fong">>],<<"bör">>}],
-    UTF8Flat = [{[<<"foo">>,<<"fong">>],<<"bör"/utf8>>}],
+    Flat = [{[<<"foo">>,<<"fong">>],V}],
+    UTF8Flat = [{[<<"foo">>,<<"fong">>],VUTF8}],
 
     [{"When setting a value it should be encoded in utf8 format"
      ,?_assertEqual(UTF8JObj, kz_json:set_values(Props, kz_json:new()))
@@ -1120,7 +1122,7 @@ utf8_binary_values_test_() ->
      ,?_assertEqual(UTF8JObj, kz_json:from_list(Props))
      }
     ,{"When encoding a NOT utf8 ready object it should fail"
-     ,?_assertException(throw, {error,{invalid_string,<<"Loïc">>}},
+     ,?_assertException(throw, {error,{invalid_string,V}},
                         kz_json:encode(?JSON_WRAPPER(Props)))
      }
     ,{"When encoding a utf8 ready object it should work"

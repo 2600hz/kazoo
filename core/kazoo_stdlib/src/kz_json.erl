@@ -256,8 +256,8 @@ are_equal(JObj1, JObj2) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_list([set_value_kv()] | flat_proplist()) -> object() | flat_object().
-from_list(L) when is_list(L) ->
-    ?JSON_WRAPPER([{K, utf8_binary(V)} || {K, V} <- props:filter_undefined(L)]).
+from_list(PL) when is_list(PL) ->
+    ?JSON_WRAPPER([{K, utf8_binary(V)} || {K, V} <- PL, V =/= 'undefined']).
 
 -spec from_list_recursive(json_proplist()) -> object().
 from_list_recursive([]) -> new();
@@ -1426,7 +1426,7 @@ exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
 exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
 exec_fold(F, C) when is_function(F, 1) -> F(C).
 
--spec utf8_binary(any()) -> kz_term:ne_binary().
+-spec utf8_binary(json_term()) -> json_term().
 utf8_binary(Value) when is_binary(Value) ->
     unicode:characters_to_binary(binary_to_list(Value));
 utf8_binary(Value) ->
