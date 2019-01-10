@@ -391,11 +391,15 @@ mac_address(Doc) ->
 
 -spec mac_address(doc(), Default) -> binary() | Default.
 mac_address(Doc, Default) ->
-    kz_json:get_binary_value([<<"mac_address">>], Doc, Default).
+    provisioner_util:cleanse_mac_address(
+      kz_json:get_binary_value([<<"mac_address">>], Doc, Default)
+     ).
 
 -spec set_mac_address(doc(), binary()) -> doc().
 set_mac_address(Doc, MacAddress) ->
-    kz_json:set_value([<<"mac_address">>], MacAddress, Doc).
+    CleansedMacAddress =
+        provisioner_util:cleanse_mac_address(MacAddress),
+    kz_json:set_value([<<"mac_address">>], CleansedMacAddress, Doc).
 
 -spec media(doc()) -> kz_term:api_object().
 media(Doc) ->

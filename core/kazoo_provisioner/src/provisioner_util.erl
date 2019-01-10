@@ -40,12 +40,6 @@
 
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 
--spec get_mac_address(kzd_devices:doc() | 'undefined') -> kz_term:api_ne_binary().
-get_mac_address('undefined') -> 'undefined';
-get_mac_address(DeviceDoc) ->
-    MACAddress = kzd_devices:mac_address(DeviceDoc),
-    cleanse_mac_address(MACAddress).
-
 -spec cleanse_mac_address(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 cleanse_mac_address('undefined') -> 'undefined';
 cleanse_mac_address(MACAddress) ->
@@ -68,94 +62,83 @@ strip_non_hex(MACAddress) ->
 %%------------------------------------------------------------------------------
 -type provisioner_options() :: #{'req_verb' => kz_term:ne_binary()
                                 ,'auth_token' => kz_term:ne_binary()
-                                ,'new_mac_address' => kz_term:api_ne_binary()
                                 }.
 
 -spec provision_device(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> boolean().
-provision_device(DeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
-    CleansedDeviceDoc = ensure_mac_cleansed(DeviceDoc),
-    CleansedOldDeviceDoc = ensure_mac_cleansed(OldDeviceDoc),
-    case maps:find('new_mac_address', ProvisionerOptions) of
-        {'ok', MacAddress} ->
-            CleansedMacAddress = cleanse_mac_address(MacAddress),
-            do_provision(CleansedDeviceDoc
-                        ,CleansedOldDeviceDoc
-                        ,ProvisionerOptions#{'new_mac_address' := CleansedMacAddress}
-                        );
-        'error' ->
-            do_provision(CleansedDeviceDoc
-                        ,CleansedOldDeviceDoc
-                        ,ProvisionerOptions
-                        )
-    end.
+provision_device(NewDeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
+    do_provision_device(ensure_mac_cleansed(NewDeviceDoc)
+                       ,ensure_mac_cleansed(OldDeviceDoc)
+                       ,ProvisionerOptions
+                       ).
 
 -spec ensure_mac_cleansed(kzd_devices:doc()) -> kzd_devices:doc().
-ensure_mac_cleansed(JObj) ->
-    case get_mac_address(JObj) of
-        'undefined' -> JObj;
+ensure_mac_cleansed(DeviceDoc) ->
+    case kzd_devices:mac_address(DeviceDoc) of
+        'undefined' -> DeviceDoc;
         MacAddress ->
-            kzd_devices:set_mac_address(JObj, MacAddress)
+            kzd_devices:set_mac_address(DeviceDoc, MacAddress)
     end.
 
--spec do_provision(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> boolean().
-do_provision(DeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
-    MACAddress = get_mac_address(DeviceDoc),
+-spec do_provision_device(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> boolean().
+do_provision_device(NewDeviceDoc, OldDeviceDoc, ProvisionerOptions) ->
+    MacAddress = kzd_devices:mac_address(NewDeviceDoc),
     case get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
-            do_full_provision(DeviceDoc, OldDeviceDoc, MACAddress);
-        <<"awesome_provisioner">> when MACAddress =/= 'undefined' ->
-            _ = do_awesome_provision(DeviceDoc),
-            'true';
-        <<"simple_provisioner">> when MACAddress =/= 'undefined' ->
-            _ = do_simple_provision(MACAddress, DeviceDoc),
-            'true';
-        <<"provisioner_v5">> when MACAddress =/= 'undefined' ->
-            _ = do_provision_v5(DeviceDoc, OldDeviceDoc, ProvisionerOptions),
-            'true';
+            do_full_provision(NewDeviceDoc, OldDeviceDoc, MacAddress);
+        <<"awesome_provisioner">> when MacAddress =/= 'undefined' ->
+            do_awesome_provision(NewDeviceDoc);
+        <<"simple_provisioner">> when MacAddress =/= 'undefined' ->
+            do_simple_provision(MacAddress, NewDeviceDoc);
+        <<"provisioner_v5">> ->
+            do_provision_v5(NewDeviceDoc, OldDeviceDoc, ProvisionerOptions);
         _ -> 'false'
     end.
 
 -spec do_full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:api_ne_binary()) -> boolean().
-do_full_provision(DeviceDoc, OldDeviceDoc, 'undefined') ->
-    case get_mac_address(OldDeviceDoc) of
+do_full_provision(NewDeviceDoc, OldDeviceDoc, 'undefined') ->
+    case kzd_devices:mac_address(OldDeviceDoc) of
         'undefined' -> 'ok';
-        OldMACAddress -> delete_full_provision(OldMACAddress, DeviceDoc)
+        OldMACAddress -> delete_full_provision(OldMACAddress, NewDeviceDoc)
     end,
     'false';
-do_full_provision(DeviceDoc, OldDeviceDoc, MACAddress) ->
-    _ = do_full_provisioner_provider(kz_doc:account_id(DeviceDoc)),
-    _ = full_provision(DeviceDoc, OldDeviceDoc, MACAddress),
+do_full_provision(NewDeviceDoc, OldDeviceDoc, MACAddress) ->
+    _ = do_full_provisioner_provider(kz_doc:account_id(NewDeviceDoc)),
+    _ = full_provision(NewDeviceDoc, OldDeviceDoc, MACAddress),
     'true'.
 
 -spec do_awesome_provision(kzd_devices:doc()) -> boolean().
-do_awesome_provision(DeviceDoc) ->
-    case get_template(DeviceDoc) of
+do_awesome_provision(NewDeviceDoc) ->
+    case get_template(NewDeviceDoc) of
         {'error', _} -> 'false';
         {'ok', Template} ->
-            send_provisioning_template(DeviceDoc, Template),
+            send_provisioning_template(NewDeviceDoc, Template),
             'true'
     end.
 
--spec do_provision_v5(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> 'ok'.
-do_provision_v5(DeviceDoc, _OldDeviceDoc, #{'req_verb' := ?HTTP_PUT
-                                           ,'auth_token' := AuthToken
-                                           }) ->
-    _ = provisioner_v5:update_device(DeviceDoc, AuthToken),
-    'ok';
+-spec do_provision_v5(kzd_devices:doc(), kzd_devices:doc(), provisioner_options()) -> boolean().
+do_provision_v5(NewDeviceDoc, _OldDeviceDoc, #{'req_verb' := ?HTTP_PUT
+                                              ,'auth_token' := AuthToken
+                                              }) ->
+    case kz_term:is_empty(kzd_devices:mac_address(NewDeviceDoc)) of
+        'true' -> 'false';
+        'false' ->
+            _ = provisioner_v5:update_device(NewDeviceDoc, AuthToken),
+            'true'
+    end;
 do_provision_v5(NewDevice, OldDevice, #{'req_verb' := ?HTTP_POST
                                        ,'auth_token' := AuthToken
-                                       ,'new_mac_address' := NewAddress
                                        }) ->
-    OldAddress = kzd_devices:mac_address(OldDevice),
-    case NewAddress =:= OldAddress of
+    NewMacAddress = kzd_devices:mac_address(NewDevice),
+    OldMacAddress = kzd_devices:mac_address(OldDevice),
+    case NewMacAddress =:= OldMacAddress of
         'true' ->
             _ = provisioner_v5:update_device(NewDevice, AuthToken);
         'false' ->
-            NewDevice1 = kzd_devices:set_mac_address(NewDevice, OldAddress),
+            NewDevice1 = kzd_devices:set_mac_address(NewDevice, OldMacAddress),
             _ = provisioner_v5:delete_device(NewDevice1, AuthToken),
             _ = provisioner_v5:update_device(NewDevice, AuthToken)
     end,
-    'ok'.
+    'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -163,16 +146,16 @@ do_provision_v5(NewDevice, OldDevice, #{'req_verb' := ?HTTP_POST
 %%------------------------------------------------------------------------------
 
 -spec delete_provision(kzd_devices:doc(), kz_term:ne_binary()) -> boolean().
-delete_provision(DeviceDoc, AuthToken) ->
-    MACAddress = get_mac_address(DeviceDoc),
+delete_provision(NewDeviceDoc, AuthToken) ->
+    MACAddress = kzd_devices:mac_address(NewDeviceDoc),
     case MACAddress =/= 'undefined'
         andalso get_provisioning_type()
     of
         <<"super_awesome_provisioner">> ->
-            _ = delete_full_provision(MACAddress, DeviceDoc),
+            _ = delete_full_provision(MACAddress, NewDeviceDoc),
             'true';
         <<"provisioner_v5">>  ->
-            _ = provisioner_v5:delete_device(DeviceDoc, AuthToken),
+            _ = provisioner_v5:delete_device(NewDeviceDoc, AuthToken),
             'true';
         _ ->
             'false'
@@ -318,19 +301,19 @@ is_mac_address_in_use(MacAddress, AuthToken) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec do_simple_provision(kz_term:ne_binary(), kzd_devices:doc()) -> boolean().
-do_simple_provision(MACAddress, DeviceDoc) ->
-    do_simple_provision(MACAddress, DeviceDoc, kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>)).
+do_simple_provision(MACAddress, NewDeviceDoc) ->
+    do_simple_provision(MACAddress, NewDeviceDoc, kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>)).
 
-do_simple_provision(_MACAddress, _DeviceDoc, 'undefined') -> 'false';
-do_simple_provision(MACAddress, DeviceDoc, URL) ->
-    AccountRealm = kzd_accounts:fetch_realm(kz_doc:account_id(DeviceDoc)),
+do_simple_provision(_MACAddress, _NewDeviceDoc, 'undefined') -> 'false';
+do_simple_provision(MACAddress, NewDeviceDoc, URL) ->
+    AccountRealm = kzd_accounts:fetch_realm(kz_doc:account_id(NewDeviceDoc)),
     Body =
         kz_json:from_list(
           [{<<"device[mac]">>, MACAddress}
-          ,{<<"device[label]">>, kzd_devices:name(DeviceDoc)}
-          ,{<<"sip[realm]">>, kzd_devices:sip_realm(DeviceDoc, AccountRealm)}
-          ,{<<"sip[username]">>, kzd_devices:sip_username(DeviceDoc)}
-          ,{<<"sip[password]">>, kzd_devices:sip_password(DeviceDoc)}
+          ,{<<"device[label]">>, kzd_devices:name(NewDeviceDoc)}
+          ,{<<"sip[realm]">>, kzd_devices:sip_realm(NewDeviceDoc, AccountRealm)}
+          ,{<<"sip[username]">>, kzd_devices:sip_username(NewDeviceDoc)}
+          ,{<<"sip[password]">>, kzd_devices:sip_password(NewDeviceDoc)}
           ,{<<"submit">>, <<"true">>}
           ]),
     Encoded = kz_http_util:json_to_querystring(Body),
@@ -348,23 +331,22 @@ delete_account(<<_/binary>> = AccountId) ->
     maybe_send_to_full_provisioner(AccountId).
 
 -spec delete_full_provision(kz_term:ne_binary(), kzd_devices:doc()) -> boolean().
-delete_full_provision(MACAddress, DeviceDoc) ->
-    AccountId = kz_doc:account_id(DeviceDoc),
+delete_full_provision(MACAddress, NewDeviceDoc) ->
+    AccountId = kz_doc:account_id(NewDeviceDoc),
     PartialURL = <<AccountId/binary, "/", MACAddress/binary>>,
     maybe_send_to_full_provisioner(PartialURL).
 
 -spec full_provision(kzd_devices:doc(), kzd_devices:doc(), kz_term:ne_binary()) -> boolean().
-full_provision(DeviceDoc, OldDevice, MACAddress) ->
-    {'ok', Data} = get_merged_device(MACAddress, DeviceDoc),
-
-    case get_mac_address(OldDevice) of
+full_provision(NewDeviceDoc, OldDevice, MACAddress) ->
+    {'ok', Data} = get_merged_device(MACAddress, NewDeviceDoc),
+    case kzd_devices:mac_address(OldDevice) of
         'undefined' -> 'ok';
         MACAddress -> 'ok';
         OldMACAddress ->
             delete_full_provision(OldMACAddress, Data)
     end,
 
-    AccountId = kz_doc:account_id(DeviceDoc),
+    AccountId = kz_doc:account_id(NewDeviceDoc),
     PartialURL = <<AccountId/binary, "/", MACAddress/binary>>,
     maybe_send_to_full_provisioner(PartialURL, Data).
 
@@ -423,24 +405,24 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
 %%------------------------------------------------------------------------------
 -spec get_merged_device(kz_term:ne_binary(), kzd_devices:doc()) ->
                                {'ok', kz_json:object()}.
-get_merged_device(MACAddress, DeviceDoc) ->
-    {'ok', _Data} = merge_device(MACAddress, DeviceDoc).
+get_merged_device(MACAddress, NewDeviceDoc) ->
+    {'ok', _Data} = merge_device(MACAddress, NewDeviceDoc).
 
 -spec merge_device(kz_term:ne_binary(), kzd_devices:doc()) ->
                           {'ok', kz_json:object()}.
-merge_device(MACAddress, DeviceDoc) ->
-    AccountId = kz_doc:account_id(DeviceDoc),
+merge_device(MACAddress, NewDeviceDoc) ->
+    AccountId = kz_doc:account_id(NewDeviceDoc),
 
     Routines = [fun(J) -> kzd_devices:set_mac_address(J, MACAddress) end
                ,fun(J) ->
-                        OwnerId = kzd_devices:owner_id(DeviceDoc),
+                        OwnerId = kzd_devices:owner_id(NewDeviceDoc),
                         Owner = get_owner(OwnerId, AccountId),
                         kz_json:merge(J, Owner)
                 end
                ,fun(J) -> kz_json:delete_key(<<"apps">>, J) end
                ,fun(J) -> kz_json:set_value(<<"account_id">>, AccountId, J) end
                ],
-    MergedDevice = lists:foldl(fun(F, J) -> F(J) end, DeviceDoc, Routines),
+    MergedDevice = lists:foldl(fun(F, J) -> F(J) end, NewDeviceDoc, Routines),
     {'ok', kz_doc:public_fields(MergedDevice)}.
 
 -spec get_owner(kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
@@ -458,10 +440,10 @@ get_owner(OwnerId, AccountId) ->
 %% @doc Do awesome provisioning
 %% @end
 %%------------------------------------------------------------------------------
-send_provisioning_template(DeviceDoc, Template) ->
+send_provisioning_template(NewDeviceDoc, Template) ->
     %% TODO: theoretically this is the start of multiple line support....
     Line = <<"lineloop|line_1">>,
-    MACAddress = kz_term:to_list(kzd_devices:mac_address(DeviceDoc, "")),
+    MACAddress = kz_term:to_list(kzd_devices:mac_address(NewDeviceDoc, "")),
     MAC = re:replace(MACAddress
                     ,"[^0-9a-fA-F]", "", [{'return', 'list'}, 'global']
                     ),
@@ -474,9 +456,9 @@ send_provisioning_template(DeviceDoc, Template) ->
                      ,fun set_device_overrides/1
                      ,fun set_global_overrides/1
                      ],
-    LineUpdaters = lists:foldr(fun(F, U) -> F(DeviceDoc) ++ U end, [], LineGenerators),
-    TmplUpdaters = lists:foldr(fun(F, U) -> F(DeviceDoc) ++ U end, [], TmplGenerators),
-    DefaultTemplate = lists:foldr(fun(F, J) -> F(J) end, DeviceDoc, TmplUpdaters),
+    LineUpdaters = lists:foldr(fun(F, U) -> F(NewDeviceDoc) ++ U end, [], LineGenerators),
+    TmplUpdaters = lists:foldr(fun(F, U) -> F(NewDeviceDoc) ++ U end, [], TmplGenerators),
+    DefaultTemplate = lists:foldr(fun(F, J) -> F(J) end, NewDeviceDoc, TmplUpdaters),
     LineLoop = kz_json:get_value([<<"data">>, <<"globals">>, <<"globals">>, Line], DefaultTemplate),
     LineTemplate = lists:foldr(fun(F, J) -> F(J) end, LineLoop, LineUpdaters),
 
@@ -491,14 +473,14 @@ send_provisioning_template(DeviceDoc, Template) ->
 -spec get_template(kzd_devices:doc()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
-get_template(DeviceDoc) ->
-    get_template(DeviceDoc, kzd_devices:provision_id(DeviceDoc)).
+get_template(NewDeviceDoc) ->
+    get_template(NewDeviceDoc, kzd_devices:provision_id(NewDeviceDoc)).
 
-get_template(DeviceDoc, 'undefined') ->
-    lager:debug("unknown template id for device ~s", [kz_doc:id(DeviceDoc)]),
+get_template(NewDeviceDoc, 'undefined') ->
+    lager:debug("unknown template id for device ~s", [kz_doc:id(NewDeviceDoc)]),
     {'error', 'not_found'};
-get_template(DeviceDoc, TemplateId) ->
-    case kz_datamgr:fetch_attachment(kz_doc:account_db(DeviceDoc), TemplateId, ?TEMPLATE_ATTCH) of
+get_template(NewDeviceDoc, TemplateId) ->
+    case kz_datamgr:fetch_attachment(kz_doc:account_db(NewDeviceDoc), TemplateId, ?TEMPLATE_ATTCH) of
         {'error', _R}=E ->
             lager:debug("could not fetch template doc ~s: ~p", [TemplateId, _R]),
             E;
@@ -512,7 +494,7 @@ get_template(DeviceDoc, TemplateId) ->
 %%------------------------------------------------------------------------------
 -spec set_account_id(kzd_devices:doc()) ->
                             [fun((kz_json:object()) -> kz_json:object()),...].
-set_account_id(_DeviceDoc) ->
+set_account_id(_NewDeviceDoc) ->
     [fun(J) ->
              kz_json:set_value(<<"account_id">>, kz_doc:account_id(J), J)
      end
@@ -525,8 +507,8 @@ set_account_id(_DeviceDoc) ->
 %%------------------------------------------------------------------------------
 -spec set_account_line_defaults(kzd_devices:doc()) ->
                                        [fun((kz_json:object()) -> kz_json:object()),...].
-set_account_line_defaults(DeviceDoc) ->
-    Account = case kzd_accounts:fetch(kz_doc:id(DeviceDoc)) of
+set_account_line_defaults(NewDeviceDoc) ->
+    Account = case kzd_accounts:fetch(kz_doc:id(NewDeviceDoc)) of
                   {'ok', AccountJObj} -> AccountJObj;
                   {'error', _} -> kz_json:new()
               end,

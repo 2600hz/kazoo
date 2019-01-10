@@ -72,6 +72,33 @@ You can merge two (or more) objects together and specify which objects' value wi
 -   `merge([JObj1, JObj2,...])`: Defaults to using the `merge_right` strategy where the object on the "right" will have its value used when both objects have a value at a give key path.
 -   `merge(Strategy, JObjs)`: Choose a strategy, either `fun kz_json:merge_right/2` or `fun kz_json:merge_left/2` (or define your own), and apply it to the list of objects.
 
+### Handling `null`
+
+Sometimes it is beneficial to include the `null` atom as a value (for downstream processing perhaps) versus triggering a `delete_key` equivalent.
+
+`set_value` and `merge` can take an optional map `#{'keep_null' => 'true'}` to ensure `null` is kept in the resulting data structure.
+
+### `merge/3` vs `merge_recursive/2`
+
+There is a second, older implementation of merging objects called `merge_recursive/2`. The main difference is that it operates differently when merging a path in the second object that has an empty object as the value:
+
+```erlang
+> J1 = {[{<<"foo">>,false}]},
+> J2 = {[{<<"foo">>,false}, {<<"bar">>,{[{<<"foo">>,{[]}}]}}]}.
+> kz_json:merge(fun kz_json:merge_right/2, J1, J2).
+{[{<<"foo">>,false},{<<"bar">>,{[{<<"foo">>,{[]}}]}}]}
+> kz_json:merge(fun kz_json:merge_left/2, J1, J2).
+{[{<<"foo">>,false},{<<"bar">>,{[{<<"foo">>,{[]}}]}}]}
+
+> kz_json:merge_recursive(J1, J2).
+{[{<<"foo">>,false}]}
+> kz_json:merge_recursive(J2, J1).
+{[{<<"foo">>,false},{<<"bar">>,{[{<<"foo">>,{[]}}]}}]}
+```
+
+Since `bar.foo` in `J2` is an empty object, the values won't be set because folding over an empty object returns the accumulator (`J1` in this case). Nothing in `merge_recursive/4` sets `bar` or `bar.foo` onto `J1`.
+
+More generally, the longest key path suffix with an empty object as the value on the right side of the merge will be stripped from the merged object when using `merge_recursive/2`.
 
 ## List-like operations
 

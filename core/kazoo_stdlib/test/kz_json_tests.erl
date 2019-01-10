@@ -227,7 +227,7 @@ prop_merge_right() ->
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_right/2, LeftJObj, RightJObj),
 
-                ?WHENFAIL(?debugFmt("Failed to merge_right (~p, ~p)~nmerge/2: ~p~n"
+                ?WHENFAIL(?debugFmt("Failed to merge_right (~p, ~p)~nmerge-r/2: ~p~n"
                                    ,[LeftJObj, RightJObj, MergedJObj]
                                    )
                          ,are_all_properties_found(MergedJObj, RightJObj)
@@ -243,13 +243,67 @@ prop_merge_left() ->
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_left/2, LeftJObj, RightJObj),
 
-                ?WHENFAIL(?debugFmt("Failed to merge_left (~p, ~p)~nmerge/2: ~p~n"
+                ?WHENFAIL(?debugFmt("Failed to merge_left (~p, ~p)~nmerge-l/2: ~p~n"
                                    ,[LeftJObj, RightJObj, MergedJObj]
                                    )
                          ,are_all_properties_found(MergedJObj, LeftJObj)
                          )
             end
            ).
+
+prop_key_with_null() ->
+    ?FORALL({JObj, Path}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,kz_json_generators:path(?MAX_OBJECT_DEPTH)
+            }
+           ,begin
+                WithNull = kz_json:set_value(Path, 'null', JObj, #{'keep_null' => 'true'}),
+                WithoutNull = kz_json:set_value(Path, 'null', JObj),
+
+                ?WHENFAIL(?debugFmt("setting nulls failed on ~p:~nnull: ~p~nnot: ~p~n"
+                                   ,[Path, WithNull, WithoutNull]
+                                   )
+                         ,kz_json:get_value(Path, WithNull) =:= 'null'
+                          andalso kz_json:get_value(Path, WithoutNull) =:= 'undefined'
+                         )
+            end
+           ).
+
+prop_merge_with_null() ->
+    ?FORALL({LeftJObj, Path, RightJObj}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,kz_json_generators:path(?MAX_OBJECT_DEPTH)
+            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            }
+           ,begin
+                WithNull = kz_json:set_value(Path, 'null', LeftJObj, #{'keep_null' => 'true'}),
+                Merged = kz_json:merge(fun kz_json:merge_left/3, WithNull, RightJObj, #{'keep_null' => 'true'}),
+
+
+                ?WHENFAIL(begin
+                              ?debugFmt("merging nulls failed on ~p:~nnull: ~p~nright: ~p~nmerged: ~p~n"
+                                       ,[Path, WithNull, RightJObj, Merged]
+                                       ),
+                              start_debug(kz_json),
+                              kz_json:merge(fun kz_json:merge_left/3, WithNull, RightJObj, #{'keep_null' => 'true'}),
+                              stop_debug()
+                          end
+                         ,kz_json:get_value(Path, WithNull) =:= 'null'
+                          andalso kz_json:get_value(Path, Merged) =:= 'null'
+                         )
+            end
+           ).
+
+start_debug(M) ->
+    dbg:start(),
+    dbg:tracer(),
+
+    dbg:tpl(M, [{'_', [], [$_]}]),
+    dbg:p(all, c).
+
+stop_debug() ->
+    dbg:stop_clear(),
+    dbg:stop().
 
 %% Once-failing tests found by PropEr
 merge_left_test_() ->
@@ -400,13 +454,11 @@ proper_findings_lift_1_test_() ->
                                 ,{<<"sub_d1">>, ?D1_MERGE}
                                 ,{<<"blip">>, ?JSON_WRAPPER([{<<"blop">>, null}])}
                                 ])).
-
 -define(D3, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}
                           ,{<<"d3k2">>, []}
                           ,{<<"sub_docs">>, [?D1, ?D2]}
                           ])).
 -define(D4, [?D1, ?D2, ?D3]).
-
 -define(D6, ?JSON_WRAPPER([{<<"d2k1">>, 1}
                           ,{<<"d2k2">>, 3.14}
                           ,{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}
@@ -441,12 +493,60 @@ find_test_() ->
     [?_assertEqual(V, kz_json:find(K, ?D4)) || {V, K} <- KVs].
 
 merge_recursive_overrides_test_() ->
-    AP = kz_json:merge_recursive(?SP, kz_json:from_list([{<<"plan">>, ?O}])),
-
     Key = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
+    DefaultPred = fun(_, _) -> 'true' end,
+    CustomPred = fun(1, 20) -> 'false';
+                    (_, _) -> 'true'
+                 end,
 
-    [?_assertEqual(1, kz_json:get_value(Key, ?SP))
-    ,?_assertEqual(20, kz_json:get_value(Key, AP))
+    JObj1 = ?SP,
+    JObj2 = kz_json:from_list([{<<"plan">>, ?O}]),
+
+    Merge1Arg = kz_json:merge_recursive([JObj1, JObj2]),
+
+    MergeTrue2Args = kz_json:merge_recursive([JObj1, JObj2], DefaultPred),
+    MergeCustom2Args = kz_json:merge_recursive([JObj1, JObj2], CustomPred),
+    MergeDefault2Args = kz_json:merge_recursive(JObj1, JObj2),
+
+    MergeTrue3Args = kz_json:merge_recursive(JObj1, JObj2, DefaultPred),
+    MergeCustom3Args = kz_json:merge_recursive(JObj1, JObj2, CustomPred),
+
+    [?_assertEqual(1, kz_json:get_value(Key, JObj1))
+    ,?_assertEqual(20, kz_json:get_value(Key, JObj2))
+    ,?_assertEqual(20, kz_json:get_value(Key, Merge1Arg))
+    ,?_assertEqual(20, kz_json:get_value(Key, MergeTrue2Args))
+    ,?_assertEqual(20, kz_json:get_value(Key, MergeDefault2Args))
+    ,?_assertEqual(20, kz_json:get_value(Key, MergeTrue3Args))
+    ,?_assertEqual(20, kz_json:get_value(Key, kz_json:merge(JObj1, JObj2)))
+    ,?_assertEqual(1, kz_json:get_value(Key, MergeCustom2Args))
+    ,?_assertEqual(1, kz_json:get_value(Key, MergeCustom3Args))
+    ].
+
+merge_recursive_options_test_() ->
+    Key = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
+    Options = #{'keep_null' => 'true'},
+    CustomPred = fun(1, 'null') -> 'false';
+                    (_, _) -> 'true'
+                 end,
+
+    JObj1 = ?SP,
+    JObj2 = kz_json:set_value(Key, 'null', kz_json:from_list([{<<"plan">>, ?O}]), Options),
+
+    Merge1Arg = kz_json:merge_recursive([JObj1, JObj2]),
+
+    Merge2Args = kz_json:merge_recursive([JObj1, JObj2], Options),
+    MergeDefault2Args = kz_json:merge_recursive(JObj1, JObj2),
+
+    Merge3Args = kz_json:merge_recursive(JObj1, JObj2, Options),
+    MergeCustom3Args = kz_json:merge_recursive([JObj1, JObj2], CustomPred, Options),
+
+    [?_assertEqual(1, kz_json:get_value(Key, JObj1))
+    ,?_assertEqual('null', kz_json:get_value(Key, JObj2))
+    ,?_assertEqual('undefined', kz_json:get_value(Key, Merge1Arg))
+    ,?_assertEqual('null', kz_json:get_value(Key, Merge2Args))
+    ,?_assertEqual('undefined', kz_json:get_value(Key, MergeDefault2Args))
+    ,?_assertEqual('null', kz_json:get_value(Key, Merge3Args))
+    ,?_assertEqual(1, kz_json:get_value(Key, MergeCustom3Args))
     ].
 
 merge_overrides_test_() ->
@@ -476,6 +576,199 @@ merge_jobjs_test_() ->
     ,?_assertEqual('true', 'undefined' =/= kz_json:get_value(<<"d2k1">>, JObj))
     ,?_assertEqual('true', 'undefined' =/= kz_json:get_value(<<"sub_d1">>, JObj))
     ,?_assertEqual('true', 'undefined' =:= kz_json:get_value(<<"missing_k">>, JObj))
+    ].
+
+merge_with_merge_fun_test_() ->
+    JObj1 =
+        kz_json:from_list(
+          [{<<"key_a">>, <<"value_1">>}
+          ,{<<"key_b">>, <<"value_2">>}
+          ,{<<"key_c">>, kz_json:new()}
+          ,{<<"key_d">>, <<"value_4">>}
+          ]
+         ),
+    JObj2 =
+        kz_json:from_list(
+          [{<<"key_a">>, <<"value_5">>}
+          ,{<<"key_b">>, <<"value_6">>}
+          ,{<<"key_c">>
+           ,kz_json:from_list(
+              [{<<"sub_key_a">>, <<"sub_value_1">>}
+              ,{<<"sub_key_b">>, <<"sub_value_2">>}
+              ]
+             )
+           }
+          ,{<<"key_e">>, <<"value_7">>}
+          ,{<<"key_f">>, <<"value_8">>}
+          ]
+         ),
+    JObj3 =
+        kz_json:from_list(
+          [{<<"key_a">>, <<"value_9">>}
+          ,{<<"key_b">>, <<"value_10">>}
+          ,{<<"key_c">>
+           ,kz_json:from_list(
+              [{<<"sub_key_b">>, <<"sub_value_3">>}
+              ,{<<"sub_key_c">>, <<"sub_value_4">>}
+              ]
+             )
+           }
+          ,{<<"key_h">>, <<"value_11">>}
+          ,{<<"key_j">>, <<"value_12">>}
+          ]
+         ),
+    RightMerge =
+        kz_json:from_list(
+          [{<<"key_f">>, <<"value_8">>}
+          ,{<<"key_e">>, <<"value_7">>}
+          ,{<<"key_d">>, <<"value_4">>}
+          ,{<<"key_c">>
+           ,kz_json:from_list(
+              [{<<"sub_key_b">>, <<"sub_value_2">>}
+              ,{<<"sub_key_a">>, <<"sub_value_1">>}
+              ]
+             )
+           }
+          ,{<<"key_b">>, <<"value_6">>}
+          ,{<<"key_a">>, <<"value_5">>}
+          ]
+         ),
+    LeftMerge =
+        kz_json:from_list(
+          [{<<"key_f">>, <<"value_8">>}
+          ,{<<"key_e">>, <<"value_7">>}
+          ,{<<"key_d">>, <<"value_4">>}
+          ,{<<"key_c">>, kz_json:new()}
+          ,{<<"key_b">>, <<"value_2">>}
+          ,{<<"key_a">>, <<"value_1">>}
+          ]
+         ),
+    MultipleRightMerge =
+        kz_json:from_list(
+          [{<<"key_j">>, <<"value_12">>}
+          ,{<<"key_h">>, <<"value_11">>}
+          ,{<<"key_f">>, <<"value_8">>}
+          ,{<<"key_e">>, <<"value_7">>}
+          ,{<<"key_d">>, <<"value_4">>}
+          ,{<<"key_c">>
+           ,kz_json:from_list(
+              [{<<"sub_key_c">>, <<"sub_value_4">>}
+              ,{<<"sub_key_b">>, <<"sub_value_3">>}
+              ,{<<"sub_key_a">>, <<"sub_value_1">>}
+              ]
+             )
+           }
+          ,{<<"key_b">>, <<"value_10">>}
+          ,{<<"key_a">>, <<"value_9">>}
+          ]
+         ),
+    [?_assertEqual(RightMerge
+                  ,kz_json:merge([JObj1, JObj2])
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge([JObj2, JObj1])
+                  )
+    ,?_assertEqual(MultipleRightMerge
+                  ,kz_json:merge([JObj1, JObj2, JObj3])
+                  )
+    ,?_assertEqual(RightMerge
+                  ,kz_json:merge(JObj1, JObj2)
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge(JObj2, JObj1)
+                  )
+    ,?_assertEqual(MultipleRightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/2, [JObj1, JObj2, JObj3])
+                  )
+    ,?_assertEqual(MultipleRightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/3, [JObj1, JObj2, JObj3])
+                  )
+    ,?_assertEqual(RightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/2, JObj1, JObj2)
+                  )
+    ,?_assertEqual(RightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/3, JObj1, JObj2)
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge(fun kz_json:merge_right/2, JObj2, JObj1)
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge(fun kz_json:merge_right/3, JObj2, JObj1)
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge(fun kz_json:merge_left/2, JObj1, JObj2)
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge(fun kz_json:merge_left/3, JObj1, JObj2)
+                  )
+    ,?_assertEqual(RightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/2, JObj1, JObj2)
+                  )
+    ,?_assertEqual(RightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/3, JObj1, JObj2)
+                  )
+    ,?_assertEqual(MultipleRightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/3, [JObj1, JObj2, JObj3], kz_json:merge_options())
+                  )
+    ,?_assertEqual(RightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/2, JObj1, JObj2, kz_json:merge_options())
+                  )
+    ,?_assertEqual(RightMerge
+                  ,kz_json:merge(fun kz_json:merge_right/3, JObj1, JObj2, kz_json:merge_options())
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge(fun kz_json:merge_left/2, JObj1, JObj2, kz_json:merge_options())
+                  )
+    ,?_assertEqual(LeftMerge
+                  ,kz_json:merge(fun kz_json:merge_left/3, JObj1, JObj2, kz_json:merge_options())
+                  )
+    ].
+
+merge_with_null_test_() ->
+    NullKeys = [[<<"foo">>, <<"bar">>]
+               ,[<<"foobar">>]
+               ],
+    Options = #{'keep_null' => 'true'},
+    NullD2 = kz_json:set_values([{NullKey, 'null'}
+                                 || NullKey <- NullKeys
+                                ]
+                               ,?D2
+                               ,Options
+                               ),
+    [?_assertEqual('true'
+                  ,lists:all(fun(NullKey) ->
+                                     kz_json:get_value(NullKey, NullD2) =:= 'null'
+                             end
+                            ,NullKeys
+                            )
+                  )
+    ,?_assertEqual('true'
+                  ,kz_json:all(fun({Key, Value}) ->
+                                       (not lists:member(Key, NullKeys))
+                                           orelse
+                                           Value =:= 'null'
+                               end
+                              ,kz_json:merge([?D1, NullD2], Options)
+                              )
+                  )
+    ,?_assertEqual('true'
+                  ,kz_json:all(fun({Key, Value}) ->
+                                       (not lists:member(Key, NullKeys))
+                                           orelse
+                                           Value =:= 'null'
+                               end
+                              ,kz_json:merge(?D1, NullD2, Options)
+                              )
+                  )
+    ,?_assertEqual('true'
+                  ,kz_json:all(fun({Key, Value}) ->
+                                       (not lists:member(Key, NullKeys))
+                                           orelse
+                                           Value =:= 'null'
+                               end
+                              ,kz_json:merge(fun kz_json:merge_right/3, ?D1, NullD2, Options)
+                              )
+                  )
     ].
 
 merge_recursive_test_() ->
