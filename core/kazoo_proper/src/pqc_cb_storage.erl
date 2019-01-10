@@ -12,7 +12,7 @@
         ]).
 
 %% API Shims
--export([create/3]).
+-export([create/3, create/4]).
 %%         ,fetch/1
 %%         ]).
 
@@ -36,12 +36,17 @@
 
 -spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
                     pqc_cb_api:response().
-create(API, ?NE_BINARY=AccountId, ?NE_BINARY=UUID) ->
-    create(API, AccountId, storage_doc(UUID));
 create(API, ?NE_BINARY=AccountId, StorageDoc) ->
-    StorageURL = storage_url(AccountId),
+    create(API, AccountId, StorageDoc, 'undefined').
+
+-spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:api_boolean()) ->
+                    pqc_cb_api:response().
+create(API, ?NE_BINARY=AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
+    create(API, AccountId, storage_doc(UUID), ValidateSettings);
+create(API, ?NE_BINARY=AccountId, StorageDoc, ValidateSettings) ->
+    StorageURL = storage_url(AccountId, ValidateSettings),
     RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, <<"application/json">>}]),
-    pqc_cb_api:make_request([201]
+    pqc_cb_api:make_request([201, 400]
                            ,fun kz_http:put/3
                            ,StorageURL
                            ,RequestHeaders
@@ -50,6 +55,11 @@ create(API, ?NE_BINARY=AccountId, StorageDoc) ->
 
 storage_url(AccountId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "storage"], "/").
+
+storage_url(AccountId, 'false') ->
+    storage_url(AccountId) ++ "?validate_settings=false";
+storage_url(AccountId, _ValidateSettings) ->
+    storage_url(AccountId).
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
@@ -76,6 +86,52 @@ init_system() ->
 
 -spec seq() -> 'ok'.
 seq() ->
+    base_test(),
+    cleanup(),
+    skip_validation_test(),
+    cleanup().
+
+skip_validation_test() ->
+    Model = initial_state(),
+    API = pqc_kazoo_model:api(Model),
+
+    StorageDoc = storage_doc(kz_binary:rand_hex(16)),
+    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("created account: ~s", [AccountResp]),
+
+    AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
+
+    ShouldFailToCreate = create(API, AccountId, StorageDoc, 'false'),
+    ?INFO("should fail: ~s", [ShouldFailToCreate]),
+
+    check_if_allowed(kz_json:decode(ShouldFailToCreate), 'false'),
+
+    kzs_plan:allow_validation_overrides(),
+    ?INFO("allowing validation overrides"),
+
+    ShouldSucceedToCreate = create(API, AccountId, StorageDoc, 'false'),
+    ?INFO("should succeed: ~s", [ShouldSucceedToCreate]),
+
+    check_if_allowed(kz_json:decode(ShouldSucceedToCreate), 'true'),
+
+    ?INFO("created without validation successfully"),
+
+    kzs_plan:disallow_validation_overrides(),
+    ?INFO("dis-allowing validation overrides"),
+
+    ShouldAgainFailToCreate = create(API, AccountId, StorageDoc, 'false'),
+    ?INFO("should fail again: ~s", [ShouldAgainFailToCreate]),
+    check_if_allowed(kz_json:decode(ShouldAgainFailToCreate), 'false'),
+
+    cleanup(API),
+    ?INFO("FINISHED NON-VALIDATION").
+
+check_if_allowed(RespJObj, ShouldAllow) ->
+    Errored = 'undefined' =:= kz_json:get_json_value([<<"data">>, <<"validate_settings">>], RespJObj),
+    ?INFO("request errored: ~p", [Errored]),
+    ShouldAllow = Errored.
+
+base_test() ->
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
@@ -160,6 +216,7 @@ cleanup(API) ->
     cleanup_system().
 
 cleanup_system() ->
+    kzs_plan:disallow_validation_overrides(),
     pqc_httpd:stop().
 
 storage_doc(UUID) ->

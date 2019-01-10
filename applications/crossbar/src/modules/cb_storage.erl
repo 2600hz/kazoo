@@ -396,16 +396,31 @@ doc_id(Context) -> doc_id(scope(Context)).
 maybe_check_storage_settings(Context, ReqVerb) when ReqVerb =:= ?HTTP_PUT
                                                     orelse ReqVerb =:= ?HTTP_POST
                                                     orelse ReqVerb =:= ?HTTP_PATCH ->
+    SystemAllowsSkippingValidation = kzs_plan:should_allow_validation_overrides(),
+    ValidateSettings = kz_term:is_true(cb_context:req_value(Context, <<"validate_settings">>, 'true')),
     case cb_context:resp_status(Context) of
-        'success' ->
+        'success' when ValidateSettings ->
             lager:debug("validating storage settings"),
             Attachments = kz_json:get_json_value(<<"attachments">>, cb_context:doc(Context)),
             validate_attachments_settings(Attachments, Context);
+        'success' when SystemAllowsSkippingValidation ->
+            lager:notice("client has explicitly disabled validating attachment settings"),
+            Context;
+        'success' ->
+            lager:notice("system does not allow client to disable validation"),
+            error_must_validate_settings(Context);
         _ ->
             Context
     end;
 maybe_check_storage_settings(Context, _ReqVerb) ->
     Context.
+
+error_must_validate_settings(Context) ->
+    cb_context:add_validation_error([<<"validate_settings">>]
+                                   ,<<"forbidden">>
+                                   ,kz_json:from_list([{<<"message">>, <<"The system does not allow bypassing settings validation">>}])
+                                   ,Context
+                                   ).
 
 -spec validate_attachments_settings(kz_json:object()
                                    ,cb_context:context()

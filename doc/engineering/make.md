@@ -82,7 +82,7 @@ Runs the equivalent Dialyzer run that CI runs. Just runs Dialyzer on source file
 
 This is a great option if you have a beefier computer available. It will take the source files changed, run a first pass to find all modules being called, and will make a second pass using all the changed and called modules together in one big run.
 
-!!!warning
+!!! warning
 CPU/memory/time intensive.
 
 ### `make dialyze-changed`
