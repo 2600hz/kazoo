@@ -10,6 +10,8 @@ Kazoo utilizes [GNU `make`](https://www.gnu.org/software/make/) for its build sy
 
 Fetches the 3rd-party Erlang applications and builds them in `deps/`
 
+The makefile will create a file `make/.deps.mk.{HASH}` on first build of the `deps/` where `{HASH}` is the sha1 of the `make/deps.mk`. Now, when the `make/deps.mk` file gets changed (when deps are added/removed/updated or when switching branches that have different depps (like from master to 4.x for instance)) the `deps/` directory will be rebuilt to ensure your branch is working with the correct set of dependencies.
+
 ## `make kazoo`
 
 Builds the Erlang applications in `core/` followed by the applications in `applications/`.
