@@ -76,7 +76,7 @@ Removes the `_rel/` where a built release may exist.
 
 Typically running Dialyzer on the whole project will be painful unless you have tons of memory and CPU. More often, we want to dialyze changed files. There are a couple ways to do it:
 
-### `make circle-dialyze`
+### `make ci-dialyze`
 
 Runs the equivalent Dialyzer run that CI runs. Just runs Dialyzer on source files that have changed, and only in batches of 5 at a time.
 
@@ -178,3 +178,7 @@ When run from the project root, checks the `scripts` Escript source files.
 When run in an application, checks `src` and `include` for `.erl` and `.hrl`.
 
 This checker just looks at Erlang comments (prefixed by %) and atom/string/binary literals. So anything after `%` or between `'...'`, `"..."`, or `<<"...">>`.
+
+## Changing the base branch
+
+Several targets calculate the difference between a base branch (`origin/master` by default) and the current branch. Should you need to change the base branch you can prefix the command with `BASE_BRANCH="upstream/branch" make {TARGET}`
