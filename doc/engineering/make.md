@@ -10,7 +10,7 @@ Kazoo utilizes [GNU `make`](https://www.gnu.org/software/make/) for its build sy
 
 Fetches the 3rd-party Erlang applications and builds them in `deps/`
 
-The makefile will create a file `make/.deps.mk.{HASH}` on first build of the `deps/` where `{HASH}` is the sha1 of the `make/deps.mk`. Now, when the `make/deps.mk` file gets changed (when deps are added/removed/updated or when switching branches that have different depps (like from master to 4.x for instance)) the `deps/` directory will be rebuilt to ensure your branch is working with the correct set of dependencies.
+The Makefile will create a file `make/.deps.mk.{HASH}` on first build of the `deps/` where `{HASH}` is the sha1 of the `make/deps.mk`. Now, when the `make/deps.mk` file gets changed (when deps are added/removed/updated or when switching branches that have different deps (like from master to 4.x for instance)) the `deps/` directory will be rebuilt to ensure your branch is working with the correct set of dependencies.
 
 ## `make kazoo`
 
@@ -60,7 +60,7 @@ Removes the TAGS file.
 Building an Erlang release comes in a couple flavors:
 
 - `make build-release`: Production release
-- `make build-dev-release`: Symlinks source-tree files into the release; any recompiled beams will be autoloaded in the running release
+- `make build-dev-release`: Symlinks source-tree files into the release; any recompiled beams will be auto-loaded in the running release
 - `make build-ci-release`: Release built for use in CI systems (CircleCI mainly)
 - `make build-dist-release`: Release built for distribution (RPM/DEB)
 
@@ -89,7 +89,7 @@ CPU/memory/time intensive.
 
 ### `make dialyze-changed`
 
-Dialyzes all the changed files (compared to the parent branch) in a batch (vs 5 at a time like CI does) but doesn't pull in unknown modules like `dialyze-hard` does. Still memory/CPU intesive but not as bad as `hard` mode.
+Dialyzes all the changed files (compared to the parent branch) in a batch (vs 5 at a time like CI does) but doesn't pull in unknown modules like `dialyze-hard` does. Still memory/CPU intensive but not as bad as `hard` mode.
 
 ### Scripts
 
