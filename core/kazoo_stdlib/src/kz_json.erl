@@ -279,7 +279,7 @@ recursive_from_list(X) when is_list(X) ->
         'true' -> kz_term:to_binary(X);
         'false' -> [recursive_from_list(Xn) || Xn <- X]
     end;
-recursive_from_list(X) when is_binary(X) -> X;
+recursive_from_list(X) when is_binary(X) -> utf8_binary(X);
 recursive_from_list({_Y, _M, _D}=Date) -> kz_date:to_iso8601_extended(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
 recursive_from_list(?JSON_WRAPPER(_)=JObj) -> JObj;
@@ -1428,6 +1428,6 @@ exec_fold(F, C) when is_function(F, 1) -> F(C).
 
 -spec utf8_binary(json_term()) -> json_term().
 utf8_binary(Value) when is_binary(Value) ->
-    unicode:characters_to_binary(binary_to_list(Value));
+    unicode:characters_to_binary(io_lib:format("~ts", [Value]));
 utf8_binary(Value) ->
     Value.
