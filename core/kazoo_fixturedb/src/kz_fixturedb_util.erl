@@ -133,28 +133,31 @@ update_revision(JObj) ->
 %%------------------------------------------------------------------------------
 -spec start_me() -> pid().
 start_me() ->
-    start_me(false).
+    start_me('false').
 
 -spec start_me(boolean()) -> pid().
 start_me(SilentLager) ->
     ?LOG_DEBUG(":: Starting up Kazoo FixtureDB"),
-    {ok, _} = application:ensure_all_started(kazoo_config),
-    {ok, Pid} = kazoo_data_link_sup:start_link(),
+    {'ok', _} = application:ensure_all_started('kazoo_config'),
+    Pid = case kazoo_data_link_sup:start_link() of
+              {'ok', P} -> P;
+              {'error', {'already_started', P}} -> P
+          end,
     'ignore' = kazoo_data_bootstrap:start_link(),
 
     _ = case SilentLager of
-            true ->
-                _ = lager:set_loglevel(lager_console_backend, none),
-                _ = lager:set_loglevel(lager_file_backend, none),
-                lager:set_loglevel(lager_syslog_backend, none);
-            false -> ok
+            'true' ->
+                _ = lager:set_loglevel('lager_console_backend', 'none'),
+                _ = lager:set_loglevel('lager_file_backend', 'none'),
+                lager:set_loglevel('lager_syslog_backend', 'none');
+            'false' -> 'ok'
         end,
     Pid.
 
--spec stop_me(pid()) -> ok.
+-spec stop_me(pid()) -> 'ok'.
 stop_me(Pid) ->
-    _ = erlang:exit(Pid, normal),
-    _ = application:stop(kazoo_config),
+    _ = erlang:exit(Pid, 'normal'),
+    _ = application:stop('kazoo_config'),
     ?LOG_DEBUG(":: Stopped Kazoo FixtureDB").
 
 -spec get_doc_path(kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
