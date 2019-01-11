@@ -236,14 +236,12 @@ to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [_, Properties|_]=ReverseP
 to_oas3_schema(OrigP, [P], [], Val, KVs, OrigKVs, Warn, Err)
   when P =:= <<"allOf">>
        orelse P =:= <<"anyOf">>
-       orelse P =:= <<"items">>
        orelse P =:= <<"oneOf">> ->
     {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P], Val, Warn, Err),
     to_oas3_schema(OrigP, [], [P], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
 to_oas3_schema(_OrigP, [P | _], []=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err)
   when P =:= <<"allOf">>
        orelse P =:= <<"anyOf">>
-       orelse P =:= <<"items">>
        orelse P =:= <<"oneOf">> ->
     Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
     {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
@@ -251,7 +249,6 @@ to_oas3_schema(OrigP, [P], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, 
   when ?IS_OAS_PROPERTIES(Properties)
        andalso (P =:= <<"allOf">>
                 orelse P =:= <<"anyOf">>
-                orelse P =:= <<"items">>
                 orelse P =:= <<"oneOf">>) ->
     {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P | ReverseP], Val, Warn, Err),
     to_oas3_schema(OrigP, [], [P | ReverseP], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
@@ -259,7 +256,6 @@ to_oas3_schema(_OrigP, [P | _], [_, Properties|_]=ReverseP, _Val, _KVs, _OrigKVs
   when ?IS_OAS_PROPERTIES(Properties)
        andalso (P =:= <<"allOf">>
                 orelse P =:= <<"anyOf">>
-                orelse P =:= <<"items">>
                 orelse P =:= <<"oneOf">>) ->
     Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
     {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};

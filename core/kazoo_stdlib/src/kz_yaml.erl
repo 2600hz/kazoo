@@ -160,7 +160,7 @@ decode_all(Yaml, Options) ->
 %% @equiv decode_file_all(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}])
 -spec decode_file_all(kz_term:ne_binary() | string()) -> yaml_nodes().
 decode_file_all(Yaml) ->
-    decode_file(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}]).
+    decode_file_all(Yaml, ['str_node_as_binary', {'map_node_format', 'map'}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
