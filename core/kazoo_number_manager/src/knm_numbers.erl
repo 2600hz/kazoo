@@ -687,7 +687,7 @@ check_creditably(Services, Quotes, 'true') ->
     Key = [<<"difference">>, <<"billable">>],
     Additions = [begin
                      Changes = kz_services_item:changes(Item),
-                     BillableQuantity = props:get_integer_value(Key, Changes, 0),
+                     BillableQuantity = kz_json:get_integer_value(Key, Changes, 0),
                      Rate = kz_services_item:rate(Item),
                      BillableQuantity * Rate
                  end
