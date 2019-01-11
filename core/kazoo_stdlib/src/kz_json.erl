@@ -1428,6 +1428,15 @@ exec_fold(F, C) when is_function(F, 1) -> F(C).
 
 -spec utf8_binary(json_term()) -> json_term().
 utf8_binary(Value) when is_binary(Value) ->
-    unicode:characters_to_binary(io_lib:format("~ts", [Value]));
+    %% io_lib:printable_unicode_list/1 check added to avoid encoding file's content
+    %% like audio files.
+    case io_lib:printable_unicode_list(binary_to_list(Value)) of
+        'true' ->
+            %% it must be a string or bitstring
+            unicode:characters_to_binary(io_lib:format("~ts", [Value]));
+        'false' ->
+            %% it must be a file's content
+            Value
+    end;
 utf8_binary(Value) ->
     Value.

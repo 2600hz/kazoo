@@ -1124,6 +1124,10 @@ utf8_binary_values_test_() ->
     UTF8Recursive = ?JSON_WRAPPER([{K, UTF8JObj}]),
     UTF8EncRecursive = <<"{\"key\":{\"key\":\"Bör\"}}"/utf8>>,
 
+    %% File's content
+    {'ok', MP3} = file:read_file(filename:join([code:lib_dir('kazoo_stdlib'), "test/mp3.mp3"])),
+    MP3Props = [{<<"contents">>, MP3}],
+
     [{"When setting a binary value it should be encoded in utf8 format"
      ,?_assertEqual(UTF8JObj, kz_json:set_values(Props, kz_json:new()))
      }
@@ -1155,6 +1159,9 @@ utf8_binary_values_test_() ->
      }
     ,{"When creating a mixed object (Props + Flat) its binary value(s) should also be encoded in utf8 format"
      ,?_assertEqual(?JSON_WRAPPER(UTF8Props ++ UTF8Flat), kz_json:from_list(Props ++ Flat))
+     }
+    ,{"When trying to encode a non printable_unicode_list of chars the value should not be encoded"
+     ,?_assertEqual(?JSON_WRAPPER(MP3Props), kz_json:from_list(MP3Props))
      }
     ].
 
