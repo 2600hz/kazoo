@@ -19,11 +19,13 @@
 
 -export([running/0
         ,send_single/1
+        ,trigger_timeout/0
         ]).
 
 -include("tasks.hrl").
 
 -record(state, {running = [] :: kz_json:objects()
+               ,timer_ref :: reference()
                }).
 -type state() :: #state{}.
 
@@ -118,11 +120,11 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', state(), kz_timeout()}.
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?NAME),
     lager:debug("~s has been started", [?NAME]),
-    {'ok', #state{}, ?TIME_BETWEEN_CYCLE}.
+    {'ok', #state{timer_ref = set_timer()}}.
 
 -spec stop() -> ok.
 stop() ->
@@ -134,6 +136,13 @@ running() ->
         'undefined' -> [];
         _ -> gen_server:call(?SERVER, 'running')
     end.
+
+-spec trigger_timeout() -> any().
+trigger_timeout() ->
+    gen_server:call(?SERVER, 'trigger_timeout').
+
+set_timer() ->
+    erlang:start_timer(?TIME_BETWEEN_CYCLE, self(), 'ok').
 
 -spec send_single(ne_binary()) -> {'ok' | 'failed', kz_json:object()} | {'error', any()}.
 send_single(Id) ->
@@ -164,6 +173,10 @@ next() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+handle_call('trigger_timeout', _From, #state{timer_ref = Ref}=State) ->
+    lager:debug("triggering timeout and canceling ref: ~p", [Ref]),
+    _ = erlang:cancel_timer(Ref),
+    {'reply', 'ok', State#state{running=[], timer_ref = set_timer()}};
 handle_call('running', _From, #state{running=Running}=State) ->
     {'reply', Running, State};
 handle_call(_Request, _From, State) ->
@@ -181,9 +194,9 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('next_cycle', State) ->
-    {'noreply', State#state{running=[]}, ?TIME_BETWEEN_CYCLE};
+    {'noreply', State#state{running=[], timer_ref = set_timer()}};
 handle_cast(stop, State) ->
-    lager:debug("notify re sender has been stopped"),
+    lager:debug("notify resend has been stopped"),
     {stop, normal, State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -200,23 +213,27 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info('timeout', State) ->
+handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref}=State) ->
     ViewOptions = [{'startkey', 0}
                   ,{'endkey', kz_time:current_tstamp()}
                   ,{'limit', ?READ_LIMIT}
                   ,'include_docs'
                   ],
+    lager:debug("getting pending notifications ending in ~p", [kz_time:current_tstamp()]),
     case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/list_by_modified">>, ViewOptions) of
-        {'ok', []} -> {'noreply', State, ?TIME_BETWEEN_CYCLE};
+        {'ok', []} ->
+            lager:debug("no pending notifications"),
+            {'noreply', State#state{timer_ref = set_timer()}};
         {'ok', Pendings} ->
+            lager:info("processing ~b pending notifications", [length(Pendings)]),
             _ = kz_util:spawn(fun () -> process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]) end),
             {'noreply', State#state{running=Pendings}};
         {'error', 'not_found'} ->
-            kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
-            {'noreply', State, ?TIME_BETWEEN_CYCLE};
+            lager:error("unable to find pending view, this is not good..."),
+            {'noreply', State#state{timer_ref = set_timer()}};
         {'error', _Reason} ->
-            lager:debug("failed to pending notifications jobs: ~p", [_Reason]),
-            {'noreply', State, ?TIME_BETWEEN_CYCLE}
+            lager:error("failed to find pending notifications jobs: ~p", [_Reason]),
+            {'noreply', State#state{timer_ref = set_timer()}}
     end;
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -286,6 +303,7 @@ send_notification(JObj, #{ok := OK}=Map) ->
     NotifyType = kz_json:get_ne_binary_value(<<"notification_type">>, JObj),
     PublishFun = map_to_publish_fun(NotifyType),
 
+    lager:debug("sending notification with id ~s with type ~s", [kz_doc:id(JObj), NotifyType]),
     case handle_result(call_collect(API, PublishFun)) of
         'true' -> Map#{ok := [JObj|OK]};
         'false' -> maybe_reschedule(NotifyType, JObj, Map)
@@ -429,3 +447,4 @@ new_results_map() ->
     #{ok => []
      ,ko => []
      }.
+

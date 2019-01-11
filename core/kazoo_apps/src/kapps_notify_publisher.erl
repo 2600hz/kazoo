@@ -259,7 +259,9 @@ json_to_failure_reason(JObj) ->
 cast_to_binary(Error) ->
     try kz_term:to_binary(Error)
     catch
-        _:_ -> <<"unknown_reason">>
+        _:_ ->
+            lager:debug("failed to convert notification failure reason to binary: ~p", [Error]),
+            kz_term:to_binary(io_lib:format("~p", [Error]))
     end.
 
 %% @private

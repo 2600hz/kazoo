@@ -256,10 +256,8 @@ move_doc(FromDb, FromId, ToDb, ToId, Options) ->
 -spec move_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid(), kz_proplist(), atom(), integer()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
-move_doc(FromDb, {_, FromId}, ToDb, ToId, Options, Reason, Retry) when Retry =< 0 ->
-    move_doc(FromDb, FromId, ToDb, ToId, Options, Reason, Retry);
 move_doc(_FromDb, _FromId, _ToDb, _ToId, _Options, Reason, Retry) when Retry =< 0 ->
-    lager:error("max retries to move doc from ~s/~s to ~s/~s : ~p"
+    lager:error("max retries to move doc from ~s/~p to ~s/~p : ~p"
                ,[_FromDb, _FromId, _ToDb, _ToId, Reason]
                ),
     {'error', Reason};
@@ -306,7 +304,7 @@ copy_doc(FromDb, FromId, ToDb, ToId, Options) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
 copy_doc(_FromDb, _FromId, _ToDb, _ToId, _Options, Reason, Retry) when Retry =< 0 ->
-    lager:error("max retries to copy doc from ~s/~s to ~s/~s : ~p"
+    lager:error("max retries to copy doc from ~s/~p to ~s/~p : ~p"
                ,[_FromDb, _FromId, _ToDb, _ToId, Reason]
                ),
     {'error', Reason};
@@ -327,7 +325,7 @@ copy_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
         {'error', _}=Error -> Error
     end.
 
--spec maybe_create_destination_db(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec maybe_create_destination_db(ne_binary(), kazoo_data:docid(), ne_binary(), kz_proplist()) ->
                                          'source_not_exists' |
                                          'too_old'|
                                          boolean().
