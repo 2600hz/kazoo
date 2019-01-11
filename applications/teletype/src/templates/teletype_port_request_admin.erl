@@ -99,6 +99,7 @@ handle_port_request(DataJObj) ->
     Emails = teletype_util:find_addresses(maybe_set_emails(DataJObj), TemplateMetaJObj, ?TEMPLATE_ID),
     EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
 
+    ?DEV_LOG("Emails~n~p~n~n", [Emails]),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
@@ -115,7 +116,9 @@ maybe_set_emails(DataJObj) ->
     Fs = [fun maybe_set_from/1
          ,fun maybe_set_to/1
          ],
-    lists:foldl(fun(F, Acc) -> F(Acc) end, DataJObj, Fs).
+    L = lists:foldl(fun(F, Acc) -> F(Acc) end, DataJObj, Fs),
+    ?DEV_LOG("To~n~p~n~n", [kz_json:get_value(<<"to">>, L)]),
+    L.
 
 -spec maybe_set_from(kz_json:object()) -> kz_json:object().
 maybe_set_from(DataJObj) ->
@@ -130,14 +133,19 @@ maybe_set_to(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case find_port_authority(MasterAccountId, AccountId) of
-        'undefined' -> DataJObj;
+        'undefined' ->
+            ?DEV_LOG("port_authority undefined"),
+            DataJObj;
         ?NE_BINARY=To ->
             lager:debug("found port authority: ~p", [To]),
+            ?DEV_LOG("found port authority: ~p", [To]),
             kz_json:set_value(<<"to">>, [To], DataJObj);
         [?NE_BINARY=_|_] = To ->
             lager:debug("found port authority: ~p", [To]),
+            ?DEV_LOG("found port authority: ~p", [To]),
             kz_json:set_value(<<"to">>, To, DataJObj);
         _ ->
+            ?DEV_LOG("non sense port_authority"),
             DataJObj
     end.
 
@@ -146,9 +154,11 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
     case kzd_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
+            ?DEV_LOG("failed to find master account ~s, using system value", [MasterAccountId]),
             teletype_util:template_system_value(?TEMPLATE_ID, <<"default_to">>);
         {'ok', JObj} ->
             lager:debug("getting master account's port authority"),
+            ?DEV_LOG("getting master account's port authority"),
             kzd_whitelabel:port_authority(JObj)
     end;
 find_port_authority(MasterAccountId, AccountId) ->
@@ -156,8 +166,10 @@ find_port_authority(MasterAccountId, AccountId) ->
         {'error', _R} ->
             ResellerId = kz_services_reseller:get_id(AccountId),
             lager:debug("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
+            ?DEV_LOG("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
             find_port_authority(MasterAccountId, ResellerId);
         {'ok', JObj} ->
             lager:debug("using account ~s for port authority", [AccountId]),
+            ?DEV_LOG("using account ~s for port authority", [AccountId]),
             kzd_whitelabel:port_authority(JObj)
     end.

@@ -78,6 +78,7 @@
         ,fax_settings/1
         ,get_inherited_value/3
         ,get_parent_account_id/1
+        ,get_parent_stop_if_reseller/1
 
         ,reseller_id/1, set_reseller_id/2, is_reseller/1, path_reseller_id/0
         ,is_trial_account/1
@@ -981,13 +982,26 @@ check_reseller(Account, ValueFun, Default) ->
         Value -> Value
     end.
 
--spec get_parent_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
+-spec get_parent_account_id(kz_term:api_ne_binary()) -> kz_term:api_binary().
 get_parent_account_id(AccountId) ->
     case fetch(AccountId) of
         {'ok', JObj} -> parent_account_id(JObj);
         {'error', _R} ->
             lager:debug("failed to open account's ~s parent: ~p", [AccountId, _R]),
             'undefined'
+    end.
+
+-spec get_parent_stop_if_reseller(kz_term:api_ne_binary()) -> kz_term:api_binary().
+get_parent_stop_if_reseller('undefined') ->
+    case kapps_util:get_master_account_id() of
+        {'error', _} -> 'undefined';
+        {'ok', MasterAccountId} -> MasterAccountId
+    end;
+get_parent_stop_if_reseller(AccountId) ->
+    case kz_services_reseller:is_reseller(AccountId) of
+        'true' -> get_parent_stop_if_reseller('undefined');
+        'false' ->
+            get_parent_account_id(AccountId)
     end.
 
 -spec low_balance_threshold(kz_term:ne_binary() | doc()) -> kz_term:api_float().
