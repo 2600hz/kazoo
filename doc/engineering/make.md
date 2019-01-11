@@ -10,6 +10,8 @@ Kazoo utilizes [GNU `make`](https://www.gnu.org/software/make/) for its build sy
 
 Fetches the 3rd-party Erlang applications and builds them in `deps/`
 
+The Makefile will create a file `make/.deps.mk.{HASH}` on first build of the `deps/` where `{HASH}` is the sha1 of the `make/deps.mk`. Now, when the `make/deps.mk` file gets changed (when deps are added/removed/updated or when switching branches that have different deps (like from master to 4.x for instance)) the `deps/` directory will be rebuilt to ensure your branch is working with the correct set of dependencies.
+
 ## `make kazoo`
 
 Builds the Erlang applications in `core/` followed by the applications in `applications/`.
@@ -58,7 +60,7 @@ Removes the TAGS file.
 Building an Erlang release comes in a couple flavors:
 
 - `make build-release`: Production release
-- `make build-dev-release`: Symlinks source-tree files into the release; any recompiled beams will be autoloaded in the running release
+- `make build-dev-release`: Symlinks source-tree files into the release; any recompiled beams will be auto-loaded in the running release
 - `make build-ci-release`: Release built for use in CI systems (CircleCI mainly)
 - `make build-dist-release`: Release built for distribution (RPM/DEB)
 
@@ -74,7 +76,7 @@ Removes the `_rel/` where a built release may exist.
 
 Typically running Dialyzer on the whole project will be painful unless you have tons of memory and CPU. More often, we want to dialyze changed files. There are a couple ways to do it:
 
-### `make circle-dialyze`
+### `make ci-dialyze`
 
 Runs the equivalent Dialyzer run that CI runs. Just runs Dialyzer on source files that have changed, and only in batches of 5 at a time.
 
@@ -87,7 +89,7 @@ CPU/memory/time intensive.
 
 ### `make dialyze-changed`
 
-Dialyzes all the changed files (compared to the parent branch) in a batch (vs 5 at a time like CI does) but doesn't pull in unknown modules like `dialyze-hard` does. Still memory/CPU intesive but not as bad as `hard` mode.
+Dialyzes all the changed files (compared to the parent branch) in a batch (vs 5 at a time like CI does) but doesn't pull in unknown modules like `dialyze-hard` does. Still memory/CPU intensive but not as bad as `hard` mode.
 
 ### Scripts
 
@@ -176,3 +178,7 @@ When run from the project root, checks the `scripts` Escript source files.
 When run in an application, checks `src` and `include` for `.erl` and `.hrl`.
 
 This checker just looks at Erlang comments (prefixed by %) and atom/string/binary literals. So anything after `%` or between `'...'`, `"..."`, or `<<"...">>`.
+
+## Changing the base branch
+
+Several targets calculate the difference between a base branch (`origin/master` by default) and the current branch. Should you need to change the base branch you can prefix the command with `BASE_BRANCH="upstream/branch" make {TARGET}`
