@@ -52,23 +52,31 @@ fix_email(ReqData, OnlyAdmin) ->
 
 -spec get_emails(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_term:ne_binaries().
 get_emails(_ReqData, AccountId, 'true') ->
+    ?DEV_LOG("superduper admin true"),
     ResellerId = teletype_util:find_reseller_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),
 
+    ?DEV_LOG("~nAccountId: ~p ResellerId: ~p~nReseller whitelable port support: ~p~nAdmins: ~p~n~n"
+            ,[AccountId, ResellerId, ResellerEmail, AdminEmails]
+            ),
     case {ResellerEmail, AdminEmails} of
         {'undefined', 'undefined'} -> [];
         {'undefined', [_|_]} -> AdminEmails;
         {ResellerEmail, _} -> [ResellerEmail]
     end;
 get_emails(ReqData, AccountId, 'false') ->
+    ?DEV_LOG("no private comment"),
     ResellerId = teletype_util:find_reseller_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),
     PortReqEmail = get_port_req_email(ReqData),
 
+    ?DEV_LOG("~nAccountId: ~p ResellerId: ~p~nReseller whitelable port support: ~p~nAdmins: ~p~nPortReqEmail ~p~n~n"
+            ,[AccountId, ResellerId, ResellerEmail, AdminEmails, PortReqEmail]
+            ),
     case {ResellerEmail, AdminEmails} of
         {'undefined', 'undefined'} -> lists:usort(PortReqEmail);
         {'undefined', [_|_]} -> lists:usort(AdminEmails ++ PortReqEmail);
