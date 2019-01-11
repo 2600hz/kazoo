@@ -361,7 +361,7 @@ to_oas3_paths(Paths) ->
     kz_json:foldl(fun to_oas3_paths/3, #{}, Paths).
 
 to_oas3_paths(EndpointName, EndpointMeta, Map) ->
-    %% App = props:get_value('app', EndpointMeta),
+    %% App = props:get_value(<<"app">>, EndpointMeta),
     %% BaseFile = filename:join([code:lib_dir(App), "doc/oas3_ref", <<EndpointName/binary, ".yml">>]),
     %% Base = kz_json:from_map(read_oas3_yaml(BaseFile)),
 
@@ -556,7 +556,11 @@ format_pc_module(_MC, Acc) ->
 
 -spec format_pc_config(path_with_methods(), kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                               kz_json:object().
-format_pc_config(_ConfigData, Acc, _Module, 'undefined') -> Acc;
+format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
+    io:format(user, "format_pc_config undefined pathname ~p", [_Module]),
+    Acc;
+format_pc_config({'app', AppName}, Acc, EndpointName, _ModuleName) ->
+    kz_json:set_value([EndpointName, <<"app">>], kz_term:to_binary(AppName), Acc);
 format_pc_config({Callback, Paths}, Acc, EndpointName, ModuleName) ->
     F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, EndpointName, ModuleName, Callback) end,
     lists:foldl(F, Acc, Paths).
@@ -702,9 +706,9 @@ is_api_function({'allowed_methods', _Arity}) -> 'true';
 is_api_function(_) ->  'false'.
 
 -spec process_exports(file:filename_all(), module(), fun_arities()) ->
-                             callback_config() | 'undefined' | [].
-process_exports(_File, 'api_resource', _) -> [];
-process_exports(_File, 'cb_context', _) -> [];
+                             callback_config() | 'undefined'.
+process_exports(_File, 'api_resource', _) -> 'undefined';
+process_exports(_File, 'cb_context', _) -> 'undefined';
 process_exports(File, Module, Fs) ->
     case lists:any(fun is_api_function/1, Fs) of
         'false' -> 'undefined';
@@ -732,7 +736,7 @@ process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
     process_api_ast_functions(Module, APIFunctions).
 
 -type http_methods() :: kz_term:ne_binaries().
--type path_with_methods() :: {iodata(), http_methods()}.
+-type path_with_methods() :: {iodata() | atom(), http_methods() | atom()}.
 -type paths_with_methods() :: [path_with_methods()].
 -type allowed_methods() :: {'allowed_methods', paths_with_methods()}.
 -type content_types_provided() :: {'content_types_provided', paths_with_methods()}.
