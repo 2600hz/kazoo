@@ -13,17 +13,26 @@ CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master --
 # to prevent parallel builds, or make JOBS="8".
 JOBS ?= 1
 
-KAZOODIRS = core/Makefile applications/Makefile
-
-.PHONY: $(KAZOODIRS) kazoo deps core apps \
+.PHONY: kazoo deps core apps \
+	apis \
 	build-release build-ci-release tar-release release read-release-cookie \
-	bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas \
+	bump-copyright \
 	circle \
-	clean clean-test clean-release \
-	dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo dialyze-hard dialyze-changed \
-	elvis install ci diff \
-	fixture_shell code_checks \
+	clean clean-test clean-release clean-kazoo clean-core clean-apps \
+	code_checks \
+	coverage-report \
+	dialyze dialyze-apps dialyze-core dialyze-kazoo dialyze-hard dialyze-changed \
+	dialyze-it dialyze-it-hard dialyze-it-changed \
+	diff \
+	docs \
+	elvis \
+	fixture_shell \
 	fmt clean-fmt \
+	fs-headers \
+	install \
+	sdks \
+	validate-schemas \
+	validate-swagger \
 	xref xref_release
 
 all: compile
@@ -31,37 +40,51 @@ all: compile
 compile: ACTION = all
 compile: deps kazoo
 
-$(KAZOODIRS):
-	@$(MAKE) -C $(@D) $(ACTION)
-
-clean: ACTION = clean
-clean: $(KAZOODIRS)
+clean: clean-kazoo
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 	$(if $(wildcard $(FMT)), rm -r $(dir $(FMT)))
+clean-kazoo: clean-core clean-apps
+clean-core:
+	@$(MAKE) -j$(JOBS) -C core/ clean
+clean-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ clean
 
-clean-test: ACTION = clean-test
-clean-test: $(KAZOODIRS)
+clean-test: clean-test-core clean-test-apps
+clean-test-core:
+	@$(MAKE) -j$(JOBS) -C core/ clean-test
+clean-test-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ clean-test
 
-clean-kazoo: ACTION = clean
-clean-kazoo: $(KAZOODIRS)
-
-compile-test: ACTION = compile-test
 compile-test: ERLC_OPTS += +nowarn_missing_spec
-compile-test: deps $(KAZOODIRS)
+compile-test: deps compile-test-core compile-test-apps
+compile-test-core:
+	@$(MAKE) -j$(JOBS) -C core/ compile-test
+compile-test-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ compile-test
 
-eunit: ACTION = eunit
-eunit: $(KAZOODIRS)
+eunit: eunit-core eunit-apps
 
-proper: ACTION = eunit
+eunit-core:
+	@$(MAKE) -j$(JOBS) -C core/ eunit
+eunit-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ eunit
+
 proper: ERLC_OPTS += -DPROPER
-proper: $(KAZOODIRS)
+proper: proper-core proper-apps
+proper-core:
+	@$(MAKE) -j$(JOBS) -C core/ proper
+proper-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ proper
 
-test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: ERLC_OPTS += +nowarn_missing_spec
-test: $(KAZOODIRS)
+test: test-core test-apps
+test-core:
+	@$(MAKE) -j$(JOBS) -C core/ test
+test-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ test
 
 coverage-report:
 	$(ROOT)/scripts/cover.escript
