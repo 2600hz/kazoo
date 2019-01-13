@@ -593,6 +593,17 @@ maybe_other_leg_answered(#state{listen_on='b'
     State#state{other_leg=OtherLeg
                ,call=kapps_call:set_other_leg_call_id(OtherLeg, Call)
                };
+maybe_other_leg_answered(#state{listen_on='ab'
+                               ,call=Call
+                               }=State
+                        ,OtherLeg
+                        ,EndpointId
+                        ) ->
+    lager:debug("yay, our endpoint ~s answered on ~s", [EndpointId, OtherLeg]),
+    maybe_add_call_event_bindings(OtherLeg),
+    State#state{other_leg=OtherLeg
+               ,call=kapps_call:set_other_leg_call_id(OtherLeg, Call)
+               };
 maybe_other_leg_answered(State, _CallId, _EndpointId) ->
     lager:debug("ignoring channel ~s answering for endpoint ~s", [_CallId, _EndpointId]),
     State.
