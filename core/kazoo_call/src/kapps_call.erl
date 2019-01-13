@@ -1521,7 +1521,7 @@ stop_recording(OriginalCall) ->
 
 -spec stop_recording(kz_term:ne_binary(), call()) -> call().
 stop_recording(LegId, OriginalCall) ->
-    case LegId =:= kapps_call:call_id(OriginalCall)
+    case LegId =:= call_id(OriginalCall)
         andalso retrieve_recording(OriginalCall) of
         'false' -> %% requested stop recording on b-leg
             API = [{<<"Call-ID">>, LegId}],
@@ -1539,7 +1539,7 @@ stop_recording(LegId, OriginalCall) ->
 
 -spec mask_recording(kz_term:ne_binary(), call()) -> call().
 mask_recording(LegId, OriginalCall) ->
-    case LegId =:= kapps_call:call_id(OriginalCall)
+    case LegId =:= call_id(OriginalCall)
         andalso retrieve_recording(OriginalCall) of
         'false' -> %% requested mask recording on b-leg
             API = [{<<"Call-ID">>, LegId}],
@@ -1557,7 +1557,7 @@ mask_recording(LegId, OriginalCall) ->
 
 -spec unmask_recording(kz_term:ne_binary(), call()) -> call().
 unmask_recording(LegId, OriginalCall) ->
-    case LegId =:= kapps_call:call_id(OriginalCall)
+    case LegId =:= call_id(OriginalCall)
         andalso retrieve_recording(OriginalCall) of
         'false' -> %% requested unmask recording on b-leg
             API = [{<<"Call-ID">>, LegId}],
