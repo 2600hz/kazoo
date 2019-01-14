@@ -747,12 +747,16 @@ has_good_balance(Services, #{amount := Amount}=Options) ->
 -spec has_good_balance(kz_currency:units(), kz_currency:units(), boolean(), kz_currency:units()) -> good_funs_ret().
 has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) > 0 ->
     Msg = io_lib:format("debit of ~b from ~b results in a positive balance"
-                       ,[Amount, Balance]
+                       ,[kz_currency:units_to_dollars(Amount)
+                        ,kz_currency:units_to_dollars(Balance)
+                        ]
                        ),
     {'true', kz_term:to_binary(Msg)};
 has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) =< 0 ->
     Msg = io_lib:format("debit of ~b from ~b results in a negative balance"
-                       ,[Amount, Balance]
+                       ,[kz_currency:units_to_dollars(Amount)
+                        ,kz_currency:units_to_dollars(Balance)
+                        ]
                        ),
     {'false', kz_term:to_binary(Msg)};
 has_good_balance(Balance, Amount, 'true', MaxPostPay) ->
@@ -761,7 +765,10 @@ has_good_balance(Balance, Amount, 'true', MaxPostPay) ->
             {'true', <<"enough postpay balance">>};
         'false' ->
             Msg = io_lib:format("debit of ~b from ~b exceeds the maximum postpay amount ~b"
-                               ,[Amount, Balance, MaxPostPay]
+                               ,[kz_currency:units_to_dollars(Amount)
+                                ,kz_currency:units_to_dollars(Balance)
+                                ,kz_currency:units_to_dollars(MaxPostPay)
+                                ]
                                ),
             {'false', kz_term:to_binary(Msg)}
     end.
