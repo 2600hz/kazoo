@@ -55,7 +55,7 @@ dep_eiconv = git https://github.com/zotonic/eiconv
 dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
 dep_exml = git https://github.com/paulgray/exml 2.2.1
 dep_jiffy = git https://github.com/fenollp/jiffy patch-1  ## See https://github.com/davisp/jiffy/pull/152
-dep_nklib = git https://github.com/NetComposer/nklib
+dep_nklib = git https://github.com/NetComposer/nklib v0.4.1
 dep_plists = hex 1.0.0
 
 dep_erlcloud = git https://github.com/lazedo/erlcloud 54fe6b96eb0bc591b80161fc552afb821072222c
