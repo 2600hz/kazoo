@@ -59,6 +59,8 @@
 
 -define(FS_MULTI_VAR_SEP, kapps_config:get_ne_binary(?APP_NAME, <<"multivar_separator">>, <<"~">>)).
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
+-define(SANITIZE_FS_VALUE_REGEX,
+        kapps_config:get_ne_binary(?APP_NAME, <<"sanitize_fs_value_regex">>, <<"[^0-9\\w\\s-]">>)).
 
 %% HELP-34627 Preserve default failover behavior.
 -define(FAIL_IF_ALL_UNREG, 'true').
@@ -656,14 +658,11 @@ get_fs_key_and_value(_, _, _) -> 'skip'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_sanitize_fs_value(kz_term:text(), kz_term:text()) -> binary().
-maybe_sanitize_fs_value(<<"Outbound-Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
-maybe_sanitize_fs_value(<<"Outbound-Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
-maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
-maybe_sanitize_fs_value(<<"Callee-ID-Name">>, Val) ->
-    re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
+maybe_sanitize_fs_value(Key, Val) when Key =:= <<"Outbound-Caller-ID-Name">>
+                                      orelse Key =:= <<"Outbound-Callee-ID-Name">>
+                                      orelse Key =:= <<"Caller-ID-Name">>
+                                      orelse Key =:= <<"Callee-ID-Name">> ->
+    re:replace(Val, ?SANITIZE_FS_VALUE_REGEX, <<>>, ['ucp', 'global', 'unicode', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Export-Bridge-Variables">>, Val) ->
     kz_binary:join(Val, <<",">>);
 maybe_sanitize_fs_value(<<"Export-Variables">>, Val) ->
