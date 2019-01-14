@@ -12,8 +12,10 @@ maybe_sanitize_fs_value_test_() ->
            ,<<"Callee-ID-Name">>
            ],
     TestMsg = fun(KeyStr) ->
-                  "When sanitizing " ++ kz_term:to_list(KeyStr) ++
-                  "'s value it should allow utf8 characters"
+                      lists:flatten(["When sanitizing "
+                                    ,kz_term:to_list(KeyStr)
+                                    ,"'s value it should allow utf8 characters"
+                                    ])
               end,
     [{TestMsg(Key)
      ,?_assertEqual(Expected, ecallmgr_util:maybe_sanitize_fs_value(Key, UTF8Bin))

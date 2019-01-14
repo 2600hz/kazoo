@@ -659,9 +659,9 @@ get_fs_key_and_value(_, _, _) -> 'skip'.
 %%------------------------------------------------------------------------------
 -spec maybe_sanitize_fs_value(kz_term:text(), kz_term:text()) -> binary().
 maybe_sanitize_fs_value(Key, Val) when Key =:= <<"Outbound-Caller-ID-Name">>
-                                      orelse Key =:= <<"Outbound-Callee-ID-Name">>
-                                      orelse Key =:= <<"Caller-ID-Name">>
-                                      orelse Key =:= <<"Callee-ID-Name">> ->
+                                       orelse Key =:= <<"Outbound-Callee-ID-Name">>
+                                       orelse Key =:= <<"Caller-ID-Name">>
+                                       orelse Key =:= <<"Callee-ID-Name">> ->
     re:replace(Val, ?SANITIZE_FS_VALUE_REGEX, <<>>, ['ucp', 'global', 'unicode', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Export-Bridge-Variables">>, Val) ->
     kz_binary:join(Val, <<",">>);
