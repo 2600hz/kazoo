@@ -98,26 +98,56 @@ fix_scheme(<<"https">> = Scheme) -> <<Scheme/binary, "://">>;
 fix_scheme(<<"http">> = Scheme) -> <<Scheme/binary, "://">>;
 fix_scheme(Scheme) -> <<Scheme/binary, "://">>.
 
+-spec aws_default_port(kz_term:ne_binary()) -> inet:port_number().
+aws_default_port(Scheme) ->
+    case Scheme of
+        <<"https://">> -> 443;
+        <<"http://">> -> 80;
+        _ -> 80
+    end.
+
+-spec aws_region(map()) -> kz_term:api_ne_binary().
+aws_region(Map) ->
+    case maps:get('region', Map, 'undefined') of
+        'undefined' -> 'undefined';
+        Bin -> kz_term:to_list(Bin)
+    end.
+
+-spec aws_default_host(map()) -> kz_term:ne_binary().
+aws_default_host(Map) ->
+    case aws_region(Map) of
+        'undefined' -> ?AMAZON_S3_HOST;
+        Region -> list_to_binary(["s3.", Region, ".amazonaws.com"])
+    end.
+
+-spec aws_host(map()) -> kz_term:ne_binary().
+aws_host(Map) ->
+    maps:get('host', Map,  aws_default_host(Map)).
+
+-spec aws_default_bucket_access(map()) -> atom().
+aws_default_bucket_access(Map) ->
+    case aws_region(Map) of
+        'undefined' -> 'path';
+        _Region -> 'auto'
+    end.
+
+-spec aws_bucket_access(map()) -> atom().
+aws_bucket_access(Map) ->
+    kz_term:to_atom(maps:get('bucket_access_method', Map, aws_default_bucket_access(Map)), 'true').
+
 -spec aws_config(map()) -> aws_config().
 aws_config(#{'key' := Key
             ,'secret' := Secret
             }=Map) ->
+    Region = aws_region(Map),
     BucketAfterHost = kz_term:is_true(maps:get('bucket_after_host', Map, 'false')),
-    BucketAccess = kz_term:to_atom(maps:get('bucket_access_method', Map, 'auto'), 'true'),
+    BucketAccess = aws_bucket_access(Map),
     Timeout = kz_term:to_integer(maps:get('upload_timeout', Map, ?AMAZON_S3_UPLOAD_TIMEOUT)),
     HttpClient = kz_term:to_atom(maps:get('http_client', Map, 'httpc'), 'true'),
-    Region = case maps:get('region', Map, 'undefined') of
-                 'undefined' -> 'undefined';
-                 Bin -> kz_term:to_list(Bin)
-             end,
 
-    Host = maps:get('host', Map,  ?AMAZON_S3_HOST),
+    Host = aws_host(Map),
     Scheme = fix_scheme(maps:get('scheme', Map,  <<"https://">>)),
-    DefaultPort = case Scheme of
-                      <<"https://">> -> 443;
-                      <<"http://">> -> 80;
-                      _ -> 80
-                  end,
+    DefaultPort = aws_default_port(Scheme),
     Port = kz_term:to_integer(maps:get('port', Map,  DefaultPort)),
     #aws_config{access_key_id=kz_term:to_list(Key)
                ,secret_access_key=kz_term:to_list(Secret)
