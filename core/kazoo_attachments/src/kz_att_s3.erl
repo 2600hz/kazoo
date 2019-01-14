@@ -99,12 +99,8 @@ fix_scheme(<<"http">> = Scheme) -> <<Scheme/binary, "://">>;
 fix_scheme(Scheme) -> <<Scheme/binary, "://">>.
 
 -spec aws_default_port(kz_term:ne_binary()) -> inet:port_number().
-aws_default_port(Scheme) ->
-    case Scheme of
-        <<"https://">> -> 443;
-        <<"http://">> -> 80;
-        _ -> 80
-    end.
+aws_default_port(<<"https://">>) -> 443;
+aws_default_port(_Scheme) -> 80.
 
 -spec aws_region(map()) -> kz_term:api_ne_binary().
 aws_region(Map) ->
