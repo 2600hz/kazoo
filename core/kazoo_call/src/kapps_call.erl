@@ -136,9 +136,9 @@
 -export([default_helper_function/2]).
 
 -export([start_recording/1, start_recording/2
-        ,mask_recording/1
-        ,unmask_recording/1
-        ,stop_recording/1
+        ,mask_recording/1, mask_recording/2
+        ,unmask_recording/1, unmask_recording/2
+        ,stop_recording/1 ,stop_recording/2
         ]).
 
 -export([is_recording/1, set_is_recording/2]).
@@ -1517,7 +1517,16 @@ update_recording_id(Data) ->
 
 -spec stop_recording(call()) -> call().
 stop_recording(OriginalCall) ->
-    case retrieve_recording(OriginalCall) of
+    stop_recording(call_id(OriginalCall), OriginalCall).
+
+-spec stop_recording(kz_term:ne_binary(), call()) -> call().
+stop_recording(LegId, OriginalCall) ->
+    case LegId =:= call_id(OriginalCall)
+        andalso retrieve_recording(OriginalCall) of
+        'false' -> %% requested stop recording on b-leg
+            API = [{<<"Call-ID">>, LegId}],
+            kapps_call_command:stop_record_call(API, OriginalCall),
+            OriginalCall;
         {'ok', {MediaName, _RecorderPid}, Call} ->
             kapps_call_command:stop_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
@@ -1530,7 +1539,16 @@ stop_recording(OriginalCall) ->
 
 -spec mask_recording(call()) -> call().
 mask_recording(OriginalCall) ->
-    case retrieve_recording(OriginalCall) of
+    mask_recording(call_id(OriginalCall), OriginalCall).
+
+-spec mask_recording(kz_term:ne_binary(), call()) -> call().
+mask_recording(LegId, OriginalCall) ->
+    case LegId =:= call_id(OriginalCall)
+        andalso retrieve_recording(OriginalCall) of
+        'false' -> %% requested mask recording on b-leg
+            API = [{<<"Call-ID">>, LegId}],
+            kapps_call_command:mask_record_call(API, OriginalCall),
+            OriginalCall;
         {'ok', {MediaName, _RecorderPid}, Call} ->
             kapps_call_command:mask_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
@@ -1543,7 +1561,16 @@ mask_recording(OriginalCall) ->
 
 -spec unmask_recording(call()) -> call().
 unmask_recording(OriginalCall) ->
-    case retrieve_recording(OriginalCall) of
+    unmask_recording(call_id(OriginalCall), OriginalCall).
+
+-spec unmask_recording(kz_term:ne_binary(), call()) -> call().
+unmask_recording(LegId, OriginalCall) ->
+    case LegId =:= call_id(OriginalCall)
+        andalso retrieve_recording(OriginalCall) of
+        'false' -> %% requested unmask recording on b-leg
+            API = [{<<"Call-ID">>, LegId}],
+            kapps_call_command:unmask_record_call(API, OriginalCall),
+            OriginalCall;
         {'ok', {MediaName, _RecorderPid}, Call} ->
             kapps_call_command:unmask_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
