@@ -27,7 +27,7 @@ For instance, you can store new voicemails with a storage config like the follow
         "name": "My HTTP server",
         "settings": {
           "url": "http://my.http.server:37635/some_prefix",
-          "verb": "POST"
+          "verb": "post"
         }
       }
     },
@@ -68,7 +68,7 @@ If you want to receive both the binary data and the JSON metadata, you can add `
     "name": "My HTTP server",
     "settings": {
         "url": "http://my.http.server:37635/some_prefix",
-        "verb": "POST",
+        "verb": "post",
         "send_multipart":true
     }
 }

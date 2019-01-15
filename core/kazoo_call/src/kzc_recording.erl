@@ -70,7 +70,7 @@
                ,is_recording = 'false'    :: boolean()
                ,stop_received = 'false'   :: boolean()
                ,retries = 0               :: non_neg_integer()
-               ,verb = 'put'              :: atom()
+               ,verb = <<"put">>          :: kz_term:ne_binary()
                ,account_id                :: kz_term:api_ne_binary()
                ,event = 'undefined'       :: kz_call_event:doc() | 'undefined'
                ,origin                    :: kz_term:api_ne_binary()
@@ -182,7 +182,7 @@ init(Call, Data) ->
     MediaName = kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = kz_json:get_ne_binary_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
-    Verb = kz_json:get_atom_value(<<"method">>, Data, 'put'),
+    Verb = kz_json:get_ne_binary_value(<<"method">>, Data, <<"put">>),
     Request = kapps_call:request_user(Call),
     Origin = kz_json:get_ne_binary_value(<<"origin">>, Data, <<"untracked : ", Request/binary>>),
 

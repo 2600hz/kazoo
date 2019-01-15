@@ -29,6 +29,7 @@
             "type": "string"
         },
         "method": {
+            "default": "put",
             "description": "HTTP verb to use when sending the recording to the supplied URL",
             "enum": [
                 "put",

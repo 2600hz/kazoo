@@ -75,14 +75,10 @@ build_multipart_body(DbName, DocId, Contents, DefaultContentType) ->
     }.
 
 -spec format_verb(kz_term:ne_binary()) -> 'put' | 'post'.
-format_verb(<<"POST">>) ->
-    'post';
-format_verb(<<"post">>) ->
-    'post';
-format_verb(<<"PUT">>) ->
-    'put';
-format_verb(<<"put">>) ->
-    'put'.
+format_verb(<<"POST">>) -> 'post';
+format_verb(<<"PUT">>) -> 'put';
+format_verb(<<"post">>) -> 'post';
+format_verb(<<"put">>) -> 'put'.
 
 -spec fetch_attachment(gen_attachment:handler_props()
                       ,gen_attachment:db_name()
