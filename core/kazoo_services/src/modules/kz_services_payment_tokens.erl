@@ -32,7 +32,7 @@ fetch(Services) ->
 -spec fetch(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) ->  kz_json:object().
 fetch(Thing, ?NE_BINARY = Bookkeeper) ->
     kz_json:filter(fun({_TokenId, Token}) ->
-                           Bookkeeper =/= kz_json:get_ne_binary_value(<<"bookkeeper">>, Token)
+                           Bookkeeper =:= kz_json:get_ne_binary_value(<<"bookkeeper">>, Token)
                    end
                   ,fetch(Thing)
                   ).
