@@ -1,0 +1,23 @@
+'get':
+  'operationId': get.transactions.4e51bc
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TRANSACTION_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a transactions by ID
+'put':
+  'operationId': put.transactions.318199
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/transactions'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of transactions

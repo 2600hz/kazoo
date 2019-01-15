@@ -1,0 +1,47 @@
+'delete':
+  'operationId': delete.tasks.68673b
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TASK_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of tasks
+'get':
+  'operationId': get.tasks.033097
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TASK_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets input of tasks
+'patch':
+  'operationId': patch.tasks.82205a
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TASK_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/tasks'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of tasks
+'put':
+  'operationId': put.tasks.f7a2f7
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/tasks'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of tasks

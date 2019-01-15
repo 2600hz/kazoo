@@ -1,0 +1,56 @@
+'delete':
+  'operationId': delete.system_configs.154da3
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+    - '$ref': '../oas3-parameters.yml#/NODE'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of system_configs
+'get':
+  'operationId': get.system_configs.76a7ea
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+    - '$ref': '../oas3-parameters.yml#/NODE'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a system_configs by ID
+'patch':
+  'operationId': patch.system_configs.92058b
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+    - '$ref': '../oas3-parameters.yml#/NODE'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/system_configs'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of system_configs
+'post':
+  'operationId': post.system_configs.67b22e
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+    - '$ref': '../oas3-parameters.yml#/NODE'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/system_configs'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of system_configs
+'put':
+  'operationId': put.system_configs.866000
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/system_configs'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of system_configs

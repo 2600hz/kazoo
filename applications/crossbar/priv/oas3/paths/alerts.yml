@@ -1,0 +1,33 @@
+'delete':
+  'operationId': delete.alerts.fe6d03
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ALERT_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of alerts
+'get':
+  'operationId': get.alerts.9c8e0c
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ALERT_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a alerts by ID
+'put':
+  'operationId': put.alerts.862588
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/alerts'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of alerts

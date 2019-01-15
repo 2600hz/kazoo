@@ -1,0 +1,62 @@
+'delete':
+  'operationId': delete.queues.b7b148
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/QUEUE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of queues
+'get':
+  'operationId': get.queues.738c33
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/QUEUE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets roster of queues
+'patch':
+  'operationId': patch.queues.eaa628
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/QUEUE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/queues'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of queues
+'post':
+  'operationId': post.queues.655a63
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/QUEUE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/queues'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of queues
+'put':
+  'operationId': put.queues.b58389
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/QUEUE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/queues'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of queues

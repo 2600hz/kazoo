@@ -1,0 +1,56 @@
+'delete':
+  'operationId': delete.accounts.d7d259
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of accounts
+'get':
+  'operationId': get.accounts.2f81d9
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets children of accounts
+'patch':
+  'operationId': patch.accounts.c80353
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/accounts'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of accounts
+'post':
+  'operationId': post.accounts.cd68f5
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/accounts'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of accounts
+'put':
+  'operationId': put.accounts.255f81
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/accounts'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of accounts

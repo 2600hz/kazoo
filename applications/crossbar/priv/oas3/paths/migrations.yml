@@ -1,0 +1,24 @@
+'get':
+  'operationId': get.migrations.4aaac6
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/MIGRATION_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a migrations by ID
+'post':
+  'operationId': post.migrations.7f85e6
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/MIGRATION_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/migrations'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of migrations

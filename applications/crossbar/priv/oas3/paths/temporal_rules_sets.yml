@@ -1,0 +1,61 @@
+'delete':
+  'operationId': delete.temporal_rules_sets.e7ef96
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of temporal_rules_sets
+'get':
+  'operationId': get.temporal_rules_sets.d06401
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a temporal_rules_sets by ID
+'patch':
+  'operationId': patch.temporal_rules_sets.9b7a93
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/temporal_rules_sets'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of temporal_rules_sets
+'post':
+  'operationId': post.temporal_rules_sets.ea4ab0
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/temporal_rules_sets'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of temporal_rules_sets
+'put':
+  'operationId': put.temporal_rules_sets.d5a213
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/temporal_rules_sets'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of temporal_rules_sets

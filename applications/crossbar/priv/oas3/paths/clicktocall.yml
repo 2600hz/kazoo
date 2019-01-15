@@ -1,0 +1,61 @@
+'delete':
+  'operationId': delete.clicktocall.dc5b05
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/C2C_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of clicktocall
+'get':
+  'operationId': get.clicktocall.52cdbf
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header_or_none'
+    - '$ref': '../oas3-parameters.yml#/C2C_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets connect of clicktocall
+'patch':
+  'operationId': patch.clicktocall.46ebb8
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/C2C_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/clicktocall'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of clicktocall
+'post':
+  'operationId': post.clicktocall.be3f9f
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header_or_none'
+    - '$ref': '../oas3-parameters.yml#/C2C_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/clicktocall'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of clicktocall
+'put':
+  'operationId': put.clicktocall.817a4c
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/clicktocall'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of clicktocall

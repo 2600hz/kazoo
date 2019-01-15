@@ -1,0 +1,40 @@
+'delete':
+  'operationId': delete.auth.28eedd
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/APP_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of auth
+'get':
+  'operationId': get.auth.1bea28
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/APP_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a auth by ID
+'post':
+  'operationId': post.auth.2ae75d
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/APP_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/auth'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of auth
+'put':
+  'operationId': put.auth.48b8a7
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/KEY_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/auth'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of auth

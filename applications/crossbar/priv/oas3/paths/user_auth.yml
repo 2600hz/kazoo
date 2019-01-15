@@ -1,0 +1,30 @@
+'get':
+  'operationId': get.user_auth.4bde4a
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/AUTH_TOKEN'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a user_auth by ID
+'post':
+  'operationId': post.user_auth.2dd519
+  'parameters': []
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/user_auth'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of user_auth
+'put':
+  'operationId': put.user_auth.754a5e
+  'parameters': []
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/user_auth'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of user_auth

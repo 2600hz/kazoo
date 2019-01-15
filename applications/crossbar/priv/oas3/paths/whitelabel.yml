@@ -1,0 +1,45 @@
+'delete':
+  'operationId': delete.whitelabel.af12c3
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of whitelabel
+'get':
+  'operationId': get.whitelabel.662a44
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/WHITELABEL_DOMAIN'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets logo of whitelabel
+'post':
+  'operationId': post.whitelabel.049881
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/whitelabel'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of whitelabel
+'put':
+  'operationId': put.whitelabel.b153f7
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/whitelabel'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of whitelabel

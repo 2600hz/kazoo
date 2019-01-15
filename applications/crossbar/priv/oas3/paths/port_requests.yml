@@ -1,0 +1,65 @@
+'delete':
+  'operationId': delete.port_requests.92431f
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
+    - '$ref': '../oas3-parameters.yml#/ATTACHMENT_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of port_requests
+'get':
+  'operationId': get.port_requests.833680
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
+    - '$ref': '../oas3-parameters.yml#/ATTACHMENT_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a port_requests by ID
+'patch':
+  'operationId': patch.port_requests.ac4b96
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/port_requests'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of port_requests
+'post':
+  'operationId': post.port_requests.ff0158
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
+    - '$ref': '../oas3-parameters.yml#/ATTACHMENT_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/port_requests'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of port_requests
+'put':
+  'operationId': put.port_requests.d7ffb2
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/port_requests'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of port_requests

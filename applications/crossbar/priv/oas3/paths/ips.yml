@@ -1,0 +1,46 @@
+'delete':
+  'operationId': delete.ips.03dda4
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/IP_ADDRESS'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of ips
+'get':
+  'operationId': get.ips.a742c0
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets assigned of ips
+'post':
+  'operationId': post.ips.95bda6
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/IP_ADDRESS'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/ips'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of ips
+'put':
+  'operationId': put.ips.57b69d
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/ips'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of ips

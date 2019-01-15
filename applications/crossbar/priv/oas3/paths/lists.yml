@@ -1,0 +1,66 @@
+'delete':
+  'operationId': delete.lists.29fcc5
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/LIST_ID'
+    - '$ref': '../oas3-parameters.yml#/LIST_ENTRY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of lists
+'get':
+  'operationId': get.lists.ce9967
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/LIST_ID'
+    - '$ref': '../oas3-parameters.yml#/LIST_ENTRY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets vcard of lists
+'patch':
+  'operationId': patch.lists.54f60e
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/LIST_ID'
+    - '$ref': '../oas3-parameters.yml#/LIST_ENTRY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/lists'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of lists
+'post':
+  'operationId': post.lists.f828b6
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/LIST_ID'
+    - '$ref': '../oas3-parameters.yml#/LIST_ENTRY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/lists'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of lists
+'put':
+  'operationId': put.lists.f0ad88
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/LIST_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/lists'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of lists

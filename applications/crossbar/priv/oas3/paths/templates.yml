@@ -1,0 +1,27 @@
+'delete':
+  'operationId': delete.templates.f804e7
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/TEMPLATE_NAME'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of templates
+'get':
+  'operationId': get.templates.e31499
+  'parameters': []
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets all templates
+'put':
+  'operationId': put.templates.5c97aa
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/TEMPLATE_NAME'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/templates'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of templates

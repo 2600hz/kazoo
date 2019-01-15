@@ -1,0 +1,64 @@
+'delete':
+  'operationId': delete.conferences.13bc0b
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of conferences
+'get':
+  'operationId': get.conferences.b219ab
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PARTICIPANT_ID'
+    - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a conferences by ID
+'patch':
+  'operationId': patch.conferences.bfa2e2
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/conferences'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of conferences
+'post':
+  'operationId': post.conferences.6c9b0e
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/conferences'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of conferences
+'put':
+  'operationId': put.conferences.4a3a9e
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PARTICIPANT_ID'
+    - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/conferences'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of conferences

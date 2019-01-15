@@ -1,0 +1,22 @@
+'get':
+  'operationId': get.allotments.bdd48c
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets consumed of allotments
+'post':
+  'operationId': post.allotments.e135d3
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/allotments'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of allotments

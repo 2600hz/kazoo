@@ -1,0 +1,61 @@
+'delete':
+  'operationId': delete.directories.500e8c
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/DIRECTORY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of directories
+'get':
+  'operationId': get.directories.581849
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/DIRECTORY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a directories by ID
+'patch':
+  'operationId': patch.directories.6f6d6a
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/DIRECTORY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/directories'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of directories
+'post':
+  'operationId': post.directories.01d437
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/DIRECTORY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/directories'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of directories
+'put':
+  'operationId': put.directories.62e164
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/directories'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of directories

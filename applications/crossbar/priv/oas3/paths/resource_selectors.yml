@@ -1,0 +1,34 @@
+'delete':
+  'operationId': delete.resource_selectors.40e0f3
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/UUID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of resource_selectors
+'get':
+  'operationId': get.resource_selectors.107b50
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/SELECTOR_NAME'
+    - '$ref': '../oas3-parameters.yml#/RESOURCE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a resource_selectors by ID
+'post':
+  'operationId': post.resource_selectors.708ac5
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/resource_selectors'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of resource_selectors

@@ -1,0 +1,51 @@
+'delete':
+  'operationId': delete.rates.f4f018
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/RATE_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of rates
+'get':
+  'operationId': get.rates.5180a8
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/PHONE_NUMBER'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a rates by ID
+'patch':
+  'operationId': patch.rates.249c9a
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/RATE_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/rates'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of rates
+'post':
+  'operationId': post.rates.414f55
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/RATE_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/rates'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of rates
+'put':
+  'operationId': put.rates.4f9efe
+  'parameters': []
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/rates'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of rates

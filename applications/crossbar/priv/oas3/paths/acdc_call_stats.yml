@@ -1,0 +1,9 @@
+'get':
+  'operationId': get.acdc_call_stats.5c204d
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets all acdc_call_stats

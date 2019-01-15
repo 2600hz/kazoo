@@ -1,0 +1,61 @@
+'delete':
+  'operationId': delete.connectivity.a313b2
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of connectivity
+'get':
+  'operationId': get.connectivity.f72eeb
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a connectivity by ID
+'patch':
+  'operationId': patch.connectivity.0a5949
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/connectivity'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of connectivity
+'post':
+  'operationId': post.connectivity.069e9a
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/connectivity'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of connectivity
+'put':
+  'operationId': put.connectivity.a0bd56
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/connectivity'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of connectivity

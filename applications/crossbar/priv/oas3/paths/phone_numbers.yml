@@ -1,0 +1,59 @@
+'delete':
+  'operationId': delete.phone_numbers.3bb416
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of phone_numbers
+'get':
+  'operationId': get.phone_numbers.7b109c
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PHONE_NUMBER'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a phone_numbers by ID
+'patch':
+  'operationId': patch.phone_numbers.497fe7
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/phone_numbers'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of phone_numbers
+'post':
+  'operationId': post.phone_numbers.813ed3
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/PHONE_NUMBER'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/phone_numbers'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of phone_numbers
+'put':
+  'operationId': put.phone_numbers.e95c36
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/phone_numbers'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of phone_numbers

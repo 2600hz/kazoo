@@ -1,0 +1,61 @@
+'delete':
+  'operationId': delete.resource_templates.2001f5
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of resource_templates
+'get':
+  'operationId': get.resource_templates.232edf
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a resource_templates by ID
+'patch':
+  'operationId': patch.resource_templates.1e6c45
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/resource_templates'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of resource_templates
+'post':
+  'operationId': post.resource_templates.ef4c9e
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/resource_templates'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of resource_templates
+'put':
+  'operationId': put.resource_templates.63af8b
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/resource_templates'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of resource_templates

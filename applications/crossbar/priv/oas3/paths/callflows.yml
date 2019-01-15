@@ -1,0 +1,61 @@
+'delete':
+  'operationId': delete.callflows.67994c
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of callflows
+'get':
+  'operationId': get.callflows.ff49f6
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets a callflows by ID
+'patch':
+  'operationId': patch.callflows.77be0b
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/callflows'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Patch specific fields of callflows
+'post':
+  'operationId': post.callflows.fccb38
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/callflows'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of callflows
+'put':
+  'operationId': put.callflows.f7843d
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/callflows'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of callflows

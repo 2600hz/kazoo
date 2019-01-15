@@ -1,0 +1,18 @@
+'get':
+  'operationId': get.shared_auth.77ba0f
+  'parameters': []
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets all shared_auth
+'put':
+  'operationId': put.shared_auth.0f9cb5
+  'parameters': []
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/shared_auth'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Add an instance of shared_auth

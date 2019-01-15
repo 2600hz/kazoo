@@ -1,0 +1,24 @@
+'get':
+  'operationId': get.presence.2f6d0e
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/REPORT_ID'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': 'Gets report-{REPORT_ID} of presence'
+'post':
+  'operationId': post.presence.6a584a
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/EXTENSION'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/presence'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of presence

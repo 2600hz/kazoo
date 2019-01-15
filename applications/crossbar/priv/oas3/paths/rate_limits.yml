@@ -1,0 +1,31 @@
+'delete':
+  'operationId': delete.rate_limits.1942e4
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Delete an instance of rate_limits
+'get':
+  'operationId': get.rate_limits.ea0e08
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Gets all rate_limits
+'post':
+  'operationId': post.rate_limits.fd1185
+  'parameters':
+    - '$ref': '../oas3-parameters.yml#/auth_token_header'
+    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
+  'requestBody':
+    'application/json':
+      'schema':
+        '$ref': '../oas3-schemas.yml#/rate_limits'
+  'responses':
+    '200':
+      'summary': Successful operation
+  'summary': Update an instance of rate_limits
