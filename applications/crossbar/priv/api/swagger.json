@@ -29834,6 +29834,11 @@
                     "description": "ecallmgr restrict channel state publisher",
                     "type": "boolean"
                 },
+                "sanitize_fs_value_regex": {
+                    "default": "[^0-9\\w\\s-]",
+                    "description": "ecallmgr sanitize_fs_value_regex",
+                    "type": "string"
+                },
                 "should_detect_inband_dtmf": {
                     "default": false,
                     "description": "ecallmgr should detect inband dtmf",
