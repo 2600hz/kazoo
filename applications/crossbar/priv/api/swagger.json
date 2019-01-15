@@ -3117,6 +3117,7 @@
                     "type": "string"
                 },
                 "method": {
+                    "default": "put",
                     "description": "HTTP verb to use when sending the recording to the supplied URL",
                     "enum": [
                         "put",
@@ -27710,11 +27711,11 @@
                             "type": "string"
                         },
                         "verb": {
-                            "default": "POST",
+                            "default": "put",
                             "description": "The HTTP verb to use when sending the data",
                             "enum": [
-                                "POST",
-                                "PUT"
+                                "post",
+                                "put"
                             ],
                             "type": "string"
                         }

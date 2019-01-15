@@ -495,7 +495,7 @@ maybe_save_recording(_Pid, EndpointId, JObj) ->
     InteractionId = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>),
     Url = kz_json:get_ne_binary_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
-    Verb = kz_json:get_atom_value(<<"method">>, Data, 'put'),
+    Verb = kz_json:get_ne_binary_value(<<"method">>, Data, <<"put">>),
 
     Store = #{url => Url
              ,media => Media

@@ -127,7 +127,7 @@ Key | Description | Type | Default | Required | Support Level
 `name` | Friendly name for this attachment handler | `string()` |   | `false` |
 `settings.send_multipart` | Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true | `boolean()` |   | `false` |
 `settings.url` | The base HTTP(s) URL to use when creating the request | `string()` |   | `true` |
-`settings.verb` | The HTTP verb to use when sending the data | `string('POST' | 'PUT')` | `POST` | `false` |
+`settings.verb` | The HTTP verb to use when sending the data | `string('post' | 'put')` | `put` | `false` |
 `settings` | HTTP server settings | `object()` |   | `true` |
 
 ### storage.attachment.onedrive
@@ -375,7 +375,7 @@ For instance, setting up your HTTP server to receive new voicemails for the acco
         "name": "My HTTP server",
         "settings": {
           "url": "http://my.http.server:37635/some_prefix",
-          "verb": "POST"
+          "verb": "post"
         }
       }
     },

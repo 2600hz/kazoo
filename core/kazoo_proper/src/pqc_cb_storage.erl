@@ -238,7 +238,7 @@ http_handler_settings() ->
     URL = <<Base/binary, ?MODULE_STRING>>,
 
     kz_json:from_list([{<<"url">>, URL}
-                      ,{<<"verb">>, <<"POST">>}
+                      ,{<<"verb">>, <<"post">>}
                       ,{<<"send_multipart">>, 'true'}
                       ]).
 
