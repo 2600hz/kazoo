@@ -1413,6 +1413,67 @@ from_map_test_() ->
      }
     ].
 
+utf8_binary_values_test_() ->
+    K = <<"key">>,
+    V = <<"Bör">>,
+    VUTF8 = <<"Bör"/utf8>>,
+
+    %% "Proper" object
+    Props = [{K, V}],
+    UTF8Props = [{K, VUTF8}],
+    UTF8JObj = ?JSON_WRAPPER(UTF8Props),
+    UTF8EncJObj = <<"{\"key\":\"Bör\"}"/utf8>>,
+
+    %% "flat" object
+    Flat = [{[<<"foo">>,<<"fong">>],V}],
+    UTF8Flat = [{[<<"foo">>,<<"fong">>],VUTF8}],
+
+    %% Recursive "proper" object
+    Recursive = [{K, Props}],
+    UTF8Recursive = ?JSON_WRAPPER([{K, UTF8JObj}]),
+    UTF8EncRecursive = <<"{\"key\":{\"key\":\"Bör\"}}"/utf8>>,
+
+    %% File's content
+    {'ok', MP3} = file:read_file(filename:join([code:lib_dir('kazoo_stdlib'), "test/mp3.mp3"])),
+    MP3Props = [{<<"contents">>, MP3}],
+
+    [{"When setting a binary value it should be encoded in utf8 format"
+     ,?_assertEqual(UTF8JObj, kz_json:set_values(Props, kz_json:new()))
+     }
+    ,{"When building a JObj using from_list/1 it should encode binary values in utf8 format"
+     ,?_assertEqual(UTF8JObj, kz_json:from_list(Props))
+     }
+    ,{"When building a JObj using from_list_recursive/1 it should encode binary values in utf8 format"
+     ,?_assertEqual(UTF8Recursive, kz_json:from_list_recursive(Recursive))
+     }
+    ,{"When encoding a NOT utf8 ready object it should fail"
+     ,?_assertException(throw, {error,{invalid_string,V}},
+                        kz_json:encode(?JSON_WRAPPER(Props)))
+     }
+    ,{"When encoding a NOT utf8 ready object it should fail"
+     ,?_assertException(throw, {error,{invalid_string,V}},
+                        kz_json:encode(?JSON_WRAPPER([{K, ?JSON_WRAPPER(Props)}])))
+     }
+    ,{"When encoding a utf8 ready object it should work"
+     ,?_assertEqual(UTF8EncJObj, kz_json:encode(UTF8JObj))
+     }
+    ,{"When encoding a utf8 ready object it should work"
+     ,?_assertEqual(UTF8EncJObj, kz_json:encode(kz_json:from_list(Props)))
+     }
+    ,{"When encoding a utf8 ready object it should work"
+     ,?_assertEqual(UTF8EncRecursive, kz_json:encode(kz_json:from_list_recursive(Recursive)))
+     }
+    ,{"When creating a flat object its binary value(s) should also be encoded in utf8 format"
+     ,?_assertEqual(?JSON_WRAPPER(UTF8Flat), kz_json:from_list(Flat))
+     }
+    ,{"When creating a mixed object (Props + Flat) its binary value(s) should also be encoded in utf8 format"
+     ,?_assertEqual(?JSON_WRAPPER(UTF8Props ++ UTF8Flat), kz_json:from_list(Props ++ Flat))
+     }
+    ,{"When trying to encode a non printable_unicode_list of chars the value should not be encoded"
+     ,?_assertEqual(?JSON_WRAPPER(MP3Props), kz_json:from_list(MP3Props))
+     }
+    ].
+
 -ifdef(PERF).
 -define(REPEAT, 100000).
 

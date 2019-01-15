@@ -260,8 +260,8 @@ are_equal(JObj1, JObj2) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_list([set_value_kv()] | flat_proplist()) -> object() | flat_object().
-from_list(L) when is_list(L) ->
-    ?JSON_WRAPPER(props:filter_undefined(L)).
+from_list(PL) when is_list(PL) ->
+    ?JSON_WRAPPER([{K, utf8_binary(V)} || {K, V} <- PL, V =/= 'undefined']).
 
 -spec from_list_recursive(json_proplist()) -> object().
 from_list_recursive([]) -> new();
@@ -283,7 +283,7 @@ recursive_from_list(X) when is_list(X) ->
         'true' -> kz_term:to_binary(X);
         'false' -> [recursive_from_list(Xn) || Xn <- X]
     end;
-recursive_from_list(X) when is_binary(X) -> X;
+recursive_from_list(X) when is_binary(X) -> utf8_binary(X);
 recursive_from_list({_Y, _M, _D}=Date) -> kz_date:to_iso8601_extended(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
 recursive_from_list(?JSON_WRAPPER(_)=JObj) -> JObj;
@@ -1211,7 +1211,7 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
             ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1, Options)}));
         {Key1, _} when T == [] ->
             %% This is the final key and the objects property should just be replaced
-            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, Value}));
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, utf8_binary(Value)}));
         {Key1, _} ->
             %% This is not the final key and the objects property should just be
             %% replaced so continue looping the keys creating the necessary json as we go
@@ -1219,7 +1219,7 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
         'false' when T == [] ->
             %% This is the final key and doesn't already exist, just add it to this
             %% objects existing properties
-            ?JSON_WRAPPER(Props ++ [{Key1, Value}]);
+            ?JSON_WRAPPER(Props ++ [{Key1, utf8_binary(Value)}]);
         'false' ->
             %% This is not the final key and this object does not have this key
             %% so continue looping the keys creating the necessary json as we go
@@ -1530,3 +1530,18 @@ exec(Funs, ?JSON_WRAPPER(_)=JObj) ->
 exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
 exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
 exec_fold(F, C) when is_function(F, 1) -> F(C).
+
+-spec utf8_binary(json_term()) -> json_term().
+utf8_binary(Value) when is_binary(Value) ->
+    %% io_lib:printable_unicode_list/1 check added to avoid encoding file's content
+    %% like audio files.
+    case io_lib:printable_unicode_list(binary_to_list(Value)) of
+        'true' ->
+            %% it must be a string or bitstring
+            unicode:characters_to_binary(io_lib:format("~ts", [Value]));
+        'false' ->
+            %% it must be a file's content
+            Value
+    end;
+utf8_binary(Value) ->
+    Value.
