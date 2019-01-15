@@ -82,7 +82,9 @@ format_verb(<<"post">>) ->
 format_verb(<<"PUT">>) ->
     'put';
 format_verb(<<"put">>) ->
-    'put'.
+    'put';
+format_verb(Value) ->
+    format_verb(kz_term:to_binary(Value)).
 
 -spec fetch_attachment(gen_attachment:handler_props()
                       ,gen_attachment:db_name()
