@@ -83,7 +83,7 @@ format_verb(<<"PUT">>) ->
     'put';
 format_verb(<<"put">>) ->
     'put';
-format_verb(Value) ->
+format_verb(Value) when not erlang:is_binary(Value) ->
     format_verb(kz_term:to_binary(Value)).
 
 -spec fetch_attachment(gen_attachment:handler_props()
