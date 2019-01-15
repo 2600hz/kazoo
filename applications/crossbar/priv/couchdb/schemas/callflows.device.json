@@ -12,6 +12,10 @@
             "support_level": "alpha",
             "type": "boolean"
         },
+        "custom_sip_headers": {
+            "description": "KV Object where the name is the SIP header and the value is the SIP field",
+            "type": "object"
+        },
         "delay": {
             "default": 0,
             "description": "How long to delay ringing the device, in seconds",

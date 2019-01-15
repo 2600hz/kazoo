@@ -2028,6 +2028,10 @@
                     "description": "Toggle whether devices of the same owner can text each other",
                     "type": "boolean"
                 },
+                "custom_sip_headers": {
+                    "description": "KV Object where the name is the SIP header and the value is the SIP field",
+                    "type": "object"
+                },
                 "delay": {
                     "default": 0,
                     "description": "How long to delay ringing the device, in seconds",
@@ -3768,6 +3772,10 @@
                 "can_text_self": {
                     "description": "Toggle whether devices of this use can text each other",
                     "type": "boolean"
+                },
+                "custom_sip_headers": {
+                    "description": "KV Object where the name is the SIP header and the value is the SIP field",
+                    "type": "object"
                 },
                 "delay": {
                     "default": 0,
