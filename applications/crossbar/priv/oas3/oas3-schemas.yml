@@ -281,6 +281,19 @@ account_config.privacy:
       description: Default privacy mode for anonymous calls
       type: string
   type: object
+account_config.tasks.bill_early:
+  description: Schema for tasks.bill_early account_config
+  properties:
+    bill_early_enabled:
+      default: false
+      description: Controls whether we should bill early this account
+      type: boolean
+    reminder_enabled:
+      default: false
+      description: |-
+        Controls whether we should send bill reminder for this account a few days before due date
+      type: boolean
+  type: object
 account_config.webhooks:
   description: Schema for webhooks account_config
   properties:
@@ -2447,6 +2460,10 @@ callflows.record_call:
     record_sample_rate:
       description: What sampling rate to use on the recording
       type: integer
+    should_follow_transfer:
+      default: true
+      description: 'If true, the recording will continue after a transfer on the active leg'
+      type: boolean
     time_limit:
       default: 3600
       description: 'Time limit, in seconds, for the recording'
@@ -3986,42 +4003,10 @@ devices:
       description: Provision data
       properties:
         combo_keys:
-          description: Feature Keys
           type: object
           x-patternProperties:
             ^[0-9]+$:
-              nullable: true
-              properties:
-                type:
-                  description: Feature key type
-                  enum:
-                    - line
-                    - presence
-                    - parking
-                    - personal_parking
-                    - speed_dial
-                  type: string
-                value:
-                  description: Feature key value
-                  oneOf:
-                    - maximum: 10
-                      minimum: 1
-                      type: integer
-                    - enum:
-                        - 1
-                        - 2
-                        - 3
-                        - 4
-                        - 5
-                        - 6
-                        - 7
-                        - 8
-                        - 9
-                        - 10
-                      type: string
-              required:
-                - type
-              type: object
+              $ref: '#/components/schemas/devices.combo_key'
         endpoint_brand:
           description: Brand of the phone
           type: string
@@ -4036,42 +4021,10 @@ devices:
                 type: string
               type: array
         feature_keys:
-          description: Feature Keys
           type: object
           x-patternProperties:
             ^[0-9]+$:
-              nullable: true
-              properties:
-                type:
-                  description: Feature key type
-                  enum:
-                    - presence
-                    - parking
-                    - personal_parking
-                    - speed_dial
-                  type: string
-                value:
-                  description: Feature key value
-                  oneOf:
-                    - maximum: 10
-                      minimum: 1
-                      type: integer
-                    - enum:
-                        - 1
-                        - 2
-                        - 3
-                        - 4
-                        - 5
-                        - 6
-                        - 7
-                        - 8
-                        - 9
-                        - 10
-                      type: string
-              required:
-                - type
-                - value
-              type: object
+              $ref: '#/components/schemas/devices.combo_key'
         id:
           description: Provisioner Template ID
           type: string
@@ -4189,6 +4142,76 @@ devices:
       x-support_level: supported
   required:
     - name
+  type: object
+devices.combo_key:
+  description: Device provisioner Combo/Feature Key
+  nullable: true
+  oneOf:
+    - properties:
+        type:
+          description: Feature key type
+          enum:
+            - parking
+          type: string
+        value:
+          description: Feature key value
+          oneOf:
+            - maximum: 10
+              minimum: 1
+              type: integer
+            - enum:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                - 6
+                - 7
+                - 8
+                - 9
+                - 10
+              type: string
+            - properties:
+                label:
+                  description: Label to display for Feature key
+                  type: string
+                value:
+                  description: Feature key value
+                  maximum: 10
+                  minimum: 1
+                  type: integer
+              required:
+                - label
+                - value
+              type: object
+      required:
+        - type
+    - properties:
+        type:
+          description: Feature key type
+          enum:
+            - line
+            - presence
+            - personal_parking
+            - speed_dial
+          type: string
+        value:
+          description: Feature key value
+          oneOf:
+            - type: string
+            - properties:
+                label:
+                  description: Label to display for Feature key
+                  type: string
+                value:
+                  description: Feature key value
+                  type: string
+              required:
+                - label
+                - value
+              type: object
+      required:
+        - type
   type: object
 devices_notify:
   description: Schema for Crossbar devices notify API
@@ -7650,8 +7673,6 @@ storage:
       $ref: '#/components/schemas/storage.plan'
       description: |-
         Describes how to store documents depending on the database or document type
-    ui_metadata:
-      type: object
   type: object
   x-patternProperties:
     ^_:
@@ -7776,6 +7797,8 @@ storage.attachment.dropbox:
       properties:
         oauth_doc_id:
           description: Doc ID in the system 'auth' database
+          minLength: 1
+          patern: '^[^\s]*$'
           type: string
           x-kazoo-validation: true
       required:
@@ -7801,6 +7824,8 @@ storage.attachment.google_drive:
           type: string
         oauth_doc_id:
           description: Doc ID in the system 'auth' database
+          minLength: 1
+          patern: '^[^\s]*$'
           type: string
           x-kazoo-validation: true
       required:
@@ -7840,6 +7865,41 @@ storage.attachment.google_storage:
     - handler
     - settings
   type: object
+storage.attachment.http:
+  description: schema for HTTP(s) attachment entry
+  properties:
+    handler:
+      description: The handler interface to use
+      enum:
+        - http
+      type: string
+    name:
+      description: Friendly name for this attachment handler
+      type: string
+    settings:
+      description: HTTP server settings
+      properties:
+        send_multipart:
+          description: |-
+            Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true
+          type: boolean
+        url:
+          description: The base HTTP(s) URL to use when creating the request
+          type: string
+        verb:
+          default: POST
+          description: The HTTP verb to use when sending the data
+          enum:
+            - POST
+            - PUT
+          type: string
+      required:
+        - url
+      type: object
+  required:
+    - handler
+    - settings
+  type: object
 storage.attachment.onedrive:
   description: schema for OneDrive attachment entry
   properties:
@@ -7853,6 +7913,8 @@ storage.attachment.onedrive:
       properties:
         oauth_doc_id:
           description: Doc ID in the system 'auth' database
+          minLength: 1
+          patern: '^[^\s]*$'
           type: string
           x-kazoo-validation: true
       required:
@@ -7875,6 +7937,7 @@ storage.attachments:
         - $ref: '#/components/schemas/storage.attachment.azure'
         - $ref: '#/components/schemas/storage.attachment.onedrive'
         - $ref: '#/components/schemas/storage.attachment.dropbox'
+        - $ref: '#/components/schemas/storage.attachment.http'
       properties:
         field_list:
           description: list of field to compose destination url
@@ -9639,6 +9702,10 @@ system_config.ecallmgr:
       default: 180
       description: ecallmgr expires deviation time
       type: integer
+    failover_when_all_unreg:
+      default: false
+      description: failover only when all devices are offline
+      type: boolean
     fax_file_path:
       default: /tmp/
       description: ecallmgr fax file path
@@ -10260,9 +10327,15 @@ system_config.ips:
 system_config.jonny5:
   description: Schema for jonny5 system_config
   properties:
+    default_allow_postpay:
+      description: jonny5 default_allow_postpay
+      type: boolean
     default_inbound_trunks:
       description: jonny5 default inbound trunks
       type: integer
+    default_max_postpay_amount:
+      description: jonny5 default_max_postpay_amount
+      type: number
     default_twoway_trunks:
       description: jonny5 default twoway trunks
       type: integer
@@ -10671,6 +10744,9 @@ system_config.media:
     default_language:
       description: media default language
       type: string
+    distributed_proxy:
+      description: media distributed_proxy
+      type: object
     fix_media_names:
       default: true
       description: media fix media names
@@ -12357,6 +12433,14 @@ system_config.sysconf:
       description: sysconf acl request timeout in milliseconds
       type: integer
   type: object
+system_config.system_data:
+  description: Schema for system_data system_config
+  properties:
+    allow_validation_overrides:
+      default: false
+      description: Whether to allow storage plans to skip validating attachment settings
+      type: boolean
+  type: object
 system_config.tasks:
   description: Schema for tasks system_config
   properties:
@@ -12456,6 +12540,24 @@ system_config.tasks:
       description: tasks wait after row in milliseconds
       minimum: 0
       type: integer
+  type: object
+system_config.tasks.bill_early:
+  description: Schema for tasks.bill_early system_config
+  properties:
+    bill_early_enabled:
+      default: false
+      description: Controls whether we should bill early the accounts
+      type: boolean
+    how_many_early_days:
+      default: 5
+      description: |-
+        How many days before first of the next month this task should start processing accounts
+      type: integer
+    reminder_enabled:
+      default: false
+      description: |-
+        Controls whether we should send bill reminder for the accounts a few days before due date
+      type: boolean
   type: object
 system_config.tasks.notify_resend:
   description: Schema for tasks.notify_resend system_config

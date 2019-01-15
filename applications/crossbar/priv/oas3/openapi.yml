@@ -1,8 +1,8 @@
 'components':
   'parameters':
-    '$ref': applications/crossbar/priv/oas3/oas3-parameters.yml
+    '$ref': oas3-parameters.yml
   'schemas':
-    '$ref': applications/crossbar/priv/oas3/oas3-schemas.yml
+    '$ref': oas3-schemas.yml
 'paths':
   '/about':
     '$ref': 'paths/about.yml#/paths/~1about'
