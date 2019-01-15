@@ -136,8 +136,8 @@
 -export([default_helper_function/2]).
 
 -export([start_recording/1, start_recording/2
-        ,mask_recording/2
-        ,unmask_recording/2
+        ,mask_recording/1, mask_recording/2
+        ,unmask_recording/1, unmask_recording/2
         ,stop_recording/1 ,stop_recording/2
         ]).
 
@@ -1537,6 +1537,10 @@ stop_recording(LegId, OriginalCall) ->
             Call
     end.
 
+-spec mask_recording(call()) -> call().
+mask_recording(OriginalCall) ->
+    mask_recording(call_id(OriginalCall), OriginalCall).
+
 -spec mask_recording(kz_term:ne_binary(), call()) -> call().
 mask_recording(LegId, OriginalCall) ->
     case LegId =:= call_id(OriginalCall)
@@ -1554,6 +1558,10 @@ mask_recording(LegId, OriginalCall) ->
             kapps_call_command:mask_record_call(API, Call),
             Call
     end.
+
+-spec unmask_recording(call()) -> call().
+unmask_recording(OriginalCall) ->
+    unmask_recording(call_id(OriginalCall), OriginalCall).
 
 -spec unmask_recording(kz_term:ne_binary(), call()) -> call().
 unmask_recording(LegId, OriginalCall) ->

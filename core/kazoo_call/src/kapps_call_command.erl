@@ -1700,35 +1700,35 @@ stop_record_call(Media, Call) ->
     record_call(Media, <<"stop">>, Call).
 
 -spec mask_record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
-mask_record_call(Props, Call) ->
-    record_call(Props, <<"mask">>, Call).
+mask_record_call(Media, Call) ->
+    record_call(Media, <<"mask">>, Call).
 
 -spec unmask_record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
-unmask_record_call(Props, Call) ->
-    record_call(Props, <<"unmask">>, Call).
+unmask_record_call(Media, Call) ->
+    record_call(Media, <<"unmask">>, Call).
 
 -spec record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
-record_call(Props, Call) ->
-    record_call(Props, <<"start">>, Call).
+record_call(Media, Call) ->
+    record_call(Media, <<"start">>, Call).
 
 -spec record_call(kz_term:proplist(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
-record_call(Props, Action, Call) ->
-    record_call(Props, Action, 600, Call).
+record_call(Media, Action, Call) ->
+    record_call(Media, Action, 600, Call).
 
 -spec record_call(kz_term:proplist(), kz_term:ne_binary(),  kz_term:api_binary() | pos_integer(), kapps_call:call()) -> 'ok'.
-record_call(Props, Action, TimeLimit, Call) ->
-    record_call(Props, Action, TimeLimit, ?ANY_DIGIT, Call).
+record_call(Media, Action, TimeLimit, Call) ->
+    record_call(Media, Action, TimeLimit, ?ANY_DIGIT, Call).
 
 -spec record_call(kz_term:proplist(), kz_term:ne_binary(),  kz_term:api_binary() | pos_integer(), list(), kapps_call:call()) -> 'ok'.
-record_call(Props, Action, TimeLimit, Terminators, Call) ->
-    Limit = props:get_value(<<"Time-Limit">>, Props, kz_term:to_binary(TimeLimit)),
+record_call(Media, Action, TimeLimit, Terminators, Call) ->
+    Limit = props:get_value(<<"Time-Limit">>, Media, kz_term:to_binary(TimeLimit)),
     Command = props:filter_undefined(
                 [{<<"Application-Name">>, <<"record_call">>}
                 ,{<<"Record-Action">>, Action}
                 ,{<<"Time-Limit">>, Limit}
                 ,{<<"Terminators">>, Terminators}
                 ,{<<"Insert-At">>, <<"now">>}
-                 | Props
+                 | Media
                 ]),
     send_command(Command, Call).
 
