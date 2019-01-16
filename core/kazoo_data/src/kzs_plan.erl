@@ -7,7 +7,11 @@
 
 -export([plan/0, plan/1, plan/2, plan/3]).
 
--export([get_dataplan/2]).
+-export([get_dataplan/2
+        ,should_allow_validation_overrides/0
+        ,allow_validation_overrides/0
+        ,disallow_validation_overrides/0
+        ]).
 
 -export([init/1, reload/0, reload/1, reload/2]).
 
@@ -29,6 +33,20 @@
 -define(KZS_PLAN_INIT_SLICE, 100).
 -define(KZS_PLAN_INIT_VIEW, <<"storage/accounts">>).
 -define(KZS_PLAN_ACCOUNT_VIEW, <<"storage/storage_by_account">>).
+
+-spec should_allow_validation_overrides() -> boolean().
+should_allow_validation_overrides() ->
+    kapps_config:get_boolean(?KZ_DATA_DB, <<"allow_validation_overrides">>, 'false').
+
+-spec allow_validation_overrides() -> 'true'.
+allow_validation_overrides() ->
+    {'ok', _} = kapps_config:set_default(?KZ_DATA_DB, <<"allow_validation_overrides">>, 'true'),
+    'true'.
+
+-spec disallow_validation_overrides() -> 'false'.
+disallow_validation_overrides() ->
+    {'ok', _} = kapps_config:set_default(?KZ_DATA_DB, <<"allow_validation_overrides">>, 'false'),
+    'false'.
 
 -spec plan() -> map().
 plan() ->
@@ -106,10 +124,10 @@ system_dataplan(DBName, _Classification)
     #{tag => SysTag, server => kz_dataconnections:get_server(SysTag)};
 system_dataplan(_DBName, 'numbers') ->
     Plan = ?CACHED_SYSTEM_DATAPLAN,
-    dataplan_type_match(<<"system">>, <<"numbers">>, Plan);
+    dataplan_type_match(?SYSTEM_DATAPLAN, <<"numbers">>, Plan);
 system_dataplan(DBName, _Classification) ->
     Plan = ?CACHED_SYSTEM_DATAPLAN,
-    dataplan_type_match(<<"system">>, DBName, Plan).
+    dataplan_type_match(?SYSTEM_DATAPLAN, DBName, Plan).
 
 account_dataplan(AccountDb) ->
     AccountId = kz_util:format_account_id(AccountDb),

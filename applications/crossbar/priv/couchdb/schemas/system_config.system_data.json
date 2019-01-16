@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.system_data",
+    "description": "Schema for system_data system_config",
+    "properties": {
+        "allow_validation_overrides": {
+            "default": false,
+            "description": "Whether to allow storage plans to skip validating attachment settings",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}
