@@ -35,28 +35,32 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--define(KEY_VOICEMAIL, <<"voicemail">>).
--define(KEY_PVT_TYPE, <<"pvt_type">>).
--define(KEY_NAME, <<"name">>).
 -define(KEY_DESC, <<"description">>).
--define(KEY_SOURCE_TYPE, <<"source_type">>).
--define(KEY_SOURCE_ID, <<"source_id">>).
--define(KEY_MEDIA_SOURCE, <<"media_source">>).
+-define(KEY_HISTORY, <<"history">>).
 -define(KEY_MEDIA_FILENAME, <<"media_filename">>).
+-define(KEY_MEDIA_ID, <<"media_id">>).
+-define(KEY_MEDIA_SOURCE, <<"media_source">>).
+-define(KEY_NAME, <<"name">>).
+-define(KEY_OWNER_ID, <<"owner_id">>).
+-define(KEY_PVT_TYPE, <<"pvt_type">>).
+-define(KEY_SOURCE_ID, <<"source_id">>).
+-define(KEY_SOURCE_TYPE, <<"source_type">>).
 -define(KEY_STREAMABLE, <<"streamable">>).
 -define(KEY_UTC_SEC, <<"utc_seconds">>).
--define(KEY_MEDIA_ID, <<"media_id">>).
--define(KEY_OWNER_ID, <<"owner_id">>).
--define(KEY_HISTORY, <<"history">>).
+-define(KEY_VOICEMAIL, <<"voicemail">>).
 
 -define(KEY_METADATA, <<"metadata">>).
--define(KEY_META_TIMESTAMP, <<"timestamp">>).
--define(KEY_META_FROM, <<"from">>).
--define(KEY_META_TO, <<"to">>).
--define(KEY_META_CID_NUMBER, <<"caller_id_number">>).
--define(KEY_META_CID_NAME, <<"caller_id_name">>).
 -define(KEY_META_CALL_ID, <<"call_id">>).
+-define(KEY_META_CID_NAME, <<"caller_id_name">>).
+-define(KEY_META_CID_NUMBER, <<"caller_id_number">>).
+-define(KEY_META_FROM, <<"from">>).
+-define(KEY_META_FROM_REALM, <<"from_realm">>).
+-define(KEY_META_FROM_USER, <<"from_user">>).
 -define(KEY_META_LENGTH, <<"length">>).
+-define(KEY_META_TIMESTAMP, <<"timestamp">>).
+-define(KEY_META_TO, <<"to">>).
+-define(KEY_META_TO_REALM, <<"to_realm">>).
+-define(KEY_META_TO_USER, <<"to_user">>).
 
 -define(PVT_TYPE, <<"mailbox_message">>).
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
@@ -116,22 +120,22 @@ new(AccountId, Props) ->
                               ),
     Description = props:get_value(<<"Description">>, Props, <<"voicemail message with media">>),
 
-    DocProps = props:filter_undefined(
-                 [{<<"_id">>, MsgId}
-                 ,{?KEY_NAME, Name}
-                 ,{?KEY_DESC, Description}
-                 ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
-                 ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
-                 ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-                 ,{?KEY_MEDIA_FILENAME, props:get_value(<<"Attachment-Name">>, Props)}
-                 ,{?KEY_STREAMABLE, 'true'}
-                 ,{?KEY_UTC_SEC, UtcSeconds}
-                 ]),
-    kz_doc:update_pvt_parameters(
-      kz_json:from_list(DocProps), Db, [{'type', type()}
-                                       ,{'now', Timestamp}
-                                       ]
-     ).
+    DocProps = [{<<"_id">>, MsgId}
+               ,{?KEY_NAME, Name}
+               ,{?KEY_DESC, Description}
+               ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
+               ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
+               ,{?KEY_MEDIA_SOURCE, <<"recording">>}
+               ,{?KEY_MEDIA_FILENAME, props:get_value(<<"Attachment-Name">>, Props)}
+               ,{?KEY_STREAMABLE, 'true'}
+               ,{?KEY_UTC_SEC, UtcSeconds}
+               ],
+    kz_doc:update_pvt_parameters(kz_json:from_list(DocProps)
+                                ,Db
+                                ,[{'type', type()}
+                                 ,{'now', Timestamp}
+                                 ]
+                                ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -171,15 +175,24 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
                                    doc().
 build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
     kz_json:from_list(
-      [{?KEY_META_TIMESTAMP, Timestamp}
-      ,{?KEY_META_FROM, kapps_call:from(Call)}
-      ,{?KEY_META_TO, kapps_call:to(Call)}
-      ,{?KEY_META_CID_NUMBER, CIDNumber}
-      ,{?KEY_META_CID_NAME, CIDName}
+      [{?KEY_MEDIA_ID, MediaId}
       ,{?KEY_META_CALL_ID, kapps_call:call_id(Call)}
-      ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
+
+      ,{?KEY_META_CID_NAME, CIDName}
+      ,{?KEY_META_CID_NUMBER, CIDNumber}
+
+      ,{?KEY_META_FROM, kapps_call:from(Call)}
+      ,{?KEY_META_FROM_USER, kapps_call:from_user(Call)}
+      ,{?KEY_META_FROM_REALM, kapps_call:from_realm(Call)}
+
       ,{?KEY_META_LENGTH, Length}
-      ,{?KEY_MEDIA_ID, MediaId}
+      ,{?KEY_META_TIMESTAMP, Timestamp}
+
+      ,{?KEY_META_TO, kapps_call:to(Call)}
+      ,{?KEY_META_TO_USER, kapps_call:to_user(Call)}
+      ,{?KEY_META_TO_REALM, kapps_call:to_realm(Call)}
+
+      ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
       ]).
 
 -spec get_msg_id(kz_json:object()) -> kz_term:api_ne_binary().
