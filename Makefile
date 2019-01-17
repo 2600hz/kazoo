@@ -1,7 +1,6 @@
 ROOT = $(shell cd "$(dirname '.')" && pwd -P)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
-FMT = $(ROOT)/make/erlang-formatter/fmt.sh
 TAGS = $(ROOT)/TAGS
 ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
@@ -29,7 +28,6 @@ JOBS ?= 1
 	docs \
 	elvis \
 	fixture_shell \
-	fmt clean-fmt \
 	fs-headers \
 	install \
 	sdks \
@@ -46,7 +44,7 @@ clean: clean-kazoo
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
-	$(if $(wildcard $(FMT)), rm -r $(dir $(FMT)))
+
 clean-kazoo: clean-core clean-apps
 clean-core:
 	@$(MAKE) -j$(JOBS) -C core/ clean
@@ -249,21 +247,6 @@ diff: dialyze-it
 bump-copyright:
 	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 
-FMT_SHA = 237604a566879bda46d55d9e74e3e66daf1b557a
-$(FMT):
-	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/$(FMT_SHA)' | tar -vxz -C $(ROOT)/make/
-	mv $(ROOT)/make/erlang-formatter-$(FMT_SHA) $(ROOT)/make/erlang-formatter
-
-fmt-all: $(FMT)
-	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
-
-fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- "*.erl" "*.hrl" "*.escript")
-fmt: $(FMT)
-	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
-
-clean-fmt:
-	@$(if $(FMT), rm -rf $(shell dirname $(FMT)))
-
 app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
@@ -324,5 +307,6 @@ validate-schemas:
 
 include make/splchk.mk
 include make/ci.mk
+include make/fmt.mk
 
 circle: ci
