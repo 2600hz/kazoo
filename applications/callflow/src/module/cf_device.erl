@@ -58,8 +58,9 @@ bridge_to_endpoints(Data, Call) ->
             FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, 'undefined'),
             Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
+            CustomHeaders = kz_json:get_ne_json_value(<<"custom_sip_headers">>, Data),
 
             kapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia
-                                       ,'undefined', 'undefined', <<"false">>, FailOnSingleReject, Call
+                                       ,'undefined', CustomHeaders, <<"false">>, FailOnSingleReject, Call
                                        )
     end.
