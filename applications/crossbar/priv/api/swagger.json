@@ -33167,6 +33167,17 @@
             },
             "type": "object"
         },
+        "system_config.system_data": {
+            "description": "Schema for system_data system_config",
+            "properties": {
+                "allow_validation_overrides": {
+                    "default": false,
+                    "description": "Whether to allow storage plans to skip validating attachment settings",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "system_config.tasks": {
             "description": "Schema for tasks system_config",
             "properties": {
