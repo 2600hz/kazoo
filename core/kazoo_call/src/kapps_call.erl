@@ -1397,9 +1397,13 @@ kvs_store(Key, Value, #kapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_store_proplist(kz_term:proplist(), call()) -> call().
 kvs_store_proplist(List, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=lists:foldr(fun({K, V}, D) ->
-                                             orddict:store(kz_term:to_binary(K), V, D)
-                                     end, Dict, List)}.
+    Call#kapps_call{kvs=add_to_store(List, Dict)}.
+
+add_to_store(List, Dict) ->
+    lists:foldr(fun add_to_store_fold/2, Dict, List).
+
+add_to_store_fold({K, V}, D) ->
+    orddict:store(kz_term:to_binary(K), V, D).
 
 -spec kvs_to_proplist(call()) -> kz_term:proplist().
 kvs_to_proplist(#kapps_call{kvs=Dict}) ->
