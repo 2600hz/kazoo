@@ -39,16 +39,21 @@
 -type extra_validator_option() :: {'stability_level', kz_term:ne_binary()}.
 -type extra_validator_options() :: [extra_validator_option()].
 
--type jesse_option() :: {'parser_fun', fun((_) -> _)} |
-                         {'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
-                                                      [jesse_error:error_reason()])} |
-                          {'allowed_errors', non_neg_integer() | 'infinity'} |
-                          {'default_schema_ver', binary()} |
-                          {'schema_loader_fun', fun((kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found')} |
-                           {'extra_validator', extra_validator()} |
-                           {'setter_fun', fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object())} |
-                            {'validator_options', validator_options()} |
-                            {'extra_validator_options', extra_validator_options()}.
+-type parser_fun() :: fun((kz_term:ne_binary()) -> kz_json:json_term()).
+-type error_handler_fun() :: fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
+                                        [jesse_error:error_reason()]).
+-type schema_loader_fun() :: fun((kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found').
+-type setter_fun() :: fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object()).
+
+-type jesse_option() :: {'parser_fun', parser_fun()} |
+                        {'error_handler', error_handler_fun()} |
+                        {'allowed_errors', non_neg_integer() | 'infinity'} |
+                        {'default_schema_ver', binary()} |
+                        {'schema_loader_fun', schema_loader_fun()} |
+                        {'extra_validator', extra_validator()} |
+                        {'setter_fun', setter_fun()} |
+                        {'validator_options', validator_options()} |
+                        {'extra_validator_options', extra_validator_options()}.
 
 -type jesse_options() :: [jesse_option()].
 
