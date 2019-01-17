@@ -26,11 +26,12 @@ handle(Data, Call) ->
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = kz_json:get_ne_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
+    CustomHeaders = kz_json:get_ne_json_value(<<"custom_sip_headers">>, Data),
 
     lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0
         andalso kapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia
-                                           ,'undefined', 'undefined', <<"false">>, FailOnSingleReject, Call
+                                           ,'undefined', CustomHeaders, <<"false">>, FailOnSingleReject, Call
                                            )
     of
         'false' ->

@@ -12,6 +12,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `can_call_self` | Toggle whether devices of this use can call each other | `boolean()` |   | `false` |  
 `can_text_self` | Toggle whether devices of this use can text each other | `boolean()` |   | `false` |  
+`custom_sip_headers` | KV Object where the name is the SIP header and the value is the SIP field | `object()` |   | `false` |  
 `delay` | How long to delay the endpoint(s) before bridging | `integer()` | `0` | `false` |  
 `fail_on_single_reject` | If any leg rejects the call, cancel all other legs | `boolean()` |   | `false` |  
 `id` | User ID | `string()` |   | `false` |  
