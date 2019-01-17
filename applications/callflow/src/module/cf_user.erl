@@ -22,20 +22,39 @@
 handle(Data, Call) ->
     UserId = kz_json:get_ne_binary_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Data, Call),
+
+    maybe_bridge(Data, Call, Endpoints).
+
+-spec maybe_bridge(kz_json:object(), kapps_call:call(), kz_json:objects()) -> 'ok'.
+maybe_bridge(_Data, Call, []) ->
+    lager:notice("user ~s has no endpoints"
+                ,[kz_json:get_ne_binary_value(<<"id">>, _Data)]
+                ),
+    cf_exe:continue(Call);
+maybe_bridge(Data, Call, Endpoints) ->
+    bridge(Data, Call, Endpoints).
+
+-spec bridge(kz_json:object(), kapps_call:call(), kz_json:objects()) -> 'ok'.
+bridge(Data, Call, Endpoints) ->
     FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, 'undefined'),
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = kz_json:get_ne_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
+    CustomSIPHeaders = kz_json:get_ne_json_value(<<"custom_sip_headers">>, Data),
 
     lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0
-        andalso kapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia
-                                           ,'undefined', 'undefined', <<"false">>, FailOnSingleReject, Call
-                                           )
+
+    case kapps_call_command:b_bridge(Endpoints
+                                    ,Timeout
+                                    ,Strategy
+                                    ,IgnoreEarlyMedia
+                                    ,'undefined' % Ringback
+                                    ,CustomSIPHeaders
+                                    ,<<"false">> % IgnoreForward
+                                    ,FailOnSingleReject
+                                    ,Call
+                                    )
     of
-        'false' ->
-            lager:notice("user ~s has no endpoints", [UserId]),
-            cf_exe:continue(Call);
         {'ok', _} ->
             lager:info("completed successful bridge to user"),
             cf_exe:stop(Call);
