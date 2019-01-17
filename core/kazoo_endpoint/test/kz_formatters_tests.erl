@@ -155,12 +155,12 @@ replace_value_test_() ->
                           ,{<<"prefix">>, <<"+1">>}
                           ,{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
                           ])
-       ).
+                                           ).
 -define(FROM_TWO
        ,kz_json:from_list([{<<"direction">>, <<"outbound">>}
                           ,{<<"regex">>, <<"\\+?1?(\\d{10})$">>}
                           ])
-       ).
+                                           ).
 
 -define(FROM, kz_json:from_list([{<<"from">>, [?FROM_ONE, ?FROM_TWO]}])).
 

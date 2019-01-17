@@ -122,7 +122,7 @@ migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved :=
             Length = length(ViewResults),
             io:format("[~s] processing ~b messages~n", [AccountId, Length]),
             MoveFun = fun(JObj, Map) ->
-                          move_vm_to_modb(AccountId, kz_json:get_value(<<"value">>, JObj), Map)
+                              move_vm_to_modb(AccountId, kz_json:get_value(<<"value">>, JObj), Map)
                       end,
             ProcessMap = lists:foldl(MoveFun, Stats, ViewResults),
             update_mailboxes(AccountId, maps:get(result, ProcessMap)),

@@ -241,8 +241,8 @@ set_overrides(Plan, Overrides) ->
 bookkeeper_hash(Plan) ->
     kz_binary:md5(
       <<(kz_term:to_binary(bookkeeper_id(Plan)))/binary
-        ,(kz_term:to_binary(bookkeeper_type(Plan)))/binary
-        ,(kz_term:to_binary(bookkeeper_vendor_id(Plan)))/binary
+       ,(kz_term:to_binary(bookkeeper_type(Plan)))/binary
+       ,(kz_term:to_binary(bookkeeper_vendor_id(Plan)))/binary
       >>
      ).
 

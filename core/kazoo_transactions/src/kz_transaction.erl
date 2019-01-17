@@ -443,7 +443,7 @@ transaction_type(#transaction{transaction_type=TransactionType}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_transaction_type(transaction(), kz_currency:units() | kz_currency:dollars() | kz_term:ne_binary()) ->
-                             transaction().
+                                  transaction().
 set_transaction_type(Transaction, Amount)
   when is_float(Amount), Amount > 0 ->
     set_transaction_type(Transaction, kzd_transactions:type_sale());
@@ -787,7 +787,7 @@ handle_bookkeeper_result(Transaction, {'ok', Result}) ->
     BookkeeperResult =
         kz_json:normalize(
           kz_json:delete_keys(RemoveKeys
-                              ,kz_api:remove_defaults(Result)
+                             ,kz_api:remove_defaults(Result)
                              )
          ),
     case kz_json:get_ne_binary_value(<<"Status">>, Result, <<"fatal">>) of

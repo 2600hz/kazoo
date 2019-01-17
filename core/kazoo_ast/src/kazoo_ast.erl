@@ -264,7 +264,7 @@ process_expression(Expression, Config) ->
 
 -spec callback_function(function(), arity(), config()) -> {'ok' | 'skip', config()}.
 callback_function(Function
-                  ,_Arity
+                 ,_Arity
                  ,#{'function' := Fun
                    ,'accumulator' := Acc0
                    }=Config0
@@ -274,7 +274,7 @@ callback_function(Function
         Acc1 -> {'ok', Config0#{'accumulator' => Acc1}}
     end;
 callback_function(Function
-                  ,Arity
+                 ,Arity
                  ,#{'function' := Fun
                    ,'accumulator' := Acc0
                    }=Config0
@@ -359,7 +359,7 @@ callback_after_application(App, #{'after_application' := Fun
 callback_after_application(_App, Config) -> Config.
 
 callback_clause(Args, Guards, #{'accumulator' := Acc
-                                ,'clause' := ClauseFun
+                               ,'clause' := ClauseFun
                                }=Config0
                ) when is_function(ClauseFun, 3) ->
     Config0#{'accumulator' => ClauseFun(Args, Guards, Acc)};

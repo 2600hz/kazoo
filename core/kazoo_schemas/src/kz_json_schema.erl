@@ -40,15 +40,15 @@
 -type extra_validator_options() :: [extra_validator_option()].
 
 -type jesse_option() :: {'parser_fun', fun((_) -> _)} |
-{'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
- [jesse_error:error_reason()])} |
-{'allowed_errors', non_neg_integer() | 'infinity'} |
-{'default_schema_ver', binary()} |
-{'schema_loader_fun', fun((kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found')} |
-{'extra_validator', extra_validator()} |
-{'setter_fun', fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object())} |
-{'validator_options', validator_options()} |
-{'extra_validator_options', extra_validator_options()}.
+                         {'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
+                                                      [jesse_error:error_reason()])} |
+                          {'allowed_errors', non_neg_integer() | 'infinity'} |
+                          {'default_schema_ver', binary()} |
+                          {'schema_loader_fun', fun((kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found')} |
+                           {'extra_validator', extra_validator()} |
+                           {'setter_fun', fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object())} |
+                            {'validator_options', validator_options()} |
+                            {'extra_validator_options', extra_validator_options()}.
 
 -type jesse_options() :: [jesse_option()].
 
@@ -71,7 +71,7 @@ setup_extra_validator(Options) ->
 load(Schema) -> fload(Schema).
 -else.
 -spec load(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                      {'error', any()}.
+                                              {'error', any()}.
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
 load(<<_/binary>> = Schema) ->
@@ -83,7 +83,7 @@ load(Schema) -> load(kz_term:to_binary(Schema)).
 -endif.
 
 -spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                       {'error', 'not_found'}.
+                                               {'error', 'not_found'}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<"file://", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
@@ -667,7 +667,7 @@ error_to_jobj(Other, _Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validation_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
-                                  validation_error().
+                              validation_error().
 validation_error(Property, <<"type">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"items">>=C, Message, Options) ->

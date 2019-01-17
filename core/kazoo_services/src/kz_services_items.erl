@@ -71,7 +71,7 @@ get_item_plan(Plan, CategoryName, ItemName) ->
                       ,[CategoryName, ItemName]
                       ),
             get_generic_item_plan(PlanJObj, CategoryName);
-         ItemPlan -> ItemPlan
+        ItemPlan -> ItemPlan
     end.
 
 -spec get_generic_item_plan(kzd_service_plan:doc(), kz_term:ne_binary()) -> kzd_item_plan:doc().
@@ -230,7 +230,7 @@ maybe_annotate(Type, Difference, Reason, Item) ->
                         ]
                        ),
             kz_services_item:set_changes(Item, kz_json:from_list(Changes))
-        end.
+    end.
 
 -type api_item() :: kz_serivces_item:item() | 'undefined'.
 -spec split_items(items(), kz_services_item:item()) -> {api_item(), items()}.
