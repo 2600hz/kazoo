@@ -1324,7 +1324,10 @@ handle_ccvs_update(CCVs, #kapps_call{}=Call) ->
                             'undefined' -> C;
                             Value -> setelement(Index, C, Value)
                         end
-                end, Call#kapps_call{ccvs=CCVs}, ?SPECIAL_VARS).
+                end
+               ,Call#kapps_call{ccvs=CCVs}
+               ,?SPECIAL_VARS
+               ).
 
 -spec set_custom_publish_function(kapps_custom_publish(), call()) -> call().
 set_custom_publish_function(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
@@ -1347,9 +1350,16 @@ kvs_append_list(Key, ValList, #kapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_erase(any() | [any(),...], call()) -> call().
 kvs_erase(Keys, #kapps_call{kvs=Dict}=Call) when is_list(Keys)->
-    Call#kapps_call{kvs=lists:foldl(fun(K, D) -> orddict:erase(kz_term:to_binary(K), D) end, Dict, Keys)};
+    Call#kapps_call{kvs=erase_keys(Keys, Dict)};
 kvs_erase(Key, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:erase(kz_term:to_binary(Key), Dict)}.
+    Call#kapps_call{kvs=erase_key(Key, Dict)}.
+
+-spec erase_keys(list(), orddict:orddict()) -> orddict:orddict().
+erase_keys(Keys, Dict) ->
+    lists:foldl(fun erase_key/2, Dict, Keys).
+
+-spec erase_key(any(), orddict:orddict()) -> orddict:orddict().
+erase_key(K, D) -> orddict:erase(kz_term:to_binary(K), D).
 
 -spec kvs_flush(call()) -> call().
 kvs_flush(#kapps_call{}=Call) -> Call#kapps_call{kvs=orddict:new()}.
