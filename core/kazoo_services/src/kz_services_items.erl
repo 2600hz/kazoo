@@ -32,7 +32,7 @@
 
 -type items() :: [kz_services_item:item()].
 -type fold_fun() :: fun((kz_services_item:item(), Acc) -> Acc).
--type difference_routine() :: {kz_term:ne_binary(), fun((any(), any()) -> any())}.
+-type difference_routine() :: {kz_json:key_path(), fun((any(), any()) -> any())}.
 -type difference_routines() :: [difference_routine()].
 -export_type([items/0
              ,fold_fun/0
@@ -212,7 +212,8 @@ annotate(CurrentItems, [ProposedItem|ProposedItems], Reason, Items) ->
             annotate(RemainingCurrentItems, ProposedItems, Reason, [Item|Items])
     end.
 
--spec maybe_annotate(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary(), kz_services_item:item()) -> kz_services_item:item().
+-spec maybe_annotate(kz_term:ne_binary(), kz_term:api_object(), kz_term:api_binary(), kz_services_item:item()) ->
+                            kz_services_item:item().
 maybe_annotate(Type, Difference, Reason, Item) ->
     case kz_json:is_empty(Difference) of
         'true' -> Item;
@@ -288,7 +289,10 @@ difference(Item1, Item2, Routines) ->
                             'undefined' -> JObj;
                             Difference -> kz_json:set_value(Key, Difference, JObj)
                         end
-                end, kz_json:new(), Routines).
+                end
+               ,kz_json:new()
+               ,Routines
+               ).
 
 -spec difference_simple(any(), Value) -> 'undefined' | Value.
 difference_simple(Value, Value) -> 'undefined';

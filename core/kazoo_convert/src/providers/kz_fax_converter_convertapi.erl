@@ -169,7 +169,15 @@ maybe_convert_via_convertapi(From, To, Content, Options) ->
 %%------------------------------------------------------------------------------
 -spec convert_via_convertapi(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, map(), kz_term:ne_binary()) ->
                                     gen_kz_converter:converted().
-convert_via_convertapi(From, To, Content, #{<<"from_format">> := From, <<"to_format">> := To, <<"job_id">> := _ }=Options, Secret) when is_binary(Content) ->
+convert_via_convertapi(From
+                      ,To
+                      ,Content
+                      ,#{<<"from_format">> := From
+                        ,<<"to_format">> := To
+                        ,<<"job_id">> := _
+                        }=Options
+                      ,Secret
+                      ) when is_binary(Content) ->
     case run_convert(eval_format(From, To), To, Content, Options, Secret) of
         {'ok', _}=Ok ->
             lager:info("successfully converted content: ~s to format: ~s", [From, To]),
@@ -191,7 +199,7 @@ convert_via_convertapi(From, To, UserPath, Options, Secret) ->
 -spec run_convert({'error', kz_term:ne_binary()} | fax_convert_funs()
                  ,kz_term:ne_binary()
                  ,kz_term:ne_binary()
-                 ,kz_term:proplist()
+                 ,map()
                  ,kz_term:ne_binary()) -> gen_kz_converter:converted().
 run_convert({'error', _}=Error, _ToFormat, _Content, _Options, _Secret) ->
     Error;
