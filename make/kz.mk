@@ -177,7 +177,7 @@ xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ direc
 xref: compile
 	@ERL_LIBS=$(ELIBS) $(REBAR) xref skip_deps=true -C $(ROOT)/make/xref.local.config
 
-fmt: TO_FMT ?= $(shell find src include -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript')
+fmt: TO_FMT ?= $(shell find src include test -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript')
 
 perf: ERLC_OPTS += -pa $(ROOT)/deps/horse/ebin -DPERF +'{parse_transform, horse_autoexport}'
 perf: compile-test
