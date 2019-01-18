@@ -46,7 +46,13 @@ reseller_reconcile_cdr('undefined', _Request) ->
     lager:debug("no account id to reconcile reseller cdr");
 reseller_reconcile_cdr(AccountId, Request) ->
     case j5_request:reseller_id(Request) of
-        'undefined' -> lager:debug("account id ~s has no reseller", [AccountId]);
+        'undefined' ->
+            case kz_services_reseller:get_id(AccountId) of
+                'undefined' ->
+                    lager:debug("account id ~s has no reseller", [AccountId]);
+                ResellerId ->
+                    reconcile_cdr(Request, j5_limits:get(ResellerId))
+            end;
         AccountId -> lager:debug("account id ~s is its reseller", [AccountId]);
         ResellerId -> reconcile_cdr(Request, j5_limits:get(ResellerId))
     end.

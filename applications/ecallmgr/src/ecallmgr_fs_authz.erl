@@ -181,8 +181,21 @@ authz_response(JObj, Props, CallId, Node) ->
                 'true' -> authorize_account(JObj, Props, CallId, Node);
                 'false' ->
                     %% Set the following CCVs so that we can see why the call was barred in CDRs
+                    AccountId = kz_json:get_value(<<"Account-ID">>
+                                                 ,JObj
+                                                 ,props:get_value(?GET_CCV(<<"Account-ID">>), Props)
+                                                 ),
+                    ResellerId = kz_json:get_value(<<"Reseller-ID">>
+                                                  ,JObj
+                                                  ,props:get_value(?GET_CCV(<<"Account-ID">>)
+                                                                  ,Props
+                                                                  ,kz_services_reseller:get_id(AccountId)
+                                                                  )
+                                                  ),
                     _ = ecallmgr_fs_command:set(Node, CallId, [{<<"Account-Billing">>, AccountBilling}
+                                                              ,{<<"Account-ID">>, AccountId}
                                                               ,{<<"Reseller-Billing">>, ResellerBilling}
+                                                              ,{<<"Reseller-ID">>, ResellerId}
                                                               ]),
                     _ = kz_util:spawn(fun kill_channel/2, [Props, Node]),
                     'false'
