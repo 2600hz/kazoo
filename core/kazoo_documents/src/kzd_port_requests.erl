@@ -286,7 +286,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
 find_port_authority(MasterAccountId, AccountId) ->
     case kzd_whitelabel:fetch(AccountId) of
         {'error', _R} ->
-            ParentId = kzd_accounts:get_parent_stop_if_reseller(AccountId),
+            ParentId = kzd_accounts:get_authoritative_parent_id(AccountId, MasterAccountId),
             lager:debug("failed to find whitelabel for ~s, checking parent ~s", [AccountId, ParentId]),
             find_port_authority(MasterAccountId, ParentId);
         {'ok', JObj} ->
@@ -300,7 +300,7 @@ find_port_authority(MasterAccountId, AccountId) ->
                 ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_id(Db);
                 ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_id(Db);
                 _Other ->
-                    ParentId = kzd_accounts:get_parent_stop_if_reseller(AccountId),
+                    ParentId = kzd_accounts:get_authoritative_parent_id(AccountId, MasterAccountId),
                     lager:debug("unknown port authority ~p in account ~s, checking parent ~s"
                                ,[_Other, ParentId]
                                ),

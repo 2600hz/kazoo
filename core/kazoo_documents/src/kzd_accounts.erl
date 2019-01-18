@@ -78,7 +78,7 @@
         ,fax_settings/1
         ,get_inherited_value/3
         ,get_parent_account_id/1
-        ,get_parent_stop_if_reseller/1
+        ,get_authoritative_parent_id/1
 
         ,reseller_id/1, set_reseller_id/2, is_reseller/1, path_reseller_id/0
         ,is_trial_account/1
@@ -991,15 +991,32 @@ get_parent_account_id(AccountId) ->
             'undefined'
     end.
 
--spec get_parent_stop_if_reseller(kz_term:api_ne_binary()) -> kz_term:api_binary().
-get_parent_stop_if_reseller('undefined') ->
-    case kapps_util:get_master_account_id() of
-        {'error', _} -> 'undefined';
-        {'ok', MasterAccountId} -> MasterAccountId
-    end;
-get_parent_stop_if_reseller(AccountId) ->
+%% @equiv get_parent_account_id(AccountId, kapps_util:get_master_account_id())
+-spec get_authoritative_parent_id(kz_term:api_ne_binary()) -> kz_term:api_binary().
+get_authoritative_parent_id(AccountId) ->
+    get_authoritative_parent_id(AccountId, kapps_util:get_master_account_id()).
+
+%%------------------------------------------------------------------------------
+%% @doc Get authoritative parent account's ID.
+%%
+%% If the account id is not a reseller returns parent account id and if the account
+%% is a reseller returns master account.
+%% In case that it can't get master account id, it returns `undefined'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_authoritative_parent_id(kz_term:api_ne_binary(), {'ok', kz_term:ne_binary()} | {'error', any()} | kz_term:ne_binary()) ->
+                                         kz_term:api_ne_binary().
+get_authoritative_parent_id(AccountId, {'ok', MasterAccountId}) ->
+    get_authoritative_parent_id(AccountId, MasterAccountId);
+get_authoritative_parent_id(_AccountId, {'error', _}) ->
+    'undefined';
+get_authoritative_parent_id(MasterAccountId, MasterAccountId) ->
+    MasterAccountId;
+get_authoritative_parent_id('undefined', MasterAccountId) ->
+    MasterAccountId;
+get_authoritative_parent_id(AccountId, MasterAccountId) ->
     case kz_services_reseller:is_reseller(AccountId) of
-        'true' -> get_parent_stop_if_reseller('undefined');
+        'true' -> MasterAccountId;
         'false' ->
             get_parent_account_id(AccountId)
     end.
