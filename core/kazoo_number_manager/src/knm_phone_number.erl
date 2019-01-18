@@ -839,8 +839,8 @@ setters_collection(T0=#{todo := PNs}, Routines) ->
 -type set_function() :: fun((knm_phone_number()) -> setter_acc()) |
                         fun((knm_phone_number(), V) -> setter_acc()) |
                         {fun((knm_phone_number(), V) -> setter_acc()), V} |
-                        {fun((knm_phone_number(), K, V) -> setter_acc()), [K | V,...]} |
-                        {fun((knm_phone_number(), K, V) -> setter_acc()), K, V}.
+                         {fun((knm_phone_number(), K, V) -> setter_acc()), [K | V,...]} |
+                          {fun((knm_phone_number(), K, V) -> setter_acc()), K, V}.
 -type set_functions() :: [set_function()].
 
 -type setter_acc() :: knm_phone_number_return() |
@@ -1521,9 +1521,9 @@ remove_denied_features(PN) ->
     RemoveFromPvt = lists:usort(lists:flatmap(fun remove_in_private/1, DeniedFeatures)),
     RemoveFromPub = lists:usort(lists:flatmap(fun remove_in_public/1, DeniedFeatures)),
     ?LOG_WARNING("removing out of sync pvt features: ~s"
-             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
+                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
     ?LOG_WARNING("removing out of sync pub features: ~s"
-             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
+                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
     NewPvt = kz_json:prune_keys(RemoveFromPvt, features(PN)),
     NewPub = kz_json:prune_keys(RemoveFromPub, doc(PN)),
     Updates = [{fun set_features/2, NewPvt}
@@ -1581,7 +1581,7 @@ private_to_public() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec list_attachments(knm_phone_number(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                                           {'error', any()}.
+                                                                   {'error', any()}.
 list_attachments(PN, AuthBy) ->
     AssignedTo = assigned_to(PN),
     case state(PN) =:= ?NUMBER_STATE_PORT_IN

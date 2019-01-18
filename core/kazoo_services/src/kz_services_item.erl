@@ -132,10 +132,10 @@ set_item_name(#kz_service_item{}=Item, ItemName) ->
 %%------------------------------------------------------------------------------
 -spec display_name(item()) -> kz_term:api_binary().
 display_name(#kz_service_item{category_name=CategoryName}=Item)
-    when not is_binary(CategoryName) ->
+  when not is_binary(CategoryName) ->
     display_name(Item#kz_service_item{category_name=kz_term:to_binary(CategoryName)});
 display_name(#kz_service_item{item_name=ItemName}=Item)
-    when not is_binary(ItemName) ->
+  when not is_binary(ItemName) ->
     display_name(Item#kz_service_item{item_name=kz_term:to_binary(ItemName)});
 display_name(#kz_service_item{display_name='undefined'}=Item) ->
     CategoryName = category_name(Item),

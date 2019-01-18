@@ -107,10 +107,14 @@ dry_run(Options) ->
 
 -spec dry_run(options(), Default) -> boolean() | Default.
 dry_run(Options, Default) ->
-    R = props:get_is_true('dry_run', Options, Default),
-    _ = R
-        andalso lager:debug("dry_run-ing btw"),
-    R.
+    maybe_dry_run(props:get_is_true('dry_run', Options, Default)).
+
+-spec maybe_dry_run(DryRun) -> DryRun
+                                   when DryRun :: boolean().
+maybe_dry_run('true') ->
+    lager:debug("dry_run-ing btw"),
+    'true';
+maybe_dry_run(DryRun) -> DryRun.
 
 -spec batch_run(options()) -> boolean().
 batch_run(Options) ->

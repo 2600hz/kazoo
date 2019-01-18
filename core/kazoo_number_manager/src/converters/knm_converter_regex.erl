@@ -6,8 +6,6 @@
 %%%-----------------------------------------------------------------------------
 -module(knm_converter_regex).
 
--include("knm.hrl").
-
 -export([normalize/1, normalize/2, normalize/3
         ,to_npan/1
         ,to_1npan/1
@@ -16,11 +14,15 @@
         ,get_e164_converters/1
         ]).
 
+-include("knm.hrl").
+
+-define(DOLLAR_SIGN, 36).
+
 -define(DEFAULT_E164_CONVERTERS
        ,kz_json:from_list_recursive(
-          [{<<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{<<"prefix">>, <<"+1">>}]}
-          ,{<<"^011(\\d{5,})$|^00(\\d{5,})$">>, [{<<"prefix">>, <<"+">>}]}
-          ,{<<"^[2-9]\\d{7,}$">>, [{<<"prefix">>, <<"+">>}]}
+          [{<<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})", ?DOLLAR_SIGN>>, [{<<"prefix">>, <<"+1">>}]}
+          ,{<<"^011(\\d{5,})$|^00(\\d{5,})", ?DOLLAR_SIGN>>, [{<<"prefix">>, <<"+">>}]}
+          ,{<<"^[2-9]\\d{7,}", ?DOLLAR_SIGN>>, [{<<"prefix">>, <<"+">>}]}
           ]
          )
        ).
@@ -56,7 +58,7 @@ normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
 %%------------------------------------------------------------------------------
 -spec to_npan(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_npan(Num) ->
-    case re:run(Num, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [2], 'binary'}]) of
+    case re:run(Num, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})", ?DOLLAR_SIGN>>, [{'capture', [2], 'binary'}]) of
         'nomatch' -> Num;
         {'match', [NPAN]} -> NPAN
     end.
@@ -67,7 +69,10 @@ to_npan(Num) ->
 %%------------------------------------------------------------------------------
 -spec to_1npan(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_1npan(Num) ->
-    case re:run(Num, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [2], 'binary'}]) of
+    case re:run(Num, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})", ?DOLLAR_SIGN>>
+               ,[{'capture', [2], 'binary'}]
+               )
+    of
         'nomatch' -> Num;
         {'match', [NPAN]} -> <<$1, NPAN/binary>>
     end.

@@ -1130,7 +1130,7 @@ set_value_options() ->
 %% Figure out how to set the current key among a list of objects
 
 -type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()} |
-                         fun((object()) -> object()).
+                          fun((object()) -> object()).
 -type set_value_funs() :: [set_value_fun(),...].
 -type set_value_kv() :: {get_key(), api_json_term() | 'null'}.
 -type set_value_kvs() :: [set_value_kv()].

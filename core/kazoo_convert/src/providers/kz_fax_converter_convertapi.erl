@@ -153,7 +153,7 @@ maybe_convert_using_openoffice(From, To, Content, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_convert_via_convertapi(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, map()) ->
-                     gen_kz_converter:converted().
+                                          gen_kz_converter:converted().
 maybe_convert_via_convertapi(From, To, Content, Options) ->
     case ?CONVERTAPI_SECRET of
         'undefined' ->
@@ -168,8 +168,16 @@ maybe_convert_via_convertapi(From, To, Content, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec convert_via_convertapi(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, map(), kz_term:ne_binary()) ->
-                     gen_kz_converter:converted().
-convert_via_convertapi(From, To, Content, #{<<"from_format">> := From, <<"to_format">> := To, <<"job_id">> := _ }=Options, Secret) when is_binary(Content) ->
+                                    gen_kz_converter:converted().
+convert_via_convertapi(From
+                      ,To
+                      ,Content
+                      ,#{<<"from_format">> := From
+                        ,<<"to_format">> := To
+                        ,<<"job_id">> := _
+                        }=Options
+                      ,Secret
+                      ) when is_binary(Content) ->
     case run_convert(eval_format(From, To), To, Content, Options, Secret) of
         {'ok', _}=Ok ->
             lager:info("successfully converted content: ~s to format: ~s", [From, To]),
@@ -191,7 +199,7 @@ convert_via_convertapi(From, To, UserPath, Options, Secret) ->
 -spec run_convert({'error', kz_term:ne_binary()} | fax_convert_funs()
                  ,kz_term:ne_binary()
                  ,kz_term:ne_binary()
-                 ,kz_term:proplist()
+                 ,map()
                  ,kz_term:ne_binary()) -> gen_kz_converter:converted().
 run_convert({'error', _}=Error, _ToFormat, _Content, _Options, _Secret) ->
     Error;
@@ -237,10 +245,10 @@ convert_to_pdf(Content, #{<<"from_format">> := From, <<"job_id">> := JobId }, Se
     Extension = kz_mime:to_extension(From),
     FileName = list_to_binary([JobId, ".", Extension]),
     RequestURL = list_to_binary([?CONVERTAPI_URL, "/", Extension, "/to/pdf?",
-                                  "Timeout=", list_to_binary(integer_to_list(?CONVERTAPI_TIMEOUT)),
-                                  "&PdfVersion=", ?CONVERTAPI_PDF_VERSION,
-                                  "&PdfResolution=", list_to_binary(integer_to_list(?CONVERTAPI_RESOLUTION)),
-                                  "&Secret=", Secret]),
+                                 "Timeout=", list_to_binary(integer_to_list(?CONVERTAPI_TIMEOUT)),
+                                 "&PdfVersion=", ?CONVERTAPI_PDF_VERSION,
+                                 "&PdfResolution=", list_to_binary(integer_to_list(?CONVERTAPI_RESOLUTION)),
+                                 "&Secret=", Secret]),
     Boundary = kz_binary:rand_hex(12),
     ContentTypeHeaderValue = list_to_binary(["multipart/form-data; boundary=", Boundary]),
     Headers = [{"Content-Type", ContentTypeHeaderValue}],
@@ -282,8 +290,8 @@ pdf_to_tiff(Content, Options, _Secret) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec read_file({'file', kz_term:ne_binary()}|kz_term:ne_binary(), map()) ->
-                               {'ok', kz_term:ne_binary()}|
-                               {'error', kz_term:ne_binary()}.
+                       {'ok', kz_term:ne_binary()}|
+                       {'error', kz_term:ne_binary()}.
 read_file({'file', UserPath}, #{<<"tmp_dir">> := TmpDir}) ->
     case filename:pathtype(UserPath) of
         'absolute' ->

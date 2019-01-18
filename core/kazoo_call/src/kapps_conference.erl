@@ -368,8 +368,8 @@ account_id(#kapps_conference{account_id='undefined'
                             }) ->
     'undefined';
 account_id(#kapps_conference{account_id='undefined'
-                             ,call=Call
-                             }) ->
+                            ,call=Call
+                            }) ->
     kapps_call:account_id(Call);
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
@@ -901,7 +901,7 @@ cache(#kapps_conference{id=ConferenceId}=Conference, Expires) ->
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}, Conference, CacheProps).
 
 -spec retrieve(kz_term:ne_binary()) -> {'ok', conference()} |
-                               {'error', 'not_found'}.
+                                       {'error', 'not_found'}.
 retrieve(ConferenceId) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
 

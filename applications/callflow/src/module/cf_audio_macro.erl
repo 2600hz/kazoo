@@ -160,7 +160,7 @@ schema_test_() ->
                 ,\"duration_off\":200
                }
              ]
-              }">>,
+             }">>,
 
     build_tests(Data).
 
@@ -168,22 +168,22 @@ another_schema_test_() ->
     Data = <<"{
         \"macros\": [
             {
-                \"macro\": \"play\",
+             \"macro\": \"play\",
                 \"id\": \"http://server.com/you-pressed-1.wav\",
                 \"endless_playback\": false
             },
-            {
-                \"macro\": \"play\",
+             {
+              \"macro\": \"play\",
                 \"id\": \"http://server.com/you-pressed-2.wav\",
                 \"endless_playback\": false
             },
-            {
-                \"macro\": \"play\",
+             {
+              \"macro\": \"play\",
                 \"id\": \"http://server.com/something.mp3\",
                 \"endless_playback\": false
             }
-        ],
-        \"terminators\": [
+             ],
+             \"terminators\": [
             \"1\",
             \"2\",
             \"3\",
@@ -197,14 +197,14 @@ another_schema_test_() ->
             \"0\",
             \"#\"
         ]
-    }">>,
+             }">>,
     build_tests(Data).
 
 yas_test_() ->
     Data = <<"{
   \"macros\": [
              {
-      \"macro\": \"tts\",
+              \"macro\": \"tts\",
       \"text\": \"one to 4\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -222,9 +222,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -242,9 +242,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"one to 4\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -262,9 +262,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -282,9 +282,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"one to 4\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -302,9 +302,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -322,9 +322,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"one to 4\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -342,9 +342,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -362,9 +362,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"one to 4\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -382,9 +382,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -402,9 +402,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"one to 4\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -422,9 +422,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    },
-    {
-      \"macro\": \"tts\",
+             },
+             {
+              \"macro\": \"tts\",
       \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
       \"language\": \"en-US\",
       \"voice\": \"male\",
@@ -442,9 +442,9 @@ yas_test_() ->
         \"0\",
         \"#\"
       ]
-    }
-  ]
-}">>,
+             }
+             ]
+             }">>,
     build_tests(Data).
 
 build_tests(Data) ->
@@ -453,7 +453,7 @@ build_tests(Data) ->
                 end
                ,[]
                ,[fun validate/1
-                 ,fun build_macro_command/1
+                ,fun build_macro_command/1
                 ]
                ).
 

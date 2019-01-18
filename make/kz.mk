@@ -177,14 +177,7 @@ xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ direc
 xref: compile
 	@ERL_LIBS=$(ELIBS) $(REBAR) xref skip_deps=true -C $(ROOT)/make/xref.local.config
 
-
-FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
-$(FMT):
-	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C $(ROOT)/make/
-
-fmt: TO_FMT ?= $(shell find src include -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript')
-fmt: $(FMT)
-	@$(FMT) $(TO_FMT)
+fmt: TO_FMT ?= $(shell find src include test -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript')
 
 perf: ERLC_OPTS += -pa $(ROOT)/deps/horse/ebin -DPERF +'{parse_transform, horse_autoexport}'
 perf: compile-test
@@ -199,3 +192,4 @@ fixture_shell:
 		erl -name '$(NODE_NAME)' -s reloader "$$@"
 
 include $(ROOT)/make/splchk.mk
+include $(ROOT)/make/fmt.mk

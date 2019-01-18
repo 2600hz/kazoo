@@ -65,12 +65,12 @@
 -type routine() :: {fun((state(), any()) -> routine_ret()), any()}.
 -type routines() :: [routine()].
 -type recipient() :: pid()
-                    | atom()
-                    | {atom(), atom()}
-                    | {state(), atom()}
-                    | {atom(), sign()}
-                    | sign()
-                    | kz_term:ne_binary().
+                   | atom()
+                   | {atom(), atom()}
+                   | {state(), atom()}
+                   | {atom(), sign()}
+                   | sign()
+                   | kz_term:ne_binary().
 -type from() :: any().
 
 -include("amqp_leader.hrl").
@@ -175,7 +175,7 @@ init([Name, _CandidateNodes, _OptArgs, Mod, Arg, _Options]) ->
     kz_util:put_callid(kapi_leader:queue()),
     gen_server:cast(self(), {'init', Arg}),
     State = #state{name = Name
-                   ,callback_module = Mod
+                  ,callback_module = Mod
                   },
     {'ok', State}.
 
@@ -225,8 +225,8 @@ handle_cast(Msg, State) ->
 handle_info(#?MODULE{from = From, msg = 'join'} = Msg, State) when ?is_leader ->
     lager:debug("message ~p", [Msg]),
     Routines = [{fun announce_leader/2, {From, 'me'}}
-                ,{fun add_candidates/2, From}
-                ,{fun call_elected/2, From}
+               ,{fun add_candidates/2, From}
+               ,{fun call_elected/2, From}
                ],
     noreply(State, Routines);
 
@@ -239,8 +239,8 @@ handle_info(#?MODULE{from = From, msg = 'join'} = Msg, State) ->
 handle_info(#?MODULE{msg = {'leader', Me}} = Msg, #state{leader = Me} = State) when ?is_leader ->
     lager:debug("message ~p", [Msg]),
     Routines = [{fun increase_elected/2, []}
-                ,{fun set_leader/2, 'me'}
-                ,{fun announce_leader/2, {'broadcast', sign(State)}}
+               ,{fun set_leader/2, 'me'}
+               ,{fun announce_leader/2, {'broadcast', sign(State)}}
                ],
     noreply(State, Routines);
 
@@ -249,10 +249,10 @@ handle_info(#?MODULE{msg = {'leader', NotMe}} = Msg, State) when ?is_leader ->
     case NotMe > sign(State) of
         'true' ->
             Routines = [{fun set_leader/2, NotMe}
-                        ,{fun set_role/2, 'candidate'}
-                        ,{fun announce_leader/2, {'broadcast', 'me'}}
-                        ,{fun surrender/2, NotMe}
-                        ,{fun call_surrendered/2, 'undefined'}
+                       ,{fun set_role/2, 'candidate'}
+                       ,{fun announce_leader/2, {'broadcast', 'me'}}
+                       ,{fun surrender/2, NotMe}
+                       ,{fun call_surrendered/2, 'undefined'}
                        ],
             noreply(State, Routines);
         'false' ->
@@ -271,7 +271,7 @@ handle_info(#?MODULE{from = From, msg = {'leader', NewLeader}} = Msg, State) whe
 handle_info(#?MODULE{from = From, msg = {'sync'}} = Msg, State) when ?from_leader ->
     lager:debug("message ~p", [Msg]),
     Routines = [{fun call_surrendered/2, 'undefined'}
-                ,{fun add_candidates/2, From}
+               ,{fun add_candidates/2, From}
                ],
     noreply(State, Routines);
 
@@ -300,11 +300,11 @@ handle_info({'DOWN', Node} = Msg, #state{leader = Leader} = State) ->
     case node(Leader) of
         Node ->
             Routines = [{fun increase_elected/2, []}
-                        ,{fun set_leader/2, 'me'}
-                        ,{fun set_role/2, 'leader'}
-                        ,{fun set_sync/2, sync(Leader)}
-                        ,{fun call_elected/2, 'undefined'}
-                        ,{fun announce_leader/2, {'broadcast', Leader}}
+                       ,{fun set_leader/2, 'me'}
+                       ,{fun set_role/2, 'leader'}
+                       ,{fun set_sync/2, sync(Leader)}
+                       ,{fun call_elected/2, 'undefined'}
+                       ,{fun announce_leader/2, {'broadcast', Leader}}
                        ],
             noreply(State, Routines);
         _ ->
@@ -359,18 +359,18 @@ init(#state{callback_module = Mod, name = Name} = State, Arg) ->
             receive
                 #?MODULE{msg = {'leader', Leader}, from = Leader} ->
                     Routines = [{fun set_leader/2, Leader}
-                                ,{fun set_role/2, 'candidate'}
-                                ,{fun add_candidates/2, Leader}
-                                ,{fun call_surrendered/2, 'undefined'}
-                                ,{fun announce_leader/2, {Leader, 'me'}}
+                               ,{fun set_role/2, 'candidate'}
+                               ,{fun add_candidates/2, Leader}
+                               ,{fun call_surrendered/2, 'undefined'}
+                               ,{fun announce_leader/2, {Leader, 'me'}}
                                ],
                     noreply(NewState, Routines)
             after
                 3000 ->
                     Routines = [{fun set_leader/2, 'me'}
-                                ,{fun set_role/2, 'leader'}
-                                ,{fun call_elected/2, 'undefined'}
-                                ,{fun announce_leader/2, {'broadcast', 'me'}}
+                               ,{fun set_role/2, 'leader'}
+                               ,{fun call_elected/2, 'undefined'}
+                               ,{fun announce_leader/2, {'broadcast', 'me'}}
                                ],
                     noreply(NewState, Routines)
             end;
@@ -492,21 +492,21 @@ call_from_leader(State, Sync) when not (?is_leader) ->
 
 -spec call_handle_DOWN(state(), atom()) -> state().
 call_handle_DOWN(State, Node) when ?is_leader ->
-   case exec_callback(State, {'handle_DOWN', [Node]}) of
-       {'ok', ModState} ->
-           set_callback_state(State, ModState);
-       {'ok', Msg, ModState} ->
-           send({State, 'broadcast'}, Msg),
-           set_callback_state(State, ModState)
-   end.
+    case exec_callback(State, {'handle_DOWN', [Node]}) of
+        {'ok', ModState} ->
+            set_callback_state(State, ModState);
+        {'ok', Msg, ModState} ->
+            send({State, 'broadcast'}, Msg),
+            set_callback_state(State, ModState)
+    end.
 
 -type callback_ret() :: {'reply', any(), any(), any()}
-                        | {'reply', any(), any()}
-                        | {'stop', any(), any(), any()}
-                        | {'stop', any(), any()}
-                        | {'noreply', any()}
-                        | {'ok', any(), any()}
-                        | {'ok', any()}.
+                      | {'reply', any(), any()}
+                      | {'stop', any(), any(), any()}
+                      | {'stop', any(), any()}
+                      | {'noreply', any()}
+                      | {'ok', any(), any()}
+                      | {'ok', any()}.
 -spec exec_callback(state(), {atom(), list()}) -> callback_ret().
 exec_callback(#state{callback_module = Mod} = State, {Callback, Args}) ->
     ModState = callback_state(State),
@@ -604,11 +604,11 @@ node(#sign{node = Node}) when is_atom(Node) -> Node.
 
 -spec sign(state()) -> sign().
 sign(#state{elected = Elected, restarted = Restarted, name = Name
-           %% ,candidates = Candidates
+            %% ,candidates = Candidates
            } = State) ->
     #sign{elected = Elected
-          ,restarted = -Restarted
-          ,name = Name
-          ,sync = sync(State)
+         ,restarted = -Restarted
+         ,name = Name
+         ,sync = sync(State)
           %% ,candidates = Candidates
          }.

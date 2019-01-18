@@ -8,6 +8,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(DOLLAR_SIGN, 36). % formatter still barfs on $ in regex
+
 -define(SCHEMA_TEST_OPTIONS, [{'schema_loader_fun', fun kz_json_schema:fload/1}
                              ,{'allowed_errors', 'infinity'}
                              ,{'extra_validator', fun kz_json_schema_extensions:extra_validator/2}
@@ -153,12 +155,12 @@ replace_value_test_() ->
 -define(FROM_ONE
        ,kz_json:from_list([{<<"direction">>, <<"inbound">>}
                           ,{<<"prefix">>, <<"+1">>}
-                          ,{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                          ,{<<"regex">>, <<"^\\+?1?(\\d{10})", ?DOLLAR_SIGN>>}
                           ])
        ).
 -define(FROM_TWO
        ,kz_json:from_list([{<<"direction">>, <<"outbound">>}
-                          ,{<<"regex">>, <<"\\+?1?(\\d{10})$">>}
+                          ,{<<"regex">>, <<"\\+?1?(\\d{10})", ?DOLLAR_SIGN>>}
                           ])
        ).
 

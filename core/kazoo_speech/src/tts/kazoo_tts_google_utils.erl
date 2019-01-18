@@ -92,14 +92,14 @@ error_message(Var) -> <<"Wrong ", Var/binary, " value">>.
 
 synthesis_input_to_json(_SynthesisInput, {'error', _Message}=Error) -> Error;
 synthesis_input_to_json(#synthesisInput{text=Text
-                                        ,ssml=SSML
-                                        }
+                                       ,ssml=SSML
+                                       }
                        ,'ok') ->
     kz_json:set_values([{<<"text">>, Text}
                        ,{<<"ssml">>, SSML}
                        ]
-                       ,kz_json:new()
-                       ).
+                      ,kz_json:new()
+                      ).
 
 voice_selection_to_json(_VoiceSelection, {'error', _Message}=Error) -> Error;
 voice_selection_to_json(#voiceSelectionParams{languageCode=Code

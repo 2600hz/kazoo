@@ -891,12 +891,12 @@ request_user(#kapps_call{request_user=RequestUser}) ->
 
 -spec request_realm(call()) -> kz_term:ne_binary().
 request_realm(#kapps_call{request=?NO_USER_REALM
-                        ,request_realm=RequestRealm
-                        }) ->
+                         ,request_realm=RequestRealm
+                         }) ->
     RequestRealm;
 request_realm(#kapps_call{request=Request
-                        ,request_realm=?NO_REALM
-                        }) ->
+                         ,request_realm=?NO_REALM
+                         }) ->
     [_, RequestRealm] = binary:split(Request, <<"@">>),
     RequestRealm;
 request_realm(#kapps_call{request_realm=RequestRealm}) ->
@@ -916,12 +916,12 @@ from(#kapps_call{from=From}) ->
 
 -spec from_user(call()) -> kz_term:ne_binary().
 from_user(#kapps_call{from=?NO_USER_REALM
-                        ,from_user=FromUser
-                        }) ->
+                     ,from_user=FromUser
+                     }) ->
     FromUser;
 from_user(#kapps_call{from=From
-                        ,from_user=?NO_USER
-                        }) ->
+                     ,from_user=?NO_USER
+                     }) ->
     [FromUser, _] = binary:split(From, <<"@">>),
     FromUser;
 from_user(#kapps_call{from_user=FromUser}) ->
@@ -929,12 +929,12 @@ from_user(#kapps_call{from_user=FromUser}) ->
 
 -spec from_realm(call()) -> kz_term:ne_binary().
 from_realm(#kapps_call{from=?NO_USER_REALM
-                        ,from_realm=FromRealm
-                        }) ->
+                      ,from_realm=FromRealm
+                      }) ->
     FromRealm;
 from_realm(#kapps_call{from=From
-                        ,from_realm=?NO_REALM
-                        }) ->
+                      ,from_realm=?NO_REALM
+                      }) ->
     [_, FromRealm] = binary:split(From, <<"@">>),
     FromRealm;
 from_realm(#kapps_call{from_realm=FromRealm}) ->
@@ -954,12 +954,12 @@ to(#kapps_call{to=To}) ->
 
 -spec to_user(call()) -> kz_term:ne_binary().
 to_user(#kapps_call{to=?NO_USER_REALM
-                        ,to_user=ToUser
-                        }) ->
+                   ,to_user=ToUser
+                   }) ->
     ToUser;
 to_user(#kapps_call{to=To
-                        ,to_user=?NO_USER
-                        }) ->
+                   ,to_user=?NO_USER
+                   }) ->
     [ToUser, _] = binary:split(To, <<"@">>),
     ToUser;
 to_user(#kapps_call{to_user=ToUser}) ->
@@ -967,12 +967,12 @@ to_user(#kapps_call{to_user=ToUser}) ->
 
 -spec to_realm(call()) -> kz_term:ne_binary().
 to_realm(#kapps_call{to=?NO_USER_REALM
-                        ,to_realm=ToRealm
-                        }) ->
+                    ,to_realm=ToRealm
+                    }) ->
     ToRealm;
 to_realm(#kapps_call{to=To
-                        ,to_realm=?NO_REALM
-                        }) ->
+                    ,to_realm=?NO_REALM
+                    }) ->
     [_, ToRealm] = binary:split(To, <<"@">>),
     ToRealm;
 to_realm(#kapps_call{to_realm=ToRealm}) ->
@@ -1042,7 +1042,7 @@ account_db(#kapps_call{account_db='undefined'
                       ,account_id='undefined'
                       }) -> 'undefined';
 account_db(#kapps_call{account_db='undefined'
-                       ,account_id=AccountId
+                      ,account_id=AccountId
                       }) ->
     kz_util:format_account_db(AccountId);
 account_db(#kapps_call{account_db=AccountDb}) ->
@@ -1324,7 +1324,10 @@ handle_ccvs_update(CCVs, #kapps_call{}=Call) ->
                             'undefined' -> C;
                             Value -> setelement(Index, C, Value)
                         end
-                end, Call#kapps_call{ccvs=CCVs}, ?SPECIAL_VARS).
+                end
+               ,Call#kapps_call{ccvs=CCVs}
+               ,?SPECIAL_VARS
+               ).
 
 -spec set_custom_publish_function(kapps_custom_publish(), call()) -> call().
 set_custom_publish_function(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
@@ -1347,9 +1350,16 @@ kvs_append_list(Key, ValList, #kapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_erase(any() | [any(),...], call()) -> call().
 kvs_erase(Keys, #kapps_call{kvs=Dict}=Call) when is_list(Keys)->
-    Call#kapps_call{kvs=lists:foldl(fun(K, D) -> orddict:erase(kz_term:to_binary(K), D) end, Dict, Keys)};
+    Call#kapps_call{kvs=erase_keys(Keys, Dict)};
 kvs_erase(Key, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:erase(kz_term:to_binary(Key), Dict)}.
+    Call#kapps_call{kvs=erase_key(Key, Dict)}.
+
+-spec erase_keys(list(), orddict:orddict()) -> orddict:orddict().
+erase_keys(Keys, Dict) ->
+    lists:foldl(fun erase_key/2, Dict, Keys).
+
+-spec erase_key(any(), orddict:orddict()) -> orddict:orddict().
+erase_key(K, D) -> orddict:erase(kz_term:to_binary(K), D).
 
 -spec kvs_flush(call()) -> call().
 kvs_flush(#kapps_call{}=Call) -> Call#kapps_call{kvs=orddict:new()}.
@@ -1397,9 +1407,13 @@ kvs_store(Key, Value, #kapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_store_proplist(kz_term:proplist(), call()) -> call().
 kvs_store_proplist(List, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=lists:foldr(fun({K, V}, D) ->
-                                             orddict:store(kz_term:to_binary(K), V, D)
-                                     end, Dict, List)}.
+    Call#kapps_call{kvs=add_to_store(List, Dict)}.
+
+add_to_store(List, Dict) ->
+    lists:foldr(fun add_to_store_fold/2, Dict, List).
+
+add_to_store_fold({K, V}, D) ->
+    orddict:store(kz_term:to_binary(K), V, D).
 
 -spec kvs_to_proplist(call()) -> kz_term:proplist().
 kvs_to_proplist(#kapps_call{kvs=Dict}) ->

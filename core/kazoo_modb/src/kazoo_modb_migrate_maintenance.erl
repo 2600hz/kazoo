@@ -122,7 +122,7 @@ migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved :=
             Length = length(ViewResults),
             io:format("[~s] processing ~b messages~n", [AccountId, Length]),
             MoveFun = fun(JObj, Map) ->
-                          move_vm_to_modb(AccountId, kz_json:get_value(<<"value">>, JObj), Map)
+                              move_vm_to_modb(AccountId, kz_json:get_value(<<"value">>, JObj), Map)
                       end,
             ProcessMap = lists:foldl(MoveFun, Stats, ViewResults),
             update_mailboxes(AccountId, maps:get(result, ProcessMap)),
@@ -353,12 +353,13 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
     NewMap = maps_update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [NewDoc], Map),
     map_tranform_cdrs(AccountId, VRs, NewMap).
 
--spec do_move_cdrs(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+-spec do_move_cdrs(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binaries()) ->
+                          kz_term:ne_binaries().
 do_move_cdrs(MODB, Docs, MovedAcc) ->
     _AccountId = kz_util:format_account_id(MODB),
     case kz_datamgr:save_docs(MODB, Docs) of
-        {ok, SavedJObj} -> check_for_failure(SavedJObj, MovedAcc);
-        {error, _Reason} ->
+        {'ok', SavedJObj} -> check_for_failure(SavedJObj, MovedAcc);
+        {'error', _Reason} ->
             io:format("[~s] failed to move cdrs in batch: ~p~n", [_AccountId, _Reason]),
             MovedAcc
     end.
