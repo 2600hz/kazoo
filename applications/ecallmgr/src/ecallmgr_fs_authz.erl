@@ -181,6 +181,9 @@ authz_response(JObj, Props, CallId, Node) ->
                 'true' -> authorize_account(JObj, Props, CallId, Node);
                 'false' ->
                     %% Set the following CCVs so that we can see why the call was barred in CDRs
+
+                    %% set Account-ID and Reseller-ID so CDRs can be saved for this call
+                    %% (in case the call is inbound from carrier)
                     AccountId = kz_json:get_value(<<"Account-ID">>
                                                  ,JObj
                                                  ,props:get_value(?GET_CCV(<<"Account-ID">>), Props)
