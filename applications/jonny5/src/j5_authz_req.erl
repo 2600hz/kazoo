@@ -335,7 +335,7 @@ send_response(Request) ->
             j5_channels:authorized(kz_json:from_list(Resp))
     end.
 
--spec trunk_usage(kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec trunk_usage(kz_term:ne_binary()) -> kz_term:ne_binary().
 trunk_usage(Id) ->
     Limits = j5_limits:get(Id),
     <<(kz_term:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/"
