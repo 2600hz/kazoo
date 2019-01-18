@@ -23,7 +23,7 @@
                            ,bleg_callid :: kz_term:api_ne_binary()
                            ,acctid = <<>> :: binary()
                            ,acctdb = <<>> :: binary()
-                           ,route_req_jobj = kz_json:new() :: kz_json:object()
+                           ,route_req_jobj = kz_json:new() :: kapi_route:req()
                            ,ep_data = kz_json:new() :: kz_json:object() %% data for the endpoint, either an actual endpoint or an offnet request
                            ,amqp_worker :: kz_term:api_pid()
                            ,callctl_q :: kz_term:api_ne_binary()

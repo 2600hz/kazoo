@@ -15,11 +15,11 @@
 
 -define(SERVER, ?MODULE).
 
--spec start_link(kz_json:object()) -> kz_types:startlink_ret().
+-spec start_link(kapi_route:req()) -> kz_types:startlink_ret().
 start_link(RouteReqJObj) ->
     proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
 
--spec init(pid(), kz_json:object()) -> 'ok'.
+-spec init(pid(), kapi_route:req()) -> 'ok'.
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
     start_amqp(ts_callflow:init(RouteReqJObj, ['undefined', <<"resource">>])).
@@ -33,10 +33,10 @@ start_amqp(State) ->
 
 -spec endpoint_data(ts_callflow:state()) -> 'ok'.
 endpoint_data(State) ->
-    JObj = ts_callflow:get_request_data(State),
     try get_endpoint_data(State) of
         {'endpoint', Endpoint} ->
-            proceed_with_endpoint(State, Endpoint, JObj)
+            RouteReq = ts_callflow:get_request_data(State),
+            proceed_with_endpoint(State, Endpoint, RouteReq)
     catch
         'throw':'no_did_found' ->
             lager:info("call was not for a trunkstore number");
@@ -47,18 +47,13 @@ endpoint_data(State) ->
         ts_callflow:cleanup_amqp(State)
     end.
 
--spec proceed_with_endpoint(ts_callflow:state(), kz_json:object(), kz_json:object()) -> 'ok'.
-proceed_with_endpoint(State, Endpoint, JObj) ->
+-spec proceed_with_endpoint(ts_callflow:state(), kz_json:object(), kapi_route:req()) -> 'ok'.
+proceed_with_endpoint(State, Endpoint, RouteReq) ->
     CallID = ts_callflow:get_aleg_id(State),
     'true' = kapi_dialplan:bridge_endpoint_v(Endpoint),
 
-    InceptionAccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Inception-Account-ID">>], JObj),
-    MediaHandling = case 'undefined' =/= InceptionAccountId
-                        orelse kz_json:is_false(<<"Bypass-Media">>, Endpoint)
-                    of
-                        'true' -> <<"process">>; %% bypass media is false, process media
-                        'false' -> <<"bypass">>
-                    end,
+    InceptionAccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Inception-Account-ID">>], RouteReq),
+    MediaHandling = media_handling(InceptionAccountId, Endpoint),
 
     Id = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Endpoint),
 
@@ -68,14 +63,27 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
               ,{<<"Call-ID">>, CallID}
               ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Trunkstore-ID">>, Id}])}
-               | kz_api:default_headers(ts_callflow:get_worker_queue(State)
-                                       ,<<"call">>, <<"command">>
-                                       ,?APP_NAME, ?APP_VERSION
-                                       )
+               | default_command_headers(State)
               ],
     State1 = ts_callflow:set_failover(State, kz_json:get_json_value(<<"Failover">>, Endpoint, kz_json:new())),
     State2 = ts_callflow:set_endpoint_data(State1, Endpoint),
     send_park(State2, Command).
+
+-spec default_command_headers(ts_callflow:state()) -> kz_term:proplist().
+default_command_headers(State) ->
+    kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                          ,<<"call">>, <<"command">>
+                          ,?APP_NAME, ?APP_VERSION
+                          ).
+
+-spec media_handling(kz_term:api_ne_binary(), kz_json:object()) -> kz_term:ne_binary().
+media_handling('undefined', Endpoint) ->
+    case kz_json:is_true(<<"Bypass-Media">>, Endpoint) of
+        'false' -> <<"process">>;
+        'true' -> <<"bypass">>
+    end;
+media_handling(_InceptionAccountId, _Endpoint) ->
+    <<"process">>.
 
 -spec send_park(ts_callflow:state(), kz_term:proplist()) -> 'ok'.
 send_park(State, Command) ->
@@ -128,10 +136,7 @@ send_privacy(State) ->
     Command = [{<<"Application-Name">>, <<"privacy">>}
               ,{<<"Privacy-Mode">>, <<"full">>}
               ,{<<"Call-ID">>, CallID}
-               | kz_api:default_headers(ts_callflow:get_worker_queue(State)
-                                       ,<<"call">>, <<"command">>
-                                       ,?APP_NAME, ?APP_VERSION
-                                       )
+               | default_command_headers(State)
               ],
     ts_callflow:send_command(State
                             ,Command
@@ -192,10 +197,7 @@ try_failover_sip(State, SIPUri) ->
     Command = [{<<"Call-ID">>, CallID}
               ,{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [EndPoint]}
-               | kz_api:default_headers(ts_callflow:get_worker_queue(State)
-                                       ,<<"call">>, <<"command">>
-                                       ,?APP_NAME, ?APP_VERSION
-                                       )
+               | default_command_headers(State)
               ],
     ts_callflow:send_command(State
                             ,Command
@@ -251,28 +253,28 @@ try_failover_e164(State, ToDID) ->
 %%------------------------------------------------------------------------------
 -spec get_endpoint_data(ts_callflow:state()) -> {'endpoint', kz_json:object()}.
 get_endpoint_data(State) ->
-    JObj = ts_callflow:get_request_data(State),
-    {ToUser, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
+    RouteReq = ts_callflow:get_request_data(State),
+    {ToUser, _} = kapps_util:get_destination(RouteReq, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = knm_converters:normalize(ToUser),
     case knm_number:lookup_account(ToDID) of
         {'ok', AccountId, NumberProps} ->
-            get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps);
+            get_endpoint_data(State, RouteReq, ToDID, AccountId, NumberProps);
         _Else ->
             lager:debug("unable to lookup account for number ~s: ~p", [ToDID, _Else]),
             throw('unknown_account')
     end.
 
--spec get_endpoint_data(ts_callflow:state(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:extra_options()) ->
+-spec get_endpoint_data(ts_callflow:state(), kapi_route:req(), kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:extra_options()) ->
                                {'endpoint', kz_json:object()}.
-get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
+get_endpoint_data(State, RouteReq, ToDID, AccountId, NumberProps) ->
     ForceOut = knm_number_options:should_force_outbound(NumberProps),
     lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
     RoutingData1 = routing_data(ToDID, AccountId),
 
     CidOptions  = props:get_value(<<"Caller-ID-Options">>, RoutingData1),
     CidFormat   = kz_json:get_json_value(<<"format">>, CidOptions),
-    OldCNum = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj),
-    OldCNam = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, OldCNum),
+    OldCNum = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, RouteReq),
+    OldCNam = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, RouteReq, OldCNum),
     NewCallerId = maybe_anonymize_caller_id(State, {OldCNam, OldCNum}, CidFormat),
     RoutingData = RoutingData1 ++ NewCallerId,
 
@@ -313,7 +315,10 @@ routing_data(ToDID, AccountId) ->
             routing_data(ToDID, AccountId, Settings);
         {'error', 'no_did_found'} ->
             lager:info("DID ~s not found in ~s", [ToDID, AccountId]),
-            throw('no_did_found')
+            throw('no_did_found');
+        {'error', 'timeout'} ->
+            lager:error("timed out looking for DID ~s", [ToDID]),
+            throw('timeout')
     end.
 
 -spec routing_data(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> [{<<_:48,_:_*8>>, any()}].

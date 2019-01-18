@@ -42,18 +42,18 @@
 
 -export_type([state/0]).
 
--spec init(kz_json:object(), kz_term:api_binary() | kz_term:api_binaries()) ->
+-spec init(kapi_route:req(), kz_term:api_binary() | kz_term:api_binaries()) ->
                   state() |
                   {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
-    CallID = kz_json:get_value(<<"Call-ID">>, RouteReqJObj),
+    CallID = kapi_route:call_id(RouteReqJObj),
     kz_util:put_callid(CallID),
     case is_trunkstore_acct(RouteReqJObj, Type) of
         'false' ->
             lager:info("request is not for a trunkstore account"),
             {'error', 'not_ts_account'};
         'true' ->
-            AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
+            AccountId = kapi_route:account_id(RouteReqJObj),
             #ts_callflow_state{aleg_callid=CallID
                               ,route_req_jobj=RouteReqJObj
                               ,acctid=AccountId
@@ -86,17 +86,17 @@ send_park(#ts_callflow_state{route_req_jobj=JObj
            ,{<<"Method">>, <<"park">>}
            ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
            ,{<<"Custom-Channel-Vars">>, kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
-           ,{<<"Custom-Application-Vars">>, kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj)}
+           ,{<<"Custom-Application-Vars">>, kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj)}
             | kz_api:default_headers(get_worker_queue(State)
                                     ,?APP_NAME, ?APP_VERSION
                                     )
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
     kz_amqp_worker:relay_to(Worker, self()),
-    kz_amqp_worker:cast(Resp
-                       ,fun(API) -> kapi_route:publish_resp(kz_api:server_id(JObj), API) end
-                       ,Worker
-                       ),
+    _ = kz_amqp_worker:cast(Resp
+                           ,fun(API) -> kapi_route:publish_resp(kz_api:server_id(JObj), API) end
+                           ,Worker
+                           ),
     wait_for_win(State, ?WAIT_FOR_WIN_TIMEOUT).
 
 -spec wait_for_win(state(), pos_integer()) -> {'won' | 'lost', state()}.
@@ -304,16 +304,16 @@ send_command(#ts_callflow_state{amqp_worker=Worker}, Command, PubFun) ->
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
 %%%-----------------------------------------------------------------------------
--spec get_request_data(state()) -> kz_json:object().
+-spec get_request_data(state()) -> kapi_route:req().
 get_request_data(#ts_callflow_state{route_req_jobj=JObj}) -> JObj.
 
 -spec get_custom_channel_vars(state()) -> kz_json:object().
 get_custom_channel_vars(#ts_callflow_state{route_req_jobj=JObj}) ->
-    kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
+    kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
 
 -spec get_custom_sip_headers(state()) -> kz_term:api_object().
 get_custom_sip_headers(#ts_callflow_state{route_req_jobj=JObj}) ->
-    kz_json:get_value(<<"Custom-SIP-Headers">>, JObj).
+    kz_json:get_json_value(<<"Custom-SIP-Headers">>, JObj).
 
 -spec set_endpoint_data(state(), kz_json:object()) -> state().
 set_endpoint_data(State, Data) -> State#ts_callflow_state{ep_data=Data}.
