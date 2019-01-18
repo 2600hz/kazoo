@@ -7,6 +7,7 @@
 
 -export([get_realm/1]).
 -export([get_inbound_destination/1]).
+-export([get_inbound_origination/1]).
 -export([get_outbound_destination/1]).
 -export([correct_shortdial/2]).
 -export([get_sip_headers/1]).
@@ -49,9 +50,31 @@ get_realm(JObj) ->
 -spec get_inbound_destination(kz_json:object()) -> kz_term:ne_binary().
 get_inbound_destination(JObj) ->
     {Number, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    case kapps_config:get_is_true(?SS_CONFIG_CAT, <<"assume_inbound_e164">>, 'false') of
+    convert_to_e164_format(Number, ?SS_CONFIG_CAT, <<"assume_inbound_e164">>).
+
+%%------------------------------------------------------------------------------
+%% @doc Convert number to e164 format depending on config values set in system_config db
+%% @end
+%%------------------------------------------------------------------------------
+-spec convert_to_e164_format(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+convert_to_e164_format(Number, ConfigDoc, ConfigKey) ->
+    case kapps_config:get_is_true(ConfigDoc, ConfigKey, 'false') of
         'true' -> assume_e164(Number);
         'false' -> knm_converters:normalize(Number)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Get the origination DID of a inbound call if its a number, else return undefined
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_inbound_origination(kz_json:object()) -> kz_term:ne_binary().
+get_inbound_origination(JObj) ->
+    {Number, _} = kapps_util:get_origination(JObj, ?APP_NAME, <<"inbound_user_origination_field">>),
+    case knm_converters:is_reconcilable(Number) of
+        'true' ->
+            convert_to_e164_format(Number, ?SS_CONFIG_CAT, <<"assume_inbound_origination_e164">>);
+        'false' ->
+            'undefined'
     end.
 
 -spec assume_e164(kz_term:ne_binary()) -> kz_term:ne_binary().
