@@ -33579,7 +33579,12 @@
             "properties": {
                 "assume_inbound_e164": {
                     "default": false,
-                    "description": "stepswitch assume inbound e164",
+                    "description": "stepswitch assume inbound destination DID is e164 format",
+                    "type": "boolean"
+                },
+                "assume_inbound_origination_e164": {
+                    "default": false,
+                    "description": "stepswitch assume inbound origination DID is e164 format",
                     "type": "boolean"
                 },
                 "cid_rules_honor_diversions": {
@@ -33696,6 +33701,16 @@
                     "default": false,
                     "description": "stepswitch format from uri",
                     "type": "boolean"
+                },
+                "inbound_user_field": {
+                    "default": "Request",
+                    "description": "stepswitch inbound destination user field",
+                    "type": "string"
+                },
+                "inbound_user_origination_field": {
+                    "default": "From",
+                    "description": "stepswitch inbound origination user field",
+                    "type": "string"
                 },
                 "max_shortdial_correction": {
                     "default": 5,
