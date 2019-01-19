@@ -53,7 +53,7 @@ fix_email(ReqData, OnlyAdmin) ->
 -spec get_emails(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_term:ne_binaries().
 get_emails(_ReqData, AccountId, 'true') ->
     ?DEV_LOG("superduper admin true"),
-    ResellerId = teletype_util:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),
@@ -68,7 +68,7 @@ get_emails(_ReqData, AccountId, 'true') ->
     end;
 get_emails(ReqData, AccountId, 'false') ->
     ?DEV_LOG("no private comment"),
-    ResellerId = teletype_util:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),

@@ -179,8 +179,8 @@ templates_source(_TemplateId, ?KZ_CONFIG_DB) ->
     ?KZ_CONFIG_DB;
 templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     %% ?LOG_DEBUG("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
-    lager:debug("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
-    ResellerId = teletype_util:find_reseller_id(AccountId),
+    lager:debug("trying to fetch template '~s' for '~s' account", [TemplateId, AccountId]),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
     case kapi_notifications:account_id(DataJObj) of
@@ -221,7 +221,7 @@ templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template) ->
 parent_templates_source(_TemplateId, AccountId, AccountId) -> ?KZ_CONFIG_DB;
 parent_templates_source(TemplateId, AccountId, ResellerId) ->
     lager:debug("failed to find template ~s in account ~s", [TemplateId, AccountId]),
-    ParentId = teletype_util:get_parent_account_id(AccountId),
+    ParentId = kzd_accounts:get_parent_account_id(AccountId),
     templates_source(TemplateId, ParentId, ResellerId).
 
 -spec fetch_notification(kz_term:ne_binary(), kz_term:ne_binary()) ->
@@ -230,7 +230,7 @@ parent_templates_source(TemplateId, AccountId, ResellerId) ->
 fetch_notification(TemplateId, ?KZ_CONFIG_DB) ->
     fetch_notification(TemplateId, ?KZ_CONFIG_DB, 'undefined');
 fetch_notification(TemplateId, Account) ->
-    fetch_notification(TemplateId, Account, teletype_util:find_reseller_id(Account)).
+    fetch_notification(TemplateId, Account, kz_services_reseller:get_id(Account)).
 
 fetch_notification(TemplateId, 'undefined', _ResellerId) ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
@@ -250,7 +250,7 @@ fetch_notification(TemplateId, AccountId, ResellerId) ->
     case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E} ->
-            fetch_notification(TemplateId, teletype_util:get_parent_account_id(AccountId), ResellerId)
+            fetch_notification(TemplateId, kzd_accounts:get_parent_account_id(AccountId), ResellerId)
     end.
 
 -spec render_masters(kz_term:ne_binary(), macros()) -> kz_term:proplist().

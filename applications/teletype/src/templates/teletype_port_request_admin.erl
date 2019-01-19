@@ -130,46 +130,65 @@ maybe_set_from(DataJObj) ->
 
 -spec maybe_set_to(kz_json:object()) -> kz_json:object().
 maybe_set_to(DataJObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    case find_port_authority(MasterAccountId, AccountId) of
+    PortDoc = kz_json:get_json_value(<<"port_request">>, DataJObj),
+    case kzd_port_requests:find_port_authority(PortDoc) of
         'undefined' ->
-            ?DEV_LOG("port_authority undefined"),
-            DataJObj;
-        ?NE_BINARY=To ->
-            lager:debug("found port authority: ~p", [To]),
-            ?DEV_LOG("found port authority: ~p", [To]),
-            kz_json:set_value(<<"to">>, [To], DataJObj);
-        [?NE_BINARY=_|_] = To ->
-            lager:debug("found port authority: ~p", [To]),
-            ?DEV_LOG("found port authority: ~p", [To]),
-            kz_json:set_value(<<"to">>, To, DataJObj);
-        _ ->
-            ?DEV_LOG("non sense port_authority"),
+            lager:debug("using master as port authority"),
+            maybe_set_master_admins(DataJObj, 'undefined');
+        PortAuthority ->
+            case teletype_util:find_account_admin_email(PortAuthority) of
+                'undefined' ->
+                    lager:debug("~s doesn't have any admin maybe using system emails", [PortAuthority]),
+                    maybe_set_master_admins(DataJObj, PortAuthority);
+                [] ->
+                    lager:debug("~s doesn't have any admin maybe using system emails", [PortAuthority]),
+                    maybe_set_master_admins(DataJObj, PortAuthority);
+                Admins ->
+                    lager:debug("using admin emails from ~s", [PortAuthority]),
+                    kz_json:set_value(<<"to">>, Admins, DataJObj)
+            end
+    end.
+
+maybe_set_master_admins(DataJObj, PortAuthority) ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} ->
+            maybe_set_master_admins(DataJObj, PortAuthority, MasterAccountId);
+        {'error', _} ->
+            lager:debug("failed to find port authority, master account is undefined"),
             DataJObj
     end.
 
--spec find_port_authority(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary() | kz_term:ne_binaries().
-find_port_authority(MasterAccountId, MasterAccountId) ->
-    case kzd_whitelabel:fetch(MasterAccountId) of
-        {'error', _R} ->
-            lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
-            ?DEV_LOG("failed to find master account ~s, using system value", [MasterAccountId]),
-            teletype_util:template_system_value(?TEMPLATE_ID, <<"default_to">>);
-        {'ok', JObj} ->
-            lager:debug("getting master account's port authority"),
-            ?DEV_LOG("getting master account's port authority"),
-            kzd_whitelabel:port_authority(JObj)
-    end;
-find_port_authority(MasterAccountId, AccountId) ->
-    case kzd_whitelabel:fetch(AccountId) of
-        {'error', _R} ->
-            ResellerId = kz_services_reseller:get_id(AccountId),
-            lager:debug("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
-            ?DEV_LOG("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
-            find_port_authority(MasterAccountId, ResellerId);
-        {'ok', JObj} ->
-            lager:debug("using account ~s for port authority", [AccountId]),
-            ?DEV_LOG("using account ~s for port authority", [AccountId]),
-            kzd_whitelabel:port_authority(JObj)
+maybe_set_master_admins(DataJObj, MasterAccountId, MasterAccountId) ->
+    lager:debug("reached to master account, maybe using default_to from system template"),
+    maybe_set_system_emails(DataJObj);
+maybe_set_master_admins(DataJObj, _, MasterAccountId) ->
+    case teletype_util:find_account_admin_email(MasterAccountId) of
+        'undefined' ->
+            lager:debug("master doesn't have any admins, maybe using default_to from system template"),
+            maybe_set_system_emails(DataJObj);
+        [] ->
+            lager:debug("master doesn't have any admins, maybe using default_to from system template"),
+            maybe_set_system_emails(DataJObj);
+        Admins ->
+            lager:debug("using admin emails from ~s", [MasterAccountId]),
+            kz_json:set_value(<<"to">>, Admins, DataJObj)
+    end.
+
+maybe_set_system_emails(DataJObj) ->
+    case teletype_util:template_system_value(?TEMPLATE_ID, <<"default_to">>) of
+        'undefined' ->
+            lager:debug("system template doesn't have default_to, using data emails"),
+            DataJObj;
+        [] ->
+            lager:debug("system template doesn't have default_to, using data emails"),
+            DataJObj;
+        ?NE_BINARY = To ->
+            lager:debug("using default_to from system template"),
+            kz_json:set_value(<<"to">>, [To], DataJObj);
+        Emails when is_list(Emails) ->
+            lager:debug("using default_to from system config template"),
+            kz_json:set_value(<<"to">>, Emails, DataJObj);
+        _ ->
+            lager:debug("system template doesn't have default_to, using data emails"),
+            DataJObj
     end.

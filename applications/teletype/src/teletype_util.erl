@@ -18,12 +18,9 @@
         ,find_account_admin_email/1
         ,find_account_admin/1
         ,find_account_db/2
-        ,find_reseller_id/1
         ,find_account_params/1
         ,is_notice_enabled/3, is_notice_enabled_default/1
         ,should_handle_notification/1
-
-        ,get_parent_account_id/1
 
         ,default_from_address/0
         ,default_reply_to/0
@@ -506,7 +503,7 @@ find_account_rep_email(?NE_BINARY=AccountId) ->
             find_account_admin_email(AccountId);
         'false' ->
             lager:debug("finding admin email for reseller of account ~s", [AccountId]),
-            find_account_admin_email(find_reseller_id(AccountId))
+            find_account_admin_email(kz_services_reseller:get_id(AccountId))
     end;
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(kapi_notifications:account_id(AccountJObj)).
@@ -514,7 +511,7 @@ find_account_rep_email(AccountJObj) ->
 -spec find_account_admin_email(kz_term:api_binary()) -> kz_term:api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
-    find_account_admin_email(AccountId, find_reseller_id(AccountId)).
+    find_account_admin_email(AccountId, kz_services_reseller:get_id(AccountId)).
 
 -spec find_account_admin_email(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binaries().
 find_account_admin_email('undefined', _Id) ->
@@ -526,7 +523,7 @@ find_account_admin_email(AccountId, AccountId) ->
     end;
 find_account_admin_email(AccountId, ResellerId) ->
     case query_account_for_admin_emails(AccountId) of
-        [] -> find_account_admin_email(get_parent_account_id(AccountId), ResellerId);
+        [] -> find_account_admin_email(kzd_accounts:get_parent_account_id(AccountId), ResellerId);
         Emails -> Emails
     end.
 
@@ -551,13 +548,10 @@ extract_admin_emails(Users) ->
         (Email = kzd_user:email(Admin)) =/= 'undefined'
     ].
 
--spec find_reseller_id(kz_term:ne_binary()) -> kz_term:ne_binary().
-find_reseller_id(AccountId) -> kz_services_reseller:get_id(AccountId).
-
 -spec find_account_admin(kz_term:api_binary()) -> kz_term:api_object().
 find_account_admin('undefined') -> 'undefined';
 find_account_admin(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    find_account_admin(AccountId, find_reseller_id(AccountId)).
+    find_account_admin(AccountId, kz_services_reseller:get_id(AccountId)).
 
 -spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_user:doc().
 find_account_admin(AccountId, AccountId) ->
@@ -622,7 +616,7 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
     case kz_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
-            ResellerAccountId = find_reseller_id(AccountId),
+            ResellerAccountId = kz_services_reseller:get_id(AccountId),
             is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
@@ -640,7 +634,7 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
             kz_notification:is_enabled(TemplateJObj, ?NOTICE_ENABLED_BY_DEFAULT);
         _Otherwise when AccountId =/= ResellerAccountId ->
             lager:debug("account ~s is mute, checking parent", [AccountId]),
-            is_account_notice_enabled(get_parent_account_id(AccountId)
+            is_account_notice_enabled(kzd_accounts:get_parent_account_id(AccountId)
                                      ,TemplateId
                                      ,ResellerAccountId
                                      );
@@ -658,18 +652,6 @@ is_notice_enabled_default(TemplateKey) ->
         _Otherwise ->
             lager:debug("system is mute, ~s not enabled", [TemplateId]),
             'false'
-    end.
-
--spec get_parent_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
-get_parent_account_id(AccountId) ->
-    case kzd_accounts:fetch(AccountId) of
-        {'ok', JObj} -> kzd_accounts:parent_account_id(JObj);
-        {'error', 'not_found'} ->
-            lager:info("account ~s no longer exists, no parent account", [AccountId]),
-            'undefined';
-        {'error', _E} ->
-            lager:error("failed to find parent account for ~s: ~p", [AccountId, _E]),
-            'undefined'
     end.
 
 -spec find_addresses(kz_json:object(), kz_json:object(), kz_term:ne_binary()) ->
