@@ -182,7 +182,7 @@ timestamp(DataJObj) ->
 -spec reseller_info_data(kz_json:object()) -> kz_term:proplist().
 reseller_info_data(DataJObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
-    ResellerId = teletype_util:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     teletype_util:find_account_params(ResellerId).
 
 -spec affected_account_data(kz_json:object()) -> kz_term:proplist().

@@ -103,7 +103,7 @@ process_req(DataJObj) ->
 -spec fix_to_addresses(kz_json:object(), email_map()) -> email_map().
 fix_to_addresses(DataJObj, Emails) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    ResellerId = teletype_util:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     props:set_value(<<"to">>, teletype_util:find_account_admin_email(ResellerId), Emails).
 
 -spec macros(kz_json:object()) -> kz_term:proplist().
