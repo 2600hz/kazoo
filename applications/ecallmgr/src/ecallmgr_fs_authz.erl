@@ -190,10 +190,7 @@ authz_response(JObj, Props, CallId, Node) ->
                                                  ),
                     ResellerId = kz_json:get_value(<<"Reseller-ID">>
                                                   ,JObj
-                                                  ,props:get_value(?GET_CCV(<<"Account-ID">>)
-                                                                  ,Props
-                                                                  ,kz_services_reseller:get_id(AccountId)
-                                                                  )
+                                                  ,props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)
                                                   ),
                     _ = ecallmgr_fs_command:set(Node, CallId, [{<<"Account-Billing">>, AccountBilling}
                                                               ,{<<"Account-ID">>, AccountId}
