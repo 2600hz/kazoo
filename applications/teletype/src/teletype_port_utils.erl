@@ -6,152 +6,78 @@
 %%%-----------------------------------------------------------------------------
 -module(teletype_port_utils).
 
--export([is_comment_private/1]).
--export([get_attachments/1]).
--export([fix_email/1, fix_email/2]).
--export([fix_port_request_data/2]).
+-export([port_request_data/2]).
 
 -include("teletype.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
--spec is_comment_private(kz_json:object()) -> boolean().
-is_comment_private(DataJObj) ->
-    kz_json:is_true([<<"comment">>, <<"superduper_comment">>], DataJObj, 'false').
-
--spec get_attachments(kz_json:object()) -> attachments().
-get_attachments(DataJObj) ->
-    get_attachments(DataJObj, teletype_util:is_preview(DataJObj)).
-
--spec get_attachments(kz_json:object(), boolean()) -> attachments().
-get_attachments(_DataJObj, 'true') -> [];
-get_attachments(DataJObj, 'false') ->
-    PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
-    Doc = kz_json:get_value(<<"port_request">>, DataJObj),
-    lists:foldl(fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
-               ,[]
-               ,kz_doc:attachment_names(Doc)
-               ).
-
--spec get_attachment_fold(kz_json:path(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
-                                 attachments().
-get_attachment_fold(Name, Acc, PortReqId, Doc) ->
-    {'ok', Attachment} = kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
-    ContentType = kz_doc:attachment_content_type(Doc, Name),
-    {_, BinAttachment} = kz_attachment:decode_base64(Attachment),
-    [{ContentType, Name, BinAttachment}|Acc].
-
--spec fix_email(kz_json:object()) -> kz_json:object().
-fix_email(ReqData) ->
-    fix_email(ReqData, 'false').
-
--spec fix_email(kz_json:object(), boolean()) -> kz_json:object().
-fix_email(ReqData, OnlyAdmin) ->
-    AccountId = kz_json:get_value(<<"account_id">>, ReqData),
-    Emails = get_emails(ReqData, AccountId, OnlyAdmin),
-    kz_json:set_value(<<"to">>, Emails, ReqData).
-
--spec get_emails(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_term:ne_binaries().
-get_emails(_ReqData, AccountId, 'true') ->
-    ?DEV_LOG("superduper admin true"),
-    ResellerId = kz_services_reseller:get_id(AccountId),
-
-    ResellerEmail = find_reseller_port_email(ResellerId),
-    AdminEmails = teletype_util:find_account_admin_email(ResellerId),
-
-    ?DEV_LOG("~nAccountId: ~p ResellerId: ~p~nReseller whitelable port support: ~p~nAdmins: ~p~n~n"
-            ,[AccountId, ResellerId, ResellerEmail, AdminEmails]
-            ),
-    case {ResellerEmail, AdminEmails} of
-        {'undefined', 'undefined'} -> [];
-        {'undefined', [_|_]} -> AdminEmails;
-        {ResellerEmail, _} -> [ResellerEmail]
-    end;
-get_emails(ReqData, AccountId, 'false') ->
-    ?DEV_LOG("no private comment"),
-    ResellerId = kz_services_reseller:get_id(AccountId),
-
-    ResellerEmail = find_reseller_port_email(ResellerId),
-    AdminEmails = teletype_util:find_account_admin_email(ResellerId),
-    PortReqEmail = get_port_req_email(ReqData),
-
-    ?DEV_LOG("~nAccountId: ~p ResellerId: ~p~nReseller whitelable port support: ~p~nAdmins: ~p~nPortReqEmail ~p~n~n"
-            ,[AccountId, ResellerId, ResellerEmail, AdminEmails, PortReqEmail]
-            ),
-    case {ResellerEmail, AdminEmails} of
-        {'undefined', 'undefined'} -> lists:usort(PortReqEmail);
-        {'undefined', [_|_]} -> lists:usort(AdminEmails ++ PortReqEmail);
-        {ResellerEmail, _} -> lists:usort([ResellerEmail] ++ PortReqEmail)
+-spec port_request_data(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+port_request_data(DataJObj, TemplateId) ->
+    PortReqId = kz_json:get_first_defined([<<"port_request_id">>
+                                          ,[<<"port">>, <<"port_id">>]
+                                          ]
+                                         ,DataJObj
+                                         ),
+    case teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj) of
+        {'ok', PortReqJObj} ->
+            port_request_data(DataJObj, TemplateId, PortReqJObj);
+        {'error', _Reason} ->
+            lager:debug("failed to open port request ~s doc, throwing no_attachment here, don't panic: ~p"
+                       ,[PortReqId, _Reason]
+                       ),
+            throw({'error', 'no_attachment'})
     end.
 
--spec find_reseller_port_email(kz_term:api_binary()) -> kz_term:api_binary().
-find_reseller_port_email(AccountId) ->
-    case kzd_whitelabel:fetch(AccountId) of
-        {'error', _R} -> 'undefined';
-        {'ok', JObj} ->
-            kzd_whitelabel:port_support_email(JObj)
-    end.
-
--spec get_port_req_email(kz_json:object()) -> kz_term:binaries().
-get_port_req_email(ReqData) ->
-    Keys = [[<<"port_request">>, <<"customer_contact">>]
-           ,[<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>]
-           ],
-    case kz_json:get_first_defined(Keys, ReqData) of
-        <<_/binary>> =Email -> [Email];
-        [_|_]=Emails -> Emails;
-        _ -> []
-    end.
-
--spec fix_port_request_data(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_port_request_data(JObj, DataJObj) ->
-    Routines = [fun fix_numbers/2
-               ,fun fix_billing/2
-               ,fun fix_comments/2
-               ,fun fix_dates/2
-               ,fun fix_notifications/2
-               ,fun fix_carrier/2
-               ,fun fix_transfer_date/2
-               ,fun fix_scheduled_date/2
-               ,fun fix_ui_metadata/2
-               ,fun maybe_add_reason/2
+-spec port_request_data(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+port_request_data(DataJObj, TemplateId, PortReqJObj) ->
+    Routines = [fun fix_numbers/3
+               ,fun fix_billing/3
+               ,fun fix_comments/3
+               ,fun fix_dates/3
+               ,fun fix_notifications/3
+               ,fun fix_carrier/3
+               ,fun fix_transfer_date/3
+               ,fun fix_scheduled_date/3
+               ,fun fix_ui_metadata/3
+               ,fun maybe_add_reason/3
                ],
-    lists:foldl(fun(F, J) -> F(J, DataJObj) end, JObj, Routines).
+    JObj = lists:foldl(fun(F, AccJObj) -> F(DataJObj, TemplateId, AccJObj) end
+                      ,PortReqJObj
+                      ,Routines
+                      ),
+    NewData = kz_json:set_value(<<"port_request">>, JObj, DataJObj),
+    maybe_get_attachments(maybe_fix_emails(NewData, TemplateId), TemplateId).
 
--spec fix_numbers(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_numbers(JObj, _DataJObj) ->
-    NumbersJObj = case kz_json:get_value(?PORT_PVT_STATE, JObj) of
-                      ?PORT_COMPLETED ->
-                          kz_json:get_json_value(<<"ported_numbers">>
-                                                ,JObj
-                                                 %% in case the doc is not saved/replicated yet
-                                                ,kz_json:get_json_value(<<"numbers">>, JObj, kz_json:new())
-                                                );
-                      _ ->
-                          kz_json:get_json_value(<<"numbers">>, JObj, kz_json:new())
-                  end,
-    Numbers = kz_json:foldl(fun fix_number_fold/3, [], NumbersJObj),
-    kz_json:set_value(<<"numbers">>, Numbers, JObj).
+-spec fix_numbers(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_numbers(_DataJObj, _TemplateId, PortReqJObj) ->
+    Numbers = kz_json:foldl(fun (Number, _Value, Acc) -> [Number|Acc] end
+                           ,[]
+                           ,get_numbers(PortReqJObj)
+                           ),
+    kz_json:set_value(<<"numbers">>, Numbers, PortReqJObj).
 
--spec fix_number_fold(kz_json:key(), kz_json:json_term(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
-fix_number_fold(Number, _Value, Acc) ->
-    [Number|Acc].
+-spec get_numbers(kz_json:object()) -> kz_term:ne_binaries().
+get_numbers(PortReqJObj) ->
+    case kz_json:get_value(?PORT_PVT_STATE, PortReqJObj) of
+        ?PORT_COMPLETED ->
+            %% in case the doc is not saved/replicated yet, use numbers key
+            Default = kz_json:get_json_value(<<"numbers">>, PortReqJObj, kz_json:new()),
+            kz_json:get_json_value(<<"ported_numbers">>, PortReqJObj, Default);
+        _ ->
+            kz_json:get_json_value(<<"numbers">>, PortReqJObj, kz_json:new())
+    end.
 
--spec fix_billing(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_billing(JObj, _DataJObj) ->
-    kz_json:foldl(fun fix_billing_fold/3
-                 ,kz_json:delete_key(<<"bill">>, JObj)
-                 ,kz_json:get_json_value(<<"bill">>, JObj, kz_json:new())
+-spec fix_billing(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_billing(_DataJObj, _TemplateId, PortReqJObj) ->
+    kz_json:foldl(fun (Key, Value, Acc) -> kz_json:set_value(<<"bill_", Key/binary>>, Value, Acc) end
+                 ,kz_json:delete_key(<<"bill">>, PortReqJObj)
+                 ,kz_json:get_json_value(<<"bill">>, PortReqJObj, kz_json:new())
                  ).
 
--spec fix_billing_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
-                              kz_json:object().
-fix_billing_fold(Key, Value, Acc) ->
-    kz_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
-
--spec fix_comments(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_comments(JObj, DataJObj) ->
+-spec fix_comments(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_comments(DataJObj, _TemplateId, PortReqJObj) ->
     case kz_json:get_json_value(<<"comment">>, DataJObj) of
-        'undefined' -> kz_json:delete_key(<<"comments">>, JObj);
+        'undefined' -> kz_json:delete_key(<<"comments">>, PortReqJObj);
         Comment ->
             Timestamp = kz_json:get_integer_value(<<"timestamp">>, Comment),
             Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, DataJObj)),
@@ -161,14 +87,14 @@ fix_comments(JObj, DataJObj) ->
                     ],
             kz_json:set_value(<<"comment">>
                              ,kz_json:set_values(Props, Comment)
-                             ,kz_json:delete_key(<<"comments">>, JObj)
+                             ,kz_json:delete_key(<<"comments">>, PortReqJObj)
                              )
     end.
 
--spec fix_dates(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_dates(JObj, _DataJObj) ->
+-spec fix_dates(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_dates(_DataJObj, _TemplateId, PortReqJObj) ->
     lists:foldl(fun fix_date_fold/2
-               ,kz_json:set_value(<<"created">>, kz_doc:created(JObj), JObj)
+               ,kz_json:set_value(<<"created">>, kz_doc:created(PortReqJObj), PortReqJObj)
                ,[<<"transfer_date">>, <<"scheduled_date">>, <<"created">>, <<"ported_date">>]
                ).
 
@@ -193,49 +119,50 @@ fix_date_fold(Key, JObj) ->
             kz_json:set_value(Key, Date, JObj)
     end.
 
--spec fix_notifications(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_notifications(JObj, _DataJObj) ->
-    case kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], JObj) of
-        <<_/binary>> =Email -> kz_json:set_value(<<"customer_contact">>, [Email], JObj);
-        [_|_]=Emails -> kz_json:set_value(<<"customer_contact">>, Emails, JObj);
-        _ -> JObj
+-spec fix_notifications(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_notifications(_DataJObj, _TemplateId, PortReqJObj) ->
+    case kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortReqJObj) of
+        <<_/binary>> =Email -> kz_json:set_value(<<"customer_contact">>, [Email], PortReqJObj);
+        [_|_]=Emails -> kz_json:set_value(<<"customer_contact">>, Emails, PortReqJObj);
+        _ -> PortReqJObj
     end.
 
--spec fix_carrier(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_carrier(JObj, _DataJObj) ->
-    kz_json:set_values([{<<"losing_carrier">>, kz_json:get_first_defined([<<"carrier">>
-                                                                         ,[<<"billing">>, <<"carrier">>]
-                                                                         ,<<"bill_carrier">>
-                                                                         ]
-                                                                        ,JObj
-                                                                        ,<<"Unknown Carrier">>
-                                                                        )
+-spec fix_carrier(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_carrier(_DataJObj, _TemplateId, PortReqJObj) ->
+    LosingKeys = [<<"carrier">>
+                 ,[<<"billing">>, <<"carrier">>]
+                 ,<<"bill_carrier">>
+                 ],
+    kz_json:set_values([{<<"losing_carrier">>
+                        ,kz_json:get_first_defined(LosingKeys, PortReqJObj, <<"Unknown Carrier">>)
                         }
-                       ,{<<"winning_carrier">>, kz_json:get_value(<<"winning_carrier">>, JObj, <<"Unknown Carrier">>)}
+                       ,{<<"winning_carrier">>
+                        ,kz_json:get_value(<<"winning_carrier">>, PortReqJObj, <<"Unknown Carrier">>)
+                        }
                        ]
-                      ,JObj %% not deleting the key for backward compatibility
+                      ,PortReqJObj %% not deleting the key for backward compatibility
                       ).
 
--spec fix_transfer_date(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_transfer_date(JObj, _DataJObj) ->
-    kz_json:set_values([{<<"requested_port_date">>, kz_json:get_value(<<"transfer_date">>, JObj)}
-                       ,{<<"transfer_date">>, kz_json:get_value([<<"transfer_date">>, <<"local">>], JObj)} %% backward compatibility
-                       ], JObj).
+-spec fix_transfer_date(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_transfer_date(_DataJObj, _TemplateId, PortReqJObj) ->
+    kz_json:set_values([{<<"requested_port_date">>, kz_json:get_value(<<"transfer_date">>, PortReqJObj)}
+                       ,{<<"transfer_date">>, kz_json:get_value([<<"transfer_date">>, <<"local">>], PortReqJObj)} %% backward compatibility
+                       ], PortReqJObj).
 
--spec fix_scheduled_date(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_scheduled_date(JObj, _DataJObj) ->
-    kz_json:set_values([{<<"port_scheduled_date">>, kz_json:get_value(<<"scheduled_date">>, JObj)}
-                       ,{<<"scheduled_date">>, kz_json:get_value([<<"scheduled_date">>, <<"local">>], JObj)}
-                       ], JObj).
+-spec fix_scheduled_date(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_scheduled_date(_DataJObj, _TemplateId, PortReqJObj) ->
+    kz_json:set_values([{<<"port_scheduled_date">>, kz_json:get_value(<<"scheduled_date">>, PortReqJObj)}
+                       ,{<<"scheduled_date">>, kz_json:get_value([<<"scheduled_date">>, <<"local">>], PortReqJObj)}
+                       ], PortReqJObj).
 
--spec fix_ui_metadata(kz_json:object(), kz_json:object()) -> kz_json:object().
-fix_ui_metadata(JObj, _DataJObj) ->
-    kz_json:delete_keys([<<"ui_metadata">>, <<"ui_flags">>], JObj).
+-spec fix_ui_metadata(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+fix_ui_metadata(_DataJObj, _TemplateId, PortReqJObj) ->
+    kz_json:delete_keys([<<"ui_metadata">>, <<"ui_flags">>], PortReqJObj).
 
--spec maybe_add_reason(kz_json:object(), kz_json:object()) -> kz_json:object().
-maybe_add_reason(JObj, DataJObj) ->
-    case kz_json:get_ne_json_value(<<"reason">>, DataJObj) of
-        'undefined' -> JObj;
+-spec maybe_add_reason(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+maybe_add_reason(DataJObj, _TemplateId, PortReqJObj) ->
+    case kz_json:get_ne_json_value(<<"reason">>, PortReqJObj) of
+        'undefined' -> PortReqJObj;
         Reason ->
             UserInfo = get_commenter_info(DataJObj),
             Timestamp = kz_json:get_integer_value(<<"timestamp">>, Reason),
@@ -244,7 +171,7 @@ maybe_add_reason(JObj, DataJObj) ->
                     ,{<<"date">>, Date}
                     ,{<<"user">>, kz_json:from_list(UserInfo)}
                     ],
-            kz_json:set_value(<<"transition_reason">>, kz_json:from_list(Props), JObj)
+            kz_json:set_value(<<"transition_reason">>, kz_json:from_list(Props), PortReqJObj)
     end.
 
 -spec get_commenter_info(kz_json:object()) -> kz_term:proplist().
@@ -311,3 +238,151 @@ first_last_name(?NE_BINARY = First, _) ->
     <<First/binary>>;
 first_last_name(_, _) ->
     <<"An agent">>.
+
+-spec is_admin_template(kz_term:ne_binary()) -> boolean().
+is_admin_template(TemplateId) ->
+    lists:member(TemplateId
+                ,[teletype_port_request_admin:id()
+                 ,teletype_port_request:id()
+                 ]
+                ).
+
+-spec maybe_get_attachments(kz_json:object(), kz_term:ne_binary()) -> attachments().
+maybe_get_attachments(DataJObj, TemplateId) ->
+    maybe_get_attachments(DataJObj, is_admin_template(TemplateId), teletype_util:is_preview(DataJObj)).
+
+-spec maybe_get_attachments(kz_json:object(), boolean(), boolean()) -> attachments().
+maybe_get_attachments(_DataJObj, _, 'true') -> [];
+maybe_get_attachments(DataJObj, 'true', 'false') ->
+    PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
+    Doc = kz_json:get_value(<<"port_request">>, DataJObj),
+    Attachments = lists:foldl(fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
+                             ,[]
+                             ,kz_doc:attachment_names(Doc)
+                             ),
+    kz_json:set_value(<<"attachments">>, Attachments, DataJObj);
+maybe_get_attachments(DataJObj, _, 'false') ->
+    DataJObj.
+
+-spec get_attachment_fold(kz_json:key(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
+                                 attachments().
+get_attachment_fold(Name, Acc, PortReqId, Doc) ->
+     case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name) of
+         {'ok', Attachment} ->
+            ContentType = kz_doc:attachment_content_type(Doc, Name),
+            {_, BinAttachment} = kz_attachment:decode_base64(Attachment),
+            [{ContentType, Name, BinAttachment}|Acc];
+         {'error', _Reason} ->
+             lager:debug("failed to get port request ~s attchament ~s: ~p", [PortReqId, Name, _Reason]),
+             throw({'error', 'no_attachment'})
+    end.
+
+-spec maybe_fix_emails(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+maybe_fix_emails(DataJObj, TemplateId) ->
+    maybe_fix_emails(DataJObj, TemplateId, teletype_util:is_preview(DataJObj)).
+
+-spec maybe_fix_emails(kz_json:object(), kz_term:ne_binary(), boolean()) -> kz_json:object().
+maybe_fix_emails(DataJObj, _, 'true') ->
+    DataJObj;
+maybe_fix_emails(DataJObj, TemplateId, 'false') ->
+    ToEmails = get_to_emails(DataJObj, TemplateId, is_comment_private(DataJObj)),
+    IsAdminTemplate = teletype_port_request_admin:id() =:= TemplateId,
+    maybe_set_from_email(kz_json:set_value(<<"to">>, ToEmails, DataJObj), IsAdminTemplate).
+
+-spec get_to_emails(kz_json:object(), kz_term:ne_binary(), boolean()) -> kz_json:object().
+get_to_emails(DataJObj, TemplateId, 'true') ->
+    get_authority_emails(DataJObj, TemplateId);
+get_to_emails(DataJObj, TemplateId, 'false') ->
+    get_authority_emails(DataJObj, TemplateId)
+        ++ get_port_submitter_emails(DataJObj).
+
+-spec maybe_set_from_email(kz_json:object(), boolean()) -> kz_json:object().
+maybe_set_from_email(DataJObj, 'true') ->
+    DefaultFrom = teletype_util:default_from_address(),
+    Initiator = kz_json:get_value([<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>], DataJObj, DefaultFrom),
+    kz_json:set_value(<<"from">>, Initiator, DataJObj);
+maybe_set_from_email(DataJObj, 'false') ->
+    DataJObj.
+
+-spec is_comment_private(kz_json:object()) -> boolean().
+is_comment_private(DataJObj) ->
+    kz_json:is_true([<<"comment">>, <<"superduper_comment">>], DataJObj, 'false').
+
+-spec get_port_submitter_emails(kz_json:object()) -> kz_term:binaries().
+get_port_submitter_emails(DataJObj) ->
+    Keys = [[<<"port_request">>, <<"customer_contact">>]
+           ,[<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>]
+           ],
+    case kz_json:get_first_defined(Keys, DataJObj) of
+        <<_/binary>> =Email -> [Email];
+        Emails when is_list(Emails) -> Emails;
+        _ -> []
+    end.
+
+-spec get_authority_emails(kz_json:object(), kz_term:ne_binary()) -> kz_term:binaries().
+get_authority_emails(DataJObj, TemplateId) ->
+    PortDoc = kz_json:get_json_value(<<"port_request">>, DataJObj),
+    case kzd_port_requests:find_port_authority(PortDoc) of
+        'undefined' ->
+            lager:debug("using master as port authority"),
+            maybe_use_master_admins(TemplateId, 'undefined');
+        PortAuthority ->
+            case teletype_util:find_account_admin_email(PortAuthority) of
+                'undefined' ->
+                    lager:debug("~s doesn't have any admin maybe using system emails", [PortAuthority]),
+                    maybe_use_master_admins(TemplateId, PortAuthority);
+                [] ->
+                    lager:debug("~s doesn't have any admin maybe using system emails", [PortAuthority]),
+                    maybe_use_master_admins(TemplateId, PortAuthority);
+                Admins ->
+                    lager:debug("using admin emails from ~s", [PortAuthority]),
+                    Admins
+            end
+    end.
+
+-spec maybe_use_master_admins(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binaries().
+maybe_use_master_admins(TemplateId, PortAuthority) ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} ->
+            maybe_use_master_admins(TemplateId, PortAuthority, MasterAccountId);
+        {'error', _} ->
+            lager:debug("failed to find port authority, master account is undefined, maybe using system template"),
+            maybe_use_system_emails(TemplateId)
+    end.
+
+-spec maybe_use_master_admins(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+maybe_use_master_admins(TemplateId, MasterAccountId, MasterAccountId) ->
+    lager:debug("reached to master account, maybe using default_to from system template"),
+    maybe_use_system_emails(TemplateId);
+maybe_use_master_admins(TemplateId, _, MasterAccountId) ->
+    case teletype_util:find_account_admin_email(MasterAccountId) of
+        'undefined' ->
+            lager:debug("master doesn't have any admins, maybe using default_to from system template"),
+            maybe_use_system_emails(TemplateId);
+        [] ->
+            lager:debug("master doesn't have any admins, maybe using default_to from system template"),
+            maybe_use_system_emails(TemplateId);
+        Admins ->
+            lager:debug("using admin emails from ~s", [MasterAccountId]),
+            Admins
+    end.
+
+-spec maybe_use_system_emails(kz_term:ne_binary()) -> kz_term:api_ne_binaries().
+maybe_use_system_emails(TemplateId) ->
+    case teletype_util:template_system_value(TemplateId, <<"default_to">>) of
+        'undefined' ->
+            lager:debug("system template doesn't have default_to"),
+            'undefined';
+        [] ->
+            lager:debug("system template doesn't have default_to"),
+            'undefined';
+        ?NE_BINARY = To ->
+            lager:debug("using default_to from system template"),
+            [To];
+        Emails when is_list(Emails) ->
+            lager:debug("using default_to from system config template"),
+            Emails;
+        _ ->
+            lager:debug("system template doesn't have default_to, using data emails"),
+            'undefined'
+    end.

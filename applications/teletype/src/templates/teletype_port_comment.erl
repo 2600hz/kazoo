@@ -69,20 +69,10 @@ handle_req(JObj, 'true') ->
 
 -spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
-    PortReqId = kz_json:get_first_defined([<<"port_request_id">>, [<<"port">>, <<"port_id">>]], DataJObj),
-    {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
-
-    ReqData = kz_json:set_value(<<"port_request">>
-                               ,teletype_port_utils:fix_port_request_data(PortReqJObj, DataJObj)
-                               ,DataJObj
-                               ),
-
-    case teletype_util:is_preview(DataJObj) of
-        'false' ->
-            handle_port_request(
-              teletype_port_utils:fix_email(ReqData, teletype_port_utils:is_comment_private(DataJObj))
-             );
-        'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, ReqData))
+    NewData = teletype_port_utils:port_request_data(DataJObj, ?TEMPLATE_ID),
+    case teletype_util:is_preview(NewData) of
+        'false' -> handle_port_request(NewData);
+        'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, NewData))
     end.
 
 -spec handle_port_request(kz_json:object()) -> template_response().

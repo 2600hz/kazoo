@@ -281,6 +281,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
             lager:debug("failed to find master whitelabel, assuming master is port authority"),
             MasterAccountId;
         {'ok', JObj} ->
+            lager:debug("checking master whitelabel port authority"),
             kzd_whitelabel:port_authority(JObj, MasterAccountId)
     end;
 find_port_authority(MasterAccountId, AccountId) ->
@@ -302,7 +303,7 @@ find_port_authority(MasterAccountId, AccountId) ->
                 _Other ->
                     ParentId = kzd_accounts:get_authoritative_parent_id(AccountId, MasterAccountId),
                     lager:debug("unknown port authority ~p in account ~s, checking parent ~s"
-                               ,[_Other, ParentId]
+                               ,[_Other, AccountId, ParentId]
                                ),
                     find_port_authority(MasterAccountId, ParentId)
             end

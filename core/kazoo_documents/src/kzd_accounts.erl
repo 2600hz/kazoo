@@ -78,7 +78,7 @@
         ,fax_settings/1
         ,get_inherited_value/3
         ,get_parent_account_id/1
-        ,get_authoritative_parent_id/1
+        ,get_authoritative_parent_id/1, get_authoritative_parent_id/2
 
         ,reseller_id/1, set_reseller_id/2, is_reseller/1, path_reseller_id/0
         ,is_trial_account/1
