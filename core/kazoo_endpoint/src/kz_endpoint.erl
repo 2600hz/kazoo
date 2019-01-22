@@ -1380,6 +1380,8 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
               ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
               ,{<<"SIP-Interface">>, SIPInterface}
               ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+              ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
+              ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
               ])
     end.
 
