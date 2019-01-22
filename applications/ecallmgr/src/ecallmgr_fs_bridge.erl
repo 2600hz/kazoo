@@ -242,7 +242,7 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
     ].
 
 -spec create_command(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
-create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
+create_command(DP, Node, UUID, #channel{profile=ChannelProfile}, JObj) ->
     BypassAfterBridge = ?BYPASS_MEDIA_AFTER_BRIDGE,
     BridgeProfile = kz_term:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
     EPs = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
@@ -281,7 +281,7 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     UpdatedJObj = kz_json:set_value(<<"Endpoints">>, UniqueEndpoints, kz_json:merge(JObj, Common)),
 
     LiftedCmd = list_to_binary(["bridge "
-                               ,build_channels_vars(UniqueEndpoints, UpdatedJObj)
+                               ,build_channels_vars(Node, UUID, UniqueEndpoints, UpdatedJObj)
                                ,try_create_bridge_string(UniqueEndpoints, UpdatedJObj)
                                ]),
 
@@ -312,14 +312,20 @@ try_create_bridge_string(Endpoints, JObj) ->
         BridgeString -> BridgeString
     end.
 
--spec build_channels_vars(kz_json:objects(), kz_json:object()) -> iolist().
-build_channels_vars(Endpoints, JObj) ->
-    Props = case kz_json:find(<<"Force-Fax">>, Endpoints, kz_json:get_value(<<"Force-Fax">>, JObj)) of
-                'undefined' -> [];
-                Direction ->
-                    [{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}]
-            end,
+-spec build_channels_vars(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> iolist().
+build_channels_vars(Node, UUID, Endpoints, JObj) ->
+    Routines = [fun maybe_force_fax/4
+               ,fun add_bridge_actions/4
+               ],
+    Props = lists:foldl(fun(F, Acc) -> Acc ++ F(Node, UUID, Endpoints, JObj) end, [], Routines),
     ecallmgr_fs_xml:get_channel_vars(kz_json:set_values(Props, JObj)).
+
+-spec maybe_force_fax(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> kz_term:ne_binaries().
+maybe_force_fax(_Node, _UUID, Endpoints, JObj) ->
+    case kz_json:find(<<"Force-Fax">>, Endpoints, kz_json:get_value(<<"Force-Fax">>, JObj)) of
+        'undefined' -> [];
+        Direction -> [{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}]
+    end.
 
 -spec post_exec(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 post_exec(DP, _Node, _UUID, _Channel, _JObj) ->
@@ -387,6 +393,50 @@ build_endpoint_action_dp(K, [{App, Args} | DP], N, Acc) ->
 
 -spec endpoint_action_cmd(kz_term:ne_binary()) -> kz_term:ne_binary().
 endpoint_action_cmd(Event) ->
+    case lists:keyfind(Event, 1, ?DP_EVENT_VARS) of
+        'false' -> normalize_event_action_key(Event);
+        {_, Prefix} -> Prefix
+    end.
+
+-spec add_bridge_actions(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> kz_term:ne_binaries().
+add_bridge_actions(Node, UUID, _Endpoints, JObj) ->
+    BridgeActions = kz_json:get_json_value(<<"Bridge-Actions">>, JObj, kz_json:new()),
+    Fun = fun(K, V, Acc)-> build_bridge_actions(Node, UUID, K, V, Acc) end,
+    case kz_json:foldl(Fun, [], BridgeActions) of
+        [] -> [];
+        Actions -> [{?CHANNEL_ACTIONS_KEY, kz_binary:join(Actions,<<",">>)}]
+    end.
+
+-spec build_bridge_actions(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), ep_actions()) ->
+                                  ep_actions().
+build_bridge_actions(Node, UUID, K, V, Acc) ->
+    Fun = fun(K1, V1, Acc1)-> build_bridge_action(Node, UUID, K1, V1, Acc1) end,
+    DP = kz_json:foldr(Fun, [], V),
+    Acc ++ build_bridge_action_dp(K, DP).
+
+-spec build_bridge_action(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fs_apps()) ->
+                                 fs_apps().
+build_bridge_action(Node, UUID, _K, V, Acc) ->
+    lager:debug("building dialplan action for ~s", [_K]),
+    DP = ecallmgr_call_command:fetch_dialplan(Node, UUID, V, self()),
+    Acc ++ DP.
+
+-spec build_bridge_action_dp(kz_term:ne_binary(), fs_apps()) -> ep_actions().
+build_bridge_action_dp(K, DP) ->
+    build_bridge_action_dp(bridge_action_cmd(K), DP, 1, []).
+
+-spec build_bridge_action_dp(kz_term:ne_binary(), fs_apps(), pos_integer(), ep_actions()) -> ep_actions().
+build_bridge_action_dp(_K, [], _N, Acc) ->
+    lists:reverse(Acc);
+build_bridge_action_dp(K, [{App, Args} | DP], N, Acc) ->
+    DPApp = ecallmgr_util:dialplan_application(App),
+    DPArgs = kz_term:to_list(Args),
+    Seq = kz_term:to_list(N),
+    Var = list_to_binary([K, "_", Seq, "=", DPApp, " ", DPArgs, ""]),
+    build_bridge_action_dp(K, DP, N + 1, [Var | Acc]).
+
+-spec bridge_action_cmd(kz_term:ne_binary()) -> kz_term:ne_binary().
+bridge_action_cmd(Event) ->
     case lists:keyfind(Event, 1, ?DP_EVENT_VARS) of
         'false' -> normalize_event_action_key(Event);
         {_, Prefix} -> Prefix

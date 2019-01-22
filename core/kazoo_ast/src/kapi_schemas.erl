@@ -344,6 +344,10 @@ guess_field_default(<<"Flags">>) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>, kz_json:from_list([{<<"type">>, <<"string">>}])}
                       ]);
+guess_field_default(<<"Bridge-Actions">>) ->
+    kz_json:from_list([{<<"type">>, <<"object">>}]);
+guess_field_default(<<"Endpoint-Actions">>) ->
+    kz_json:from_list([{<<"type">>, <<"object">>}]);
 guess_field_default(Field) ->
     guess_field_default_rev(kz_json:normalize_key(kz_binary:reverse(Field))).
 
@@ -370,6 +374,8 @@ guess_field_default_rev(<<"tfel_", _/binary>>) ->
 guess_field_default_rev(<<"srav_", _/binary>>) ->
     kz_json:from_list([{<<"type">>, <<"object">>}]);
 guess_field_default_rev(<<"sredaeh_", _/binary>>) ->
+    kz_json:from_list([{<<"type">>, <<"object">>}]);
+guess_field_default_rev(<<"snoitca_", _/binary>>) ->
     kz_json:from_list([{<<"type">>, <<"object">>}]);
 guess_field_default_rev(_Dleif) ->
     ?DEBUG("failed to guess ~s~n", [kz_binary:reverse(_Dleif)]),
