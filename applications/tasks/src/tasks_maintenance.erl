@@ -19,6 +19,11 @@
 
 -export([register_views/0]).
 
+%% kt_compaction_reporter and kt_compactor mirror functions
+-export([compaction/1
+        ,compaction/2
+        ]).
+
 -include("tasks.hrl").
 
 
@@ -132,6 +137,46 @@ cleanup_soft_deletes(Account) ->
     _ = kt_cleanup:cleanup_soft_deletes(Account),
     no_return.
 
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder(?APP).
+
+-spec compaction(kz_term:ne_binary()) -> 'no_return'.
+compaction(<<"status">>) ->
+    case kt_compaction_reporter:status() of
+        [] ->
+            io:format("not running~n");
+        StatsRows ->
+            lists:foreach(
+              fun(Stats) ->
+                      lists:foreach(fun({K, V}) -> io:format("~s: ~s~n", [K, V]) end
+                                   ,Stats
+                                   ),
+                      io:format("~n")
+              end,
+              StatsRows)
+    end,
+    'no_return';
+
+compaction(<<"history">>) ->
+    maybe_print_compaction_history(kt_compaction_reporter:history()).
+
+%% Accepts `YYYYMM' or `YYYYM' (without quotes) as the value for the second param.
+-spec compaction(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
+compaction(<<"history">>, <<Year:4/binary, Month:2/binary>>) ->
+    maybe_print_compaction_history(compaction_history(Year, Month));
+compaction(<<"history">>, <<Year:4/binary, Month:1/binary>>) ->
+    maybe_print_compaction_history(compaction_history(Year, Month));
+
+compaction(<<"history">>, <<JobId/binary>>) ->
+    job_info(JobId);
+
+compaction(<<"compact_db">>, <<Db/binary>>) ->
+    kt_compactor:compact_db(Db);
+
+compaction(<<"compact_node">>, <<Node/binary>>) ->
+    kt_compactor:compact_node(Node).
+
 %%% Internals
 
 -spec print_json(kz_json:json_term()) -> 'no_return'.
@@ -187,8 +232,65 @@ handle_new_task_error('unknown_category_action', Category, Action) ->
 handle_new_task_error(JObj, _, _) ->
     print_json(kz_json:from_list([{<<"errors">>, JObj}])).
 
--spec register_views() -> 'ok'.
-register_views() ->
-    kz_datamgr:register_views_from_folder(?APP).
+-spec compaction_history(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                {'ok', kz_json:json_terms()} | {'error', atom()}.
+compaction_history(Year, Month) ->
+    kt_compaction_reporter:history(kz_term:to_integer(Year), kz_term:to_integer(Month)).
+
+-spec job_info(kz_term:ne_binary()) -> 'no_return'.
+job_info(JobId) ->
+    case kt_compaction_reporter:job_info(JobId) of
+        Prop when is_list(Prop) ->
+            lists:foreach(fun({Key, Val}) -> io:format("~s: ~s~n", [Key, Val]) end, Prop);
+        Reason when is_atom(Reason) ->
+            io:format("failed to get info for job ~s with reason: ~p", [JobId, Reason])
+    end,
+    'no_return'.
+
+-spec maybe_print_compaction_history({'ok', kz_json:json_terms()} | {'error', atom()}) ->
+                                            'no_return'.
+maybe_print_compaction_history({'ok', []}) ->
+    io:format("no history found~n"),
+    'no_return';
+maybe_print_compaction_history({'ok', JObjs}) ->
+    Header = ["id"
+             ,"found"
+             ,"compacted"
+             ,"skipped"
+             ,"recovered"
+             ,"started_at"
+             ,"finished_at"
+             ,"exec_time"
+             ],
+    HLine = "+---------------------+------+---------+-------+---------------+-------------------+-------------------+------------+",
+    %% Format string for printing header and values of the table including "columns".
+    FStr = "|~.21s|~.6s|~.9s|~.7s|~.15s|~.19s|~.19s|~.12s|~n",
+    %% Print top line of table, then prints the header and then another line below.
+    io:format("~s~n" ++ FStr ++ "~s~n", [HLine] ++ Header ++ [HLine]),
+    lists:foreach(fun(Obj) -> print_compaction_history_row(Obj, FStr) end, JObjs),
+    io:format("~s~n", [HLine]),
+    'no_return';
+maybe_print_compaction_history({'error', Reason}) ->
+    print_error(Reason).
+
+-spec print_compaction_history_row(kz_json:object(), string()) -> 'ok'.
+print_compaction_history_row(JObj, FStr) ->
+    Doc = kz_json:get_json_value(<<"doc">>, JObj),
+    Str = fun(K) -> kz_json:get_string_value(K, Doc) end,
+    Int = fun(K) -> kz_json:get_integer_value(K, Doc) end,
+    StartInt = Int([<<"worker">>, <<"started">>]),
+    EndInt = Int([<<"worker">>, <<"finished">>]),
+    DiskStartInt = Int([<<"storage">>, <<"disk">>, <<"start">>]),
+    DiskEndInt = Int([<<"storage">>, <<"disk">>, <<"end">>]),
+    Row = [kz_doc:id(Doc)
+          ,Str([<<"databases">>, <<"found">>])
+          ,Str([<<"databases">>, <<"compacted">>])
+          ,Str([<<"databases">>, <<"skipped">>])
+          ,kz_util:pretty_print_bytes(DiskStartInt - DiskEndInt)
+          ,kz_term:to_list(kz_time:pretty_print_datetime(StartInt))
+          ,kz_term:to_list(kz_time:pretty_print_datetime(EndInt))
+          ,kz_term:to_list(kz_time:pretty_print_elapsed_s(EndInt - StartInt))
+          ],
+    io:format(FStr, Row).
 
 %%% End of Module

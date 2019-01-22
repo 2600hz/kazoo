@@ -28,6 +28,7 @@
         ,compactor_shards/1
         ,compactor_design_docs/1
         ,compactor_heuristic/1
+        ,compactor_callid/1
         ,new/5
         ]).
 
@@ -42,20 +43,28 @@
                    ,shards :: kz_term:ne_binaries()
                    ,design_docs = [] :: kz_term:ne_binaries()
                    ,heuristic :: heuristic()
+                   ,callid :: kz_term:api_ne_binary()
                    }).
 
 -type compactor() :: #compactor{}.
--export_type([compactor/0]).
+-type db_disk_and_data() :: {pos_integer(), pos_integer()} | 'undefined' | 'not_found'.
+-export_type([compactor/0
+             ,db_disk_and_data/0
+             ]).
 
 -spec run_compactor(compactor()) -> 'ok'.
 run_compactor(Compactor) ->
     case should_compact(Compactor) of
-        'false' -> 'ok';
+        'false' ->
+            kt_compaction_reporter:skipped_db(kz_util:get_callid(), compactor_database(Compactor));
         'true' ->
             lager:info("compacting db '~s' on node '~s'"
                       ,[compactor_database(Compactor), compactor_node(Compactor)]
                       ),
-            run_compactor_job(Compactor, compactor_shards(Compactor))
+            run_compactor_job(Compactor, compactor_shards(Compactor)),
+            lager:info("finished compacting db '~s' on node '~s'"
+                      ,[compactor_database(Compactor), compactor_node(Compactor)]
+                      )
     end.
 
 -spec run_compactor_job(compactor(), kz_term:ne_binaries()) -> 'ok'.
@@ -103,13 +112,16 @@ compact_shards(Compactor) ->
 compact_shard(#compactor{shards=[Shard]}=Compactor) ->
     kz_util:put_callid(<<"compact_shard_", Shard/binary>>),
 
+    %% Make sure this shard is not already being compacted before start compacting it.
     wait_for_compaction(compactor_admin(Compactor), Shard),
 
     case get_db_disk_and_data(compactor_admin(Compactor), Shard) of
         'undefined' ->
             lager:info("beginning shard compaction"),
             start_compacting_shard(Compactor);
-        'not_found' -> 'ok';
+        'not_found' ->
+            lager:info("disk and data size not found, skip and return ok"),
+            'ok';
         {BeforeDisk, BeforeData} ->
             lager:info("beginning shard compaction: ~p disk/~p data", [BeforeDisk, BeforeData]),
             start_compacting_shard(Compactor)
@@ -142,7 +154,8 @@ continue_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
         'not_found' -> lager:debug("  finished compacting shard");
         {AfterDisk, AfterData} ->
             lager:debug("  finished compacting shard: ~p disk/~p data", [AfterDisk, AfterData])
-    end.
+    end,
+    kt_compaction_reporter:finished_shard(compactor_callid(Compactor), Shard).
 
 -spec compact_design_docs(compactor(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 compact_design_docs(_Compactor, _Shard, []) -> 'ok';
@@ -239,14 +252,12 @@ should_compact(Compactor, ?HEUR_RATIO) ->
     end.
 
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary()) ->
-                                  {pos_integer(), pos_integer()} |
-                                  'undefined' | 'not_found'.
+                                  db_disk_and_data().
 get_db_disk_and_data(Conn, DbName) ->
     get_db_disk_and_data(Conn, DbName, 0).
 
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary(), 0..3) ->
-                                  {pos_integer(), pos_integer()} |
-                                  'undefined' | 'not_found'.
+                                  db_disk_and_data().
 get_db_disk_and_data(_Conn, _DbName, 3=_N) ->
     lager:warning("getting db info for ~s failed ~b times", [_DbName, _N]),
     'undefined';
@@ -288,12 +299,13 @@ min_data_met(_Data, _Min) ->
 
 -spec min_ratio_met(integer(), integer(), float()) -> boolean().
 min_ratio_met(Disk, Data, MinRatio) ->
-    case Disk / Data of
+    case (Disk - Data) / Disk * 100 of
         R when R > MinRatio ->
-            lager:debug("ratio ~p is greater than min ratio: ~p", [R, MinRatio]),
+            lager:debug("ratio ~.2f% is greater than min ratio: ~p%", [R, MinRatio]),
             'true';
         _R ->
-            lager:debug("ratio ~p (~p/~p) is under min threshold ~p", [_R, Disk, Data, MinRatio]),
+            lager:debug("ratio ~.2f% ((~p-~p) / ~p * 100) is under min threshold ~p%",
+                        [_R, Disk, Data, Disk, MinRatio]),
             'false'
     end.
 
@@ -319,6 +331,9 @@ compactor_design_docs(#compactor{design_docs=DesignDocs}) -> DesignDocs.
 -spec compactor_heuristic(compactor()) -> heuristic().
 compactor_heuristic(#compactor{heuristic=Heuristic}) -> Heuristic.
 
+-spec compactor_callid(compactor()) -> kz_term:api_ne_binary().
+compactor_callid(#compactor{callid=CallId}) -> CallId.
+
 -spec new(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection(), kz_term:ne_binary()) ->
                  compactor().
 new(Node, Heuristic, APIConn, AdminConn, Database) ->
@@ -330,6 +345,7 @@ new(Node, Heuristic, APIConn, AdminConn, Database) ->
               ,heuristic=Heuristic
               ,shards=node_shards(Node, Database)
               ,design_docs=db_design_docs(APIConn, Database)
+              ,callid=kz_util:get_callid()
               }.
 
 -spec node_shards(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().

@@ -29,6 +29,7 @@
                ,day_ref = day_timer() :: reference()
                ,browse_dbs_ref = browse_dbs_timer() :: reference() %%TODO: gen_listen for DB news!
                }).
+
 -type state() :: #state{}.
 
 -define(CLEANUP_TIMER
@@ -211,14 +212,34 @@ ref_to_id(Ref) ->
     <<Start:StartSize/binary, Id:Size/binary, ">">> = Bin,
     Id.
 
+%% =======================================================================================
+%% Start - Automatic Compaction Section
+%% =======================================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc Entry point for starting the automatic compaction job.
+%%
+%% This functions gets triggered by the `browse_dbs_ref' based on `browse_dbs_timer'
+%% function. By default it triggers the action 1 day after the timer starts.
+%% @end
+%%------------------------------------------------------------------------------
 -spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
 browse_dbs_for_triggers(Ref) ->
-    kz_util:put_callid(<<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>),
-    {'ok', Dbs} = kz_datamgr:db_info(),
-    Shuffled = kz_term:shuffle_list(Dbs),
+    CallId = <<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>,
+    kz_util:put_callid(CallId),
     lager:debug("starting cleanup pass of databases"),
-    lists:foreach(fun cleanup_pass/1, Shuffled),
+    Sorted = kt_compactor:get_all_dbs_and_sort_by_disk(),
+    TotalSorted = length(Sorted),
+    'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Sorted),
+    F = fun({Db, _Sizes}, Ctr) ->
+                lager:debug("compacting ~p out of ~p dbs (~p remaining)",
+                            [Ctr, TotalSorted, (TotalSorted - Ctr)]),
+                cleanup_pass(Db),
+                Ctr + 1
+        end,
+    _Counter = lists:foldl(F, 1, Sorted),
+    'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
+    kz_util:put_callid('undefined'), % Reset callid
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 
@@ -245,5 +266,8 @@ db_to_trigger(Db, [{Classifier, Trigger} | Classifiers]) ->
 -spec is_system_db(kz_term:ne_binary()) -> boolean().
 is_system_db(Db) ->
     lists:member(Db, ?KZ_SYSTEM_DBS).
+%% =======================================================================================
+%% End - Automatic Compaction Section
+%% =======================================================================================
 
 %%% End of Module.

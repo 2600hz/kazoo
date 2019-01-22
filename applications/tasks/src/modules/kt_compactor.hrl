@@ -8,8 +8,12 @@
 
 -type heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
+%% Ratio of legacy data, including metadata, to current data in the database file size.
+%% The percentage is expressed as an integer percentage. Taken
+%% from http://docs.couchdb.org/en/stable/config/compaction.html#compactions
+%% `db_framentation' section.
 -define(MIN_RATIO
-       ,kapps_config:get_float(?SYSCONFIG_COUCH, <<"min_ratio">>, 1.2)
+       ,kapps_config:get_float(?SYSCONFIG_COUCH, <<"min_ratio">>, 25)
        ).
 -define(MIN_DATA
        ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"min_data_size">>, 131072)  %% 128Kb
