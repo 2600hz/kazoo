@@ -15,6 +15,7 @@
 -export([get_fs_key/1]).
 -export([process_fs_kv/4, format_fs_kv/4]).
 -export([fs_args_to_binary/1, fs_args_to_binary/2, fs_args_to_binary/3]).
+-export([fs_arg_encode/1, fs_arg_encode/2]).
 -export([multi_set_args/3, multi_unset_args/3]).
 -export([multi_set_args/4, multi_unset_args/4]).
 -export([multi_set_args/5, multi_unset_args/5]).
@@ -551,6 +552,49 @@ fs_args_to_binary(Args, Sep) ->
 fs_args_to_binary(Args, Sep, Prefix) ->
     Bins = [list_to_binary([Sep, Arg]) || Arg <- Args],
     list_to_binary([Prefix, Bins]).
+
+-spec fs_arg_encode(kz_term:ne_binary()) -> kz_term:ne_binary().
+fs_arg_encode(Source = ?NE_BINARY) ->
+    fs_arg_encode(Source, <<>>, <<>>).
+
+-spec fs_arg_encode(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+fs_arg_encode(Source = ?NE_BINARY, Sep) ->
+    fs_arg_encode(Source, Sep, <<>>).
+
+-spec fs_arg_encode(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> kz_term:ne_binary().
+fs_arg_encode(<<>>, _Sep, Acc) -> Acc;
+
+fs_arg_encode(<<C, R/binary>>, C, Acc) ->
+    SafeChar = fs_arg_encode_char(C),
+    fs_arg_encode(R, C, <<Acc/binary, "%", SafeChar/binary>>);
+
+fs_arg_encode(<<C, R/binary>>, Sep, Acc) ->
+    case C of
+        $\s -> fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        $. -> fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        $- -> fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        $= -> fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        $_ -> fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        C when C >= $0
+               andalso C=< $9 ->
+            fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        C when C >= $a
+               andalso C=< $z ->
+            fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        C when C >= $A
+               andalso C=< $Z ->
+            fs_arg_encode(R, Sep, <<Acc/binary, C>>);
+        _NotSafe ->
+            SafeChar = fs_arg_encode_char(C),
+            fs_arg_encode(R, Sep, <<Acc/binary, "%", SafeChar/binary>>)
+    end.
+
+-spec fs_arg_encode_char(integer()) -> binary().
+fs_arg_encode_char(Char) ->
+    case integer_to_list(Char, 16) of
+        Val when length(Val) < 2 -> list_to_binary(["0", Val]);
+        ProperLen                -> list_to_binary(ProperLen)
+    end.
 
 -spec process_fs_kv(atom(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> [binary()].
 process_fs_kv(_, _, [], _) -> [];
