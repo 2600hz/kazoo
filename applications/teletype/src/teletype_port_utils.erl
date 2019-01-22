@@ -161,7 +161,7 @@ fix_ui_metadata(_DataJObj, _TemplateId, PortReqJObj) ->
 
 -spec maybe_add_reason(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_add_reason(DataJObj, _TemplateId, PortReqJObj) ->
-    case kz_json:get_ne_json_value(<<"reason">>, PortReqJObj) of
+    case kz_json:get_ne_json_value(<<"reason">>, DataJObj) of
         'undefined' -> PortReqJObj;
         Reason ->
             UserInfo = get_commenter_info(DataJObj),
