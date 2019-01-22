@@ -138,6 +138,7 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_TIMEOUT, kz_json:get_integer_value(<<"timeout">>, Data)}
       ,{?KEY_TO_DID, get_to_did(Data, Call)}
       ,{?KEY_DENIED_CALL_RESTRICTIONS, kapps_call:kvs_fetch('denied_call_restrictions', Call)}
+      ,{?KEY_OUTBOUND_ACTIONS, kapps_call:kvs_fetch('outbound_actions', Call)}
        | kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
       ]).
 
