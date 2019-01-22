@@ -54,6 +54,7 @@
         ,t38_enabled/1, t38_enabled/2
         ,to_did/1, to_did/2
         ,denied_call_restrictions/1, denied_call_restrictions/2
+        ,outbound_actions/1, outbound_actions/2
 
         ,msg_id/1
         ,server_id/1
@@ -134,6 +135,7 @@
         ,?KEY_T38_ENABLED
         ,?KEY_TIMEOUT
         ,?KEY_DENIED_CALL_RESTRICTIONS
+        ,?KEY_OUTBOUND_ACTIONS
         ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
        ,[{?KEY_EVENT_CATEGORY, ?CATEGORY_REQ}
@@ -170,6 +172,7 @@
         ,{?KEY_TO_DID, fun kz_term:is_ne_binary/1}
         ,{?KEY_BYPASS_E164, fun kz_term:is_boolean/1}
         ,{?KEY_DENIED_CALL_RESTRICTIONS, fun kz_json:is_json_object/1}
+        ,{?KEY_OUTBOUND_ACTIONS, fun kz_json:is_json_object/1}
         ]).
 
 %% Offnet Resource Response
@@ -593,3 +596,11 @@ delete_keys(?REQ_TYPE(JObj), Keys) ->
 -spec set_values(req(), kz_term:proplist()) -> req().
 set_values(?REQ_TYPE(JObj), Props) ->
     ?REQ_TYPE(kz_json:set_values(Props, JObj)).
+
+-spec outbound_actions(req()) -> kz_term:api_object().
+outbound_actions(Req) ->
+    outbound_actions(Req, 'undefined').
+
+-spec outbound_actions(req(), Default) -> kz_json:object() | Default.
+outbound_actions(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_json_value(?KEY_OUTBOUND_ACTIONS, JObj, Default).
