@@ -365,9 +365,10 @@ maybe_route_resp_xml_fun(_Fun, Method, Routes, JObj, Props) ->
     lager:error("route resp xml method ~p not handled, reverting to error", [Method]),
     route_resp_xml(<<"error">>, Routes, JObj, Props).
 
+-spec route_resp_bridge_id() -> kz_types:xml_el().
 route_resp_bridge_id() ->
     Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)], 'true'),
-    condition_el(Action, ?GET_CCV(<<"Bridge-ID">>), <<"^$">>).
+    condition_el(Action, <<"${", (?CCV(<<"Bridge-ID">>))/binary, "}">>, <<"^$">>).
 
 -spec unset_custom_sip_headers(kz_term:proplist()) -> kz_types:xml_els().
 unset_custom_sip_headers(Props) ->
