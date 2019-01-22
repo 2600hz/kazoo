@@ -12,6 +12,9 @@
         "B-Leg-Events": {
             "type": "string"
         },
+        "Bridge-Actions": {
+            "type": "object"
+        },
         "Call-Restrictions-Enabled": {
             "type": "string"
         },

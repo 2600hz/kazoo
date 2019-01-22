@@ -42,6 +42,9 @@
             },
             "type": "array"
         },
+        "Bridge-Actions": {
+            "type": "object"
+        },
         "Call-ID": {
             "type": "string"
         },

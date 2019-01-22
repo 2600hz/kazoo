@@ -11424,6 +11424,9 @@
                     },
                     "type": "array"
                 },
+                "Bridge-Actions": {
+                    "type": "object"
+                },
                 "Call-ID": {
                     "type": "string"
                 },
@@ -19355,6 +19358,9 @@
                 "Origination-Call-ID": {
                     "type": "string"
                 },
+                "Outbound-Actions": {
+                    "type": "object"
+                },
                 "Outbound-Call-ID": {
                     "type": "string"
                 },
@@ -20840,6 +20846,9 @@
                 "B-Leg-Events": {
                     "type": "string"
                 },
+                "Bridge-Actions": {
+                    "type": "object"
+                },
                 "Call-Restrictions-Enabled": {
                     "type": "string"
                 },
@@ -21072,6 +21081,9 @@
                 },
                 "B-Leg-Events": {
                     "type": "string"
+                },
+                "Bridge-Actions": {
+                    "type": "object"
                 },
                 "Call-Restrictions-Enabled": {
                     "type": "string"
@@ -22603,6 +22615,9 @@
                 },
                 "Body": {
                     "type": "string"
+                },
+                "Bridge-Actions": {
+                    "type": "object"
                 },
                 "Call-ID": {
                     "type": "string"
