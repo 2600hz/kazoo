@@ -62,7 +62,8 @@ send_email(Emails, Subject, RenderedTemplates) ->
 
 -spec send_email(email_map(), kz_term:ne_binary(), rendered_templates(), attachments()) ->
                         'ok' | {'error', any()}.
-send_email(Emails, Subject, RenderedTemplates, Attachments) ->
+send_email(Emails0, Subject, RenderedTemplates, Attachments) ->
+    Emails = [{Key, lists:usort(KeyEmails)} || {Key, KeyEmails} <- Emails0, KeyEmails =/= 'undefined'],
     ?LOG_DEBUG("emails: ~p", [Emails]),
     To = props:get_value(<<"to">>, Emails),
     From = props:get_value(<<"from">>, Emails),
