@@ -177,6 +177,9 @@
         "Origination-Call-ID": {
             "type": "string"
         },
+        "Outbound-Actions": {
+            "type": "object"
+        },
         "Outbound-Call-ID": {
             "type": "string"
         },

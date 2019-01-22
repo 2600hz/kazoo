@@ -18,6 +18,9 @@
         "Body": {
             "type": "string"
         },
+        "Bridge-Actions": {
+            "type": "object"
+        },
         "Call-ID": {
             "type": "string"
         },
