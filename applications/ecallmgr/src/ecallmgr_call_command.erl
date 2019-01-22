@@ -1488,9 +1488,9 @@ record_call(Node, UUID, <<"start">>, JObj) ->
     RecordingId = kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj),
 
     [{<<"kz_multiset">>, AppArgs}
-    ,{<<"unshift">>, <<"media_recordings,", RecordingName/binary>>}
-    ,{<<"unshift">>, <<(?CCV(<<"Media-Names">>))/binary, ",", RecodingBaseName/binary>>}
-    ,{<<"unshift">>, <<(?CCV(<<"Media-Recordings">>))/binary, ",", RecordingId/binary>>}
+    ,{<<"unshift">>, <<"media_recordings=", RecordingName/binary>>}
+    ,{<<"unshift">>, <<(?CCV(<<"Media-Names">>))/binary, "=", RecodingBaseName/binary>>}
+    ,{<<"unshift">>, <<(?CCV(<<"Media-Recordings">>))/binary, "=", RecordingId/binary>>}
     ,{<<"record_session">>, RecordingName}
     ];
 record_call(_Node, _UUID, <<"stop">>, JObj) ->
@@ -1514,7 +1514,7 @@ record_call_vars(JObj) ->
                ,[{<<"RECORD_APPEND">>, <<"true">>}
                 ,{<<"enable_file_write_buffering">>, <<"false">>}
                 ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
-                ,{<<"RECORD_SOFTWARE">>, ?RECORD_SOFTWARE}
+                ,{<<"RECORD_SOFTWARE">>, ecallmgr_util:fs_arg_encode(?RECORD_SOFTWARE)}
                 ,{<<"recording_follow_transfer">>, FollowTransfer}
                 ,{<<"recording_follow_attxfer">>, FollowTransfer}
                 ,{<<"Record-Min-Sec">>, RecordMinSec}
