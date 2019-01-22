@@ -18,6 +18,11 @@
             "description": "services default allow updates",
             "type": "boolean"
         },
+        "enforce_good_standing": {
+            "default": false,
+            "description": "services enforce_good_standing",
+            "type": "boolean"
+        },
         "get_items_from_quantities": {
             "description": "services get_items_from_quantities",
             "type": "boolean"

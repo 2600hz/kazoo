@@ -20,6 +20,10 @@
 
 -define(KZ_SERVICE_STORE_MASTER_AUDIT
        ,kapps_config:get_is_true(<<"services">>, <<"should_save_master_audit_logs">>, 'false')
+       ). 
+
+-define(KZ_SERVICE_ENFORCE_GOOD_STANDING
+       ,kapps_config:get_is_true(<<"services">>, <<"enforce_good_standing">>, 'false')
        ).
 
 -define(TOPUP_CONFIG, <<"topup">>).
