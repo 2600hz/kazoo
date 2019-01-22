@@ -745,7 +745,7 @@ should_enforce_good_standing(_Services, _Options) ->
     case ?KZ_SERVICE_ENFORCE_GOOD_STANDING of
         'true' -> 'not_applicable';
         'false' ->
-            {'true', <<"good standing not required">>} 
+            {'true', <<"good standing not required">>}
     end.
 
 -spec no_plan_is_good(services(), good_standing_options()) -> good_funs_ret().
