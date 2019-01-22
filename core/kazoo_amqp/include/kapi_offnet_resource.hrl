@@ -49,6 +49,7 @@
 -define(KEY_TIMEOUT, <<"Timeout">>).
 -define(KEY_TO_DID, <<"To-DID">>).
 -define(KEY_DENIED_CALL_RESTRICTIONS, <<"Denied-Call-Restrictions">>).
+-define(KEY_OUTBOUND_ACTIONS, <<"Outbound-Actions">>).
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 -define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).

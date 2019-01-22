@@ -432,6 +432,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
       ,{<<"Endpoints">>, FmtEndpoints}
+      ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
