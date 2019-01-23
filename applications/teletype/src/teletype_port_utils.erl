@@ -239,8 +239,8 @@ first_last_name(?NE_BINARY = First, _) ->
 first_last_name(_, _) ->
     <<"An agent">>.
 
--spec is_admin_template(kz_term:ne_binary()) -> boolean().
-is_admin_template(TemplateId) ->
+-spec is_attachable_template(kz_term:ne_binary()) -> boolean().
+is_attachable_template(TemplateId) ->
     lists:member(TemplateId
                 ,[teletype_port_request_admin:id()
                  ,teletype_port_request:id()
@@ -249,7 +249,7 @@ is_admin_template(TemplateId) ->
 
 -spec maybe_get_attachments(kz_json:object(), kz_term:ne_binary()) -> attachments().
 maybe_get_attachments(DataJObj, TemplateId) ->
-    maybe_get_attachments(DataJObj, is_admin_template(TemplateId), teletype_util:is_preview(DataJObj)).
+    maybe_get_attachments(DataJObj, is_attachable_template(TemplateId), teletype_util:is_preview(DataJObj)).
 
 -spec maybe_get_attachments(kz_json:object(), boolean(), boolean()) -> attachments().
 maybe_get_attachments(_DataJObj, _, 'true') -> [];
@@ -285,8 +285,10 @@ maybe_fix_emails(DataJObj, TemplateId) ->
 maybe_fix_emails(DataJObj, _, 'true') ->
     DataJObj;
 maybe_fix_emails(DataJObj, TemplateId, 'false') ->
-    ToEmails = get_to_emails(DataJObj, TemplateId, is_comment_private(DataJObj)),
+    ToEmails = get_to_emails(DataJObj, TemplateId, is_comment_private(DataJObj, TemplateId)),
+
     IsAdminTemplate = teletype_port_request_admin:id() =:= TemplateId,
+
     maybe_set_from_email(kz_json:set_value(<<"to">>, ToEmails, DataJObj), IsAdminTemplate).
 
 -spec get_to_emails(kz_json:object(), kz_term:ne_binary(), boolean()) -> kz_json:object().
@@ -304,9 +306,10 @@ maybe_set_from_email(DataJObj, 'true') ->
 maybe_set_from_email(DataJObj, 'false') ->
     DataJObj.
 
--spec is_comment_private(kz_json:object()) -> boolean().
-is_comment_private(DataJObj) ->
-    kz_json:is_true([<<"comment">>, <<"superduper_comment">>], DataJObj, 'false').
+-spec is_comment_private(kz_json:object(), kz_term:ne_binary()) -> boolean().
+is_comment_private(DataJObj, TemplateId) ->
+    teletype_port_comment:id() =:= TemplateId
+        andalso kz_json:is_true([<<"comment">>, <<"superduper_comment">>], DataJObj, 'false').
 
 -spec get_port_submitter_emails(kz_json:object()) -> kz_term:binaries().
 get_port_submitter_emails(DataJObj) ->
