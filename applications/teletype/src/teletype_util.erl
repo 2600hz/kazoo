@@ -18,12 +18,9 @@
         ,find_account_admin_email/1
         ,find_account_admin/1
         ,find_account_db/2
-        ,find_reseller_id/1
         ,find_account_params/1
         ,is_notice_enabled/3, is_notice_enabled_default/1
         ,should_handle_notification/1
-
-        ,get_parent_account_id/1
 
         ,default_from_address/0
         ,default_reply_to/0
@@ -65,7 +62,8 @@ send_email(Emails, Subject, RenderedTemplates) ->
 
 -spec send_email(email_map(), kz_term:ne_binary(), rendered_templates(), attachments()) ->
                         'ok' | {'error', any()}.
-send_email(Emails, Subject, RenderedTemplates, Attachments) ->
+send_email(Emails0, Subject, RenderedTemplates, Attachments) ->
+    Emails = [{Key, lists:usort(KeyEmails)} || {Key, KeyEmails} <- Emails0, KeyEmails =/= 'undefined'],
     ?LOG_DEBUG("emails: ~p", [Emails]),
     To = props:get_value(<<"to">>, Emails),
     From = props:get_value(<<"from">>, Emails),
@@ -506,7 +504,7 @@ find_account_rep_email(?NE_BINARY=AccountId) ->
             find_account_admin_email(AccountId);
         'false' ->
             lager:debug("finding admin email for reseller of account ~s", [AccountId]),
-            find_account_admin_email(find_reseller_id(AccountId))
+            find_account_admin_email(kz_services_reseller:get_id(AccountId))
     end;
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(kapi_notifications:account_id(AccountJObj)).
@@ -514,7 +512,7 @@ find_account_rep_email(AccountJObj) ->
 -spec find_account_admin_email(kz_term:api_binary()) -> kz_term:api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
-    find_account_admin_email(AccountId, find_reseller_id(AccountId)).
+    find_account_admin_email(AccountId, kz_services_reseller:get_id(AccountId)).
 
 -spec find_account_admin_email(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binaries().
 find_account_admin_email('undefined', _Id) ->
@@ -526,7 +524,7 @@ find_account_admin_email(AccountId, AccountId) ->
     end;
 find_account_admin_email(AccountId, ResellerId) ->
     case query_account_for_admin_emails(AccountId) of
-        [] -> find_account_admin_email(get_parent_account_id(AccountId), ResellerId);
+        [] -> find_account_admin_email(kzd_accounts:get_parent_account_id(AccountId), ResellerId);
         Emails -> Emails
     end.
 
@@ -551,13 +549,10 @@ extract_admin_emails(Users) ->
         (Email = kzd_users:email(Admin)) =/= 'undefined'
     ].
 
--spec find_reseller_id(kz_term:ne_binary()) -> kz_term:ne_binary().
-find_reseller_id(AccountId) -> kz_services_reseller:get_id(AccountId).
-
 -spec find_account_admin(kz_term:api_binary()) -> kz_term:api_object().
 find_account_admin('undefined') -> 'undefined';
 find_account_admin(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    find_account_admin(AccountId, find_reseller_id(AccountId)).
+    find_account_admin(AccountId, kz_services_reseller:get_id(AccountId)).
 
 -spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_users:doc().
 find_account_admin(AccountId, AccountId) ->
@@ -622,7 +617,7 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
     case kz_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
-            ResellerAccountId = find_reseller_id(AccountId),
+            ResellerAccountId = kz_services_reseller:get_id(AccountId),
             is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
@@ -640,7 +635,7 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
             kz_notification:is_enabled(TemplateJObj, ?NOTICE_ENABLED_BY_DEFAULT);
         _Otherwise when AccountId =/= ResellerAccountId ->
             lager:debug("account ~s is mute, checking parent", [AccountId]),
-            is_account_notice_enabled(get_parent_account_id(AccountId)
+            is_account_notice_enabled(kzd_accounts:get_parent_account_id(AccountId)
                                      ,TemplateId
                                      ,ResellerAccountId
                                      );
@@ -658,18 +653,6 @@ is_notice_enabled_default(TemplateKey) ->
         _Otherwise ->
             lager:debug("system is mute, ~s not enabled", [TemplateId]),
             'false'
-    end.
-
--spec get_parent_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
-get_parent_account_id(AccountId) ->
-    case kzd_accounts:fetch(AccountId) of
-        {'ok', JObj} -> kzd_accounts:parent_account_id(JObj);
-        {'error', 'not_found'} ->
-            lager:info("account ~s no longer exists, no parent account", [AccountId]),
-            'undefined';
-        {'error', _E} ->
-            lager:error("failed to find parent account for ~s: ~p", [AccountId, _E]),
-            'undefined'
     end.
 
 -spec find_addresses(kz_json:object(), kz_json:object(), kz_term:ne_binary()) ->
@@ -704,19 +687,15 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
 -spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
                           email_pair().
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
-    %% ?LOG_DEBUG("email type for '~s' not defined in template, checking just the key", [Key]),
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
     {Key, find_first_defined_address(Key, [Key], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
-    %% ?LOG_DEBUG("checking template for '~s' email addresses", [Key]),
     lager:debug("checking template for '~s' email addresses", [Key]),
     {Key, find_first_defined_address(Key, [[Key, <<"email_addresses">>], Key], [TemplateMetaJObj, DataJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
-    %% ?LOG_DEBUG("checking data for '~s' email address(es)", [Key]),
     lager:debug("checking data for '~s' email address(es)", [Key]),
     {Key, find_first_defined_address(Key, [Key, [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
-    %% ?LOG_DEBUG("looking for admin emails for '~s'", [Key]),
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 

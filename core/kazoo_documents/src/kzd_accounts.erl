@@ -78,6 +78,7 @@
         ,fax_settings/1
         ,get_inherited_value/3
         ,get_parent_account_id/1
+        ,get_authoritative_parent_id/1, get_authoritative_parent_id/2
 
         ,reseller_id/1, set_reseller_id/2, is_reseller/1, path_reseller_id/0
         ,is_trial_account/1
@@ -1020,13 +1021,51 @@ check_reseller(Account, ValueFun, Default) ->
         Value -> Value
     end.
 
--spec get_parent_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
+-spec get_parent_account_id(kz_term:api_ne_binary()) -> kz_term:api_binary().
 get_parent_account_id(AccountId) ->
     case fetch(AccountId) of
         {'ok', JObj} -> parent_account_id(JObj);
         {'error', _R} ->
             lager:debug("failed to open account's ~s parent: ~p", [AccountId, _R]),
             'undefined'
+    end.
+
+%% @equiv get_parent_account_id(AccountId, kapps_util:get_master_account_id())
+-spec get_authoritative_parent_id(kz_term:api_ne_binary()) -> kz_term:api_binary().
+get_authoritative_parent_id(AccountId) ->
+    get_authoritative_parent_id(AccountId, kapps_util:get_master_account_id()).
+
+%%------------------------------------------------------------------------------
+%% @doc Get authoritative parent account's ID (teletype style).
+%%
+%% If the account id is not a reseller returns parent account id and if the account
+%% is a reseller returns master account.
+%% In case that it can't get master account id, it returns `undefined'.
+%%
+%% The idea is that you want to write code to walk the account's heirarchy and
+%% stop at the first reseller, and then jump to master account.
+%%
+%% This is same as teletype bahaviour to get templates.
+%%
+%% Please note that you have to write the actual code to walk the account's
+%% heirarchy and then use this function just to get the parent id!
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_authoritative_parent_id(kz_term:api_ne_binary(), {'ok', kz_term:ne_binary()} | {'error', any()} | kz_term:ne_binary()) ->
+                                         kz_term:api_ne_binary().
+get_authoritative_parent_id(AccountId, {'ok', MasterAccountId}) ->
+    get_authoritative_parent_id(AccountId, MasterAccountId);
+get_authoritative_parent_id(_AccountId, {'error', _}) ->
+    'undefined';
+get_authoritative_parent_id(MasterAccountId, MasterAccountId) ->
+    MasterAccountId;
+get_authoritative_parent_id('undefined', _MasterAccountId) ->
+    'undefined';
+get_authoritative_parent_id(AccountId, MasterAccountId) ->
+    case kz_services_reseller:is_reseller(AccountId) of
+        'true' -> MasterAccountId;
+        'false' ->
+            get_parent_account_id(AccountId)
     end.
 
 -spec low_balance_threshold(kz_term:ne_binary() | doc()) -> kz_term:api_float().
