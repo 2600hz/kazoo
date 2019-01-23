@@ -127,7 +127,7 @@ init([Node, JObj]) ->
     _ = kz_util:put_callid(JObj),
     ServerId = kz_api:server_id(JObj),
     ControllerQ = kz_api:queue_id(JObj),
-    _ = bind_to_events(freeswitch:version(Node), Node),
+    _ = bind_to_events(Node),
     case kapi_resource:originate_req_v(JObj) of
         'false' ->
             Error = <<"originate failed to execute as JObj did not validate">>,
@@ -141,10 +141,8 @@ init([Node, JObj]) ->
                          }}
     end.
 
--spec bind_to_events({'ok', kz_term:ne_binary()}, atom()) -> 'ok'.
-bind_to_events({'ok', <<"mod_kazoo", _/binary>>}, Node) ->
-    'ok' = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
-bind_to_events(_, Node) ->
+-spec bind_to_events(atom()) -> 'ok'.
+bind_to_events(Node) ->
     gproc:reg({'p', 'l', {'event', Node, <<"loopback::bowout">>}}).
 
 %%------------------------------------------------------------------------------
