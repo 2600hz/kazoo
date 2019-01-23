@@ -550,6 +550,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
             CCVUpdates = [{<<"Global-Resource">>, kz_term:to_binary(Global)}
                          ,{<<"Resource-ID">>, Id}
                          ,{<<"E164-Destination">>, Number}
+                         ,{<<"DID-Classifier">>, knm_converters:classify(Number)}
                          ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
                          ],
             Updates = [{<<"Name">>, Name}

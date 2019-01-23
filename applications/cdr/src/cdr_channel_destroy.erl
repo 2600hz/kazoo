@@ -89,6 +89,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                ,fun set_call_priority/3
                ,fun maybe_set_e164_destination/3
                ,fun maybe_set_e164_origination/3
+               ,fun maybe_set_did_classifier/3
                ,fun is_conference/3
                ,fun set_interaction/3
                ,fun update_pvt_parameters/3 %% due to interaction-timestamp MUST be called LAST
@@ -169,6 +170,10 @@ maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
 -spec maybe_set_e164_origination(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) -> kz_call_event:doc().
 maybe_set_e164_origination(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"E164-Origination">>).
+
+-spec maybe_set_did_classifier(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) -> kz_call_event:doc().
+maybe_set_did_classifier(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"DID-Classifier">>).
 
 -spec is_conference(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) -> kz_call_event:doc().
 is_conference(_AccountId, _Timestamp, JObj) ->
