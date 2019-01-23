@@ -125,7 +125,7 @@ store_audit_log(Services, Invoice) ->
 %%------------------------------------------------------------------------------
 -spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_result()) ->
                               kz_term:api_object().
-update_audit_log(_Services, 'undefined', _Result) -> 'ok';
+update_audit_log(_Services, 'undefined', _Result) -> 'undefined';
 update_audit_log(Services, AuditJObj, {'ok', Details}) ->
     Results =
         [kz_json:normalize(JObj)
@@ -159,7 +159,7 @@ update_audit_log(Services, AuditLog, Result) ->
 %%------------------------------------------------------------------------------
 -spec notify_reseller(kz_services:services(), kz_services_invoice:invoice(), kz_term:api_object()) -> 'ok'.
 notify_reseller(Services, Invoice, 'undefined') ->
-    AuditJObj = kz_services:audit_log(Services),
+    AuditJObj = kz_json:from_list([{<<"audit">>, kz_services:audit_log(Services)}]),
     notify_reseller(Services, Invoice, AuditJObj);
 notify_reseller(Services, Invoice, AuditJObj) ->
     Props = [{<<"Account-ID">>, kz_services:account_id(Services)}
@@ -180,6 +180,9 @@ notify_reseller(Services, Invoice, AuditJObj) ->
 %%------------------------------------------------------------------------------
 -spec update_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services(), kz_term:api_object()) ->
                                kz_amqp_worker:request_return().
+update_bookkeeper(Type, Invoice, Services, 'undefined') ->
+    AuditJObj = kz_json:from_list([{<<"audit">>, kz_services:audit_log(Services)}]),
+    update_bookkeeper(Type, Invoice, Services, AuditJObj);
 update_bookkeeper(_Type, Invoice, Services, AuditJObj) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
