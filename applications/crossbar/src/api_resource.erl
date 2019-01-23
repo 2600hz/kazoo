@@ -797,17 +797,20 @@ create_from_response(Req, Context) ->
 create_from_response(Req, Context, 'undefined') ->
     create_from_response(Req, Context, <<"*/*">>);
 create_from_response(Req, Context, Accept) ->
-    CTPs = [F || {F, _} <- cb_context:content_types_provided(Context)],
-    DefaultFun = case CTPs of
-                     [] -> 'to_json';
-                     [F|_] -> F
-                 end,
+    DefaultFun = content_type_provided_fun(Context),
+
     case to_fun(Context, Accept, DefaultFun) of
         'to_json' -> api_util:create_push_response(Req, Context);
         'send_file' -> api_util:create_push_response(Req, Context, fun api_util:create_resp_file/2);
         _ ->
             %% sending json for now until we implement other types
             api_util:create_push_response(Req, Context)
+    end.
+
+content_type_provided_fun(Context) ->
+    case cb_context:content_types_provided(Context) of
+        [{F, _}|_] -> F;
+        [] -> 'to_json'
     end.
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
@@ -871,6 +874,7 @@ to_binary(Req, Context, 'undefined') ->
                       ],
             NewContext = cb_context:setters(Context, Setters),
             %% Respond, possibly with 206
+            lager:debug("replying with ~p", [ErrorCode]),
             Req1 = cowboy_req:reply(kz_term:to_binary(ErrorCode), cb_context:resp_headers(NewContext), Content, Req),
             {'stop', Req1, NewContext}
     end;
@@ -944,12 +948,16 @@ accept_matches_provided(Major, Minor, CTPs) ->
                     {iolist(), cowboy_req:req(), cb_context:context()}.
 to_csv(Req0, Context0) ->
     case cb_context:fetch(Context0, 'is_chunked') of
-        'true' -> to_chunk(<<"to_csv">>, Req0, Context0);
+        'true' ->
+            to_chunk(<<"to_csv">>, Req0, cb_context:add_resp_header(Context0, <<"content-type">>, <<"text/csv">>));
         _ ->
             lager:debug("run: to_csv"),
             Event = to_fun_event_name(<<"to_csv">>, Context0),
             {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-            api_util:create_pull_response(Req1, Context1, fun api_util:create_csv_resp_content/2)
+            api_util:create_pull_response(Req1
+                                         ,cb_context:add_resp_header(Context1, <<"content-type">>, <<"text/csv">>)
+                                         ,fun api_util:create_csv_resp_content/2
+                                         )
     end.
 
 -spec to_pdf(cowboy_req:req(), cb_context:context()) ->
@@ -1005,28 +1013,33 @@ next_chunk_fold(#{chunking_started := StartedChunk
                  ,context := Context0
                  ,chunk_response_type := _ToFun
                  }=ChunkMap0) ->
-    lager:debug("(chunked) calling next chunk"),
+    lager:debug("(chunked) calling next chunk ~s", [_ToFun]),
     Context1 = cb_context:store(Context0, 'chunking_started', StartedChunk),
-    ChunkMap1 = #{context := Context2
-                 ,cowboy_req := Req0
-                 ,event_name := Event
-                 } = crossbar_view:next_chunk(ChunkMap0#{context := Context1}),
+    ChunkMap1 = #{context := Context2} = crossbar_view:next_chunk(ChunkMap0#{context := Context1}),
 
-    case api_util:succeeded(Context2)
-        andalso crossbar_bindings:fold(Event, {Req0, Context2})
-    of
+    next_chunk_results(ChunkMap1, api_util:succeeded(Context2)).
+
+next_chunk_results(#{context := Context
+                    ,chunking_started := StartedChunk
+                    }=ChunkMap, 'false') ->
+    lager:debug("(chunked) getting next chunk was unsuccessful"),
+    finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context, StartedChunk)});
+next_chunk_results(#{context := Context0
+                    ,cowboy_req := Req0
+                    ,chunk_response_type := _ToFun
+                    ,chunking_started := StartedChunk
+                    ,event_name := Event
+                    }=ChunkMap, 'true') ->
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    lager:debug("(chunked) ran '~s'", [_ToFun]),
+    case api_util:succeeded(Context1) of
+        'true' ->
+            process_chunk(ChunkMap#{cowboy_req := Req1
+                                   ,context := Context1
+                                   });
         'false' ->
-            lager:debug("(chunked) getting next chunk was unsuccessful"),
-            finish_chunked_response(ChunkMap1#{context => reset_context_between_chunks(Context2, StartedChunk)});
-        {Req1, Context3} ->
-            lager:debug("(chunked) ran '~s'", [_ToFun]),
-            case api_util:succeeded(Context3) of
-                'true' ->
-                    process_chunk(ChunkMap1#{cowboy_req := Req1, context := Context3});
-                'false' ->
-                    lager:debug("(chunked) '~s' was unsuccessful", [_ToFun]),
-                    finish_chunked_response(ChunkMap1#{context => reset_context_between_chunks(Context3, StartedChunk)})
-            end
+            lager:debug("(chunked) '~s' was unsuccessful", [_ToFun]),
+            finish_chunked_response(ChunkMap#{context => reset_context_between_chunks(Context1, StartedChunk)})
     end.
 
 %%------------------------------------------------------------------------------
@@ -1071,28 +1084,33 @@ process_chunk(#{context := Context
                }=ChunkMap) ->
     case cb_context:resp_data(Context) of
         0 ->
+            lager:debug("resp data is 0, resetting"),
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
                                      ,chunking_started => IsStarted
                                      }
                            );
         SentLength when is_integer(SentLength) ->
+            lager:debug("resp data is ~p, resetting", [SentLength]),
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, 'true')
                                      ,chunking_started => 'true'
                                      ,previous_chunk_length => SentLength
                                      }
                            );
         [] ->
+            lager:debug("empty resp data list, resetting"),
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
                                      ,chunking_started => IsStarted
                                      ,previous_chunk_length => 0 %% the module filtered all queried result
                                      }
                            );
         Resp when is_list(Resp) ->
-            {StartedChunk, Req1} = send_chunk_response(ToFun, Req, Context),
-            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, StartedChunk)
+            PrevLength = length(Resp),
+            {StartedChunk, Req1, Context1} = send_chunk_response(ToFun, Req, Context),
+            lager:debug("sent ~p chunked resp", [PrevLength]),
+            next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context1, StartedChunk)
                                      ,cowboy_req => Req1
                                      ,chunking_started => StartedChunk
-                                     ,previous_chunk_length => length(Resp)
+                                     ,previous_chunk_length =>  PrevLength
                                      }
                            );
         _Other ->
@@ -1135,10 +1153,11 @@ reset_context_between_chunks(Context, _StartedChunk, 'false') ->
     end.
 
 -spec send_chunk_response(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
-                                 {boolean(), cowboy_req:req()}.
+                                 {boolean(), cowboy_req:req(), cb_context:context()}.
 send_chunk_response(<<"to_json">>, Req, Context) ->
     api_util:create_json_chunk_response(Req, Context);
 send_chunk_response(<<"to_csv">>, Req, Context) ->
+    lager:debug("creating CSV chunk"),
     api_util:create_csv_chunk_response(Req, Context).
 
 %%------------------------------------------------------------------------------
@@ -1155,20 +1174,13 @@ finish_chunked_response(#{chunking_started := 'false'
                          }) ->
     %% chunk is not started, return whatever error's or response data in Context
     api_util:create_pull_response(Req, Context);
-finish_chunked_response(#{chunking_started := 'false'
-                         ,chunk_response_type := <<"to_csv">>
-                         ,context := Context
-                         ,cowboy_req := Req
-                         }) ->
-    %% chunk is not started, return empty CSV
-    api_util:create_pull_response(Req, Context, fun api_util:create_csv_resp_content/2);
 finish_chunked_response(#{chunk_response_type := <<"to_csv">>
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
-    %% Chunk is already started, stopping,
-    'ok' = cowboy_req:stream_body(<<>>, 'fin', Req),
-    {'stop', Req, Context};
+    %% chunk is not started, return empty CSV
+    lager:debug("creating CSV pull response"),
+    api_util:create_pull_response(Req, Context, fun api_util:create_csv_resp_content/2);
 finish_chunked_response(#{total_queried := TotalQueried
                          ,chunking_started := 'true'
                          ,cowboy_req := Req

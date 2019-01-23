@@ -1082,12 +1082,11 @@ bill_early_task_timestamp(Doc) ->
 
 -spec set_bill_early_task_timestamp(doc(), non_neg_integer()) -> doc().
 set_bill_early_task_timestamp(Doc, Timestamp) ->
-    kz_json:set_value(path_bill_early_task_timestamp(), Doc, Timestamp).
+    kz_json:set_value(path_bill_early_task_timestamp(), Timestamp, Doc).
 
 -spec path_bill_early_task_timestamp() -> kz_json:path().
 path_bill_early_task_timestamp() ->
     [<<"notifications">>, <<"low_balance">>, <<"bill_early_task_timestamp">>].
-
 
 %%------------------------------------------------------------------------------
 %% @doc
