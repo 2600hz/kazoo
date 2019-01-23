@@ -290,6 +290,7 @@ check_port_action_required(PortRequest, Context) ->
 port_request_last_comment(PortRequest) ->
     case kzd_port_requests:comments(PortRequest) of
         'undefined' -> kz_json:new();
+        [] -> kz_json:new();
         Comments -> hd(lists:reverse(Comments))
     end.
 
