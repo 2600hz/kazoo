@@ -191,7 +191,17 @@ port_authority(Doc) ->
 
 -spec port_authority(doc(), Default) -> any() | Default.
 port_authority(Doc, Default) ->
-    kz_json:get_value([<<"port">>, <<"authority">>], Doc, Default).
+    %% I'm not sure port.authority is set to other values than account id or not
+    %% but to be safe let's check if it is really an account id.
+    %% FYI: teletype port request admin template was using port authority
+    %% as 'to' Email address but the UI was setting that as account id!
+    case kz_json:get_ne_binary_value([<<"port">>, <<"authority">>], Doc) of
+        ?MATCH_ACCOUNT_RAW(_)=Id -> Id;
+        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kz_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_id(Db);
+        _ -> Default
+    end.
 
 -spec set_port_authority(doc(), any()) -> doc().
 set_port_authority(Doc, PortAuthority) ->
