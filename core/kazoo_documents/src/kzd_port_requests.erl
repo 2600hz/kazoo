@@ -291,20 +291,13 @@ find_port_authority(MasterAccountId, AccountId) ->
             lager:debug("failed to find whitelabel for ~s, checking parent ~s", [AccountId, ParentId]),
             find_port_authority(MasterAccountId, ParentId);
         {'ok', JObj} ->
-            %% I'm not sure port.authority is set to other values than account id or not
-            %% but to be safe let's check if it is really an account id.
-            %% FYI: teletype port request admin template was using port authority
-            %% as 'to' Email address but the UI was setting that as account id!
             case kzd_whitelabel:port_authority(JObj) of
-                ?MATCH_ACCOUNT_RAW(_)=Id -> Id;
-                ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kz_util:format_account_id(Db);
-                ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_id(Db);
-                ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_id(Db);
-                _Other ->
+                'undefined' ->
                     ParentId = kzd_accounts:get_authoritative_parent_id(AccountId, MasterAccountId),
-                    lager:debug("unknown port authority ~p in account ~s, checking parent ~s"
-                               ,[_Other, AccountId, ParentId]
+                    lager:debug("undefined port authority in account ~s, checking parent ~s"
+                               ,[AccountId, ParentId]
                                ),
-                    find_port_authority(MasterAccountId, ParentId)
+                    find_port_authority(MasterAccountId, ParentId);
+                Id -> Id
             end
     end.
