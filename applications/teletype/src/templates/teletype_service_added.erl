@@ -169,13 +169,17 @@ macros(DataJObj, 'false') ->
     Reseller = reseller_info_data(DataJObj),
     Affected = affected_account_data(DataJObj),
     Cascade = cascade_account_data(DataJObj, Affected),
-    [{<<"affected">>, Affected}
+    [{<<"account">>, Reseller} %% backward compatibility
+    ,{<<"affected">>, Affected}
     ,{<<"authentication">>, authentication_data(DataJObj)}
     ,{<<"cascade">>, Cascade}
     ,{<<"invoice">>, Invoice}
     ,{<<"reseller">>, Reseller}
+    ,{<<"service_changes">>, Invoice} %% backward compatibility
+    ,{<<"sub_account">>, Cascade} %% backward compatibility
     ,{<<"request">>, request_data(DataJObj)}
     ,{<<"system">>, teletype_util:system_params()}
+    ,{<<"time_stamp">>, Timestamp} %% backward compatibility
     ,{<<"timestamp">>, Timestamp}
     ,{<<"user">>, agent_user_data(DataJObj)}
     ].
