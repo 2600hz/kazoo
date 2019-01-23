@@ -30,6 +30,14 @@ macros() ->
       ,?MACRO_VALUE(<<"affected.realm">>, <<"affected_realm">>, <<"Affected Account Realm">>, <<"Affected Account Realm">>)
       ,?MACRO_VALUE(<<"affected.language">>, <<"affected_language">>, <<"Affected Account Language">>, <<"Affected Account Language">>)
       ,?MACRO_VALUE(<<"affected.timezone">>, <<"affected_timezone">>, <<"Affected Account Timezone">>, <<"Affected Account Timezone">>)
+      ,?MACRO_VALUE(<<"authentication.type">>, <<"authentication_type">>, <<"Authentication Type">>, <<"Type of authentication used by user">>)
+      ,?MACRO_VALUE(<<"authentication.account_id">>, <<"authentication_account_id">>, <<"Authentication Account ID">>, <<"Account ID of authentication">>)
+      ,?MACRO_VALUE(<<"authentication.account_name">>, <<"authentication_account_name">>, <<"Authentication Account Name">>, <<"Account name of authentication">>)
+      ,?MACRO_VALUE(<<"cascade.id">>, <<"cascade_id">>, <<"cascade Account ID">>, <<"Changes cascaded from Account ID">>)
+      ,?MACRO_VALUE(<<"cascade.name">>, <<"cascade_name">>, <<"cascade Account Name">>, <<"Changes cascaded from Account Name">>)
+      ,?MACRO_VALUE(<<"cascade.realm">>, <<"cascade_realm">>, <<"cascade Account Realm">>, <<"Changes cascaded from Account Realm">>)
+      ,?MACRO_VALUE(<<"cascade.language">>, <<"cascade_language">>, <<"cascade Account Language">>, <<"Changes cascaded from Account Language">>)
+      ,?MACRO_VALUE(<<"cascade.timezone">>, <<"cascade_timezone">>, <<"cascade Account Timezone">>, <<"Changes cascaded from Timezone">>)
       ,?MACRO_VALUE(<<"invoice.items.[item_name].category">>, <<"invoice_item_category">>, <<"Invoice Item Category">>, <<"Ccategory name that the item belongs to">>)
       ,?MACRO_VALUE(<<"invoice.items.[item_name].changes.type">>, <<"invoice_item_change_type">>, <<"Invoice Item Change Type">>, <<"The type of change to the item">>)
       ,?MACRO_VALUE(<<"invoice.items.[item_name].changes.quantity">>, <<"invoice_item_change_quantity">>, <<"Invoice Item Change Quantity">>, <<"Quantity amount affected the item">>)
@@ -105,7 +113,7 @@ maybe_handle_req(DataJObj, 'false') ->
 
 -spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
-    Macros = macros(DataJObj),
+    Macros = props:filter_undefined(macros(DataJObj)),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
@@ -135,15 +143,23 @@ macros(DataJObj, 'true') ->
               ,{<<"language">>, kzd_accounts:language(AccountJObj)}
               ,{<<"timezone">>, kzd_accounts:timezone(AccountJObj)}
               ],
+    Auth = [{<<"type">>, <<"x-auth-token">>}
+           ,{<<"account_id">>, kz_doc:id(AccountJObj)}
+           ,{<<"account_name">>, kzd_accounts:name(AccountJObj)}
+           ],
+    Request = [{<<"id">>, <<"qweasdzxc123456">>}
+              ,{<<"client_ip">>, <<"192.168.0.1">>}
+              ,{<<"method">>, <<"PUT">>}
+              ,{<<"path">>, <<"/v2/accounts/example_account_id/">>}
+              ],
     {'ok', UserJObj} = teletype_util:read_preview_doc(<<"user">>),
-    [{<<"account">>, Account} %% backward compatibility
-    ,{<<"affected">>, Account}
+    [{<<"affected">>, Account}
+    ,{<<"authentication">>, Auth}
+    ,{<<"cascade">>, Account}
     ,{<<"invoice">>, kz_json:recursive_to_proplist(Invoice)}
     ,{<<"reseller">>, Account}
-    ,{<<"service_changes">>, kz_json:recursive_to_proplist(Invoice)} %% backward compatibility
-    ,{<<"sub_account">>, Account} %% backward compatibility
+    ,{<<"request">>, Request}
     ,{<<"system">>, teletype_util:system_params()}
-    ,{<<"time_stamp">>, teletype_util:fix_timestamp(kz_time:now_s(), DataJObj)} %% backward compatibility
     ,{<<"timestamp">>, teletype_util:fix_timestamp(kz_time:now_s(), DataJObj)}
     ,{<<"user">>, teletype_util:user_params(UserJObj)}
     ];
@@ -152,14 +168,14 @@ macros(DataJObj, 'false') ->
     Invoice = invoice_data(DataJObj),
     Reseller = reseller_info_data(DataJObj),
     Affected = affected_account_data(DataJObj),
-    [{<<"account">>, Reseller} %% backward compatibility
-    ,{<<"affected">>, Affected}
+    Cascade = cascade_account_data(DataJObj, Affected),
+    [{<<"affected">>, Affected}
+    ,{<<"authentication">>, authentication_data(DataJObj)}
+    ,{<<"cascade">>, Cascade}
     ,{<<"invoice">>, Invoice}
     ,{<<"reseller">>, Reseller}
-    ,{<<"service_changes">>, Invoice} %% backward compatibility
-    ,{<<"sub_account">>, Affected} %% backward compatibility
+    ,{<<"request">>, request_data(DataJObj)}
     ,{<<"system">>, teletype_util:system_params()}
-    ,{<<"time_stamp">>, Timestamp} %% backward compatibility
     ,{<<"timestamp">>, Timestamp}
     ,{<<"user">>, agent_user_data(DataJObj)}
     ].
@@ -180,15 +196,33 @@ affected_account_data(DataJObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
     teletype_util:find_account_params(AccountId).
 
+-spec authentication_data(kz_json:object()) -> kz_term:proplist().
+authentication_data(DataJObj) ->
+    kz_json:to_proplist(kz_json:get_json_value([<<"audit_log">>, <<"audit">>, <<"authentication">>], DataJObj, kz_json:new())).
+
+-spec cascade_account_data(kz_json:object(), kz_term:api_proplist()) -> kz_term:proplist().
+cascade_account_data(DataJObj, Affected) ->
+    AffectedId = props:get_ne_binary_value(<<"id">>, Affected),
+    AccountId = kz_json:get_ne_binary_value([<<"audit_log">>, <<"audit">>, <<"changes">>, <<"account_id">>], DataJObj),
+    case AffectedId =:= AccountId of
+        'true' -> 'undefined';
+        'false' ->
+            teletype_util:find_account_params(AccountId)
+    end.
+
 -spec agent_user_data(kz_json:object()) -> kz_term:proplist().
 agent_user_data(DataJObj) ->
-    AgentJObj = kz_json:get_json_value([<<"audit_log">>, <<"agent">>], DataJObj, kz_json:new()),
+    AgentJObj = kz_json:get_json_value([<<"audit_log">>, <<"audit">>, <<"agent">>], DataJObj, kz_json:new()),
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AgentJObj),
     UserId = kz_json:get_ne_binary_value(<<"type_id">>, AgentJObj),
     case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
         {'error', _} -> []
     end.
+
+-spec request_data(kz_json:object()) -> kz_term:proplist().
+request_data(DataJObj) ->
+    kz_json:to_proplist(kz_json:get_json_value([<<"audit_log">>, <<"audit">>, <<"request">>], DataJObj, kz_json:new())).
 
 -spec invoice_data(kz_json:object()) -> kz_term:proplist().
 invoice_data(DataJObj) ->
