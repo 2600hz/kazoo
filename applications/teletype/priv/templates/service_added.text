@@ -2,7 +2,7 @@
 
 Date: {{ timestamp.local | date:"l, F j, Y H:i" }}
 
-There have been some changes to your VoIP services in account {{affected.name}}.
+There have been some changes to your VoIP services in account {% firstof cascade.name affected.name %}.
 
 Here is the invoice based on the service plan applied to your account. Your account
 will be billed at the start of each month.
@@ -43,7 +43,16 @@ Thank you for your business!
 
     Account ID: {{affected.id}}
     Account Name: {{affected.name}}
-    Account Realm: {{affected.realm}}
+    Account Realm: {{affected.realm}}{% if cascade %}
+
+Cascade Account Information
+    Changes to your services is result of the changes to this account:
+
+    Account ID:  {{cascade.id}}
+    Account Name:  {{cascade.name}}
+    Account Realm:  {{cascade.realm}}
+
+{% endif %}
 
 
 
