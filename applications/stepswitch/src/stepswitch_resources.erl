@@ -537,9 +537,9 @@ maybe_resource_to_endpoints(#resrc{id=Id
         {'error', 'no_match'}=Error -> Error;
         {'ok', NumberMatch} ->
             MaybeClassifier = case kz_term:is_ne_binary(Classifier) of
-                                   'true' -> Classifier;
-                                   'false' -> <<"no_classifier">>
-                               end,
+                                  'true' -> Classifier;
+                                  'false' -> <<"no_classifier">>
+                              end,
             lager:debug("building resource ~s endpoints (classifier ~s)", [Id, MaybeClassifier]),
             CCVUpdates = [{<<"Global-Resource">>, kz_term:to_binary(Global)}
                          ,{<<"Resource-ID">>, Id}
