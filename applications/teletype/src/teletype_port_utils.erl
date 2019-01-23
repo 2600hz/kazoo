@@ -267,14 +267,14 @@ maybe_get_attachments(DataJObj, _, 'false') ->
 -spec get_attachment_fold(kz_json:key(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
                                  attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
-     case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name) of
-         {'ok', Attachment} ->
+    case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name) of
+        {'ok', Attachment} ->
             ContentType = kz_doc:attachment_content_type(Doc, Name),
             {_, BinAttachment} = kz_attachment:decode_base64(Attachment),
             [{ContentType, Name, BinAttachment}|Acc];
-         {'error', _Reason} ->
-             lager:debug("failed to get port request ~s attchament ~s: ~p", [PortReqId, Name, _Reason]),
-             throw({'error', 'no_attachment'})
+        {'error', _Reason} ->
+            lager:debug("failed to get port request ~s attchament ~s: ~p", [PortReqId, Name, _Reason]),
+            throw({'error', 'no_attachment'})
     end.
 
 -spec maybe_fix_emails(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
