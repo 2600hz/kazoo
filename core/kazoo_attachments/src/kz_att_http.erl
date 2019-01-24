@@ -79,6 +79,7 @@ build_multipart_body(Options, DbName, DocId, Contents, DefaultContentType) ->
 maybe_encode_content_part(#{'base64_encode_data':= ShouldEncode}, Contents) ->
     case kz_term:is_true(ShouldEncode) of
         'true' ->
+            lager:debug("base64-encoding contents"),
             base64:encode(Contents);
         'false' ->
             Contents
