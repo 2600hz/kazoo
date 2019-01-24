@@ -34,6 +34,8 @@
 -define(ACCOUNT_NAMES, [<<"account_for_storage">>]).
 -define(UUID, <<"2426cb457dc530acc881977ccbc9a7a7">>).
 
+-define(BASE64_ENCODED, 'true').
+
 -spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
                     pqc_cb_api:response().
 create(API, ?NE_BINARY=AccountId, StorageDoc) ->
@@ -162,7 +164,7 @@ base_test() ->
     ?INFO("get VM: ~p", [GetVM]),
     {[RequestBody], [_AttachmentName]} = kz_json:get_values(GetVM),
 
-    handle_multipart_store(MediaId, MP3, RequestBody),
+    'true' = handle_multipart_store(MediaId, MP3, RequestBody),
     ?INFO("got mp3 data on our web server!"),
 
     cleanup(API),
@@ -181,7 +183,7 @@ default_message() ->
 handle_multipart_store(MediaId, MP3, RequestBody) ->
     handle_multipart_contents(MediaId, MP3, binary:split(RequestBody, <<"\r\n">>, ['global'])).
 
-handle_multipart_contents(_MediaId, _MP3, []) -> 'ok';
+handle_multipart_contents(_MediaId, _MP3, []) -> 'true';
 handle_multipart_contents(MediaId, MP3, [<<>> | Parts]) ->
     handle_multipart_contents(MediaId, MP3, Parts);
 handle_multipart_contents(MediaId, MP3, [<<"content-type: application/json">>, <<>>, JSON | Parts]) ->
@@ -197,12 +199,29 @@ handle_multipart_contents(MediaId, MP3, [<<"content-type: application/json">>, <
                ),
 
     handle_multipart_contents(MediaId, MP3, Parts);
-handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mp3">>, <<>>, MP3 | Parts]) ->
-    ?INFO("got expected mp3 data"),
-    handle_multipart_contents(MediaId, MP3, Parts);
+handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mp3">>, <<>>, Base64MP3 | Parts]) ->
+    case handle_mp3_contents(MP3, Base64MP3, ?BASE64_ENCODED) of
+        'true' ->
+            handle_multipart_contents(MediaId, MP3, Parts);
+        'false' -> 'false'
+    end;
 handle_multipart_contents(MediaId, MP3, [_Part | Parts]) ->
     ?DEBUG("skipping part ~s", [_Part]),
     handle_multipart_contents(MediaId, MP3, Parts).
+
+handle_mp3_contents(MP3, MP3, 'false') ->
+    ?INFO("got expected mp3 data"),
+    'true';
+handle_mp3_contents(MP3, Base64MP3, 'true') ->
+    ?INFO("checking base64-encoded data"),
+    case base64:decode(Base64MP3) of
+        MP3 ->
+            ?INFO("got expected mp3 data"),
+            'true';
+        _Data ->
+            ?ERROR("failed to decode to mp3: ~w", [Base64MP3]),
+            'false'
+    end.
 
 -spec cleanup() -> 'ok'.
 cleanup() ->
@@ -240,6 +259,7 @@ http_handler_settings() ->
     kz_json:from_list([{<<"url">>, URL}
                       ,{<<"verb">>, <<"post">>}
                       ,{<<"send_multipart">>, 'true'}
+                      ,{<<"base64_encode_data">>, ?BASE64_ENCODED}
                       ]).
 
 storage_plan(UUID) ->
