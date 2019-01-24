@@ -46,7 +46,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
     case send_request(Url, format_verb(Verb), Headers, Body) of
         {'ok', NewUrl, _Body, _Debug} ->
             DocUrlField = maps:get('document_url_field', Settings, 'undefined'),
-            {'ok', url_fields(DocUrlField, NewUrl)};
+            {'ok', url_fields(DocUrlField, NewUrl, Settings)};
         {'error', ErrorUrl, Resp} ->
             Routines = [{fun kz_att_error:set_req_url/2, ErrorUrl}
                         | kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options)
@@ -101,8 +101,11 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> kz_att_error:new('invalid_data', Routines);
         Url ->
-            AttSettings = kz_json:get_value(<<"handler_props">>, HandlerProps),
-            handle_fetch_attachment_resp(fetch_attachment(Url), AttSettings, Routines)
+            Base64Encoded = kz_json:is_true(<<"base64_encode_data">>, HandlerProps, 'false'),
+            handle_fetch_attachment_resp(fetch_attachment(Url)
+                                        ,#{'base64_encode_data' => Base64Encoded}
+                                        ,Routines
+                                        )
     end.
 
 -spec handle_fetch_attachment_resp(gen_attachment:fetch_response(), map(), kz_att_error:update_routines()) ->
@@ -116,7 +119,15 @@ handle_fetch_attachment_resp({'ok', <<"\r\n", _/binary>>=Multipart}
     lager:debug("recv multipart response, looking for attachment"),
     handle_multipart_fetch(Multipart, AttSettings, Routines);
 handle_fetch_attachment_resp({'ok', Body}, #{'base64_encode_data' := 'true'}, _Routines) ->
-    {'ok', base64:decode(Body)};
+    try base64:decode(Body) of
+        Decoded ->
+            lager:debug("decoded base64 response"),
+            {'ok', Decoded}
+    catch
+        'error':_R ->
+            lager:debug("response was not base64 encoded"),
+            {'ok', Body}
+    end;
 handle_fetch_attachment_resp({'ok', Body}, _AttSettings, _Routines) ->
     {'ok', Body};
 handle_fetch_attachment_resp(Else, _AttSettings, _Routines) ->
@@ -211,12 +222,16 @@ add_debug(Debug, Url, Code, Headers) ->
                        ], Debug).
 
 
-url_fields('undefined', Url) ->
-    [{'attachment', [{<<"url">>, Url}]}];
-url_fields(DocUrlField, Url) ->
-    [{'attachment', [{<<"url">>, Url}]}
+url_fields('undefined', Url, Settings) ->
+    [{'attachment', [{<<"url">>, Url} | maybe_add_settings(Settings)]}];
+url_fields(DocUrlField, Url, Settings) ->
+    [{'attachment', [{<<"url">>, Url} | maybe_add_settings(Settings)]}
     ,{'document', [{DocUrlField, Url}]}
     ].
+
+maybe_add_settings(#{'base64_encode_data' := 'true'}) ->
+    [{<<"base64_encode_data">>, 'true'}];
+maybe_add_settings(_Settings) -> [].
 
 -spec fetch_attachment(kz_term:ne_binary()) ->
                               gen_attachment:fetch_response() |
