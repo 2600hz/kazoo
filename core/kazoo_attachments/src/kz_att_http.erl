@@ -70,8 +70,10 @@ build_multipart_body(DbName, DocId, Contents, DefaultContentType) ->
             ,{Contents, [{<<"content-type">>, DefaultContentType}]}
             ],
 
-    {<<"multipart/mixed">>
-    ,kz_http_util:encode_multipart(Parts)
+    Boundary = kz_http_util:create_boundary(),
+
+    {<<"multipart/mixed; boundary=", Boundary/binary>>
+    ,kz_http_util:encode_multipart(Parts, Boundary)
     }.
 
 -spec format_verb(kz_term:ne_binary()) -> 'put' | 'post'.
