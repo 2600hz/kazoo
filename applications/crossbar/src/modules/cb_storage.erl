@@ -491,7 +491,6 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
 -spec handle_multipart_fetch(cb_context:context(), map(), kz_term:ne_binary(), binary(), binary()) ->
                                     cb_context:context().
 handle_multipart_fetch(Context, AttSettings, AttId, Content, Multipart) ->
-    lager:debug("multipart: ~p", [Multipart]),
     Parts = [Bin || Bin <- binary:split(Multipart, <<"\r\n">>, ['global']),
                     Bin =/= <<>>
             ],

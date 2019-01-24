@@ -27793,6 +27793,11 @@
                 "settings": {
                     "description": "HTTP server settings",
                     "properties": {
+                        "base64_encode_data": {
+                            "default": false,
+                            "description": "Toggles whether to base64-encode the attachment data",
+                            "type": "boolean"
+                        },
                         "send_multipart": {
                             "description": "Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true",
                             "type": "boolean"
