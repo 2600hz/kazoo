@@ -100,13 +100,54 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> kz_att_error:new('invalid_data', Routines);
-        Url -> handle_fetch_attachment_resp(fetch_attachment(Url), Routines)
+        Url ->
+            AttSettings = kz_json:get_value(<<"handler_props">>, HandlerProps),
+            handle_fetch_attachment_resp(fetch_attachment(Url), AttSettings, Routines)
     end.
 
--spec handle_fetch_attachment_resp(_, kz_att_error:update_routines()) -> gen_attachment:fetch_response().
-handle_fetch_attachment_resp({'error', Url, Resp}, Routines) ->
+-spec handle_fetch_attachment_resp(gen_attachment:fetch_response(), map(), kz_att_error:update_routines()) ->
+                                          gen_attachment:fetch_response().
+handle_fetch_attachment_resp({'error', Url, Resp}, _AttSettings, Routines) ->
     handle_http_error_response(Resp, [{fun kz_att_error:set_req_url/2, Url} | Routines]);
-handle_fetch_attachment_resp(Else, _) -> Else.
+handle_fetch_attachment_resp({'ok', <<"\r\n", _/binary>>=Multipart}
+                            ,#{'send_multipart' := 'true'}=AttSettings
+                            ,Routines
+                            ) ->
+    lager:debug("recv multipart response, looking for attachment"),
+    handle_multipart_fetch(Multipart, AttSettings, Routines);
+handle_fetch_attachment_resp({'ok', Body}, #{'base64_encode_data' := 'true'}, _Routines) ->
+    {'ok', base64:decode(Body)};
+handle_fetch_attachment_resp({'ok', Body}, _AttSettings, _Routines) ->
+    {'ok', Body};
+handle_fetch_attachment_resp(Else, _AttSettings, _Routines) ->
+    Else.
+
+-spec handle_multipart_fetch(kz_term:ne_binary(), map(), kz_att_error:update_routines()) ->
+                                    gen_attachment:fetch_response().
+handle_multipart_fetch(Multipart, AttSettings, Routines) ->
+    [Boundary | Parts] = [Bin || Bin <- binary:split(Multipart, <<"\r\n">>, ['global']),
+                                 Bin =/= <<>>
+                         ],
+    handle_multipart_contents(AttSettings, Boundary, Parts, Routines).
+
+-spec handle_multipart_contents(map(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_att_error:update_routines()) ->
+                                       gen_attachment:fetch_response().
+handle_multipart_contents(_AttSettings, _Boundary, [], Routines) ->
+    lager:error("failed to find content in multipart"),
+    handle_http_error_response(<<"invalid multipart response">>, Routines);
+handle_multipart_contents(AttSettings
+                         ,Boundary
+                         ,[<<"content-type: application/json">>, _Metadata
+                          ,Boundary, <<"content-type: ", _CT/binary>>, Content
+                           | _
+                          ]
+                         ,Routines
+                         ) ->
+    lager:debug("found content of type ~s", [_CT]),
+    handle_fetch_attachment_resp({'ok', Content}, AttSettings, Routines);
+handle_multipart_contents(AttSettings, Boundary, [_Part | Parts], Routines) ->
+    lager:debug("skipping part ~s", [_Part]),
+    handle_multipart_contents(AttSettings, Boundary, Parts, Routines).
 
 %%%=============================================================================
 %%% Internal functions
@@ -197,8 +238,7 @@ fetch_attachment(Url, Redirects, Debug) ->
               Code =:= 301;
               Code =:= 302 ->
             NewDebug = add_debug(Debug, Url, Code, Headers),
-            Fun = fun(URL, N, Data) -> fetch_attachment(URL, N, Data) end,
-            maybe_redirect(Url, Headers, Redirects, NewDebug, Fun);
+            maybe_redirect(Url, Headers, Redirects, NewDebug, fun fetch_attachment/3);
         Resp -> {'error', Url, Resp}
     end.
 
