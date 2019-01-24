@@ -35,6 +35,7 @@
 -define(UUID, <<"2426cb457dc530acc881977ccbc9a7a7">>).
 
 -define(BASE64_ENCODED, 'true').
+-define(SEND_MULTIPART, 'true').
 
 -spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
                     pqc_cb_api:response().
@@ -160,12 +161,21 @@ base_test() ->
     CreatedVM = kz_json:decode(CreateVM),
     MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], CreatedVM),
 
+
     GetVM = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
     ?INFO("get VM: ~p", [GetVM]),
     {[RequestBody], [_AttachmentName]} = kz_json:get_values(GetVM),
 
     'true' = handle_multipart_store(MediaId, MP3, RequestBody),
     ?INFO("got mp3 data on our web server!"),
+
+    MetadataResp = pqc_cb_vmboxes:fetch_message_metadata(API, AccountId, BoxId, MediaId),
+    ?INFO("message ~s meta: ~s", [MediaId, MetadataResp]),
+    MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], kz_json:decode(MetadataResp)),
+
+    MessageBin = pqc_cb_vmboxes:fetch_message_binary(API, AccountId, BoxId, MediaId),
+    ?INFO("message bin =:= MP3: ~p", [MessageBin =:= MP3]),
+    MessageBin = MP3,
 
     cleanup(API),
     ?INFO("FINISHED").
@@ -258,7 +268,7 @@ http_handler_settings() ->
 
     kz_json:from_list([{<<"url">>, URL}
                       ,{<<"verb">>, <<"post">>}
-                      ,{<<"send_multipart">>, 'true'}
+                      ,{<<"send_multipart">>, ?SEND_MULTIPART}
                       ,{<<"base64_encode_data">>, ?BASE64_ENCODED}
                       ]).
 

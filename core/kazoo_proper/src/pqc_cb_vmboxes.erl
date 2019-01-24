@@ -6,6 +6,8 @@
 -module(pqc_cb_vmboxes).
 
 -export([new_message/5
+        ,fetch_message_metadata/4
+        ,fetch_message_binary/4
         ,create_box/3
         ]).
 
@@ -38,6 +40,30 @@ new_message(API, AccountId, BoxId, MessageJObj, MessageBin) ->
                            ,Body
                            ).
 
+-spec fetch_message_metadata(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+fetch_message_metadata(API, AccountId, BoxId, MessageId) ->
+    MessageURL = message_url(AccountId, BoxId, MessageId),
+
+    RequestHeaders = pqc_cb_api:request_headers(API),
+
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:get/2
+                           ,MessageURL
+                           ,RequestHeaders
+                           ).
+
+-spec fetch_message_binary(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+fetch_message_binary(API, AccountId, BoxId, MessageId) ->
+    MessageURL = message_bin_url(AccountId, BoxId, MessageId),
+
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, <<"audio/mp3">>}]),
+
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:get/2
+                           ,MessageURL
+                           ,RequestHeaders
+                           ).
+
 -spec create_box(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 create_box(API, AccountId, BoxName) ->
     BoxesURL = boxes_url(AccountId),
@@ -60,3 +86,9 @@ boxes_url(AccountId) ->
 
 messages_url(AccountId, BoxId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "vmboxes", kz_term:to_list(BoxId), "messages"], "/").
+
+message_url(AccountId, BoxId, MessageId) ->
+    string:join([pqc_cb_accounts:account_url(AccountId), "vmboxes", kz_term:to_list(BoxId), "messages", kz_term:to_list(MessageId)], "/").
+
+message_bin_url(AccountId, BoxId, MessageId) ->
+    string:join([pqc_cb_accounts:account_url(AccountId), "vmboxes", kz_term:to_list(BoxId), "messages", kz_term:to_list(MessageId), "raw"], "/").

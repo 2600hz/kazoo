@@ -144,11 +144,13 @@ get_from_state(Req, State) ->
     Path = cowboy_req:path(Req), % <<"/foo/bar/baz">>
     PathParts = tl(binary:split(Path, <<"/">>, ['global'])),
 
-    {RespCode, RespBody} =
+    {RespCode, Body} =
         case get_req(PathParts) of
             'undefined' -> {404, <<>>};
             Value -> {200, Value}
         end,
+
+    RespBody = maybe_handle_multipart(Body),
 
     ?INFO("GET req ~s: ~p", [Path, RespCode]),
 
@@ -158,6 +160,7 @@ get_from_state(Req, State) ->
 add_req_to_state(Req, State) ->
     Path = cowboy_req:path(Req), % <<"/foo/bar/baz">>
     PathParts = tl(binary:split(Path, <<"/">>, ['global'])),
+
     ReqBody = read_body(cowboy_req:read_body(Req)),
 
     RespCode = case get_req(PathParts) of
@@ -180,6 +183,26 @@ read_body({'ok', BodyPart, _Req}) ->
     BodyPart;
 read_body({'more', BodyPart, Req}) ->
     [BodyPart, read_body(cowboy_req:read_body(Req))].
+
+maybe_handle_multipart(<<"\r\n", Multipart/binary>>) ->
+    ?INFO("handle multipart: ~s", [Multipart]),
+    handle_multipart(Multipart);
+maybe_handle_multipart(<<Body/binary>>) -> Body;
+maybe_handle_multipart(BodyParts) -> maybe_handle_multipart(iolist_to_binary(BodyParts)).
+
+handle_multipart(Multipart) ->
+    case binary:split(Multipart, <<"\r\n">>, ['global']) of
+        [Boundary, _MetadataContentType, <<>>, _Metadata
+        ,Boundary, ContentType, <<>>, Content
+         | _Parts
+        ] ->
+            ?INFO("got metadata ~p", [_Metadata]),
+            ?INFO("got content ~s: ~p", [ContentType, Content]),
+            Content;
+        _Parts ->
+            ?INFO("failed to process parts: ~p", [_Parts]),
+            Multipart
+    end.
 
 -spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
 terminate(_Reason, _Req, _State) ->
