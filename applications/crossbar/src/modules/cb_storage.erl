@@ -456,6 +456,7 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     Settings = kz_json:get_json_value(<<"settings">>, Att),
     AttHandler = kz_term:to_atom(<<"kz_att_", Handler/binary>>, 'true'),
     AttSettings = kz_maps:keys_to_atoms(kz_json:to_map(Settings)),
+
     Opts = [{'plan_override', #{'att_handler' => {AttHandler, AttSettings}
                                ,'att_post_handler' => 'external'
                                ,'att_handler_id' => AttId
@@ -472,7 +473,7 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
                     lager:debug("successfully got content back from storage backend"),
                     ContextAcc;
                 {'ok', <<"\r\n", _/binary>>=Multipart} ->
-                    handle_multipart_fetch(ContextAcc, AttId, Content, Multipart);
+                    handle_multipart_fetch(ContextAcc, AttSettings, AttId, Content, Multipart);
                 {'ok', _C} ->
                     lager:notice("got unexpected contents back on fetch: ~p", [_C]),
                     add_datamgr_error(AttId, 'invalid_data', ContextAcc);
@@ -487,27 +488,43 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
             add_att_settings_validation_error(AttId, AttachmentError, ContextAcc)
     end.
 
--spec handle_multipart_fetch(cb_context:context(), kz_term:ne_binary(), binary(), binary()) ->
+-spec handle_multipart_fetch(cb_context:context(), map(), kz_term:ne_binary(), binary(), binary()) ->
                                     cb_context:context().
-handle_multipart_fetch(Context, AttId, Content, Multipart) ->
-    handle_multipart_contents(Context, AttId, Content
-                             ,binary:split(Multipart, <<"\r\n">>, ['global'])
-                             ).
+handle_multipart_fetch(Context, AttSettings, AttId, Content, Multipart) ->
+    lager:debug("multipart: ~p", [Multipart]),
+    Parts = [Bin || Bin <- binary:split(Multipart, <<"\r\n">>, ['global']),
+                    Bin =/= <<>>
+            ],
+    handle_multipart_contents(Context, AttSettings, AttId, Content, Parts).
 
--spec handle_multipart_contents(cb_context:context(), kz_term:ne_binary(), binary(), [binary()]) ->
+-spec handle_multipart_contents(cb_context:context(), map(), kz_term:ne_binary(), binary(), [binary()]) ->
                                        cb_context:context().
-handle_multipart_contents(Context, AttId, _Content, []) ->
+handle_multipart_contents(Context, _AttSettings, AttId, _Content, []) ->
     lager:notice("failed to find content in multipart data"),
     add_datamgr_error(AttId, 'invalid_data', Context);
-handle_multipart_contents(Context, _AttId, Content, [<<"content-type: text/plain">>, Content | _]) ->
+handle_multipart_contents(Context, _AttSettings, _AttId, Content
+                         ,[<<"content-type: text/plain">>, Content | _]
+                         ) ->
     lager:debug("got contents back in multipart response"),
     Context;
-handle_multipart_contents(Context, _AttId, Content, [Content | _]) ->
+handle_multipart_contents(Context, _AttSettings, _AttId, Content, [Content | _]) ->
     lager:debug("got contents back in multipart response"),
     Context;
-handle_multipart_contents(Context, AttId, Content, [_Part | Parts]) ->
+handle_multipart_contents(Context, #{'base64_encode_data' := 'true'}=AttSettings, AttId, Content
+                         ,[<<"content-type: text/plain">>, Base64 | Parts]
+                         ) ->
+    lager:debug("checking encoded part"),
+    case base64:decode(Base64) of
+        Content ->
+            lager:debug("got encoded contents back"),
+            Context;
+        _Data ->
+            lager:info("failed to decode content: ~p", [Base64]),
+            handle_multipart_contents(Context, AttSettings, AttId, Content, Parts)
+    end;
+handle_multipart_contents(Context, AttSettings, AttId, Content, [_Part | Parts]) ->
     lager:debug("skipping part ~s", [_Part]),
-    handle_multipart_contents(Context, AttId, Content, Parts).
+    handle_multipart_contents(Context, AttSettings, AttId, Content, Parts).
 
 -spec add_datamgr_error(kz_term:ne_binary(), kz_datamgr:data_errors(), cb_context:context()) ->
                                cb_context:context().
