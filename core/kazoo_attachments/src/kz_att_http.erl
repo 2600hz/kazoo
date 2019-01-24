@@ -54,20 +54,20 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
             handle_http_error_response(Resp, Routines)
     end.
 
-build_req_body(#{'send_multipart' := SendMultipart}, DbName, DocId, Contents, DefaultContentType) ->
+build_req_body(#{'send_multipart' := SendMultipart}=Options, DbName, DocId, Contents, DefaultContentType) ->
     case kz_term:is_true(SendMultipart) of
-        'true' -> build_multipart_body(DbName, DocId, Contents, DefaultContentType);
+        'true' -> build_multipart_body(Options, DbName, DocId, Contents, DefaultContentType);
         'false' -> {DefaultContentType, Contents}
     end;
 build_req_body(_Settings, _DbName, _DocId, Contents, DefaultContentType) ->
     {DefaultContentType, Contents}.
 
-build_multipart_body(DbName, DocId, Contents, DefaultContentType) ->
+build_multipart_body(Options, DbName, DocId, Contents, DefaultContentType) ->
     {'ok', Doc} = kz_datamgr:open_cache_doc(DbName, DocId),
     Metadata = kz_doc:public_fields(Doc),
 
     Parts = [{kz_json:encode(Metadata), [{<<"content-type">>, <<"application/json">>}]}
-            ,{Contents, [{<<"content-type">>, DefaultContentType}]}
+            ,{maybe_encode_content_part(Options, Contents), [{<<"content-type">>, DefaultContentType}]}
             ],
 
     Boundary = kz_http_util:create_boundary(),
@@ -75,6 +75,14 @@ build_multipart_body(DbName, DocId, Contents, DefaultContentType) ->
     {<<"multipart/mixed; boundary=", Boundary/binary>>
     ,kz_http_util:encode_multipart(Parts, Boundary)
     }.
+
+maybe_encode_content_part(#{'base64_encode_data':= ShouldEncode}, Contents) ->
+    case kz_term:is_true(ShouldEncode) of
+        'true' ->
+            base64:encode(Contents);
+        'false' ->
+            Contents
+    end.
 
 -spec format_verb(kz_term:ne_binary()) -> 'put' | 'post'.
 format_verb(<<"POST">>) -> 'post';
