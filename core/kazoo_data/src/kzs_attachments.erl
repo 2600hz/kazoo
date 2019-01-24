@@ -42,8 +42,10 @@ fetch_attachment(#{}=Server, DbName, DocId, AName, Options) ->
 
 do_fetch_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att, Options) ->
     AttHandler = maps:get('att_handler', Server, 'undefined'),
+
     case kz_json:get_value(<<"handler">>, Att) of
-        'undefined' -> App:fetch_attachment(Conn, DbName, DocId, AName);
+        'undefined' ->
+            App:fetch_attachment(Conn, DbName, DocId, AName);
         Handler ->
             HandlerPL = kz_json:to_proplist(Handler),
             case do_fetch_attachment_from_handler(HandlerPL, AttHandler, DbName, DocId, AName) of
@@ -60,8 +62,10 @@ do_fetch_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId,
 do_fetch_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps}, DbName, DocId, AName) ->
     Props = kz_json:set_value(<<"handler_props">>, ModuleProps, HandlerProps),
     case kz_term:to_atom(Handler, 'true') of
-        Module -> Module:fetch_attachment(Props, DbName, DocId, AName);
-        DiffModule -> DiffModule:fetch_attachment(HandlerProps, DbName, DocId, AName)
+        Module ->
+            Module:fetch_attachment(Props, DbName, DocId, AName);
+        DiffModule ->
+            DiffModule:fetch_attachment(HandlerProps, DbName, DocId, AName)
     end.
 
 -spec stream_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) ->
