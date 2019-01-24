@@ -83,7 +83,8 @@ maybe_encode_content_part(#{'base64_encode_data':= ShouldEncode}, Contents) ->
             base64:encode(Contents);
         'false' ->
             Contents
-    end.
+    end;
+maybe_encode_content_part(_Settings, Contents) -> Contents.
 
 -spec format_verb(kz_term:ne_binary()) -> 'put' | 'post'.
 format_verb(<<"POST">>) -> 'post';
