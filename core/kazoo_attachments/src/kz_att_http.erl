@@ -112,12 +112,6 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
                                           gen_attachment:fetch_response().
 handle_fetch_attachment_resp({'error', Url, Resp}, _AttSettings, Routines) ->
     handle_http_error_response(Resp, [{fun kz_att_error:set_req_url/2, Url} | Routines]);
-handle_fetch_attachment_resp({'ok', <<"\r\n", _/binary>>=Multipart}
-                            ,#{'send_multipart' := 'true'}=AttSettings
-                            ,Routines
-                            ) ->
-    lager:debug("recv multipart response, looking for attachment"),
-    handle_multipart_fetch(Multipart, AttSettings, Routines);
 handle_fetch_attachment_resp({'ok', Body}, #{'base64_encode_data' := 'true'}, _Routines) ->
     try base64:decode(Body) of
         Decoded ->
@@ -129,36 +123,7 @@ handle_fetch_attachment_resp({'ok', Body}, #{'base64_encode_data' := 'true'}, _R
             {'ok', Body}
     end;
 handle_fetch_attachment_resp({'ok', Body}, _AttSettings, _Routines) ->
-    {'ok', Body};
-handle_fetch_attachment_resp(Else, _AttSettings, _Routines) ->
-    Else.
-
--spec handle_multipart_fetch(kz_term:ne_binary(), map(), kz_att_error:update_routines()) ->
-                                    gen_attachment:fetch_response().
-handle_multipart_fetch(Multipart, AttSettings, Routines) ->
-    [Boundary | Parts] = [Bin || Bin <- binary:split(Multipart, <<"\r\n">>, ['global']),
-                                 Bin =/= <<>>
-                         ],
-    handle_multipart_contents(AttSettings, Boundary, Parts, Routines).
-
--spec handle_multipart_contents(map(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_att_error:update_routines()) ->
-                                       gen_attachment:fetch_response().
-handle_multipart_contents(_AttSettings, _Boundary, [], Routines) ->
-    lager:error("failed to find content in multipart"),
-    handle_http_error_response(<<"invalid multipart response">>, Routines);
-handle_multipart_contents(AttSettings
-                         ,Boundary
-                         ,[<<"content-type: application/json">>, _Metadata
-                          ,Boundary, <<"content-type: ", _CT/binary>>, Content
-                           | _
-                          ]
-                         ,Routines
-                         ) ->
-    lager:debug("found content of type ~s", [_CT]),
-    handle_fetch_attachment_resp({'ok', Content}, AttSettings, Routines);
-handle_multipart_contents(AttSettings, Boundary, [_Part | Parts], Routines) ->
-    lager:debug("skipping part ~s", [_Part]),
-    handle_multipart_contents(AttSettings, Boundary, Parts, Routines).
+    {'ok', Body}.
 
 %%%=============================================================================
 %%% Internal functions
