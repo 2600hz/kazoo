@@ -496,9 +496,10 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
 
 -spec get_channel_vars(kz_json:object(), kz_term:ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
+    CallIID = kz_json:get_value([<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], JObj, ?CALL_INTERACTION_DEFAULT),
     CCVs = [{<<"Fetch-ID">>, FetchId}
            ,{<<"Ecallmgr-Node">>, kz_term:to_binary(node())}
-           ,{<<?CALL_INTERACTION_ID>>, ?CALL_INTERACTION_DEFAULT}
+           ,{<<?CALL_INTERACTION_ID>>, CallIID}
            ],
     J = kz_json:from_list_recursive([{<<"Custom-Channel-Vars">>, add_ccvs(JObj, CCVs)}]),
     ecallmgr_fs_xml:get_channel_vars(kz_json:merge(JObj, J)).
