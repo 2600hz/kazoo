@@ -113,7 +113,7 @@ Keys are 32-character identifiers to be used in storage plans
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^[a-z0-9]{32}$.field_list` | list of field to compose destination url | `array()` |   | `false` |  
+`^[a-z0-9]{32}$.field_list` | list of fields to compose destination url | `array()` |   | `false` |  
 `^[a-z0-9]{32}$.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |  
 `^[a-z0-9]{32}$.folder_base_path` | base folder path | `string()` |   | `false` |  
 `^[a-z0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false` |  

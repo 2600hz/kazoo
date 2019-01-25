@@ -25,7 +25,7 @@
             "description": "group the inner fields definitions with an empty separator",
             "items": [
                 {
-                    "$ref": "storage.attachments.fields",
+                    "$ref": "storage.attachments.field",
                     "type": "object"
                 }
             ],
