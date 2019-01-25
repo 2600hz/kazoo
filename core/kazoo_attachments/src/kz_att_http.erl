@@ -72,6 +72,7 @@ build_multipart_body(Options, DbName, DocId, Contents, DefaultContentType) ->
 
     Boundary = kz_http_util:create_boundary(),
 
+    lager:debug("creating multipart body with boundary ~s", [Boundary]),
     {<<"multipart/mixed; boundary=", Boundary/binary>>
     ,kz_http_util:encode_multipart(Parts, Boundary)
     }.
@@ -232,6 +233,7 @@ handle_http_error_response({'ok', RespCode, RespHeaders, RespBody} = _E, Routine
                    | Routines
                   ],
     lager:error("http storage error: ~p: ~s", [RespCode, RespBody]),
+    lager:debug("resp headers: ~p", [RespHeaders]),
     kz_att_error:new(Reason, NewRoutines);
 handle_http_error_response({'error', {'failed_connect', Reason}} = _E, Routines) ->
     lager:error("http storage failed to connect: ~p", [_E]),
