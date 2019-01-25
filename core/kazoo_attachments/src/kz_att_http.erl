@@ -103,28 +103,14 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> kz_att_error:new('invalid_data', Routines);
         Url ->
-            Base64Encoded = kz_json:is_true(<<"base64_encode_data">>, HandlerProps, 'false'),
-            handle_fetch_attachment_resp(fetch_attachment(Url)
-                                        ,#{'base64_encode_data' => Base64Encoded}
-                                        ,Routines
-                                        )
+            handle_fetch_attachment_resp(fetch_attachment(Url), Routines)
     end.
 
--spec handle_fetch_attachment_resp(gen_attachment:fetch_response(), map(), kz_att_error:update_routines()) ->
+-spec handle_fetch_attachment_resp(gen_attachment:fetch_response(), kz_att_error:update_routines()) ->
                                           gen_attachment:fetch_response().
-handle_fetch_attachment_resp({'error', Url, Resp}, _AttSettings, Routines) ->
+handle_fetch_attachment_resp({'error', Url, Resp}, Routines) ->
     handle_http_error_response(Resp, [{fun kz_att_error:set_req_url/2, Url} | Routines]);
-handle_fetch_attachment_resp({'ok', Body}, #{'base64_encode_data' := 'true'}, _Routines) ->
-    try base64:decode(Body) of
-        Decoded ->
-            lager:debug("decoded base64 response"),
-            {'ok', Decoded}
-    catch
-        'error':_R ->
-            lager:debug("response was not base64 encoded"),
-            {'ok', Body}
-    end;
-handle_fetch_attachment_resp({'ok', Body}, _AttSettings, _Routines) ->
+handle_fetch_attachment_resp({'ok', Body}, _Routines) ->
     {'ok', Body}.
 
 %%%=============================================================================
