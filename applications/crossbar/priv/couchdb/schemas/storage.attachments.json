@@ -33,7 +33,7 @@
                     "description": "list of fields to compose destination url",
                     "items": [
                         {
-                            "$ref": "storage.attachments.field",
+                            "$ref": "storage.attachments.fields",
                             "type": "object"
                         }
                     ],
