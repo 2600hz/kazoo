@@ -97,12 +97,12 @@ resolve_path(#{container := Container} = Settings, AttInfo) ->
     Url = azure_format_url(Settings, AttInfo),
     {kz_term:to_list(Container), kz_term:to_list(Url)}.
 
--spec azure_default_fields() -> kz_term:proplist().
+-spec azure_default_fields() -> url_fields().
 azure_default_fields() ->
-    [{group, [{arg, <<"id">>}
-             ,<<"_">>
-             ,{arg, <<"attachment">>}
-             ]}
+    [{'group', [{'arg', <<"id">>}
+               ,{'const', <<"_">>}
+               ,{'arg', <<"attachment">>}
+               ]}
     ].
 
 -spec azure_format_url(map(), attachment_info()) -> kz_term:ne_binary().
@@ -114,10 +114,10 @@ azure_pid(#{account := Account, key := Key}) ->
 
 azure_pid(Account, Key) ->
     case kz_att_azure_sup:worker(Account) of
-        undefined ->
+        'undefined' ->
             case kz_att_azure_sup:start_azure(Account, Key) of
-                {ok, Pid} -> Pid;
-                {error,{already_started,Pid}} -> Pid
+                {'ok', Pid} -> Pid;
+                {'error',{'already_started',Pid}} -> Pid
             end;
         Pid -> Pid
     end.

@@ -131,10 +131,10 @@ do_fetch_attachment({'error', _}, _, HandlerProps, DbName, DocId, AName) ->
 resolve_path(Settings, AttInfo) ->
     <<"/", (dropbox_format_url(Settings, AttInfo))/binary>>.
 
--spec dropbox_default_fields() -> kz_term:proplist().
+-spec dropbox_default_fields() -> url_fields().
 dropbox_default_fields() ->
     [{'group', [{'arg', <<"id">>}
-               ,<<"_">>
+               ,{'const', <<"_">>}
                ,{'arg', <<"attachment">>}
                ]}
     ].

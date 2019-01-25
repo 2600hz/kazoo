@@ -126,10 +126,10 @@ do_fetch_attachment({'error', _}, _, _, HandlerProps, DbName, DocId, AName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec gstorage_default_fields() -> kz_term:proplist().
+-spec gstorage_default_fields() -> url_fields().
 gstorage_default_fields() ->
     [{'group', [{'arg', <<"id">>}
-               ,<<"_">>
+               ,{'const', <<"_">>}
                ,{'arg', <<"attachment">>}
                ]}
     ].

@@ -159,13 +159,13 @@ aws_config(#{'key' := Key
                ,aws_region=Region
                }.
 
--spec aws_default_fields() -> kz_term:proplist().
+-spec aws_default_fields() -> url_fields().
 aws_default_fields() ->
-    [{arg, <<"db">>}
-    ,{group, [{arg, <<"id">>}
-             ,<<"_">>
-             ,{arg, <<"attachment">>}
-             ]}
+    [{'arg', <<"db">>}
+    ,{'group', [{'arg', <<"id">>}
+               ,{'const', <<"_">>}
+               ,{'arg', <<"attachment">>}
+               ]}
     ].
 
 -spec aws_format_url(map(), attachment_info()) -> kz_term:ne_binary().

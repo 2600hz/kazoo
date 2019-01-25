@@ -30,46 +30,10 @@
             ],
             "properties": {
                 "field_list": {
-                    "description": "list of field to compose destination url",
+                    "description": "list of fields to compose destination url",
                     "items": [
                         {
-                            "description": "a static string",
-                            "type": "string"
-                        },
-                        {
-                            "properties": {
-                                "arg": {
-                                    "description": "a argument passed to the handler",
-                                    "type": "string"
-                                },
-                                "field": {
-                                    "description": "a field from the metadata document",
-                                    "type": "string"
-                                },
-                                "group": {
-                                    "description": "group the inner fields definitions with an empty separator",
-                                    "items": [
-                                        {
-                                            "description": "a static string",
-                                            "type": "string"
-                                        },
-                                        {
-                                            "properties": {
-                                                "arg": {
-                                                    "description": "a argument passed to the handler",
-                                                    "type": "string"
-                                                },
-                                                "field": {
-                                                    "description": "a field from the metadata document",
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    ],
-                                    "type": "array"
-                                }
-                            },
+                            "$ref": "storage.attachments.field",
                             "type": "object"
                         }
                     ],

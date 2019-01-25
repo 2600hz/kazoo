@@ -209,10 +209,10 @@ resolve_path(Settings, AttInfo, Authorization) ->
     Folder = resolve_folder(Settings, lists:droplast(PathTokens), Authorization),
     {Folder, Name}.
 
--spec gdrive_default_fields() -> kz_term:proplist().
+-spec gdrive_default_fields() -> url_fields().
 gdrive_default_fields() ->
     [{'group', [{'arg', <<"id">>}
-               ,<<"_">>
+               ,{'const', <<"_">>}
                ,{'arg', <<"attachment">>}
                ]}
     ].

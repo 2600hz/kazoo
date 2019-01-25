@@ -35,8 +35,15 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
      ,verb := Verb
      } = Settings,
 
+    lager:debug("settings: ~p", [Settings]),
+
     BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
-    Url = list_to_binary([BaseUrl, base_separator(BaseUrl), kz_att_util:format_url(Settings, {DbName, DocId, AName})]),
+    ClientSegment = kz_att_util:format_url(Settings, {DbName, DocId, AName}),
+    Separator = base_separator(BaseUrl),
+
+    lager:debug("composing ~s ~s ~s", [BaseUrl, Separator, ClientSegment]),
+
+    Url = list_to_binary([BaseUrl, Separator, ClientSegment]),
 
     DefaultContentType = props:get_value('content_type', Options, kz_mime:from_filename(AName)),
 
