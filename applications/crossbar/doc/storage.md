@@ -124,7 +124,9 @@ schema for HTTP(s) attachment entry
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | The handler interface to use | `string('http')` |   | `true` |
-`name` | Friendly name for this attachment handler | `string()` |   | `false` |
+`settings.field_list` | list of fields to compose destination url | `array()` |   | `false` |
+`settings.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |
+`settings.folder_base_path` | base folder path | `string()` |   | `false` |
 `settings.base64_encode_data` | Toggles whether to base64-encode the attachment data | `boolean()` | `false` | `false` |
 `settings.send_multipart` | Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true | `boolean()` |   | `false` |
 `settings.url` | The base HTTP(s) URL to use when creating the request | `string()` |   | `true` |
@@ -149,9 +151,6 @@ Keys are 32-character identifiers to be used in storage plans
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^[a-z0-9]{32}$.field_list` | list of field to compose destination url | `array()` |   | `false` |
-`^[a-z0-9]{32}$.field_separator` | top-level, field separator to compose destination url | `string()` |   | `false` |
-`^[a-z0-9]{32}$.folder_base_path` | base folder path | `string()` |   | `false` |
 `^[a-z0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false` |
 `^[a-z0-9]{32}$` | Configuration for the supported storage backends | `object()` |   | `false` |
 
@@ -520,13 +519,14 @@ It is possible to craft the URLs used by the handler based on the JSON document 
 ```json
 {UUID}:{
     "handler":"{HANDLER}",
-    "settings":{...},
-    "field_list":[
-        {"arg":"account_id"}
-        ,{"arg":"id"}
-        ,{"arg":"attachment"}
-    ],
-    "field_separator":"/"
+    "settings":{
+        "field_list":[
+            {"arg":"account_id"}
+            ,{"arg":"id"}
+            ,{"arg":"attachment"}
+        ],
+        "url":"http://base.your.domain/"
+    }
 }
 ```
 
@@ -544,6 +544,8 @@ Key | Description | Type | Default | Required | Support Level
 `const` | a constant value added to the string | `string()` |   | `false` |
 `field` | a field from the metadata document | `string()` |   | `false` |
 `group` | group the inner fields definitions with an empty separator | `array()` |   | `false` |
+
+
 
 #### Examples
 

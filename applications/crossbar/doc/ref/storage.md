@@ -88,8 +88,10 @@ schema for HTTP(s) attachment entry
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | The handler interface to use | `string('http')` |   | `true` |  
-`name` | Friendly name for this attachment handler | `string()` |   | `false` |  
 `settings.base64_encode_data` | Toggles whether to base64-encode the attachment data | `boolean()` | `false` | `false` |  
+`settings.field_list` | list of fields to compose destination url | `array()` |   | `false` |  
+`settings.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |  
+`settings.folder_base_path` | base folder path | `string()` |   | `false` |  
 `settings.send_multipart` | Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true | `boolean()` |   | `false` |  
 `settings.url` | The base HTTP(s) URL to use when creating the request | `string()` |   | `true` |  
 `settings.verb` | The HTTP verb to use when sending the data | `string('post' | 'put')` | `put` | `false` |  
@@ -113,9 +115,6 @@ Keys are 32-character identifiers to be used in storage plans
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^[a-z0-9]{32}$.field_list` | list of fields to compose destination url | `array()` |   | `false` |  
-`^[a-z0-9]{32}$.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |  
-`^[a-z0-9]{32}$.folder_base_path` | base folder path | `string()` |   | `false` |  
 `^[a-z0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false` |  
 `^[a-z0-9]{32}$` | Configuration for the supported storage backends | `object()` |   | `false` |  
 
