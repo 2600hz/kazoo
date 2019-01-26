@@ -532,7 +532,7 @@ It is possible to craft the URLs used by the handler based on the JSON document 
 
 In this case (the default for the HTTP handler) the URL provided in the handler's settings will be appended with `/{ACCOUNT_ID}/{DOC_ID}/{ATTACHMENT_NAME}`.
 
-#### Field List options
+#### Field Options
 
 list of fields to compose destination url
 
@@ -544,3 +544,22 @@ Key | Description | Type | Default | Required | Support Level
 `const` | a constant value added to the string | `string()` |   | `false` |
 `field` | a field from the metadata document | `string()` |   | `false` |
 `group` | group the inner fields definitions with an empty separator | `array()` |   | `false` |
+
+#### Examples
+
+Given a base URL of `http://my_server.com/storage`, an attachment `call.mp3` being stored in the `account000` account on the `abc123` doc defined below:
+
+```json
+{"_id":"abc123"
+ ,"foo":"bar"
+ ,"bing":"bang"
+}
+```
+
+We can create the following generated URLs:
+
+| URL                                                           | `field_list`                                                                     |   |
+| http://my_server.com/storage/account000/abc123/call.mp3       | `[{"arg":"account_id"}, {"arg":"id"}, {"arg":"attachment"}]`                     |   |
+| http://my_server.com/storage?path=/account000/abc123/call.mp3 | `[{"const":"?path="}, {"arg":"account_id"}, {"arg":"id"}, {"arg":"attachment"}]` |   |
+| http://my_server.com/storage/bar/call.mp3 | `[{"field":"foo"}, {"arg":"attachment"}]` |   |
+| http://my_server.com/storage/account001_call.mp3 | `[{"group":[{"arg":"account_id"}, {"const":"_"}, {"arg":"attachment"}]}]` |   |
