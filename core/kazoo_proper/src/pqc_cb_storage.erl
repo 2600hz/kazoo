@@ -168,8 +168,8 @@ base_test() ->
     'true' = handle_multipart_store(MediaId, MP3, RequestBody),
     ?INFO("got mp3 data on our web server!"),
 
-    pqc_httpd:update_req([<<?MODULE_STRING>>, AccountId, MediaId], MP3),
-    ?INFO("updating media to non-encoded MP3"),
+    %% pqc_httpd:update_req([<<?MODULE_STRING>>, AccountId, MediaId, AttachmentName], MP3),
+    %% ?INFO("updating media to non-encoded MP3"),
 
     MetadataResp = pqc_cb_vmboxes:fetch_message_metadata(API, AccountId, BoxId, MediaId),
     ?INFO("message ~s meta: ~s", [MediaId, MetadataResp]),
@@ -278,6 +278,16 @@ http_handler_settings() ->
                       ,{<<"verb">>, <<"post">>}
                       ,{<<"send_multipart">>, ?SEND_MULTIPART}
                       ,{<<"base64_encode_data">>, ?BASE64_ENCODED}
+                      ,{<<"field_list">>, [kz_json:from_list([{<<"arg">>, <<"account_id">>}])
+                                          ,kz_json:from_list([{<<"arg">>, <<"id">>}])
+                                          ,kz_json:from_list([{<<"group">>
+                                                              ,[kz_json:from_list([{<<"arg">>, <<"attachment">>}])
+                                                               ,kz_json:from_list([{<<"const">>, <<"?from="?MODULE_STRING>>}])
+                                                               ]
+                                                              }
+                                                             ])
+                                          ]
+                       }
                       ]).
 
 storage_plan(UUID) ->

@@ -87,9 +87,15 @@ wait_for_req(Path) ->
 wait_for_req(Path, TimeoutMs) ->
     gen_server:call(?MODULE, {'wait_for_req', Path, TimeoutMs}, TimeoutMs + 100).
 
--spec update_req(kz_json:path(), iodata()) -> 'ok'.
-update_req(Path, Content) ->
-    gen_server:cast(?MODULE, {'req', Path, Content}).
+-spec update_req(kz_json:path(), binary()) -> 'ok'.
+update_req(Path, <<_/binary>>=Content) ->
+    Store = try base64:decode(Content) of
+                Decoded -> Decoded
+            catch
+                'error':_ -> Content
+            end,
+    ?INFO("trying to store ~p: ~s", [Path, Store]),
+    gen_server:call(?MODULE, {'req', Path, Store}).
 
 log_meta(LogId) ->
     kz_util:put_callid(LogId),
@@ -203,8 +209,14 @@ handle_multipart(Multipart) ->
          | _Parts
         ] ->
             ?INFO("got metadata ~p", [_Metadata]),
-            ?INFO("got content ~s: ~p", [ContentType, Content]),
-            Content;
+            ?INFO("got content ~s: '~p'", [ContentType, Content]),
+            try base64:decode(Content) of
+                Decoded ->
+                    ?INFO("decoded content: '~s'", [Decoded]),
+                    Decoded
+            catch
+                'error':_ -> Content
+            end;
         _Parts ->
             ?INFO("failed to process parts: ~p", [_Parts]),
             Multipart
@@ -243,11 +255,32 @@ handle_call('status', _From, State) ->
     {'reply', State, State};
 handle_call({'fetch_req', Path}, _From, #state{requests=Requests}=State) ->
     case kz_json:take_value(Path, Requests) of
-        'false' -> {'reply', 'undefined', State};
-        {'value', Value, NewRequests} -> {'reply', Value, State#state{requests=NewRequests}}
+        'false' ->
+            ?INFO("failed to fetch ~p", [Path]),
+            {'reply', 'undefined', State};
+        {'value', Value, NewRequests} ->
+            ?INFO("fetched ~p: ~s", [Path, Value]),
+            {'reply', Value, State#state{requests=NewRequests}}
     end;
 handle_call({'get_req', Path}, _From, #state{requests=Requests}=State) ->
+    ?INFO("getting ~p", [Path]),
     {'reply', kz_json:get_value(Path, Requests), State};
+handle_call({'req', PathInfo, ReqBody}, _From, #state{requests=Requests
+                                                     ,waits=Waits
+                                                     }=State) ->
+    ?INFO("storing to ~p: ~s", [PathInfo, ReqBody]),
+    UpdatedReqs = kz_json:set_value(PathInfo, ReqBody, Requests),
+
+    {Relays, StillWaiting} =
+        lists:splitwith(fun({_F, _T, P}) -> lists:prefix(P, PathInfo) end
+                       ,Waits
+                       ),
+
+    _ = relay(Relays, UpdatedReqs),
+
+    {'reply', 'ok', State#state{requests=UpdatedReqs
+                               ,waits=StillWaiting
+                               }};
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 
