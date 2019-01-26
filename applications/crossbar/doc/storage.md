@@ -511,3 +511,36 @@ By default, Kazoo will not allow clients to skip settings validation. Clients th
 Sysadmins can allow clients by setting a `system_config` flag: `sup kzs_plan allow_validation_overrides`
 
 Disabling it later is similar: `sup kzs_plan disallow_validation_overrides`
+
+
+## URL formatting
+
+It is possible to craft the URLs used by the handler based on the JSON document and attachment being saved by specifying a `field_list` array of objects that will help KAZOO map values to the generated URL:
+
+```json
+{UUID}:{
+    "handler":"{HANDLER}",
+    "settings":{...},
+    "field_list":[
+        {"arg":"account_id"}
+        ,{"arg":"id"}
+        ,{"arg":"attachment"}
+    ],
+    "field_separator":"/"
+}
+```
+
+In this case (the default for the HTTP handler) the URL provided in the handler's settings will be appended with `/{ACCOUNT_ID}/{DOC_ID}/{ATTACHMENT_NAME}`.
+
+#### Field List options
+
+list of fields to compose destination url
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`arg` | a argument passed to the handler | `string('account_id' | 'db' | 'id' | 'attachment')` |   | `false` |
+`const` | a constant value added to the string | `string()` |   | `false` |
+`field` | a field from the metadata document | `string()` |   | `false` |
+`group` | group the inner fields definitions with an empty separator | `array()` |   | `false` |
