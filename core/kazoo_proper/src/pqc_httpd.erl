@@ -10,6 +10,8 @@
 -export([fetch_req/1
         ,get_req/1
         ,wait_for_req/1, wait_for_req/2
+        ,update_req/2
+
         ,base_url/0
         ,status/0
         ,stop/0
@@ -84,6 +86,10 @@ wait_for_req(Path) ->
                           {'error', 'timeout'}.
 wait_for_req(Path, TimeoutMs) ->
     gen_server:call(?MODULE, {'wait_for_req', Path, TimeoutMs}, TimeoutMs + 100).
+
+-spec update_req(kz_json:path(), iodata()) -> 'ok'.
+update_req(Path, Content) ->
+    gen_server:cast(?MODULE, {'req', Path, Content}).
 
 log_meta(LogId) ->
     kz_util:put_callid(LogId),
@@ -169,7 +175,7 @@ add_req_to_state(Req, State) ->
                end,
 
     ?INFO("PUT req ~s: ~p: ~s", [Path, RespCode, ReqBody]),
-    gen_server:cast(?MODULE, {'req', PathParts, iolist_to_binary(ReqBody)}),
+    update_req(PathParts, iolist_to_binary(ReqBody)),
 
     Headers = #{<<"content-type">> => <<"application/json">>},
 

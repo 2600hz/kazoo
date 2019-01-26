@@ -259,6 +259,7 @@ schema_to_table(SchemaJObj) ->
 
 schema_to_table(SchemaJObj, BaseRefs) ->
     Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),
+
     PlusPatternProperties = kz_json:merge(get_pattern_properties(SchemaJObj)
                                          ,get_properties(SchemaJObj)
                                          ),

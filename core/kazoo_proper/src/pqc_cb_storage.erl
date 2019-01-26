@@ -161,13 +161,15 @@ base_test() ->
     CreatedVM = kz_json:decode(CreateVM),
     MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], CreatedVM),
 
-
     GetVM = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
     ?INFO("get VM: ~p", [GetVM]),
     {[RequestBody], [_AttachmentName]} = kz_json:get_values(GetVM),
 
     'true' = handle_multipart_store(MediaId, MP3, RequestBody),
     ?INFO("got mp3 data on our web server!"),
+
+    pqc_httpd:update_req([<<?MODULE_STRING>>, AccountId, MediaId], MP3),
+    ?INFO("updating media to non-encoded MP3"),
 
     MetadataResp = pqc_cb_vmboxes:fetch_message_metadata(API, AccountId, BoxId, MediaId),
     ?INFO("message ~s meta: ~s", [MediaId, MetadataResp]),
@@ -210,6 +212,12 @@ handle_multipart_contents(MediaId, MP3, [<<"content-type: application/json">>, <
 
     handle_multipart_contents(MediaId, MP3, Parts);
 handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mp3">>, <<>>, Base64MP3 | Parts]) ->
+    case handle_mp3_contents(MP3, Base64MP3, ?BASE64_ENCODED) of
+        'true' ->
+            handle_multipart_contents(MediaId, MP3, Parts);
+        'false' -> 'false'
+    end;
+handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mpeg">>, <<>>, Base64MP3 | Parts]) ->
     case handle_mp3_contents(MP3, Base64MP3, ?BASE64_ENCODED) of
         'true' ->
             handle_multipart_contents(MediaId, MP3, Parts);
