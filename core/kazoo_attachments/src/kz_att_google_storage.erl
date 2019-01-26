@@ -13,6 +13,8 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([gstorage_default_fields/0]).
+
 -define(DRV_BUCKET_UPLOAD_URL(B), <<"https://www.googleapis.com/upload/storage/v1/b/", B/binary, "/o">>).
 -define(DRV_SINGLE_FILE_UPLOAD_URL(B), <<(?DRV_BUCKET_UPLOAD_URL(B))/binary, "?uploadType=media">>).
 -define(DRV_MULTIPART_FILE_URL(B), <<(?DRV_BUCKET_UPLOAD_URL(B))/binary, "?uploadType=multipart">>).

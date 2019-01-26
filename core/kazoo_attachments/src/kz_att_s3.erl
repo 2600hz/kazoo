@@ -14,6 +14,8 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([aws_default_fields/0]).
+
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 -define(AMAZON_S3_UPLOAD_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 30).
 

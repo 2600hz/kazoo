@@ -13,6 +13,8 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([azure_default_fields/0]).
+
 %%%=============================================================================
 %%% `gen_attachment' behaviour callbacks (API)
 %%%=============================================================================

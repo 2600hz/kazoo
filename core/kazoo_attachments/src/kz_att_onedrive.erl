@@ -13,7 +13,11 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
--define(GRAPH_HTTP_OPTIONS, [{version, "HTTP/1.1"}, {ssl, [{versions, ['tlsv1.2']}]}]).
+-export([onedrive_default_fields/0]).
+
+-define(GRAPH_HTTP_OPTIONS, [{'version', "HTTP/1.1"}
+                            ,{'ssl', [{'versions', ['tlsv1.2']}]}
+                            ]).
 
 -define(GRAPH_API_URL, <<"https://graph.microsoft.com/v1.0">>).
 
@@ -87,7 +91,7 @@ do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
               ],
     Url = resolve_put_url(Settings, {DbName, DocId, AName}),
     case onedrive_put(Url, Headers, Contents) of
-        {ok, ContentId, ResponseHeaders} ->
+        {'ok', ContentId, ResponseHeaders} ->
             Data = base64:encode(term_to_binary({Settings, ContentId})),
             {'ok', [{'attachment', [{<<"onedrive">>, Data}
                                    ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}

@@ -14,6 +14,10 @@
         ,headers_as_binaries/1
         ]).
 
+-ifdef(TEST).
+-export([default_format_url_fields/0]).
+-endif.
+
 -include("kz_att.hrl").
 
 -spec sha_mac(iodata(), iodata()) -> binary().

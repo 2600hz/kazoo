@@ -13,6 +13,8 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([gdrive_default_fields/0]).
+
 -define(DRV_BASE_UPLOAD_URL, <<"https://www.googleapis.com/upload/drive/v3">>).
 -define(DRV_FILE_UPLOAD_URL, <<(?DRV_BASE_UPLOAD_URL)/binary, "/files">>).
 -define(DRV_SINGLE_FILE_UPLOAD_URL, <<(?DRV_FILE_UPLOAD_URL)/binary, "?uploadType=media">>).
