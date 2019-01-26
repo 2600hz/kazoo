@@ -139,6 +139,7 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
               ,DbName, DocId, AName, Contents, Options
               ) ->
     lager:info("using handler ~s to store ~s/~s/~s", [Handler, DbName, DocId, AName]),
+
     case Handler:put_attachment(Params, DbName, DocId, AName, Contents, Options) of
         {'ok', Props} ->
             CT = props:get_value('content_type', Options, kz_mime:from_filename(AName)),
@@ -153,7 +154,7 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
                                         ),
                     lager:debug("saving attachment handler error in ~p", [_Pid]);
                 'false' ->
-                    lager:debug("Skipping error save because save_error is set to false")
+                    lager:debug("skipping error save because save_error is set to false")
             end,
             handle_attachment_handler_error(AttHandlerError, Options)
     end;
@@ -247,7 +248,7 @@ save_attachment_handler_error(Map
     ErrorJSON = kz_json:set_values(NewValues, kz_att_error:to_json(ExtendedError)),
     UpdatedErrorJSON = kz_doc:update_pvt_parameters(ErrorJSON, DbName),
     {'ok', SavedJObj} = kazoo_modb:save_doc(DbName, UpdatedErrorJSON),
-    lager:debug("Attachment handler error stored with id: ~p", [kz_doc:id(SavedJObj)]).
+    lager:debug("attachment handler error stored with id: ~p", [kz_doc:id(SavedJObj)]).
 
 -spec handle_attachment_handler_error(kz_att_error:error(), kz_data:options()) ->
                                              kz_att_error:error() | kz_datamgr:data_error().

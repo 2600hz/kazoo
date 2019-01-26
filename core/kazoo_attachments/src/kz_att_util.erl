@@ -14,9 +14,7 @@
         ,headers_as_binaries/1
         ]).
 
--ifdef(TEST).
 -export([default_format_url_fields/0]).
--endif.
 
 -include("kz_att.hrl").
 
@@ -48,19 +46,19 @@ sha256(V) ->
 md5(V) ->
     crypto:hash('md5', V).
 
--spec format_url(map(), attachment_info()) -> kz_term:ne_binary().
+-spec format_url(gen_attachment:settings(), attachment_info()) -> kz_term:ne_binary().
 format_url(#{file := Path}, _AttInfo) -> Path;
 format_url(Map, AttInfo) ->
     format_url(Map, AttInfo, default_format_url_fields()).
 
--spec format_url(map(), attachment_info(), url_fields()) -> kz_term:ne_binary().
+-spec format_url(gen_attachment:settings(), attachment_info(), url_fields()) -> kz_term:ne_binary().
 format_url(#{file := Path}, _AttInfo, _Format) -> Path;
 format_url(Map, {DbName, DocId, _AName}=DocInfo, Format) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(DbName, DocId),
 
     format_url_from_metadata(Map, DocInfo, Format, JObj).
 
--spec format_url_from_metadata(map(), attachment_info(), url_fields(), kz_json:object()) -> kz_term:ne_binary().
+-spec format_url_from_metadata(gen_attachment:settings(), attachment_info(), url_fields(), kz_json:object()) -> kz_term:ne_binary().
 format_url_from_metadata(Map, {DbName, DocId, AName}, Format, JObj) ->
     Args = [{<<"attachment">>, AName}
            ,{<<"id">>, DocId}
@@ -69,12 +67,14 @@ format_url_from_metadata(Map, {DbName, DocId, AName}, Format, JObj) ->
            ],
     format_url(Map, kz_doc:public_fields(JObj), Args, Format).
 
--spec format_url(map(), kz_json:object(), kz_term:proplist(), url_fields()) -> kz_term:ne_binary().
+-spec format_url(gen_attachment:settings(), kz_json:object(), kz_term:proplist(), url_fields()) -> kz_term:ne_binary().
 format_url(#{file := Path}, _JObj, _Args, _DefaultFields) -> Path;
 format_url(Params, JObj, Args, DefaultFields) ->
     Fields = maps:get('field_list', Params, DefaultFields),
     FieldSeparator = maps:get('field_separator', Params, <<"/">>),
+
     BaseUrl = do_format_url(Fields, JObj, Args, FieldSeparator),
+
     case path_from_settings(Params) of
         'undefined' -> BaseUrl;
         Path -> list_to_binary([Path, "/", BaseUrl])

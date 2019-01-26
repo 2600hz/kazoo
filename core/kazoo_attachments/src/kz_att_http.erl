@@ -35,13 +35,9 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
      ,verb := Verb
      } = Settings,
 
-    lager:debug("settings: ~p", [Settings]),
-
     BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
-    ClientSegment = kz_att_util:format_url(Settings, {DbName, DocId, AName}),
+    ClientSegment = kz_att_util:format_url(Settings, {DbName, DocId, AName}, fields(Settings)),
     Separator = base_separator(BaseUrl),
-
-    lager:debug("composing ~s ~s ~s", [BaseUrl, Separator, ClientSegment]),
 
     Url = list_to_binary([BaseUrl, Separator, ClientSegment]),
 
@@ -99,6 +95,10 @@ format_verb(<<"POST">>) -> 'post';
 format_verb(<<"PUT">>) -> 'put';
 format_verb(<<"post">>) -> 'post';
 format_verb(<<"put">>) -> 'put'.
+
+-spec fields(map()) -> url_fields().
+fields(#{field_list := FieldList}) -> FieldList;
+fields(_Settings) -> kz_att_util:default_format_url_fields().
 
 -spec fetch_attachment(gen_attachment:handler_props()
                       ,gen_attachment:db_name()
