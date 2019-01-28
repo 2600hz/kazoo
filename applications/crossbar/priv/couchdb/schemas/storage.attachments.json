@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.attachments",
+    "additionalProperties": false,
     "description": "Keys are 32-character identifiers to be used in storage plans",
     "patternProperties": {
         "^[a-z0-9]{32}$": {
