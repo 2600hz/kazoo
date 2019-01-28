@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.connections",
+    "description": "Describes alternative connections to use (such as alternative CouchDB instances",
     "patternProperties": {
         "^([a-z,0-9]){32}$": {
             "oneOf": [
