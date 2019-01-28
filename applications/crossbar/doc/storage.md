@@ -44,12 +44,12 @@ sup crossbar_maintenance start_module cb_storage
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^_` | Ignores CouchDB fields prefixed by underscores | `string() | integer() | boolean() | object()` |   | `false` |
-`^pvt_` | Ignores Kazoo private fields prefixed by pvt_ | `string() | integer() | boolean()` |   | `false` |
-`attachments` | Defines where and how to store attachments | [#/definitions/storage.attachments](#storageattachments) |   | `false` |
-`connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false` |
+`^_` | Ignores CouchDB fields prefixed by underscores | `boolean() | integer() | object() | string()` |   | `false` |
+`^pvt_` | Ignores Kazoo private fields prefixed by pvt_ | `boolean() | integer() | string()` |   | `false` |
+`attachments` |   | [#/definitions/storage.attachments](#storageattachments) |   | `false` |
+`connections` |   | [#/definitions/storage.connections](#storageconnections) |   | `false` |
 `id` | ID of the storage document | `string()` |   | `false` |
-`plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false` |
+`plan` |   | [#/definitions/storage.plan](#storageplan) |   | `false` |
 
 ### storage.attachment.aws
 
@@ -80,7 +80,7 @@ Key | Description | Type | Default | Required | Support Level
 `handler` | What handler module to use | `string('azure')` |   | `true` |
 `settings.account` | the azure account name | `string()` |   | `true` |
 `settings.container` | the azure container where the files should be saved | `string()` |   | `true` |
-`settings.key` | the azure API key | `string()` |   | `true` |
+`settings.key` | the azure api key | `string()` |   | `true` |
 `settings` | Settings for the Azure account | `object()` |   | `true` |
 
 ### storage.attachment.dropbox
@@ -124,9 +124,6 @@ schema for HTTP(s) attachment entry
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | The handler interface to use | `string('http')` |   | `true` |
-`settings.field_list` | list of fields to compose destination url | `array()` |   | `false` |
-`settings.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |
-`settings.folder_base_path` | base folder path | `string()` |   | `false` |
 `settings.base64_encode_data` | Toggles whether to base64-encode the attachment data | `boolean()` | `false` | `false` |
 `settings.send_multipart` | Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true | `boolean()` |   | `false` |
 `settings.url` | The base HTTP(s) URL to use when creating the request | `string()` |   | `true` |
@@ -146,13 +143,25 @@ Key | Description | Type | Default | Required | Support Level
 
 ### storage.attachments
 
-Keys are 32-character identifiers to be used in storage plans
+Defines where and how to store attachments. Keys are 32-character identifiers to be used in storage plans
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[a-z0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false` |
+`^[a-z0-9]{32}$.settings.field_list` | list of fields to compose destination url | `["array(", "[#/definitions/storage.attachments.field](#storageattachments.field)", ")"]` |   | `false` |
+`^[a-z0-9]{32}$.settings.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |
+`^[a-z0-9]{32}$.settings.folder_base_path` | base folder path | `string()` |   | `false` |
+`^[a-z0-9]{32}$.settings` | Settings all handlers implement | `object()` |   | `false` |
 `^[a-z0-9]{32}$` | Configuration for the supported storage backends | `object()` |   | `false` |
+
+### storage.attachments.field
+
+field used when composing destination url
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
 
 ### storage.connection.couchdb
 
@@ -180,6 +189,8 @@ Key | Description | Type | Default | Required | Support Level
 
 ### storage.connections
 
+Describes alternative connections to use (such as alternative CouchDB instances
+
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
@@ -188,7 +199,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ### storage.plan
 
-schema for storage plan
+Describes how to store documents depending on the database or document type
 
 
 Key | Description | Type | Default | Required | Support Level
@@ -236,79 +247,7 @@ Key | Description | Type | Default | Required | Support Level
 `attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |
 `connection` |   | `string()` |   | `false` |
 
-#### Create
 
-First, you should create a 32-character UUID to identify the S3 configuration:
-
-```shell
-echo $(tr -dc a-f0-9 < /dev/urandom | dd bs=32 count=1 2> /dev/null)
-403f90f67d1b71341f2ea6426eed3d90
-```
-
-Using your `{UUID}`, create the storage document using the `{UUID}` as the reference to the S3 configuration parameters.
-
-> PUT /v2/accounts/{ACCOUNT_ID}/storage
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
- -d '{"data":{
-        "attachments": {
-            "{UUID}": {
-                "handler": "s3",
-                "name": "S3 Storage",
-                "settings": {
-                    "bucket": "{S3_BUCKET}",
-                    "key": "{AWS_ACCESS_KEY}",
-                    "secret": "{AWS_SECRET_KEY}"
-                }
-            }
-        },
-        "plan": {
-            "modb": {
-                "types": {
-                    "mailbox_message": {
-                        "attachments": {
-                            "handler": "{UUID}"
-                        }
-                    }
-                }
-            }
-        }
-        }}' \
-  http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/storage
-```
-
-```json
-{
-  "auth_token": "{AUTH_TOKEN}",
-  "data": {
-    "attachments": {
-      "{UUID}": {
-        "handler": "s3",
-        "name": "S3 Storage",
-        "settings": {
-          "bucket": "{S3_BUCKET}",
-          "key": "{AWS_ACCESS_KEY}",
-          "secret": "{AWS_SECRET_KEY}"
-        }
-      }
-    },
-    "plan": {
-      "modb": {
-        "types": {
-          "mailbox_message": {
-            "attachments": {
-              "handler": "{UUID}"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
 
 ## Fetch
 

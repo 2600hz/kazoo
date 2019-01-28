@@ -10,10 +10,10 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^_` | Ignores CouchDB fields prefixed by underscores | `boolean() | integer() | object() | string()` |   | `false` |  
 `^pvt_` | Ignores Kazoo private fields prefixed by pvt_ | `boolean() | integer() | string()` |   | `false` |  
-`attachments` | Defines where and how to store attachments | [#/definitions/storage.attachments](#storageattachments) |   | `false` |  
-`connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false` |  
+`attachments` |   | [#/definitions/storage.attachments](#storageattachments) |   | `false` |  
+`connections` |   | [#/definitions/storage.connections](#storageconnections) |   | `false` |  
 `id` | ID of the storage document | `string()` |   | `false` |  
-`plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false` |  
+`plan` |   | [#/definitions/storage.plan](#storageplan) |   | `false` |  
 
 ### storage.attachment.aws
 
@@ -89,9 +89,6 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `handler` | The handler interface to use | `string('http')` |   | `true` |  
 `settings.base64_encode_data` | Toggles whether to base64-encode the attachment data | `boolean()` | `false` | `false` |  
-`settings.field_list` | list of fields to compose destination url | `array()` |   | `false` |  
-`settings.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |  
-`settings.folder_base_path` | base folder path | `string()` |   | `false` |  
 `settings.send_multipart` | Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true | `boolean()` |   | `false` |  
 `settings.url` | The base HTTP(s) URL to use when creating the request | `string()` |   | `true` |  
 `settings.verb` | The HTTP verb to use when sending the data | `string('post' | 'put')` | `put` | `false` |  
@@ -110,13 +107,25 @@ Key | Description | Type | Default | Required | Support Level
 
 ### storage.attachments
 
-Keys are 32-character identifiers to be used in storage plans
+Defines where and how to store attachments. Keys are 32-character identifiers to be used in storage plans
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[a-z0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false` |  
+`^[a-z0-9]{32}$.settings.field_list` | list of fields to compose destination url | `["array(", "[#/definitions/storage.attachments.field](#storageattachments.field)", ")"]` |   | `false` |  
+`^[a-z0-9]{32}$.settings.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false` |  
+`^[a-z0-9]{32}$.settings.folder_base_path` | base folder path | `string()` |   | `false` |  
+`^[a-z0-9]{32}$.settings` | Settings all handlers implement | `object()` |   | `false` |  
 `^[a-z0-9]{32}$` | Configuration for the supported storage backends | `object()` |   | `false` |  
+
+### storage.attachments.field
+
+field used when composing destination url
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
 
 ### storage.connection.couchdb
 
@@ -144,6 +153,8 @@ Key | Description | Type | Default | Required | Support Level
 
 ### storage.connections
 
+Describes alternative connections to use (such as alternative CouchDB instances
+
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
@@ -152,7 +163,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ### storage.plan
 
-schema for storage plan
+Describes how to store documents depending on the database or document type
 
 
 Key | Description | Type | Default | Required | Support Level
