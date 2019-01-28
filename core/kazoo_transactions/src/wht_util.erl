@@ -251,7 +251,7 @@ get_rollup_from_previous(Account) ->
 get_rollup_balance(Account, Options) ->
     case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
         'false' -> {'ok', 0};
-        'true' ->    
+        'true' ->
             View = <<"transactions/credit_remaining">>,
             ViewOptions = ['reduce'
                           ,'group'
