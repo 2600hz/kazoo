@@ -249,19 +249,23 @@ get_rollup_from_previous(Account) ->
 
 -spec get_rollup_balance(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_rollup_balance(Account, Options) ->
-    View = <<"transactions/credit_remaining">>,
-    ViewOptions = ['reduce'
-                  ,'group'
-                  ,{'group_level', 1}
-                   | Options
-                  ],
-    case kazoo_modb:get_results(Account, View, ViewOptions) of
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [ViewRes|_]} ->
-            {'ok', kz_json:get_integer_value(<<"value">>, ViewRes, 0)};
-        {'error', _R}=E ->
-            lager:warning("unable to get rollup balance for ~s: ~p", [Account, _R]),
-            E
+    case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
+        'false' -> {'ok', 0};
+        'true' ->    
+            View = <<"transactions/credit_remaining">>,
+            ViewOptions = ['reduce'
+                          ,'group'
+                          ,{'group_level', 1}
+                           | Options
+                          ],
+            case kazoo_modb:get_results(Account, View, ViewOptions) of
+                {'ok', []} -> {'error', 'not_found'};
+                {'ok', [ViewRes|_]} ->
+                    {'ok', kz_json:get_integer_value(<<"value">>, ViewRes, 0)};
+                {'error', _R}=E ->
+                    lager:warning("unable to get rollup balance for ~s: ~p", [Account, _R]),
+                    E
+            end
     end.
 
 %%------------------------------------------------------------------------------
