@@ -38,7 +38,6 @@
                     "description": "Settings all handlers implement",
                     "properties": {
                         "field_list": {
-                            "additionalItems": false,
                             "description": "list of fields to compose destination url",
                             "items": [
                                 {

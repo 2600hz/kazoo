@@ -1,38 +1,56 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.attachments.field",
-    "additionalProperties": false,
     "description": "field used when composing destination url",
-    "properties": {
-        "arg": {
-            "description": "an argument passed to the handler",
-            "enum": [
-                "account_id",
-                "db",
-                "id",
-                "attachment"
-            ],
-            "type": "string"
+    "oneOf": [
+        {
+            "properties": {
+                "arg": {
+                    "description": "an argument passed to the handler",
+                    "enum": [
+                        "account_id",
+                        "db",
+                        "id",
+                        "attachment"
+                    ],
+                    "type": "string"
+                },
+                "type": "object"
+            }
         },
-        "const": {
-            "description": "a constant value added to the string",
-            "type": "string"
+        {
+            "properties": {
+                "const": {
+                    "description": "a constant value added to the string",
+                    "type": "string"
+                },
+                "type": "object"
+            }
         },
-        "field": {
-            "description": "a field from the metadata document",
-            "type": "string"
+        {
+            "properties": {
+                "field": {
+                    "description": "a field from the metadata document",
+                    "type": "string"
+                },
+                "type": "object"
+            }
         },
-        "group": {
-            "additionalItems": false,
-            "description": "group the inner fields definitions with an empty separator",
-            "items": [
-                {
-                    "$ref": "storage.attachments.field",
-                    "type": "object"
-                }
-            ],
-            "type": "array"
+        {
+            "properties": {
+                "group": {
+                    "description": "group the inner fields definitions with an empty separator",
+                    "items": [
+                        {
+                            "$ref": "storage.attachments.field",
+                            "type": "object"
+                        }
+                    ],
+                    "type": "array"
+                },
+                "type": "object"
+            }
         }
-    },
+    ],
     "type": "object"
 }
