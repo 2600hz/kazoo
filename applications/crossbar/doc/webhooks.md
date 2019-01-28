@@ -4,19 +4,19 @@
 
 Webhooks allow Kazoo to send HTTP requests to a third-party web server, alerting that server of events occurring within Kazoo. Typically, events would be fired for new calls, when a call is answered, and when a call is finished, though other events will be added in the future.
 
-## Schema
+#### Schema
 
-Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the URI set in the Web Hook document.
+Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.
 
 
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`custom_data` | These properties will be added to the event and will overwrite existing values. | `object()` |   | `false` |
-`enabled` | Is the webhook enabled and running | `boolean()` | `true` | `false` |
+`custom_data` | These properties will be added to the event and will overwrite existing values. | `object()` |   | `false` |  
+`enabled` | Is the webhook enabled and running | `boolean()` | `true` | `false` |  
 `hook` | The trigger event for a request being made to 'callback_uri'. | `string()` |   | `true` | `supported`
 `http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post')` | `post` | `false` | `supported`
-`include_internal_legs` | Whether to filter out call legs that are internal to the system (loopback) | `boolean()` | `true` | `false` |
+`include_internal_legs` | Whether to filter out call legs that are internal to the system (loopback) | `boolean()` | `true` | `false` |  
 `include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean()` |   | `false` | `supported`
 `name` | A friendly name for the webhook | `string()` |   | `true` | `supported`
 `retries` | Retry the request this many times (if it fails) | `integer()` | `2` | `false` | `supported`

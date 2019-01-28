@@ -22,7 +22,7 @@ Additionally, you can branch based on a timeout (no DTMF entered) by using "time
 
 If no `timeout` child is specified, the menu is retried (until retries are exceeded).
 
-## Schema
+#### Schema
 
 Schema for a menus
 

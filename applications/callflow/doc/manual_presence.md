@@ -11,6 +11,8 @@ Key | Description | Type | Default | Required
 `presence_id` | The Presence ID to send a presence notification about | `string` |   | `true`
 `status` | The status to update to | `string('idle', 'ringing', 'busy')` | `idle` | `false`
 
+
+
 #### Status
 
 There are three statuses that may be used in the update:

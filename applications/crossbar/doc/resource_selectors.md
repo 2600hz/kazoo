@@ -4,7 +4,7 @@
 
 Resource selectors is a new way to route Offnet-calls. Old way used regex rules and "flags" for select proper resources (gateways). With new "resource selectors" you have several small modules, which can be organized in "chain" (rules).
 
-## Schema
+#### Schema
 
 Schema for resource selector document
 
@@ -12,12 +12,12 @@ Schema for resource selector document
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`name` | Selector name | `string()` |   | `true` |
-`resource` | Resource ID | `string()` |   | `true` |
-`selector` | Selector data | `string()` |   | `true` |
-`start_time` | Start time (Gregorian seconds) | `integer()` |   | `false` |
-`stop_time` | Stop time (Gregorian seconds) | `integer()` |   | `false` |
-`value` | Extra selector data | `string()` |   | `false` |
+`name` | Selector name | `string()` |   | `true` |  
+`resource` | Resource ID | `string()` |   | `true` |  
+`selector` | Selector data | `string()` |   | `true` |  
+`start_time` | Start time (Gregorian seconds) | `integer()` |   | `false` |  
+`stop_time` | Stop time (Gregorian seconds) | `integer()` |   | `false` |  
+`value` | Extra selector data | `string()` |   | `false` |  
 
 
 

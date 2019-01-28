@@ -4,7 +4,7 @@ Configures limit on call consumed for your account.
 
 ## About Limits
 
-## Schema
+#### Schema
 
 Limit an account's ability to place concurrent calls using flat rate trunks
 
