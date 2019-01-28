@@ -46,10 +46,10 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^_` | Ignores CouchDB fields prefixed by underscores | `boolean() | integer() | object() | string()` |   | `false` |  
 `^pvt_` | Ignores Kazoo private fields prefixed by pvt_ | `boolean() | integer() | string()` |   | `false` |  
-`attachments` |   | [#/definitions/storage.attachments](#storageattachments) |   | `false` |  
-`connections` |   | [#/definitions/storage.connections](#storageconnections) |   | `false` |  
+`attachments` | Defines where and how to store attachments. Keys are 32-character identifiers to be used in storage plans | [#/definitions/storage.attachments](#storageattachments) |   | `false` |  
+`connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false` |  
 `id` | ID of the storage document | `string()` |   | `false` |  
-`plan` |   | [#/definitions/storage.plan](#storageplan) |   | `false` |  
+`plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false` |  
 
 ### storage.attachment.aws
 
@@ -204,9 +204,9 @@ Describes how to store documents depending on the database or document type
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`account` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
-`modb` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
-`system` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
+`account` | schema for database storage plan | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
+`modb` | schema for database storage plan | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
+`system` | schema for database storage plan | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
 
 ### storage.plan.database
 
@@ -215,14 +215,14 @@ schema for database storage plan
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |  
+`attachments` | schema for attachment ref type storage plan | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |  
 `connection` |   | `string()` |   | `false` |  
 `database.create_options` |   | `object()` |   | `false` |  
 `database` |   | `object()` |   | `false` |  
-`types.call_recording` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
-`types.fax` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
-`types.mailbox_message` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
-`types.media` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
+`types.call_recording` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
+`types.fax` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
+`types.mailbox_message` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
+`types.media` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
 `types` |   | `object()` |   | `false` |  
 
 ### storage.plan.database.attachment
@@ -244,7 +244,7 @@ schema for document type storage plan
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |  
+`attachments` | schema for attachment ref type storage plan | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |  
 `connection` |   | `string()` |   | `false` |  
 
 
