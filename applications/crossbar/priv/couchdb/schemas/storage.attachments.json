@@ -39,12 +39,9 @@
                     "properties": {
                         "field_list": {
                             "description": "list of fields to compose destination url",
-                            "items": [
-                                {
-                                    "$ref": "storage.attachments.field",
-                                    "type": "object"
-                                }
-                            ],
+                            "items": {
+                                "$ref": "storage.attachments.field"
+                            },
                             "type": "array"
                         },
                         "field_separator": {
