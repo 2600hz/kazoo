@@ -19,11 +19,11 @@
 
 -define(SERVER, ?MODULE).
 
--spec start_link(kz_json:object()) -> kz_types:startlink_ret().
+-spec start_link(kapi_route:req()) -> kz_types:startlink_ret().
 start_link(RouteReqJObj) ->
     proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
 
--spec init(pid(), kz_json:object()) -> 'ok'.
+-spec init(pid(), kapi_route:req()) -> 'ok'.
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
     Funs = [fun maybe_referred_call/1
@@ -37,27 +37,27 @@ start_amqp(State) ->
     maybe_onnet_data(ts_callflow:start_amqp(State)).
 
 maybe_onnet_data(State) ->
-    JObj = ts_callflow:get_request_data(State),
+    RouteReq = ts_callflow:get_request_data(State),
     CallID = ts_callflow:get_aleg_id(State),
     AccountId = ts_callflow:get_account_id(State),
-    {ToUser, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+    {ToUser, _} = kapps_util:get_destination(RouteReq, ?APP_NAME, <<"outbound_user_field">>),
     ToDID = knm_converters:normalize(ToUser, AccountId),
-    FromUser = kz_json:get_value(<<"Caller-ID-Name">>, JObj),
+    FromUser = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, RouteReq),
 
     lager:info("on-net request from ~s(~s) to ~s", [FromUser, AccountId, ToDID]),
     Options =
         case ts_util:lookup_did(FromUser, AccountId) of
             {'ok', Opts} -> Opts;
             _ ->
-                Username = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj, <<>>),
-                Realm = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Realm">>], JObj, <<>>),
+                Username = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], RouteReq, <<>>),
+                Realm = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Realm">>], RouteReq, <<>>),
 
                 case ts_util:lookup_user_flags(Username, Realm, AccountId) of
                     {'ok', Opts} -> Opts;
                     _ -> kz_json:new()
                 end
         end,
-    ServerOptions = kz_json:get_value([<<"server">>, <<"options">>], Options, kz_json:new()),
+    ServerOptions = kz_json:get_json_value([<<"server">>, <<"options">>], Options, kz_json:new()),
     case knm_converters:is_reconcilable(ToDID)
         orelse knm_converters:classify(ToDID) =:= <<"emergency">>
         orelse kz_json:is_true(<<"hunt_non_reconcilable">>, ServerOptions, 'false')
@@ -228,25 +228,25 @@ wait_for_bridge(State, CtlQ, Timeout) ->
         {'error', #ts_callflow_state{aleg_callid='undefined'}} -> 'ok';
         {'error', #ts_callflow_state{aleg_callid=CallId}=State1} ->
             lager:info("responding to aleg ~s with 686", [CallId]),
-            kz_call_response:send(CallId, CtlQ, <<"686">>),
+            _ = kz_call_response:send(CallId, CtlQ, <<"686">>),
             ts_callflow:send_hangup(State1, <<"686">>)
     end.
 
--spec maybe_referred_call(kz_json:object()) -> kz_json:object().
-maybe_referred_call(JObj) ->
-    maybe_fix_request(get_referred_by(JObj), JObj).
+-spec maybe_referred_call(kapi_route:req()) -> kz_json:object().
+maybe_referred_call(RouteReq) ->
+    maybe_fix_request(get_referred_by(RouteReq), RouteReq).
 
--spec maybe_redirected_call(kz_json:object()) -> kz_json:object().
-maybe_redirected_call(JObj) ->
-    maybe_fix_request(get_redirected_by(JObj), JObj).
+-spec maybe_redirected_call(kapi_route:req()) -> kz_json:object().
+maybe_redirected_call(RouteReq) ->
+    maybe_fix_request(get_redirected_by(RouteReq), RouteReq).
 
--spec maybe_fix_request({binary(), binary()} | 'undefined', kz_json:object()) -> kz_json:object().
-maybe_fix_request('undefined', JObj) -> JObj;
-maybe_fix_request({Username, Realm}, JObj) ->
-    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+-spec maybe_fix_request({binary(), binary()} | 'undefined', kapi_route:req()) -> kapi_route:req().
+maybe_fix_request('undefined', RouteReq) -> RouteReq;
+maybe_fix_request({Username, Realm}, RouteReq) ->
+    AccountId = kapi_route:account_id(RouteReq),
     case ts_util:lookup_user_flags(Username, Realm, AccountId) of
-        {'ok', _Opts} -> kz_json:set_values(fix_request_values(Username, Realm), JObj);
-        _ -> JObj
+        {'ok', _Opts} -> kz_json:set_values(fix_request_values(Username, Realm), RouteReq);
+        _ -> RouteReq
     end.
 
 -spec fix_request_values(binary(), binary()) -> [{kz_json:path(), kz_term:ne_binary()}].

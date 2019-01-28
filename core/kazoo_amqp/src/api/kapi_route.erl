@@ -20,6 +20,7 @@
         ,req_event_type/0
         ,is_actionable_resp/1
 
+        ,account_id/1
         ,call_id/1
         ,control_queue/1
         ,fetch_id/1
@@ -324,8 +325,7 @@ control_queue(JObj) ->
 -spec has_cost_parameters(kz_json:object()) -> boolean().
 has_cost_parameters(JObj) ->
     kz_json:is_json_object(JObj)
-        andalso kz_json:all(fun({K, _V}) ->
-                                    lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-                            end
-                           ,JObj
-                           ).
+        andalso kz_json:all(fun key_is_cost_param/1, JObj).
+
+key_is_cost_param({K, _V}) ->
+    lists:member(K, ?ROUTE_REQ_COST_PARAMS).

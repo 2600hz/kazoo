@@ -710,26 +710,26 @@ update_category(Category, JObj, Updates, PvtFields) ->
     maybe_save_category(Category, JObj, Updates, PvtFields).
 -endif.
 
--spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object()) ->
+-spec maybe_save_category(config_category(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object()) ->
                                  {'ok', kz_json:object()} |
                                  kz_datamgr:data_error().
 maybe_save_category(Category, JObj, Updates, PvtFields) ->
     maybe_save_category(Category, JObj, Updates, PvtFields, 'false').
 
--spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamger:update_options(), kz_term:api_object(), boolean()) ->
+-spec maybe_save_category(config_category(), kz_json:object(), kz_datamger:update_options(), kz_term:api_object(), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  kz_datamgr:data_error().
 maybe_save_category(Category, JObj, Updates, PvtFields, Looped) ->
     maybe_save_category(Category, JObj, Updates, PvtFields, Looped, is_locked()).
 
--spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object(), boolean(), boolean()) ->
+-spec maybe_save_category(config_category(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object(), boolean(), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  kz_datamgr:data_error().
 maybe_save_category(_Category, JObj, _Updates, _PvtFields, _Looped, 'true') ->
     lager:warning("failed to update category, system config database is locked!"),
     lager:warning("please update /etc/kazoo/config.ini or use 'sup kapps_config lock_db <boolean>' to enable system config writes."),
     {'ok', JObj};
-maybe_save_category(Category, JObj, Updates, PvtFields, Looped, _) ->
+maybe_save_category(Category, JObj, Updates, PvtFields, Looped, _NotLocked) ->
     lager:debug("updating configuration category ~s(~s)"
                ,[Category, kz_doc:revision(JObj)]
                ),

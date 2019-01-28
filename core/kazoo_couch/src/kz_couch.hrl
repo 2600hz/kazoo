@@ -13,10 +13,6 @@
 -define(MIN_DISK_SIZE, 131072).
 -define(DEFAULT_PORT, 5984).
 -define(DEFAULT_ADMIN_PORT, 5986).
--define(IBROWSE_OPTS, [{'max_sessions', 512}
-                      ,{'max_pipeline_size', 10}
-                      ,{'connect_timeout', 500}
-                      ]).
 
 -define(RETRY_504(F), kz_couch_util:retry504s(fun() -> F end)).
 

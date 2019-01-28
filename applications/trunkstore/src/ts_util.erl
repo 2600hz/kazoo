@@ -96,7 +96,6 @@ constrain_weight(W) -> W.
                         {'ok', kz_json:object()} |
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
                              ,{'lookup_did', DID, AccountId}
                              )
@@ -105,38 +104,49 @@ lookup_did(DID, AccountId) ->
             lager:info("cache hit for ~s", [DID]),
             Resp;
         {'error', 'not_found'} ->
-            Options = [{'key', DID}],
-            CacheProps = [{'origin', [{'db', knm_converters:to_db(DID), DID}, {'type', <<"number">>}]}],
-            case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
-                {'ok', []} ->
-                    lager:info("cache miss for ~s, no results", [DID]),
-                    {'error', 'no_did_found'};
-                {'ok', [ViewJObj]} ->
-                    lager:info("cache miss for ~s, found result with id ~s", [DID, kz_doc:id(ViewJObj)]),
-                    ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
-                    Resp = kz_json:set_value(<<"id">>, kz_doc:id(ViewJObj), ValueJObj),
-                    kz_cache:store_local(?CACHE_NAME
-                                        ,{'lookup_did', DID, AccountId}
-                                        ,Resp
-                                        ,CacheProps
-                                        ),
-                    {'ok', Resp};
-                {'ok', [ViewJObj | _Rest]} ->
-                    lager:notice("multiple results for did ~s in acct ~s", [DID, AccountId]),
-                    lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, kz_doc:id(ViewJObj)]),
-                    ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
-                    Resp = kz_json:set_value(<<"id">>, kz_doc:id(ViewJObj), ValueJObj),
-                    kz_cache:store_local(?CACHE_NAME
-                                        ,{'lookup_did', DID, AccountId}
-                                        ,Resp
-                                        ,CacheProps
-                                        ),
-                    {'ok', Resp};
-                {'error', _}=E ->
-                    lager:info("cache miss for ~s, error ~p", [DID, E]),
-                    E
-            end
+            lookup_did_from_db(DID, AccountId)
     end.
+
+-spec lookup_did_from_db(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                {'ok', kz_json:object()} |
+                                kz_datamgr:data_error().
+lookup_did_from_db(DID, AccountId) ->
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    Options = [{'key', DID}],
+
+    case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
+        {'ok', []} ->
+            lager:info("cache miss for ~s, no results", [DID]),
+            {'error', 'no_did_found'};
+        {'ok', [ViewJObj]} ->
+            handle_found_did(DID, AccountId, ViewJObj);
+        {'ok', [ViewJObj | _Rest]} ->
+            lager:notice("multiple results for did ~s in acct ~s", [DID, AccountId]),
+            handle_found_did(DID, AccountId, ViewJObj);
+        {'error', _}=E ->
+            lager:info("cache miss for ~s, error ~p", [DID, E]),
+            E
+    end.
+
+-spec handle_found_did(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                              {'ok', kz_json:object()}.
+handle_found_did(DID, AccountId, ViewJObj) ->
+    lager:info("cache miss for ~s, found result with id ~s", [DID, kz_doc:id(ViewJObj)]),
+    ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
+    Resp = kz_json:set_value(<<"id">>, kz_doc:id(ViewJObj), ValueJObj),
+
+    cache_lookup_did(DID, AccountId, Resp),
+
+    {'ok', Resp}.
+
+-spec cache_lookup_did(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+cache_lookup_did(DID, AccountId, Resp) ->
+    CacheProps = [{'origin', [{'db', knm_converters:to_db(DID), DID}, {'type', <<"number">>}]}],
+    kz_cache:store_local(?CACHE_NAME
+                        ,{'lookup_did', DID, AccountId}
+                        ,Resp
+                        ,CacheProps
+                        ).
 
 -spec lookup_user_flags(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                {'ok', kz_json:object()} |

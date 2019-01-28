@@ -30,7 +30,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_handler(kz_term:ne_binary(), kz_json:object()) -> kz_types:sup_startchild_ret().
+-spec start_handler(kz_term:ne_binary(), kapi_route:req()) -> kz_types:sup_startchild_ret().
 start_handler(CallID, RouteReqJObj) ->
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(<<"onnet-", CallID/binary>>
                                                           ,'ts_from_onnet'
