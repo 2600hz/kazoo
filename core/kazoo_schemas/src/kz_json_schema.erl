@@ -837,6 +837,8 @@ validation_error(Property, <<"schema">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"additionalProperties">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"additionalItems">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
     depreciated_validation_error(Property, Code, Message, Options).
