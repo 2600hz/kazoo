@@ -355,6 +355,15 @@ rollover(Account) ->
                       {'ok', kz_ledger:ledger()} |
                       {'error', any()}.
 rollover(Account, Year, Month) ->
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"rollover_monthly_balance">>, 'true') of
+        'false' -> rollover(Account, Year, Month, 0);
+        'true' -> rollover_past_available_units(Account, Year, Month)
+    end.
+
+-spec rollover_past_available_units(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
+                                           {'ok', kz_ledger:ledger()} |
+                                           {'error', any()}.
+rollover_past_available_units(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
     case kz_currency:past_available_units(Account, PreviousYear, PreviousMonth) of
