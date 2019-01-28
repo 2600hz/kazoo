@@ -9,6 +9,7 @@
 %% Manual testing
 -export([seq/0
         ,cleanup/0
+        ,storage_doc/1
         ]).
 
 %% API Shims
@@ -256,6 +257,7 @@ cleanup_system() ->
     kzs_plan:disallow_validation_overrides(),
     pqc_httpd:stop().
 
+-spec storage_doc(kz_term:ne_binary()) -> kzd_storage:doc().
 storage_doc(UUID) ->
     kz_json:from_list([{<<"attachments">>, storage_attachments(UUID)}
                       ,{<<"plan">>, storage_plan(UUID)}
