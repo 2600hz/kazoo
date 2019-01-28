@@ -15,7 +15,7 @@
 
 -spec sync_all_accounts_payments_info() -> 'ok'.
 sync_all_accounts_payments_info() ->
-    Accounts = kapps_util:get_all_accounts(),
+    Accounts = kazoo_services_maintenance:get_accounts_with_plans(),
     TotalLength = length(Accounts),
     Fun = fun(Account, Count) ->
                   sync_all_accounts_payments_info_fold(Account, Count, TotalLength)
@@ -26,17 +26,10 @@ sync_all_accounts_payments_info() ->
 -spec sync_all_accounts_payments_info_fold(kz_term:ne_binary(), non_neg_integer(), non_neg_integer()) -> integer().
 sync_all_accounts_payments_info_fold(Account, Count, TotalLength) ->
     AccountId = kz_util:format_account_id(Account),
-    Services = kz_services:fetch(AccountId),
-    case kz_services:has_plans(Services) of
-        'true' ->
-            io:format(" (~b/~b) ", [Count, TotalLength]),
-            sync_account_services_payments_info(AccountId, Services),
-            timer:sleep(1000),
-            Count + 1;
-        'false' ->
-            io:format(" (~b/~b) account ~s has no plans assigned: ignoring~n", [Count, TotalLength, AccountId]),
-            Count + 1
-    end.
+    io:format(" (~b/~b) ", [Count, TotalLength]),
+    sync_account_services_payments_info(AccountId),
+    timer:sleep(1000),
+    Count + 1.
 
 -spec sync_account_services_payments_info(kz_term:ne_binary()) -> 'ok'.
 sync_account_services_payments_info(AccountId) ->
