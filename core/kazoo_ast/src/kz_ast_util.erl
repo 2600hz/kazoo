@@ -366,7 +366,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
                                ,Names
                                ,Settings
                                ,{[?TABLE_ROW(cell_wrap(kz_binary:join(Names, <<".">>))
-                                            ,kz_json:get_ne_binary_value(<<"description">>, Settings, <<" ">>)
+                                            ,settings_description(Settings)
                                             ,SchemaType
                                             ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
                                             ,cell_wrap(is_row_required(Names, SchemaJObj))
@@ -377,6 +377,20 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
                                 ,maybe_add_ref(Refs, Settings)
                                 }
                                ).
+
+settings_description(Settings) ->
+    case kz_json:get_ne_binary_value(<<"description">>, Settings) of
+        'undefined' ->
+            case kz_json:get_value(<<"$ref">>, Settings) of
+                'undefined' -> <<" ">>;
+                RefSchemaName ->
+                    ?LOG_INFO("using ref ~s description", [RefSchemaName]),
+                    {'ok', RefSchema} = kz_json_schema:fload(RefSchemaName),
+                    kz_json:get_ne_binary_value(<<"description">>, RefSchema, <<" ">>)
+            end;
+        Description -> Description
+    end.
+
 
 -spec maybe_add_ref(kz_term:ne_binaries(), kz_json:object()) -> kz_term:ne_binaries().
 maybe_add_ref(Refs, Settings) ->
