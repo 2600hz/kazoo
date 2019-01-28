@@ -220,8 +220,10 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
                               data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
-        'false' -> {'ok', JObj};
-        'undefined' -> save_doc(DbName, JObj);
+        'false' ->
+            {'ok', JObj};
+        'undefined' ->
+            save_doc(DbName, JObj);
         'true' ->
             Updates = kz_json:to_proplist(kz_json:flatten(JObj)),
             Update = [{'update', Updates}
