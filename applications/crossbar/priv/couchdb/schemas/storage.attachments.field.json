@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.attachments.field",
+    "additionalProperties": false,
     "description": "field used when composing destination url",
     "properties": {
         "arg": {
@@ -22,6 +23,7 @@
             "type": "string"
         },
         "group": {
+            "additionalItems": false,
             "description": "group the inner fields definitions with an empty separator",
             "items": [
                 {
