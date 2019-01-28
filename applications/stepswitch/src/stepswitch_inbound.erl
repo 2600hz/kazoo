@@ -43,6 +43,7 @@ maybe_relay_request(JObj) ->
                        ,fun set_ignore_display_updates/2
                        ,fun set_inception/2
                        ,fun set_resource_type/2
+                       ,fun set_e164_destination/2
                        ,fun maybe_find_resource/2
                        ,fun maybe_format_destination/2
                        ,fun maybe_set_ringback/2
@@ -87,6 +88,16 @@ set_ignore_display_updates(_, JObj) ->
 set_inception(_, JObj) ->
     Request = kz_json:get_value(<<"Request">>, JObj),
     kz_json:set_value(?CCV(<<"Inception">>), Request, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc Set the E164 number destination
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_e164_destination(knm_number_options:extra_options(), kz_json:object()) ->
+                                  kz_json:object().
+set_e164_destination(_, JObj) ->
+    Number = stepswitch_util:get_inbound_destination(JObj),
+    kz_json:set_value(?CCV(<<"E164-Destination">>), Number, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
