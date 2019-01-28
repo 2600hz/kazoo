@@ -35,7 +35,8 @@ is_exported(Module, Function, Arity) ->
                    ,kz_term:to_integer(Arity)
                    )
     catch
-        'error':'badarg' -> 'false'
+        'error':'badarg' -> 'false';
+        'error':'system_limit' -> 'false'
     end.
 
 %%------------------------------------------------------------------------------
