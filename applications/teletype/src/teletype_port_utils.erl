@@ -330,20 +330,47 @@ get_authority_emails(DataJObj, TemplateId) ->
             lager:debug("using master as port authority"),
             maybe_use_master_admins(TemplateId, 'undefined');
         PortAuthority ->
-            case teletype_util:find_account_admin_email(PortAuthority) of
-                'undefined' ->
-                    lager:debug("~s doesn't have any admin maybe using system emails", [PortAuthority]),
-                    maybe_use_master_admins(TemplateId, PortAuthority);
-                [] ->
-                    lager:debug("~s doesn't have any admin maybe using system emails", [PortAuthority]),
-                    maybe_use_master_admins(TemplateId, PortAuthority);
-                Admins ->
-                    lager:debug("using admin emails from ~s", [PortAuthority]),
-                    Admins
-            end
+            maybe_use_port_support(PortAuthority)
     end.
 
--spec maybe_use_master_admins(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binaries().
+-spec maybe_use_port_support(kz_term:ne_binary()) -> kz_term:api_ne_binaries().
+maybe_use_port_support(PortAuthority) ->
+    case kzd_whitelabel:fetch(PortAuthority) of
+        {'ok', JObj} ->
+            case kzd_whitelabel:port_support_email(JObj) of
+                ?NE_BINARY = Email ->
+                    lager:debug("using port support emails from port authority ~s", [PortAuthority]),
+                    [Email];
+                [] ->
+                    lager:debug("no port support, maybe using port authority admins"),
+                    maybe_use_port_authority_admins(PortAuthority);
+                Emails when is_list(Emails) ->
+                    lager:debug("using port support emails from port authority ~s", [PortAuthority]),
+                    Emails;
+                _ ->
+                    lager:debug("no port support, maybe using port authority admins"),
+                    maybe_use_port_authority_admins(PortAuthority)
+            end;
+        {'error', _} ->
+            lager:debug("can't open port authority whitelabel doc, maybe using port authority admins"),
+            maybe_use_port_authority_admins(PortAuthority)
+    end.
+
+-spec maybe_use_port_authority_admins(kz_term:ne_binary()) -> kz_term:api_ne_binaries().
+maybe_use_port_authority_admins(PortAuthority) ->
+    case teletype_util:find_account_admin_email(PortAuthority) of
+        'undefined' ->
+            lager:debug("~s doesn't have any admins, fallback to template emails", [PortAuthority]),
+            'undefined';
+        [] ->
+            lager:debug("~s doesn't have any admins, fallback to template emails", [PortAuthority]),
+            'undefined';
+        Admins ->
+            lager:debug("using admin emails from ~s", [PortAuthority]),
+            Admins
+    end.
+
+-spec maybe_use_master_admins(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binaries().
 maybe_use_master_admins(TemplateId, PortAuthority) ->
     case kapps_util:get_master_account_id() of
         {'ok', MasterAccountId} ->
@@ -353,7 +380,7 @@ maybe_use_master_admins(TemplateId, PortAuthority) ->
             maybe_use_system_emails(TemplateId)
     end.
 
--spec maybe_use_master_admins(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+-spec maybe_use_master_admins(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
 maybe_use_master_admins(TemplateId, MasterAccountId, MasterAccountId) ->
     lager:debug("reached to master account, maybe using default_to from system template"),
     maybe_use_system_emails(TemplateId);
