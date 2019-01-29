@@ -12,6 +12,25 @@
 
 -define(SEPARATOR, "/").
 
+empty_url_test_() ->
+    Args = [{<<"attachment">>, <<?ANAME>>}
+           ,{<<"id">>, <<?DOC_ID>>}
+           ,{<<"account_id">>, <<?ACCOUNT_ID>>}
+           ,{<<"db">>, <<?ACCOUNT_DB>>}
+           ],
+
+    Metadata = kz_json:from_list([{<<"_id">>, <<?DOC_ID>>}
+                                 ,{<<?FIELD_KEY>>, <<?FIELD_VALUE>>}
+                                 ]),
+
+    Format = [],
+
+    Params = #{'field_separator' => <<?SEPARATOR>>},
+
+    URLSeg = kz_att_util:format_url(Params, Metadata, Args, Format),
+
+    [?_assertEqual(<<>>, URLSeg)].
+
 default_format_url_test_() ->
     Args = [{<<"attachment">>, <<?ANAME>>}
            ,{<<"id">>, <<?DOC_ID>>}
