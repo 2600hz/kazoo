@@ -306,43 +306,43 @@ seq() ->
 
     IP = ?DEDICATED(<<"1.2.3.4">>, <<"a.host.com">>, <<"zone-1">>),
 
-    try
-        {'ok', Created} = create_ip(API, IP),
-        ?INFO("created ip ~p", [Created]),
+    _ = try
+            {'ok', Created} = create_ip(API, IP),
+            ?INFO("created ip ~p", [Created]),
 
-        AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
-        AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
-        ?INFO("created account ~s", [AccountId]),
+            AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+            AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
+            ?INFO("created account ~s", [AccountId]),
 
-        {'ok', IPs} = list_ips(API),
-        ?INFO("ips available: ~p", [IPs]),
+            {'ok', IPs} = list_ips(API),
+            ?INFO("ips available: ~p", [IPs]),
 
-        {'ok', Assigned} = assign_ip(API, AccountId, IP),
-        ?INFO("assigned ~p: ~p", [IP, Assigned]),
+            {'ok', Assigned} = assign_ip(API, AccountId, IP),
+            ?INFO("assigned ~p: ~p", [IP, Assigned]),
 
-        {'ok', Fetched} = fetch_ip(API, AccountId, IP),
-        ?INFO("fetched ~p: ~p", [IP, Fetched]),
+            {'ok', Fetched} = fetch_ip(API, AccountId, IP),
+            ?INFO("fetched ~p: ~p", [IP, Fetched]),
 
-        {'ok', Hosts} = fetch_hosts(API),
-        ?INFO("hosts: ~p", [Hosts]),
+            {'ok', Hosts} = fetch_hosts(API),
+            ?INFO("hosts: ~p", [Hosts]),
 
-        {'ok', Zones} = fetch_zones(API),
-        ?INFO("zones: ~p", [Zones]),
+            {'ok', Zones} = fetch_zones(API),
+            ?INFO("zones: ~p", [Zones]),
 
-        {'ok', AssignedIPs} = fetch_assigned(API, AccountId),
-        ?INFO("assigned ips: ~p", [AssignedIPs]),
-        lager:info("finished running IPs test")
+            {'ok', AssignedIPs} = fetch_assigned(API, AccountId),
+            ?INFO("assigned ips: ~p", [AssignedIPs]),
+            lager:info("finished running IPs test")
 
-    catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            ?INFO("failed ~s: ~p", [_E, _R]),
-            [?INFO("st: ~p", [S]) || S <- ST]
-    after
-        pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
-        _ = delete_ip(API, IP),
-        pqc_cb_api:cleanup(API)
-    end,
+        catch
+            _E:_R ->
+                ST = erlang:get_stacktrace(),
+                ?INFO("failed ~s: ~p", [_E, _R]),
+                [?INFO("st: ~p", [S]) || S <- ST]
+        after
+            pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
+            _ = delete_ip(API, IP),
+            pqc_cb_api:cleanup(API)
+        end,
     ?INFO("seq finished running: ~p", [API]),
     io:format("seq finished running: ~p~n", [API]).
 

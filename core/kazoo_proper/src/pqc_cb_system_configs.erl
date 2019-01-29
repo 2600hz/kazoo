@@ -158,7 +158,7 @@ init() ->
     _ = [crossbar_maintenance:start_module(Mod) ||
             Mod <- ['cb_system_configs']
         ],
-    init_db(),
+    _ = init_db(),
     ?INFO("INIT FINISHED").
 
 -spec init_db() -> {'ok', kz_json:object()}.
@@ -172,14 +172,14 @@ cleanup_db() ->
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
-    init(),
+    _ = init(),
     API = pqc_cb_api:authenticate(),
     ?INFO("state initialized to ~p", [API]),
     pqc_kazoo_model:new(API).
 
 -spec default() -> any().
 default() ->
-    init_db(),
+    _ = init_db(),
     Stored = kapps_config_doc:stored_node(?CATEGORY_ID, <<"default">>),
     io:format("stored: ~p~n", [Stored]),
     cleanup_db().
@@ -268,5 +268,5 @@ cleanup() ->
 -spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
-    cleanup_db(),
+    _ = cleanup_db(),
     pqc_cb_api:cleanup(API).
