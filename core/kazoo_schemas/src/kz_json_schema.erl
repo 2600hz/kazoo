@@ -78,12 +78,12 @@ setup_extra_validator(Options) ->
           end,
     props:set_value({'external_validator', Fun}, Options).
 
--ifdef(TEST).
-load(Schema) -> fload(Schema).
--else.
 -type load_return() :: {'ok', kz_json:object()} |
                        {'error', 'not_found'} |
                        kz_datamgr:data_error().
+-ifdef(TEST).
+load(Schema) -> fload(Schema).
+-else.
 -spec load(kz_term:ne_binary() | string()) -> load_return().
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
