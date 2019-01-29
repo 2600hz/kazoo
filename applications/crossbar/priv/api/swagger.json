@@ -1255,6 +1255,26 @@
         "caller_id": {
             "description": "Defines caller ID settings based on the type of call being made",
             "properties": {
+                "asserted": {
+                    "description": "Used to convey the proven identity of the originator of a request within a trusted network.",
+                    "properties": {
+                        "name": {
+                            "description": "The asserted identity name for the object type",
+                            "maxLength": 35,
+                            "type": "string"
+                        },
+                        "number": {
+                            "description": "The asserted identity number for the object type",
+                            "maxLength": 35,
+                            "type": "string"
+                        },
+                        "realm": {
+                            "description": "The asserted identity realm for the object type",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "emergency": {
                     "description": "The caller ID used when a resource is flagged as 'emergency'",
                     "properties": {
@@ -1264,7 +1284,7 @@
                             "type": "string"
                         },
                         "number": {
-                            "description": "The caller id name for the object type",
+                            "description": "The caller id number for the object type",
                             "maxLength": 35,
                             "type": "string"
                         }
@@ -1280,7 +1300,7 @@
                             "type": "string"
                         },
                         "number": {
-                            "description": "The caller id name for the object type",
+                            "description": "The caller id number for the object type",
                             "maxLength": 35,
                             "type": "string"
                         }
@@ -1296,7 +1316,7 @@
                             "type": "string"
                         },
                         "number": {
-                            "description": "The caller id name for the object type",
+                            "description": "The caller id number for the object type",
                             "maxLength": 35,
                             "type": "string"
                         }
@@ -11581,6 +11601,15 @@
                     ],
                     "type": "string"
                 },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
+                    "type": "string"
+                },
                 "B-Leg-Events": {
                     "items": {
                         "enum": [
@@ -19501,6 +19530,15 @@
                     ],
                     "type": "string"
                 },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
+                    "type": "string"
+                },
                 "B-Leg-Events": {
                     "items": {
                         "enum": [
@@ -21140,6 +21178,15 @@
                 "Application-Data": {
                     "type": "string"
                 },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
+                    "type": "string"
+                },
                 "B-Leg-Events": {
                     "type": "string"
                 },
@@ -21374,6 +21421,15 @@
                         "fax",
                         "eavesdrop"
                     ],
+                    "type": "string"
+                },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
                     "type": "string"
                 },
                 "B-Leg-Events": {
@@ -22905,6 +22961,15 @@
                     "enum": [
                         "send"
                     ],
+                    "type": "string"
+                },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
                     "type": "string"
                 },
                 "B-Leg-Events": {

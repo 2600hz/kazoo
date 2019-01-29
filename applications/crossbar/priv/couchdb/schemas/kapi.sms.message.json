@@ -12,6 +12,15 @@
             ],
             "type": "string"
         },
+        "Asserted-Identity-Name": {
+            "type": "string"
+        },
+        "Asserted-Identity-Number": {
+            "type": "string"
+        },
+        "Asserted-Identity-Realm": {
+            "type": "string"
+        },
         "B-Leg-Events": {
             "type": "string"
         },
