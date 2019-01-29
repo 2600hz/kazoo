@@ -47,6 +47,9 @@
         ,outbound_callee_id_number/1, outbound_callee_id_number/2
         ,outbound_caller_id_name/1, outbound_caller_id_name/2
         ,outbound_caller_id_number/1, outbound_caller_id_number/2
+        ,asserted_identity_name/1, asserted_identity_name/2
+        ,asserted_identity_number/1, asserted_identity_number/2
+        ,asserted_identity_realm/1, asserted_identity_realm/2
         ,presence_id/1, presence_id/2
         ,resource_type/1, resource_type/2
         ,ringback/1, ringback/2
@@ -127,6 +130,9 @@
         ,?KEY_ORIGINATION_CALL_ID
         ,?KEY_OUTBOUND_CALLER_ID_NAME
         ,?KEY_OUTBOUND_CALLER_ID_NUMBER
+        ,?KEY_ASSERTED_IDENTITY_NAME
+        ,?KEY_ASSERTED_IDENTITY_NUMBER
+        ,?KEY_ASSERTED_IDENTITY_REALM
         ,?KEY_OUTBOUND_CALL_ID
         ,?KEY_PRESENCE_ID
         ,?KEY_REQUESTOR_CCVS
@@ -316,6 +322,30 @@ outbound_caller_id_name(Req) ->
 -spec outbound_caller_id_name(req(), Default) -> kz_term:ne_binary() | Default.
 outbound_caller_id_name(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NAME, JObj, Default).
+
+-spec asserted_identity_number(req()) -> kz_term:api_binary().
+asserted_identity_number(Req) ->
+    asserted_identity_number(Req, 'undefined').
+
+-spec asserted_identity_number(req(), Default) -> kz_term:ne_binary() | Default.
+asserted_identity_number(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_ne_value(?KEY_ASSERTED_IDENTITY_NUMBER, JObj, Default).
+
+-spec asserted_identity_name(req()) -> kz_term:api_binary().
+asserted_identity_name(Req) ->
+    asserted_identity_name(Req, 'undefined').
+
+-spec asserted_identity_name(req(), Default) -> kz_term:ne_binary() | Default.
+asserted_identity_name(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_ne_value(?KEY_ASSERTED_IDENTITY_NAME, JObj, Default).
+
+-spec asserted_identity_realm(req()) -> kz_term:api_binary().
+asserted_identity_realm(Req) ->
+    asserted_identity_realm(Req, 'undefined').
+
+-spec asserted_identity_realm(req(), Default) -> kz_term:ne_binary() | Default.
+asserted_identity_realm(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_ne_value(?KEY_ASSERTED_IDENTITY_REALM, JObj, Default).
 
 -spec emergency_caller_id_number(req()) -> kz_term:api_binary().
 emergency_caller_id_number(Req) ->

@@ -127,14 +127,18 @@ Defines caller ID settings based on the type of call being made
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`asserted.name` | The asserted identity name for the object type | `string(0..35)` |   | `false` |  
+`asserted.number` | The asserted identity number for the object type | `string(0..35)` |   | `false` |  
+`asserted.realm` | The asserted identity realm for the object type | `string()` |   | `false` |  
+`asserted` | Used to convey the proven identity of the originator of a request within a trusted network. | `object()` |   | `false` |  
 `emergency.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`emergency.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`emergency.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `emergency` | The caller ID used when a resource is flagged as 'emergency' | `object()` |   | `false` |  
 `external.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`external.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`external.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `external` | The default caller ID used when dialing external numbers | `object()` |   | `false` |  
 `internal.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`internal.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`internal.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `internal` | The default caller ID used when dialing internal extensions | `object()` |   | `false` |  
 
 ### custom_sip_headers

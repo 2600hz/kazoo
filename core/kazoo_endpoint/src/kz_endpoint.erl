@@ -83,19 +83,20 @@
 -type sms_route() :: {binary(), kz_term:proplist()}.
 -type sms_routes() :: [sms_route(), ...].
 
--type api_std_return() :: {'ok', kz_json:object()} |
-                          {'error', 'invalid_endpoint_id'} |
-                          kz_datamgr:data_error().
+-type std_return() :: {'ok', kz_json:object()} |
+                      {'error', 'invalid_endpoint_id'} |
+                      kz_datamgr:data_error().
+-export_type([std_return/0]).
 
 %%------------------------------------------------------------------------------
 %% @doc Fetches a endpoint definition from the database or cache
 %% @end
 %%------------------------------------------------------------------------------
 
--spec get(kapps_call:call()) -> api_std_return().
+-spec get(kapps_call:call()) -> std_return().
 get(Call) -> get(kapps_call:authorizing_id(Call), Call).
 
--spec get(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) -> api_std_return().
+-spec get(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) -> std_return().
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->

@@ -8,14 +8,19 @@
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([build_leg_vars/1, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
-        ,route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
+-export([route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
         ,acl_xml/1, not_found/0, empty_response/0
         ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
         ,sip_channel_xml/1
-        ,escape/2
         ,conference_resp_xml/1
         ,event_filters_resp_xml/1
+        ]).
+
+-export([build_leg_vars/1
+        ,get_leg_vars/1
+        ,get_channel_vars/1
+        ,kazoo_var_to_fs_var/2
+        ,escape/2
         ]).
 
 -export([config_el/2, config_el/3]).
@@ -470,7 +475,7 @@ check_dtmf_type(Props) ->
 
 -spec build_leg_vars(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binaries().
 build_leg_vars([]) -> [];
-build_leg_vars([_|_]=Prop) -> lists:foldr(fun get_channel_vars/2, [], Prop);
+build_leg_vars([_|_]=Prop) -> lists:foldr(fun kazoo_var_to_fs_var/2, [], Prop);
 build_leg_vars(JObj) -> build_leg_vars(kz_json:to_proplist(JObj)).
 
 -spec get_leg_vars(kz_json:object() | kz_term:proplist()) -> iolist().
@@ -486,7 +491,7 @@ get_leg_vars([Binary|_]=Binaries)
 get_leg_vars([_|_]=Prop) ->
     ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)
-                  || V <- lists:foldr(fun get_channel_vars/2, [], Prop)
+                  || V <- lists:foldr(fun kazoo_var_to_fs_var/2, [], Prop)
                  ]
                 ,?BRIDGE_CHANNEL_VAR_SEPARATOR
                 )
@@ -496,57 +501,116 @@ get_leg_vars(JObj) -> get_leg_vars(kz_json:to_proplist(JObj)).
 
 -spec get_channel_vars(kz_json:object() | kz_term:proplist()) -> iolist().
 get_channel_vars([]) -> [];
-get_channel_vars([_|_]=Prop) ->
-    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
-    ["{", string:join([kz_term:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
+get_channel_vars([_|_]=Props) ->
+    Routines = [fun channel_vars_set_overwrite/1
+               ,fun channel_vars_handle_asserted_identity/1
+               ,fun kazoo_vars_to_fs_vars/1
+               ],
+    {_, Results} =
+        lists:foldl(fun(F, Acc) ->
+                            F(Acc)
+                    end
+                   ,{Props, []}
+                   ,Routines
+                   ),
+    ["{"
+    ,string:join([kz_term:to_list(Result)
+                  || Result <- Results
+                 ]
+                ,","
+                )
+    ,"}"
+    ];
 get_channel_vars(JObj) -> get_channel_vars(kz_json:to_proplist(JObj)).
 
--spec get_channel_vars({binary(), binary() | kz_json:object()}, kz_term:ne_binaries()) -> iolist().
-get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
-    kz_json:foldl(fun get_channel_vars_fold/3, Vars, JObj);
+-type channel_var_fold() :: {kz_term:proplist(), iolist()}.
+-spec channel_vars_set_overwrite(channel_var_fold()) -> channel_var_fold().
+channel_vars_set_overwrite({Props, Results}) ->
+    {Props ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}]
+    ,Results
+    }.
 
-get_channel_vars({<<"Custom-Application-Vars">>, JObj}, Vars) ->
-    kz_json:foldl(fun get_application_vars_fold/3, Vars, JObj);
+-spec channel_vars_handle_asserted_identity(channel_var_fold()) -> channel_var_fold().
+channel_vars_handle_asserted_identity({Props, Results}=Acc) ->
+    Name = props:get_ne_binary_value(<<"Asserted-Identity-Name">>, Props),
+    Number = props:get_ne_binary_value(<<"Asserted-Identity-Number">>, Props),
+    CCVs = props:get_value(<<"Custom-Channel-Vars">>, Props, kz_json:new()),
+    DefaultRealm = kz_json:get_ne_binary_value(<<"Realm">>, CCVs),
+    Realm = props:get_ne_binary_value(<<"Asserted-Identity-Realm">>, Props, DefaultRealm),
+    case create_asserted_identity_header(Name, Number, Realm) of
+        'undefined' -> Acc;
+        AssertedIdentity ->
+            {props:delete(<<"Caller-ID-Type">>, Props)
+            ,[<<"sip_cid_type=none">>
+             ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
+                  | Results
+             ]
+            }
+    end.
 
-get_channel_vars({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
+-spec create_asserted_identity_header(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                                             kz_term:api_binary().
+create_asserted_identity_header(_, 'undefined', _) ->
+    'undefined';
+create_asserted_identity_header(_, _, 'undefined') ->
+    'undefined';
+create_asserted_identity_header('undefined', Number, Realm) ->
+    <<"<sip:", Number/binary, "@", Realm/binary, ">">>;
+create_asserted_identity_header(Name, Number, Realm) ->
+    <<$", Name/binary, $", " <sip:", Number/binary, "@", Realm/binary, ">">>.
+
+-spec kazoo_vars_to_fs_vars(channel_var_fold() | kz_term:proplist()) -> channel_var_fold().
+kazoo_vars_to_fs_vars({Props, Results}) ->
+    {[], lists:foldr(fun kazoo_var_to_fs_var/2, Results, Props)};
+kazoo_vars_to_fs_vars(Props) ->
+    kazoo_vars_to_fs_vars({Props, []}).
+
+-spec kazoo_var_to_fs_var({binary(), binary() | kz_json:object()}, kz_term:ne_binaries()) -> iolist().
+kazoo_var_to_fs_var({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
+    kz_json:foldl(fun kazoo_var_to_fs_var_fold/3, Vars, JObj);
+
+kazoo_var_to_fs_var({<<"Custom-Application-Vars">>, JObj}, Vars) ->
+    kz_json:foldl(fun kazoo_cavs_to_fs_vars_fold/3, Vars, JObj);
+
+kazoo_var_to_fs_var({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     kz_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
 
-get_channel_vars({<<"To-User">>, Username}, Vars) ->
+kazoo_var_to_fs_var({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
                     ,"='", kz_term:to_list(Username), "'"
                     ])
      | Vars
     ];
-get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
+kazoo_var_to_fs_var({<<"To-Realm">>, Realm}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
                     ,"='", kz_term:to_list(Realm), "'"
                     ])
      | Vars
     ];
-get_channel_vars({<<"To-URI">>, ToURI}, Vars) ->
+kazoo_var_to_fs_var({<<"To-URI">>, ToURI}, Vars) ->
     [<<"sip_invite_to_uri=<", ToURI/binary, ">">>
          | Vars
     ];
 
-get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
+kazoo_var_to_fs_var({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
-get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
+kazoo_var_to_fs_var({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
-get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
+kazoo_var_to_fs_var({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
 
-get_channel_vars({<<"origination_uuid">> = K, UUID}, Vars) ->
+kazoo_var_to_fs_var({<<"origination_uuid">> = K, UUID}, Vars) ->
     [ <<K/binary, "=", UUID/binary>> | Vars];
 
-get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
+kazoo_var_to_fs_var({<<"Hold-Media">>, Media}, Vars) ->
     [list_to_binary(["hold_music="
                     ,kz_term:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
                     ])
      | Vars];
 
-get_channel_vars({<<"Codecs">>, []}, Vars) ->
+kazoo_var_to_fs_var({<<"Codecs">>, []}, Vars) ->
     Vars;
-get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
+kazoo_var_to_fs_var({<<"Codecs">>, Cs}, Vars) ->
     Codecs = [kz_term:to_list(codec_mappings(C))
               || C <- Cs,
                  not kz_term:is_empty(C)
@@ -557,7 +621,7 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     ];
 
 %% SPECIAL CASE: Timeout must be larger than zero
-get_channel_vars({<<"Timeout">>, V}, Vars) ->
+kazoo_var_to_fs_var({<<"Timeout">>, V}, Vars) ->
     case kz_term:to_integer(V) of
         TO when TO > 0 ->
             [<<"call_timeout=", (kz_term:to_binary(TO))/binary>>
@@ -567,39 +631,39 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
         _Else -> Vars
     end;
 
-get_channel_vars({<<"Forward-IP">>, <<"sip:", _/binary>>=V}, Vars) ->
+kazoo_var_to_fs_var({<<"Forward-IP">>, <<"sip:", _/binary>>=V}, Vars) ->
     [ list_to_binary(["sip_route_uri='", V, "'"]) | Vars];
 
-get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
-    get_channel_vars({<<"Forward-IP">>, <<"sip:", V/binary>>}, Vars);
+kazoo_var_to_fs_var({<<"Forward-IP">>, V}, Vars) ->
+    kazoo_var_to_fs_var({<<"Forward-IP">>, <<"sip:", V/binary>>}, Vars);
 
-get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
+kazoo_var_to_fs_var({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">> | Vars];
 
-get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
+kazoo_var_to_fs_var({<<"Confirm-File">>, V}, Vars) ->
     [list_to_binary(["group_confirm_file='"
                     ,kz_term:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
                     ,"'"
                     ]) | Vars];
 
-get_channel_vars({<<"SIP-Invite-Parameters">>, V}, Vars) ->
+kazoo_var_to_fs_var({<<"SIP-Invite-Parameters">>, V}, Vars) ->
     [list_to_binary(["sip_invite_params='", kz_util:iolist_join(<<";">>, V), "'"]) | Vars];
 
-get_channel_vars({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
+kazoo_var_to_fs_var({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
     [list_to_binary(["conference_member_flags="
                     ,"'^^!", participant_flags_to_var(Flags), "'"
                     ])
      | Vars
     ];
 
-get_channel_vars({AMQPHeader, V}, Vars) ->
+kazoo_var_to_fs_var({AMQPHeader, V}, Vars) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
         {_, Prefix} ->
             Val = ecallmgr_util:maybe_sanitize_fs_value(AMQPHeader, V),
             [encode_fs_val(Prefix, Val) | Vars]
     end;
-get_channel_vars(_, Vars) -> Vars.
+kazoo_var_to_fs_var(_, Vars) -> Vars.
 
 -spec participant_flags_to_var(kz_term:ne_binaries()) -> kz_term:ne_binary().
 participant_flags_to_var(Flags) ->
@@ -641,12 +705,12 @@ diversion_header_fold(<<_/binary>> = V, Vars0) ->
     lager:debug("setting diversion ~s on the channel", [V]),
     [list_to_binary(["sip_h_Diversion=", V]) | Vars0].
 
--spec get_channel_vars_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
-get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->
+-spec kazoo_var_to_fs_var_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
+kazoo_var_to_fs_var_fold(<<"Force-Fax">>, Direction, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
-get_channel_vars_fold(<<"Channel-Actions">>, Actions, Acc) ->
+kazoo_var_to_fs_var_fold(<<"Channel-Actions">>, Actions, Acc) ->
     [Actions |Acc];
-get_channel_vars_fold(K, V, Acc) ->
+kazoo_var_to_fs_var_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             [list_to_binary([?CHANNEL_VAR_PREFIX, kz_term:to_list(K)
@@ -663,8 +727,8 @@ get_channel_vars_fold(K, V, Acc) ->
             [encode_fs_val(Prefix, Val) | Acc]
     end.
 
--spec get_application_vars_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
-get_application_vars_fold(K, V, Acc) ->
+-spec kazoo_cavs_to_fs_vars_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
+kazoo_cavs_to_fs_vars_fold(K, V, Acc) ->
     [list_to_binary([?APPLICATION_VAR_PREFIX, kz_term:to_list(K), "='", kz_term:to_list(V), "'"])
      | Acc
     ].

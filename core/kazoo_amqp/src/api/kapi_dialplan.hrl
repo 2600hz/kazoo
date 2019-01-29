@@ -68,6 +68,9 @@
         ,<<"Outbound-Callee-ID-Number">>
         ,<<"Outbound-Caller-ID-Name">>
         ,<<"Outbound-Caller-ID-Number">>
+        ,<<"Asserted-Identity-Name">>
+        ,<<"Asserted-Identity-Number">>
+        ,<<"Asserted-Identity-Realm">>
         ,<<"Ringback">>
         ,<<"SIP-Transport">>
         ,<<"SIP-Invite-Parameters">>
