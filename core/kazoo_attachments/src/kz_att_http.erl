@@ -43,7 +43,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
 
     DefaultContentType = props:get_value('content_type', Options, kz_mime:from_filename(AName)),
 
-    {ContentType, Body} = build_req_body(Settings, DbName, DocId, Contents, DefaultContentType),
+    {ContentType, Body} = build_req_body(Settings, DbName, DocId, AName, Contents, DefaultContentType),
     Headers = [{'content_type', ContentType}],
 
     case send_request(Url, format_verb(Verb), Headers, Body) of
@@ -57,26 +57,34 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
             handle_http_error_response(Resp, Routines)
     end.
 
-build_req_body(#{'send_multipart' := SendMultipart}=Options, DbName, DocId, Contents, DefaultContentType) ->
+build_req_body(#{'send_multipart' := SendMultipart}=Options, DbName, DocId, AName, Contents, DefaultContentType) ->
     case kz_term:is_true(SendMultipart) of
-        'true' -> build_multipart_body(Options, DbName, DocId, Contents, DefaultContentType);
+        'true' -> build_multipart_body(Options, DbName, DocId, AName, Contents, DefaultContentType);
         'false' -> {DefaultContentType, Contents}
     end;
-build_req_body(_Settings, _DbName, _DocId, Contents, DefaultContentType) ->
+build_req_body(_Settings, _DbName, _DocId, _AName, Contents, DefaultContentType) ->
     {DefaultContentType, Contents}.
 
-build_multipart_body(Options, DbName, DocId, Contents, DefaultContentType) ->
+build_multipart_body(Options, DbName, DocId, AName, Contents, DefaultContentType) ->
     {'ok', Doc} = kz_datamgr:open_cache_doc(DbName, DocId),
     Metadata = kz_doc:public_fields(Doc),
 
-    Parts = [{kz_json:encode(Metadata), [{<<"content-type">>, <<"application/json">>}]}
-            ,{maybe_encode_content_part(Options, Contents), [{<<"content-type">>, DefaultContentType}]}
+    Parts = [{kz_json:encode(Metadata)
+             ,[{<<"content-disposition">>, <<"form-data; name=", DocId/binary>>}
+              ,{<<"content-type">>, <<"application/json">>}
+              ]
+             }
+            ,{maybe_encode_content_part(Options, Contents)
+             ,[{<<"content-disposition">>, <<"form-data; name=", AName/binary>>}
+              ,{<<"content-type">>, DefaultContentType}
+              ]
+             }
             ],
 
     Boundary = kz_http_util:create_boundary(),
 
     lager:debug("creating multipart body with boundary ~s", [Boundary]),
-    {<<"multipart/mixed; boundary=", Boundary/binary>>
+    {<<"multipart/form-data; boundary=", Boundary/binary>>
     ,kz_http_util:encode_multipart(Parts, Boundary)
     }.
 
