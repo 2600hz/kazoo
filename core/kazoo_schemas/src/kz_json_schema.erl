@@ -151,7 +151,7 @@ diff(Verbosity) ->
 
 -spec diff_schema(file:filename_all()) -> 'ok'.
 diff_schema(Filename) ->
-    _ = diff_schema(Filename, 'verbose'),
+    _ = diff_schema(Filename, 'diff'),
     'ok'.
 
 -spec diff_schema(file:filename_all(), diff_verbosity()) -> diff_verbosity().

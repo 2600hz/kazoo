@@ -90,9 +90,9 @@ init_system() ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    base_test(),
+    _ = base_test(),
     cleanup(),
-    skip_validation_test(),
+    _ = skip_validation_test(),
     cleanup().
 
 skip_validation_test() ->
