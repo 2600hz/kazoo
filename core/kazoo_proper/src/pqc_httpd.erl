@@ -162,18 +162,16 @@ get_from_state(Req, State) ->
             Value -> {200, Value}
         end,
 
-    RespBody = maybe_handle_multipart(Body),
-
     ?INFO("GET req ~s: ~p", [Path, RespCode]),
 
-    Req1 = cowboy_req:reply(RespCode, #{}, RespBody, Req),
+    Req1 = cowboy_req:reply(RespCode, #{}, Body, Req),
     {'ok', Req1, State}.
 
 add_req_to_state(Req, State) ->
     Path = cowboy_req:path(Req), % <<"/foo/bar/baz">>
     PathParts = tl(binary:split(Path, <<"/">>, ['global'])),
 
-    ReqBody = read_body(cowboy_req:read_body(Req)),
+    {Req1, ReqBody} = maybe_handle_multipart(Req),
 
     RespCode = case get_req(PathParts) of
                    'undefined' -> 201;
@@ -185,41 +183,54 @@ add_req_to_state(Req, State) ->
 
     Headers = #{<<"content-type">> => <<"application/json">>},
 
-    Req1 = cowboy_req:reply(RespCode, Headers, <<"{}">>, Req),
-    {'ok', Req1, State}.
+    Req2 = cowboy_req:reply(RespCode, Headers, <<"{}">>, Req1),
+    {'ok', Req2, State}.
 
 -spec read_body({'ok', binary(), cowboy_req:req()} |
                 {'more', binary(), cowboy_req:req()}
-               ) -> iodata().
-read_body({'ok', BodyPart, _Req}) ->
-    BodyPart;
+               ) -> {cowbow_req:req(), iodata()}.
+read_body({'ok', BodyPart, Req}) ->
+    {Req, BodyPart};
 read_body({'more', BodyPart, Req}) ->
-    [BodyPart, read_body(cowboy_req:read_body(Req))].
+    {Req1, Rest} = read_body(cowboy_req:read_body(Req)),
+    {Req1, [BodyPart, Rest]}.
 
-maybe_handle_multipart(<<"\r\n", Multipart/binary>>) ->
-    ?INFO("handle multipart: ~s", [Multipart]),
-    handle_multipart(Multipart);
-maybe_handle_multipart(<<Body/binary>>) -> Body;
-maybe_handle_multipart(BodyParts) -> maybe_handle_multipart(iolist_to_binary(BodyParts)).
+-spec maybe_handle_multipart(cowboy_req:req()) -> {cowboy_req:req(), iodata()}.
+maybe_handle_multipart(Req) ->
+    maybe_handle_multipart(Req, cowboy_req:parse_header(<<"content-type">>, Req)).
 
-handle_multipart(Multipart) ->
-    case binary:split(Multipart, <<"\r\n">>, ['global']) of
-        [Boundary, _MetadataContentType, <<>>, _Metadata
-        ,Boundary, ContentType, <<>>, Content
-         | _Parts
-        ] ->
-            ?INFO("got metadata ~p", [_Metadata]),
-            ?INFO("got content ~s: '~p'", [ContentType, Content]),
-            try base64:decode(Content) of
-                Decoded ->
-                    ?INFO("decoded content: '~s'", [Decoded]),
-                    Decoded
-            catch
-                'error':_ -> Content
-            end;
-        _Parts ->
-            ?INFO("failed to process parts: ~p", [_Parts]),
-            Multipart
+maybe_handle_multipart(Req, {<<"multipart">>, <<"form-data">>, _Boundary}) ->
+    ?INFO("handle multipart body with boundary: ~p", [_Boundary]),
+    handle_multipart(Req);
+maybe_handle_multipart(Req, _CT) ->
+    ?INFO("req has content-type: ~p", [_CT]),
+    read_body(cowboy_req:read_body(Req)).
+
+handle_multipart(Req0) ->
+    case cowboy_req:read_part(Req0) of
+        {'ok', Headers, Req1} ->
+            ?INFO("recv part headers: ~p", [Headers]),
+            handle_part_headers(Req1, Headers);
+        {'done', Req1} ->
+            ?INFO("finished reading parts, no body"),
+            {Req1, <<>>}
+    end.
+
+handle_part_headers(Req, #{<<"content-type">> := <<"application/json">>}) ->
+    ?INFO("skipping JSON metadata"),
+    handle_multipart(Req);
+handle_part_headers(Req, Headers) ->
+    case cow_multipart:form_data(Headers) of
+        {'data', Field} ->
+            ?INFO("field: ~p", [Field]),
+            {'ok', Body, Req1} = cowboy_req:read_part_body(Req),
+            ?INFO("body: ~p", [Body]),
+            {Req1, Body};
+        {'file', _FieldName, _Filename, _CType} ->
+            ?INFO("file ~p: ~p: ~p", [_FieldName, _Filename, _CType]),
+            {'ok', Body, Req1} = cowboy_req:read_part_body(Req),
+            ?INFO("body: ~p", [Body]),
+            {Req1, Body}
     end.
 
 -spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
