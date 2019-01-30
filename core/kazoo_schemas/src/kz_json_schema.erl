@@ -50,7 +50,7 @@
                         {'allowed_errors', non_neg_integer() | 'infinity'} |
                         {'default_schema_ver', binary()} |
                         {'schema_loader_fun', schema_loader_fun()} |
-                        {'extra_validator', extra_validator()} |
+                        {'external_validator', extra_validator()} |
                         {'setter_fun', setter_fun()} |
                         {'validator_options', validator_options()} |
                         {'extra_validator_options', extra_validator_options()}.
@@ -70,7 +70,7 @@ setup_extra_validator(Options) ->
     Fun = fun(Value, State) ->
                   kz_json_schema_extensions:extra_validator(Value, State, ExtraOptions)
           end,
-    props:set_value({'extra_validator', Fun}, Options).
+    props:set_value({'external_validator', Fun}, Options).
 
 -ifdef(TEST).
 load(Schema) -> fload(Schema).
