@@ -63,8 +63,8 @@
 -define(LOOKUP_TIMEOUT, 500).
 -define(LOOKUP_OPTIONS, [{'timeout', ?LOOKUP_TIMEOUT}]).
 
--define(BIND_ALL_INTERFACE_4, "0.0.0.0").
--define(BIND_ALL_INTERFACE_6, "::").
+-define(BIND_ALL_INTERFACE_4, <<"0.0.0.0">>).
+-define(BIND_ALL_INTERFACE_6, <<"::">>).
 
 -type srvtuple() :: {integer(), integer(), integer(), string()}.
 -type naptrtuple() :: {integer(), integer(), string(), string(), string(), string()}.

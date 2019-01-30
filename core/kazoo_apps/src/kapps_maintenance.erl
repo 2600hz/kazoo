@@ -46,7 +46,10 @@
 -export([cleanup_orphan_modbs/0]).
 
 -export([migrate_system/0]).
--export([validate_system_config/1, cleanup_system_config/1, validate_system_configs/0, cleanup_system_configs/0]).
+
+-export([validate_system_config/1, validate_system_configs/0]).
+-export([cleanup_system_config/1, cleanup_system_configs/0]).
+-export([check_system_config/1, check_system_configs/0]).
 
 -export([bind/3, unbind/3
         ,binding/1
@@ -1179,22 +1182,46 @@ deprecate_timezone_for_node(Node, AccountsConfig, Timezone, 'undefined') ->
 deprecate_timezone_for_node(Node, AccountsConfig, _Timezone, _Default) ->
     kz_json:delete_key([Node, <<"timezone">>], AccountsConfig).
 
+-spec check_system_configs() -> 'ok'.
+check_system_configs() ->
+    io:format("starting system schemas validation~n"),
+    _ = [log_system_config_errors(Config, Errors)
+         || {Config, Errors} <- validate_system_configs()
+        ],
+    io:format("finished system schemas validation~n"),
+    'ok'.
+
+-spec check_system_config(kz_term:ne_binary()) -> 'ok'.
+check_system_config(SystemConfig) ->
+    case validate_system_config(SystemConfig) of
+        [] -> io:format("system config schema ~s is sane~n", [SystemConfig]);
+        Errors -> log_system_config_errors(SystemConfig, Errors)
+    end.
+
+-spec log_system_config_errors(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+log_system_config_errors(Config, ErrorsObj) ->
+    io:format("System config ~s validation errors~n", [Config]),
+    Fun = fun({Path, ErrorJObj}) ->
+                  Keys = [binary:replace(Part, <<"%2E">>, <<".">>, ['global'])
+                          || Part <- binary:split(Path, <<".">>, ['global'])
+                         ],
+                  Fun2 = fun({_Type, TypeObj}) ->
+                                 Message = kz_json:get_ne_binary_value(<<"message">>, TypeObj),
+                                 Value = kz_json:get_value(<<"value">>, TypeObj),
+                                 io:format(">>>>> ~p => '~p' : ~s~n", [Keys, Value, Message])
+                         end,
+                  kz_json:foreach(Fun2, ErrorJObj)
+          end,
+    lists:foreach(fun(J) -> kz_json:foreach(Fun, J) end, ErrorsObj),
+    'ok'.
+
 -spec validate_system_configs() -> [{kz_term:ne_binary(), kz_json:object()}].
 validate_system_configs() ->
-    [{Config, merge_errors(Status)}
+    [{Config, Status}
      || Config <- kapps_config_doc:list_configs(),
         Status <- [validate_system_config(Config)],
         [] =/= Status
     ].
-
--spec merge_errors(kz_json_schema:validation_errors()) -> kz_json:object().
-merge_errors([{_Code, _Message, ErrorJObj} | StatusErrors]) ->
-    lists:foldl(fun({_C, _M, ErrJObj}, AccJObj) ->
-                        kz_json:merge(ErrJObj, AccJObj)
-                end
-               ,ErrorJObj
-               ,StatusErrors
-               ).
 
 -spec validate_system_config(kz_term:ne_binary()) -> kz_json_schema:validation_errors().
 validate_system_config(Id) ->
@@ -1202,12 +1229,12 @@ validate_system_config(Id) ->
     Schema = kapps_config_util:system_config_document_schema(Id),
     case kz_json_schema:validate(Schema, Doc) of
         {'ok', _} -> [];
-        {'error', Errors} -> kz_json_schema:errors_to_jobj(Errors)
+        {'error', Errors} -> [JObj || {_, _, JObj} <- kz_json_schema:errors_to_jobj(Errors)]
     end.
 
 -spec get_config_document(kz_term:ne_binary()) -> kz_json:object().
 get_config_document(Id) ->
-    kz_doc:public_fields(maybe_new(kapps_config:fetch_category(Id))).
+    kz_doc:public_fields(maybe_new(kapps_config:fetch_category(Id, 'false'))).
 
 -spec maybe_new({'ok', kz_json:object()} | {'error', any()}) -> kz_json:object().
 maybe_new({'ok', Doc}) -> Doc;
@@ -1349,6 +1376,7 @@ init_system() ->
 check_release() ->
     kz_util:put_callid('check_release'),
     Checks = [fun kapps_started/0
+             ,fun check_system_configs/0
              ,fun master_account_created/0
              ,fun migration_4_0_ran/0
              ,fun migration_ran/0

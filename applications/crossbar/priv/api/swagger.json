@@ -1576,6 +1576,9 @@
                                 "type": "string"
                             }
                         },
+                        "required": [
+                            "macro"
+                        ],
                         "type": "object"
                     },
                     "minItems": 1,
@@ -28837,7 +28840,8 @@
                             },
                             "type": "array"
                         }
-                    }
+                    },
+                    "type": "object"
                 },
                 "entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
@@ -30461,10 +30465,10 @@
                             "prefix": "image"
                         },
                         {
-                            "prefix": "application/vnd.openxmlformats-officedocument."
+                            "prefix": "application/vnd.openxmlformats-officedocument"
                         },
                         {
-                            "prefix": "application/vnd.oasis.opendocument."
+                            "prefix": "application/vnd.oasis.opendocument"
                         },
                         "application/msword",
                         "application/vnd.ms-excel",
@@ -30472,7 +30476,22 @@
                     ],
                     "description": "fax allowed content types",
                     "items": {
-                        "type": "string"
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "properties": {
+                                    "prefix": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "prefix"
+                                ],
+                                "type": "object"
+                            }
+                        ]
                     },
                     "type": "array"
                 },
@@ -34037,6 +34056,9 @@
                     "type": "object"
                 }
             },
+            "required": [
+                "default"
+            ],
             "type": "object"
         },
         "tasks": {

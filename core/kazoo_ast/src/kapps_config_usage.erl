@@ -344,8 +344,15 @@ guess_type_by_default(?ATOM('false')) -> <<"boolean">>;
 guess_type_by_default(?ATOM(_)) -> <<"string">>;
 guess_type_by_default(?VAR(_V)) -> 'undefined';
 guess_type_by_default(?EMPTY_LIST) -> <<"array">>;
-guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> [<<"string">>];
-guess_type_by_default(?LIST(Head, _Tail)) -> [guess_type_by_default(Head)];
+guess_type_by_default(?LIST(?BINARY_MATCH(_), {nil, _})) -> [<<"string">>];
+guess_type_by_default(?LIST(Head, {nil, _})) -> [guess_type_by_default(Head)];
+guess_type_by_default(?LIST(Head, Tail)) ->
+    H = [guess_type_by_default(Head)],
+    T = guess_type_by_default(Tail),
+    case H =:= T of
+        'true' -> H;
+        'false' -> ['undefined']
+    end;
 guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
 guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;
 guess_type_by_default(?FLOAT(_F)) -> <<"float">>;

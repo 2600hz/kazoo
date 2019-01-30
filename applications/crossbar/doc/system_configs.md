@@ -48,9 +48,9 @@ Schema for system_config documents
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`$.+@.+^` | Node-specific settings - these take highest precedence | `object()` |   | `false` |  
-`$[a-zA-Z0-9.]+^` | Zone-specific settings - these are checked if a node-specific setting is not defined | `object()` |   | `false` |  
-`default` | default settings that apply to all nodes/zones if not defined | `object()` | `{}` | `false` |  
+`(?!id\b)(?!default\b)^.+@.+$` | Node-specific settings - these take highest precedence | `object()` |   | `false` |  
+`(?!id\b)(?!default\b)^[a-zA-Z0-9.]+$` | Zone-specific settings - these are checked if a node-specific setting is not defined | `object()` |   | `false` |  
+`default` | default settings that apply to all nodes/zones if not defined | `object()` | `{}` | `true` |  
 
 
 

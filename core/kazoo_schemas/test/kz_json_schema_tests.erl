@@ -219,8 +219,8 @@ validate_regexp_test_() ->
     JObj4 = kz_json:decode(<<"{\"item\":\"*@fail.com\"}">>),
     Err = <<"invalid regular expression: '*@fail.com'">>,
 
-    [?_assertMatch({error,[{data_invalid,_, external_error, Err,[<<"list">>,2]}]} ,kz_json_schema:validate(SchemaJObj, JObj1))
+    [?_assertMatch({error,[{data_invalid,_, {external_error, Err}, _,[<<"list">>,2]}]} ,kz_json_schema:validate(SchemaJObj, JObj1))
     ,?_assertMatch({ok, _}, kz_json_schema:validate(SchemaJObj, JObj2))
     ,?_assertMatch({ok, _}, kz_json_schema:validate(SchemaJObj, JObj3))
-    ,?_assertMatch({error,[{data_invalid,_, external_error, Err,[<<"item">>]}]} ,kz_json_schema:validate(SchemaJObj, JObj4))
+    ,?_assertMatch({error,[{data_invalid,_, {external_error, Err}, _,[<<"item">>]}]} ,kz_json_schema:validate(SchemaJObj, JObj4))
     ].
