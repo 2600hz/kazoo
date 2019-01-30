@@ -5,10 +5,52 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_convert).
 
--export([fax/3, fax/4
+-export([audio/3, audio/4
+        ,fax/3, fax/4
         ]).
 
 -include_lib("kazoo_convert/include/kz_convert.hrl").
+
+%% @equiv audio(FromFormat, ToFormat, Content, [])
+-spec audio(kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()|{'file', filename:name()}) ->
+                 gen_kz_converter:converted().
+audio(FromFormat, ToFormat, Content) ->
+    audio(FromFormat, ToFormat, Content, []).
+
+%%------------------------------------------------------------------------------
+%% @doc A uniform interface for conversion of auido related files.
+%%
+%% The configured converter module is loaded from system_config/kazoo_convert via
+%% the parameter `audio_converter'. The default audio_converter is `kz_audio_converter'. The
+%% behaviour for converter modules is defined in `gen_kz_converter'.
+%%
+%% Arguments Description:
+%% <ul>
+%% <li><strong>From:</strong> is a mimetype binary that specifies the format of
+%% the Content passed in to convert.</li>
+%% <li><strong>To:</strong> is a mimetype binary that specifies the format the
+%% Content is to be converted.</li>
+%% <li><strong>Content:</strong> content can be file path to the source file or
+%% a binary containing the contents of the file to be converted.</li>
+%% <li><strong>Options:</strong> a proplist of options for the underlying fax_converter.</li>
+%% </ul>
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec audio(kz_term:api_binary(), kz_term:api_binary(), binary()|{'file', filename:name()}, kz_term:proplist()) ->
+                 gen_kz_converter:converted().
+audio('undefined', _ToFormat, <<>>, _Options) ->
+    {'error', <<"undefined from format">>};
+audio(_FromFormat, 'undefined', <<>>, _Options) ->
+    {'error', <<"undefined to format">>};
+audio(_FromFormat, _ToFormat, <<>>, _Options) ->
+    {'error', <<"empty content">>};
+audio(_FromFormat, _ToFormat, {'file', <<>>}, _Options) ->
+    {'error', <<"empty filename">>};
+audio(FromFormat, ToFormat, Content, Options) ->
+    Conversion = kapps_config:get_ne_binary(?CONFIG_CAT, <<"audio_converter">>, <<"audio_converter">>),
+    Module = convert_to_module(Conversion),
+    Module:convert(FromFormat, ToFormat, Content, props:insert_value(<<"tmp_dir">>, ?TMP_DIR, Options)).
 
 %% @equiv fax(FromFormat, ToFormat, Content, [])
 -spec fax(kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()|{'file', filename:name()}) ->
