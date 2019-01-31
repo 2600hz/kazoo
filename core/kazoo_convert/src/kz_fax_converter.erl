@@ -9,7 +9,7 @@
 
 -export([convert/4
         ,do_openoffice_to_pdf/2
-        ,read_metadata/1
+        ,read_metadata/1, read_metadata/2
         ,get_tiff_info/1
         ]).
 
@@ -224,8 +224,8 @@ run_convert_command(Command, FromPath, ToPath, TmpDir) ->
            ,{<<"TO">>, ToPath}
            ,{<<"WORKDIR">>, TmpDir}
            ],
-    Options = [{<<"timeout">>, ?CONVERT_TIMEOUT}
-              ,{<<"absolute_timeout">>, ?CONVERT_TIMEOUT}
+    Options = [{<<"timeout">>, ?FAX_CONVERT_TIMEOUT}
+              ,{<<"absolute_timeout">>, ?FAX_CONVERT_TIMEOUT}
               ],
     case kz_os:cmd(Command, Args, Options) of
         {'ok', _} ->
@@ -306,8 +306,8 @@ run_validate_command(Command, FromPath, ToPath, TmpDir) ->
            ,{<<"WORKDIR">>, TmpDir}
            ,{<<"FILE">>, FromPath}
            ],
-    Options = [{<<"timeout">>, ?CONVERT_TIMEOUT}
-              ,{<<"absolute_timeout">>, ?CONVERT_TIMEOUT}
+    Options = [{<<"timeout">>, ?FAX_CONVERT_TIMEOUT}
+              ,{<<"absolute_timeout">>, ?FAX_CONVERT_TIMEOUT}
               ],
     case kz_os:cmd(Command, Args, Options) of
         {'ok', _}=Ok ->
@@ -439,8 +439,8 @@ read_metadata(Filename, MimeType) ->
 
 -spec count_pages_command(kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
 count_pages_command(?TIFF_MIME, Filename) ->
-    Options = [{<<"timeout">>, ?CONVERT_TIMEOUT}
-              ,{<<"absolute_timeout">>, ?CONVERT_TIMEOUT}
+    Options = [{<<"timeout">>, ?FAX_CONVERT_TIMEOUT}
+              ,{<<"absolute_timeout">>, ?FAX_CONVERT_TIMEOUT}
               ,{<<"read_mode">>, 'stream'}
               ],
     case kz_os:cmd(?COUNT_TIFF_PAGES_CMD, [{<<"FILE">>, Filename}], Options) of

@@ -7,7 +7,9 @@
 -define(APP_VERSION, <<"1.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 
+-define(MP3_MIME, <<"audio/mpeg">>).
 -define(TIFF_MIME, <<"image/tiff">>).
+-define(WAV_MIME, <<"audio/x-wav">>).
 -define(PDF_MIME, <<"application/pdf">>).
 -define(IMAGE_MIME_PREFIX, <<"image/">>).
 -define(OPENXML_MIME_PREFIX, "application/vnd.openxmlformats-officedocument.").
@@ -16,6 +18,11 @@
        ,(CT =:= <<"application/msword">>
              orelse CT =:= <<"application/vnd.ms-excel">>
              orelse CT =:= <<"application/vnd.ms-powerpoint">>
+        )).
+-define(WAV_COMPATIBLE(CT)
+       ,(CT =:= <<"audio/wav">>
+             orelse CT =:= <<"audio/wave">>
+             orelse CT =:= <<"audio/x-pn-wav">>
         )).
 
 -define(TMP_DIR

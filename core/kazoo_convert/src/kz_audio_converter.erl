@@ -9,7 +9,7 @@
 
 -export([convert/4
 %%        ,do_openoffice_to_pdf/2
-        ,read_metadata/1
+        ,read_metadata/1, read_metadata/2
 %%        ,get_tiff_info/1
         ]).
 
@@ -155,8 +155,8 @@ run_convert_command(Command, FromPath, ToPath, TmpDir) ->
            ,{<<"TO">>, ToPath}
            ,{<<"WORKDIR">>, TmpDir}
            ],
-    Options = [{<<"timeout">>, ?CONVERT_TIMEOUT}
-              ,{<<"absolute_timeout">>, ?CONVERT_TIMEOUT}
+    Options = [{<<"timeout">>, ?AUDIO_CONVERT_TIMEOUT}
+              ,{<<"absolute_timeout">>, ?AUDIO_CONVERT_TIMEOUT}
               ],
     case kz_os:cmd(Command, Args, Options) of
         {'ok', _} ->
@@ -192,8 +192,8 @@ run_validate_command(Command, FromPath, ToPath, TmpDir) ->
            ,{<<"WORKDIR">>, TmpDir}
            ,{<<"FILE">>, FromPath}
            ],
-    Options = [{<<"timeout">>, ?CONVERT_TIMEOUT}
-              ,{<<"absolute_timeout">>, ?CONVERT_TIMEOUT}
+    Options = [{<<"timeout">>, ?AUDIO_CONVERT_TIMEOUT}
+              ,{<<"absolute_timeout">>, ?AUDIO_CONVERT_TIMEOUT}
               ],
     case kz_os:cmd(Command, Args, Options) of
         {'ok', _}=Ok ->

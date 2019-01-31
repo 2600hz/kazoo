@@ -11,8 +11,11 @@
 
 -include_lib("kazoo_convert/include/kz_convert.hrl").
 
+-type content() :: binary()|{'file', filename:name()}.
+-export_type([content/0]).
+
 %% @equiv audio(FromFormat, ToFormat, Content, [])
--spec audio(kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()|{'file', filename:name()}) ->
+-spec audio(kz_term:api_ne_binary(), kz_term:api_ne_binary(), content()) ->
                  gen_kz_converter:converted().
 audio(FromFormat, ToFormat, Content) ->
     audio(FromFormat, ToFormat, Content, []).
@@ -37,7 +40,7 @@ audio(FromFormat, ToFormat, Content) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec audio(kz_term:api_binary(), kz_term:api_binary(), binary()|{'file', filename:name()}, kz_term:proplist()) ->
+-spec audio(kz_term:api_binary(), kz_term:api_binary(), content(), kz_term:proplist()) ->
                  gen_kz_converter:converted().
 audio('undefined', _ToFormat, <<>>, _Options) ->
     {'error', <<"undefined from format">>};
@@ -53,7 +56,7 @@ audio(FromFormat, ToFormat, Content, Options) ->
     Module:convert(FromFormat, ToFormat, Content, props:insert_value(<<"tmp_dir">>, ?TMP_DIR, Options)).
 
 %% @equiv fax(FromFormat, ToFormat, Content, [])
--spec fax(kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()|{'file', filename:name()}) ->
+-spec fax(kz_term:api_ne_binary(), kz_term:api_ne_binary(), content()) ->
                  gen_kz_converter:converted().
 fax(FromFormat, ToFormat, Content) ->
     fax(FromFormat, ToFormat, Content, []).
@@ -78,7 +81,7 @@ fax(FromFormat, ToFormat, Content) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec fax(kz_term:api_binary(), kz_term:api_binary(), binary()|{'file', filename:name()}, kz_term:proplist()) ->
+-spec fax(kz_term:api_binary(), kz_term:api_binary(), content(), kz_term:proplist()) ->
                  gen_kz_converter:converted().
 fax('undefined', _ToFormat, <<>>, _Options) ->
     {'error', <<"undefined from format">>};

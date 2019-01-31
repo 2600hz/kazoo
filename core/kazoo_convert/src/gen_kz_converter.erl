@@ -29,5 +29,6 @@
                  ,kz_term:proplist()) -> any().
 
 -callback read_metadata(kz_term:ne_binary()) -> kz_term:proplist().
+-callback read_metadata(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 
 -export_type([converted/0]).
