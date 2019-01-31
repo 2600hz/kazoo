@@ -45,6 +45,12 @@
             "support_level": "beta",
             "type": "integer"
         }
+        "onnet_exempt": {
+            "description": "Determines if onnet-terminated calls should be exempt from billing (kazoo account to kazoo account calls)",
+            "default": false,
+            "support_level": "beta",
+            "type": "boolean"
+        }
     },
     "type": "object"
 }

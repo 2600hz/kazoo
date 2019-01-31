@@ -24,6 +24,7 @@
 -export([allow_postpay/1]).
 -export([reserve_amount/1]).
 -export([max_postpay/1]).
+-export([onnet_termination_exempt/1]).
 
 -include("jonny5.hrl").
 
@@ -46,6 +47,7 @@
                 ,allotments = kz_json:new() :: kz_json:object()
                 ,soft_limit_inbound = 'false' :: boolean()
                 ,soft_limit_outbound = 'false' :: boolean()
+                ,onnet_termination_exempt = 'false' :: boolean()
                 }).
 
 -type limits() :: #limits{}.
@@ -218,6 +220,13 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec onnet_termination_exempt(limits()) -> boolean().
+onnet_termination_exempt(#limits{onnet_termination_exempt=OnnetExempt}) -> OnnetExempt.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
                        tristate_integer().
 get_limit(Key, JObj, Default) ->
@@ -360,4 +369,5 @@ create_limits(AccountId, AccountDb, JObj) ->
            ,allotments = kz_json:get_value(<<"pvt_allotments">>, JObj, kz_json:new())
            ,soft_limit_inbound = get_limit_boolean(<<"soft_limit_inbound">>, JObj, 'false')
            ,soft_limit_outbound = get_limit_boolean(<<"soft_limit_outbound">>, JObj, 'false')
+           ,onnet_termination_exempt = get_limit_boolean(<<"onnet_exempt">>, JObj, 'false')
            }.
