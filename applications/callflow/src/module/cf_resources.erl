@@ -131,7 +131,7 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_MSG_ID, kz_binary:rand_hex(6)}
       ,{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, CIDNumber}
-      ,{?KEY_PRESENCE_ID, kz_attributes:presence_id(Call)}
+      ,{?KEY_PRESENCE_ID, maybe_presence_id(Call)}
       ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
       ,{?KEY_RINGBACK, kz_json:get_ne_binary_value(<<"ringback">>, Data)}
       ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
@@ -155,6 +155,13 @@ get_channel_vars(Call) ->
                       ,GetterFuns
                       ),
     kz_json:from_list(CCVs).
+
+-spec maybe_presence_id(kapps_call:call()) -> kz_term:api_ne_binary().
+maybe_presence_id(Call) ->
+    case kapps_call:is_call_forward(Call) of
+        'true' -> kz_attributes:presence_id(Call);
+        'false' -> 'undefined'
+    end.
 
 -spec add_privacy_flags(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
 add_privacy_flags(Call, Acc) ->
