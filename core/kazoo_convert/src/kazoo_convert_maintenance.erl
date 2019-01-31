@@ -13,10 +13,10 @@
 -include("kz_fax_converter.hrl").
 
 -spec read_tiff_info(any()) -> 'ok'.
-read_tiff_info(File) when is_binary(File) ->
-    print_tiff_info(kz_fax_converter:get_tiff_info(File));
-read_tiff_info(File) ->
-    read_tiff_info(kz_term:to_binary(File)).
+read_tiff_info(Filename) when is_binary(Filename) ->
+    print_tiff_info(kz_fax_converter:get_tiff_info(Filename));
+read_tiff_info(Filename) ->
+    read_tiff_info(kz_term:to_binary(Filename)).
 
 -spec print_tiff_info(map() | {kz_term:ne_binary(), any(), maps:iterator()}) -> 'ok'.
 print_tiff_info({'error', Reason, Message}) ->
@@ -30,10 +30,10 @@ print_tiff_info(Metadata) ->
     maps:fold(Func, 0, Metadata).
 
 -spec read_metadata(any()) -> 'ok'.
-read_metadata(File) when is_binary(File) ->
-    print_metadata(kz_fax_converter:read_metadata(File));
-read_metadata(File) ->
-    read_metadata(kz_term:to_binary(File)).
+read_metadata(Filename) when is_binary(Filename) ->
+    print_metadata(kz_fax_converter:read_metadata(Filename));
+read_metadata(Filename) ->
+    read_metadata(kz_term:to_binary(Filename)).
 
 -spec print_metadata(kz_term:proplist()) -> 'ok'.
 print_metadata(Metadata) ->
@@ -41,38 +41,38 @@ print_metadata(Metadata) ->
     'ok'.
 
 -spec convert_fax_file(any(), any(), any(), any()) -> 'ok'.
-convert_fax_file(FromFile, ToFormat, WorkDir, ToFilename) ->
+convert_fax_file(FromFilename, ToFormat, WorkDir, ToFilename) ->
     Options = [{<<"tmp_dir">>, WorkDir}
               ,{<<"to_filename">>, ToFilename}
               ],
-    do_convert(FromFile
+    do_convert(FromFilename
               ,ToFormat
               ,Options
               ).
 
 -spec convert_fax_file(any(), any(), any()) -> 'ok'.
-convert_fax_file(FromFile, ToFormat, WorkDir) ->
+convert_fax_file(FromFilename, ToFormat, WorkDir) ->
     Options = [{<<"tmp_dir">>, WorkDir}],
-    do_convert(FromFile
+    do_convert(FromFilename
               ,ToFormat
               ,Options
               ).
 
 -spec convert_fax_file(any(), any()) -> 'ok'.
-convert_fax_file(FromFile, ToFormat) ->
-    convert_fax_file(FromFile, ToFormat, ?TMP_DIR).
+convert_fax_file(FromFilename, ToFormat) ->
+    convert_fax_file(FromFilename, ToFormat, ?TMP_DIR).
 
 -spec do_convert(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                         'ok'|'error'.
-do_convert(FromFile, ToFormat, Options) ->
-    FromMime = kz_mime:from_filename(FromFile),
-    {'ok', Content} = file:read_file(FromFile),
+do_convert(FromFilename, ToFormat, Options) ->
+    FromMime = kz_mime:from_filename(FromFilename),
+    {'ok', Content} = file:read_file(FromFilename),
     ToMime = kz_mime:from_extension(ToFormat),
     case kz_convert:fax(FromMime, ToMime, Content, Options) of
         { 'ok', OutputFile } ->
-            io:format("Successfully converted ~s to ~s~n", [FromFile, OutputFile]);
+            io:format("Successfully converted ~s to ~s~n", [FromFilename, OutputFile]);
         { 'error', Msg } ->
-            io:format("Failed to convert file ~s with error: ~s~n", [FromFile, Msg])
+            io:format("Failed to convert file ~s with error: ~s~n", [FromFilename, Msg])
     end.
 
 -spec versions_in_use() -> 'no_return'.
