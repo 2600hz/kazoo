@@ -9,6 +9,9 @@
 -export([add_defaults/2
         ,load/1, fload/1
         ,flush/0, flush/1
+        ,diff/0, diff/1, diff_schema/1, diff_schema/2
+        ,delete/1
+
         ,validate/2, validate/3
         ,errors_to_jobj/1, errors_to_jobj/2
         ,error_to_jobj/1, error_to_jobj/2
@@ -66,11 +69,13 @@ setup_extra_validator(Options) ->
           end,
     props:set_value({'extra_validator', Fun}, Options).
 
+-type load_return() :: {'ok', kz_json:object()} |
+                       {'error', 'not_found'} |
+                       kz_datamgr:data_error().
 -ifdef(TEST).
 load(Schema) -> fload(Schema).
 -else.
--spec load(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                      {'error', any()}.
+-spec load(kz_term:ne_binary() | string()) -> load_return().
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
 load(<<_/binary>> = Schema) ->
@@ -116,6 +121,92 @@ maybe_add_ext(Schema) ->
     case filename:extension(Schema) of
         <<".json">> -> Schema;
         _Ext -> <<Schema/binary, ".json">>
+    end.
+
+-type diff_verbosity() :: 'undefined' | 'diff' | 'schema'.
+-spec diff() -> 'ok'.
+diff() ->
+    diff('schema').
+
+-spec diff(diff_verbosity()) -> 'ok'.
+diff(Verbosity) ->
+    PrivDir = code:priv_dir('crossbar'),
+    Path = filename:join([PrivDir, "couchdb", "schemas"]),
+    _ = filelib:fold_files(Path
+                          ,"json$"
+                          ,'false'
+                          ,fun diff_schema/2
+                          ,Verbosity
+                          ),
+    'ok'.
+
+-spec diff_schema(file:filename_all()) -> 'ok'.
+diff_schema(Filename) ->
+    _ = diff_schema(Filename, 'diff'),
+    'ok'.
+
+-spec diff_schema(file:filename_all(), Verbosity) ->
+                         Verbosity when Verbosity :: diff_verbosity().
+diff_schema(Filename, Verbosity) ->
+    SchemaName = filename:basename(Filename, ".json"),
+    diff_schema(Filename, Verbosity, SchemaName, load(SchemaName)).
+
+-spec diff_schema(file:filename_all(), Verbosity, kz_term:ne_binary(), load_return()) ->
+                         Verbosity when Verbosity :: diff_verbosity().
+diff_schema(Filename, Verbosity, SchemaName, {'ok', Schema}) ->
+    {'ok', File} = fload(Filename),
+
+    Public = kz_doc:public_fields(Schema, 'false'),
+
+    JustSchemaDiff = kz_json:diff(Public, File),
+    JustDiskDiff = kz_json:diff(kz_json:delete_key(<<"_id">>, File), Public),
+    maybe_log_diff(Verbosity, SchemaName, JustSchemaDiff, JustDiskDiff),
+    Verbosity;
+diff_schema(_Filename, Verbosity, SchemaName, {'error', E}) ->
+    maybe_log_diff_error(Verbosity, SchemaName, E),
+    Verbosity.
+
+maybe_log_diff('undefined', _Name, _JustSchemaDiff, _JustDiskDiff) -> 'ok';
+maybe_log_diff(Verbosity, SchemaName, JustSchemaDiff, JustDiskDiff) ->
+    case {kz_json:is_empty(JustSchemaDiff), kz_json:is_empty(JustDiskDiff)} of
+        {'true', 'true'}  -> 'ok';
+        _ when Verbosity =:= 'schema' ->
+            io:format("'~s' differs from on-disk file:~n~s~s"
+                     ,[SchemaName
+                      ,printable_diff_keys(" in schema", JustSchemaDiff)
+                      ,printable_diff_keys(" on disk", JustDiskDiff)
+                      ]
+                     );
+        _ when Verbosity =:= 'diff' ->
+            io:format("~s has keys that on-disk doesn't:~nin schema: ~s~non disk: ~s~n"
+                     ,[SchemaName
+                      ,kz_json:encode(JustSchemaDiff, ['pretty'])
+                      ,kz_json:encode(JustDiskDiff, ['pretty'])
+                      ]
+                     );
+        _ -> 'ok'
+    end.
+
+printable_diff_keys(Where, Diff) ->
+    case kz_json:is_empty(Diff) of
+        'true' -> [];
+        'false' ->
+            Paths = kz_json:get_keys(kz_json:flatten(Diff)),
+            [Where, " only: \n", [["  ", kz_binary:join(Path, <<".">>), $\n] || Path <- Paths]]
+    end.
+
+maybe_log_diff_error('undefined', _Name, _E) -> 'ok';
+maybe_log_diff_error(_, _SchemaName, _E) ->
+    io:format("failed to load ~s: ~p~n", [_SchemaName, _E]).
+
+-spec delete(kz_term:ne_binary()) -> 'ok'.
+delete(<<Schema/binary>>) ->
+    case load(Schema) of
+        {'ok', Doc} ->
+            {'ok', _} = kz_datamgr:del_doc(?KZ_SCHEMA_DB, Doc),
+            io:format("deleted schema ~s~n", [Schema]);
+        {'error', _E} ->
+            io:format("failed to find schema ~s: ~p~n", [Schema, _E])
     end.
 
 -spec flush() -> 'ok'.
@@ -725,6 +816,8 @@ validation_error(Property, <<"invalid">> = C, Message, Options) ->
 validation_error(Property, <<"schema">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"additionalProperties">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"additionalItems">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),

@@ -100,7 +100,7 @@ Class2 - 0 (60 Class2 + 300 Class1 = 360, 360 > 120)
 Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 ```
 
-## Schema
+#### Schema
 
 Create buckets of minutes per time-period
 
@@ -108,14 +108,14 @@ Create buckets of minutes per time-period
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`^\w+$.amount` |   | `integer()` |   | `false` |
-`^\w+$.cycle` |   | `string('minutely' | 'hourly' | 'daily' | 'weekly' | 'monthly')` |   | `false` |
-`^\w+$.group_consume.[]` |   | `string()` |   | `false` |
-`^\w+$.group_consume` |   | `array(string())` |   | `false` |
-`^\w+$.increment` |   | `integer()` |   | `false` |
-`^\w+$.minimum` |   | `integer()` |   | `false` |
-`^\w+$.no_consume_time` |   | `integer()` |   | `false` |
-`^\w+$` |   | `object()` |   | `false` |
+`^\w+$.amount` |   | `integer()` |   | `false` |  
+`^\w+$.cycle` |   | `string('minutely' | 'hourly' | 'daily' | 'weekly' | 'monthly')` |   | `false` |  
+`^\w+$.group_consume.[]` |   | `string()` |   | `false` |  
+`^\w+$.group_consume` |   | `array(string())` |   | `false` |  
+`^\w+$.increment` |   | `integer()` |   | `false` |  
+`^\w+$.minimum` |   | `integer()` |   | `false` |  
+`^\w+$.no_consume_time` |   | `integer()` |   | `false` |  
+`^\w+$` |   | `object()` |   | `false` |  
 
 
 

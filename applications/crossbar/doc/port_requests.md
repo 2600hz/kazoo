@@ -62,7 +62,7 @@ A port request can be in one of seven **states**:
 
 ![porting state flow](images/port-request-states-flow.svg)
 
-## Schema
+#### Schema
 
 Schema for a port request
 

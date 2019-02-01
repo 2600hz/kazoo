@@ -13,7 +13,11 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
--define(GRAPH_HTTP_OPTIONS, [{version, "HTTP/1.1"}, {ssl, [{versions, ['tlsv1.2']}]}]).
+-export([onedrive_default_fields/0]).
+
+-define(GRAPH_HTTP_OPTIONS, [{'version', "HTTP/1.1"}
+                            ,{'ssl', [{'versions', ['tlsv1.2']}]}
+                            ]).
 
 -define(GRAPH_API_URL, <<"https://graph.microsoft.com/v1.0">>).
 
@@ -87,7 +91,7 @@ do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
               ],
     Url = resolve_put_url(Settings, {DbName, DocId, AName}),
     case onedrive_put(Url, Headers, Contents) of
-        {ok, ContentId, ResponseHeaders} ->
+        {'ok', ContentId, ResponseHeaders} ->
             Data = base64:encode(term_to_binary({Settings, ContentId})),
             {'ok', [{'attachment', [{<<"onedrive">>, Data}
                                    ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
@@ -166,12 +170,12 @@ resolve_put_url(Settings, AttInfo) ->
     Url = onedrive_format_url(Settings, AttInfo),
     kz_binary:join(?GRAPH_ME_UPLOAD_URL(Url), <<"/">>).
 
--spec onedrive_default_fields() -> kz_term:proplist().
+-spec onedrive_default_fields() -> url_fields().
 onedrive_default_fields() ->
-    [{group, [{arg, <<"id">>}
-             ,<<"_">>
-             ,{arg, <<"attachment">>}
-             ]}
+    [{'group', [{'arg', <<"id">>}
+               ,{'const', <<"_">>}
+               ,{'arg', <<"attachment">>}
+               ]}
     ].
 
 -spec onedrive_format_url(map(), attachment_info()) -> kz_term:ne_binary().
@@ -188,13 +192,21 @@ onedrive_put(Url, Headers, Body) ->
             BodyJObj = kz_json:decode(ResponseBody),
             props:to_log(ResponseHeaders, <<"GRAPH HEADERS">>),
             lager:debug("graph result body : ~s", [kz_json:encode(BodyJObj, ['pretty'])]),
-            Id = kz_json:get_value(<<"id">>, BodyJObj),
-            DriveId = kz_json:get_value([<<"parentReference">>, <<"driveId">>], BodyJObj),
-            case {Id, DriveId} of
-                {undefined, undefined} -> {'error', Url, 'return_info_missing'};
-                {undefined, _} -> {'error', Url, 'return_id_missing'};
-                {_, undefined} -> {'error', Url, 'return_drive_missing'};
-                _ -> {ok, {DriveId, Id}, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders)]}
+
+            case {kz_json:get_value(<<"id">>, BodyJObj)
+                 ,kz_json:get_value([<<"parentReference">>, <<"driveId">>], BodyJObj)
+                 }
+            of
+                {'undefined', 'undefined'} -> {'error', Url, 'return_info_missing'};
+                {'undefined', _DriveId} -> {'error', Url, 'return_id_missing'};
+                {_Id, 'undefined'} -> {'error', Url, 'return_drive_missing'};
+                {Id, DriveId} ->
+                    {'ok'
+                    ,{DriveId, Id}
+                    ,[{<<"body">>, BodyJObj}
+                      | kz_att_util:headers_as_binaries(ResponseHeaders)
+                     ]
+                    }
             end;
         Resp ->
             {'error', Url, Resp}

@@ -1,0 +1,56 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.attachments.field",
+    "description": "field used when composing destination url",
+    "oneOf": [
+        {
+            "additionalProperties": false,
+            "properties": {
+                "arg": {
+                    "description": "an argument passed to the handler",
+                    "enum": [
+                        "account_id",
+                        "db",
+                        "id",
+                        "attachment"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        {
+            "additionalProperties": false,
+            "properties": {
+                "const": {
+                    "description": "a constant value added to the string",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        {
+            "additionalProperties": false,
+            "properties": {
+                "field": {
+                    "description": "a field from the metadata document",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        {
+            "additionalProperties": false,
+            "properties": {
+                "group": {
+                    "description": "group the inner fields definitions with an empty separator",
+                    "items": {
+                        "$ref": "storage.attachments.field"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        }
+    ]
+}

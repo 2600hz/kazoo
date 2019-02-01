@@ -173,8 +173,8 @@ make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
     make_request(#{'response_codes' => Codes}, HTTP, URL, RequestHeaders);
 make_request(Expectations, HTTP, URL, RequestHeaders) ->
-    ?INFO("~p: ~s", [HTTP, URL]),
-    ?DEBUG("headers: ~p", [RequestHeaders]),
+    ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
+
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
 -spec make_request(expectations() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->

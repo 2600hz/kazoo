@@ -27158,20 +27158,17 @@
         "storage": {
             "properties": {
                 "attachments": {
-                    "$ref": "#/definitions/storage.attachments",
-                    "description": "Defines where and how to store attachments"
+                    "$ref": "#/definitions/storage.attachments"
                 },
                 "connections": {
-                    "$ref": "#/definitions/storage.connections",
-                    "description": "Describes alternative connections to use (such as alternative CouchDB instances"
+                    "$ref": "#/definitions/storage.connections"
                 },
                 "id": {
                     "description": "ID of the storage document",
                     "type": "string"
                 },
                 "plan": {
-                    "$ref": "#/definitions/storage.plan",
-                    "description": "Describes how to store documents depending on the database or document type"
+                    "$ref": "#/definitions/storage.plan"
                 }
             },
             "type": "object"
@@ -27426,13 +27423,14 @@
                     ],
                     "type": "string"
                 },
-                "name": {
-                    "description": "Friendly name for this attachment handler",
-                    "type": "string"
-                },
                 "settings": {
                     "description": "HTTP server settings",
                     "properties": {
+                        "base64_encode_data": {
+                            "default": false,
+                            "description": "Toggles whether to base64-encode the attachment data",
+                            "type": "boolean"
+                        },
                         "send_multipart": {
                             "description": "Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true",
                             "type": "boolean"
@@ -27496,8 +27494,62 @@
             "type": "object"
         },
         "storage.attachments": {
-            "description": "Keys are 32-character identifiers to be used in storage plans",
+            "description": "Defines where and how to store attachments. Keys are 32-character identifiers to be used in storage plans",
             "type": "object"
+        },
+        "storage.attachments.field": {
+            "description": "field used when composing destination url",
+            "oneOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "arg": {
+                            "description": "an argument passed to the handler",
+                            "enum": [
+                                "account_id",
+                                "db",
+                                "id",
+                                "attachment"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "const": {
+                            "description": "a constant value added to the string",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "field": {
+                            "description": "a field from the metadata document",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "group": {
+                            "description": "group the inner fields definitions with an empty separator",
+                            "items": {
+                                "$ref": "storage.attachments.field"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                }
+            ]
         },
         "storage.connection.couchdb": {
             "description": "schema for CouchDB connection entry",
@@ -27580,10 +27632,11 @@
             "type": "object"
         },
         "storage.connections": {
+            "description": "Describes alternative connections to use (such as alternative CouchDB instances",
             "type": "object"
         },
         "storage.plan": {
-            "description": "schema for storage plan",
+            "description": "Describes how to store documents depending on the database or document type",
             "properties": {
                 "account": {
                     "$ref": "#/definitions/storage.plan.database"

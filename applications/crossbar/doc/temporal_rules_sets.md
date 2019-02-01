@@ -4,7 +4,7 @@
 
 A temporal rule set is a collection of temporal rules that can be used in a callflow to match more that one rule. And can also be re-used.
 
-## Schema
+#### Schema
 
 Schema for a temporal rules sets
 

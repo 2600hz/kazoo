@@ -2,7 +2,7 @@
 
 ## About Groups
 
-## Schema
+#### Schema
 
 Validator for the group
 
@@ -11,7 +11,7 @@ Validator for the group
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `endpoints` | Endpoints included into group | `object()` | `{}` | `true` | `supported`
-`music_on_hold.media_id` | The ID of a media object that should be used as music on hold | `string(0..128)` |   | `false` |
+`music_on_hold.media_id` | The ID of a media object that should be used as music on hold | `string(0..128)` |   | `false` |  
 `music_on_hold` | The music on hold parameters | `object()` | `{}` | `false` | `beta`
 `name` | A friendly name for the group | `string(1..128)` |   | `true` | `supported`
 
