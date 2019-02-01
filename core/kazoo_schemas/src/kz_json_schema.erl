@@ -165,23 +165,43 @@ diff_schema(Filename, Verbosity) ->
 diff_schema(Filename, Verbosity, SchemaName, {'ok', Schema}) ->
     {'ok', File} = fload(Filename),
 
-    Diff = kz_json:diff(kz_doc:public_fields(Schema), File),
-    maybe_log_diff(Verbosity, SchemaName, Diff),
+    Public = kz_doc:public_fields(Schema, 'false'),
+
+    JustSchemaDiff = kz_json:diff(Public, File),
+    JustDiskDiff = kz_json:diff(kz_json:delete_key(<<"_id">>, File), Public),
+    maybe_log_diff(Verbosity, SchemaName, JustSchemaDiff, JustDiskDiff),
     Verbosity;
 diff_schema(_Filename, Verbosity, SchemaName, {'error', E}) ->
     maybe_log_diff_error(Verbosity, SchemaName, E),
     Verbosity.
 
-maybe_log_diff('undefined', _Name, _Diff) -> 'ok';
-maybe_log_diff(Verbosity, SchemaName, Diff) ->
+maybe_log_diff('undefined', _Name, _JustSchemaDiff, _JustDiskDiff) -> 'ok';
+maybe_log_diff(Verbosity, SchemaName, JustSchemaDiff, JustDiskDiff) ->
+    case {kz_json:is_empty(JustSchemaDiff), kz_json:is_empty(JustDiskDiff)} of
+        {'true', 'true'}  -> 'ok';
+        _ when Verbosity =:= 'schema' ->
+            io:format("'~s' differs from on-disk file:~n~s~s"
+                     ,[SchemaName
+                      ,printable_diff_keys(" in schema", JustSchemaDiff)
+                      ,printable_diff_keys(" on disk", JustDiskDiff)
+                      ]
+                     );
+        _ when Verbosity =:= 'diff' ->
+            io:format("~s has keys that on-disk doesn't:~nin schema: ~s~non disk: ~s~n"
+                     ,[SchemaName
+                      ,kz_json:encode(JustSchemaDiff, ['pretty'])
+                      ,kz_json:encode(JustDiskDiff, ['pretty'])
+                      ]
+                     );
+        _ -> 'ok'
+    end.
+
+printable_diff_keys(Where, Diff) ->
     case kz_json:is_empty(Diff) of
-        'true'  -> 'ok';
-        'false' when Verbosity =:= 'schema' ->
-            io:format("~s differs from on-disk file~n", [SchemaName]);
-        'false' when Verbosity =:= 'diff' ->
-            io:format("~s differs from on-disk file: ~s~n"
-                     ,[SchemaName, kz_json:encode(Diff, ['pretty'])]
-                     )
+        'true' -> [];
+        'false' ->
+            Paths = kz_json:get_keys(kz_json:flatten(Diff)),
+            [Where, " only: \n", [["  ", kz_binary:join(Path, <<".">>), $\n] || Path <- Paths]]
     end.
 
 maybe_log_diff_error('undefined', _Name, _E) -> 'ok';
