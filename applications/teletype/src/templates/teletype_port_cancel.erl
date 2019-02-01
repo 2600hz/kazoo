@@ -7,6 +7,7 @@
 -module(teletype_port_cancel).
 
 -export([init/0
+        ,id/0
         ,handle_req/1
         ]).
 
@@ -30,6 +31,9 @@
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
+
+-spec id() -> kz_term:ne_binary().
+id() -> ?TEMPLATE_ID.
 
 -spec init() -> 'ok'.
 init() ->
@@ -94,8 +98,13 @@ handle_port_request(DataJObj) ->
                                     ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
+    _ = teletype_util:send_email(Emails, Subject, RenderedTemplates),
 
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
+    AuthorityEmails = kz_json:get_value(<<"authority_emails">>, DataJObj, []),
+
+    case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
-        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
+        {'error', Reason} ->
+            lager:debug("unable to send emails to port authority: ~p", [Reason]),
+            teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
