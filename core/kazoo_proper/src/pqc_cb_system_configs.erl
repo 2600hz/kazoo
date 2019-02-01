@@ -257,7 +257,7 @@ seq() ->
     'false' = lists:member(?CATEGORY_ID, OutListing),
 
     ?INFO("COMPLETED SUCCESSFULLY!"),
-    cleanup(API),
+    _ = cleanup(API),
     io:format("done: ~p~n", [API]).
 
 -spec cleanup() -> any().
