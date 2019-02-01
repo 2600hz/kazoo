@@ -77,6 +77,7 @@ fix_billing(_DataJObj, _TemplateId, PortReqJObj) ->
                  ,kz_json:get_json_value(<<"bill">>, PortReqJObj, kz_json:new())
                  ).
 
+-spec fix_bill_object(kz_json:object()) -> kz_json:object().
 fix_bill_object(PortReqJObj) ->
     KeyMap = [{<<"account">>, [{<<"account_number">>, <<"number">>}
                               ,<<"pin">>
@@ -98,6 +99,8 @@ fix_bill_object(PortReqJObj) ->
              ],
     fix_bill_object(PortReqJObj, KeyMap).
 
+-spec fix_bill_object(kz_json:object(), [{kz_term:ne_binary(), [kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}]}]) ->
+                             kz_json:object().
 fix_bill_object(PortReqJObj, []) -> PortReqJObj;
 fix_bill_object(PortReqJObj, [{Category, KeyMaps} | Rest]) ->
     NewPort = lists:foldl(fun(KeyMap, Acc) -> fix_bill_object(Acc, Category, KeyMap) end
@@ -106,6 +109,8 @@ fix_bill_object(PortReqJObj, [{Category, KeyMaps} | Rest]) ->
                          ),
     fix_bill_object(NewPort, Rest).
 
+-spec fix_bill_object(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}) ->
+                             kz_json:object().
 fix_bill_object(PortReqJObj, Category, {OldKeyName, NewKeyName}) ->
     kz_json:set_value([<<"bill">>, Category, NewKeyName]
                      ,kz_json:get_ne_binary_value([<<"bill">>, OldKeyName], PortReqJObj, <<"-">>)
