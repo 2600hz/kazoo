@@ -123,8 +123,10 @@ warn(PLT, Options, Paths) ->
 find_unknown_modules(_PLT, BeamPaths, 'false') -> BeamPaths;
 find_unknown_modules(PLT, BeamPaths, 'true') ->
     UnknownModules = [M ||
-                         {'warn_unknown', _, {'unknown_function',{M, _F, _Arity}}} <- do_scan_unknown(PLT, BeamPaths)
+                         {'warn_unknown', _, {'unknown_function',{M, _F, _Arity}}} <- do_scan_unknown(PLT, BeamPaths),
+                         M =/= 'localtime' % excluded cause raw dict makes dialyzer sad
                      ],
+
     [fix_path(MPath) ||
         M <- lists:usort(UnknownModules),
         MPath <- [code:which(M)],

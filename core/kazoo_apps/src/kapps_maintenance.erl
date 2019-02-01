@@ -1215,21 +1215,22 @@ log_system_config_errors(Config, ErrorsObj) ->
     lists:foreach(fun(J) -> kz_json:foreach(Fun, J) end, ErrorsObj),
     'ok'.
 
--spec validate_system_configs() -> [{kz_term:ne_binary(), kz_json:object()}].
+-spec validate_system_configs() -> [{kz_term:ne_binary(), kz_json:objects()}].
 validate_system_configs() ->
-    [{Config, Status}
-     || Config <- kapps_config_doc:list_configs(),
-        Status <- [validate_system_config(Config)],
+    [{ConfigId, Status}
+     || ConfigId <- kapps_config_doc:list_configs(),
+        Status <- [validate_system_config(ConfigId)],
         [] =/= Status
     ].
 
--spec validate_system_config(kz_term:ne_binary()) -> kz_json_schema:validation_errors().
+-spec validate_system_config(kz_term:ne_binary()) -> kz_json:objects().
 validate_system_config(Id) ->
     Doc = get_config_document(Id),
     Schema = kapps_config_util:system_config_document_schema(Id),
     case kz_json_schema:validate(Schema, Doc) of
         {'ok', _} -> [];
-        {'error', Errors} -> [JObj || {_, _, JObj} <- kz_json_schema:errors_to_jobj(Errors)]
+        {'error', Errors} ->
+            [JObj || {_, _, JObj} <- kz_json_schema:errors_to_jobj(Errors)]
     end.
 
 -spec get_config_document(kz_term:ne_binary()) -> kz_json:object().
@@ -1247,11 +1248,10 @@ cleanup_system_config(Id) ->
     NewDoc = lists:foldl(fun kz_json:delete_key/2, Doc, ErrorKeys),
     kz_datamgr:save_doc(?KZ_CONFIG_DB, NewDoc).
 
--spec error_keys(kz_json_schema:validation_errors()) -> kz_json:paths().
+-spec error_keys(kz_json:objects()) -> kz_json:paths().
 error_keys(Errors) ->
-    io:format("errors: ~p~n", [Errors]),
     [binary:split(ErrorKey, <<".">>)
-     || {_Code, _Message, ErrorJObj} <- Errors,
+     || ErrorJObj <- Errors,
         ErrorKey <- kz_json:get_keys(ErrorJObj)
     ].
 

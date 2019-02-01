@@ -452,9 +452,9 @@ default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
 default_value(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', [_Arg])) ->
     ?UNKNOWN_DEFAULT;
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) ->
-    default_value(kz_privacy:anonymous_caller_id_number());
+    kz_privacy:anonymous_caller_id_number();
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) ->
-    default_value(kz_privacy:anonymous_caller_id_name());
+    kz_privacy:anonymous_caller_id_name();
 default_value(?MOD_FUN_ARGS('kz_term', 'to_binary', [Arg])) ->
     default_value(Arg);
 default_value(?MOD_FUN_ARGS('kz_term', 'to_integer', [Arg])) ->
