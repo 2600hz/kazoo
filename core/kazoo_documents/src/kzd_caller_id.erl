@@ -6,6 +6,10 @@
 -module(kzd_caller_id).
 
 -export([new/0]).
+-export([asserted/1, asserted/2, set_asserted/2]).
+-export([asserted_name/1, asserted_name/2, set_asserted_name/2]).
+-export([asserted_number/1, asserted_number/2, set_asserted_number/2]).
+-export([asserted_realm/1, asserted_realm/2, set_asserted_realm/2]).
 -export([emergency/1, emergency/2, set_emergency/2]).
 -export([emergency_name/1, emergency_name/2, set_emergency_name/2]).
 -export([emergency_number/1, emergency_number/2, set_emergency_number/2]).
@@ -27,6 +31,54 @@
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
+
+-spec asserted(doc()) -> kz_term:api_object().
+asserted(Doc) ->
+    asserted(Doc, 'undefined').
+
+-spec asserted(doc(), Default) -> kz_json:object() | Default.
+asserted(Doc, Default) ->
+    kz_json:get_json_value([<<"asserted">>], Doc, Default).
+
+-spec set_asserted(doc(), kz_json:object()) -> doc().
+set_asserted(Doc, Asserted) ->
+    kz_json:set_value([<<"asserted">>], Asserted, Doc).
+
+-spec asserted_name(doc()) -> kz_term:api_binary().
+asserted_name(Doc) ->
+    asserted_name(Doc, 'undefined').
+
+-spec asserted_name(doc(), Default) -> binary() | Default.
+asserted_name(Doc, Default) ->
+    kz_json:get_binary_value([<<"asserted">>, <<"name">>], Doc, Default).
+
+-spec set_asserted_name(doc(), binary()) -> doc().
+set_asserted_name(Doc, AssertedName) ->
+    kz_json:set_value([<<"asserted">>, <<"name">>], AssertedName, Doc).
+
+-spec asserted_number(doc()) -> kz_term:api_binary().
+asserted_number(Doc) ->
+    asserted_number(Doc, 'undefined').
+
+-spec asserted_number(doc(), Default) -> binary() | Default.
+asserted_number(Doc, Default) ->
+    kz_json:get_binary_value([<<"asserted">>, <<"number">>], Doc, Default).
+
+-spec set_asserted_number(doc(), binary()) -> doc().
+set_asserted_number(Doc, AssertedNumber) ->
+    kz_json:set_value([<<"asserted">>, <<"number">>], AssertedNumber, Doc).
+
+-spec asserted_realm(doc()) -> kz_term:api_binary().
+asserted_realm(Doc) ->
+    asserted_realm(Doc, 'undefined').
+
+-spec asserted_realm(doc(), Default) -> binary() | Default.
+asserted_realm(Doc, Default) ->
+    kz_json:get_binary_value([<<"asserted">>, <<"realm">>], Doc, Default).
+
+-spec set_asserted_realm(doc(), binary()) -> doc().
+set_asserted_realm(Doc, AssertedRealm) ->
+    kz_json:set_value([<<"asserted">>, <<"realm">>], AssertedRealm, Doc).
 
 -spec emergency(doc()) -> kz_term:api_object().
 emergency(Doc) ->

@@ -18,6 +18,8 @@ Instead, we've moved to using `kz_datamgr:update_doc` and adjusted it to take an
 
 The old `save/2` took an updater function and tried to save the result. Because we want to be sure the changes are saved both to the account DB and the `accounts` DB, we need to be able to apply the update to the `accounts` DB version independently of the account DB version.
 
+4. New parameters were added to the account, user and device documents to set the asserted identity.  These parameters are currently free-form but will be strictly verified by default in the future!
+
 ### 4.2
 
 1.  Erlang Version Support
