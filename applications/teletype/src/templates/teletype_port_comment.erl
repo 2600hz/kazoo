@@ -99,11 +99,23 @@ handle_port_request(DataJObj) ->
                                     ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
+    maybe_send_to_submitter(Emails, Subject, RenderedTemplates),
 
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
+    AuthorityEmails = kz_json:get_value(<<"authority_emails">>, DataJObj, []),
+
+    case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
-        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
+        {'error', Reason} ->
+            lager:debug("unable to send emails to port authority: ~p", [Reason]),
+            teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
+
+-spec maybe_send_to_submitter(email_map(), kz_term:ne_binary(), rendered_templates()) -> 'ok'.
+maybe_send_to_submitter([], _, _) ->
+    lager:debug("no port submitter email addresses were found in data or template");
+maybe_send_to_submitter(Emails, Subject, RenderedTemplates) ->
+    _ = teletype_util:send_email(Emails, Subject, RenderedTemplates),
+    'ok'.
 
 -spec user_data(kz_json:object()) -> kz_term:proplist().
 user_data(DataJObj) ->
