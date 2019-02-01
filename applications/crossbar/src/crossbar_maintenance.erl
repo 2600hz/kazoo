@@ -1328,7 +1328,8 @@ update_schemas() ->
 db_init_schemas() ->
     kz_datamgr:suppress_change_notice(),
     update_schemas(),
-    kz_datamgr:enable_change_notice().
+    kz_datamgr:enable_change_notice(),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Updating system schemas.
