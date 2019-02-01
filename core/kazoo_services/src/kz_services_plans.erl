@@ -521,7 +521,7 @@ editable_qubicle_fields(Fields, _ResellerId) ->
 -spec editable_fields_to_json(kz_term:proplist()) -> kz_json:object().
 editable_fields_to_json(Fields) ->
     {'ok', Schema} = kz_datamgr:open_doc(?KZ_SCHEMA_DB, <<"service_plan.item">>),
-    Properties = kz_json:get_ne_json_value(<<"properties">>, Schema),    
+    Properties = kz_json:get_ne_json_value(<<"properties">>, Schema),
     editable_fields_to_json(Fields, Properties, kz_json:new()).
 
 -spec editable_fields_to_json(kz_term:proplist(), kz_json:object(), kz_json:object()) -> kz_json:object().
