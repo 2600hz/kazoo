@@ -683,6 +683,11 @@ summary_billing_cycle(_Services) ->
       ]
      ).
 
+%% @equiv is_good_standing(Thing, 0)
+-spec is_good_standing(kz_term:ne_binary() | services()) -> {boolean(), kz_term:ne_binary()}.
+is_good_standing(Thing) ->
+    is_good_standing(Thing, #{}).
+
 %%------------------------------------------------------------------------------
 %% @doc Check if the account is in good standing.
 %%
@@ -696,11 +701,6 @@ summary_billing_cycle(_Services) ->
 %% * All other cases the account is not in good standing
 %% @end
 %%------------------------------------------------------------------------------
-%% @equiv is_good_standing(Thing, 0)
--spec is_good_standing(kz_term:ne_binary() | services()) -> {boolean(), kz_term:ne_binary()}.
-is_good_standing(Thing) ->
-    is_good_standing(Thing, #{}).
-
 -spec is_good_standing(kz_term:ne_binary() | services(), good_standing_options()) ->
                               {boolean(), kz_term:ne_binary()}.
 is_good_standing(?NE_BINARY=Account, Options) ->
