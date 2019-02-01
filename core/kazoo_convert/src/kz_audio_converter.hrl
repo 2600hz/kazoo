@@ -3,7 +3,7 @@
 -include_lib("kazoo_convert/include/kz_convert.hrl").
 
 -define(CONVERT_AUDIO_CMD, <<"ffmpeg -i $FROM $TO">>).
--define(VALIDATE_AUDIO_CMD, <<"ffmpeg -i $FILE">>).
+-define(VALIDATE_AUDIO_CMD, <<"ffmpeg -y -i $FROM -f ffmetadata /dev/null">>).
 
 -define(CONVERT_AUDIO_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, [<<"audio">>, <<"convert_audio_command">>], ?CONVERT_AUDIO_CMD)).
