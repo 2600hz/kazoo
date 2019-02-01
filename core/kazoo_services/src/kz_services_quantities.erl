@@ -401,6 +401,7 @@ calculate_app_store_updates(JObj, Updates) ->
     case kz_doc:id(JObj) =:= <<"apps_store">> of
         'false' -> Updates;
         'true' ->
+            Blacklist = kz_json:get_list_value(<<"blacklist">>, JObj, []),
             Apps = kz_json:get_json_value(<<"apps">>, JObj, kz_json:new()),
             kz_json:foldl(fun(_K, App, U) ->
                                   Name = kz_json:get_ne_binary_value(<<"name">>, App),
@@ -428,7 +429,7 @@ calculate_app_store_updates(JObj, Updates) ->
                                   end
                           end
                          ,Updates
-                         ,Apps
+                         ,kz_json:delete_keys(Blacklist, Apps)
                          )
     end.
 
