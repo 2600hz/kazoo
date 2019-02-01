@@ -13,6 +13,7 @@
         ,delete/1
 
         ,validate/2, validate/3
+        ,fix_js_types/2
         ,errors_to_jobj/1, errors_to_jobj/2
         ,error_to_jobj/1, error_to_jobj/2
         ,validation_error/4
