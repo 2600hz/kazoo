@@ -165,10 +165,11 @@ init() ->
 init_db() ->
     {'ok', _} = kz_datamgr:save_doc(?KZ_SCHEMA_DB, ?CONFIG_SCHEMA).
 
--spec cleanup_db() -> {'ok', kz_json:object()}.
+-spec cleanup_db() -> 'ok'.
 cleanup_db() ->
-    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?CATEGORY_ID),
-    kz_datamgr:del_doc(?KZ_SCHEMA_DB, ?SCHEMA_ID).
+    _ = kz_datamgr:del_doc(?KZ_CONFIG_DB, ?CATEGORY_ID),
+    _ = kz_datamgr:del_doc(?KZ_SCHEMA_DB, ?SCHEMA_ID),
+    'ok'.
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
@@ -177,7 +178,7 @@ initial_state() ->
     ?INFO("state initialized to ~p", [API]),
     pqc_kazoo_model:new(API).
 
--spec default() -> any().
+-spec default() -> 'ok'.
 default() ->
     _ = init_db(),
     Stored = kapps_config_doc:stored_node(?CATEGORY_ID, <<"default">>),
@@ -268,5 +269,5 @@ cleanup() ->
 -spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
-    _ = cleanup_db(),
+    cleanup_db(),
     pqc_cb_api:cleanup(API).

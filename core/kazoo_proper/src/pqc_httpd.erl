@@ -260,7 +260,7 @@ handle_call({'wait_for_req', Path, TimeoutMs}
         'undefined' ->
             {'noreply', State#state{waits=[new_wait(From, Path, TimeoutMs) | Waits]}};
         Value ->
-            {'reply', Value, State}
+            {'reply', {'ok', Value}, State}
     end;
 handle_call('status', _From, State) ->
     {'reply', State, State};

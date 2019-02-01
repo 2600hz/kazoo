@@ -154,12 +154,14 @@ diff_schema(Filename) ->
     _ = diff_schema(Filename, 'diff'),
     'ok'.
 
--spec diff_schema(file:filename_all(), diff_verbosity()) -> diff_verbosity().
+-spec diff_schema(file:filename_all(), Verbosity) ->
+                         Verbosity when Verbosity :: diff_verbosity().
 diff_schema(Filename, Verbosity) ->
     SchemaName = filename:basename(Filename, ".json"),
     diff_schema(Filename, Verbosity, SchemaName, load(SchemaName)).
 
--spec diff_schema(file:filename_all(), diff_verbosity(), kz_term:ne_binary(), load_return()) -> 'ok'.
+-spec diff_schema(file:filename_all(), Verbosity, kz_term:ne_binary(), load_return()) ->
+                         Verbosity when Verbosity :: diff_verbosity().
 diff_schema(Filename, Verbosity, SchemaName, {'ok', Schema}) ->
     {'ok', File} = fload(Filename),
 

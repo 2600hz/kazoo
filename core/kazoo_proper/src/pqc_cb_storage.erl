@@ -162,7 +162,7 @@ base_test() ->
     CreatedVM = kz_json:decode(CreateVM),
     MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], CreatedVM),
 
-    GetVM = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
+    {'ok', GetVM} = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
     ?INFO("get VM: ~p", [GetVM]),
     {[RequestBody], [_AttachmentName]} = kz_json:get_values(GetVM),
 

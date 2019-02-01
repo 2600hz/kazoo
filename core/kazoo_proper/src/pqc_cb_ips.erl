@@ -518,7 +518,7 @@ correct() ->
                    timer:sleep(1000),
                    try run_commands(?MODULE, Cmds) of
                        {History, Model, Result} ->
-                           cleanup(pqc_kazoo_model:api(Model)),
+                           _ = cleanup(pqc_kazoo_model:api(Model)),
                            ?WHENFAIL(io:format("Final Model:~n~p~n~nFailing Cmds:~n~p~n"
                                               ,[pqc_kazoo_model:pp(Model), zip(Cmds, History)]
                                               )
@@ -529,7 +529,7 @@ correct() ->
                            ST = erlang:get_stacktrace(),
                            io:format("exception running commands: ~s:~p~n", [_E, _R]),
                            [io:format("~p~n", [S]) || S <- ST],
-                           cleanup(),
+                           _ = cleanup(),
                            'false'
                    end
 
@@ -544,7 +544,7 @@ correct_parallel() ->
            ,?TRAPEXIT(
                begin
                    {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
-                   cleanup(),
+                   _ = cleanup(),
 
                    ?WHENFAIL(io:format("S: ~p~nP: ~p~n", [Sequential, Parallel])
                             ,aggregate(command_names(Cmds), Result =:= 'ok')
