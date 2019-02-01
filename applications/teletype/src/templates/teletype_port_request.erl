@@ -100,10 +100,19 @@ handle_port_request(DataJObj) ->
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
     EmailAttachements = kz_json:get_value(<<"attachments">>, DataJObj),
 
+    lager:debug("sending ~s to port authority: ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, Emails)]
+               ),
     _ = teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements),
 
-    AuthorityEmails = kz_json:get_value(<<"authority_emails">>, DataJObj, []),
+    AuthorityEmails = props:set_value(<<"to">>
+                                     ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
+                                     ,Emails
+                                     ),
 
+    lager:debug("sending ~s to port sumbitter (or template default): ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, AuthorityEmails)]
+               ),
     case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
         {'error', Reason} ->
