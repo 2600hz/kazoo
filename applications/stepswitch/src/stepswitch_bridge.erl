@@ -409,6 +409,8 @@ build_bridge(#state{endpoints=Endpoints
     CCVs = kz_json:set_values(AddCCVs ++ RemoveCCVs, ReqCCVs),
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
 
+    Realm = kzd_accounts:fetch_realm(AccountId),
+
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
@@ -430,6 +432,9 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Fax-Identity-Name">>, kapi_offnet_resource:fax_identity_name(OffnetReq, Name)}
       ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
       ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
+      ,{<<"Asserted-Identity-Number">>, kapi_offnet_resource:asserted_identity_number(OffnetReq)}
+      ,{<<"Asserted-Identity-Name">>, kapi_offnet_resource:asserted_identity_name(OffnetReq)}
+      ,{<<"Asserted-Identity-Realm">>, kapi_offnet_resource:asserted_identity_realm(OffnetReq, Realm)}
       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
       ,{<<"Endpoints">>, FmtEndpoints}
       ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
