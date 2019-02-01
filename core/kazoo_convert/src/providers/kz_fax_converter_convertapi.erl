@@ -8,7 +8,7 @@
 -behaviour(gen_kz_converter).
 
 -export([convert/4
-        ,read_metadata/1
+        ,read_metadata/1, read_metadata/2
         ]).
 
 -include_lib("kazoo_convert/include/kz_convert.hrl").
@@ -108,6 +108,10 @@ convert(From, To, Content, Options) ->
 -spec read_metadata(kz_term:ne_binary()) -> kz_term:proplist().
 read_metadata(Filename) ->
     kz_fax_converter:read_metadata(Filename).
+
+-spec read_metadata(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+read_metadata(Filename, MimeType) ->
+    kz_fax_converter:read_metadata(Filename, MimeType).
 
 %%------------------------------------------------------------------------------
 %% @doc
