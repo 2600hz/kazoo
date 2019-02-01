@@ -23,6 +23,11 @@
                 "type": "object"
             },
             "type": "array"
+        },
+        "rollover_monthly_balance": {
+            "default": true,
+            "description": "ledgers rollover_monthly_balance",
+            "type": "boolean"
         }
     },
     "type": "object"
