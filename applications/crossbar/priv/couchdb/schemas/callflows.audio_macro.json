@@ -87,6 +87,9 @@
                         "type": "string"
                     }
                 },
+                "required": [
+                    "macro"
+                ],
                 "type": "object"
             },
             "minItems": 1,

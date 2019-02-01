@@ -16,10 +16,10 @@
                     "prefix": "image"
                 },
                 {
-                    "prefix": "application/vnd.openxmlformats-officedocument."
+                    "prefix": "application/vnd.openxmlformats-officedocument"
                 },
                 {
-                    "prefix": "application/vnd.oasis.opendocument."
+                    "prefix": "application/vnd.oasis.opendocument"
                 },
                 "application/msword",
                 "application/vnd.ms-excel",
@@ -27,7 +27,22 @@
             ],
             "description": "fax allowed content types",
             "items": {
-                "type": "string"
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "properties": {
+                            "prefix": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "prefix"
+                        ],
+                        "type": "object"
+                    }
+                ]
             },
             "type": "array"
         },
