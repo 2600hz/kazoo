@@ -75,9 +75,6 @@ new(Call, Options) ->
         {'ok', MessageDoc} ->
             MediaUrl = fun() -> kz_media_url:store(MessageDoc, AttachmentName) end,
             MessageId = kz_doc:id(MessageDoc),
-            Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
-                               ,[MessageId, BoxId, kapps_call:account_id(Call)]
-                               ),
             Funs = [{fun kapps_call:kvs_store/3, 'mailbox_id', BoxId}
                    ,{fun kapps_call:kvs_store/3, 'attachment_name', AttachmentName}
                    ,{fun kapps_call:kvs_store/3, 'media_id', MessageId}
@@ -89,6 +86,9 @@ new(Call, Options) ->
                 'ok' ->
                     notify_and_update_meta(Call, MessageId, Length, Options);
                 {'error', Call1} ->
+                    Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
+                                       ,[MessageId, BoxId, kapps_call:account_id(Call)]
+                                       ),
                     lager:error(Msg),
                     {'error', Call1, Msg}
             end
