@@ -42,9 +42,9 @@ audio(FromFormat, ToFormat, Content) ->
 %%------------------------------------------------------------------------------
 -spec audio(kz_term:api_binary(), kz_term:api_binary(), content(), kz_term:proplist()) ->
                  gen_kz_converter:converted().
-audio('undefined', _ToFormat, <<>>, _Options) ->
+audio('undefined', _ToFormat, _Content, _Options) ->
     {'error', <<"undefined from format">>};
-audio(_FromFormat, 'undefined', <<>>, _Options) ->
+audio(_FromFormat, 'undefined', _Content, _Options) ->
     {'error', <<"undefined to format">>};
 audio(_FromFormat, _ToFormat, <<>>, _Options) ->
     {'error', <<"empty content">>};
@@ -83,9 +83,9 @@ fax(FromFormat, ToFormat, Content) ->
 %%------------------------------------------------------------------------------
 -spec fax(kz_term:api_binary(), kz_term:api_binary(), content(), kz_term:proplist()) ->
                  gen_kz_converter:converted().
-fax('undefined', _ToFormat, <<>>, _Options) ->
+fax('undefined', _ToFormat, _Content, _Options) ->
     {'error', <<"undefined from format">>};
-fax(_FromFormat, 'undefined', <<>>, _Options) ->
+fax(_FromFormat, 'undefined', _Content, _Options) ->
     {'error', <<"undefined to format">>};
 fax(_FromFormat, _ToFormat, <<>>, _Options) ->
     {'error', <<"empty content">>};
