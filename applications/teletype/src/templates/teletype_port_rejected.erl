@@ -7,6 +7,7 @@
 -module(teletype_port_rejected).
 
 -export([init/0
+        ,id/0
         ,handle_req/1
         ]).
 
@@ -30,6 +31,9 @@
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
+
+-spec id() -> kz_term:ne_binary().
+id() -> ?TEMPLATE_ID.
 
 -spec init() -> 'ok'.
 init() ->
@@ -95,7 +99,22 @@ handle_port_request(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
+    lager:debug("sending ~s to port authority: ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, Emails)]
+               ),
+    _ = teletype_util:send_email(Emails, Subject, RenderedTemplates),
+
+    AuthorityEmails = props:set_value(<<"to">>
+                                     ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
+                                     ,Emails
+                                     ),
+
+    lager:debug("sending ~s to port sumbitter (or template default): ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, AuthorityEmails)]
+               ),
+    case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
-        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
+        {'error', Reason} ->
+            lager:debug("unable to send emails to port authority: ~p", [Reason]),
+            teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
