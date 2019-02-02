@@ -46,6 +46,7 @@
 -define(KEY_SOURCE_ID, <<"source_id">>).
 -define(KEY_SOURCE_TYPE, <<"source_type">>).
 -define(KEY_STREAMABLE, <<"streamable">>).
+-define(KEY_TRANSCRIBE_FILENAME, <<"transcribe_filename">>).
 -define(KEY_UTC_SEC, <<"utc_seconds">>).
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 
@@ -126,7 +127,8 @@ new(AccountId, Props) ->
                ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
                ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
                ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-               ,{?KEY_MEDIA_FILENAME, props:get_value(<<"Attachment-Name">>, Props)}
+               ,{?KEY_MEDIA_FILENAME, gen_attachment_filename(Props)}
+               ,{?KEY_TRANSCRIBE_FILENAME, gen_transcribe_filename(Props)}
                ,{?KEY_STREAMABLE, 'true'}
                ,{?KEY_UTC_SEC, UtcSeconds}
                ],
@@ -136,6 +138,36 @@ new(AccountId, Props) ->
                                  ,{'now', Timestamp}
                                  ]
                                 ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec gen_attachment_filename(kz_term:proplist()) -> kz_term:ne_binary().
+gen_attachment_filename(Props) ->
+    case props:get_value(<<"Transcribe-Voicemail">>, Props)
+         andalso props:is_defined(<<"Required-Format">>, Props)
+         andalso props:get_value(<<"Required-Format">>, Props) =/= <<"wav">> of
+        'false' -> props:get_value(<<"Attachment-Name">>, Props);
+        'true' ->
+            FileName = props:get_value(<<"Attachment-Name">>, Props),
+            RootName = filename:rootname(FileName),
+            Ext = props:get_value(<<"Required-Format">>, Props),
+            <<RootName/binary, ".", Ext/binary>>
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec gen_transcribe_filename(kz_term:proplist()) -> kz_term:api_ne_binary().
+gen_transcribe_filename(Props) ->
+    case props:get_value(<<"Transcribe-Voicemail">>, Props)
+         andalso props:is_defined(<<"Required-Format">>, Props)
+         andalso props:get_value(<<"Required-Format">>, Props) =/= <<"wav">> of
+        'true' -> props:get_value(<<"Attachment-Name">>, Props);
+        'false' -> 'undefined'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
