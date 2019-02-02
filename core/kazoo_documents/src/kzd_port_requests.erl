@@ -326,14 +326,20 @@ find_port_authority(Doc) ->
             PortAuthority
     end.
 
--spec find_port_authority(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
+-spec find_port_authority(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_binary().
+find_port_authority('undefined', 'undefined') ->
+    lager:debug("master and account id is undefined"),
+    'undefined';
+find_port_authority(?NE_BINARY = MasterAccountId, 'undefined') ->
+    lager:debug("account id is undefined, checking master"),
+    find_port_authority(MasterAccountId, MasterAccountId);
 find_port_authority(MasterAccountId, MasterAccountId) ->
     case kzd_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master whitelabel, assuming master is port authority"),
             MasterAccountId;
         {'ok', JObj} ->
-            lager:debug("checking master whitelabel port authority"),
+            lager:debug("checking master whitelabel port authority if defined"),
             kzd_whitelabel:port_authority(JObj, MasterAccountId)
     end;
 find_port_authority(MasterAccountId, AccountId) ->

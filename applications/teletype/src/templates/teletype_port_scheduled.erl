@@ -7,6 +7,7 @@
 -module(teletype_port_scheduled).
 
 -export([init/0
+        ,id/0
         ,handle_req/1
         ]).
 
@@ -30,6 +31,9 @@
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
+
+-spec id() -> kz_term:ne_binary().
+id() -> ?TEMPLATE_ID.
 
 -spec init() -> 'ok'.
 init() ->

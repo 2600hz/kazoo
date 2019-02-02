@@ -38,7 +38,7 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="text-align:left;padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
-                        <span style="margin:4px 0;padding:25px 0 0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Submitted On:</b>&nbsp;{{port_request.created.local|date:"l, F j, Y h:i A"}} ({{port_request.created.timezone}})</span><br>
+                        <span style="margin:4px 0;padding:25px 0 0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Submitted on:</b>&nbsp;{{port_request.created.local|date:"l, F j, Y h:i A"}} ({{port_request.created.timezone}})</span><br>
                     </td>
                 </tr>
                 <tr>
@@ -72,7 +72,7 @@
                             </tr>
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Requested Port Date</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{% if port_request.requested_port_date %}{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% else %}Not scheduled{% endif %}</td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{% if port_request.requested_port_date %}{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% else %}not scheduled yet{% endif %}</td>
                             </tr>
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Losing Carrier</b></td>
@@ -83,45 +83,71 @@
                                 <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.winning_carrier}}</td>
                             </tr>
                             <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Carrier Reference Number</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.carrier_reference_number}}</td>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Reference Number</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.reference_number}}</td>
                             </tr>
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Customer Contact</b></td>
                                 <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{ port_request.customer_contact|join:", "}}</td>
                             </tr>
-                            <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Billing Name</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.bill_name}}</td>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Billing Details</h3>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <ul style="margin:0 25px;padding:0;">
+                            <li style="margin:0 20px 10px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Account Name on Bill:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.name}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Street Pre-Direction:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.street_pre_dir}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Street Number:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.street_number}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Street Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.street_name}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Street Type:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.street_type}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Street Post-Direction:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.street_post_dir}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Address Line 2:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.extended_address}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>City:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.locality}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>State:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.region}}</span></li>
+                            <li style="margin:10px 20px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Postal Code:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.address.postal_code}}</span></li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Carrier Account Details</h3>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <ul style="margin:0 25px;padding:0;">
+                            <li style="margin:0 20px 10px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.account.number}}</span></li>
+                            <li style="margin:0 20px 10px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>PIN:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.account.pin}}</span></li>
+                            <li style="margin:0 20px 10px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;"><b>BTN:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{port_request.bill.account.btn}}</span></li>
+                        </ul>
+                    </td>
+                </tr>
+            </table>
+            {% if port_request.signee_name or port_request.signing_date %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td height="50" style="background-color:#ffffff;font-size:50px;line-height:50px;">&nbsp;</td></tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:0 20px;">
+                        <table role="presentation" aria-hidden="true" border="0" cellpadding="0" cellspacing="0" align="center" width="100%" style="max-width:560px;">
+                            <tr height="24">
+                                <td align="center" bgcolor="#ffffff" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#999999"><b>Signee Name</b></td>
+                                <td align="center" bgcolor="#ffffff" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#999999;"><b>Signing Date</b></span></td>
                             </tr>
                             <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Billing Street Number</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.bill_street_number}}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Billing Street</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.bill_street_address}}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Billing Street Type</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.bill_street_type}}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Billing City</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.bill_locality}}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Billing State</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.bill_region}}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Billing Postal Code</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.bill_postal_code}}</td>
+                                <td align="center" bgcolor="#ffffff" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#999999;">{% firstof port_request.signee_name "-" %}</td>
+                                <td align="center" bgcolor="#ffffff" style="padding:10px 20px;font-family:'Open Sans',sans-serif;color:#999999">{% firstof port_request.signing_date.local|date:"l, F j, Y h:i A" %}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
             </table>
+            {% endif %}
             <!-- Pre-Footer -->
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <!-- Clear Spacer -->
