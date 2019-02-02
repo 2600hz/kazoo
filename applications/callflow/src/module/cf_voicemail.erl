@@ -409,7 +409,7 @@ compose_voicemail(Box, _IsOwner, Call) ->
     start_composing_voicemail(Box, Call).
 
 -spec start_composing_voicemail(mailbox(), kapps_call:call()) -> compose_return().
-start_composing_voicemail(#mailbox{media_extension=Ext}=Box, Call) ->
+start_composing_voicemail(#mailbox{media_extension=Ext, transcribe_voicemail=MaybeTranscribe}=Box, Call) ->
     lager:debug("playing mailbox greeting to caller"),
     _ = play_greeting_intro(Box, Call),
     _ = play_greeting(Box, Call),
@@ -419,7 +419,7 @@ start_composing_voicemail(#mailbox{media_extension=Ext}=Box, Call) ->
     case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {'ok', _} ->
             lager:info("played greeting and instructions to caller, recording new message"),
-            record_voicemail(tmp_file(Ext), Box, Call);
+            record_voicemail(tmp_file(Ext, MaybeTranscribe), Box, Call);
         {'dtmf', Digit} ->
             _ = kapps_call_command:b_flush(Call),
             handle_compose_dtmf(Box, Call, Digit);
@@ -433,6 +433,7 @@ handle_compose_dtmf(#mailbox{keys=#keys{login=Login}}=Box, Call, Login) ->
     check_mailbox(Box, Call);
 handle_compose_dtmf(#mailbox{media_extension=Ext
                             ,keys=#keys{operator=Operator}
+                            ,transcribe_voicemail=MaybeTranscribe
                             }=Box
                    ,Call
                    ,Operator
@@ -440,13 +441,13 @@ handle_compose_dtmf(#mailbox{media_extension=Ext
     lager:info("caller chose to ring the operator"),
     case cf_util:get_operator_callflow(kapps_call:account_id(Call)) of
         {'ok', Flow} -> {'branch', Flow};
-        {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
+        {'error', _R} -> record_voicemail(tmp_file(Ext, MaybeTranscribe), Box, Call)
     end;
 handle_compose_dtmf(#mailbox{keys=#keys{continue=Continue}}=_Box, _Call, Continue) ->
     lager:info("caller chose to continue to the next element in the callflow");
-handle_compose_dtmf(#mailbox{media_extension=Ext}=Box, Call, _DTMF) ->
+handle_compose_dtmf(#mailbox{media_extension=Ext, transcribe_voicemail=MaybeTranscribe}=Box, Call, _DTMF) ->
     lager:info("caller pressed unbound '~s', skip to recording new message", [_DTMF]),
-    record_voicemail(tmp_file(Ext), Box, Call).
+    record_voicemail(tmp_file(Ext, MaybeTranscribe), Box, Call).
 
 -spec handle_full_mailbox(mailbox(), kapps_call:call()) ->
                                  'ok' | {'error', 'channel_hungup'}.
@@ -1521,6 +1522,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                             ,owner_id=OwnerId
                                             ,transcribe_voicemail=MaybeTranscribe
                                             ,after_notify_action=Action
+                                            ,media_extension=RequiredFormat
                                             }=Box, Call) ->
     NewMsgProps = [{<<"Box-Id">>, BoxId}
                   ,{<<"Owner-Id">>, OwnerId}
@@ -1530,6 +1532,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                   ,{<<"Attachment-Name">>, AttachmentName}
                   ,{<<"Box-Num">>, BoxNum}
                   ,{<<"Timezone">>, Timezone}
+                  ,{<<"Required-Format">>, RequiredFormat}
                   ],
     case kvm_message:new(Call, NewMsgProps) of
         {'ok', _NewCall} -> send_mwi_update(Box);
@@ -2003,6 +2006,12 @@ update_doc(Key, Value, Id, Call) ->
 -spec tmp_file(kz_term:ne_binary()) -> kz_term:ne_binary().
 tmp_file(Ext) ->
     <<(kz_binary:rand_hex(16))/binary, ".", Ext/binary>>.
+
+-spec tmp_file(kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
+tmp_file(_Ext, 'true') ->
+    tmp_file(<<"wav">>);
+tmp_file(Ext, 'false') ->
+    tmp_file(Ext).
 
 %%------------------------------------------------------------------------------
 %% @doc Accepts Universal Coordinated Time (UTC) and convert it to binary
