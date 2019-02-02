@@ -12,7 +12,7 @@
 -type db_name()          :: kz_term:ne_binary().
 -type doc_id()           :: kz_term:ne_binary().
 -type att_name()         :: kz_term:ne_binary().
--type contents()         :: kz_term:ne_binary().
+-type contents()         :: binary().
 -type options()          :: kz_data:options().
 -type handler_props()    :: kz_data:connection().
 

@@ -6,7 +6,7 @@ The IPs API allows users to manage the IP addresses assigned to their accounts. 
 
 The common use case is adding proxy IPs that must be used when routing calls to upstream resources. If the upstream requires traffic to come from a specific set of IPs, adding those IPs here will cause outbound calls to carriers to be routed through the IP(s) supplied.
 
-## Schema
+#### Schema
 
 IP addresses assigned to the account
 
@@ -14,8 +14,8 @@ IP addresses assigned to the account
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`ips.[]` |   | `string()` |   | `false` |
-`ips` | List of IP addresses | `array(string())` |   | `false` |
+`ips.[]` |   | `string()` |   | `false` |  
+`ips` | List of IP addresses | `array(string())` |   | `false` |  
 
 
 

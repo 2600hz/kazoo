@@ -4,9 +4,9 @@
 
 Temporal rules provide a flexible way to configure time-based Call routing, e.g. open hours, holidays, close hours, etc...
 
-## Schema
+#### Schema
 
-Schema for a temporal rules.
+Schema for a temporal rules
 
 
 
@@ -14,7 +14,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `cycle` | The recurrence cycle for this rule | `string('date' | 'daily' | 'weekly' | 'monthly' | 'yearly')` |   | `true` | `supported`
 `days` | The recurrence days for this rule | `array(integer())` |   | `false` | `supported`
-`enabled` | Whether the rule is enabled | `boolean()` |   | `false` |
+`enabled` | Whether the rule is enabled | `boolean()` |   | `false` |  
 `interval` | The recurrence interval for this rule | `integer()` | `1` | `false` | `supported`
 `month` | The recurrence month for this rule | `integer()` |   | `false` | `supported`
 `name` | A friendly name for the temporal rule | `string(1..128)` |   | `true` | `supported`

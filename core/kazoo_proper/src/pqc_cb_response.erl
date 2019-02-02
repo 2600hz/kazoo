@@ -44,7 +44,7 @@ status(APIResp) ->
     kz_json:get_ne_binary_value(<<"status">>, APIResp).
 
 -spec data(pqc_cb_api:response() | kz_json:object()) ->
-                  kz_json:object() | kz_json:objects().
+                  kz_json:object() | kz_json:objects() | kz_term:ne_binaries().
 data(JSON) when is_binary(JSON) ->
     data(kz_json:decode(JSON));
 data({'error', RespBody}) when is_binary(RespBody) ->

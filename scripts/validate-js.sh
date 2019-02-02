@@ -178,8 +178,10 @@ def main():
     all_view_destinations = {}
     for fn in sys.argv[1:]:
         if not os.path.isfile(fn):
+            print 'not a file: {}'.format(fn);
             continue
         if not fn.endswith('.json'):
+            print 'not a JSON file: {}'.format(fn);
             continue
         exploded = fn.split(os.sep)
         if not 'couchdb' in exploded:
@@ -195,7 +197,7 @@ def main():
                 fmap(couchjs, data)
                 kz_check_views_destination(data, fn, exploded, view_definition_ids, all_view_destinations)
             except Exception as e:
-                print 'failed to process', fn
+                print 'failed to process {}'.format(fn)
                 print e
                 global exit_code
                 exit_code=1

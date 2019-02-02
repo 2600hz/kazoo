@@ -1,7 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.attachments",
-    "description": "Keys are 32-character identifiers to be used in storage plans",
+    "additionalProperties": false,
+    "description": "Defines where and how to store attachments. Keys are 32-character identifiers to be used in storage plans",
     "patternProperties": {
         "^[a-z0-9]{32}$": {
             "description": "Configuration for the supported storage backends",
@@ -29,63 +30,30 @@
                 }
             ],
             "properties": {
-                "field_list": {
-                    "description": "list of field to compose destination url",
-                    "items": [
-                        {
-                            "description": "a static string",
-                            "type": "string"
-                        },
-                        {
-                            "properties": {
-                                "arg": {
-                                    "description": "a argument passed to the handler",
-                                    "type": "string"
-                                },
-                                "field": {
-                                    "description": "a field from the metadata document",
-                                    "type": "string"
-                                },
-                                "group": {
-                                    "description": "group the inner fields definitions with an empty separator",
-                                    "items": [
-                                        {
-                                            "description": "a static string",
-                                            "type": "string"
-                                        },
-                                        {
-                                            "properties": {
-                                                "arg": {
-                                                    "description": "a argument passed to the handler",
-                                                    "type": "string"
-                                                },
-                                                "field": {
-                                                    "description": "a field from the metadata document",
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    ],
-                                    "type": "array"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    ],
-                    "type": "array"
-                },
-                "field_separator": {
-                    "description": "toplevel, field separator to compose destination url",
-                    "type": "string"
-                },
-                "folder_base_path": {
-                    "description": "base folder path",
-                    "type": "string"
-                },
                 "name": {
                     "description": "Friendly name for this configuration",
                     "type": "string"
+                },
+                "settings": {
+                    "description": "Settings all handlers implement",
+                    "properties": {
+                        "field_list": {
+                            "description": "list of fields to compose destination url",
+                            "items": {
+                                "$ref": "storage.attachments.field"
+                            },
+                            "type": "array"
+                        },
+                        "field_separator": {
+                            "description": "toplevel, field separator to compose destination url",
+                            "type": "string"
+                        },
+                        "folder_base_path": {
+                            "description": "base folder path",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 }
             },
             "type": "object"

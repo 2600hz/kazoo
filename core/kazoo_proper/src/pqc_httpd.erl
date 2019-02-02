@@ -10,6 +10,8 @@
 -export([fetch_req/1
         ,get_req/1
         ,wait_for_req/1, wait_for_req/2
+        ,update_req/2
+
         ,base_url/0
         ,status/0
         ,stop/0
@@ -85,6 +87,16 @@ wait_for_req(Path) ->
 wait_for_req(Path, TimeoutMs) ->
     gen_server:call(?MODULE, {'wait_for_req', Path, TimeoutMs}, TimeoutMs + 100).
 
+-spec update_req(kz_json:path(), binary()) -> 'ok'.
+update_req(Path, <<_/binary>>=Content) ->
+    Store = try base64:decode(Content) of
+                Decoded -> Decoded
+            catch
+                'error':_ -> Content
+            end,
+    ?INFO("trying to store ~p: ~s", [Path, Store]),
+    gen_server:call(?MODULE, {'req', Path, Store}).
+
 log_meta(LogId) ->
     kz_util:put_callid(LogId),
     lager:md([{'request_id', LogId}]),
@@ -144,7 +156,7 @@ get_from_state(Req, State) ->
     Path = cowboy_req:path(Req), % <<"/foo/bar/baz">>
     PathParts = tl(binary:split(Path, <<"/">>, ['global'])),
 
-    {RespCode, RespBody} =
+    {RespCode, Body} =
         case get_req(PathParts) of
             'undefined' -> {404, <<>>};
             Value -> {200, Value}
@@ -152,13 +164,14 @@ get_from_state(Req, State) ->
 
     ?INFO("GET req ~s: ~p", [Path, RespCode]),
 
-    Req1 = cowboy_req:reply(RespCode, #{}, RespBody, Req),
+    Req1 = cowboy_req:reply(RespCode, #{}, Body, Req),
     {'ok', Req1, State}.
 
 add_req_to_state(Req, State) ->
     Path = cowboy_req:path(Req), % <<"/foo/bar/baz">>
     PathParts = tl(binary:split(Path, <<"/">>, ['global'])),
-    ReqBody = read_body(cowboy_req:read_body(Req)),
+
+    {Req1, ReqBody} = maybe_handle_multipart(Req),
 
     RespCode = case get_req(PathParts) of
                    'undefined' -> 201;
@@ -166,20 +179,59 @@ add_req_to_state(Req, State) ->
                end,
 
     ?INFO("PUT req ~s: ~p: ~s", [Path, RespCode, ReqBody]),
-    gen_server:cast(?MODULE, {'req', PathParts, iolist_to_binary(ReqBody)}),
+    update_req(PathParts, iolist_to_binary(ReqBody)),
 
     Headers = #{<<"content-type">> => <<"application/json">>},
 
-    Req1 = cowboy_req:reply(RespCode, Headers, <<"{}">>, Req),
-    {'ok', Req1, State}.
+    Req2 = cowboy_req:reply(RespCode, Headers, <<"{}">>, Req1),
+    {'ok', Req2, State}.
 
 -spec read_body({'ok', binary(), cowboy_req:req()} |
                 {'more', binary(), cowboy_req:req()}
-               ) -> iodata().
-read_body({'ok', BodyPart, _Req}) ->
-    BodyPart;
+               ) -> {cowbow_req:req(), iodata()}.
+read_body({'ok', BodyPart, Req}) ->
+    {Req, BodyPart};
 read_body({'more', BodyPart, Req}) ->
-    [BodyPart, read_body(cowboy_req:read_body(Req))].
+    {Req1, Rest} = read_body(cowboy_req:read_body(Req)),
+    {Req1, [BodyPart, Rest]}.
+
+-spec maybe_handle_multipart(cowboy_req:req()) -> {cowboy_req:req(), iodata()}.
+maybe_handle_multipart(Req) ->
+    maybe_handle_multipart(Req, cowboy_req:parse_header(<<"content-type">>, Req)).
+
+maybe_handle_multipart(Req, {<<"multipart">>, <<"form-data">>, _Boundary}) ->
+    ?INFO("handle multipart body with boundary: ~p", [_Boundary]),
+    handle_multipart(Req);
+maybe_handle_multipart(Req, _CT) ->
+    ?INFO("req has content-type: ~p", [_CT]),
+    read_body(cowboy_req:read_body(Req)).
+
+handle_multipart(Req0) ->
+    case cowboy_req:read_part(Req0) of
+        {'ok', Headers, Req1} ->
+            ?INFO("recv part headers: ~p", [Headers]),
+            handle_part_headers(Req1, Headers);
+        {'done', Req1} ->
+            ?INFO("finished reading parts, no body"),
+            {Req1, <<>>}
+    end.
+
+handle_part_headers(Req, #{<<"content-type">> := <<"application/json">>}) ->
+    ?INFO("skipping JSON metadata"),
+    handle_multipart(Req);
+handle_part_headers(Req, Headers) ->
+    case cow_multipart:form_data(Headers) of
+        {'data', Field} ->
+            ?INFO("field: ~p", [Field]),
+            {'ok', Body, Req1} = cowboy_req:read_part_body(Req),
+            ?INFO("body: ~p", [Body]),
+            {Req1, Body};
+        {'file', _FieldName, _Filename, _CType} ->
+            ?INFO("file ~p: ~p: ~p", [_FieldName, _Filename, _CType]),
+            {'ok', Body, Req1} = cowboy_req:read_part_body(Req),
+            ?INFO("body: ~p", [Body]),
+            {Req1, Body}
+    end.
 
 -spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
 terminate(_Reason, _Req, _State) ->
@@ -208,17 +260,38 @@ handle_call({'wait_for_req', Path, TimeoutMs}
         'undefined' ->
             {'noreply', State#state{waits=[new_wait(From, Path, TimeoutMs) | Waits]}};
         Value ->
-            {'reply', Value, State}
+            {'reply', {'ok', Value}, State}
     end;
 handle_call('status', _From, State) ->
     {'reply', State, State};
 handle_call({'fetch_req', Path}, _From, #state{requests=Requests}=State) ->
     case kz_json:take_value(Path, Requests) of
-        'false' -> {'reply', 'undefined', State};
-        {'value', Value, NewRequests} -> {'reply', Value, State#state{requests=NewRequests}}
+        'false' ->
+            ?INFO("failed to fetch ~p", [Path]),
+            {'reply', 'undefined', State};
+        {'value', Value, NewRequests} ->
+            ?INFO("fetched ~p: ~s", [Path, Value]),
+            {'reply', Value, State#state{requests=NewRequests}}
     end;
 handle_call({'get_req', Path}, _From, #state{requests=Requests}=State) ->
+    ?INFO("getting ~p", [Path]),
     {'reply', kz_json:get_value(Path, Requests), State};
+handle_call({'req', PathInfo, ReqBody}, _From, #state{requests=Requests
+                                                     ,waits=Waits
+                                                     }=State) ->
+    ?INFO("storing to ~p: ~s", [PathInfo, ReqBody]),
+    UpdatedReqs = kz_json:set_value(PathInfo, ReqBody, Requests),
+
+    {Relays, StillWaiting} =
+        lists:splitwith(fun({_F, _T, P}) -> lists:prefix(P, PathInfo) end
+                       ,Waits
+                       ),
+
+    _ = relay(Relays, UpdatedReqs),
+
+    {'reply', 'ok', State#state{requests=UpdatedReqs
+                               ,waits=StillWaiting
+                               }};
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 

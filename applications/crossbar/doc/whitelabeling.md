@@ -2,7 +2,7 @@
 
 Whitelabling is one of the core functionality of the Kazoo which allows to make your own brand.
 
-## Schema
+#### Schema
 
 Whitelabel settings
 
@@ -19,7 +19,7 @@ Key | Description | Type | Default | Required | Support Level
 `inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 `nav.help` | The URL to use when the help link is clicked | `string()` |   | `false` | `supported`
 `nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false` | `supported`
-`nav` | Properties related to navigation in the UI | `object()` |   | `false` |
+`nav` | Properties related to navigation in the UI | `object()` |   | `false` |  
 `outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 `port.authority` | The email(s) to be used for admin port requests | `string() | array(string())` |   | `false` | `supported`
 `port.features` | The URL to use when the features link is clicked | `string()` |   | `false` | `supported`
@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 `port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` | `supported`
 `port.support_email` | The support email address to display to the user | `string()` |   | `false` | `supported`
 `port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` | `supported`
-`port` | Parameters related to white-labeling port requests | `object()` |   | `false` |
+`port` | Parameters related to white-labeling port requests | `object()` |   | `false` |  
 `twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 
 

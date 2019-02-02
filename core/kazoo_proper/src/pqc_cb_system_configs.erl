@@ -158,28 +158,29 @@ init() ->
     _ = [crossbar_maintenance:start_module(Mod) ||
             Mod <- ['cb_system_configs']
         ],
-    init_db(),
+    _ = init_db(),
     ?INFO("INIT FINISHED").
 
 -spec init_db() -> {'ok', kz_json:object()}.
 init_db() ->
     {'ok', _} = kz_datamgr:save_doc(?KZ_SCHEMA_DB, ?CONFIG_SCHEMA).
 
--spec cleanup_db() -> {'ok', kz_json:object()}.
+-spec cleanup_db() -> 'ok'.
 cleanup_db() ->
-    kz_datamgr:del_doc(?KZ_CONFIG_DB, ?CATEGORY_ID),
-    kz_datamgr:del_doc(?KZ_SCHEMA_DB, ?SCHEMA_ID).
+    _ = kz_datamgr:del_doc(?KZ_CONFIG_DB, ?CATEGORY_ID),
+    _ = kz_datamgr:del_doc(?KZ_SCHEMA_DB, ?SCHEMA_ID),
+    'ok'.
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
-    init(),
+    _ = init(),
     API = pqc_cb_api:authenticate(),
     ?INFO("state initialized to ~p", [API]),
     pqc_kazoo_model:new(API).
 
--spec default() -> any().
+-spec default() -> 'ok'.
 default() ->
-    init_db(),
+    _ = init_db(),
     Stored = kapps_config_doc:stored_node(?CATEGORY_ID, <<"default">>),
     io:format("stored: ~p~n", [Stored]),
     cleanup_db().
@@ -256,7 +257,7 @@ seq() ->
     'false' = lists:member(?CATEGORY_ID, OutListing),
 
     ?INFO("COMPLETED SUCCESSFULLY!"),
-    cleanup(API),
+    _ = cleanup(API),
     io:format("done: ~p~n", [API]).
 
 -spec cleanup() -> any().
