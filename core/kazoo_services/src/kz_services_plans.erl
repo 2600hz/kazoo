@@ -54,26 +54,6 @@
                              ,?DEFAULT_PRIORITIES
                              )
        ).
--define(ITEM_FIELDS,
-        kz_json:from_list(
-          [{<<"activation_charge">>, kz_json:new()}
-          ,{<<"discounts">>
-           ,kz_json:from_list(
-              [{<<"maximum">>, kz_json:new()}
-              ,{<<"rate">>, kz_json:new()}
-              ])
-           }
-          ,{<<"minimum">>, kz_json:new()}
-          ,{<<"rate">>, kz_json:new()}
-          ])
-       ).
--define(UNDERSCORE_ALL_FIELDS,
-        kz_json:set_values([{<<"as">>, kz_json:new()}
-                           ,{<<"exceptions">>, kz_json:new()}
-                           ]
-                          ,?ITEM_FIELDS
-                          )
-       ).
 
 %%------------------------------------------------------------------------------
 %% @doc Create an empty service plans data structure.
@@ -467,39 +447,92 @@ editable_fields() ->
 -spec editable_fields(kz_term:api_binary()) -> kz_json:object().
 editable_fields(ResellerId) ->
     lager:debug("listing editable fields for ~s", [ResellerId]),
-    JObj = read_service_plan_editable(),
-    UIApps = kz_json:from_list(get_ui_apps(ResellerId)),
-    kz_json:set_value(<<"ui_apps">>, UIApps, JObj).
+    Routines = [fun editable_phone_numbers_fields/2
+               ,fun editable_number_carriers_fields/2
+               ,fun editable_number_services_fields/2
+               ,fun editable_monster_apps_fields/2
+               ,fun editable_qubicle_fields/2
+               ],
+    editable_fields_to_json(
+      lists:foldl(fun(F, Props) ->
+                          F(Props, ResellerId)
+                  end
+                 ,?DEFAULT_QUANTIFIERS
+                 ,Routines
+                 )
+     ).
 
--spec read_service_plan_editable() -> kz_json:object().
-read_service_plan_editable() ->
-    Path = filename:join([code:priv_dir(?APP), "service_plan_editable_fields.json"]),
-    case file:read_file(Path) of
-        {'ok', Bin} -> kz_json:decode(Bin);
-        {'error', _Reason} ->
-            lager:debug("failed to read file ~s: ~p", [Path, _Reason]),
-            kz_json:new()
+-spec editable_phone_numbers_fields(kz_term:proplist(), kz_term:api_binary()) -> kz_term:proplist().
+editable_phone_numbers_fields(Fields, _ResellerId) ->
+    Classifiers = kz_json:get_keys(knm_converters:available_classifiers()),
+    case kz_term:is_empty(Classifiers) of
+        'true' -> props:delete(<<"phone_numbers">>, Fields);
+        'false' -> props:set_value(<<"phone_numbers">>, Classifiers, Fields)
     end.
 
--spec get_ui_apps(kz_term:api_binary()) -> kz_term:proplist().
-get_ui_apps('undefined') ->
-    [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}];
-get_ui_apps(ResellerId) ->
+-spec editable_number_carriers_fields(kz_term:proplist(), kz_term:api_binary()) -> kz_term:proplist().
+editable_number_carriers_fields(Fields, ResellerId) ->
+    Carriers = [kz_term:to_binary(Carrier)
+                || Carrier <- knm_carriers:available_carriers([{'reseller_id', ResellerId}])
+               ],
+    case kz_term:is_empty(Carriers) of
+        'true' -> props:delete(<<"number_carriers">>, Fields);
+        'false' -> props:set_value(<<"number_carriers">>, Carriers, Fields)
+    end.
+
+-spec editable_number_services_fields(kz_term:proplist(), kz_term:api_binary()) -> kz_term:proplist().
+editable_number_services_fields(Fields, ResellerId) ->
+    Services = knm_providers:reseller_allowed_features(ResellerId),
+    case kz_term:is_empty(Services) of
+        'true' -> props:delete(<<"number_services">>, Fields);
+        'false' -> props:set_value(<<"number_services">>, Services, Fields)
+    end.
+
+-spec editable_monster_apps_fields(kz_term:proplist(), kz_term:api_binary()) -> kz_term:proplist().
+editable_monster_apps_fields(Fields, 'undefined') ->
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    editable_monster_apps_fields(Fields, MasterAccountId);
+editable_monster_apps_fields(Fields, ResellerId) ->
     case kzd_apps_store:fetch(ResellerId) of
+        {'error', _R} -> Fields;
         {'ok', JObj} ->
-            Apps = kzd_apps_store:apps(JObj),
             Fun = fun(_App, AppJObj, Acc) ->
                           case kzd_app:name(AppJObj) of
                               ?NE_BINARY=Name ->
-                                  [{Name, ?ITEM_FIELDS}|Acc];
+                                  [Name|Acc];
                               _ -> Acc
                           end
                   end,
-            kz_json:foldl(Fun, [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}], Apps);
-        {'error', _Reason} ->
-            lager:debug("failed to read master's app_store: ~p", [_Reason]),
-            [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}]
+            Apps = kz_json:foldl(Fun, [], kzd_apps_store:apps(JObj)),
+            [{<<"account_apps">>, Apps}
+            ,{<<"user_apps">>, Apps}
+             | Fields
+            ]
     end.
+
+-spec editable_qubicle_fields(kz_term:proplist(), kz_term:api_binary()) -> kz_term:proplist().
+editable_qubicle_fields(Fields, _ResellerId) ->
+    case kz_nodes:whapp_count('qubicle') > 0 of
+        'true' -> Fields;
+        'false' ->
+            props:delete(<<"qubicle">>, Fields)
+    end.
+
+-spec editable_fields_to_json(kz_term:proplist()) -> kz_json:object().
+editable_fields_to_json(Fields) ->
+    {'ok', Schema} = kz_datamgr:open_doc(?KZ_SCHEMA_DB, <<"service_plan.item">>),
+    Properties = kz_json:get_ne_json_value(<<"properties">>, Schema),
+    editable_fields_to_json(Fields, Properties, kz_json:new()).
+
+-spec editable_fields_to_json(kz_term:proplist(), kz_json:object(), kz_json:object()) -> kz_json:object().
+editable_fields_to_json([], _Properties, JObj) -> JObj;
+editable_fields_to_json([{Category, Items}|Fields], Properties, JObj) ->
+    Props = [{[Category, <<"_all">>], Properties}
+             | [{[Category, Item], kz_json:delete_key(<<"as">>, Properties)}
+                || Item <- Items
+               ]
+            ],
+    editable_fields_to_json(Fields, Properties, kz_json:set_values(Props, JObj)).
 
 %%------------------------------------------------------------------------------
 %% @doc
