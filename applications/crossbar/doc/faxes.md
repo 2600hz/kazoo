@@ -29,9 +29,11 @@ Key | Description | Type | Default | Required | Support Level
 `document` | Parameters related to the storage of a fax document | `object()` |   | `false` |  
 `from_name` | The sender name for the fax | `string()` |   | `false` |  
 `from_number` | The sender number for the fax | `string()` |   | `true` |  
-`notifications.email.send_to` | A list or string of email recipient(s) | `array(string()) | string()` |   | `false` |  
+`notifications.email.send_to.[]` |   | `string()` |   | `false` |  
+`notifications.email.send_to` | A list or string of email recipient(s) | `string() | array(string())` |   | `false` |  
 `notifications.email` | Email notifications | `object()` |   | `false` |  
-`notifications.sms.send_to` | A list or string of sms recipient(s) | `array(string()) | string()` |   | `false` |  
+`notifications.sms.send_to.[]` |   | `string()` |   | `false` |  
+`notifications.sms.send_to` | A list or string of sms recipient(s) | `string() | array(string())` |   | `false` |  
 `notifications.sms` | SMS notifications | `object()` |   | `false` |  
 `notifications` | Status notifications | `object()` |   | `false` |  
 `retries` | The number of times to retry | `integer()` | `1` | `false` |  
