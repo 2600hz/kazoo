@@ -273,6 +273,46 @@ format_output(FilePath, _Options) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
+%% @doc read the audio file metadata
+%%      according this description https://ffmpeg.org/ffmpeg-formats.html#Metadata-1
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_embedded_metadata(kz_term:ne_binary()) -> kz_term:proplist().
+get_embedded_metadata(FilePath) ->
+    lager:debug("Reading metainfo from file ~s", [FilePath]),
+    Args = [{<<"FROM">>, FilePath}
+           ],
+    case kz_os:cmd(?READ_METADATA_COMMAND, Args) of
+        {'ok', Data} ->
+            parse_embedded_metadata([L || L <- binary:split(Data, <<"\n">>, ['global']), L =/= <<>>], []);
+        Error ->
+            lager:error("Cannot execute command to read ~s file metainfo. Error: ~p", [FilePath, Error]),
+            []
+    end.
+
+-spec parse_embedded_metadata(list(), kz_term:proplist()) -> kz_term:proplist().
+parse_embedded_metadata([], Acc) ->
+    lists:reverse(Acc);
+parse_embedded_metadata([Line|Rest], Acc) ->
+    case Line of
+        <<";FFMETADATA", _Index/binary>> ->
+            parse_embedded_metadata(Rest, Acc);
+        <<"[CHAPTER]">> ->
+            lager:warning("Cannot parse [CHAPTER] metainfo from file. Support of this metainfo type is not implemented"),
+            parse_embedded_metadata([], Acc);
+        <<"[STREAM]">> ->
+            lager:warning("Cannot parse [STREAM] metainfo from file. Support of this metainfo type is not implemented"),
+            parse_embedded_metadata([], Acc);
+        String ->
+            case string:split(String, <<"=">>) of
+                [Key, Pair] -> parse_embedded_metadata(Rest, lists:append([{Key, Pair}], Acc));
+                _ ->
+                    lager:warning("Cannot parse metainfo string: ~s", [String]),
+                    parse_embedded_metadata(Rest, Acc)
+            end
+    end.
+
+%%------------------------------------------------------------------------------
 %% @doc read metadata about a file to provide information like size and page count
 %%       Now not implemented
 %% @end
@@ -288,7 +328,7 @@ read_metadata(Filename, MimeType) ->
     [{<<"mimetype">>, MimeType}
     ,{<<"size">>, filelib:file_size(kz_term:to_list(Filename))}
     ,{<<"filetype">>, filetype_from_filename(Filename)}
-    ].
+    ] ++ get_embedded_metadata(Filename).
 
 
 -spec filetype_from_filename(kz_term:ne_binary()) -> kz_term:ne_binary().
