@@ -83,7 +83,7 @@
 -type candidates_fun() :: fun((kz_term:ne_binary()) -> kz_bindings()).
 
 -record(kz_responder, {module :: atom()
-                      ,function :: atom()
+                      ,function :: atom() | fun()
                       ,payload :: any()
                       }).
 -type kz_responder() :: #kz_responder{}.
@@ -298,19 +298,19 @@ stop() -> gen_server:cast(?SERVER, 'stop').
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 
--spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), fun()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom() | fun()) ->
                   bind_result() | bind_results().
 bind(Bindings, Fun) ->
     bind(Bindings, 'undefined', Fun).
 
--spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom() | fun()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
     [bind(Binding, Module, Fun) || Binding <- Bindings];
 bind(Binding, Module, Fun) when is_binary(Binding) ->
     bind(Binding, Module, Fun, 'undefined').
 
--spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom() | fun(), any()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
@@ -412,7 +412,7 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
--spec maybe_add_binding(kz_term:ne_binary(), atom(), atom(), any()) ->
+-spec maybe_add_binding(kz_term:ne_binary(), atom(), atom() | fun(), any()) ->
                                'ok' |
                                {'error', 'exists'}.
 maybe_add_binding(Binding, Mod, Fun, Payload) ->

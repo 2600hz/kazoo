@@ -1471,8 +1471,7 @@ invalid_pin(Box, Call, Loop) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
 validate_box_schema(JObj) ->
-    {'ok', Schema} = kz_json_schema:load(<<"vmboxes">>),
-    case jesse:validate_with_schema(Schema, kz_doc:public_fields(JObj)) of
+    case kz_json_schema:validate(<<"vmboxes">>, kz_doc:public_fields(JObj)) of
         {'ok', _}=OK -> OK;
         {'error', _Errors} ->
             lager:debug("failed to validate vmbox schema: ~p", [_Errors]),

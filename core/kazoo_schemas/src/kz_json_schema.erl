@@ -9,7 +9,11 @@
 -export([add_defaults/2
         ,load/1, fload/1
         ,flush/0, flush/1
+        ,diff/0, diff/1, diff_schema/1, diff_schema/2
+        ,delete/1
+
         ,validate/2, validate/3
+        ,fix_js_types/2
         ,errors_to_jobj/1, errors_to_jobj/2
         ,error_to_jobj/1, error_to_jobj/2
         ,validation_error/4
@@ -38,22 +42,30 @@
 -type extra_validator_option() :: {'stability_level', kz_term:ne_binary()}.
 -type extra_validator_options() :: [extra_validator_option()].
 
--type jesse_option() :: {'parser_fun', fun((_) -> _)} |
-{'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
- [jesse_error:error_reason()])} |
-{'allowed_errors', non_neg_integer() | 'infinity'} |
-{'default_schema_ver', binary()} |
-{'schema_loader_fun', fun((kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found')} |
-{'extra_validator', extra_validator()} |
-{'setter_fun', fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object())} |
-{'validator_options', validator_options()} |
-{'extra_validator_options', extra_validator_options()}.
+-type parser_fun() :: fun((kz_term:ne_binary()) -> kz_json:json_term()).
+-type error_handler_fun() :: fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
+                                        [jesse_error:error_reason()]).
+-type schema_loader_fun() :: fun((kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found').
+-type setter_fun() :: fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object()).
+-type getter_fun() :: fun((kz_json:path(), kz_json:object(), jesse:json_term()) -> jesse:json_term()).
+
+-type jesse_option() :: {'parser_fun', parser_fun()} |
+                        {'error_handler', error_handler_fun()} |
+                        {'allowed_errors', non_neg_integer() | 'infinity'} |
+                        {'default_schema_ver', binary()} |
+                        {'schema_loader_fun', schema_loader_fun()} |
+                        {'external_validator', extra_validator()} |
+                        {'setter_fun', setter_fun()} |
+                        {'getter_fun', getter_fun()} |
+                        {'validator_options', validator_options()} |
+                        {'extra_validator_options', extra_validator_options()}.
 
 -type jesse_options() :: [jesse_option()].
 
 -define(DEFAULT_OPTIONS, [{'schema_loader_fun', fun load/1}
                          ,{'allowed_errors', 'infinity'}
                          ,{'setter_fun', fun set_value/3}
+                         ,{'getter_fun', fun get_value/3}
                          ,{'validator_options', ['use_defaults'
                                                 ,'apply_defaults_to_empty_objects'
                                                 ]}
@@ -64,13 +76,15 @@ setup_extra_validator(Options) ->
     Fun = fun(Value, State) ->
                   kz_json_schema_extensions:extra_validator(Value, State, ExtraOptions)
           end,
-    props:set_value({'extra_validator', Fun}, Options).
+    props:set_value({'external_validator', Fun}, Options).
 
+-type load_return() :: {'ok', kz_json:object()} |
+                       {'error', 'not_found'} |
+                       kz_datamgr:data_error().
 -ifdef(TEST).
 load(Schema) -> fload(Schema).
 -else.
--spec load(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                      {'error', any()}.
+-spec load(kz_term:ne_binary() | string()) -> load_return().
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
 load(<<_/binary>> = Schema) ->
@@ -82,7 +96,7 @@ load(Schema) -> load(kz_term:to_binary(Schema)).
 -endif.
 
 -spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                       {'error', 'not_found'}.
+                                               {'error', 'not_found'}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<"file://", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
@@ -116,6 +130,92 @@ maybe_add_ext(Schema) ->
     case filename:extension(Schema) of
         <<".json">> -> Schema;
         _Ext -> <<Schema/binary, ".json">>
+    end.
+
+-type diff_verbosity() :: 'undefined' | 'diff' | 'schema'.
+-spec diff() -> 'ok'.
+diff() ->
+    diff('schema').
+
+-spec diff(diff_verbosity()) -> 'ok'.
+diff(Verbosity) ->
+    PrivDir = code:priv_dir('crossbar'),
+    Path = filename:join([PrivDir, "couchdb", "schemas"]),
+    _ = filelib:fold_files(Path
+                          ,"json$"
+                          ,'false'
+                          ,fun diff_schema/2
+                          ,Verbosity
+                          ),
+    'ok'.
+
+-spec diff_schema(file:filename_all()) -> 'ok'.
+diff_schema(Filename) ->
+    _ = diff_schema(Filename, 'diff'),
+    'ok'.
+
+-spec diff_schema(file:filename_all(), Verbosity) ->
+                         Verbosity when Verbosity :: diff_verbosity().
+diff_schema(Filename, Verbosity) ->
+    SchemaName = filename:basename(Filename, ".json"),
+    diff_schema(Filename, Verbosity, SchemaName, load(SchemaName)).
+
+-spec diff_schema(file:filename_all(), Verbosity, kz_term:ne_binary(), load_return()) ->
+                         Verbosity when Verbosity :: diff_verbosity().
+diff_schema(Filename, Verbosity, SchemaName, {'ok', Schema}) ->
+    {'ok', File} = fload(Filename),
+
+    Public = kz_doc:public_fields(Schema, 'false'),
+
+    JustSchemaDiff = kz_json:diff(Public, File),
+    JustDiskDiff = kz_json:diff(kz_json:delete_key(<<"_id">>, File), Public),
+    maybe_log_diff(Verbosity, SchemaName, JustSchemaDiff, JustDiskDiff),
+    Verbosity;
+diff_schema(_Filename, Verbosity, SchemaName, {'error', E}) ->
+    maybe_log_diff_error(Verbosity, SchemaName, E),
+    Verbosity.
+
+maybe_log_diff('undefined', _Name, _JustSchemaDiff, _JustDiskDiff) -> 'ok';
+maybe_log_diff(Verbosity, SchemaName, JustSchemaDiff, JustDiskDiff) ->
+    case {kz_json:is_empty(JustSchemaDiff), kz_json:is_empty(JustDiskDiff)} of
+        {'true', 'true'}  -> 'ok';
+        _ when Verbosity =:= 'schema' ->
+            io:format("'~s' differs from on-disk file:~n~s~s"
+                     ,[SchemaName
+                      ,printable_diff_keys(" in schema", JustSchemaDiff)
+                      ,printable_diff_keys(" on disk", JustDiskDiff)
+                      ]
+                     );
+        _ when Verbosity =:= 'diff' ->
+            io:format("~s has keys that on-disk doesn't:~nin schema: ~s~non disk: ~s~n"
+                     ,[SchemaName
+                      ,kz_json:encode(JustSchemaDiff, ['pretty'])
+                      ,kz_json:encode(JustDiskDiff, ['pretty'])
+                      ]
+                     );
+        _ -> 'ok'
+    end.
+
+printable_diff_keys(Where, Diff) ->
+    case kz_json:is_empty(Diff) of
+        'true' -> [];
+        'false' ->
+            Paths = kz_json:get_keys(kz_json:flatten(Diff)),
+            [Where, " only: \n", [["  ", kz_binary:join(Path, <<".">>), $\n] || Path <- Paths]]
+    end.
+
+maybe_log_diff_error('undefined', _Name, _E) -> 'ok';
+maybe_log_diff_error(_, _SchemaName, _E) ->
+    io:format("failed to load ~s: ~p~n", [_SchemaName, _E]).
+
+-spec delete(kz_term:ne_binary()) -> 'ok'.
+delete(<<Schema/binary>>) ->
+    case load(Schema) of
+        {'ok', Doc} ->
+            {'ok', _} = kz_datamgr:del_doc(?KZ_SCHEMA_DB, Doc),
+            io:format("deleted schema ~s~n", [Schema]);
+        {'error', _E} ->
+            io:format("failed to find schema ~s: ~p~n", [Schema, _E])
     end.
 
 -spec flush() -> 'ok'.
@@ -193,8 +293,8 @@ error_to_jobj(Error) ->
                            validation_error().
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
-              ,'external_error'
-              ,Message
+              ,{'external_error', Message}
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -203,6 +303,7 @@ error_to_jobj({'data_invalid'
                     ,<<"error">>
                     ,kz_json:from_list(
                        [{<<"message">>, Message}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
@@ -223,6 +324,7 @@ error_to_jobj({'data_invalid'
                        [{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
                        ,{<<"target">>, Minimum}
                        ,{<<"cause">>, FailedValue}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
@@ -243,6 +345,7 @@ error_to_jobj({'data_invalid'
                        [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
                        ,{<<"target">>, Maximum}
                        ,{<<"cause">>, FailedValue}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
@@ -314,7 +417,7 @@ error_to_jobj({'data_invalid'
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'not_in_enum'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -324,13 +427,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Value not found in enumerated list of values">>}
                        ,{<<"target">>, kz_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'not_minimum'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -343,13 +447,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Value must be at least ", Min/binary>>}
                        ,{<<"target">>, Minimum}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'not_maximum'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -362,6 +467,7 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Value must be at most ", Max/binary>>}
                        ,{<<"target">>, Maximum}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
@@ -399,7 +505,7 @@ error_to_jobj({'data_invalid'
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_items'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -412,13 +518,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
                        ,{<<"target">>, Minimum}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_max_items'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -431,13 +538,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"The list is more than ", Max/binary, " items">>}
                        ,{<<"target">>, Maximum}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_properties'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -450,26 +558,31 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
                        ,{<<"target">>, Minimum}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,{'not_unique', _Item}
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
              ) ->
     validation_error(FailedKeyPath
                     ,<<"uniqueItems">>
-                    ,kz_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
+                    ,kz_json:from_list(
+                       [{<<"message">>, <<"List of items is not unique">>}
+                       ,{<<"value">>, FailedValue}
+                       ]
+                      )
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,'no_extra_properties_allowed'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -477,14 +590,16 @@ error_to_jobj({'data_invalid'
     validation_error(FailedKeyPath
                     ,<<"additionalProperties">>
                     ,kz_json:from_list(
-                       [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}]
+                       [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}
+                       ,{<<"value">>, FailedValue}
+                       ]
                       )
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,'no_extra_items_allowed'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -492,14 +607,16 @@ error_to_jobj({'data_invalid'
     validation_error(FailedKeyPath
                     ,<<"additionalItems">>
                     ,kz_json:from_list(
-                       [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}]
+                       [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}
+                       ,{<<"value">>, FailedValue}
+                       ]
                       )
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'no_match'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -510,6 +627,7 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
                        ,{<<"target">>, Pattern}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
@@ -524,27 +642,33 @@ error_to_jobj({'data_invalid'
     validation_error(FailedKeyPath ++ [FailedValue]
                     ,<<"required">>
                     ,kz_json:from_list(
-                       [{<<"message">>, <<"Field is required but missing">>}]
+                       [{<<"message">>, <<"Field is required but missing">>}
+                       ,{<<"value">>, FailedValue}
+                       ]
                       )
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,'missing_dependency'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
              ) ->
     validation_error(FailedKeyPath
                     ,<<"dependencies">>
-                    ,kz_json:from_list([{<<"message">>, <<"Dependencies were not validated">>}])
+                    ,kz_json:from_list(
+                       [{<<"message">>, <<"Dependencies were not validated">>}
+                       ,{<<"value">>, FailedValue}
+                       ]
+                      )
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'not_divisible'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -555,13 +679,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
                        ,{<<"target">>, DivBy}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'not_allowed'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -572,13 +697,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
                        ,{<<"target">>, Disallow}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_type'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -589,13 +715,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
                        ,{<<"target">>, Types}
+                       ,{<<"value">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,{'missing_required_property', FailKey}
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -603,25 +730,31 @@ error_to_jobj({'data_invalid'
     validation_error(FailedKeyPath ++ [FailKey]
                     ,<<"required">>
                     ,kz_json:from_list(
-                       [{<<"message">>, <<"Field is required but missing">>}]
+                       [{<<"message">>, <<"Field is required but missing">>}
+                       ,{<<"value">>, FailedValue}
+                       ]
                       )
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,FailMsg
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
              ) ->
     lager:debug("failed message: ~p", [FailMsg]),
     lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
-    lager:debug("failed value: ~p", [_FailedValue]),
+    lager:debug("failed value: ~p", [FailedValue]),
     lager:debug("failed keypath: ~p", [FailedKeyPath]),
     validation_error(FailedKeyPath
                     ,kz_term:to_binary(FailMsg)
-                    ,kz_json:from_list([{<<"message">>, <<"failed to validate">>}])
+                    ,kz_json:from_list(
+                       [{<<"message">>, <<"failed to validate">>}
+                       ,{<<"value">>, FailedValue}
+                       ]
+                      )
                     ,Options
                     );
 error_to_jobj({'schema_invalid'
@@ -666,7 +799,7 @@ error_to_jobj(Other, _Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validation_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
-                                  validation_error().
+                              validation_error().
 validation_error(Property, <<"type">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"items">>=C, Message, Options) ->
@@ -726,6 +859,8 @@ validation_error(Property, <<"schema">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"additionalProperties">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"additionalItems">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
     depreciated_validation_error(Property, Code, Message, Options).
@@ -775,7 +910,11 @@ build_validate_error(Property, Code, Message, Options) ->
 
     Error = build_error_message(Version, Message),
 
-    Key = kz_binary:join(Property, <<".">>),
+    Keys = [binary:replace(Bin, <<".">>, <<"%2E">>, ['global'])
+            || P <- Property,
+               Bin <- [kz_term:to_binary(P)]
+           ],
+    Key = kz_binary:join(Keys, <<".">>),
 
     {props:get_value('error_code', Options)
     ,props:get_value('error_message', Options)
@@ -874,6 +1013,10 @@ set_value(Path, Value, JObj) ->
     FixedPath = fix_path(Path),
     kz_json:set_value(FixedPath, Value, JObj).
 
+get_value(Path, JObj, Default) ->
+    FixedPath = fix_path(Path),
+    kz_json:get_value(FixedPath, JObj, Default).
+
 -spec fix_path(kz_json:path()) -> kz_json:path().
 fix_path(Path) ->
     [fix_el(El) || El <- Path].
@@ -883,3 +1026,70 @@ fix_path(Path) ->
 -spec fix_el(kz_json:key() | non_neg_integer()) -> kz_json:key() | non_neg_integer().
 fix_el(I) when is_integer(I) -> I+1;
 fix_el(El) -> El.
+
+-spec fix_js_types(kz_json:object(), [jesse_error:error_reason()]) ->
+                          {'true', kz_json:object()} |
+                          'false'.
+fix_js_types(JObj, ValidationErrors) ->
+    case lists:foldl(fun maybe_fix_js_type/2, {'false', JObj}, ValidationErrors) of
+        {'false', _} -> 'false';
+        {'true', _}=Fixed -> Fixed
+    end.
+
+-spec maybe_fix_js_type(validation_error(), {boolean(), kz_json:object()}) ->
+                               {boolean(), kz_json:object()}.
+maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, {WasFixed, JObj}) ->
+    case kz_json:get_value(<<"type">>, SchemaJObj) of
+        <<"integer">> -> maybe_fix_js_integer(Key, Value, WasFixed, JObj);
+        <<"number">> -> maybe_fix_js_number(Key, Value, WasFixed, JObj);
+        <<"boolean">> -> maybe_fix_js_boolean(Key, Value, WasFixed, JObj);
+        _Type -> {WasFixed, JObj}
+    end;
+maybe_fix_js_type(_, Acc) -> Acc.
+
+-spec maybe_fix_js_integer(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
+                                  {boolean(), kz_json:object()}.
+maybe_fix_js_integer(Key, Value, WasFixed, JObj) ->
+    try kz_term:to_integer(Value) of
+        V ->
+            {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}
+    catch
+        _E:_R ->
+            lager:debug("error converting ~p to integer ~p: ~p", [Value, _E, _R]),
+            {WasFixed, JObj}
+    end.
+
+-spec maybe_fix_js_boolean(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
+                                  {boolean(), kz_json:object()}.
+maybe_fix_js_boolean(Key, Value, WasFixed, JObj) ->
+    try kz_term:to_boolean(Value) of
+        V ->
+            {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}
+    catch
+        _E:_R ->
+            lager:debug("error converting ~p to boolean ~p: ~p", [Value, _E, _R]),
+            {WasFixed, JObj}
+    end.
+
+-spec maybe_fix_js_number(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
+                                 {boolean(), kz_json:object()}.
+maybe_fix_js_number(Key, Value, WasFixed, JObj) ->
+    try kz_term:to_number(Value) of
+        V -> {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}
+    catch
+        _E:_R ->
+            lager:debug("error converting ~p to number ~p: ~p", [Value, _E, _R]),
+            {WasFixed, JObj}
+    end.
+
+-spec maybe_fix_index(kz_json:get_key()) -> kz_json:get_key().
+maybe_fix_index(Keys)
+  when is_list(Keys) ->
+    [case is_integer(K) of
+         'true' -> K + 1;
+         'false' -> K
+     end
+     || K <- Keys
+    ];
+maybe_fix_index(Key) ->
+    Key.

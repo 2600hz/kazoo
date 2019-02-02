@@ -9,6 +9,7 @@
 %% Manual testing
 -export([seq/0
         ,cleanup/0
+        ,storage_doc/1
         ]).
 
 %% API Shims
@@ -33,6 +34,9 @@
 
 -define(ACCOUNT_NAMES, [<<"account_for_storage">>]).
 -define(UUID, <<"2426cb457dc530acc881977ccbc9a7a7">>).
+
+-define(BASE64_ENCODED, 'true').
+-define(SEND_MULTIPART, 'true').
 
 -spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
                     pqc_cb_api:response().
@@ -86,9 +90,9 @@ init_system() ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    base_test(),
+    _ = base_test(),
     cleanup(),
-    skip_validation_test(),
+    _ = skip_validation_test(),
     cleanup().
 
 skip_validation_test() ->
@@ -158,12 +162,23 @@ base_test() ->
     CreatedVM = kz_json:decode(CreateVM),
     MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], CreatedVM),
 
-    GetVM = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
+    {'ok', GetVM} = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
     ?INFO("get VM: ~p", [GetVM]),
     {[RequestBody], [_AttachmentName]} = kz_json:get_values(GetVM),
 
-    handle_multipart_store(MediaId, MP3, RequestBody),
+    'true' = handle_multipart_store(MediaId, MP3, RequestBody),
     ?INFO("got mp3 data on our web server!"),
+
+    %% pqc_httpd:update_req([<<?MODULE_STRING>>, AccountId, MediaId, AttachmentName], MP3),
+    %% ?INFO("updating media to non-encoded MP3"),
+
+    MetadataResp = pqc_cb_vmboxes:fetch_message_metadata(API, AccountId, BoxId, MediaId),
+    ?INFO("message ~s meta: ~s", [MediaId, MetadataResp]),
+    MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], kz_json:decode(MetadataResp)),
+
+    MessageBin = pqc_cb_vmboxes:fetch_message_binary(API, AccountId, BoxId, MediaId),
+    ?INFO("message bin =:= MP3: ~p", [MessageBin =:= MP3]),
+    MessageBin = MP3,
 
     cleanup(API),
     ?INFO("FINISHED").
@@ -181,7 +196,7 @@ default_message() ->
 handle_multipart_store(MediaId, MP3, RequestBody) ->
     handle_multipart_contents(MediaId, MP3, binary:split(RequestBody, <<"\r\n">>, ['global'])).
 
-handle_multipart_contents(_MediaId, _MP3, []) -> 'ok';
+handle_multipart_contents(_MediaId, _MP3, []) -> 'true';
 handle_multipart_contents(MediaId, MP3, [<<>> | Parts]) ->
     handle_multipart_contents(MediaId, MP3, Parts);
 handle_multipart_contents(MediaId, MP3, [<<"content-type: application/json">>, <<>>, JSON | Parts]) ->
@@ -197,12 +212,35 @@ handle_multipart_contents(MediaId, MP3, [<<"content-type: application/json">>, <
                ),
 
     handle_multipart_contents(MediaId, MP3, Parts);
-handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mp3">>, <<>>, MP3 | Parts]) ->
-    ?INFO("got expected mp3 data"),
-    handle_multipart_contents(MediaId, MP3, Parts);
+handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mp3">>, <<>>, Base64MP3 | Parts]) ->
+    case handle_mp3_contents(MP3, Base64MP3, ?BASE64_ENCODED) of
+        'true' ->
+            handle_multipart_contents(MediaId, MP3, Parts);
+        'false' -> 'false'
+    end;
+handle_multipart_contents(MediaId, MP3, [<<"content-type: audio/mpeg">>, <<>>, Base64MP3 | Parts]) ->
+    case handle_mp3_contents(MP3, Base64MP3, ?BASE64_ENCODED) of
+        'true' ->
+            handle_multipart_contents(MediaId, MP3, Parts);
+        'false' -> 'false'
+    end;
 handle_multipart_contents(MediaId, MP3, [_Part | Parts]) ->
     ?DEBUG("skipping part ~s", [_Part]),
     handle_multipart_contents(MediaId, MP3, Parts).
+
+handle_mp3_contents(MP3, MP3, 'false') ->
+    ?INFO("got expected mp3 data"),
+    'true';
+handle_mp3_contents(MP3, Base64MP3, 'true') ->
+    ?INFO("checking base64-encoded data"),
+    case base64:decode(Base64MP3) of
+        MP3 ->
+            ?INFO("got expected mp3 data"),
+            'true';
+        _Data ->
+            ?ERROR("failed to decode to mp3: ~w", [Base64MP3]),
+            'false'
+    end.
 
 -spec cleanup() -> 'ok'.
 cleanup() ->
@@ -219,6 +257,7 @@ cleanup_system() ->
     kzs_plan:disallow_validation_overrides(),
     pqc_httpd:stop().
 
+-spec storage_doc(kz_term:ne_binary()) -> kzd_storage:doc().
 storage_doc(UUID) ->
     kz_json:from_list([{<<"attachments">>, storage_attachments(UUID)}
                       ,{<<"plan">>, storage_plan(UUID)}
@@ -239,7 +278,18 @@ http_handler_settings() ->
 
     kz_json:from_list([{<<"url">>, URL}
                       ,{<<"verb">>, <<"post">>}
-                      ,{<<"send_multipart">>, 'true'}
+                      ,{<<"send_multipart">>, ?SEND_MULTIPART}
+                      ,{<<"base64_encode_data">>, ?BASE64_ENCODED}
+                      ,{<<"field_list">>, [kz_json:from_list([{<<"arg">>, <<"account_id">>}])
+                                          ,kz_json:from_list([{<<"arg">>, <<"id">>}])
+                                          ,kz_json:from_list([{<<"group">>
+                                                              ,[kz_json:from_list([{<<"arg">>, <<"attachment">>}])
+                                                               ,kz_json:from_list([{<<"const">>, <<"?from="?MODULE_STRING>>}])
+                                                               ]
+                                                              }
+                                                             ])
+                                          ]
+                       }
                       ]).
 
 storage_plan(UUID) ->

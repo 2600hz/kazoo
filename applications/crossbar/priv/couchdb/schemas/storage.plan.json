@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.plan",
     "additionalProperties": false,
-    "description": "schema for storage plan",
+    "description": "Describes how to store documents depending on the database or document type",
     "properties": {
         "account": {
             "$ref": "storage.plan.database"

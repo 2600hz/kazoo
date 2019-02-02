@@ -13,6 +13,12 @@
             },
             {
                 "database": "sip_auth"
+            },
+            {
+                "database": "system_config"
+            },
+            {
+                "database": "system_data"
             }
         ]
     },

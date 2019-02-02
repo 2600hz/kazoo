@@ -13,6 +13,8 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([gdrive_default_fields/0]).
+
 -define(DRV_BASE_UPLOAD_URL, <<"https://www.googleapis.com/upload/drive/v3">>).
 -define(DRV_FILE_UPLOAD_URL, <<(?DRV_BASE_UPLOAD_URL)/binary, "/files">>).
 -define(DRV_SINGLE_FILE_UPLOAD_URL, <<(?DRV_FILE_UPLOAD_URL)/binary, "?uploadType=media">>).
@@ -209,10 +211,10 @@ resolve_path(Settings, AttInfo, Authorization) ->
     Folder = resolve_folder(Settings, lists:droplast(PathTokens), Authorization),
     {Folder, Name}.
 
--spec gdrive_default_fields() -> kz_term:proplist().
+-spec gdrive_default_fields() -> url_fields().
 gdrive_default_fields() ->
     [{'group', [{'arg', <<"id">>}
-               ,<<"_">>
+               ,{'const', <<"_">>}
                ,{'arg', <<"attachment">>}
                ]}
     ].
