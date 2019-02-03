@@ -8,9 +8,7 @@
 -behaviour(gen_kz_converter).
 
 -export([convert/4
-%%        ,do_openoffice_to_pdf/2
         ,read_metadata/1, read_metadata/2
-%%        ,get_tiff_info/1
         ]).
 
 -include("kz_audio_converter.hrl").
