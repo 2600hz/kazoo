@@ -16,7 +16,7 @@
 
 %% @equiv audio(FromFormat, ToFormat, Content, [])
 -spec audio(kz_term:api_ne_binary(), kz_term:api_ne_binary(), content()) ->
-                 gen_kz_converter:converted().
+                   gen_kz_converter:converted().
 audio(FromFormat, ToFormat, Content) ->
     audio(FromFormat, ToFormat, Content, []).
 
@@ -41,7 +41,7 @@ audio(FromFormat, ToFormat, Content) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec audio(kz_term:api_binary(), kz_term:api_binary(), content(), kz_term:proplist()) ->
-                 gen_kz_converter:converted().
+                   gen_kz_converter:converted().
 audio('undefined', _ToFormat, _Content, _Options) ->
     {'error', <<"undefined from format">>};
 audio(_FromFormat, 'undefined', _Content, _Options) ->

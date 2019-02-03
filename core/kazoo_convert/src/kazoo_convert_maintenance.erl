@@ -112,7 +112,7 @@ do_convert(FromFilename, ToFormat, Options) ->
     end.
 
 -spec do_convert_mime(kz_term:ne_binary(), kz_term:ne_binary(), kz_convert:content(), kz_term:proplist()) ->
-                        'ok'|'error'.
+                             'ok'|'error'.
 do_convert_mime(?MP3_MIME, ToMime, Content, Options) ->
     kz_convert:audio(?MP3_MIME, ToMime, Content, Options);
 do_convert_mime(?WAV_MIME, ToMime, Content, Options) ->
