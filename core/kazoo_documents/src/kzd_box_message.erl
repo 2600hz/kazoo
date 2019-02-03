@@ -148,8 +148,8 @@ new(AccountId, Props) ->
 -spec gen_attachment_filename(kz_term:proplist()) -> kz_term:ne_binary().
 gen_attachment_filename(Props) ->
     case props:get_value(<<"Transcribe-Voicemail">>, Props)
-         andalso props:is_defined(<<"Required-Format">>, Props)
-         andalso props:get_value(<<"Required-Format">>, Props) =/= <<"wav">> of
+        andalso props:is_defined(<<"Required-Format">>, Props)
+        andalso props:get_value(<<"Required-Format">>, Props) =/= <<"wav">> of
         'false' -> props:get_value(<<"Attachment-Name">>, Props);
         'true' ->
             FileName = props:get_value(<<"Attachment-Name">>, Props),
@@ -165,8 +165,8 @@ gen_attachment_filename(Props) ->
 -spec gen_transcribe_filename(kz_term:proplist()) -> kz_term:api_ne_binary().
 gen_transcribe_filename(Props) ->
     case props:get_value(<<"Transcribe-Voicemail">>, Props)
-         andalso props:is_defined(<<"Required-Format">>, Props)
-         andalso props:get_value(<<"Required-Format">>, Props) =/= <<"wav">> of
+        andalso props:is_defined(<<"Required-Format">>, Props)
+        andalso props:get_value(<<"Required-Format">>, Props) =/= <<"wav">> of
         'true' -> props:get_value(<<"Attachment-Name">>, Props);
         'false' -> 'undefined'
     end.
