@@ -304,7 +304,7 @@ parse_embedded_metadata([Line|Rest], Acc) ->
             lager:warning("Cannot parse [STREAM] metainfo from file. Support of this metainfo type is not implemented"),
             parse_embedded_metadata([], Acc);
         String ->
-            case string:split(String, <<"=">>) of
+            case binary:split(String, <<"=">>) of
                 [Key, Pair] -> parse_embedded_metadata(Rest, lists:append([{Key, Pair}], Acc));
                 _ ->
                     lager:warning("Cannot parse metainfo string: ~s", [String]),
