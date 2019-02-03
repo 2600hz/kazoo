@@ -353,11 +353,11 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
 maybe_transcribe(AccountId, MediaId, 'true') ->
     Db = get_db(AccountId, MediaId),
     {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
-    case kz_doc:attachment_names(MediaDoc) of
-        [] ->
+    case transcribe_filename(MediaDoc) of
+        'undefined' ->
             lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
             'undefined';
-        [AttachmentId|_] ->
+        AttachmentId ->
             CT = kz_doc:attachment_content_type(MediaDoc, AttachmentId),
             case kz_datamgr:fetch_attachment(Db, MediaId, AttachmentId) of
                 {'ok', Bin} ->
@@ -369,6 +369,16 @@ maybe_transcribe(AccountId, MediaId, 'true') ->
             end
     end;
 maybe_transcribe(_, _, 'false') -> 'undefined'.
+
+-spec transcribe_filename(kz_json:object()) -> kz_term:amy_ne_binary().
+transcribe_filename(MediaDoc) ->
+    TranscribeFilename = kzd_box_message:transcribe_filename(MediaDoc),
+    case TranscribeFilename =:= 'undefined'
+        andalso  kz_doc:attachment_names(MediaDoc) of
+        'false' -> TranscribeFilename;
+        [] -> 'undefined';
+        [AttachmentId|_] -> AttachmentId
+    end.
 
 -spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
