@@ -31846,6 +31846,35 @@
         "system_config.kazoo_convert": {
             "description": "Schema for kazoo_convert system_config",
             "properties": {
+                "audio": {
+                    "properties": {
+                        "convert_audio_command": {
+                            "default": "ffmpeg -n -loglevel warning -i $FROM $TO",
+                            "description": "kazoo_convert audio convert_audio_command",
+                            "type": "string"
+                        },
+                        "convert_command_timeout": {
+                            "default": 180000,
+                            "description": "kazoo_convert audio convert_command_timeout",
+                            "type": "integer"
+                        },
+                        "read_metadata_command": {
+                            "default": "ffmpeg -y -loglevel error -i $FROM -f ffmetadata /dev/stdout",
+                            "description": "kazoo_convert audio read_metadata_command",
+                            "type": "string"
+                        },
+                        "validate_audio_command": {
+                            "default": "ffmpeg -y -loglevel error -i $FROM -f ffmetadata /dev/stdout",
+                            "description": "kazoo_convert audio validate_audio_command",
+                            "type": "string"
+                        }
+                    }
+                },
+                "audio_converter": {
+                    "default": "audio_converter",
+                    "description": "kazoo_convert audio_converter",
+                    "type": "string"
+                },
                 "fax": {
                     "properties": {
                         "attachment_format": {
