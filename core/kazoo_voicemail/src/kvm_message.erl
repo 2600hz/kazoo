@@ -84,7 +84,7 @@ new(Call, Options) ->
             lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MessageId]),
             case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call), MessageId) of
                 'ok' ->
-                    notify_and_update_meta(Call, MessageId, Length, Options);
+                    maybe_convert_attachment(Call, MessageId, Length, Options);
                 {'error', Call1} ->
                     Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
                                        ,[MessageId, BoxId, kapps_call:account_id(Call)]
@@ -92,6 +92,50 @@ new(Call, Options) ->
                     lager:error(Msg),
                     {'error', Call1, Msg}
             end
+    end.
+
+-spec maybe_convert_attachment(kapps_call:call(), kz_term:ne_binary(), integer(), kz_term:proplist()) -> {'ok', kapps_call:call()}.
+maybe_convert_attachment(Call, MediaId, Length, Options) ->
+    AccountId = kapps_call:account_id(Call),
+    Db = kvm_util:get_db(AccountId, MediaId),
+    {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
+    case kzd_box_message:transcribe_filename(MediaDoc) =/= 'undefined'
+        andalso convert_attachment(Db, MediaDoc) of
+        'false' -> notify_and_update_meta(Call, MediaId, Length, Options);
+        {'error', ConvertErr} = Error1 ->
+            lager:error("Cannot convert mediafile. Error: ~p", [ConvertErr]),
+            Error1;
+        {'ok', Content, Metadata} ->
+            lager:error("Metadata: ~p", [Metadata]),
+            case upload_attachment(Db, MediaDoc, Content, Metadata) of
+                'ok' -> notify_and_update_meta(Call, MediaId, Length, Options);
+                {'error', UploadErr} = Error2 ->
+                    lager:error("Cannot upload mediafile. Error: ~p", [UploadErr]),
+                    Error2
+            end
+    end.
+
+-spec convert_attachment(kz_term:ne_binary(), kz_json:object()) -> gen_kz_converter:converted().
+convert_attachment(Db, MediaDoc) ->
+    MediaId = kzd_box_message:get_msg_id(MediaDoc),
+    FromFilename = kzd_box_message:transcribe_filename(MediaDoc),
+    ToFilename = kzd_box_message:media_filename(MediaDoc),
+    MimeFrom = kz_doc:attachment_content_type(MediaDoc, FromFilename),
+    MimeTo = kz_mime:from_filename(ToFilename),
+    case kz_datamgr:fetch_attachment(Db, MediaId, FromFilename) of
+        {'ok', Bin} -> kz_convert:audio(MimeFrom, MimeTo, Bin, [{<<"output_type">>, 'binary'}, {<<"read_metadata">>, 'true'}]);
+        {'error', _E} = Error -> Error
+    end.
+
+
+-spec upload_attachment(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:proplist()) -> 'ok' | {'error', any()}.
+upload_attachment(Db, MediaDoc, Content, Metadata) ->
+    MediaId = kzd_box_message:get_msg_id(MediaDoc),
+    ToFilename = kzd_box_message:media_filename(MediaDoc),
+    Options = [{'content_type', props:get_value(<<"mimetype">>, Metadata)}],
+    case kz_datamgr:put_attachment(Db, MediaId, ToFilename, Content, Options) of
+        {'ok', _NewDoc} -> 'ok';
+        {'error', _E} = Error -> Error
     end.
 
 %%------------------------------------------------------------------------------

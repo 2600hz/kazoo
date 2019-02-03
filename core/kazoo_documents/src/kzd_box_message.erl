@@ -21,10 +21,12 @@
 
         ,change_message_name/2, change_to_sip_field/3
 
+        ,media_filename/1
         ,media_id/1, set_media_id/2, update_media_id/2
         ,metadata/1, metadata/2, set_metadata/2
         ,source_id/1, set_source_id/2
         ,to_sip/1, to_sip/2, set_to_sip/2
+        ,transcribe_filename/1
         ,utc_seconds/1
 
         ,get_msg_id/1
@@ -403,3 +405,19 @@ change_to_sip_field(AccountId, NBoxJ, MsgJObj) ->
     Metadata = metadata(MsgJObj),
     To = <<BoxNum/binary, "@", Realm/binary>>,
     set_metadata(set_to_sip(To, Metadata), MsgJObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec media_filename(doc()) -> kz_term:ne_binary().
+media_filename(MsgJObj) ->
+    kz_json:get_ne_binary_value(?KEY_MEDIA_FILENAME, MsgJObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec transcribe_filename(doc()) -> kz_term:api_ne_binary().
+transcribe_filename(MsgJObj) ->
+    kz_json:get_ne_binary_value(?KEY_TRANSCRIBE_FILENAME, MsgJObj).
