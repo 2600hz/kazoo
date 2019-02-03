@@ -389,6 +389,7 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
             lager:info("transcription resp: ~p", [Resp]),
             MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),
             _ = kz_datamgr:ensure_saved(Db, MediaDoc1),
+            _ = maybe_delete_transcribe_attachment(Db, MediaDoc),
             is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
                                   ,kz_json:get_value(<<"text">>, Resp)
                                   ,Resp
@@ -399,6 +400,16 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
         {'error', ErrorCode, Description} ->
             lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
             'undefined'
+    end.
+
+-spec maybe_delete_transcribe_attachment(kz_term:ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
+maybe_delete_transcribe_attachment(Db, MediaDoc) ->
+    Filename = kzd_box_message:transcribe_filename(MediaDoc),
+    case Filename =/= 'undefined'
+        andalso kz_datamgr:delete_attachment(Db, kzd_box_message:get_msg_id(MediaDoc), Filename) of
+        'false' -> 'ok';
+        {'ok', _JObj} -> 'ok';
+        Error -> Error
     end.
 
 -spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> kz_term:api_object().
