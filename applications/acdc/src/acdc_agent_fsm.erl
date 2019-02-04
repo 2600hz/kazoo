@@ -189,7 +189,7 @@ call_event(ServerRef, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
     gen_statem:cast(ServerRef, {'channel_unbridged', call_id(JObj)});
 call_event(_, _C, _E, _) ->
-    lager:info("Unhandled combo: ~s/~s", [_C, _E]).
+    lager:info("unhandled combo: ~s/~s", [_C, _E]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -197,7 +197,7 @@ call_event(_, _C, _E, _) ->
 %%------------------------------------------------------------------------------
 -spec maybe_send_execute_complete(pid(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_execute_complete(ServerRef, <<"bridge">>, JObj) ->
-    lager:info("Send EXECUTE_COMPLETE,bridge to ~p with ci: ~s, olci: ~s",
+    lager:info("send EXECUTE_COMPLETE,bridge to ~p with ci: ~s, olci: ~s",
                [ServerRef
                ,call_id(JObj)
                ,kz_call_event:other_leg_call_id(JObj)
@@ -721,11 +721,11 @@ ringing('cast', {'member_connect_satisfied', JObj}, #state{agent_listener=AgentL
                                                           ,connect_failures=Fails
                                                           ,max_connect_failures=MaxFails
                                                           }=State) ->
-    lager:info("Received connect_satisfied: check if I should hangup: ~p", [JObj]),
+    lager:info("received connect_satisfied: check if I should hangup: ~p", [JObj]),
     CallId = kz_json:get_ne_binary_value([<<"Call">>, <<"Call-ID">>], JObj, []),
     case CallId =:= MemberCallId of
         true ->
-            lager:info("Hanging up: someother agent replies"),
+            lager:info("hanging up: someother agent replies"),
             acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
             acdc_stats:call_missed(AccountId, QueueId, AgentId, MemberCallId, <<"LOSE_RACE">>),
             acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),

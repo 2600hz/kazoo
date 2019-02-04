@@ -433,7 +433,7 @@ use_endpoint_prefs(Call) ->
 
 -spec check_inception(kapps_call:call()) -> kz_term:proplist().
 check_inception(Call) ->
-    lager:debug("Checking inception of call"),
+    lager:debug("checking inception of call"),
     case kapps_call:inception(Call) of
         'undefined' -> get_privacy_prefs_from_endpoint(Call);
         _Else -> []

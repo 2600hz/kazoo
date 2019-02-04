@@ -100,7 +100,7 @@ init([Send_stats]) ->
 handle_call('get_db', _From, State) ->
     {'reply', State, State};
 handle_call(Other,_From,State) ->
-    lager:debug("Call ~p",[Other]),
+    lager:debug("call ~p",[Other]),
     {'reply', 'ok', State}.
 
 

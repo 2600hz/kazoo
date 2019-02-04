@@ -78,7 +78,7 @@ init([Endpoints, OffnetReq]) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
     case kapi_offnet_resource:control_queue(OffnetReq) of
         'undefined' ->
-            lager:debug("Control-Queue is undefined for Call-ID ~s, exiting.", [CallId]),
+            lager:debug("control-Queue is undefined for Call-ID ~s, exiting.", [CallId]),
             {'stop', 'normal'};
         ControlQ ->
             {'ok', #state{endpoints=Endpoints

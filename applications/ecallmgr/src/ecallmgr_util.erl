@@ -923,7 +923,7 @@ call_waiting_map(Endpoint) ->
 maybe_add_respond_header(Endpoint, OwnerId) ->
     case ecallmgr_fs_channels:has_channels_for_owner(OwnerId) of
         'true' ->
-            lager:debug("Channel must be busy!"),
+            lager:debug("channel must be busy!"),
             kz_json:set_value([<<"Custom-SIP-Headers">>, <<"X-KAZOO-Respond-With">>], <<"486 User Busy">>, Endpoint);
         'false' ->
             Endpoint
@@ -1037,11 +1037,11 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
         {Channel, _} -> {'ok', Channel}
     catch
         _E:{'badmatch', {'error', 'not_found'}} ->
-            lager:warning("Failed to build sip channel trying failover", []),
+            lager:warning("failed to build sip channel trying failover", []),
             maybe_failover(Failover);
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:warning("Failed to build sip channel (~s): ~p", [_E, _R]),
+            lager:warning("failed to build sip channel (~s): ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             {'error', 'invalid'}
     end.

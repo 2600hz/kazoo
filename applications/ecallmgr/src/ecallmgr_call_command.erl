@@ -607,7 +607,7 @@ fixup_redirect_node(Node) ->
 -spec maybe_add_redirect_header(atom(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 maybe_add_redirect_header(_Node, _UUID, 'undefined') -> 'ok';
 maybe_add_redirect_header(Node, UUID, RedirectServer) ->
-    lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
+    lager:debug("set X-Redirect-Server to ~s", [RedirectServer]),
     ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
 %%------------------------------------------------------------------------------

@@ -141,7 +141,7 @@ to_simwood(Number) ->
                            {'ok', iolist()} |
                            {'error', 'not_available'}.
 query_simwood(URL, Verb) ->
-    lager:debug("Querying Simwood. Verb: ~p. URL: ~p.", [Verb, URL]),
+    lager:debug("querying Simwood. Verb: ~p. URL: ~p.", [Verb, URL]),
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
@@ -149,10 +149,10 @@ query_simwood(URL, Verb) ->
                   ],
     case kz_http:req(Verb, kz_term:to_binary(URL), [], [], HTTPOptions) of
         {'ok', _Resp, _RespHeaders, Body} ->
-            lager:debug("Simwood response ~p: ~p", [_Resp, Body]),
+            lager:debug("simwood response ~p: ~p", [_Resp, Body]),
             {'ok', Body};
         {'error', _R} ->
-            lager:debug("Simwood response: ~p", [_R]),
+            lager:debug("simwood response: ~p", [_R]),
             {'error', 'not_available'}
     end.
 

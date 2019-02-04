@@ -116,7 +116,7 @@ handle_no_match(Call) ->
 %%------------------------------------------------------------------------------
 -spec is_callflow_child(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 is_callflow_child(Name, Call) ->
-    lager:debug("Looking for callflow child ~s", [Name]),
+    lager:debug("looking for callflow child ~s", [Name]),
     case cf_exe:attempt(Name, Call) of
         {'attempt_resp', 'ok'} ->
             lager:debug("found callflow child"),

@@ -563,7 +563,7 @@ has_channels_for_owner(OwnerId) ->
                  }
                 ],
     Count = ets:select_count(?CHANNELS_TBL, MatchSpec),
-    lager:info("Found ~p channels", [Count]),
+    lager:info("found ~p channels", [Count]),
     Count > 0.
 
 -spec find_by_authorizing_id(kz_term:ne_binaries()) -> [] | kz_term:proplist().

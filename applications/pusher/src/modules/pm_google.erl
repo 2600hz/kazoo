@@ -96,6 +96,6 @@ maybe_load_gcm(App, ETS, Secret) ->
             ets:insert(ETS, {App, Pid}),
             Pid;
         {'error', Reason} ->
-            lager:error("Error loading gcm ~p", [Reason]),
+            lager:error("error loading gcm ~p", [Reason]),
             'undefined'
     end.

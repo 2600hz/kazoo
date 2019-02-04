@@ -59,7 +59,7 @@ start_link() ->
 init_io(Parent) ->
     kz_util:put_callid(<<"cb_sup_io_server">>),
     register(?SERVER, self()),
-    lager:debug("Acking to ~p", [Parent]),
+    lager:debug("acking to ~p", [Parent]),
     Debug = sys:debug_options([]),
     proc_lib:init_ack(Parent, {'ok', self()}),
     lager:debug("started io server for cb_sup"),

@@ -267,7 +267,7 @@ validate_collection_fold(Resource, C) ->
         {'error', Errors} ->
             RespData = cb_context:resp_data(C),
             lager:debug("~s failed validation: ~p", [Id, Errors]),
-            lager:debug("Adding to ~p", [RespData]),
+            lager:debug("adding to ~p", [RespData]),
             cb_context:set_resp_data(C, kz_json:set_value([<<"errors">>, Id], Errors, RespData))
     end.
 

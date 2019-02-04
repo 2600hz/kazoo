@@ -194,7 +194,7 @@ pin_collect(Call, Retries) ->
         {'ok', EnteredPin} ->
             handle_entered_pin(Call, Retries, EnteredPin);
         _ ->
-            lager:info("No pin entered."),
+            lager:info("no pin entered."),
             kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1)
     end.
@@ -205,7 +205,7 @@ handle_entered_pin(Call, Retries, EnteredPin) ->
         {'ok', AuthJObj} ->
             dial(AuthJObj, Call);
         _ ->
-            lager:info("Wrong Pin entered."),
+            lager:info("wrong Pin entered."),
             kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1)
     end.
