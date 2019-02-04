@@ -70,26 +70,11 @@ convert_to_e164_format(Number, ConfigDoc, ConfigKey) ->
 -spec get_inbound_origination(kz_json:object()) -> kz_term:ne_binary().
 get_inbound_origination(JObj) ->
     {Number, _} = kapps_util:get_origination(JObj, ?APP_NAME, <<"inbound_user_origination_field">>),
-    case verify_is_did(Number) of
+    case knm_converters:is_reconcilable(Number) of
         'true' ->
             convert_to_e164_format(Number, ?SS_CONFIG_CAT, <<"assume_inbound_origination_e164">>);
         'false' ->
             'undefined'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc Verify the DID is a number or a number beginning with +
-%% @end
-%%------------------------------------------------------------------------------
--spec verify_is_did(kz_term:ne_binary()) -> boolean().
-verify_is_did(<<$+, Did/binary>>) ->
-    verify_is_did(Did);
-verify_is_did(Did) ->
-    try
-        _ = binary_to_integer(Did),
-        'true'
-    catch error:badarg ->
-            'false'
     end.
 
 -spec assume_e164(kz_term:ne_binary()) -> kz_term:ne_binary().
