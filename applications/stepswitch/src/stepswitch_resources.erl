@@ -536,15 +536,15 @@ maybe_resource_to_endpoints(#resrc{id=Id
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
         {'error', 'no_match'}=Error -> Error;
         {'ok', NumberMatch} ->
-            MaybeClassifier = case kz_term:is_ne_binary(Classifier) of
+            _MaybeClassifier = case kz_term:is_ne_binary(Classifier) of
                                   'true' -> Classifier;
                                   'false' -> <<"no_classifier">>
                               end,
-            lager:debug("building resource ~s endpoints (classifier ~s)", [Id, MaybeClassifier]),
+            lager:debug("building resource ~s endpoints (classifier ~s)", [Id, _MaybeClassifier]),
             CCVUpdates = [{<<"Global-Resource">>, kz_term:to_binary(Global)}
                          ,{<<"Resource-ID">>, Id}
                          ,{<<"E164-Destination">>, Number}
-                         ,{<<"DID-Classifier">>, get_did_classifier(Number, MaybeClassifier)}
+                         ,{<<"DID-Classifier">>, knm_converters:classify(Number)}
                          ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
                          ],
             Updates = [{<<"Name">>, Name}
@@ -555,15 +555,6 @@ maybe_resource_to_endpoints(#resrc{id=Id
                            ],
             maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc Calculate the DID classifier,
-%% If the Classifier is set from the resource, use this, else calculate it from the Number
-%% @end
-%%------------------------------------------------------------------------------
--spec get_did_classifier(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
-get_did_classifier(Number, <<"no_classifier">>) -> knm_converters:classify(Number);
-get_did_classifier(_Number, ResourceClassifier) -> ResourceClassifier.
 
 -spec check_diversion_fields(kapi_offnet_resource:req()) -> kz_term:ne_binary().
 check_diversion_fields(OffnetJObj) ->
