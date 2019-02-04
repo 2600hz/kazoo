@@ -9,8 +9,15 @@ ROOT=$(readlink -f "$(pwd -P)"/..)
 errors=0
 erls=""
 
+# grep for lager:[word]("[A-Z][a-z]...
+# ignores log lines with a first word in all caps like HELO or EHLO in fax_smtp
+
 for ERL in $(egrep -rl "lager:\w+\(\"[A-Z][a-z]" $ROOT/core $ROOT/applications); do
-    sed -i 's/lager:\w+("\([A-Z]\)[a-z]/\L\1/' $ERL
+    # sed captures lager:[word](" as \1
+    # captures A-Z as \2
+    # captures the rest of the line as \3
+    # changes \2 to the lowercase version using \L
+    sed -E -i 's/(lager:[[:alpha:]]+\(")([A-Z])([a-z].+)/\1\L\2\3/g' $ERL
     errors=1
     erls="$erls$ERL:1: log lines starting with capital letters"$'\n'
 done
