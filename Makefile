@@ -251,11 +251,11 @@ app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
-	# @ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
-	# @$(ROOT)/scripts/check-spelling.bash
-	# @$(ROOT)/scripts/kz_diaspora.bash
-	# @$(ROOT)/scripts/edocify.escript
-	# @$(ROOT)/scripts/kzd_module_check.bash
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
+	@$(ROOT)/scripts/check-spelling.bash
+	@$(ROOT)/scripts/kz_diaspora.bash
+	@$(ROOT)/scripts/edocify.escript
+	@$(ROOT)/scripts/kzd_module_check.bash
 	@$(ROOT)/scripts/check-loglines.bash
 
 apis:
