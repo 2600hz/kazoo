@@ -255,6 +255,8 @@ code_checks:
 	@$(ROOT)/scripts/check-spelling.bash
 	@$(ROOT)/scripts/kz_diaspora.bash
 	@$(ROOT)/scripts/edocify.escript
+	@$(ROOT)/scripts/kzd_module_check.bash
+	@$(ROOT)/scripts/check-loglines.bash
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
@@ -275,6 +277,7 @@ docs: docs-validate docs-report docs-setup docs-build
 docs-validate:
 	@$(ROOT)/scripts/check-scripts-readme.bash
 	@$(ROOT)/scripts/empty_schema_descriptions.bash
+	@$(ROOT)/scripts/check-ref-docs.bash
 
 docs-report:
 	@$(ROOT)/scripts/reconcile_docs_to_index.bash

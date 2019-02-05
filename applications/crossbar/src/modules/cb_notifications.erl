@@ -394,7 +394,7 @@ set_system_macros(Context) ->
             SysContext2 = read_system(Context, <<"notification.customer_update">>),
             case cb_context:resp_status(SysContext2) of
                 'success' ->
-                    lager:debug("Template ~s is not exist in `system_config` database. Setting macros from 'customer_update' template", [Id]),
+                    lager:debug("template ~s is not exist in `system_config` database. Setting macros from 'customer_update' template", [Id]),
                     SysDoc2 = cb_context:doc(SysContext2),
                     Macros2 = kz_json:get_value(?MACROS, SysDoc2, kz_json:new()),
                     JObj2 = cb_context:doc(Context),

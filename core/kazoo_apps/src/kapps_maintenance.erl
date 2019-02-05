@@ -991,11 +991,11 @@ call_id_status(CallId, Verbose) ->
 show_status(CallId, 'false', Resp) ->
     lager:info("channel '~s' has status '~s'", [CallId, kapi_call:get_status(Resp)]);
 show_status(CallId, 'true', Resp) ->
-    lager:info("Channel ~s", [CallId]),
-    lager:info("Status: ~s", [kz_json:get_value(<<"Status">>, Resp)]),
-    lager:info("Media Server: ~s", [kz_json:get_value(<<"Switch-Hostname">>, Resp)]),
-    lager:info("Responding App: ~s", [kz_json:get_value(<<"App-Name">>, Resp)]),
-    lager:info("Responding Node: ~s", [kz_json:get_value(<<"Node">>, Resp)]).
+    lager:info("channel ~s", [CallId]),
+    lager:info("status: ~s", [kz_json:get_value(<<"Status">>, Resp)]),
+    lager:info("media Server: ~s", [kz_json:get_value(<<"Switch-Hostname">>, Resp)]),
+    lager:info("responding App: ~s", [kz_json:get_value(<<"App-Name">>, Resp)]),
+    lager:info("responding Node: ~s", [kz_json:get_value(<<"Node">>, Resp)]).
 
 -spec last_migrate_version() -> kz_term:ne_binary().
 last_migrate_version() ->

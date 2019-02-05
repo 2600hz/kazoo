@@ -132,7 +132,7 @@ validate_module_data(Schema, Value, State) ->
     jesse_state:undo_resolve_ref(State2, State).
 
 validate_attachment_oauth_doc_id(Value, State) ->
-    lager:debug("Validating oauth_doc_id: ~s", [Value]),
+    lager:debug("validating oauth_doc_id: ~s", [Value]),
     case kz_datamgr:open_doc(<<"system_auth">>, Value) of
         {ok, _Obj} ->
             State;

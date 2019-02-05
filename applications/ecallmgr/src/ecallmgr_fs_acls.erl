@@ -204,7 +204,7 @@ offnet_resources(Collector) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(?KZ_OFFNET_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
         {'error', _R} ->
-            lager:debug("Unable to get view results for offnet active resources: ~p", [_R]);
+            lager:debug("unable to get view results for offnet active resources: ~p", [_R]);
         {'ok', JObjs} ->
             handle_resource_results(Collector, JObjs)
     end.

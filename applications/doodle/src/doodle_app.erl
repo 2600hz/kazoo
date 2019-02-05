@@ -29,7 +29,7 @@ start(_Type, _Args) ->
         {'error', Err} -> lager:error("default sms is undefined and cannot read default from file: ~p", [Err]);
         JObj -> kapps_config:set(?CONFIG_CAT, <<"reschedule">>, JObj)
     end,
-    lager:debug("Start listening for tasks.account_crawler trigger"),
+    lager:debug("start listening for tasks.account_crawler trigger"),
     _ = kazoo_bindings:bind(?ACCOUNT_CRAWLER_BINDING,
                             'doodle_maintenance',
                             'start_check_sms_by_account'),

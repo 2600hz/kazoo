@@ -263,6 +263,7 @@ pages:
     - 'Custom notifications': 'applications/callflow/doc/notification.md'
     - 'Deprecated':
         - 'Offnet': 'applications/callflow/doc/offnet.md'
+    - 'Skeleton Callflow Action': 'applications/callflow/doc/skel.md'
   - 'Call Inspector':
     - 'applications/call_inspector/doc/README.md'
   - 'CCCP':

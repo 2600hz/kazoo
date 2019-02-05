@@ -166,7 +166,7 @@ cmd_read({Port, _MaxSize, Timeout, OwnerRef}=LoopParams, Acc) ->
             cmd_read(LoopParams, Acc)
     after
         Timeout ->
-            lager:debug("Timeout reached on command ~p", [Timeout]),
+            lager:debug("timeout reached on command ~p", [Timeout]),
             _ = maybe_kill_cmd(Port),
             {'error', 'timeout', Acc}
     end.

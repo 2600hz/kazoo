@@ -361,7 +361,7 @@ process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
     kz_amqp_worker:cast(EventProps, fun(A) -> kapi_sms:publish_targeted_delivery(ServerId, A) end);
 
 process_fs_event(_EventName, _SubClass, _Node, _Props) ->
-    lager:debug("Event ~s/~s not processed on node ~s",[_EventName, _SubClass, _Node]).
+    lager:debug("event ~s/~s not processed on node ~s",[_EventName, _SubClass, _Node]).
 
 get_event_uris(Props, EventProps) ->
     Uris = [{<<"From">>, <<"from_full">>}

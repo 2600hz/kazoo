@@ -68,7 +68,7 @@ nothing() ->
 
 init([Data, Call]) ->
     kapps_call_command:answer(Call),
-    lager:info("Camping feature started"),
+    lager:info("camping feature started"),
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),
     CF = cf_flow:lookup(Number, kapps_call:account_id(Call)),
     case CF of
@@ -82,7 +82,7 @@ init([Data, Call]) ->
 
 -spec get_target(state()) -> maybe_m(state()).
 get_target(#state{callflow = Callflow} = S) ->
-    lager:debug("Getting target"),
+    lager:debug("getting target"),
     TargetId = kz_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
     TargetType = kz_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
     case {TargetType, TargetId} of
@@ -94,7 +94,7 @@ get_target(#state{callflow = Callflow} = S) ->
 
 -spec check_target_type(state()) -> maybe_m(state()).
 check_target_type(#state{type = TargetType} = S) ->
-    lager:debug("Checking target type"),
+    lager:debug("checking target type"),
     case lists:member(TargetType, [<<"offnet">>, <<"user">>, <<"device">>]) of
         'true' -> just(S);
         'false' -> nothing()
@@ -115,7 +115,7 @@ get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
 
 -spec check_self(state(), kapps_call:call()) -> maybe_m(state()).
 check_self(State, Call) ->
-    lager:debug("Check on self"),
+    lager:debug("check on self"),
     case {kapps_call:authorizing_id(Call), kapps_call:authorizing_type(Call)} of
         {'undefined', _} -> nothing();
         {_, 'undefined'} -> nothing();
@@ -124,7 +124,7 @@ check_self(State, Call) ->
 
 -spec send_request(state(), kapps_call:call()) -> maybe_m('ok').
 send_request(#state{channels = Channels} = S, Call) ->
-    lager:debug("Sending request"),
+    lager:debug("sending request"),
     case Channels of
         [] -> no_channels(S, Call);
         _ -> has_channels(S, Call)
@@ -166,7 +166,7 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
                   <<"user">> -> kz_attributes:owned_by(TargetId, <<"device">>, Call);
                   <<"device">> -> [TargetId];
                   _Else ->
-                      lager:debug("Can't found camping target's type. May be wrong extension number?"),
+                      lager:debug("can't found camping target's type. May be wrong extension number?"),
                       []
               end,
     AccountDb = kapps_call:account_db(Call),

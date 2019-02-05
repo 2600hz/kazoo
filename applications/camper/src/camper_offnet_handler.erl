@@ -74,7 +74,7 @@ start_link(Args) ->
 init([JObj]) ->
     Exten = kz_json:get_value(<<"Number">>, JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
-    lager:info("Started offnet handler(~p) for request ~s->~s", [self(), kapps_call:from_user(Call), Exten]),
+    lager:info("started offnet handler(~p) for request ~s->~s", [self(), kapps_call:from_user(Call), Exten]),
 
     MaxTriesSystem = kapps_config:get_integer(?CAMPER_CONFIG_CAT, <<"tries">>, 10),
     MaxTries = kz_json:get_integer_value(<<"Tries">>, JObj, MaxTriesSystem),
@@ -172,7 +172,7 @@ handle_cast({'parked', <<_/binary>> = CallId}, #state{moh=MOH
            ],
     kapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hold)),
     Req = build_bridge_request(CallId, Call, Queue),
-    lager:debug("Publishing bridge request"),
+    lager:debug("publishing bridge request"),
     kapi_resource:publish_originate_req(Req),
     {'noreply', State#state{parked_call = CallId}};
 handle_cast('wait', #state{try_after = Time} = State) ->
@@ -225,7 +225,7 @@ handle_resource_response(JObj, Props) ->
             lager:debug("time to bridge"),
             gen_listener:cast(Srv, {'parked', CallId});
         {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
-            lager:debug("Got channel destroy, retrying..."),
+            lager:debug("got channel destroy, retrying..."),
             gen_listener:cast(Srv, 'wait');
         {<<"resource">>,<<"originate_resp">>} ->
             case {kz_json:get_value(<<"Application-Name">>, JObj)
@@ -233,13 +233,13 @@ handle_resource_response(JObj, Props) ->
                  }
             of
                 {<<"bridge">>, <<"SUCCESS">>} ->
-                    lager:debug("Users bridged"),
+                    lager:debug("users bridged"),
                     gen_listener:cast(Srv, 'stop_campering');
-                _Ev -> lager:info("Unhandled event: ~p", [_Ev])
+                _Ev -> lager:info("unhandled event: ~p", [_Ev])
             end;
         {<<"error">>,<<"originate_resp">>} ->
             gen_listener:cast(Srv, 'hangup_parked_call');
-        _Ev -> lager:info("Unhandled event ~p", [_Ev])
+        _Ev -> lager:info("unhandled event ~p", [_Ev])
     end.
 
 %%------------------------------------------------------------------------------

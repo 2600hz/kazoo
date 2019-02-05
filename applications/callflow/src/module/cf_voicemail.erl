@@ -593,7 +593,7 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
             {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
             Box1#mailbox{is_setup='true'};
         {'error', 'max_retry'} ->
-            lager:debug("Hanging up channel after several empty or invalid pins"),
+            lager:debug("hanging up channel after several empty or invalid pins"),
             _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
             {'error', 'channel_hungup'}
     end.
@@ -1282,7 +1282,7 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
 check_media_source(AttachmentName, Box, Call, JObj) ->
     case kz_json:get_ne_binary_value(<<"media_source">>, JObj) of
         <<"upload">> ->
-            lager:debug("The voicemail greeting media is a web upload, let's not touch it,"
+            lager:debug("the voicemail greeting media is a web upload, let's not touch it,"
                         ++ " it may be in use in some other mailbox. We create new media document."
                        ),
             record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id='undefined'}, Call);
@@ -1454,7 +1454,7 @@ change_pin(#mailbox{mailbox_id=Id
                          mailbox() |
                          {'error', any()}.
 invalid_pin(_Box, _Call, Loop) when Loop >= ?MAX_INVALID_PIN_LOOPS ->
-    lager:debug("Several empty or invalid pins"),
+    lager:debug("several empty or invalid pins"),
     {'error', 'max_retry'};
 invalid_pin(Box, Call, Loop) ->
     case kapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of

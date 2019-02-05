@@ -137,7 +137,7 @@ get_rate_limits_id_for_thing(Context, ThingId) ->
         {'ok', JObjs} ->
             [get_id(JB) || JB <- JObjs];
         {'error', _Err} ->
-            lager:error("Can't load rate limits due to err: ~p", [_Err]),
+            lager:error("can't load rate limits due to err: ~p", [_Err]),
             'undefined'
     end.
 
@@ -154,7 +154,7 @@ validate_get_rate_limits(Context, ThingId) ->
         [] -> crossbar_doc:handle_json_success(kz_json:new(), Context);
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
-            lager:error("Found more than one result, please check ids(from db ~s): ~p"
+            lager:error("found more than one result, please check ids(from db ~s): ~p"
                        ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
@@ -169,7 +169,7 @@ validate_delete_rate_limits(Context, ThingId) ->
         [] -> crossbar_doc:handle_json_success(kz_json:new(), Context);
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
-            lager:error("Found more than one result, please check ids(from db ~s): ~p"
+            lager:error("found more than one result, please check ids(from db ~s): ~p"
                        ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
@@ -192,7 +192,7 @@ validate_set_rate_limits(Context, ThingId) ->
         [] -> Context;
         [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
-            lager:error("Found more than one result, please check ids(from db ~s): ~p"
+            lager:error("found more than one result, please check ids(from db ~s): ~p"
                        ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)

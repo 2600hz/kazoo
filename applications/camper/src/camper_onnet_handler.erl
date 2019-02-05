@@ -135,7 +135,7 @@ handle_cast({'available_device', AccountId, SIPName}, GlobalState) ->
                                        {'ok', Q} ->
                                            maybe_handle_request(SIPName, Q, Local);
                                        _ ->
-                                           lager:debug("Request not found"),
+                                           lager:debug("request not found"),
                                            Local
                                    end
                            end
@@ -161,10 +161,10 @@ maybe_handle_request(SIPName, Q, Local) ->
     case queue:out(Q) of
         {{'value', Requestor}, NewQ} ->
             NewQueue = dict:store(SIPName, NewQ, get_requestor_queues(Local)),
-            lager:debug("Request found, trying to handle"),
+            lager:debug("request found, trying to handle"),
             handle_request(SIPName, Requestor, set_requestor_queues(Local, NewQueue));
         _ ->
-            lager:debug("Request not found"),
+            lager:debug("request not found"),
             Local
     end.
 
@@ -176,15 +176,15 @@ handle_request(SIPName, Requestor, Local) ->
             {_, Now, _} = os:timestamp(),
             case Now > Timeout of
                 'true' ->
-                    lager:debug("Request (~p -> ~p) expired", [Requestor, Exten]);
+                    lager:debug("request (~p -> ~p) expired", [Requestor, Exten]);
                 'false' ->
-                    lager:debug("Originating call (~p -> ~p)", [Requestor, Exten]),
+                    lager:debug("originating call (~p -> ~p)", [Requestor, Exten]),
                     originate_call(Requestor, Exten, get_account_db(Local))
             end,
-            lager:debug("Clearing request"),
+            lager:debug("clearing request"),
             clear_request(Requestor, Exten, Local);
         _ ->
-            lager:debug("Extension for request not found"),
+            lager:debug("extension for request not found"),
             Local
     end.
 
@@ -198,7 +198,7 @@ originate_call({Id, Type}, Exten, AccountDb) ->
     Call = lists:foldl(fun(F, C) -> F(C) end, kapps_call:new(), Routines),
     case get_endpoints(Call, Id, Type) of
         [] ->
-            lager:debug("Can't find endpoints");
+            lager:debug("can't find endpoints");
         Endpoints ->
             originate_quickcall(Endpoints, Exten, Call)
     end.
@@ -227,7 +227,7 @@ originate_quickcall(Endpoints, Exten, Call) ->
                | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     kapi_resource:publish_originate_req(props:filter_undefined(Request)),
-    lager:debug("Originate request published").
+    lager:debug("originate request published").
 
 -spec get_endpoints(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_endpoints(Call, EndpointId, Type) when Type =:= <<"device">>;

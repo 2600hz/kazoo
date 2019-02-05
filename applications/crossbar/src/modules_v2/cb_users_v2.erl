@@ -513,7 +513,7 @@ check_hotdesk_id(UserId, Context) ->
         'true' ->
             Context;
         'false' ->
-            lager:debug("Hotdesk.id ~p is already used", [HotdeskId]),
+            lager:debug("hotdesk.id ~p is already used", [HotdeskId]),
             non_unique_hotdesk_id_error(Context, HotdeskId);
         {'error', DatamgrError} ->
             crossbar_doc:handle_datamgr_errors(DatamgrError, HotdeskId, Context)

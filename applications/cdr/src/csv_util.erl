@@ -68,6 +68,6 @@ maybe_save_csv(FileName, CsvData) ->
             FilePath = filename:join(TestPath, FileName),
             kz_util:write_file(FilePath, CsvData);
         {'error', _}=Error ->
-            lager:error("Error creating directory: ~p", [Error]),
+            lager:error("error creating directory: ~p", [Error]),
             Error
     end.

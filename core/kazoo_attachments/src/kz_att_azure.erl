@@ -57,7 +57,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
         %% Next line left just for reference (cause it's not easy to spot it in the code)
         %%_:{{{'case_clause', {'error', {'failed_connect', _}}}, _StackTrace}, _FnFailing} ->
         _:{{{'case_clause', ErrorResp}, _StackTrace}, _FnFailing} ->
-            lager:debug("Failed to put the attachment.~nStackTrace: ~p~nFnFailing: ~p",
+            lager:debug("failed to put the attachment.~nStackTrace: ~p~nFnFailing: ~p",
                         [_StackTrace, _FnFailing]),
             handle_erlazure_error_response(ErrorResp, Routines)
     end.
@@ -127,11 +127,11 @@ azure_pid(Account, Key) ->
 -spec handle_erlazure_error_response({'error', string() | binary() | atom()},
                                      kz_att_error:update_routines()) -> kz_att_error:error().
 handle_erlazure_error_response({'error', {'failed_connect', _}} = _E, Routines) ->
-    lager:error("Azure request failed: ~p", [_E]),
+    lager:error("azure request failed: ~p", [_E]),
     kz_att_error:new('failed_to_connect', Routines);
 handle_erlazure_error_response({'error', Reason} = _E, Routines) -> % from erlazure:execute_request/2
-    lager:error("Azure request failed : ~p", [_E]),
+    lager:error("azure request failed : ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_erlazure_error_response(_E, Routines) ->
-    lager:error("Azure request failed: ~p", [_E]),
+    lager:error("azure request failed: ~p", [_E]),
     kz_att_error:new('request_error', Routines).

@@ -55,7 +55,7 @@ handle_rate_req(JObj, _Props) ->
     Entity = kz_json:get_value(<<"Entity">>, JObj),
     IncludeRealm = kz_json:is_true(<<"With-Realm">>, JObj, 'false'),
     MethodList = lookup_methods(JObj),
-    lager:debug("Handle rate limits request for ~s", [Entity]),
+    lager:debug("handle rate limits request for ~s", [Entity]),
     Limits = lookup_rate_limit_records(Entity, IncludeRealm, MethodList),
     send_response(Limits, JObj).
 
@@ -91,14 +91,14 @@ lookup_rate_limit_records(Entity) ->
 
 -spec lookup_rate_limit_records(kz_term:ne_binary(), boolean(), kz_term:ne_binaries()) -> kz_json:object().
 lookup_rate_limit_records(Entity, IncludeRealm, MethodList) ->
-    lager:info("Handle rate limit request for ~s", [Entity]),
+    lager:info("handle rate limit request for ~s", [Entity]),
     Realm = frontier_utils:extract_realm(Entity),
     Responses = case kapps_util:get_account_by_realm(Realm) of
                     {'ok', AccountDB} ->
-                        lager:info("Found realm, try to send response"),
+                        lager:info("found realm, try to send response"),
                         run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList);
                     _ ->
-                        lager:info("Can't find realm ~s. Throttle him.", [Realm]),
+                        lager:info("can't find realm ~s. Throttle him.", [Realm]),
                         make_deny_rates(Entity, IncludeRealm, MethodList)
                 end,
     lists:foldl(fun fold_responses/2, kz_json:new(), lists:flatten(Responses)).
@@ -237,15 +237,15 @@ fetch_rates(_, _, [], _) ->
     lager:info("document: Empty request - empty response"),
     [];
 fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
-    lager:info("Run db query..."),
+    lager:info("run db query..."),
     Keys = [[E, M] || E <- [?DEVICE_DEFAULT_RATES | EntityList], M <- MethodList],
     ViewOpts = [{'keys', Keys}],
     Results = case kz_datamgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
                   {'ok', JObjs} ->
-                      lager:info("Got ~p records for entities ~p from db document", [length(JObjs), EntityList]),
+                      lager:info("got ~p records for entities ~p from db document", [length(JObjs), EntityList]),
                       JObjs;
                   _ ->
-                      lager:info("Can not get device rates drom db"),
+                      lager:info("can not get device rates drom db"),
                       []
               end,
     Status = handle_db_response(Results, IncludeRealm),
@@ -263,7 +263,7 @@ fetch_from_parents(AccountDb, MethodList, Realm) ->
             Tree = lists:reverse(kzd_accounts:tree(JObj)),
             check_fallbacks(Tree, MethodList, Realm);
         {'error', _Reason} ->
-            lager:info("Cant't access to db: ~p", [_Reason])
+            lager:info("cant't access to db: ~p", [_Reason])
     end.
 
 -spec check_fallbacks(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:objects().
@@ -288,7 +288,7 @@ check_fallback(AccountId, 'empty', MethodList, Realm) ->
             lager:error("found many results, please check account rate limits for ~s", [AccountDB]),
             'empty';
         {'error', _Reason} ->
-            lager:error("Can't fetch data from db: ~p", [_Reason]),
+            lager:error("can't fetch data from db: ~p", [_Reason]),
             'empty'
     end;
 check_fallback(_, Acc, _, _) ->
@@ -297,7 +297,7 @@ check_fallback(_, Acc, _, _) ->
 -type couch_ret() :: {'ok', kz_json:object()} | {'error', any()}.
 -spec build_results(couch_ret(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:objects().
 build_results({'error', _Reason}, _, _) ->
-    lager:error("Can't fetch data from db: ~p", [_Reason]),
+    lager:error("can't fetch data from db: ~p", [_Reason]),
     [];
 build_results({'ok', JObj}, MethodList, Realm) ->
     Limits = kz_json:get_value(<<"account">>, JObj),

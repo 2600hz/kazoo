@@ -107,7 +107,7 @@ send(<<"single">>, API, [Endpoint | Others]) ->
             send(<<"single">>, API, Others)
     end;
 send(Strategy, _API, _Endpoints) ->
-    lager:debug("Strategy ~s not implemented", [Strategy]).
+    lager:debug("strategy ~s not implemented", [Strategy]).
 
 send_and_wait(<<"single">>, _API, [], _Timeout) ->
     {'error', <<"no endpoints available">>};
@@ -128,7 +128,7 @@ send_and_wait(<<"single">>, API, [Endpoint| Others], Timeout) ->
             Ret
     end;
 send_and_wait(Strategy, _API, _Endpoints, _Timeout) ->
-    lager:debug("Strategy ~s not implemented", [Strategy]).
+    lager:debug("strategy ~s not implemented", [Strategy]).
 
 send(<<"sip">>, API, Endpoint, Timeout) ->
     Options = kz_json:to_proplist(kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),

@@ -115,7 +115,7 @@ is_owner_same_group(Call, DeviceId, OwnerId, GroupId) ->
                        ,kz_json:get_json_value(<<"endpoints">>, GroupJObj, kz_json:new())
                        );
         {'error', _E} ->
-            lager:debug("Error while opening group ~s: ~p", [GroupId, _E]),
+            lager:debug("error while opening group ~s: ~p", [GroupId, _E]),
             'false'
     end.
 

@@ -122,7 +122,7 @@ maybe_convert_using_openoffice(From, To, Content, #{<<"try_openoffice">> := <<"f
         {'ok', _}=Ok -> Ok;
         {'ok', _, _}=Ok -> Ok;
         {'error', _} ->
-            lager:debug("Trying convert using convertapi"),
+            lager:debug("trying convert using convertapi"),
             maybe_convert_via_convertapi(From, To, Content, Options)
     end;
 maybe_convert_using_openoffice(<<?OPENOFFICE_MIME_PREFIX, _/binary>>=From, To, Content, #{<<"try_openoffice">> := <<"for_openoffice_files_only">>}=Options) ->
@@ -130,7 +130,7 @@ maybe_convert_using_openoffice(<<?OPENOFFICE_MIME_PREFIX, _/binary>>=From, To, C
         {'ok', _}=Ok -> Ok;
         {'ok', _, _}=Ok -> Ok;
         {'error', _} ->
-            lager:debug("Trying convert using convertapi"),
+            lager:debug("trying convert using convertapi"),
             maybe_convert_via_convertapi(From, To, Content, Options)
     end;
 maybe_convert_using_openoffice(From, To, Content, #{<<"try_openoffice">> := <<"for_openoffice_files_only">>}=Options) ->
@@ -143,7 +143,7 @@ maybe_convert_using_openoffice(From, To, Content, Options) ->
         <<"for_msoffice_files_also">> -> maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"for_msoffice_files_also">>, Options));
         <<"for_openoffice_files_only">> -> maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"for_open_office_files_only">>, Options));
         Value ->
-            lager:debug("Unsuported \"try_openoffice\" config value: ~p. Will be used \"for_msoffice_files_also\"", [Value]),
+            lager:debug("unsuported \"try_openoffice\" config value: ~p. Will be used \"for_msoffice_files_also\"", [Value]),
             maybe_convert_using_openoffice(From, To, Content, maps:put(<<"try_openoffice">>, <<"for_msoffice_files_also">>, Options))
 
     end.
@@ -158,7 +158,7 @@ maybe_convert_via_convertapi(From, To, Content, Options) ->
     case ?CONVERTAPI_SECRET of
         'undefined' ->
             JobId = maps:get(<<"job_id">>, Options),
-            lager:debug("Converapi secret is not defined. Cannot process JobId : ~s", [JobId]),
+            lager:debug("converapi secret is not defined. Cannot process JobId : ~s", [JobId]),
             {'error', <<"convertapi secret not defined. Failed JobId: ", JobId/binary>>};
         Secret -> convert_via_convertapi(From, To, Content, Options, Secret)
     end.

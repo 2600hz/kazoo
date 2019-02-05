@@ -44,7 +44,7 @@ handle(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"send_at">>, Data, <<"channel_destroy">>) of
         <<"channel_destroy">> -> add_handler(Data, Call);
         <<"callflow_exec">> -> send_notification(Call, [], Data);
-        Value -> lager:warning("Bad value of \"send_at\": \"~s\"", [Value])
+        Value -> lager:warning("bad value of \"send_at\": \"~s\"", [Value])
     end,
     cf_exe:continue(Call).
 

@@ -951,7 +951,7 @@ load_attachment_from_message(Doc, Context, Timezone) ->
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context);
         {'ok', AttachBin} ->
-            lager:debug("Sending file with filename ~s", [Filename]),
+            lager:debug("sending file with filename ~s", [Filename]),
             Setters = [{fun cb_context:set_resp_status/2, 'success'}
                       ,{fun cb_context:set_resp_data/2, AttachBin}
                       ,{fun cb_context:set_resp_etag/2, 'undefined'}

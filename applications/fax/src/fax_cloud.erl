@@ -40,7 +40,7 @@ handle_job_notify(JObj, _Props) ->
 
     JobId = kz_json:get_value(<<"Fax-JobId">>, JObj),
     AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
-    lager:debug("Checking if JobId ~s in db ~s is a cloud printer job",[JobId, AccountDb]),
+    lager:debug("checking if JobId ~s in db ~s is a cloud printer job",[JobId, AccountDb]),
     {FetchRes, MaybeFaxJObj} = kz_datamgr:open_doc(AccountDb, {<<"fax">>, JobId}),
     case FetchRes =:= 'ok'
         andalso kz_json:get_value(<<"cloud_job_id">>, MaybeFaxJObj)
@@ -48,9 +48,9 @@ handle_job_notify(JObj, _Props) ->
         'false' ->
             lager:debug("could not fetch cloud printer JobId ~p : ~p",[JobId, MaybeFaxJObj]);
         'undefined' ->
-            lager:debug("JobId ~s is not a cloud printer job",[JobId]);
+            lager:debug("jobId ~s is not a cloud printer job",[JobId]);
         CloudJobId ->
-            lager:debug("JobId ~s is a cloud printer job with Id ~s",[JobId,CloudJobId]),
+            lager:debug("jobId ~s is a cloud printer job with Id ~s",[JobId,CloudJobId]),
             PrinterId = kz_json:get_value(<<"cloud_printer_id">>, MaybeFaxJObj),
             process_job_outcome(PrinterId, CloudJobId, kz_json:get_value(<<"Event-Name">>, JObj))
     end.
@@ -461,7 +461,7 @@ process_registration_result('false', AppId, JObj, _Result) ->
 
     case Elapsed > TokenDuration of
         'true' ->
-            lager:debug("Token expired before printer ~s was claimed at ~s",[PrinterId,InviteUrl]),
+            lager:debug("token expired before printer ~s was claimed at ~s",[PrinterId,InviteUrl]),
             Keys = [ K || <<"pvt_cloud", _/binary>> = K <- kz_json:get_keys(JObj)],
             update_printer(
               kz_json:set_values([{<<"pvt_cloud_state">>, <<"expired">>}]
@@ -470,7 +470,7 @@ process_registration_result('false', AppId, JObj, _Result) ->
              );
         'false' ->
             SleepTime = kapps_config:get_integer(?CONFIG_CAT, <<"cloud_registration_pool_interval">>, ?DEFAULT_CLOUD_REG_SLEEP),
-            lager:debug("Printer ~s not claimed at ~s. sleeping for ~B seconds, Elapsed/Duration (~p/~p)."
+            lager:debug("printer ~s not claimed at ~s. sleeping for ~B seconds, Elapsed/Duration (~p/~p)."
                        ,[PrinterId,InviteUrl, SleepTime div 1000 , Elapsed, TokenDuration]
                        ),
             timer:sleep(SleepTime),

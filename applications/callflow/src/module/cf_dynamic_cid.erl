@@ -220,7 +220,7 @@ maybe_route_to_callflow(Data, Call, Number, <<"lists">>) ->
 maybe_restrict_call(Data, Call, Number, Flow) ->
     case should_restrict_call(Data, Call, Number) of
         'true' ->
-            lager:info("Not allowed to call this destination, terminate", []),
+            lager:info("not allowed to call this destination, terminate", []),
             _ = kapps_call_command:answer(Call),
             _ = kapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
             _ = kapps_call_command:queued_hangup(Call),
