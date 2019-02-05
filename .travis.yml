@@ -12,6 +12,7 @@ otp_release:
 
 sudo: required
 
+dist: xenial
 addons:
   apt:
     packages:
@@ -19,6 +20,7 @@ addons:
       - libreoffice
       - libtiff-tools
       - ghostscript
+      - ffmpeg
 
 cache:
   apt: true
