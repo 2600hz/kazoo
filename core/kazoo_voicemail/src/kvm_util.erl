@@ -372,12 +372,13 @@ maybe_transcribe(_, _, 'false') -> 'undefined'.
 
 -spec transcribe_filename(kz_json:object()) -> kz_term:amy_ne_binary().
 transcribe_filename(MediaDoc) ->
-    TranscribeFilename = kzd_box_message:transcribe_filename(MediaDoc),
-    case TranscribeFilename =:= 'undefined'
-        andalso  kz_doc:attachment_names(MediaDoc) of
-        'false' -> TranscribeFilename;
-        [] -> 'undefined';
-        [AttachmentId|_] -> AttachmentId
+    case kzd_box_message:transcribe_filename(MediaDoc) of
+        'undefined' ->
+            case kz_doc:attachment_names(MediaDoc) of
+                [] -> 'undefined';
+                [AttachmentId|_] -> AttachmentId
+            end;
+        TranscribeFilename -> TranscribeFilename
     end.
 
 -spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
@@ -389,7 +390,7 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
             lager:info("transcription resp: ~p", [Resp]),
             MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),
             _ = kz_datamgr:ensure_saved(Db, MediaDoc1),
-            _ = maybe_delete_transcribe_attachment(Db, MediaDoc),
+            _ = maybe_delete_transcribe_attachment(Db, MediaDoc1),
             is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
                                   ,kz_json:get_value(<<"text">>, Resp)
                                   ,Resp
@@ -404,12 +405,13 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
 
 -spec maybe_delete_transcribe_attachment(kz_term:ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
 maybe_delete_transcribe_attachment(Db, MediaDoc) ->
-    Filename = kzd_box_message:transcribe_filename(MediaDoc),
-    case Filename =/= 'undefined'
-        andalso kz_datamgr:delete_attachment(Db, kzd_box_message:get_msg_id(MediaDoc), Filename) of
-        'false' -> 'ok';
-        {'ok', _JObj} -> 'ok';
-        Error -> Error
+    case kzd_box_message:transcribe_filename(MediaDoc) of
+        'undefined' -> ok;
+        Filename ->
+            case kz_datamgr:delete_attachment(Db, kzd_box_message:get_msg_id(MediaDoc), Filename) of
+                {'ok', _JObj} -> 'ok';
+                Error -> Error
+            end
     end.
 
 -spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> kz_term:api_object().
