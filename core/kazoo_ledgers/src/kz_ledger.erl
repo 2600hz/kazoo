@@ -556,8 +556,11 @@ maybe_prefix_id(LedgerJObj) ->
 
 -spec amount_to_dollars(kzd_ledgers:doc()) -> kzd_ledgers:doc().
 amount_to_dollars(LedgerJObj) ->
-    Amount = kzd_ledgers:dollar_amount(LedgerJObj),
-    kz_json:set_value(<<"amount">>, Amount, LedgerJObj).
+    Amount = kzd_ledgers:dollar_amount(LedgerJObj, 0),
+    case kzd_ledgers:ledger_type(LedgerJObj) =:= kzd_ledgers:type_debit() of
+        'true' -> kz_json:set_value(<<"amount">>, Amount * -1, LedgerJObj);
+        'false' -> kz_json:set_value(<<"amount">>, abs(Amount), LedgerJObj)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
