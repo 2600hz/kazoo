@@ -116,6 +116,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     Id = make_smtplog_id(AccountDb),
     TemplateId = get('template_id'),
     CallId = kz_util:get_callid(),
+    HasPrivateData = get('has_private_data'),
     Doc = kz_json:from_list(
             [{<<"rendered_templates">>, kz_json:from_list(RenderedTemplates)}
             ,{<<"subject">>, Subject}
@@ -130,6 +131,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
             ,{<<"template_account_id">>, get('template_account_id')}
             ,{<<"payload_callid">>, CallId}
             ,{<<"macros">>, get('macros')}
+            ,{<<"has_private_data">>, HasPrivateData}
             ,{<<"_id">>, Id}
             ]),
     lager:debug("attempting to save notify smtp log for ~s in ~s/~s", [TemplateId, AccountDb, Id]),
