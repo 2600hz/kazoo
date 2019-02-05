@@ -1443,13 +1443,14 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
     case cb_context:resp_status(C1) of
         'success' ->
             TemplateId = kz_json:get_ne_binary_value(<<"template_id">>, cb_context:doc(C1)),
-            maybe_remove_private_comment(C1, TemplateId, IsSuperAdmin);
+            HasPrivateData = kz_json:is_true(<<"has_private_data">>, cb_context:doc(C1)),
+            maybe_remove_private_data(C1, TemplateId, HasPrivateData, IsSuperAdmin);
         _ ->
             C1
     end.
 
--spec maybe_remove_private_comment(cb_context:context(), kz_term:ne_binary(), boolean()) -> cb_context:context().
-maybe_remove_private_comment(Context, <<"port_comment">>, 'false') ->
+-spec maybe_remove_private_data(cb_context:context(), kz_term:ne_binary(), boolean(), boolean()) -> cb_context:context().
+maybe_remove_private_data(Context, <<"port_comment">>, _, 'false') ->
     case kz_json:is_true([<<"macros">>, <<"port_request">>, <<"comment">>, <<"superduper_comment">>]
                         ,cb_context:doc(Context)
                         ,'false'
@@ -1457,6 +1458,7 @@ maybe_remove_private_comment(Context, <<"port_comment">>, 'false') ->
     of
         'true' ->
             Doc = kz_json:delete_keys([[<<"macros">>, <<"port_request">>, <<"comment">>]
+                                      ,[<<"email">>, <<"to">>]
                                       ,<<"rendered_templates">>
                                       ]
                                      ,cb_context:doc(Context)
@@ -1468,7 +1470,16 @@ maybe_remove_private_comment(Context, <<"port_comment">>, 'false') ->
         'false' ->
             Context
     end;
-maybe_remove_private_comment(Context, _, _) ->
+maybe_remove_private_data(Context, _, 'true', 'false') ->
+    Doc = kz_json:delete_keys([[<<"email">>, <<"to">>]
+                              ]
+                             ,cb_context:doc(Context)
+                             ),
+    Setters = [{fun cb_context:set_doc/2, Doc}
+              ,{fun cb_context:set_resp_data/2, Doc}
+              ],
+    cb_context:setters(Context, Setters);
+maybe_remove_private_data(Context, _, _, _) ->
     Context.
 
 -spec maybe_update_db(cb_context:context()) -> cb_context:context().
