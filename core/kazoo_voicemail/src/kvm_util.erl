@@ -370,17 +370,6 @@ maybe_transcribe(AccountId, MediaId, 'true') ->
     end;
 maybe_transcribe(_, _, 'false') -> 'undefined'.
 
--spec transcribe_filename(kz_json:object()) -> kz_term:amy_ne_binary().
-transcribe_filename(MediaDoc) ->
-    case kzd_box_message:transcribe_filename(MediaDoc) of
-        'undefined' ->
-            case kz_doc:attachment_names(MediaDoc) of
-                [] -> 'undefined';
-                [AttachmentId|_] -> AttachmentId
-            end;
-        TranscribeFilename -> TranscribeFilename
-    end.
-
 -spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
@@ -401,6 +390,17 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
         {'error', ErrorCode, Description} ->
             lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
             'undefined'
+    end.
+
+-spec transcribe_filename(kz_json:object()) -> kz_term:amy_ne_binary().
+transcribe_filename(MediaDoc) ->
+    case kzd_box_message:transcribe_filename(MediaDoc) of
+        'undefined' ->
+            case kz_doc:attachment_names(MediaDoc) of
+                [] -> 'undefined';
+                [AttachmentId|_] -> AttachmentId
+            end;
+        TranscribeFilename -> TranscribeFilename
     end.
 
 -spec maybe_delete_transcribe_attachment(kz_term:ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
