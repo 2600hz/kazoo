@@ -99,9 +99,8 @@ maybe_convert_attachment(Call, MediaId, Length, Options) ->
     AccountId = kapps_call:account_id(Call),
     Db = kvm_util:get_db(AccountId, MediaId),
     {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
-    case kzd_box_message:transcribe_filename(MediaDoc) =/= 'undefined'
-        andalso convert_attachment(Db, MediaDoc) of
-        'false' -> notify_and_update_meta(Call, MediaId, Length, Options);
+    case  convert_attachment(Db, MediaDoc, kzd_box_message:transcribe_filename(MediaDoc)) of
+        {'error', <<"Conversion file is not defined">>} -> notify_and_update_meta(Call, MediaId, Length, Options);
         {'error', ConvertErr} = Error1 ->
             lager:error("Cannot convert mediafile. Error: ~p", [ConvertErr]),
             Error1;
@@ -115,10 +114,11 @@ maybe_convert_attachment(Call, MediaId, Length, Options) ->
             end
     end.
 
--spec convert_attachment(kz_term:ne_binary(), kz_json:object()) -> gen_kz_converter:converted().
-convert_attachment(Db, MediaDoc) ->
+-spec convert_attachment(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> gen_kz_converter:converted().
+convert_attachment(_Db, _MediaDoc, 'undefined') ->
+    {'error', <<"Conversion file is not defined">>};
+convert_attachment(Db, MediaDoc, FromFilename) ->
     MediaId = kzd_box_message:get_msg_id(MediaDoc),
-    FromFilename = kzd_box_message:transcribe_filename(MediaDoc),
     ToFilename = kzd_box_message:media_filename(MediaDoc),
     MimeFrom = kz_doc:attachment_content_type(MediaDoc, FromFilename),
     MimeTo = kz_mime:from_filename(ToFilename),
