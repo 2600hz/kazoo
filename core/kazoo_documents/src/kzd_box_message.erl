@@ -83,6 +83,8 @@
 %%    <dd>Media file size (or audio duration?)</dd>
 %%    <dt>`{<<"Transcribe-Voicemail">>, boolean()}'</dt>
 %%    <dd>Should try to transcribe the message with external service</dd>
+%%    <dt>`{<<"Required-Format">>, '{@link kz_term:ne_binary()}`}'}'</dt>
+%%    <dd>Extension file name required to use for email and  database storage</dd>
 %%    <dt>`{<<"After-Notify-Action">>, '{@link notify_action()}`}'</dt>
 %%    <dd>The action to execute if sending notification was successful</dd>
 %%    <dt>`{<<"Box-Num">>, '{@link kz_term:ne_binary()}`}'</dt>
