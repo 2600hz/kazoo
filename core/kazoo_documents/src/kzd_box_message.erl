@@ -155,7 +155,7 @@ gen_attachment_filename(Props) ->
         'true' ->
             FileName = props:get_ne_binary_value(<<"Attachment-Name">>, Props),
             RootName = filename:rootname(FileName),
-            Ext = props:get_value(<<"Required-Format">>, Props),
+            Ext = props:get_ne_binary_value(<<"Required-Format">>, Props),
             <<RootName/binary, ".", Ext/binary>>
     end.
 
