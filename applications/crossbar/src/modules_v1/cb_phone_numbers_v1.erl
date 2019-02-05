@@ -211,32 +211,27 @@ validate_3(Context, ?HTTP_GET, Number, ?IDENTIFY) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
-    CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), Context, CB);
+    set_response(collection_process(Context), Context);
 post(Context, Number) ->
     Options = default_knm_options(Context),
     JObj = cb_context:doc(Context),
     Result = knm_number:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options),
-    CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), Number) end,
-    set_response(Result, Context, CB).
+    set_response(Result, Context).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), Context, CB);
+    set_response(collection_process(Context), Context);
 put(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
                | default_knm_options(Context)
               ],
     Result = knm_number:create(Number, Options),
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
-    set_response(Result, Context, CB).
+    set_response(Result, Context).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION, ?ACTIVATE) ->
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
-    set_response(collection_process(Context, ?ACTIVATE), Context, CB);
+    set_response(collection_process(Context, ?ACTIVATE), Context);
 put(Context, Number, ?ACTIVATE) ->
     Options = [{'public_fields', cb_context:doc(Context)}
                | default_knm_options(Context)
@@ -246,16 +241,14 @@ put(Context, Number, ?ACTIVATE) ->
                      {'ok', kz_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum))};
                  _Else -> _Else
              end,
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
-    set_response(Result, Context, CB);
+    set_response(Result, Context);
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
                | default_knm_options(Context)
               ],
     Result = knm_number:reserve(Number, Options),
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
-    set_response(Result, Context, CB);
+    set_response(Result, Context);
 put(Context, Number, ?PORT) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
@@ -263,18 +256,15 @@ put(Context, Number, ?PORT) ->
                | default_knm_options(Context)
               ],
     Result = knm_number:create(Number, Options),
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
-    set_response(Result, Context, CB).
+    set_response(Result, Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
-    CB = fun() -> ?MODULE:delete(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), Context, CB);
+    set_response(collection_process(Context), Context);
 delete(Context, Number) ->
     Options = default_knm_options(Context),
     Result = knm_number:release(Number, Options),
-    CB = fun() -> ?MODULE:delete(cb_context:set_accepting_charges(Context), Number) end,
-    set_response(Result, Context, CB).
+    set_response(Result, Context).
 
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
@@ -409,35 +399,25 @@ validate_delete(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_response(result(), cb_context:context()) -> cb_context:context().
-set_response(Result, Context) ->
-    set_response(Result, Context, fun() -> Context end).
-
 -type result() :: {'ok', kz_json:object()} |
                   kz_json:object() |
                   knm_number_return() |
                   {binary(), binary()}.
--type cb() :: fun(() -> cb_context:context()).
 
--spec set_response(result(), cb_context:context(), cb()) -> cb_context:context().
-set_response({'ok', {'ok', Doc}}, Context, _) ->
+-spec set_response(result(), cb_context:context()) -> cb_context:context().
+set_response({'ok', {'ok', Doc}}, Context) ->
     crossbar_util:response(Doc, Context);
-set_response({'ok', Doc}, Context, _) ->
+set_response({'ok', Doc}, Context) ->
     case knm_number:is_number(Doc) of
         'true' -> crossbar_util:response(knm_number:to_public_json(Doc), Context);
         'false' -> crossbar_util:response(Doc, Context)
     end;
-set_response({'dry_run', Quotes}, Context, CB) ->
-    case kz_term:is_empty(Quotes) of
-        'false' -> crossbar_util:response_402(Quotes, Context);
-        'true' -> CB()
-    end;
-set_response({'error', 'not_found'}, Context, _) ->
+set_response({'error', 'not_found'}, Context) ->
     Msg = kz_json:from_list([{<<"message">>, <<"bad identifier">>}
                             ,{<<"not_found">>, <<"The number could not be found">>}
                             ]),
     cb_context:add_system_error('bad_identifier', Msg, Context);
-set_response({'error', Data}, Context, _) ->
+set_response({'error', Data}, Context) ->
     case kz_json:is_json_object(Data) of
         'true' ->
             Code = knm_errors:code(Data),
@@ -448,9 +428,9 @@ set_response({'error', Data}, Context, _) ->
             lager:debug("error: ~p", [Data]),
             crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
-set_response({Error, Reason}, Context, _) ->
+set_response({Error, Reason}, Context) ->
     crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context);
-set_response(CollectionJObjOrUnkown, Context, _) ->
+set_response(CollectionJObjOrUnkown, Context) ->
     case kz_json:is_json_object(CollectionJObjOrUnkown) of
         'true' -> crossbar_util:response(CollectionJObjOrUnkown, Context);
         'false' ->
