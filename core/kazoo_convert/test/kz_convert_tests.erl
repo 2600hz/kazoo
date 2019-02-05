@@ -53,6 +53,8 @@ fax_test_() ->
              ,test_tiff_to_tiff_small_file_read_metadata()
              ,test_pdf_to_tiff_read_metadata()
              ,test_openoffice_to_tiff_read_metadata()
+             ,test_wav_to_mp3_binary()
+             ,test_wav_to_mp3_tuple()
              ,test_read_metadata()
              ]
      end
@@ -588,6 +590,31 @@ test_openoffice_to_tiff_read_metadata() ->
                                   ,{<<"read_metadata">>, true}
                                   ]
                                  )
+                  )
+    ].
+
+test_wav_to_mp3_binary() ->
+    JobId = kz_binary:rand_hex(16),
+    From = read_test_file("silent-mono-8000.wav"),
+    Expected = <<"/tmp/", JobId/binary, ".mp3" >>,
+    [?_assertMatch({'ok', Expected}, kz_convert:audio(<<"audio/x-wav">>
+                                                     ,<<"audio/mpeg">>
+                                                     ,From
+                                                     ,[{<<"job_id">>, JobId}]
+                                                     )
+                  )
+    ].
+
+
+test_wav_to_mp3_tuple() ->
+    JobId = kz_binary:rand_hex(16),
+    Src = copy_fixture_to_tmp("silent-mono-8000.wav"),
+    Expected = <<"/tmp/", JobId/binary, ".mp3" >>,
+    [?_assertMatch({'ok', Expected}, kz_convert:audio(<<"audio/x-wav">>
+                                                     ,<<"audio/mpeg">>
+                                                     ,{'file', Src}
+                                                     ,[{<<"job_id">>, JobId}]
+                                                     )
                   )
     ].
 
