@@ -3,7 +3,7 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(pm_google).
+-module(pm_firebase).
 -behaviour(gen_server).
 
 -include("pusher.hrl").
@@ -41,7 +41,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
     lager:debug("process a push"),
     TokenApp = kz_json:get_value(<<"Token-App">>, JObj),
-    maybe_send_push_notification(get_gcm(TokenApp, ETS), JObj),
+    maybe_send_push_notification(get_fcm(TokenApp, ETS), JObj),
     {'noreply', State};
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
@@ -68,27 +68,27 @@ maybe_send_push_notification(Pid, JObj) ->
 
     lager:debug("pushing to ~p: ~s: ~p", [Pid, TokenID, Message]),
 
-    gcm:push(Pid, [TokenID], Message).
+    fcm:push(Pid, [TokenID], kz_json:to_map(Message)).
 
--spec get_gcm(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
-get_gcm('undefined', _) -> 'undefined';
-get_gcm(App, ETS) ->
+-spec get_fcm(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
+get_fcm('undefined', _) -> 'undefined';
+get_fcm(App, ETS) ->
     case ets:lookup(ETS, App) of
-        [] -> maybe_load_gcm(App, ETS);
+        [] -> maybe_load_fcm(App, ETS);
         [{App, Pid}] -> Pid
     end.
 
--spec maybe_load_gcm(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
-maybe_load_gcm(App, ETS) ->
-    lager:debug("loading gcm secret for ~s", [App]),
-    maybe_load_gcm(App, ETS, kapps_config:get_binary(?CONFIG_CAT, [<<"google">>, <<"api_key">>], 'undefined', App)).
+-spec maybe_load_fcm(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
+maybe_load_fcm(App, ETS) ->
+    lager:debug("loading fcm secret for ~s", [App]),
+    maybe_load_fcm(App, ETS, kapps_config:get_binary(?CONFIG_CAT, [<<"firebase">>, <<"api_key">>], 'undefined', App)).
 
--spec maybe_load_gcm(kz_term:api_binary(), ets:tid(), kz_term:api_binary()) -> kz_term:api_pid().
-maybe_load_gcm(App, _, 'undefined') ->
-    lager:debug("google pusher secret for app ~s not found", [App]),
+-spec maybe_load_fcm(kz_term:api_binary(), ets:tid(), kz_term:api_binary()) -> kz_term:api_pid().
+maybe_load_fcm(App, _, 'undefined') ->
+    lager:debug("firebase pusher api_key for app ~s not found", [App]),
     'undefined';
-maybe_load_gcm(App, ETS, Secret) ->
-    case gcm:start(kz_term:to_atom(App, 'true'), Secret) of
+maybe_load_fcm(App, ETS, APIKey) ->
+    case fcm:start(kz_term:to_atom(App, 'true'), APIKey) of
         {'ok', Pid} ->
             ets:insert(ETS, {App, Pid}),
             Pid;
@@ -96,6 +96,6 @@ maybe_load_gcm(App, ETS, Secret) ->
             ets:insert(ETS, {App, Pid}),
             Pid;
         {'error', Reason} ->
-            lager:error("error loading gcm ~p", [Reason]),
+            lager:error("error loading fcm ~p", [Reason]),
             'undefined'
     end.
