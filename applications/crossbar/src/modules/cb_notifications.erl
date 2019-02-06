@@ -1477,7 +1477,7 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
             Setters = [{fun cb_context:set_doc/2, JObj}
                       ,{fun cb_context:set_resp_data/2, JObj}
                       ],
-            cb_context:setters(Context, Setters);
+            cb_context:setters(C1, Setters);
         _ ->
             C1
     end.
