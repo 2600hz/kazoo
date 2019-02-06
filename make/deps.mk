@@ -15,6 +15,7 @@ DEPS = amqp_client \
 	erlydtl \
 	escalus \
 	exml \
+	fcm \
 	folsom \
 	fs_event \
 	fs_sync \
@@ -104,3 +105,5 @@ dep_horse = git https://github.com/ninenines/horse
 dep_proper = git https://github.com/manopapad/proper v1.2
 
 dep_syslog = git https://github.com/2600hz/erlang-syslog bbad537a1cb5e4f37e672d2e2665659e850662d0
+
+dep_fcm = git https://github.com/softwarejoint/fcm-erlang.git b2f68a4c6f0f59475597a35e2dc9be13d9ba2910
