@@ -113,7 +113,7 @@ handle_port_request(DataJObj) ->
     lager:debug("sending ~s to port authority: ~p"
                ,[?TEMPLATE_ID, props:get_value(<<"to">>, AuthorityEmails)]
                ),
-    put('has_private_data', 'true'),
+    _ = put('skip_smtp_log', 'true'),
     case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
         {'error', Reason} ->
