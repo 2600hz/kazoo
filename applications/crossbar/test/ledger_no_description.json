@@ -1,0 +1,49 @@
+{
+    "_id": "{MODB-c299c2c59e80f7fb20032b79d3dc937d}",
+    "_rev": "1-705bb2e2f67c10dfcf8e452be3d92bc0",
+    "account": {
+        "id": "{ACCOUNT_ID}",
+        "name": "Kingdom Of Narnia"
+    },
+    "amount": 178,
+    "audit": {
+        "available_units": 947021
+    },
+    "description": "US-1-OUTBOUND",
+    "metadata": {
+        "account_trunk_usage": "0/0/5/0/0/0",
+        "callee_id_name": "Callee Name",
+        "callee_id_number": "6565551212",
+        "caller_id_name": "Caller Name",
+        "caller_id_number": "6565559898",
+        "direction": "outbound",
+        "from": "from@account.realm",
+        "rate": {
+            "increment": 60,
+            "minimum": 60,
+            "name": "US-1-OUTBOUND",
+            "nocharge_time": 0,
+            "value": 89
+        },
+        "reseller_trunk_usage": "0/0/0/0/0/0",
+        "resource_type": "offnet-termination",
+        "to": "to@account.realm"
+    },
+    "period": {
+        "start": 63712281223
+    },
+    "pvt_account_id": "{RESELLER_ACCOUNT_ID}",
+    "pvt_created": 63712281224,
+    "pvt_ledger_type": "debit",
+    "pvt_modified": 63712281224,
+    "pvt_type": "ledger",
+    "source": {
+        "id": "{SOURCE_ID}",
+        "service": "per-minute-voip"
+    },
+    "usage": {
+        "quantity": 120,
+        "type": "voice",
+        "unit": "sec"
+    }
+}

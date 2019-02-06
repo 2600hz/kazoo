@@ -15,6 +15,9 @@
         ,verify_mapped_row/2
         ,row_to_iolist/1, mapped_row_to_iolist/2
         ,json_to_iolist/1, json_to_iolist/2
+
+        ,jobjs_to_file/1, jobjs_to_file/2
+        ,write_header_to_file/1, write_header_to_file/2
         ]).
 -export([from_jobjs/1
         ,from_jobjs/2
@@ -36,6 +39,7 @@
              ,folder/1
              ,fassoc/0, verifier/0
              ,mapped_row_verifier/0
+             ,file_return/0
              ]).
 
 -ifdef(TEST).
@@ -231,6 +235,71 @@ json_to_iolist(Records, Fields)
     kz_util:delete_file(Tmp),
     IOData.
 
+-spec write_header_to_file(file_return()) -> file_return().
+write_header_to_file({File, CellOrdering}) ->
+    write_header_to_file({File, CellOrdering}, []).
+
+-spec write_header_to_file(file_return(), kz_term:proplist()) -> file_return().
+write_header_to_file({File, CellOrdering}, HeaderMap) ->
+    HeaderFile = <<File/binary, ".header">>,
+
+    Headings = [begin
+                    Heading = kz_binary:join(Cells, <<"_">>),
+                    props:get_value(Heading, HeaderMap, Heading)
+                end
+                || Cells <- CellOrdering
+               ],
+
+    Header = [csv_ize(Headings)],
+    'ok' = file:write_file(HeaderFile, Header),
+
+    {'ok', _} = kz_os:cmd(<<"cat ", File/binary, " >> ", HeaderFile/binary>>),
+    {'ok', _} = file:copy(HeaderFile, File),
+
+    kz_util:delete_file(HeaderFile),
+
+    {File, CellOrdering}.
+
+-type file_return() :: {file:filename_all(), kz_json:paths()}.
+-spec jobjs_to_file(kz_json:objects()) -> file_return().
+jobjs_to_file([JObj | _]=JObjs) ->
+    CellOrdering = maybe_update_ordering([], kz_json:flatten(JObj)),
+    jobjs_to_file(JObjs, CellOrdering).
+
+-spec jobjs_to_file(kz_json:objects(), file_return() | kz_json:paths()) -> file_return().
+jobjs_to_file(JObjs, {File, CellOrdering}) ->
+    lists:foldl(fun jobj_to_file/2
+               ,{File, CellOrdering}
+               ,JObjs
+               );
+jobjs_to_file(JObjs, CellOrdering) ->
+    File = <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>,
+    jobjs_to_file(JObjs, {File, CellOrdering}).
+
+-spec jobj_to_file(kz_json:object(), file_return()) -> file_return().
+jobj_to_file(JObj, {File, CellOrdering}) ->
+    FlatJObj = kz_json:flatten(JObj),
+    NewOrdering = maybe_update_ordering(CellOrdering, FlatJObj),
+
+    Row = [cell_to_binary(kz_json:get_ne_binary_value(Path, JObj, ?ZILCH)) || Path <- NewOrdering],
+    _ = file:write_file(File, [csv_ize(Row)], ['append']),
+    {File, NewOrdering}.
+
+maybe_update_ordering(CellOrdering, FlatJObj) ->
+    kz_json:foldl(fun maybe_add_field/3, CellOrdering, FlatJObj).
+
+maybe_add_field(Field, Value, CellOrdering) ->
+    IsJsonObject = kz_json:is_json_object(Value),
+    case lists:member(Field, CellOrdering) of
+        'false' when not IsJsonObject ->
+            lager:debug("adding field ~s", [Field]),
+            CellOrdering ++ [Field];
+        'false' ->
+            lager:debug("skipping JSON field ~p", [Field]),
+            CellOrdering;
+        'true' -> CellOrdering
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -379,16 +448,16 @@ create_csv_header(JObjs, Options) ->
     Headers = case props:get_value('header_map', Options) of
                   'undefined' -> get_headers(JObjs);
                   HeaderMap ->
-                      lists:map(fun(Header) -> header_map(Header, HeaderMap) end
+                      lists:map(fun(JObjHeader) -> header_map(JObjHeader, HeaderMap) end
                                ,get_headers(JObjs)
                                )
               end,
     csv_ize(lists:reverse(Headers)).
 
 -spec header_map(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().
-header_map(Header, HeaderMap) ->
-    case props:get_value(Header, HeaderMap) of
-        'undefined' -> Header;
+header_map(JObjHeader, HeaderMap) ->
+    case props:get_value(JObjHeader, HeaderMap) of
+        'undefined' -> JObjHeader; % doesn't change Header to HeaderMap's "friendly" version
         FriendlyHeader -> FriendlyHeader
     end.
 

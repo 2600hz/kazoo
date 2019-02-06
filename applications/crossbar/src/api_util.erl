@@ -31,7 +31,7 @@
         ,create_resp_content/2, create_resp_file/2, create_csv_resp_content/2
         ,create_pull_response/2, create_pull_response/3
 
-        ,init_chunk_stream/2, init_chunk_stream/3
+        ,init_chunk_stream/2
         ,close_chunk_json_envelope/2
         ,create_json_chunk_response/2, create_csv_chunk_response/2
 
@@ -43,6 +43,11 @@
         ,encode_start_key/1, decode_start_key/1
         ]).
 
+-ifdef(TEST).
+-export([csv_body/2]).
+-endif.
+
+-include_lib("kernel/include/file.hrl").
 -include("crossbar.hrl").
 
 -define(MAX_UPLOAD_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)). %% limit the whole payload/file size
@@ -70,7 +75,7 @@
 -type resp_file() :: {integer(), send_file_fun()}.
 -type resp_content_return() :: {kz_term:ne_binary() | iolist() | resp_file(), cowboy_req:req()}.
 -type resp_content_fun() :: fun((cowboy_req:req(), cb_context:context()) ->  resp_content_return()).
--type send_file_fun() :: fun((any(), module()) -> ok).
+-type send_file_fun() :: fun((any(), module()) -> 'ok').
 -type pull_file_resp() :: {'stream', integer(), send_file_fun()}.
 -type pull_file_response_return() :: {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
                                      stop_return().
@@ -1172,7 +1177,15 @@ finish_request(_Req, Context) ->
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
+    maybe_cleanup_file(cb_context:fetch(Context, 'csv_acc')),
     'ok'.
+
+-spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
+maybe_cleanup_file({File, _}) ->
+    _Del = file:delete(File),
+    lager:debug("deleting ~s: ~p", [File, _Del]);
+maybe_cleanup_file(_) -> 'ok'.
+
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.
@@ -1213,15 +1226,20 @@ get_encode_options(Context) ->
     end.
 
 -spec create_csv_resp_content(cowboy_req:req(), cb_context:context()) ->
-                                     {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
+                                     {{'file', file:filename_all()}, cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content(Req, Context) ->
-    Content = csv_body(cb_context:resp_data(Context), 'true'),
-    ContextHeaders = cb_context:resp_headers(Context),
-    FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
+    Context1 = csv_body(Context, cb_context:resp_data(Context)),
+    Acc = cb_context:fetch(Context, 'csv_acc'),
+    lager:debug("finishing CSV file ~p", [Acc]),
+    {File, _} = kz_csv:write_header_to_file(Acc, ?CSV_HEADER_MAP),
+    lager:debug("wrote header to ~p", [File]),
+
+    ContextHeaders = cb_context:resp_headers(Context1),
+    FileName = csv_file_name(Context, File),
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
                ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, <<"attachment; filename=\"", FileName/binary, "\"">>)
                },
-    {Content, maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)}.
+    {{'file', File}, maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers), Context1}.
 
 -spec create_resp_file(cowboy_req:req(), cb_context:context()) ->
                               {resp_file(), cowboy_req:req()}.
@@ -1242,33 +1260,33 @@ create_resp_file(Req, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_json_chunk_response(cowboy_req:req(), cb_context:context()) ->
-                                        {boolean(), cowboy_req:req()}.
+                                        {boolean(), cowboy_req:req(), cb_context:context()}.
 create_json_chunk_response(Req, Context) ->
     JObjs = cb_context:resp_data(Context),
-    create_json_chunk_response(Req, JObjs, cb_context:fetch(Context, 'chunking_started', 'false')).
+    create_json_chunk_response(Req, Context, JObjs, cb_context:fetch(Context, 'chunking_started', 'false')).
 
--spec create_json_chunk_response(cowboy_req:req(), kz_json:api_objects(), boolean()) ->
-                                        {boolean(), cowboy_req:req()}.
-create_json_chunk_response(Req, 'undefined', StartedChunk) ->
-    {StartedChunk, Req};
-create_json_chunk_response(Req, [], StartedChunk) ->
-    {StartedChunk, Req};
-create_json_chunk_response(Req, JObjs, StartedChunk) ->
+-spec create_json_chunk_response(cowboy_req:req(), cb_context:context(), kz_json:api_objects(), boolean()) ->
+                                        {boolean(), cowboy_req:req(), cb_context:context()}.
+create_json_chunk_response(Req, Context, 'undefined', StartedChunk) ->
+    {StartedChunk, Req, Context};
+create_json_chunk_response(Req, Context, [], StartedChunk) ->
+    {StartedChunk, Req, Context};
+create_json_chunk_response(Req, Context, JObjs, StartedChunk) ->
     try do_encode_to_json(JObjs) of
         JSON when StartedChunk ->
             'ok' = cowboy_req:stream_body(<<",", JSON/binary>>, 'nofin', Req),
-            {StartedChunk, Req};
+            {StartedChunk, Req, Context};
         JSON ->
             Req1 = init_chunk_stream(Req, <<"to_json">>),
             'ok' = cowboy_req:stream_body(JSON, 'nofin', Req1),
-            {'true', Req1}
+            {'true', Req1, Context}
     catch
         'throw':{'json_encode', {'bad_term', _Term}} ->
-            lager:debug("json encoding failed on ~p", [_Term]),
-            {StartedChunk, Req};
+            lager:info("json encoding failed on ~p", [_Term]),
+            {StartedChunk, Req, Context};
         _E:_R ->
-            lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
-            {StartedChunk, Req}
+            lager:info("failed to encode response: ~s: ~p", [_E, _R]),
+            {StartedChunk, Req, Context}
     end.
 
 -spec do_encode_to_json(kz_json:objects()) -> binary().
@@ -1278,37 +1296,35 @@ do_encode_to_json(JObjs) ->
     binary:part(Encoded, 1, size(Encoded) - 2).
 
 -spec create_csv_chunk_response(cowboy_req:req(), cb_context:context()) ->
-                                       {boolean(), cowboy_req:req()}.
+                                       {boolean(), cowboy_req:req(), cb_context:context()}.
 create_csv_chunk_response(Req, Context) ->
-    case {cb_context:resp_data(Context)
-         ,cb_context:fetch(Context, 'chunking_started', 'false')
-         }
-    of
-        {'undefined', IsStarted} ->
-            {IsStarted, Req};
-        {<<>>, IsStarted} ->
-            {IsStarted, Req};
-        {[], IsStarted} ->
-            {IsStarted, Req};
-        {CSVs, 'true'} ->
-            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs, 'false'), 'nofin', Req),
-            {'true', Req};
-        {CSVs, 'false'} ->
-            FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
-            Req1 = init_chunk_stream(Req, <<"to_csv">>, FileName),
-            'ok' = cowboy_req:stream_body(maybe_convert_to_csv(CSVs, 'true'), 'nofin', Req1),
-            {'true', Req1}
-    end.
+    create_csv_chunk_response(Req, Context
+                             ,cb_context:resp_data(Context)
+                             ,cb_context:fetch(Context, 'chunking_started', 'false')
+                             ).
 
--spec maybe_convert_to_csv(kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object() | kz_json:objects(), boolean()) -> iolist().
-maybe_convert_to_csv(?NE_BINARY=Body, _) -> Body;
-maybe_convert_to_csv([Content|_]=Body, BuildHeaders) ->
-    case kz_json:is_json_object(Content) of
-        'true' -> csv_body(Body, BuildHeaders);
-        'false' -> Body
-    end;
-maybe_convert_to_csv(JObj, BuildHeaders) ->
-    csv_body(JObj, BuildHeaders).
+create_csv_chunk_response(Req, Context, 'undefined', IsStarted) ->
+    {IsStarted, Req, Context};
+create_csv_chunk_response(Req, Context, <<>>, IsStarted) ->
+    {IsStarted, Req, Context};
+create_csv_chunk_response(Req, Context, [], IsStarted) ->
+    {IsStarted, Req, Context};
+create_csv_chunk_response(Req, Context, CSVs, 'true') ->
+    lager:debug("continuing stream of CSV chunks"),
+    Context1 = maybe_convert_to_csv(Context, CSVs),
+    {'true', Req, Context1};
+create_csv_chunk_response(Req, Context, CSVs, 'false') ->
+    FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
+    lager:debug("starting chunk stream of ~s", [FileName]),
+    Context1 = maybe_convert_to_csv(Context, CSVs),
+    {'true', Req, Context1}.
+
+-spec maybe_convert_to_csv(cb_context:context(), kz_json:object() | kz_json:objects()) ->
+                                  cb_context:context().
+maybe_convert_to_csv(Context, [_|_]=JObjs) ->
+    csv_body(Context, JObjs);
+maybe_convert_to_csv(Context, JObj) ->
+    csv_body(Context, [JObj]).
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the `x-file-name' from the request header if available.
@@ -1326,46 +1342,23 @@ csv_file_name(Context, Default) ->
 -spec init_chunk_stream(cowboy_req:req(), kz_term:ne_binary()) -> cowboy_req:req().
 init_chunk_stream(Req, <<"to_json">>) ->
     Headers = cowboy_req:resp_headers(Req),
+    lager:debug("starting to_json stream"),
     Req1 = cowboy_req:stream_reply(200, Headers, Req),
     'ok' = cowboy_req:stream_body("{\"data\":[", 'nofin', Req1),
     Req1;
-init_chunk_stream(Req, <<"to_csv">>) ->
-    init_chunk_stream(Req, <<"to_csv">>, ?DEFAULT_CSV_FILE_NAME).
+init_chunk_stream(Req, <<"to_csv">>) -> Req.
 
--spec init_chunk_stream(cowboy_req:req(), kz_term:ne_binary(), kz_term:ne_binary()) -> cowboy_req:req().
-init_chunk_stream(Req, <<"to_csv">>, FileName) ->
-    Headers0 = #{<<"content-type">> => <<"text/csv">>
-                ,<<"content-disposition">> => <<"attachment; filename=\"", FileName/binary, "\"">>
-                },
-    Headers = maps:merge(Headers0, cowboy_req:resp_headers(Req)),
-    cowboy_req:stream_reply(200, Headers, Req).
-
--spec csv_body(kz_term:api_binary() | kz_json:object() | kz_json:objects(), boolean()) -> iolist().
-csv_body('undefined', _) -> [];
-csv_body(<<>>, _) -> [];
-csv_body(Body=?NE_BINARY, _) -> [Body];
-csv_body(JObjs, BuildHeaders) when is_list(JObjs) ->
-    FlattenJObjs = [kz_json:flatten(JObj, 'binary_join') || JObj <- JObjs],
-    kz_csv:from_jobjs(FlattenJObjs, kz_csv_options(BuildHeaders));
-csv_body(JObj, BuildHeaders) ->
-    csv_body([JObj], BuildHeaders).
-
--spec kz_csv_options(boolean()) -> kz_term:proplist().
-kz_csv_options('true') ->
-    [{'transform_fun', fun map_empty_json_value_to_binary/2}
-    ,{'header_map', ?CSV_HEADER_MAP}
-    ];
-kz_csv_options('false') ->
-    [{'transform_fun', fun map_empty_json_value_to_binary/2}
-    ,{'build_headers', 'false'}
-    ].
-
--spec map_empty_json_value_to_binary(kz_json:key(), kz_json:term()) -> {kz_json:key(), kz_json:term()}.
-map_empty_json_value_to_binary(Key, Value) ->
-    case kz_json:is_json_object(Value) of
-        'true' -> {Key, <<>>};
-        'false' -> {Key, Value}
-    end.
+-spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
+                      cb_context:context().
+csv_body(Context, JObjs) when is_list(JObjs) ->
+    Acc1 = case cb_context:fetch(Context, 'csv_acc') of
+               'undefined' -> kz_csv:jobjs_to_file(JObjs);
+               Acc0 -> kz_csv:jobjs_to_file(JObjs, Acc0)
+           end,
+    lager:debug("csv'd to ~p", [Acc1]),
+    cb_context:store(Context, 'csv_acc', Acc1);
+csv_body(Context, JObj) ->
+    csv_body(Context, [JObj]).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create response expected for a request that
@@ -1400,21 +1393,37 @@ create_pull_response(Req0, Context) ->
 -spec create_pull_response(cowboy_req:req(), cb_context:context(), resp_content_fun()) ->
                                   {pull_response(), cowboy_req:req(), cb_context:context()} |
                                   stop_return().
-create_pull_response(Req0, Context, Fun) ->
-    {Content, Req1} = Fun(Req0, Context),
-    Req2 = set_resp_headers(Req1, Context),
-    case succeeded(Context) of
-        'false' -> ?MODULE:stop(Req2, Context);
-        'true' -> {maybe_set_pull_response_stream(Content), Req2, Context}
+create_pull_response(Req0, Context0, Fun) ->
+    {Content, Req1, Context1} =
+        case Fun(Req0, Context0) of
+            {Data, Req01} -> {Data, Req01, Context0};
+            {Data, Req01, Context01} -> {Data, Req01, Context01}
+        end,
+    Req2 = set_resp_headers(Req1, Context1),
+    case succeeded(Context1) of
+        'false' ->
+            lager:info("failed to process pull response in ~p", [Fun]),
+            ?MODULE:stop(Req2, Context1);
+        'true' ->
+            maybe_set_pull_response_stream(Content, Req2, Context1)
     end.
 
--spec maybe_set_pull_response_stream(kz_term:text() | resp_file()) -> kz_term:text() | pull_file_resp().
-maybe_set_pull_response_stream({FileLength, TransportFun})
+-spec maybe_set_pull_response_stream(kz_term:text() | resp_file(), cowboy_req:req(), cb_context:context()) ->
+                                            {kz_term:text() | pull_file_resp()
+                                            ,cowboy_req:req()
+                                            ,cb_context:context()
+                                            }.
+maybe_set_pull_response_stream({'file', File}, Req, Context) ->
+    {'ok', #file_info{size=Size}} = file:read_file_info(File),
+    lager:debug("sending file ~s(~p)", [File, Size]),
+    Req1 = cowboy_req:reply(200, #{}, {'sendfile', 0, Size, File}, Req),
+    {'stop', Req1, cb_context:set_resp_status(Context, 'stop')};
+maybe_set_pull_response_stream({FileLength, TransportFun}, Req, Context)
   when is_integer(FileLength)
        andalso is_function(TransportFun, 2) ->
-    {'stream', FileLength, TransportFun};
-maybe_set_pull_response_stream(Other) ->
-    Other.
+    {{'stream', FileLength, TransportFun}, Req, Context};
+maybe_set_pull_response_stream(Other, Req, Context) ->
+    {Other, Req, Context}.
 
 %%------------------------------------------------------------------------------
 %% @doc This function extracts the response fields and puts them in a proplist.
@@ -1463,15 +1472,14 @@ close_chunk_json_envelope(Req, Context) ->
                                 ),
     Trailer =
         Paging ++
-        props:filter_undefined(
-          [{<<"status">>, <<"success">>}
-          ,{<<"request_id">>, cb_context:req_id(Context)}
-          ,{<<"node">>, kz_nodes:node_encoded()}
-          ,{<<"version">>, kz_util:kazoo_version()}
-          ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
-          ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
-          ,{<<"auth_token">>, cb_context:auth_token(Context)}
-          ]),
+        [{<<"status">>, <<"success">>}
+        ,{<<"request_id">>, cb_context:req_id(Context)}
+        ,{<<"node">>, kz_nodes:node_encoded()}
+        ,{<<"version">>, kz_util:kazoo_version()}
+        ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
+        ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
+        ,{<<"auth_token">>, cb_context:auth_token(Context)}
+        ],
     Encoded = [<<"\"", K/binary, "\":\"", (kz_term:to_binary(V))/binary, "\"">>
                    || {K, V} <- Trailer,
                       kz_term:is_not_empty(V)
@@ -1546,6 +1554,7 @@ stop(Req0, Context) ->
 
     Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
 
+    lager:debug("replying with ~p", [StatusCode]),
     Req5 = cowboy_req:reply(StatusCode, Req4),
     {'stop', Req5, cb_context:set_resp_status(Context, 'stop')}.
 

@@ -189,7 +189,7 @@ perform_op({'edit', Doc}, Acc, AccountDb) ->
     {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, kz_doc:id(Saved)),
     [Saved | Acc];
 perform_op({'delete', Doc}, Acc, AccountDb) ->
-    kz_datamgr:del_doc(AccountDb, Doc),
+    _ = kz_datamgr:del_doc(AccountDb, Doc),
     Acc;
 perform_op({'noop', Doc}, Acc, _AccountDb) ->
     [Doc | Acc].

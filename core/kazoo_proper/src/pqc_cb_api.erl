@@ -29,6 +29,21 @@
         ]
        ).
 
+-type expected_code() :: 200..600.
+-type expected_codes() :: [expected_code()].
+-type expected_headers() :: [{string(), string()}].
+-type expectation() :: #{'response_codes' => expected_codes()
+                        ,'response_headers' => expected_headers()
+                        }.
+-type expectations() :: [expectations()].
+
+-type response() :: binary() |
+                    kz_http:ret() |
+                    {'error', binary()}.
+
+-type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
+-type fun_3() :: fun((string(), kz_term:proplist(), iodata()) -> kz_http:ret()).
+
 -type state() :: #{'auth_token' => kz_term:ne_binary()
                   ,'account_id' => kz_term:ne_binary()
                   ,'request_id' => kz_term:ne_binary()
@@ -45,7 +60,7 @@
 cleanup(#{'trace_file' := Trace
          ,'start' := Start
          }) ->
-    ?INFO("cleanup after ~p ms", [kz_time:elapsed_ms(Start)]),
+    lager:info("cleanup after ~p ms", [kz_time:elapsed_ms(Start)]),
     kz_data_tracing:stop_trace(Trace).
 
 -define(API_BASE, net_adm:localhost()).
@@ -81,7 +96,7 @@ api_key() ->
         {'ok', MasterAccountId} ->
             api_key(MasterAccountId);
         {'error', _} ->
-            ?ERROR("failed to find master account, please create an account first"),
+            lager:error("failed to find master account, please create an account first"),
             throw('no_master_account')
     end.
 
@@ -93,11 +108,11 @@ api_key(MasterAccountId) ->
             case is_binary(APIKey) of
                 'true' -> APIKey;
                 'false' ->
-                    ?ERROR("failed to fetch api key for ~s", [MasterAccountId]),
+                    lager:error("failed to fetch api key for ~s", [MasterAccountId]),
                     throw('missing_api_key')
             end;
         {'error', _E} ->
-            ?ERROR("failed to fetch master account ~s: ~p", [MasterAccountId, _E]),
+            lager:error("failed to fetch master account ~s: ~p", [MasterAccountId, _E]),
             throw('missing_master_account')
     end.
 
@@ -147,7 +162,7 @@ default_request_headers() ->
 default_request_headers(RequestId) ->
     NowMS = kz_time:now_ms(),
     APIRequestID = kz_term:to_list(RequestId) ++ "-" ++ integer_to_list(NowMS),
-    ?DEBUG("request id ~s", [APIRequestID]),
+    lager:debug("request id ~s", [APIRequestID]),
     [{<<"x-request-id">>, APIRequestID}
      | default_request_headers()
     ].
@@ -210,17 +225,16 @@ create_envelope(Data, Envelope) ->
 -spec handle_response(expectations(), kz_http:ret()) -> response().
 handle_response(Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
     case expectations_met(Expectations, ActualCode, RespHeaders) of
-        'true' ->
-            ?DEBUG("resp headers: ~p", [RespHeaders]),
-            RespBody;
+        'true' -> RespBody;
         'false' ->
+            lager:info("resp headers: ~p", [RespHeaders]),
             {'error', RespBody}
     end;
 handle_response(_Expectations, {'error','socket_closed_remotely'}=E) ->
-    ?ERROR("~nwe broke crossbar!"),
+    lager:error("~nwe broke crossbar!"),
     throw(E);
 handle_response(_ExpectedCode, {'error', _}=E) ->
-    ?ERROR("broken req: ~p", [E]),
+    lager:error("broken req: ~p", [E]),
     E.
 
 -spec expectations_met(expectations(), response_code(), response_headers()) -> boolean().
@@ -256,15 +270,16 @@ response_headers_match(_Expectation, _RespHeaders) -> 'true'.
 
 -spec response_header_matches({string(), string()}, response_headers()) -> boolean().
 response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
-    case props:get_value(ExpectedHeader, RespHeaders) of
-        ExpectedValue -> 'true';
+    Value = kz_term:to_list(ExpectedValue),
+    case kz_http_util:get_resp_header(kz_term:to_list(ExpectedHeader), RespHeaders) of
+        Value -> 'true';
         'undefined' ->
-            ?ERROR("failed expectation: header ~s missing from response", [ExpectedHeader]),
+            lager:error("failed expectation: header '~s' missing from response", [ExpectedHeader]),
             'false';
         _ActualValue ->
-            ?ERROR("failed expectation: header ~s is not ~p but ~p"
-                  ,[ExpectedHeader, ExpectedValue, _ActualValue]
-                  ),
+            lager:error("failed expectation: header '~s' is not ~p but ~p"
+                       ,[ExpectedHeader, ExpectedValue, _ActualValue]
+                       ),
             'false'
     end.
 
@@ -290,7 +305,7 @@ start_trace() ->
                                              ,?TRACE_FORMAT
                                              ,get_log_level()
                                              ),
-    ?INFO("authenticating...~s", [RequestId]),
+    lager:info("authenticating...~s", [RequestId]),
     OK.
 
 -spec trace_path() -> file:filename_all().
